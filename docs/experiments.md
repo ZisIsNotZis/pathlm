@@ -63,10 +63,15 @@ Total: base + 15 main-effect runs.
 
 ## 4. Milestones
 
+- M0 (probe, hours not days): probability machinery on a tiny model — d=64, 2 layers, seq 128, N=2 (k=0…2), ~1M params, first ~10MB of enwik8. Fast fail-fast on the riskiest software before M1 commits: (a) prob heads calibrate under corruption (ECE < 0.1), (b) weighted ensemble ≥ best-single-path (never hurts; if it hurts, post-hoc weight refit), (c) consistency loss reduces composition disagreement, (d) one retry round improves repair accuracy. If these fail, fix the machinery here, not in the full program.
 - M1 (6 runs): base, I1, C1, L2, R1, X2 — one safe representative per type; any gate failure is learned at ~30% of the program cost.
 - M2: remaining main effects.
 - M3: interaction runs + integration run.
 
-## 5. Scale and defaults (starting proposal, tuned by M1)
+## 5. Scale and defaults (decided)
 
-Char-level ASCII vocab (~100 printable). d=256, 8 layers, ~10–15M params, seq 512. Dataset: TinyStories at char level (open decision — alternative: enwik8). Defaults: λ_total=0.15 split among active I-elements; p_skip=p_redo=p_exit=0.1; shuffle-locality=0.5 in the L3 run; N=4 (k=0…4); retry counts sampled geometrically during training (coverage), prob_0-threshold gated at inference; norm cap c = typical embedding norm.
+Dataset: **enwik8** (char-level) — chosen for comparability: it is the standard char-level benchmark with many published small-model baselines (bits/char), giving the base config an external sanity anchor; if convergence is too slow, TinyStories char-level is the fallback (less comparability, faster learning).
+
+Scale (approved): char-level ASCII vocab (~100 printable), d=256, 8 layers, ~10–15M params, seq 512. Sanity anchor: a vanilla transformer of this size should land in the published ~1.4–1.6 bits/char range on enwik8; landing far above that means our always-on machinery has a real cost. Probe-scale (M0) as above.
+
+Defaults: λ_total=0.15 split among active I-elements; p_skip=p_redo=p_exit=0.1; shuffle-locality=0.5 in the L3 run; N=4 (k=0…4); retry counts sampled geometrically during training (coverage), prob_0-threshold gated at inference; norm cap c = typical embedding norm. Engine: PyTorch custom training loop (config-driven path sampling) — the one remaining open decision, default accepted unless objection.

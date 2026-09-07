@@ -26,3 +26,4 @@ Freeze the PathLM architecture from the design session into `docs/design.md` and
 ## Comments
 
 - 2026-09-07 — agent (pi, volc2/glm-5.3-flash) — wrote `docs/design.md` and `docs/experiments.md` from the agreed design discussion; initialized repo scaffold; committed.
+- 2026-09-07 — agent (pi, volc2/glm-5.3-flash) — user resolved open decisions: dataset = enwik8 (comparability anchor, TinyStories fallback), scale approved, probability machinery flagged high-risk → added M0 tiny-scale probe milestone to `docs/experiments.md`; engine = PyTorch custom loop default.
