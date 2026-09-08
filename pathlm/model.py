@@ -180,24 +180,6 @@ class PathLM(nn.Module):
         return nodes
 
     @staticmethod
-    def _depth_loss(h_d: torch.Tensor, targets: torch.Tensor, n_mtp: int,
-                    vocab_size: int) -> torch.Tensor:
-        """One depth's MTP losses: CE + confidence BCE per node (the conf heads
-        must be calibrated at intermediate depths too — the decode exit gate
-        reads sigmoid(conf) at depth d < n)."""
-        nodes = PathLM._mtp_nodes_static(h_d, n_mtp)
-        dloss = h_d.new_zeros(())
-        for k, node in nodes.items():
-            tgt = targets[:, k:]
-            logits = node["logits"][:, :tgt.shape[1]]
-            dloss = dloss + F.cross_entropy(logits.reshape(-1, vocab_size), tgt.reshape(-1))
-            with torch.no_grad():
-                hit = (logits.argmax(-1) == tgt).float()
-            dloss = dloss + F.binary_cross_entropy_with_logits(
-                node["conf"][:, :tgt.shape[1]], hit)
-        return dloss
-
-    @staticmethod
     def _node_loss(loss, node: dict, targets: torch.Tensor, vocab_size: int):
         """Per-component CE + confidence BCE against the token-identity event."""
         logits = node["logits"][:, :targets.shape[1]]

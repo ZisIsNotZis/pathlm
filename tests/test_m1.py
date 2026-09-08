@@ -269,18 +269,27 @@ def test_decode_retry_keeps_positions_strictly_increasing():
 
 def test_dense_exit_calibrates_confidence_heads():
     """P1 fix: the dense hook must train the conf heads at intermediate
-    depths — after dense training, the depth-1 conf must track its hit rate
-    (ECE small), which an CE-only hook cannot achieve."""
+    depths — after dense training, the DEPTH-1 confidence must track its own
+    hit rate (ECE small). The final-node BCE alone (always on) cannot produce
+    depth-1 calibration, so this fails if the hook's BCE is removed."""
     m = tiny_model(PathConfig(n_mtp=1, w_dense_exit=1.0))
     train_tiny(m, steps=250)
     from pathlm.metrics import ece
+    confs, hits = [], []
+    orig = m._mtp_nodes
+    def spy(h):
+        nodes = orig(h)
+        confs.append(nodes[0]["conf"].detach().cpu())
+        hits.append(nodes[0]["hit"].detach().cpu())
+        return nodes
+    m._mtp_nodes = spy
     with torch.no_grad():
-        x = torch.randint(0, 49, (4, M1.seq_len))
-        _, aux = m(x, tiny_paths(m.pcap), x)
-    # depth-1 recorded loss already contains the BCE; assert the conf head is
-    # actually used: its weights must have moved from init (grads flowed)
-    assert m.conf[0].weight.abs().mean().item() > 0.01, \
-        "conf head must receive gradients under dense-exit training"
+        for _ in range(4):
+            x = torch.randint(0, 49, (4, M1.seq_len))
+            m(x, tiny_paths(m.pcap), x)
+    m._mtp_nodes = orig
+    depth1_ece = ece(torch.cat(confs).sigmoid(), torch.cat(hits).float())
+    assert depth1_ece < 0.3, f"depth-1 conf must be calibrated via the hook BCE, got {depth1_ece:.3f}"
 
 
 def test_repair_measures_token_retry_round():

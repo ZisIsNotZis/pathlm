@@ -173,7 +173,7 @@ def needle_acc(model: PathLM, n_real_tokens: int, dists=(16, 64, 128, 256, 480),
     out = {}
     with eval_pc(model, corrupt_wrong=0.0, p_retry=0.0, p_token_retry=0.0, w_dense_exit=0.0):
         for tag, d in eval_dists:
-            if d > T - 5:
+            if d > T - 3:  # d = T-3 means needle at p=0 — valid (anchor regime)
                 continue
             x, _ = needle_batch(batch_size, T, n_real_tokens, model.mask_token,
                                 generator, dist=d)
