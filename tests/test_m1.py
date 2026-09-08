@@ -275,20 +275,26 @@ def test_dense_exit_calibrates_confidence_heads():
     m = tiny_model(PathConfig(n_mtp=1, w_dense_exit=1.0))
     train_tiny(m, steps=250)
     from pathlm.metrics import ece
-    confs, hits = [], []
+    confs, logits0, targets = [], [], []
     orig = m._mtp_nodes
+    first = [False]
     def spy(h):
         nodes = orig(h)
-        confs.append(nodes[0]["conf"].detach().cpu())
-        hits.append(nodes[0]["hit"].detach().cpu())
+        if first[0]:  # depth-1 call only (the dense hook fires at every depth)
+            confs.append(nodes[0]["conf"].detach().cpu())
+            logits0.append(nodes[0]["logits"].detach().cpu())
+            first[0] = False
         return nodes
     m._mtp_nodes = spy
     with torch.no_grad():
         for _ in range(4):
             x = torch.randint(0, 49, (4, M1.seq_len))
+            first[0] = True
             m(x, tiny_paths(m.pcap), x)
+            targets.append(x.cpu())
     m._mtp_nodes = orig
-    depth1_ece = ece(torch.cat(confs).sigmoid(), torch.cat(hits).float())
+    hits = (torch.cat(logits0).argmax(-1) == torch.cat(targets)).float()
+    depth1_ece = ece(torch.cat(confs).sigmoid(), hits)
     assert depth1_ece < 0.3, f"depth-1 conf must be calibrated via the hook BCE, got {depth1_ece:.3f}"
 
 
