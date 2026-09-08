@@ -35,7 +35,7 @@ Corruption elements are first-class: wrong token, `[mask]`, noised embedding, pu
 
 ### L — enhancer stack
 
-Layers are designed as idempotent refinements in the shared geometry, not feature transforms: skipping all of them must leave a usable (if weaker) representation, and repeating must converge. shuffle-locality ∈ [0,1] interpolates between normal order (0) and fully random permutation (1) via sort key `index + (1−locality)·noise`, resampled each pass. p_skip omits a layer, p_redo repeats a layer, p_exit jumps to the stack end.
+Layers are designed as idempotent refinements in the shared geometry, not feature transforms: skipping all of them must leave a usable (if weaker) representation, and repeating must converge. shuffle-locality ∈ [0,1] interpolates between normal order (0) and an exactly uniform random permutation (1) via sort key `(1−locality)·index + locality·U(0,n)` (n = stack size), resampled each pass. p_skip omits a layer, p_redo repeats a layer, p_exit jumps to the stack end.
 
 ### 2 — MTP block (always on)
 
