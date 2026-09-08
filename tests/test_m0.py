@@ -137,7 +137,7 @@ def test_sample_rounds_gives_each_round_its_own_path():
     sample_rounds call must (almost surely) carry different layer orders."""
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     from train_m0 import sample_rounds
-    pcap = PathConfig(shuffle_locality=1.0, p_retry=1.0, n_mtp=2)
+    pcap = PathConfig(shuffle_locality=1.0, p_retry=1.0, n_mtp=2, transport="direct")
     rounds = sample_rounds(pcap, random.Random(0), n_layers=4)
     assert len(rounds) == 2 and rounds[0].n_retries == 1
     assert rounds[0].layer_order != rounds[1].layer_order, "rounds must not share one path"
@@ -152,6 +152,6 @@ def test_sample_path_extremes():
     orders = {tuple(sample_path(PathConfig(shuffle_locality=1.0), rng, n_layers=4).layer_order)
               for _ in range(20)}
     assert len(orders) >= 10, f"locality=1 barely permutes: {orders}"
-    chaos = sample_path(PathConfig(shuffle_locality=1.0, p_skip=0.9, p_redo=0.9, p_retry=1.0),
+    chaos = sample_path(PathConfig(shuffle_locality=1.0, p_skip=0.9, p_redo=0.9, p_retry=1.0, transport="direct"),
                         rng, n_layers=2)
     assert len(chaos.layer_order) >= 1 and chaos.n_retries == 1

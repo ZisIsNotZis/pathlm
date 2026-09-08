@@ -1,8 +1,8 @@
 """Config-driven path sampling. Knobs map 1:1 to docs/design.md stage tunables.
 
-M0 scope: wrong-token corruption, MTP+confidence heads, consistency loss,
-direct latent retry. Unimplemented knobs raise NotImplementedError (deferred
-to the main-effect runs of docs/experiments.md).
+M1 scope adds: linear/soft transports, dense early-exit supervision, eviction
+training with anchor slots, and the needle (copy-from-context) objective used
+by the X2 eval. Still unimplemented knobs raise NotImplementedError.
 """
 
 from dataclasses import dataclass, field
@@ -35,12 +35,25 @@ class PathConfig:
     shuffle_locality: float = 0.0  # 0 = normal order, 1 = fully random permutation
     p_skip: float = 0.0
     p_redo: float = 0.0
-    p_exit: float = 0.0            # early exit (dense supervision) — deferred past M0
+    # Dense early-exit supervision (L2): weight of the per-depth MTP losses at
+    # depths 1..n_layers-1 (the final depth is always the normal pass). At
+    # inference, exit at the first depth whose prob_0 clears exit_threshold.
+    w_dense_exit: float = 0.0
+    exit_threshold: float = 0.9
+    # Eviction (X2): attention may see the last `window` positions plus the
+    # first `anchors` positions. 0 = off. Anchors are exempt from eviction and
+    # act as the long-range channel (needle-in-anchor eval relies on this).
+    window: int = 0
+    anchors: int = 0
+    # Needle objective (X2): fraction of training batches replaced by the
+    # copy-from-context task (see pathlm/data.py needle_batch).
+    p_needle: float = 0.0
     # Stage 2/3 — MTP block and return transport
     n_mtp: int = 2                 # heads k=1..n_mtp (self k=0 always present)
-    transport: str = "none"        # "none" | "direct" (linear/soft/decode deferred)
+    transport: str = "none"        # "none" | "direct" | "linear" | "soft"
     p_retry: float = 0.0           # P(one latent-retry round), sampled per batch
-    # Stage 4 — token retry: deferred past M0
+    # Stage 4 — token retry: discrete re-entry (re-embed the self node's
+    # predicted correction, re-run the stack). One coin per batch.
     p_token_retry: float = 0.0
     # Losses
     w_consistency: float = 0.0     # weight of T2 ~ T1@T1 consistency loss
@@ -52,18 +65,19 @@ class PathSample:
     layer_order: list[int] = field(default_factory=list)  # execution order of layer indices
     layer_repeats: list[int] = field(default_factory=list)  # repeats per executed step
     n_retries: int = 0               # latent-retry rounds after the first pass
+    token_retry: bool = False        # stage-4 discrete round after latent rounds
 
 
 def sample_path(cfg: PathConfig, rng: random.Random, n_layers: int) -> PathSample:
     """Sample one global path. Called once per batch during training."""
-    for knob, val in (("span_mode", cfg.span_mode), ("transport", cfg.transport)):
-        allowed = {"span_mode": ("iid",), "transport": ("none", "direct")}[knob]
+    for knob, val, allowed in (("span_mode", cfg.span_mode, ("iid",)),
+                               ("transport", cfg.transport, ("none", "direct", "linear", "soft"))):
         if val not in allowed:
-            raise NotImplementedError(f"{knob}={val!r} deferred past M0 (allowed: {allowed})")
-    if cfg.p_exit > 0:
-        raise NotImplementedError("p_exit (dense early-exit supervision) deferred past M0")
-    if cfg.p_token_retry > 0:
-        raise NotImplementedError("p_token_retry (stage-4 retry) deferred past M0")
+            raise NotImplementedError(f"{knob}={val!r} not implemented (allowed: {allowed})")
+    if cfg.p_needle > 0 and cfg.window == 0:
+        raise ValueError("needle batches are an eviction-training element: set window > 0")
+    if cfg.p_retry > 0 and cfg.transport == "none":
+        raise ValueError("latent retry needs a transport (retry without a return channel is a no-op)")
 
     n = n_layers
     # Shuffle: sort key blends the index with i.i.d. uniform keys.
@@ -83,4 +97,6 @@ def sample_path(cfg: PathConfig, rng: random.Random, n_layers: int) -> PathSampl
     order = [i for i, _ in kept] or [order[0]]  # never drop the entire stack
     repeats = [r for _, r in kept]
     n_retries = 1 if rng.random() < cfg.p_retry else 0
-    return PathSample(layer_order=order, layer_repeats=repeats, n_retries=n_retries)
+    token_retry = rng.random() < cfg.p_token_retry
+    return PathSample(layer_order=order, layer_repeats=repeats, n_retries=n_retries,
+                      token_retry=token_retry)

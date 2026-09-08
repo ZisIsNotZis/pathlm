@@ -1,0 +1,115 @@
+"""M1 runner: config-driven training at base scale + the full eval battery.
+
+Usage: python train_m1.py <run_name> --config configs/B0.json [--steps N] [--seed N]
+Writes checkpoint + results.json to .scratch/04-m1-runs/evidence/<run_name>/.
+Every metric that is meaningless for a run's config is auto-skipped; the
+results.json carries the full config, so each row is reproducible.
+"""
+
+import argparse, json, math, os, random, sys, time
+
+import torch
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pathlm.config import ModelConfig, PathConfig, sample_path
+from pathlm.data import load_enwik8_full, batch, needle_batch
+from pathlm.eval import bpc, repair, depth_curve, needle_acc, decode_speed
+from pathlm.model import PathLM
+
+
+def sample_rounds(pcap: PathConfig, rng: random.Random, n_layers: int) -> list:
+    """Base path decides the retry count; each round gets its own fresh path."""
+    base = sample_path(pcap, rng, n_layers)
+    return [base] + [sample_path(pcap, rng, n_layers) for _ in range(base.n_retries)]
+
+
+def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str):
+    steps, bs = tcfg["steps"], tcfg["batch_size"]
+    seq = model.mcfg.seq_len
+    opt = torch.optim.AdamW(model.parameters(), lr=tcfg["lr"], weight_decay=0.01)
+    sched = torch.optim.lr_scheduler.LambdaLR(
+        opt, lambda s: min((s + 1) / 200, 0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * s / steps))))
+    rng = random.Random(tcfg["seed"])
+    torch_rng = torch.Generator().manual_seed(tcfg["seed"])
+    t0 = time.time()
+    for step in range(steps):
+        model.train()
+        if pcap.p_needle > 0 and rng.random() < pcap.p_needle:
+            x, _ = needle_batch(bs, seq, model.n_real_tokens, model.mask_token,
+                                torch_rng, max_dist=seq - 6,
+                                anchors=pcap.anchors, anchor_frac=0.3)
+        else:
+            x, _ = batch(train_arr, bs, seq, torch_rng)
+        x = x.cuda()
+        paths = sample_rounds(pcap, rng, model.mcfg.n_layers)
+        # bf16 autocast: halves activation memory (the GPU is shared with a
+        # resident llama-server) and speeds up base-scale training.
+        with torch.autocast("cuda", dtype=torch.bfloat16,
+                            enabled=torch.cuda.is_available()):
+            loss, _ = model(x, paths, x)  # targets = the clean tokens themselves
+        opt.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        opt.step(); sched.step()
+        if step % 200 == 0 or step == steps - 1:
+            with open(log_path, "a") as f:
+                f.write(json.dumps({"step": step, "loss": round(loss.item(), 4),
+                                    "lr": round(sched.get_last_lr()[0], 6),
+                                    "min": round((time.time() - t0) / 60, 1)}) + "\n")
+    return time.time() - t0
+
+
+def run_battery(model: PathLM, eval_arr, vocab_size: int, pcap: PathConfig) -> dict:
+    res = {"bpc": bpc(model, eval_arr, vocab_size),
+           "decode_speed": decode_speed(model, pcap)}
+    if pcap.corrupt_wrong > 0 or pcap.corrupt_mask > 0:
+        res["repair"] = repair(model, eval_arr, max(pcap.corrupt_wrong, pcap.corrupt_mask))
+    if pcap.w_dense_exit > 0:
+        res["depth_curve"] = depth_curve(model, eval_arr)
+    if pcap.p_needle > 0:
+        res["needle_acc"] = needle_acc(model, model.n_real_tokens)
+    return res
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("run_name")
+    ap.add_argument("--config", required=True)
+    ap.add_argument("--steps", type=int, default=None, help="override config steps (smoke tests)")
+    ap.add_argument("--seed", type=int, default=None, help="override config seed")
+    ap.add_argument("--out-root", default=".scratch/04-m1-runs/evidence")
+    args = ap.parse_args()
+
+    cfg = json.load(open(args.config))
+    if args.steps is not None:
+        cfg["train"]["steps"] = args.steps
+    if args.seed is not None:
+        cfg["train"]["seed"] = args.seed
+
+    run_dir = os.path.join(args.out_root, args.run_name)
+    os.makedirs(run_dir, exist_ok=True)
+    mcfg = ModelConfig(**cfg["model"])
+    pcap = PathConfig(**cfg["path"])
+    torch.manual_seed(cfg["train"]["seed"])
+    train_arr, eval_arr, vocab_size = load_enwik8_full(".tmp/enwik8", "data/enwik8_full.npz")
+    model = PathLM(mcfg, pcap, vocab_size).cuda()
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f"{args.run_name}: {n_params/1e6:.2f}M params, vocab {vocab_size}, "
+          f"steps {cfg['train']['steps']}", flush=True)
+
+    log_path = os.path.join(run_dir, "train_log.jsonl")
+    wall = train(model, train_arr, cfg["train"], pcap, log_path)
+    torch.save(model.state_dict(), os.path.join(run_dir, "model.pt"))
+
+    results = run_battery(model, eval_arr, vocab_size, pcap)
+    results["config"] = cfg
+    results["params"] = n_params
+    results["wall_minutes"] = round(wall / 60, 1)
+    results["train_tokens"] = cfg["train"]["steps"] * cfg["train"]["batch_size"] * mcfg.seq_len
+    with open(os.path.join(run_dir, "results.json"), "w") as f:
+        json.dump(results, f, indent=2)
+    print(json.dumps({k: v for k, v in results.items() if k not in ("config",)}, indent=2))
+
+
+if __name__ == "__main__":
+    main()
