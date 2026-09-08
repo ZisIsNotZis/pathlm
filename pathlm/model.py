@@ -12,11 +12,13 @@ AR next-token head. Each round gets its own freshly sampled layer path (design
 §3: "fresh shuffle + fresh skips" per pass).
 """
 
+import random
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from .config import ModelConfig, PathConfig, PathSample
+from .config import ModelConfig, PathConfig, PathSample, sample_path
 
 
 def cap_norm(x: torch.Tensor, cap: float) -> torch.Tensor:
@@ -41,11 +43,12 @@ class Block(nn.Module):
             nn.Linear(cfg.mlp_mult * d, d), nn.Dropout(cfg.dropout),
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None) -> torch.Tensor:
         B, T, d = x.shape
         q, k, v = self.qkv(self.ln1(x)).chunk(3, dim=-1)
         shape = lambda t: t.view(B, T, self.n_heads, d // self.n_heads).transpose(1, 2)
-        a = F.scaled_dot_product_attention(shape(q), shape(k), shape(v), is_causal=True)
+        a = F.scaled_dot_product_attention(shape(q), shape(k), shape(v),
+                                           attn_mask=attn_mask, is_causal=attn_mask is None)
         a = a.transpose(1, 2).reshape(B, T, d)
         x = x + self.proj(a)
         return x + self.mlp(self.ln2(x))
@@ -117,10 +120,42 @@ class PathLM(nn.Module):
 
     # ---------- stage L ----------
 
-    def _run_layers(self, h: torch.Tensor, path: PathSample) -> torch.Tensor:
+    def _run_layers(self, h: torch.Tensor, path: PathSample,
+                    attn_mask: torch.Tensor | None = None, depth_hook=None):
+        """Execute the sampled path. depth_hook(depth, h) fires after each
+        executed layer (depth = layers applied so far) for dense-exit training."""
+        depth = 0
         for i, r in zip(path.layer_order, path.layer_repeats):
             for _ in range(r):
-                h = self.blocks[i](h)
+                h = self.blocks[i](h, attn_mask=attn_mask)
+                depth += 1
+                if depth_hook is not None:
+                    depth_hook(depth, h)
+        return h
+
+    def _eviction_mask(self, T: int, device) -> torch.Tensor | None:
+        """Causal AND eviction: position i attends j iff (j < anchors) or
+        (i - j < window). Anchors (first positions) are the long-range channel."""
+        pc = self.pcap
+        if pc.window <= 0:
+            return None
+        i = torch.arange(T, device=device).unsqueeze(1)
+        j = torch.arange(T, device=device).unsqueeze(0)
+        causal = j <= i
+        in_window = (i - j) < pc.window
+        is_anchor = j < pc.anchors
+        return (causal & (in_window | is_anchor)).view(1, 1, T, T)
+
+    def _transport(self, h: torch.Tensor) -> torch.Tensor:
+        """Stage-3 re-entry transform (retry rounds only). Only transforms that
+        can inject information are meaningful here; direct re-derives the same
+        fixed point (M0 gate d)."""
+        U = self.embed.weight  # [V, d], tied E=U
+        if self.pcap.transport == "linear":
+            return cap_norm((h @ U.T) @ U, self.mcfg.norm_cap)  # project onto vocab span
+        if self.pcap.transport == "soft":
+            # expected embedding under the current token distribution
+            return cap_norm((h @ U.T).softmax(-1) @ U, self.mcfg.norm_cap)
         return h
 
     # ---------- stage 2 ----------
@@ -163,10 +198,35 @@ class PathLM(nn.Module):
         shuffle/skips each pass)."""
         h, corrupt_mask = self._input_latents(tokens)
         pc = self.pcap
-        aux = {"corrupt_mask": corrupt_mask, "rounds": []}
+        attn_mask = self._eviction_mask(tokens.shape[1], tokens.device)
+        aux = {"corrupt_mask": corrupt_mask, "rounds": [], "depth_ce": []}
         loss = tokens.new_zeros(()).float()
+        total_depths = 0
         for r, path in enumerate(paths):
-            h = self._run_layers(h, path)
+            if r > 0 and pc.transport != "direct":
+                h = self._transport(h)  # re-entry transform (retry rounds only)
+            pending_dense: list = []
+            depth_hook = None
+            if r == 0 and pc.w_dense_exit > 0:
+                total_depths = sum(path.layer_repeats)
+
+                def depth_hook(depth: int, h_d: torch.Tensor, _p=path, _n=total_depths):
+                    # Dense early-exit supervision (L2): supervise the MTP block
+                    # at every depth 1..n-1 of the base pass, so early exits are
+                    # calibrated prefixes of the final estimate (design §6).
+                    nodes = self._mtp_nodes(h_d)
+                    dloss = h_d.new_zeros(())
+                    for k, node in nodes.items():
+                        tgt = targets[:, k:]
+                        logits = node["logits"][:, :tgt.shape[1]]
+                        dloss = dloss + F.cross_entropy(logits.reshape(-1, self.vocab_size),
+                                                        tgt.reshape(-1))
+                    aux["depth_ce"].append(dloss.detach() / (pc.n_mtp + 1))
+                    if depth < _n:  # final depth is the normal pass below
+                        pending_dense.append(pc.w_dense_exit * dloss)
+            h = self._run_layers(h, path, attn_mask=attn_mask, depth_hook=depth_hook)
+            for dloss in pending_dense:
+                loss = loss + dloss
             nodes = self._mtp_nodes(h)
             for k, node in nodes.items():
                 tgt = targets[:, k:]
@@ -180,4 +240,20 @@ class PathLM(nn.Module):
                 aux["consistency"] = cons.detach()
             aux["rounds"].append(nodes)
             h = h.detach()  # retry rounds are separate estimator passes
+            # Stage-4 token retry: discrete re-entry — re-embed the self node's
+            # predicted correction and re-run the stack. This is the channel
+            # that rewrites state hardest (the M0 lesson: information must
+            # enter the loop for a retry to help). Fires once, after the
+            # final latent round.
+            if r == len(paths) - 1 and path.token_retry:
+                pred = nodes[0]["logits"].argmax(-1)  # [B, T] predicted corrections
+                h = cap_norm(self.embed(pred) + self.pos_embed.weight[:pred.shape[1]],
+                             self.mcfg.norm_cap)
+                h = h.detach()
+                path2 = sample_path(pc, random, self.mcfg.n_layers)
+                h = self._run_layers(h, path2, attn_mask=attn_mask)
+                nodes = self._mtp_nodes(h)
+                for k, node in nodes.items():
+                    loss = self._node_loss(loss, node, targets[:, k:], self.vocab_size)
+                aux["rounds"].append(nodes)
         return loss, aux
