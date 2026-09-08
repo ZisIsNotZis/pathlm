@@ -7,6 +7,7 @@ Writes checkpoint + metrics JSON to .scratch/02-engine-m0/evidence/<run_name>/.
 import argparse, json, math, os, random, sys, time
 
 import torch
+import torch.nn.functional as F
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pathlm.config import ModelConfig, PathConfig, sample_path
@@ -23,6 +24,12 @@ def make_model(pcap: PathConfig, vocab_size: int) -> PathLM:
     return PathLM(mcfg, pcap, vocab_size)
 
 
+def sample_rounds(pcap: PathConfig, rng: random.Random, n_layers: int) -> list:
+    """Base path decides the retry count; each round gets its own fresh path."""
+    base = sample_path(pcap, rng, n_layers)
+    return [base] + [sample_path(pcap, rng, n_layers) for _ in range(base.n_retries)]
+
+
 def train(run_dir: str, pcap: PathConfig, data, vocab_size: int, steps: int):
     train_arr, val_arr, _ = data
     model = make_model(pcap, vocab_size).cuda()
@@ -36,8 +43,8 @@ def train(run_dir: str, pcap: PathConfig, data, vocab_size: int, steps: int):
     for step in range(steps):
         model.train()
         x, y = batch(train_arr, 64, 128, torch_rng)
-        path = sample_path(pcap, rng, mcfg.n_layers)
-        loss, _ = model(x.cuda(), path, y.cuda())
+        paths = sample_rounds(pcap, rng, mcfg.n_layers)
+        loss, _ = model(x.cuda(), paths, x.cuda())  # targets = clean input tokens
         opt.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -52,54 +59,57 @@ def train(run_dir: str, pcap: PathConfig, data, vocab_size: int, steps: int):
 
 @torch.no_grad()
 def evaluate(model: PathLM, val_arr, vocab_size: int, pcap: PathConfig, n_batches=40):
-    """Gate quantities on the validation stream (corruption on, retry always evaluated)."""
+    """Gate quantities on the validation stream (corruption on, retry always
+    evaluated). Eval corruption is seed-controlled via torch.manual_seed for
+    run-to-run reproducibility."""
     model.eval()
+    torch.manual_seed(1234)  # seed the global RNG that stage-0 corruption draws from
     eval_pc = PathConfig(**{**pcap.__dict__, "corrupt_wrong": CORRUPT_RATE, "p_retry": 0.0})
     rng, torch_rng = random.Random(1), torch.Generator().manual_seed(1)
-    streams = {name: {"logits": [], "conf": [], "tgt": []} for name in
-               ("node0_r0", "node0_r1", "node1", "node2_direct", "node2_chain")}
-    corrupt_masks = []
+    names = ("node0_r0", "node0_r1", "node1", "node2_direct", "node2_chain")
+    streams = {name: {"logits": [], "conf": [], "tgt": []} for name in names}
+    corrupt_masks, cosines, disagreements = [], [], []
+    T = model.mcfg.seq_len
+    T0, T1, T2 = T, T - 1, T - 2
     for _ in range(n_batches):
-        x, y = batch(val_arr, 64, 128, torch_rng)
-        x, y = x.cuda(), y.cuda()
-        path = sample_path(eval_pc, rng, model.mcfg.n_layers)
-        path.n_retries = 1  # always evaluate the retry round for gate (d)
-        _, aux = model(x, path, y)
-        T = y.shape[1]
+        x, _ = batch(val_arr, 64, T, torch_rng)
+        x = x.cuda()  # targets = the clean tokens themselves
+        paths = [sample_path(eval_pc, rng, model.mcfg.n_layers) for _ in range(2)]
+        _, aux = model(x, paths, x)
+        cm = aux["corrupt_mask"]
+        corrupt_masks.append(cm.cpu())
         streams["node0_r0"]["logits"].append(aux["rounds"][0][0]["logits"].cpu())
         streams["node0_r1"]["logits"].append(aux["rounds"][1][0]["logits"].cpu())
-        streams["node1"]["logits"].append(aux["rounds"][0][1]["logits"][:, :T-1].cpu())
-        streams["node1"]["conf"].append(aux["rounds"][0][1]["conf"][:, :T-1].cpu())
-        streams["node1"]["tgt"].append(y[:, 1:].cpu())
-        streams["node2_direct"]["logits"].append(aux["rounds"][0][2]["logits"][:, :T-2].cpu())
-        streams["node2_direct"]["conf"].append(aux["rounds"][0][2]["conf"][:, :T-2].cpu())
-        streams["node2_direct"]["tgt"].append(y[:, 2:].cpu())
-        ch = aux["rounds"][0][1]["chain2"]
-        streams["node2_chain"]["logits"].append(ch["logits"][:, :T-2].cpu())
-        streams["node2_chain"]["conf"].append(ch["conf"][:, :T-2].cpu())
-        streams["node2_chain"]["tgt"].append(y[:, 2:].cpu())
-        streams["node0_r0"]["conf"].append(aux["rounds"][0][0]["conf"].cpu())
-        streams["node0_r0"]["tgt"].append(y.cpu())
-        streams["node0_r1"]["conf"].append(aux["rounds"][1][0]["conf"].cpu())
-        streams["node0_r1"]["tgt"].append(y.cpu())
-        corrupt_masks.append(aux["corrupt_mask"].cpu())
-        # node2 estimates from the retry round join the ensemble
-        T2 = T - 2
-        streams["node2_direct"]["logits"].append(aux["rounds"][1][2]["logits"][:, :T2].cpu())
-        streams["node2_direct"]["conf"].append(aux["rounds"][1][2]["conf"][:, :T2].cpu())
-        streams["node2_direct"]["tgt"].append(y[:, 2:].cpu())
-        ch1 = aux["rounds"][1][1]["chain2"]
-        streams["node2_chain"]["logits"].append(ch1["logits"][:, :T2].cpu())
-        streams["node2_chain"]["conf"].append(ch1["conf"][:, :T2].cpu())
-        streams["node2_chain"]["tgt"].append(y[:, 2:].cpu())
+        for r, name in ((0, "node0_r0"), (1, "node0_r1")):
+            streams[name]["conf"].append(aux["rounds"][r][0]["conf"].cpu())
+            streams[name]["tgt"].append(x.cpu())
+        streams["node1"]["logits"].append(aux["rounds"][0][1]["logits"][:, :T1].cpu())
+        streams["node1"]["conf"].append(aux["rounds"][0][1]["conf"][:, :T1].cpu())
+        streams["node1"]["tgt"].append(x[:, 1:].cpu())
+        for tag, r in (("direct", 0), ("direct", 1)):
+            node = aux["rounds"][r][2]
+            streams["node2_direct"]["logits"].append(node["logits"][:, :T2].cpu())
+            streams["node2_direct"]["conf"].append(node["conf"][:, :T2].cpu())
+            streams["node2_direct"]["tgt"].append(x[:, 2:].cpu())
+        for r in (0, 1):
+            ch = aux["rounds"][r][1]["chain2"]
+            streams["node2_chain"]["logits"].append(ch["logits"][:, :T2].cpu())
+            streams["node2_chain"]["conf"].append(ch["conf"][:, :T2].cpu())
+            streams["node2_chain"]["tgt"].append(x[:, 2:].cpu())
+        # gate (c): dispersion between the two node-2 estimates (round 0)
+        d_lat = aux["rounds"][0][2]["latent"]; c_lat = aux["rounds"][0][1]["chain2"]["latent"]
+        cosines.append(F.cosine_similarity(d_lat, c_lat, dim=-1).mean().cpu())
+        disagreements.append((aux["rounds"][0][2]["logits"][:, :T2].argmax(-1) !=
+                              ch["logits"][:, :T2].argmax(-1)).float().mean().cpu())
 
     def stack(name):
         s = streams[name]
-        return (torch.cat(s["logits"]), torch.cat(s["conf"]), torch.cat(s["tgt"]))
+        return torch.cat(s["logits"]), torch.cat(s["conf"]), torch.cat(s["tgt"])
 
-    out = {"node_acc": {}, "node_ece": {}, "ens_vs_best": {}, "retry": {}}
+    out = {"node_acc": {}, "node_ece": {}, "ens_vs_best": {}, "retry": {},
+           "consistency_dispersion": {}}
     ests = {}
-    for name in streams:
+    for name in names:
         logits, conf, tgt = stack(name)
         hit = (logits.argmax(-1) == tgt).float()
         ests[name] = (logits, conf, hit)
@@ -115,7 +125,12 @@ def evaluate(model: PathLM, val_arr, vocab_size: int, pcap: PathConfig, n_batche
         "ensemble_ece": round(ece(conf_mix, hit_mix), 4),
         "best_single_acc": round(max(out["node_acc"][n] for n in ("node2_direct", "node2_chain")), 4),
     }
-    # (d): retry effect on repair (self-head accuracy on corrupted positions)
+    # (c): dispersion between the node-2 estimates
+    out["consistency_dispersion"] = {
+        "latent_cosine": round(torch.stack(cosines).mean().item(), 4),
+        "argmax_disagreement": round(torch.stack(disagreements).mean().item(), 4),
+    }
+    # (d): retry effect on repair (self-head accuracy on actually-corrupted positions)
     cm = torch.cat(corrupt_masks)
     for r in (0, 1):
         logits, conf, tgt = stack(f"node0_r{r}")

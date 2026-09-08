@@ -5,6 +5,11 @@ redo), stage 2 (MTP transform heads + confidence heads, self node k=0, chain
 estimate for node 2), stage 3 transport=direct (latent retry). Tied E=U with
 norm-capped inputs. Retry rounds are separate estimator passes (detached), per
 the training recipe in docs/design.md §6.
+
+Node semantics (design §4): node k at row i predicts the clean token t_{i+k}.
+Node 0 is the self/repair estimate of the CURRENT token; node 1 is the standard
+AR next-token head. Each round gets its own freshly sampled layer path (design
+§3: "fresh shuffle + fresh skips" per pass).
 """
 
 import torch
@@ -63,16 +68,21 @@ class PathLM(nn.Module):
         self.mcfg, self.pcap = mcfg, pcap
         d = mcfg.d_model
         self.vocab_size = vocab_size
-        self.mask_token = vocab_size - 1  # last slot = [mask]
-        # Tied E=U: embedding rows have norm ~1 (init std = d^-0.5), U = E^T
+        self.n_real_tokens = vocab_size - 1  # last slot = [mask]
+        self.mask_token = vocab_size - 1
+        # Tied E=U: embedding rows have norm ~1 (init std = d^-0.5), U = E^T.
+        # No final LayerNorm: the residual stream keeps the embedding geometry
+        # end-to-end (design §1); readout scale is learned through U.
         self.embed = nn.Embedding(vocab_size, d)
         nn.init.normal_(self.embed.weight, std=d ** -0.5)
+        self.pos_embed = nn.Embedding(mcfg.seq_len, d)  # standard AR decoder requirement
+        nn.init.normal_(self.pos_embed.weight, std=0.02)
         self.blocks = nn.ModuleList(Block(mcfg) for _ in range(mcfg.n_layers))
-        self.ln_f = nn.LayerNorm(d)
         self.transforms = nn.ModuleList(TransformHead(d) for _ in range(pcap.n_mtp))
         self.conf = nn.ModuleList(nn.Linear(d, 1) for _ in range(pcap.n_mtp + 1))
+        self.conf_chain2 = nn.Linear(d, 1)  # separate head for the chained node-2 estimate
         for m in self.modules():
-            if isinstance(m, nn.Linear) and m is not self.embed:
+            if isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, std=0.02)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
@@ -81,15 +91,19 @@ class PathLM(nn.Module):
 
     def _input_latents(self, tokens: torch.Tensor):
         """Corrupt tokens (stage 0), embed + perturb (stage 1).
-        Returns (latents, corrupt_mask)."""
+        Returns (latents, corrupt_mask). Wrong-token sampling never returns the
+        [mask] slot nor (up to a vanishingly rare wrap collision) the original
+        token, so corrupt_mask marks exactly the changed positions."""
         B, T = tokens.shape
         pc, dev = self.pcap, tokens.device
         u0 = torch.rand(B, T, device=dev)
         mask_pos = u0 < pc.corrupt_mask
         wrong_pos = (u0 >= pc.corrupt_mask) & (u0 < pc.corrupt_mask + pc.corrupt_wrong)
         x = torch.where(mask_pos, torch.full_like(tokens, self.mask_token), tokens)
-        x = torch.where(wrong_pos, torch.randint_like(tokens, self.vocab_size), x)
-        h = self.embed(x)
+        rand_tok = torch.randint_like(tokens, self.n_real_tokens)
+        rand_tok = (rand_tok + (rand_tok == tokens).int()) % self.n_real_tokens  # no collision
+        x = torch.where(wrong_pos, rand_tok, x)
+        h = self.embed(x) + self.pos_embed.weight[:T]
         if pc.perturb_noise > 0 or pc.pure_noise > 0:
             u1 = torch.rand(B, T, device=dev)
             sigma = pc.noise_sigma * self.mcfg.norm_cap
@@ -107,14 +121,14 @@ class PathLM(nn.Module):
         for i, r in zip(path.layer_order, path.layer_repeats):
             for _ in range(r):
                 h = self.blocks[i](h)
-        return self.ln_f(h)
+        return h
 
     # ---------- stage 2 ----------
 
     def _mtp_nodes(self, h: torch.Tensor) -> dict:
         """One round of MTP node outputs. Node k=0 is the self estimate;
         node k>=1 is the direct transform estimate; node 1 additionally
-        carries the chained estimate of node 2 (T1 @ T1)."""
+        carries the chained estimate of node 2 (T1 @ T1) with its own head."""
         nodes = {}
         for k in range(self.pcap.n_mtp + 1):
             latent = h if k == 0 else self.transforms[k - 1](h)
@@ -123,7 +137,7 @@ class PathLM(nn.Module):
             if k == 1 and self.pcap.n_mtp >= 2:
                 chain = self.transforms[0](latent)
                 node["chain2"] = {"latent": chain, "logits": chain @ self.embed.weight.T,
-                                  "conf": self.conf[2](chain).squeeze(-1)}
+                                  "conf": self.conf_chain2(chain).squeeze(-1)}
             nodes[k] = node
         return nodes
 
@@ -140,13 +154,18 @@ class PathLM(nn.Module):
 
     # ---------- forward / loss ----------
 
-    def forward(self, tokens: torch.Tensor, path: PathSample, targets: torch.Tensor):
-        """Per-component CE + confidence BCE (+ consistency loss) over all rounds."""
+    def forward(self, tokens: torch.Tensor, paths: list[PathSample], targets: torch.Tensor):
+        """tokens = the CLEAN input sequence (corruption happens internally).
+        targets = the clean token stream the nodes predict into: node k of round
+        r is supervised on targets[:, k:] (with targets = tokens, node k
+        predicts t_{i+k}; node 0 is the self/repair estimate of the current
+        token). paths: one sampled layer path per round (design: fresh
+        shuffle/skips each pass)."""
         h, corrupt_mask = self._input_latents(tokens)
         pc = self.pcap
         aux = {"corrupt_mask": corrupt_mask, "rounds": []}
         loss = tokens.new_zeros(()).float()
-        for r in range(path.n_retries + 1):
+        for r, path in enumerate(paths):
             h = self._run_layers(h, path)
             nodes = self._mtp_nodes(h)
             for k, node in nodes.items():
