@@ -4,7 +4,8 @@
 
 - **Design:** frozen in `docs/design.md` (stage ring 0–4, cycles, aggregation principle, training recipe). One post-freeze amendment: shuffle-locality formula in §L (v1 was mathematically a no-op).
 - **M0 probe: DONE, merged.** Micro-model (d=64, 2L, ~1M params, enwik8-12MB). Verdicts: (a) confidence calibration PASS (ECE 0.004–0.011); (b) ensemble ≥ best single PASS (+0.0008…+0.0015, 3 runs/2 seeds); (c) consistency loss tightens estimates PASS (cosine 0.9525→0.9882); (d) direct-transport retry FAIL (structural no-op). Evidence + report: `.scratch/02-engine-m0/evidence/REPORT.md`.
-- **Next: M1** — tickets `.scratch/03-engine-m1/issues/01-engine-m1-extensions.md` (engine: transports linear/soft, dense early-exit supervision, eviction+anchor slots, eval battery, configs-as-files) then `.scratch/04-m1-runs/issues/01-m1-runs.md` (7 runs: B0, I1, C1, C3, R1, L2, X2). Both ready-for-agent, not claimed.
+- **M1 engine extensions: DONE, merged** (ticket 03, review APPROVE round 2 after fixing a P0 decode-retry position bug + 4 P1s). 27 tests green. Transports linear/soft, dense early-exit supervision, eviction+anchors, stage-4 token retry, KV-cache decode (per-layer caches, exit threshold, prob0 retry), full eval battery, configs/*.json. Base scale: d=256, 12 layers, mlp_mult 6 = 13.08M params (deviation recorded in experiments.md).
+- **M1 runs: RUNNING** (ticket 04) — sequential runner `.tmp/run_m1.sh` (PID log: `.scratch/04-m1-runs/evidence/runner.log`), order B0→I1→C1→C3→R1→L2→X2, ~35–60 min each, results.json per run in evidence/. Check `tail runner.log` and per-run stdout logs.
 
 ## Key lessons (do not re-derive)
 
