@@ -33,9 +33,8 @@ def ensemble(logits_conf_pairs):
     pairs: iterable of (logits, conf_probability). Weights = softmax over raw
     confidence logits (log-space combination per docs/design.md §5)."""
     logits_list = [l for l, _ in logits_conf_pairs]
-    raw = torch.stack([c for _, c in logits_conf_pairs], 0)
-    w = raw.softmax(0).unsqueeze(-1)                       # (E, B, T)
-    probs = torch.stack([F.softmax(l, -1) for l in logits_list], 0)
-    mix = (w.unsqueeze(-1) * probs).sum(0)                 # (B, T, V)
+    w = torch.stack([c for _, c in logits_conf_pairs], 0).softmax(0)   # (E, N, T)
+    probs = torch.stack([F.softmax(l, -1) for l in logits_list], 0)    # (E, N, T, V)
+    mix = (w.unsqueeze(-1) * probs).sum(0)                             # (N, T, V)
     conf_mix = (w * torch.stack([c.sigmoid() for _, c in logits_conf_pairs], 0)).sum(0)
     return mix, conf_mix

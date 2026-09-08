@@ -26,6 +26,7 @@ def make_model(pcap: PathConfig, vocab_size: int) -> PathLM:
 def train(run_dir: str, pcap: PathConfig, data, vocab_size: int, steps: int):
     train_arr, val_arr, _ = data
     model = make_model(pcap, vocab_size).cuda()
+    mcfg = model.mcfg
     opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.01)
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min((s + 1) / 200, (0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * s / steps)))))
@@ -35,7 +36,7 @@ def train(run_dir: str, pcap: PathConfig, data, vocab_size: int, steps: int):
     for step in range(steps):
         model.train()
         x, y = batch(train_arr, 64, 128, torch_rng)
-        path = sample_path(pcap, rng)
+        path = sample_path(pcap, rng, mcfg.n_layers)
         loss, _ = model(x.cuda(), path, y.cuda())
         opt.zero_grad(set_to_none=True)
         loss.backward()
@@ -61,7 +62,7 @@ def evaluate(model: PathLM, val_arr, vocab_size: int, pcap: PathConfig, n_batche
     for _ in range(n_batches):
         x, y = batch(val_arr, 64, 128, torch_rng)
         x, y = x.cuda(), y.cuda()
-        path = sample_path(eval_pc, rng)
+        path = sample_path(eval_pc, rng, model.mcfg.n_layers)
         path.n_retries = 1  # always evaluate the retry round for gate (d)
         _, aux = model(x, path, y)
         T = y.shape[1]
