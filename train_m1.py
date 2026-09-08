@@ -36,12 +36,17 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str)
         model.train()
         if pcap.p_needle > 0 and rng.random() < pcap.p_needle:
             x, _ = needle_batch(bs, seq, model.n_real_tokens, model.mask_token,
-                                torch_rng, max_dist=seq - 6)
+                                torch_rng, max_dist=seq - 6,
+                                anchors=pcap.anchors, anchor_frac=0.3)
         else:
             x, _ = batch(train_arr, bs, seq, torch_rng)
         x = x.cuda()
         paths = sample_rounds(pcap, rng, model.mcfg.n_layers)
-        loss, _ = model(x, paths, x)  # targets = the clean tokens themselves
+        # bf16 autocast: halves activation memory (the GPU is shared with a
+        # resident llama-server) and speeds up base-scale training.
+        with torch.autocast("cuda", dtype=torch.bfloat16,
+                            enabled=torch.cuda.is_available()):
+            loss, _ = model(x, paths, x)  # targets = the clean tokens themselves
         opt.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)

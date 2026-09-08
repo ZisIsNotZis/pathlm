@@ -69,6 +69,9 @@ class PathLM(nn.Module):
     def __init__(self, mcfg: ModelConfig, pcap: PathConfig, vocab_size: int):
         super().__init__()
         self.mcfg, self.pcap = mcfg, pcap
+        # Seeded RNG for in-forward path sampling (token-retry round): derived
+        # from the construction-time torch seed, so training is reproducible.
+        self._path_rng = random.Random(torch.initial_seed() ^ 0x5EED)
         d = mcfg.d_model
         self.vocab_size = vocab_size
         self.n_real_tokens = vocab_size - 1  # last slot = [mask]
@@ -177,6 +180,24 @@ class PathLM(nn.Module):
         return nodes
 
     @staticmethod
+    def _depth_loss(h_d: torch.Tensor, targets: torch.Tensor, n_mtp: int,
+                    vocab_size: int) -> torch.Tensor:
+        """One depth's MTP losses: CE + confidence BCE per node (the conf heads
+        must be calibrated at intermediate depths too — the decode exit gate
+        reads sigmoid(conf) at depth d < n)."""
+        nodes = PathLM._mtp_nodes_static(h_d, n_mtp)
+        dloss = h_d.new_zeros(())
+        for k, node in nodes.items():
+            tgt = targets[:, k:]
+            logits = node["logits"][:, :tgt.shape[1]]
+            dloss = dloss + F.cross_entropy(logits.reshape(-1, vocab_size), tgt.reshape(-1))
+            with torch.no_grad():
+                hit = (logits.argmax(-1) == tgt).float()
+            dloss = dloss + F.binary_cross_entropy_with_logits(
+                node["conf"][:, :tgt.shape[1]], hit)
+        return dloss
+
+    @staticmethod
     def _node_loss(loss, node: dict, targets: torch.Tensor, vocab_size: int):
         """Per-component CE + confidence BCE against the token-identity event."""
         logits = node["logits"][:, :targets.shape[1]]
@@ -213,7 +234,9 @@ class PathLM(nn.Module):
                 def depth_hook(depth: int, h_d: torch.Tensor, _p=path, _n=total_depths):
                     # Dense early-exit supervision (L2): supervise the MTP block
                     # at every depth 1..n-1 of the base pass, so early exits are
-                    # calibrated prefixes of the final estimate (design §6).
+                    # calibrated prefixes of the final estimate (design §6). CE AND
+                    # confidence BCE — the decode exit gate reads sigmoid(conf)
+                    # at depth d < n, so the head must be calibrated there too.
                     nodes = self._mtp_nodes(h_d)
                     dloss = h_d.new_zeros(())
                     for k, node in nodes.items():
@@ -221,6 +244,10 @@ class PathLM(nn.Module):
                         logits = node["logits"][:, :tgt.shape[1]]
                         dloss = dloss + F.cross_entropy(logits.reshape(-1, self.vocab_size),
                                                         tgt.reshape(-1))
+                        with torch.no_grad():
+                            hit = (logits.argmax(-1) == tgt).float()
+                        dloss = dloss + F.binary_cross_entropy_with_logits(
+                            node["conf"][:, :tgt.shape[1]], hit)
                     aux["depth_ce"].append(dloss.detach() / (pc.n_mtp + 1))
                     if depth < _n:  # final depth is the normal pass below
                         pending_dense.append(pc.w_dense_exit * dloss)
@@ -250,7 +277,7 @@ class PathLM(nn.Module):
                 h = cap_norm(self.embed(pred) + self.pos_embed.weight[:pred.shape[1]],
                              self.mcfg.norm_cap)
                 h = h.detach()
-                path2 = sample_path(pc, random, self.mcfg.n_layers)
+                path2 = sample_path(pc, self._path_rng, self.mcfg.n_layers)
                 h = self._run_layers(h, path2, attn_mask=attn_mask)
                 nodes = self._mtp_nodes(h)
                 for k, node in nodes.items():

@@ -36,48 +36,91 @@ def bpc(model: PathLM, eval_arr, vocab_size: int, n_batches: int = 200,
     T = model.mcfg.seq_len
     generator = generator or torch.Generator().manual_seed(7)
     nats, tokens, correct = 0.0, 0, 0
+    confs, hits = [], []
     with eval_pc(model, corrupt_wrong=0.0, corrupt_mask=0.0, p_retry=0.0,
                  p_token_retry=0.0, w_dense_exit=0.0, perturb_noise=0.0, pure_noise=0.0):
         for _ in range(n_batches):
             x, _ = batch(eval_arr, batch_size, T, generator)
             x = x.to(model.embed.weight.device)
-            _, aux = model(x, [model.pcap and sample_path(model.pcap, random, model.mcfg.n_layers)], x)
-            logits = aux["rounds"][0][1]["logits"][:, :-1]  # node 1, rows 0..T-2
+            _, aux = model(x, [sample_path(model.pcap, random, model.mcfg.n_layers)], x)
+            node1 = aux["rounds"][0][1]
+            logits = node1["logits"][:, :-1]  # node 1, rows 0..T-2
             tgt = x[:, 1:]
             nats += F.cross_entropy(logits.reshape(-1, vocab_size), tgt.reshape(-1),
                                     reduction="sum").item()
             correct += (logits.argmax(-1) == tgt).sum().item()
             tokens += tgt.numel()
+            confs.append(node1["conf"][:, :-1].cpu())
+            hits.append((logits.argmax(-1) == tgt).float().cpu())
     return {"bpc": round(nats / tokens / 0.6931471805599453, 4),
-            "next_token_acc": round(correct / tokens, 4)}
+            "next_token_acc": round(correct / tokens, 4),
+            "ece_node1": round(ece(torch.cat(confs).sigmoid(), torch.cat(hits)), 4)}
 
 
 @torch.no_grad()
 def repair(model: PathLM, eval_arr, corrupt_rate: float, n_batches: int = 40,
            batch_size: int = 32, generator: torch.Generator | None = None) -> dict:
-    """Self-node repair accuracy on corrupted positions, per round."""
+    """Self-node repair accuracy on corrupted positions, per round; ECE of the
+    confidence heads; confidence-weighted ensemble over the per-round node-1
+    estimates vs the best single round (design §8 battery columns).
+    Rounds are driven by the run's own config: round 0 always; one latent
+    round iff p_retry > 0; one token-retry round iff p_token_retry > 0 (the
+    element under test in R1)."""
     T = model.mcfg.seq_len
     rng = random.Random(1)
     generator = generator or torch.Generator().manual_seed(1)
-    masks, hits = [], {r: [] for r in range(2)}
+    pc = model.pcap
+    n_rounds = 1 + (pc.p_retry > 0) + (pc.p_token_retry > 0)
+    masks = []                       # [B, T] corruption flags per batch
+    streams = [[] for _ in range(n_rounds)]  # per round: (n0_logits, n0_conf, n1_logits, n1_conf)
+    tgt0s = []                       # per-batch clean targets (node 0 = tokens)
     with eval_pc(model, corrupt_wrong=corrupt_rate, corrupt_mask=0.0, p_retry=0.0,
                  p_token_retry=0.0, w_dense_exit=0.0):
         for _ in range(n_batches):
             x, _ = batch(eval_arr, batch_size, T, generator)
             x = x.to(model.embed.weight.device)
-            paths = [sample_path(model.pcap, rng, model.mcfg.n_layers) for _ in range(2)]
+            paths = []
+            for _ in range(n_rounds):
+                p = sample_path(model.pcap, rng, model.mcfg.n_layers)
+                p.n_retries = 0           # deterministic round count
+                p.token_retry = False
+                paths.append(p)
+            paths[-1].token_retry = pc.p_token_retry > 0
             _, aux = model(x, paths, x)
             masks.append(aux["corrupt_mask"].cpu())
-            for r in range(2):
-                pred = aux["rounds"][r][0]["logits"].argmax(-1).cpu()
-                hits[r].append((pred == x.cpu()).float())
+            tgt0s.append(x.cpu())
+            for r in range(n_rounds):
+                streams[r].append((aux["rounds"][r][0]["logits"].cpu(),
+                                   aux["rounds"][r][0]["conf"].cpu(),
+                                   aux["rounds"][r][1]["logits"][:, :T - 1].cpu(),
+                                   aux["rounds"][r][1]["conf"][:, :T - 1].cpu()))
     cm = torch.cat(masks)
-    out = {}
-    for r in range(2):
-        h = torch.cat(hits[r])
-        out[f"round{r}"] = {"self_acc_all": round(h.mean().item(), 4),
-                            "repair_acc": round(h[cm].mean().item(), 4),
-                            "n_corrupted": int(cm.sum().item())}
+    tgt0 = torch.cat(tgt0s)   # node 0 targets: the tokens themselves
+    tgt1 = tgt0[:, 1:]        # node 1 targets: shifted
+    out = {"n_corrupted": int(cm.sum().item()), "rounds": {}}
+    pairs = []
+    for r in range(n_rounds):
+        n0_logits, n0_conf, n1_logits, n1_conf = (torch.cat(comp) for comp in
+                                                  zip(*streams[r]))
+        hit0 = n0_logits.argmax(-1) == tgt0
+        acc = hit0[cm].float().mean().item() if cm.any() else float("nan")
+        out["rounds"][f"r{r}"] = {
+            "self_acc_all": round(hit0.float().mean().item(), 4),
+            "repair_acc": round(acc, 4),
+            "ece_node0": round(ece(n0_conf.sigmoid(), hit0.float()), 4),
+        }
+        pairs.append((n1_logits, n1_conf))
+    out["ece_node1"] = round(ece(
+        pairs[0][1].sigmoid(), (pairs[0][0].argmax(-1) == tgt1).float()), 4)
+    if len(pairs) > 1:
+        mix, conf_mix = ensemble(pairs)
+        hit_mix = (mix.argmax(-1) == tgt1).float()
+        best = max(round((p[0].argmax(-1) == tgt1).float().mean().item(), 4) for p in pairs)
+        out["ensemble_vs_best"] = {
+            "ensemble_acc": round(hit_mix.mean().item(), 4),
+            "ensemble_ece": round(ece(conf_mix, hit_mix), 4),
+            "best_single_acc": best,
+        }
     return out
 
 
@@ -105,12 +148,18 @@ def needle_acc(model: PathLM, n_real_tokens: int, dists=(16, 64, 128, 256, 480),
                batch_size: int = 64, generator: torch.Generator | None = None) -> dict:
     """Node-1 accuracy at the query row of needle batches, per distance.
     Meaningful only for runs trained with p_needle > 0 (the convention is
-    learned, not known)."""
+    learned, not known). With anchors configured, anchor-regime distances
+    (needle inside the first `anchors` positions, d far beyond the window) are
+    added and prefixed 'anchor:' — the anchor channel's own gate."""
     T = model.mcfg.seq_len
     generator = generator or torch.Generator().manual_seed(3)
+    eval_dists = [("", d) for d in dists]
+    if model.pcap.anchors > 0:
+        for p in (0, model.pcap.anchors // 2, model.pcap.anchors - 1):
+            eval_dists.append(("anchor:", T - 3 - p))
     out = {}
     with eval_pc(model, corrupt_wrong=0.0, p_retry=0.0, p_token_retry=0.0, w_dense_exit=0.0):
-        for d in dists:
+        for tag, d in eval_dists:
             if d > T - 5:
                 continue
             x, _ = needle_batch(batch_size, T, n_real_tokens, model.mask_token,
@@ -118,7 +167,7 @@ def needle_acc(model: PathLM, n_real_tokens: int, dists=(16, 64, 128, 256, 480),
             x = x.to(model.embed.weight.device)
             _, aux = model(x, [sample_path(model.pcap, random.Random(0), model.mcfg.n_layers)], x)
             pred = aux["rounds"][0][1]["logits"][:, T - 2].argmax(-1).cpu()
-            out[str(d)] = round((pred == x[:, T - 1].cpu()).float().mean().item(), 4)
+            out[f"{tag}{d}"] = round((pred == x[:, T - 1].cpu()).float().mean().item(), 4)
     return out
 
 
@@ -137,17 +186,19 @@ def decode_speed(model: PathLM, pcap: PathConfig, prompt_len: int = 256, n_new: 
     }
     out = {}
     for name, kw in variants.items():
+        def sync():
+            if torch.cuda.is_available():
+                torch.cuda.synchronize()
         if name == "full_attention":
             with eval_pc(model, window=0, anchors=0) as pc_full:
-                torch.cuda.synchronize(); t0 = time.time()
+                sync(); t0 = time.time()
                 decode(model, prompt[0], n_new, pc_full, **kw)
-                torch.cuda.synchronize()
+                sync()
                 out[name] = round(n_new / (time.time() - t0), 1)
             continue
-        torch.cuda.synchronize()
-        t0 = time.time()
+        sync(); t0 = time.time()
         decode(model, prompt[0], n_new, pcap, **kw)
-        torch.cuda.synchronize()
+        sync()
         out[name] = round(n_new / (time.time() - t0), 1)
     out["window_config"] = {"window": pcap.window, "anchors": pcap.anchors}
     return out

@@ -36,7 +36,7 @@ class Decoder:
         if self.window <= 0:
             return list(range(len(pos)))
         return [j for j, p in enumerate(pos)
-                if p < self.anchors or self.n - p <= self.window]
+                if p < self.anchors or self.n - p < self.window]  # matches the training mask
 
     def _run_stack(self, h: torch.Tensor, exit_threshold: float | None):
         """Run layers over h [1, 1, d], attending each layer's (evicted)
@@ -105,6 +105,7 @@ class Decoder:
         self.n = cur
         h = self.model._transport(h)
         h, _ = self._run_stack(h, exit_threshold=None)
+        self.n = cur + 1  # re-run_stack consumed position cur again; restore
         self.last_nodes = self.model._mtp_nodes(h)
         return h
 

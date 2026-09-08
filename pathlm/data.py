@@ -53,7 +53,7 @@ def batch(np_arr, batch_size: int, seq_len: int, generator: torch.Generator):
 
 def needle_batch(batch_size: int, seq_len: int, n_real_tokens: int, mask_token: int,
                  generator: torch.Generator, max_dist: int | None = None,
-                 dist: int | None = None):
+                 dist: int | None = None, anchors: int = 0, anchor_frac: float = 0.0):
     """Copy-from-context needle task (the needle-in-haystack eval, train form).
 
     Row layout: needle pair (x_n, y_n) at positions p, p+1; random filler
@@ -63,7 +63,9 @@ def needle_batch(batch_size: int, seq_len: int, n_real_tokens: int, mask_token: 
     resampled away from x_n/y_n so the association is unambiguous. Node-1
     accuracy at row T-2 is the needle metric. With eviction, needles with d <=
     window survive naturally; needles placed in the first `anchors` positions
-    survive via the anchor channel — distances are sampled to cover both.
+    survive via the anchor channel — with anchor_frac > 0, that fraction of
+    rows place the needle uniformly in the anchor positions (otherwise the
+    anchor regime would be ~1% of training under uniform distances).
 
     Filler is random, so the AR loss on non-query positions carries no signal
     (predicting uniform noise); it is left unmasked to keep forward simple."""
@@ -74,7 +76,13 @@ def needle_batch(batch_size: int, seq_len: int, n_real_tokens: int, mask_token: 
     for b in range(batch_size):
         xn = int(torch.randint(0, n_real_tokens, (1,), generator=generator))
         yn = int(torch.randint(0, n_real_tokens, (1,), generator=generator))
-        d = dist if dist is not None else int(torch.randint(2, max_dist + 1, (1,), generator=generator))
+        if dist is not None:
+            d = dist
+        elif anchor_frac > 0 and anchors > 0 and torch.rand(1, generator=generator).item() < anchor_frac:
+            p = int(torch.randint(0, anchors, (1,), generator=generator))
+            d = T - 3 - p
+        else:
+            d = int(torch.randint(2, max_dist + 1, (1,), generator=generator))
         p = T - 3 - d
         x[b, p], x[b, p + 1] = xn, yn
         x[b, T - 3], x[b, T - 2], x[b, T - 1] = mask_token, xn, yn
