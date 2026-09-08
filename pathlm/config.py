@@ -66,10 +66,11 @@ def sample_path(cfg: PathConfig, rng: random.Random, n_layers: int) -> PathSampl
         raise NotImplementedError("p_token_retry (stage-4 retry) deferred past M0")
 
     n = n_layers
-    # Shuffle: sort key = index + symmetric noise of width locality*n.
-    # locality 0 -> keys are the indices themselves (normal order); locality 1
-    # -> noise spans +/-n, i.e. an effectively uniform random permutation.
-    keys = [i + (rng.random() * 2 - 1) * cfg.shuffle_locality * n for i in range(n)]
+    # Shuffle: sort key blends the index with i.i.d. uniform keys.
+    # locality 0 -> keys are the indices (normal order); locality 1 -> keys are
+    # i.i.d. U(0, n), i.e. an exactly uniform random permutation.
+    keys = [(1 - cfg.shuffle_locality) * i + cfg.shuffle_locality * rng.random() * n
+            for i in range(n)]
     order = sorted(range(n), key=lambda i: keys[i])
     repeats = []
     for _ in order:

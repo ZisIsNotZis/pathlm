@@ -76,7 +76,7 @@ def test_confidence_head_tracks_the_argmax_event_under_uncertainty():
     """Confidence BCE trains sigmoid(conf) toward P(argmax == target) — with
     fresh random data each step the model stays uncertain, so this checks
     tracking under uncertainty, not just saturation on a trivial sequence."""
-    m = tiny_model(PathConfig(n_mtp=1, transport="none"))
+    m = tiny_model(PathConfig(n_mtp=1, transport="none", corrupt_wrong=0.5))
     B, T = 4, 16
     paths = tiny_paths(m.pcap)
     opt = torch.optim.AdamW(m.parameters(), lr=1e-2)
@@ -90,8 +90,8 @@ def test_confidence_head_tracks_the_argmax_event_under_uncertainty():
         _, aux = m(x, paths, x)
     hit = aux["rounds"][0][0]["hit"]
     conf = aux["rounds"][0][0]["conf"].sigmoid()
-    assert (conf - hit).abs().mean().item() < 0.25
-    assert hit.float().mean().item() < 0.99, "model must be uncertain for this test to mean anything"
+    assert ece(conf, hit) < 0.15, "confidence must be calibrated in the ECE sense"
+    assert 0.05 < hit.float().mean().item() < 0.95, "model must be uncertain for this test to mean anything"
 
 
 def test_ece_perfect_calibration_is_low():
