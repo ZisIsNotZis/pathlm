@@ -1,6 +1,6 @@
 # 01 — Engine extensions for M1
 
-- **Status:** ready-for-agent
+- **Status:** claimed
 - **Type:** implementation
 - **Blocked by:** 02-engine-m0/issues/01-engine-m0-probe
 - **need-review:** true
@@ -23,5 +23,6 @@ Extend the engine so every M1 run is config-only (no code per run):
 - [ ] No M1 run requires engine changes
 
 ## Comments
+- 2026-09-07 — agent (pi, volc2/glm-5.3-flash) — claimed; branch ticket-03-engine-m1.
 
 - 2026-09-07 — agent (pi, volc2/glm-5.3-flash) — created from M0 lessons (see docs/experiments.md §0); scope fixed to config-only-runs goal.
