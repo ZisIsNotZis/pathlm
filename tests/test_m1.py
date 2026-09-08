@@ -284,19 +284,40 @@ def test_dense_exit_calibrates_confidence_heads():
 
 
 def test_repair_measures_token_retry_round():
-    """P1 fix: R1's battery must include the token-retry round (3 rounds for
-    R1-shaped configs, 2 for C-shaped, 1 for plain-corruption runs)."""
+    """P1 fix, round 2: forward with a token-flagged path emits [base, base,
+    token] — repair() must measure base and the LAST aux round (the token
+    one), not the redundant middle pass. Verified against a direct reference
+    computation of the token round's self-accuracy."""
     from pathlm.eval import repair
-    from pathlm.data import batch as data_batch
     import numpy as np
-    arr = np.random.randint(0, 49, size=40_000).astype(np.uint16)
-    for name, pc in (("plain", PathConfig(n_mtp=1, corrupt_wrong=0.15)),
-                     ("latent", PathConfig(n_mtp=1, corrupt_wrong=0.15, transport="direct", p_retry=0.5)),
-                     ("token", PathConfig(n_mtp=1, corrupt_wrong=0.15, p_token_retry=0.5))):
-        m = tiny_model(pc)
-        res = repair(m, arr, 0.15, n_batches=2, batch_size=4)
-        want = {"plain": 1, "latent": 2, "token": 2}[name]
-        assert len(res["rounds"]) == want, f"{name}: {len(res['rounds'])} != {want}"
+    arr = np.random.randint(0, 49, size=4000).astype(np.uint16)
+    pc = PathConfig(n_mtp=1, corrupt_wrong=0.15, p_token_retry=1.0)
+    m = tiny_model(pc)
+    passes = []
+    orig = m._run_layers
+    m._run_layers = lambda h, path, attn_mask=None, depth_hook=None: (
+        passes.append(1), orig(h, path, attn_mask=attn_mask, depth_hook=depth_hook))[1]
+    res = repair(m, arr, 0.15, n_batches=1, batch_size=4)
+    assert len(res["rounds"]) == 2 and res["round_kinds"] == ["base", "token"]
+    # reference: replay the identical seeded batch and read aux round 2
+    from pathlm.data import batch as data_batch
+    from pathlm.config import sample_path
+    x, _ = data_batch(arr, 4, M1.seq_len, torch.Generator().manual_seed(1))
+    rng = random.Random(1)
+    paths = []
+    for _ in range(2):
+        p = sample_path(pc, rng, M1.n_layers)
+        p.n_retries = 0; p.token_retry = False
+        paths.append(p)
+    paths[-1].token_retry = True
+    torch.manual_seed(1234)  # same eval corruption seeding as repair()
+    passes.clear()
+    with torch.no_grad():
+        _, aux = m(x, paths, x)
+    assert len(passes) == 3, "token-flagged path must emit 3 passes"
+    want = (aux["rounds"][2][0]["logits"].argmax(-1) == x).float().mean().item()
+    got = res["rounds"]["r1"]["self_acc_all"]
+    assert round(want, 4) == got, f"r1 must be the token round: {got} != {round(want, 4)}"
 
 
 def test_needle_batch_anchor_regime():

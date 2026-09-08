@@ -69,10 +69,15 @@ def repair(model: PathLM, eval_arr, corrupt_rate: float, n_batches: int = 40,
     T = model.mcfg.seq_len
     rng = random.Random(1)
     generator = generator or torch.Generator().manual_seed(1)
+    torch.manual_seed(1234)  # seed the global RNG stage-0 corruption draws from
     pc = model.pcap
-    n_rounds = 1 + (pc.p_retry > 0) + (pc.p_token_retry > 0)
+    n_paths = 1 + (pc.p_retry > 0) + (pc.p_token_retry > 0)
+    # forward emits one aux round per path, plus one more when the last path
+    # carries the token-retry flag (its own pass + the discrete round). The
+    # flagged path's own pass is a redundant base pass — the measured rounds
+    # are: base, latent retry (if any), token retry (the LAST aux round).
     masks = []                       # [B, T] corruption flags per batch
-    streams = [[] for _ in range(n_rounds)]  # per round: (n0_logits, n0_conf, n1_logits, n1_conf)
+    streams = [[] for _ in range(n_paths + (pc.p_token_retry > 0))]  # per aux round
     tgt0s = []                       # per-batch clean targets (node 0 = tokens)
     with eval_pc(model, corrupt_wrong=corrupt_rate, corrupt_mask=0.0, p_retry=0.0,
                  p_token_retry=0.0, w_dense_exit=0.0):
@@ -80,7 +85,7 @@ def repair(model: PathLM, eval_arr, corrupt_rate: float, n_batches: int = 40,
             x, _ = batch(eval_arr, batch_size, T, generator)
             x = x.to(model.embed.weight.device)
             paths = []
-            for _ in range(n_rounds):
+            for _ in range(n_paths):
                 p = sample_path(model.pcap, rng, model.mcfg.n_layers)
                 p.n_retries = 0           # deterministic round count
                 p.token_retry = False
@@ -89,7 +94,7 @@ def repair(model: PathLM, eval_arr, corrupt_rate: float, n_batches: int = 40,
             _, aux = model(x, paths, x)
             masks.append(aux["corrupt_mask"].cpu())
             tgt0s.append(x.cpu())
-            for r in range(n_rounds):
+            for r in range(len(aux["rounds"])):
                 streams[r].append((aux["rounds"][r][0]["logits"].cpu(),
                                    aux["rounds"][r][0]["conf"].cpu(),
                                    aux["rounds"][r][1]["logits"][:, :T - 1].cpu(),
@@ -97,11 +102,19 @@ def repair(model: PathLM, eval_arr, corrupt_rate: float, n_batches: int = 40,
     cm = torch.cat(masks)
     tgt0 = torch.cat(tgt0s)   # node 0 targets: the tokens themselves
     tgt1 = tgt0[:, 1:]        # node 1 targets: shifted
-    out = {"n_corrupted": int(cm.sum().item()), "rounds": {}}
+    # measured aux indices: base(0), latent(1) if present, token(last) if present
+    measured = [0]
+    if pc.p_retry > 0:
+        measured.append(1)
+    if pc.p_token_retry > 0:
+        measured.append(len(streams) - 1)
+    kinds = (["base"] + (["latent"] if pc.p_retry > 0 else [])
+             + (["token"] if pc.p_token_retry > 0 else []))
+    out = {"n_corrupted": int(cm.sum().item()), "rounds": {}, "round_kinds": kinds}
     pairs = []
-    for r in range(n_rounds):
+    for r, aux_idx in enumerate(measured):
         n0_logits, n0_conf, n1_logits, n1_conf = (torch.cat(comp) for comp in
-                                                  zip(*streams[r]))
+                                                  zip(*streams[aux_idx]))
         hit0 = n0_logits.argmax(-1) == tgt0
         acc = hit0[cm].float().mean().item() if cm.any() else float("nan")
         out["rounds"][f"r{r}"] = {
