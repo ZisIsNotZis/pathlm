@@ -1,6 +1,6 @@
 # 01 — Engine extensions for M1
 
-- **Status:** claimed
+- **Status:** done
 - **Type:** implementation
 - **Blocked by:** 02-engine-m0/issues/01-engine-m0-probe
 - **need-review:** true
@@ -28,3 +28,5 @@ Extend the engine so every M1 run is config-only (no code per run):
 - 2026-09-07 — agent (pi, volc2/glm-5.3-flash) — created from M0 lessons (see docs/experiments.md §0); scope fixed to config-only-runs goal.
 - 2026-09-07 — agent (pi, volc2/glm-5.3-flash) — implemented: linear/soft transports (re-entry transforms), dense early-exit supervision (per-depth hook), eviction+anchors (attention mask), stage-4 token retry (discrete re-embed), KV-cache incremental decode (per-layer caches, eviction, exit threshold, prob0-driven retry), eval battery (bpc/repair/depth-curve/needle/speed), configs/*.json for all 7 runs. 23 tests green. Smoke run B0 60 steps: 13.08M params, bpc 4.15 (random 7.68), pipeline end-to-end OK. Deviations recorded in docs/experiments.md: base scale = 12 layers × mlp_mult 6 (8 layers cannot reach 10–15M); needle task = trained convention with purged filler; decode bounded by absolute pos-emb (total ≤ seq_len). Cache bug found by smoke: early exit diverges per-layer cache lengths — fixed with per-layer position lists.
 - 2026-09-07 — agent (pi, volc2/glm-5.3-flash) — review round 1: REJECT (P0 decode-retry position reuse + 4 P1: ECE/ensemble unwired, conf-BCE missing from dense hook, R1 token-retry round unmeasured, anchor regime ~1% train / 0% eval; 5 P2s). All fixed: self.n restored in retry() (+ bookkeeping test), battery now emits ece_node0/node1 + ensemble_vs_best over per-round estimates, dense hook supervises conf BCE, repair() measures config-driven rounds incl. token-retry, needle anchor_frac=0.3 training + anchor-distance eval columns, window off-by-one aligned, cuda.synchronize guarded, token-retry path from seeded model RNG, experiments.md: corruption documented as part of C/R units + N=1 default resolved. 27 tests green; smoke re-run OK (bf16 autocast added — GPU is shared with a resident llama-server; OOM fixed).
+
+- 2026-09-07 — agent (pi, volc2/glm-5.3-flash) — review round 2: APPROVE (P2 notes applied: dead code removed, depth-1 calibration test made fail-capable, p=0 anchor distance restored). Merged to main. 27 tests green.
