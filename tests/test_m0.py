@@ -72,20 +72,26 @@ def test_node_targets_are_shift_correctly():
         assert acc > 0.95, f"node{k} predicts the wrong offset (acc {acc:.2f})"
 
 
-def test_confidence_head_predicts_the_argmax_event():
-    """Confidence BCE trains sigmoid(conf) toward P(argmax == target)."""
+def test_confidence_head_tracks_the_argmax_event_under_uncertainty():
+    """Confidence BCE trains sigmoid(conf) toward P(argmax == target) — with
+    fresh random data each step the model stays uncertain, so this checks
+    tracking under uncertainty, not just saturation on a trivial sequence."""
     m = tiny_model(PathConfig(n_mtp=1, transport="none"))
-    B, T = 2, 16
-    tokens = torch.full((B, T), 7)
+    B, T = 4, 16
     paths = tiny_paths(m.pcap)
     opt = torch.optim.AdamW(m.parameters(), lr=1e-2)
-    for _ in range(50):
-        loss, _ = m(tokens, paths, tokens)
+    gen = torch.Generator().manual_seed(0)
+    for _ in range(60):
+        x = torch.randint(0, 49, (B, T), generator=gen)
+        loss, _ = m(x, paths, x)
         opt.zero_grad(); loss.backward(); opt.step()
-    _, aux = m(tokens, paths, tokens)
+    with torch.no_grad():
+        x = torch.randint(0, 49, (B, T), generator=gen)
+        _, aux = m(x, paths, x)
     hit = aux["rounds"][0][0]["hit"]
     conf = aux["rounds"][0][0]["conf"].sigmoid()
     assert (conf - hit).abs().mean().item() < 0.25
+    assert hit.float().mean().item() < 0.99, "model must be uncertain for this test to mean anything"
 
 
 def test_ece_perfect_calibration_is_low():
@@ -126,10 +132,26 @@ def test_retry_uses_fresh_paths_and_transforms_the_latent():
     assert d > 0, "retry round must transform the latent"
 
 
+def test_sample_rounds_gives_each_round_its_own_path():
+    """The freshness mechanism itself: with full shuffle, two rounds of one
+    sample_rounds call must (almost surely) carry different layer orders."""
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from train_m0 import sample_rounds
+    pcap = PathConfig(shuffle_locality=1.0, p_retry=1.0, n_mtp=2)
+    rounds = sample_rounds(pcap, random.Random(0), n_layers=4)
+    assert len(rounds) == 2 and rounds[0].n_retries == 1
+    assert rounds[0].layer_order != rounds[1].layer_order, "rounds must not share one path"
+
+
 def test_sample_path_extremes():
     rng = random.Random(0)
     normal = sample_path(PathConfig(), rng, n_layers=2)
     assert normal.layer_order == [0, 1]  # base config: identity path
+    # locality=1 must actually permute: many distinct orders across draws
+    # (the previous formula could only ever produce the identity)
+    orders = {tuple(sample_path(PathConfig(shuffle_locality=1.0), rng, n_layers=4).layer_order)
+              for _ in range(20)}
+    assert len(orders) >= 10, f"locality=1 barely permutes: {orders}"
     chaos = sample_path(PathConfig(shuffle_locality=1.0, p_skip=0.9, p_redo=0.9, p_retry=1.0),
                         rng, n_layers=2)
     assert len(chaos.layer_order) >= 1 and chaos.n_retries == 1

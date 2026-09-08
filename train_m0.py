@@ -18,9 +18,9 @@ from pathlm.model import PathLM
 CORRUPT_RATE = 0.15  # lambda_total for the M0 probe (wrong-token only)
 
 
-def make_model(pcap: PathConfig, vocab_size: int) -> PathLM:
+def make_model(pcap: PathConfig, vocab_size: int, seed: int = 0) -> PathLM:
     mcfg = ModelConfig()
-    torch.manual_seed(0)
+    torch.manual_seed(seed)
     return PathLM(mcfg, pcap, vocab_size)
 
 
@@ -30,14 +30,14 @@ def sample_rounds(pcap: PathConfig, rng: random.Random, n_layers: int) -> list:
     return [base] + [sample_path(pcap, rng, n_layers) for _ in range(base.n_retries)]
 
 
-def train(run_dir: str, pcap: PathConfig, data, vocab_size: int, steps: int):
+def train(run_dir: str, pcap: PathConfig, data, vocab_size: int, steps: int, seed: int = 0):
     train_arr, val_arr, _ = data
-    model = make_model(pcap, vocab_size).cuda()
+    model = make_model(pcap, vocab_size, seed).cuda()
     mcfg = model.mcfg
     opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.01)
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min((s + 1) / 200, (0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * s / steps)))))
-    rng, torch_rng = random.Random(0), torch.Generator().manual_seed(0)
+    rng, torch_rng = random.Random(seed), torch.Generator().manual_seed(seed)
     log_path = os.path.join(run_dir, "train_log.jsonl")
     t0 = time.time()
     for step in range(steps):
@@ -70,7 +70,7 @@ def evaluate(model: PathLM, val_arr, vocab_size: int, pcap: PathConfig, n_batche
     streams = {name: {"logits": [], "conf": [], "tgt": []} for name in names}
     corrupt_masks, cosines, disagreements = [], [], []
     T = model.mcfg.seq_len
-    T0, T1, T2 = T, T - 1, T - 2
+    T1, T2 = T - 1, T - 2
     for _ in range(n_batches):
         x, _ = batch(val_arr, 64, T, torch_rng)
         x = x.cuda()  # targets = the clean tokens themselves
@@ -96,18 +96,18 @@ def evaluate(model: PathLM, val_arr, vocab_size: int, pcap: PathConfig, n_batche
             streams["node2_chain"]["logits"].append(ch["logits"][:, :T2].cpu())
             streams["node2_chain"]["conf"].append(ch["conf"][:, :T2].cpu())
             streams["node2_chain"]["tgt"].append(x[:, 2:].cpu())
-        # gate (c): dispersion between the two node-2 estimates (round 0)
+        # gate (c): dispersion between the two node-2 estimates of the SAME pass (round 0)
         d_lat = aux["rounds"][0][2]["latent"]; c_lat = aux["rounds"][0][1]["chain2"]["latent"]
         cosines.append(F.cosine_similarity(d_lat, c_lat, dim=-1).mean().cpu())
         disagreements.append((aux["rounds"][0][2]["logits"][:, :T2].argmax(-1) !=
-                              ch["logits"][:, :T2].argmax(-1)).float().mean().cpu())
+                              aux["rounds"][0][1]["chain2"]["logits"][:, :T2].argmax(-1)).float().mean().cpu())
 
     def stack(name):
         s = streams[name]
         return torch.cat(s["logits"]), torch.cat(s["conf"]), torch.cat(s["tgt"])
 
     out = {"node_acc": {}, "node_ece": {}, "ens_vs_best": {}, "retry": {},
-           "consistency_dispersion": {}}
+           "consistency_dispersion": {}, "vocab_size": vocab_size}
     ests = {}
     for name in names:
         logits, conf, tgt = stack(name)
@@ -149,6 +149,7 @@ def main():
     ap.add_argument("--w-consistency", type=float, default=0.0)
     ap.add_argument("--p-retry", type=float, default=0.5)
     ap.add_argument("--steps", type=int, default=6000)
+    ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args()
 
     run_dir = os.path.join(".scratch", "02-engine-m0", "evidence", args.run_name)
@@ -157,10 +158,10 @@ def main():
     vocab_size = data[2]
     pcap = PathConfig(corrupt_wrong=CORRUPT_RATE, n_mtp=2, transport="direct",
                       p_retry=args.p_retry, w_consistency=args.w_consistency)
-    model = train(run_dir, pcap, data, vocab_size, args.steps)
+    model = train(run_dir, pcap, data, vocab_size, args.steps, args.seed)
     results = evaluate(model, data[1], vocab_size, pcap)
     results["config"] = {"w_consistency": args.w_consistency, "p_retry": args.p_retry,
-                         "steps": args.steps, "corrupt_wrong": CORRUPT_RATE}
+                         "steps": args.steps, "corrupt_wrong": CORRUPT_RATE, "seed": args.seed}
     with open(os.path.join(run_dir, "results.json"), "w") as f:
         json.dump(results, f, indent=2)
     print(json.dumps(results, indent=2))
