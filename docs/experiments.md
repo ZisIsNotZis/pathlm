@@ -2,6 +2,13 @@
 
 Decoupled ablation program for `docs/design.md`. Principles: one element per run (everything else = base config); gates defined before running; token-matched and FLOPs-matched both reported; 2 seeds wherever deltas <5% are expected; no all-on run until the integration run.
 
+## 0. Lessons from M0 (absorbed 2026-09-07)
+
+- **Retry is information-free unless the return channel transforms the state.** Direct re-entry re-derives the same fixed point (gate d, measured at 2 layers). Retry experiments are transport experiments: repair value is expected from soft (repair-in-context) and discrete (token retry) channels, which re-embed a corrected or expected token. No new information enters a loop whose channel is the identity.
+- **Corruption + direct retry does not repair** (measured) — the transport, not the corruption, is the active ingredient.
+- **Ensemble voters sharing one trunk are too correlated for meaningful gains** — gains must come from decorrelated estimates (different transports/depths).
+- Consequence: C3 (soft) and R1 (discrete) are promoted into M1; C1 (direct) is retained as the fixed-point question at 8 layers (does a deeper stack converge in one pass?); C2 (linear) is deferred to M2.
+
 ## 1. Base config (identity element)
 
 Standard AR decoder: clean tokens, stage-1 identity, no shuffle/skip/redo/exit, transport unused, no retry, MTP outputs for [i, i+1] only, tied E=U. The MTP block and probability heads are always-on infrastructure (~free, and they keep every measured delta pure — readout machinery constant across runs).
@@ -63,10 +70,11 @@ Total: base + 15 main-effect runs.
 
 ## 4. Milestones
 
-- M0 (probe, hours not days): probability machinery on a tiny model — d=64, 2 layers, seq 128, N=2 (k=0…2), ~1M params, first ~10MB of enwik8. Fast fail-fast on the riskiest software before M1 commits: (a) prob heads calibrate under corruption (ECE < 0.1), (b) weighted ensemble ≥ best-single-path (never hurts; if it hurts, post-hoc weight refit), (c) consistency loss reduces composition disagreement, (d) one retry round improves repair accuracy. If these fail, fix the machinery here, not in the full program.
-- M1 (6 runs): base, I1, C1, L2, R1, X2 — one safe representative per type; any gate failure is learned at ~30% of the program cost.
-- M2: remaining main effects.
+- M1 (7 runs): B0, I1, C1, C3, R1, L2, X2. B0 doubles as the external sanity anchor (published small-model enwik8 range ~1.4–1.6 bpc for this size class). C3 is promoted per the M0 lesson — retry × soft transport is the first configuration where retry can add information. Any gate failure learned at ~30% of program cost.
+- M2: remaining main effects (I2–I4, C2, C4, L1, L3, L4).
 - M3: interaction runs + integration run.
+
+Engine prerequisites per run: B0/I1 need the eval battery (bpc, repair, speed); C1/C3/R1 need the transport implementations; L2 needs dense early-exit supervision; X2 needs eviction + anchor slots.
 
 ## 5. Scale and defaults (decided)
 

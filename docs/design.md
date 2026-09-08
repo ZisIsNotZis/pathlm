@@ -22,7 +22,7 @@ Stages form a ring: the exits of 2/3/4 re-enter at 0, 1, or 2. Stage numbering i
 
 ## 3. Cycles — every path is a re-entry
 
-- Latent retry: 2 → 3 → 1 → L → 2. Refine without discretizing; the transport choice defines the flavor.
+- Latent retry: 2 → 3 → 1 → L → 2. Refine without discretizing; the transport choice defines the flavor. A retry can only add information if the channel transforms the state — direct re-entry re-derives the same fixed point (measured in M0); soft/linear/discrete channels re-embed a corrected or expected token, and that is where repair value lives.
 - Token retry: 2 → U → 4 → 0. Discretize, correct, re-enter as a normal token.
 - Chain: 2 → 3(direct) → skip-all → 2. Not a new mechanism — an emergent composition of existing tunables (transport=direct, stage-1 identity, all layers skipped); re-enters the MTP block, extending the horizon past N.
 - Next position (default): U(latent_1) → sample token → next position's stage 0. Fast path (speculation): latent_1 → next position's stage 1 directly (latent prefill), verified later.
