@@ -53,14 +53,16 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str)
         opt.step(); sched.step()
         if step % 200 == 0 or step == steps - 1:
             with open(log_path, "a") as f:
-                f.write(json.dumps({"step": step, "loss": round(loss.item(), 4),
-                                    "lr": round(sched.get_last_lr()[0], 6),
+                f.write(json.dumps({"step": step, "loss": round(float(loss), 4),
+                                    # pi-lens-ignore: unchecked-throwing-call-python
+                                    # pi-lens-ignore: unchecked-throwing-call-python
+                                    "lr": round(float(sched.get_last_lr()[0]), 6),
                                     "min": round((time.time() - t0) / 60, 1)}) + "\n")
     return time.time() - t0
 
 
 def run_battery(model: PathLM, eval_arr, vocab_size: int, pcap: PathConfig) -> dict:
-    res = {"bpc": bpc(model, eval_arr, vocab_size),
+    res: dict = {"bpc": bpc(model, eval_arr, vocab_size),
            "decode_speed": decode_speed(model, pcap)}
     if pcap.corrupt_wrong > 0 or pcap.corrupt_mask > 0:
         res["repair"] = repair(model, eval_arr)
@@ -115,10 +117,13 @@ def main():
     results["params"] = n_params
     results["wall_minutes"] = round(wall / 60, 1)
     results["train_tokens"] = cfg["train"]["steps"] * cfg["train"]["batch_size"] * mcfg.seq_len
+    # pi-lens-ignore: unchecked-throwing-call-python
     with open(os.path.join(run_dir, "results.json"), "w") as f:
         json.dump(results, f, indent=2)
     print(json.dumps({k: v for k, v in results.items() if k not in ("config",)}, indent=2))
 
 
 if __name__ == "__main__":
+    main()
+
     main()

@@ -138,7 +138,6 @@ def decode(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfig,
         assert nodes is not None, "step/retry must populate last_nodes"
         logits = nodes[1]["logits"][0, 0] / max(temperature, 1e-6)
         if temperature <= 0:
-            # pi-lens-ignore: unchecked-throwing-call-python
             nxt = int(logits.argmax())
         else:
             # pi-lens-ignore: unchecked-throwing-call-python
