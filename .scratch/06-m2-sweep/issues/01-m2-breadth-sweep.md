@@ -1,6 +1,6 @@
 # 01 — M2 breadth sweep: I2, I3, I4, C2, L1, L3, L4
 
-- **Status:** claimed
+- **Status:** done
 - **Type:** experiment
 - **Blocked by:** 04-m1-runs/issues/01-m1-runs
 - **need-review:** true
@@ -21,10 +21,13 @@ L3 (eval-time locality 0/0.25/0.5/1.0).
 
 ## Acceptance criteria
 
-- [ ] 7 runs complete, results.json per run
-- [ ] Summary table with gates vs B0
-- [ ] C2 rounds curve recorded
+- [x] 7 runs complete, results.json per run
+- [x] Summary table with gates vs B0
+- [x] C2 rounds curve recorded
 
 ## Comments
 
 - 2026-09-10 — agent (pi, volc2/glm-5.3-flash) — created; claimed; configs + eval fix committed.
+- 2026-09-10 — agent — first sweep killed silently mid-I4 (no OOM/reboot; bg task reaped by session recycle); I4..L4 relaunched and completed. Per-run exit lines in runner.log made the death detectable.
+- 2026-09-10 — agent — results: I2 +0.059 (repair 59.4% > I1's 52.8% — flagged corruption cheaper AND more repairable), I3 ±0.000, I4 +0.063 (writable-input claim is cheap), C2 +0.155 (curve saturates r3, +2.0pp — linear ≈ direct ≈ soft), L1 +0.175, L3 +0.545 (locality sweep: tolerates ≤0.5, collapses 3.84 at 1.0 — order carries ~0.5 bpc), L4 +0.044. Element-tax ranking: identity/order-destroying elements (wrong-token, skip, shuffle) are the expensive class; identity-preserving ones (mask, noise, redo) are nearly free.
+- 2026-09-10 — agent — review: independent reviewer unavailable (glm-5.3-flash account rate limit ~21h, then reviewer agent tool-contract failure on the switched provider). **User approved self-review in lieu** (recorded here). Self-review findings, all verified: (a) configs pure — exactly one element each vs PathConfig defaults, n_mtp=1 matches B0's scale deviation; (b) repair() signature change safe — eval_pc restores in finally, stage-0 mask partition exact (mask_pos/wrong_pos disjoint bands, noise opposite end of shared u1); (c) SUMMARY.md numbers match results.json; (d) bpc() zeroes all corruption knobs so cross-run PPL comparability holds. Findings: [P2] run_battery's repair gate misses perturb_noise/pure_noise — I4's noise self-acc unmeasured (fix next battery run); [P3] *.json configs missing trailing newline (cosmetic). Deviation: L1/L4 gates' quality/speed curves beyond decode_speed not produced — recorded here rather than silently dropped.
