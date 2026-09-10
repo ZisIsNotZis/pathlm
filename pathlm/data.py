@@ -52,45 +52,67 @@ def batch(np_arr, batch_size: int, seq_len: int, generator: torch.Generator):
 
 
 def needle_batch(batch_size: int, seq_len: int, n_real_tokens: int, mask_token: int,
-                 generator: torch.Generator, max_dist: int | None = None,
-                 dist: int | None = None, anchors: int = 0, anchor_frac: float = 0.0):
-    """Copy-from-context needle task (the needle-in-haystack eval, train form).
+                 generator: torch.Generator, data=None, anchors: int = 0,
+                 anchor_frac: float = 0.2, n_needles: int = 8):
+    """Multi-needle copy-from-context on REAL-TEXT filler (X2v2 redesign —
+    the v1 single-needle form starved the convention of signal: 1 supervised
+    token per batch against 98M tokens of natural text, measured 0.0 accuracy).
 
-    Row layout: needle pair (x_n, y_n) at positions p, p+1; random filler
-    elsewhere; query tail at positions T-3, T-2, T-1 = [mask, x_n, y_n]. The
-    model at row T-2 (input x_n, cue [mask] behind it) can only predict y_n by
-    attending back to the needle, distance d = (T-2) - (p+1); filler tokens are
-    resampled away from x_n/y_n so the association is unambiguous. Node-1
-    accuracy at row T-2 is the needle metric. With eviction, needles with d <=
-    window survive naturally; needles placed in the first `anchors` positions
-    survive via the anchor channel — with anchor_frac > 0, that fraction of
-    rows place the needle uniformly in the anchor positions (otherwise the
-    anchor regime would be ~1% of training under uniform distances).
+    Row layout: positions [0, T-3K) are a real data window with K needle pairs
+    (x_i, y_i) carved in at random positions p_i; the tail [T-3K, T) is the
+    query block [mask, x_1, y_1, ..., mask, x_K, y_K]. Each query's leading
+    [mask] is the cue (never occurs in text). Node-1 accuracy at the x_i query
+    rows is the needle metric; (x_i, y_i) pairs are chosen absent from the
+    row's text so the association is unambiguous.
 
-    Filler is random, so the AR loss on non-query positions carries no signal
-    (predicting uniform noise); it is left unmasked to keep forward simple."""
-    T = seq_len
-    if max_dist is None:
-        max_dist = T - 6
-    x = torch.randint(0, n_real_tokens, (batch_size, T), generator=generator)
+    Needle placement: with probability anchor_frac the needle lands in the
+    first `anchors` positions (the anchor channel regime), else uniformly in
+    the text body. Returns (x, y, meta) with meta[b] = list of
+    (query_row, needle_pos, dist) for regime-resolved accuracy."""
+    import numpy as np
+    T, K = seq_len, n_needles
+    if data is None:
+        raise ValueError("needle batches need real-text filler: pass the data array")
+    q0 = T - 3 * K  # query block start
+    x = np.zeros((batch_size, T), dtype=np.int64)
+    meta = []
+    hi = len(data) - T - 1
+    idx = torch.randint(0, hi, (batch_size,), generator=generator).numpy()
     for b in range(batch_size):
-        xn = int(torch.randint(0, n_real_tokens, (1,), generator=generator))
-        yn = int(torch.randint(0, n_real_tokens, (1,), generator=generator))
-        if dist is not None:
-            d = dist
-        elif anchor_frac > 0 and anchors > 0 and torch.rand(1, generator=generator).item() < anchor_frac:
-            p = int(torch.randint(0, anchors, (1,), generator=generator))
-            d = T - 3 - p
-        else:
-            d = int(torch.randint(2, max_dist + 1, (1,), generator=generator))
-        p = T - 3 - d
-        x[b, p], x[b, p + 1] = xn, yn
-        x[b, T - 3], x[b, T - 2], x[b, T - 1] = mask_token, xn, yn
-        stray = (x[b] == xn) | (x[b] == yn)
-        stray[[p, p + 1, T - 2, T - 1]] = False
-        while stray.any():
-            n = int(stray.sum())
-            x[b, stray] = torch.randint(0, n_real_tokens, (n,), generator=generator)
-            stray = ((x[b] == xn) | (x[b] == yn))
-            stray[[p, p + 1, T - 2, T - 1]] = False
-    return x, x.clone()  # targets = the sequence itself (self-repair convention)
+        row = np.array(data[idx[b]:idx[b] + T - 3 * K], dtype=np.int64)
+        row_meta = []
+        used: list[int] = []
+        for i in range(K):
+            # pair absent from the row's text (unambiguous association)
+            for _ in range(16):
+                xn = int(torch.randint(0, n_real_tokens, (1,), generator=generator))
+                yn = int(torch.randint(0, n_real_tokens, (1,), generator=generator))
+                pat = np.array([xn, yn], dtype=np.int64)
+                found = False
+                for s in range(len(row) - 1):
+                    if row[s] == xn and row[s + 1] == yn:
+                        found = True
+                        break
+                if not found:
+                    break
+            if anchors > 0 and torch.rand(1, generator=generator).item() < anchor_frac:
+                p = int(torch.randint(0, anchors, (1,), generator=generator))
+            else:
+                for _ in range(32):
+                    p = int(torch.randint(anchors, q0 - 2, (1,), generator=generator))
+                    if all(abs(p - u) > 2 for u in used):
+                        break
+            row[p], row[p + 1] = xn, yn
+            used.append(p)
+            q_row = q0 + 3 * i + 1
+            row_meta.append((q_row, p, q_row - (p + 1)))
+        x[b, :q0] = row
+        meta.append(row_meta)
+    # place query blocks properly (vector-safe second pass)
+    for b in range(batch_size):
+        for i, (q_row, p, d) in enumerate(meta[b]):
+            x[b, q0 + 3 * i] = mask_token
+            x[b, q_row] = x[b, p]           # x_i = the needle's first byte
+            x[b, q_row + 1] = x[b, p + 1]   # y_i = the needle's second byte
+    x_t = torch.from_numpy(x)
+    return x_t, x_t.clone(), meta

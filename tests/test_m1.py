@@ -3,6 +3,7 @@ can fail on it (M0 lesson: a test that cannot fail is not a test)."""
 
 import json, math, os, random, sys
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 
@@ -135,19 +136,30 @@ def test_small_window_larger_loss_on_random_data():
 # ---------- needle task ----------
 
 def test_needle_batch_format():
-    """Query tail = [mask, x_n, y_n]; no stray x_n/y_n in the filler; the
-    needle sits at exactly distance d from the query."""
-    T, n_real, mask = 32, 49, 49
+    """X2v2: multi-needle on real-text filler — needles carved into the text,
+    query tail [mask, x_i, y_i] per needle, pairs absent from the row's text,
+    metadata (query_row, needle_pos, dist) consistent."""
+    T, n_real, mask, K = 64, 49, 49, 4
     g = torch.Generator().manual_seed(0)
-    x, y = needle_batch(8, T, n_real, mask, g, dist=10)
-    for b in range(8):
-        xn, yn = int(x[b, T - 2]), int(x[b, T - 1])
-        assert x[b, T - 3] == mask, "cue must be the [mask] token"
-        assert x[b, T - 1] == yn, "teacher-forced answer at the last position"
-        assert x[b, T - 3 - 10 + 1] == yn and x[b, T - 3 - 10] == xn, "needle at distance d"
-        stray = ((x[b] == xn) | (x[b] == yn))
-        stray[[T - 3 - 10, T - 3 - 10 + 1, T - 2, T - 1]] = False
-        assert not stray.any(), f"ambiguous needle: stray occurrences at {stray.nonzero()}"
+    data = np.random.randint(0, n_real, size=5000).astype(np.uint16)
+    x, y, meta = needle_batch(4, T, n_real, mask, g, data=data, anchors=4,
+                              anchor_frac=0.25, n_needles=K)
+    q0 = T - 3 * K
+    for b in range(4):
+        assert len(meta[b]) == K
+        for i, (q_row, p, d) in enumerate(meta[b]):
+            assert q_row == q0 + 3 * i + 1
+            xn, yn = int(x[b, p]), int(x[b, p + 1])
+            assert x[b, q0 + 3 * i] == mask, "query cue must be [mask]"
+            assert x[b, q_row] == xn and x[b, q_row + 1] == yn, "query must echo the needle pair"
+            assert d == q_row - (p + 1), "metadata distance"
+            # pair must not occur in the text body other than at the needle
+            body = x[b, :q0].tolist()
+            occur = [s for s in range(len(body) - 1)
+                     if body[s] == xn and body[s + 1] == yn and s != p]
+            assert not occur, f"ambiguous needle at {occur}"
+        # filler between needles must be real data (no mask tokens)
+        assert not (x[b, :q0] == mask).any(), "mask must not appear in the text body"
 
 
 # ---------- token retry ----------
@@ -313,8 +325,8 @@ def test_repair_measures_token_retry_round():
     m._run_layers = lambda h, path, attn_mask=None, depth_hook=None: (
         passes.append(1), orig(h, path, attn_mask=attn_mask, depth_hook=depth_hook))[1]
     res = repair(m, arr, 0.15, n_batches=1, batch_size=4)
-    assert len(res["rounds"]) == 2 and res["round_kinds"] == ["base", "token"]
-    # reference: replay the identical seeded batch and read aux round 2
+    assert res["round_kinds"] == ["base", "pass1", "token"], res["round_kinds"]
+    # reference: replay the identical seeded batch and read aux round 2 (token)
     from pathlm.data import batch as data_batch
     from pathlm.config import sample_path
     x, _ = data_batch(arr, 4, M1.seq_len, torch.Generator().manual_seed(1))
@@ -331,19 +343,98 @@ def test_repair_measures_token_retry_round():
         _, aux = m(x, paths, x)
     assert len(passes) == 3, "token-flagged path must emit 3 passes"
     want = (aux["rounds"][2][0]["logits"].argmax(-1) == x).float().mean().item()
-    got = res["rounds"]["r1"]["self_acc_all"]
+    got = res["rounds"]["r2"]["self_acc_all"]
     assert round(want, 4) == got, f"r1 must be the token round: {got} != {round(want, 4)}"
 
 
 def test_needle_batch_anchor_regime():
-    """P1 fix: anchor_frac must place needles inside the first `anchors`
-    positions (the anchor channel's training share)."""
-    T, n_real, mask = 32, 49, 49
+    """anchor_frac must place needles inside the first `anchors` positions
+    (the anchor channel's training share)."""
+    import numpy as np
+    T, n_real, mask = 64, 49, 49
     g = torch.Generator().manual_seed(0)
-    x, _ = needle_batch(16, T, n_real, mask, g, anchors=4, anchor_frac=1.0)
-    for b in range(16):
-        xn, yn = int(x[b, T - 2]), int(x[b, T - 1])
-        # needle = the (xn, yn) adjacency; the mask is only the cue at T-3
-        hits = [q for q in range(T - 3) if x[b, q] == xn and x[b, q + 1] == yn]
-        assert hits and all(q < 4 for q in hits), \
-            f"anchor needle must sit in the first 4 positions, got {hits}"
+    data = np.random.randint(0, n_real, size=5000).astype(np.uint16)
+    x, _, meta = needle_batch(8, T, n_real, mask, g, data=data, anchors=4,
+                              anchor_frac=1.0, n_needles=4)
+    for b in range(8):
+        anchor_ps = [p for (q, p, d) in meta[b] if p < 4]
+        assert anchor_ps, "anchor_frac=1.0 must place every needle in anchors"
+
+
+# ---------- mixture re-entry (C4/C5) ----------
+
+def test_mixture_reentry_anchors_the_init():
+    """The accumulator must differ from overwrite once there is history to
+    mix (round 2): mixture re-enters from S = (1·P0 + w1·P1)/(1+w1) and the
+    weighted latent mean, overwrite re-enters from round 1 alone. (At round 1
+    the two are identical by construction — one term in the sum.)"""
+    m = tiny_model(PathConfig(n_mtp=1, transport="soft", p_retry=1.0, reentry_mix=True))
+    m.eval()
+    x = torch.randint(0, 49, (2, M1.seq_len))
+    with torch.no_grad():
+        _, aux = m(x, tiny_paths(m.pcap, n=3), x)
+    assert len(aux["rounds"]) == 3
+    m2 = tiny_model(PathConfig(n_mtp=1, transport="soft", p_retry=1.0, reentry_mix=False))
+    m2.load_state_dict(m.state_dict())
+    m2.eval()
+    with torch.no_grad():
+        _, aux2 = m2(x, tiny_paths(m2.pcap, n=3), x)
+    d = (aux["rounds"][2][0]["latent"] - aux2["rounds"][2][0]["latent"]).abs().max().item()
+    assert d > 1e-6, "mixture re-entry must change the re-entered state vs overwrite at round 2"
+
+
+def test_mixture_reentry_transport_forms():
+    """soft: expected embedding of the accumulated distribution; direct:
+    weighted latent mean. Pinned against manual computation."""
+    for tr, check in (("soft", "soft"), ("direct", "direct")):
+        m = tiny_model(PathConfig(n_mtp=1, transport=tr, p_retry=1.0, reentry_mix=True))
+        m.eval()
+        x = torch.randint(0, 49, (1, M1.seq_len))
+        lats, confs = [], []
+        orig = m._run_layers
+        def spy(h, path, attn_mask=None, depth_hook=None, _orig=orig):
+            out = _orig(h, path, attn_mask=attn_mask, depth_hook=depth_hook)
+            lats.append(out.detach().clone())  # round OUTPUT (what mix stores)
+            return out
+        m._run_layers = spy
+        # capture confs via _mtp_nodes
+        node_calls = []
+        orig_nodes = m._mtp_nodes
+        def node_spy(h, _orig=orig_nodes):
+            nodes = _orig(h)
+            node_calls.append(nodes[0]["conf"].detach().sigmoid().clone())
+            return nodes
+        m._mtp_nodes = node_spy
+        with torch.no_grad():
+            m(x, tiny_paths(m.pcap, n=2), x)
+        U = m.embed.weight
+        w0 = torch.ones_like(node_calls[0])
+        w1 = node_calls[1]
+        if check == "soft":
+            S = (w0.unsqueeze(-1) * (lats[0] @ U.T).softmax(-1)
+                 + w1.unsqueeze(-1) * (lats[1] @ U.T).softmax(-1)) / (w0 + w1).unsqueeze(-1)
+            want = cap_norm(S @ U, 1.0)
+        else:
+            want = cap_norm((lats[0] + w1.unsqueeze(-1) * lats[1]) / (w0 + w1).unsqueeze(-1), 1.0)
+        got = m._mixture_reentry({"W": (w0 + w1).unsqueeze(-1),
+                                  "S": (w0.unsqueeze(-1) * (lats[0] @ U.T).softmax(-1)
+                                        + w1.unsqueeze(-1) * (lats[1] @ U.T).softmax(-1)),
+                                  "L": torch.stack([lats[0],
+                                                    w1.unsqueeze(-1) * lats[1]])})
+        assert torch.allclose(got, want, atol=1e-4), f"{tr} mixture form drifted"
+
+
+def test_retry_curve_forces_rounds():
+    """repair(rounds=k) must run a k-round loop regardless of config, with
+    per-round labels — the recurrent-transformer measurement."""
+    from pathlm.eval import repair
+    import numpy as np
+    arr = np.random.randint(0, 49, size=8000).astype(np.uint16)
+    m = tiny_model(PathConfig(n_mtp=1, corrupt_wrong=0.15, transport="direct", p_retry=0.5))
+    passes = []
+    orig = m._run_layers
+    m._run_layers = lambda h, path, attn_mask=None, depth_hook=None: (
+        passes.append(1), orig(h, path, attn_mask=attn_mask, depth_hook=depth_hook))[1]
+    res = repair(m, arr, 0.15, n_batches=1, batch_size=4, rounds=4)
+    assert len(res["rounds"]) == 4 and res["round_kinds"] == ["base", "latent", "latent", "latent"]
+    assert len(passes) == 4, f"forced 4-round loop must run 4 passes, got {len(passes)}"

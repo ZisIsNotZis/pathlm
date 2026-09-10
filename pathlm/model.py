@@ -205,9 +205,13 @@ class PathLM(nn.Module):
         aux = {"corrupt_mask": corrupt_mask, "rounds": [], "depth_ce": []}
         loss = tokens.new_zeros(()).float()
         total_depths = 0
+        mix = None  # mixture accumulator (design §3 amendment): W, S (prob sum), L (latent sum)
         for r, path in enumerate(paths):
-            if r > 0 and pc.transport != "direct":
-                h = self._transport(h)  # re-entry transform (retry rounds only)
+            if r > 0:
+                if pc.reentry_mix and mix is not None:
+                    h = self._mixture_reentry(mix)
+                elif pc.transport != "direct":
+                    h = self._transport(h)  # overwrite re-entry (retry rounds only)
             pending_dense: list = []
             depth_hook = None
             if r == 0 and pc.w_dense_exit > 0:
@@ -249,13 +253,26 @@ class PathLM(nn.Module):
                 aux["consistency"] = cons.detach()
             aux["rounds"].append(nodes)
             h = h.detach()  # retry rounds are separate estimator passes
-            # Stage-4 token retry: discrete re-entry — re-embed the self node's
-            # predicted correction and re-run the stack. This is the channel
-            # that rewrites state hardest (the M0 lesson: information must
-            # enter the loop for a retry to help). Fires once, after the
-            # final latent round.
+            if pc.reentry_mix:
+                # accumulate: W += w_r, S += w_r·P_r, L += w_r·h_r (all detached —
+                # aggregation stays inference-time math per design §5)
+                w = torch.sigmoid(nodes[0]["conf"]).detach().unsqueeze(-1)  # [B, T, 1]
+                P = nodes[0]["logits"].softmax(-1).detach()
+                if mix is None:
+                    mix = {"W": torch.ones_like(w), "S": P, "L": h.detach().unsqueeze(0)}
+                else:
+                    mix["W"] = mix["W"] + w
+                    mix["S"] = mix["S"] + w * P
+                    mix["L"] = torch.cat([mix["L"], (w * h.detach()).unsqueeze(0)])
+            # Stage-4 token retry: discrete re-entry. With reentry_mix, the
+            # re-embedded token is the argmax of the ACCUMULATED distribution
+            # (the init anchors it — a wrong round cannot fully take over, the
+            # M1/R1 lesson). Fires once, after the final latent round.
             if r == len(paths) - 1 and path.token_retry:
-                pred = nodes[0]["logits"].argmax(-1)  # [B, T] predicted corrections
+                if pc.reentry_mix and mix is not None:
+                    pred = (mix["S"] / mix["W"]).argmax(-1)  # [B, T] mixture vote
+                else:
+                    pred = nodes[0]["logits"].argmax(-1)  # single-round gamble
                 h = cap_norm(self.embed(pred) + self.pos_embed.weight[:pred.shape[1]],
                              self.mcfg.norm_cap)
                 h = h.detach()
@@ -266,3 +283,18 @@ class PathLM(nn.Module):
                     loss = self._node_loss(loss, node, targets[:, k:], self.vocab_size)
                 aux["rounds"].append(nodes)
         return loss, aux
+
+    def _mixture_reentry(self, mix: dict) -> torch.Tensor:
+        """Re-entry state from the accumulated mixture: S = Σ w·P / Σ w is the
+        confidence-weighted distribution over tokens; per transport — soft:
+        expected embedding of S; linear: project the weighted latent mean;
+        direct: the weighted latent mean itself. All detached inputs."""
+        W = mix["W"]                                   # [B, T, 1]
+        if self.pcap.transport == "soft":
+            S = mix["S"] / W
+            return cap_norm(S @ self.embed.weight, self.mcfg.norm_cap)
+        L_bar = mix["L"].sum(0) / W                    # weighted latent mean
+        if self.pcap.transport == "linear":
+            U = self.embed.weight
+            return cap_norm((L_bar @ U.T) @ U, self.mcfg.norm_cap)
+        return cap_norm(L_bar, self.mcfg.norm_cap)  # direct

@@ -59,19 +59,24 @@ def bpc(model: PathLM, eval_arr, vocab_size: int, n_batches: int = 200,
 
 @torch.no_grad()
 def repair(model: PathLM, eval_arr, corrupt_rate: float, n_batches: int = 40,
-           batch_size: int = 32, generator: torch.Generator | None = None) -> dict:
+           batch_size: int = 32, generator: torch.Generator | None = None,
+           rounds: int | None = None) -> dict:
     """Self-node repair accuracy on corrupted positions, per round; ECE of the
     confidence heads; confidence-weighted ensemble over the per-round node-1
     estimates vs the best single round (design §8 battery columns).
-    Rounds are driven by the run's own config: round 0 always; one latent
-    round iff p_retry > 0; one token-retry round iff p_token_retry > 0 (the
-    element under test in R1)."""
+    rounds=None: driven by the run's own config (base pass always, one latent
+    round iff p_retry > 0, one token-retry round iff p_token_retry > 0).
+    rounds=k: force a k-round loop — the retry-curve mode (inference-time
+    only; tests quality past the trained loop length)."""
     T = model.mcfg.seq_len
     rng = random.Random(1)
     generator = generator or torch.Generator().manual_seed(1)
     torch.manual_seed(1234)  # seed the global RNG stage-0 corruption draws from
     pc = model.pcap
-    n_paths = 1 + (pc.p_retry > 0) + (pc.p_token_retry > 0)
+    if rounds is not None:
+        n_paths = rounds  # forced k-round loop (token flag rides the last path)
+    else:
+        n_paths = 1 + (pc.p_retry > 0) + (pc.p_token_retry > 0)
     # forward emits one aux round per path, plus one more when the last path
     # carries the token-retry flag (its own pass + the discrete round). The
     # flagged path's own pass is a redundant base pass — the measured rounds
@@ -102,14 +107,18 @@ def repair(model: PathLM, eval_arr, corrupt_rate: float, n_batches: int = 40,
     cm = torch.cat(masks)
     tgt0 = torch.cat(tgt0s)   # node 0 targets: the tokens themselves
     tgt1 = tgt0[:, 1:]        # node 1 targets: shifted
-    # measured aux indices: base(0), latent(1) if present, token(last) if present
-    measured = [0]
-    if pc.p_retry > 0:
-        measured.append(1)
-    if pc.p_token_retry > 0:
-        measured.append(len(streams) - 1)
-    kinds = (["base"] + (["latent"] if pc.p_retry > 0 else [])
-             + (["token"] if pc.p_token_retry > 0 else []))
+    # measure every aux round; label the last one "token" when the discrete
+    # round ran, "base" for the first, "latent"/"pass" for loop passes
+    n_aux = len(streams)
+    measured = list(range(n_aux))
+    kinds = []
+    for i in range(n_aux):
+        if pc.p_token_retry > 0 and i == n_aux - 1:
+            kinds.append("token")
+        elif i == 0:
+            kinds.append("base")
+        else:
+            kinds.append("latent" if pc.p_retry > 0 else f"pass{i}")
     out = {"n_corrupted": int(cm.sum().item()), "rounds": {}, "round_kinds": kinds}
     pairs = []
     for r, aux_idx in enumerate(measured):
@@ -157,31 +166,34 @@ def depth_curve(model: PathLM, eval_arr, n_batches: int = 40, batch_size: int = 
 
 
 @torch.no_grad()
-def needle_acc(model: PathLM, n_real_tokens: int, dists=(16, 64, 128, 256, 480),
-               batch_size: int = 64, generator: torch.Generator | None = None) -> dict:
-    """Node-1 accuracy at the query row of needle batches, per distance.
-    Meaningful only for runs trained with p_needle > 0 (the convention is
-    learned, not known). With anchors configured, anchor-regime distances
-    (needle inside the first `anchors` positions, d far beyond the window) are
-    added and prefixed 'anchor:' — the anchor channel's own gate."""
+def needle_acc(model: PathLM, eval_arr, dists=None,
+               batch_size: int = 32, generator: torch.Generator | None = None) -> dict:
+    """Needle accuracy by REGIME bucket on multi-needle real-text batches
+    (X2v2): in-window (needle reachable through the eviction window), beyond
+    (evicted, non-anchor — allowed to fail by design), anchor (needle inside
+    the anchor positions — the anchor channel's own gate)."""
     T = model.mcfg.seq_len
+    pc = model.pcap
     generator = generator or torch.Generator().manual_seed(3)
-    eval_dists = [("", d) for d in dists]
-    if model.pcap.anchors > 0:
-        for p in (0, model.pcap.anchors // 2, model.pcap.anchors - 1):
-            eval_dists.append(("anchor:", T - 3 - p))
-    out = {}
+    buckets = {"in_window": [], "beyond": [], "anchor": []}
     with eval_pc(model, corrupt_wrong=0.0, p_retry=0.0, p_token_retry=0.0, w_dense_exit=0.0):
-        for tag, d in eval_dists:
-            if d > T - 3:  # d = T-3 means needle at p=0 — valid (anchor regime)
-                continue
-            x, _ = needle_batch(batch_size, T, n_real_tokens, model.mask_token,
-                                generator, dist=d)
+        for _ in range(40):
+            x, _, meta = needle_batch(batch_size, T, model.n_real_tokens,
+                                      model.mask_token, generator, data=eval_arr,
+                                      anchors=pc.anchors, anchor_frac=0.2)
             x = x.to(model.embed.weight.device)
             _, aux = model(x, [sample_path(model.pcap, random.Random(0), model.mcfg.n_layers)], x)
-            pred = aux["rounds"][0][1]["logits"][:, T - 2].argmax(-1).cpu()
-            out[f"{tag}{d}"] = round((pred == x[:, T - 1].cpu()).float().mean().item(), 4)
-    return out
+            logits = aux["rounds"][0][1]["logits"].cpu()
+            for b, row_meta in enumerate(meta):
+                for q_row, p, d in row_meta:
+                    hit = (logits[b, q_row].argmax(-1) == x[b, q_row + 1].cpu()).item()
+                    if pc.window > 0 and p < pc.anchors:
+                        buckets["anchor"].append(hit)
+                    elif pc.window > 0 and d > pc.window:
+                        buckets["beyond"].append(hit)
+                    else:
+                        buckets["in_window"].append(hit)
+    return {k: (round(sum(v) / len(v), 4) if v else None) for k, v in buckets.items()}
 
 
 @torch.no_grad()

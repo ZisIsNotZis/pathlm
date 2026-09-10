@@ -32,6 +32,8 @@ Type C — transport + latent retry (inherently coupled: a transport without a r
 | C1 | direct + latent retry | does the latent loop actually refine? | quality-vs-rounds monotonic |
 | C2 | linear transport | vocab-subspace return | PPL delta; rounds curve |
 | C3 | soft transport (+repair-in-context) | does repair-in-context pay? | PPL delta + repair accuracy |
+| C4 | soft transport + **mixture re-entry** (design §3 amendment) | does accumulated mixture beat overwrite at equal rounds? | repair after retry ≥ base; retry-curve vs C3 |
+| C5 | token retry + **mixture re-entry** (the R1 lesson fix: discrete re-entry on the accumulated distribution) | does mixture fix R1's error-commitment? | repair after token round ≥ base pass |
 | C4 | full-decode transport | token-space self-revision baseline | PPL delta; accept rate |
 
 Type L — depth elasticity:

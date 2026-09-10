@@ -35,9 +35,9 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str)
     for step in range(steps):
         model.train()
         if pcap.p_needle > 0 and rng.random() < pcap.p_needle:
-            x, _ = needle_batch(bs, seq, model.n_real_tokens, model.mask_token,
-                                torch_rng, max_dist=seq - 6,
-                                anchors=pcap.anchors, anchor_frac=0.3)
+            x, _, _ = needle_batch(bs, seq, model.n_real_tokens, model.mask_token,
+                                   torch_rng, data=train_arr, anchors=pcap.anchors,
+                                   anchor_frac=0.2, n_needles=8)
         else:
             x, _ = batch(train_arr, bs, seq, torch_rng)
         x = x.cuda()
@@ -67,7 +67,12 @@ def run_battery(model: PathLM, eval_arr, vocab_size: int, pcap: PathConfig) -> d
     if pcap.w_dense_exit > 0:
         res["depth_curve"] = depth_curve(model, eval_arr)
     if pcap.p_needle > 0:
-        res["needle_acc"] = needle_acc(model, model.n_real_tokens)
+        res["needle_acc"] = needle_acc(model, eval_arr)
+    if pcap.p_retry > 0 or pcap.p_token_retry > 0:
+        # retry curve: force 1..4 rounds at inference (no retraining) — the
+        # recurrent-transformer question; also gives the trained-length point
+        res["retry_curve"] = {k: repair(model, eval_arr, max(pcap.corrupt_wrong, pcap.corrupt_mask),
+                                        rounds=k)["rounds"] for k in (2, 3, 4)}
     return res
 
 
