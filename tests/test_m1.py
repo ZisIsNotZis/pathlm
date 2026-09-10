@@ -97,7 +97,9 @@ def test_dense_exit_supervises_every_depth():
 def test_eviction_mask_semantics():
     """Allowed[i][j] == causal AND (anchor OR within-window)."""
     m = tiny_model(PathConfig(n_mtp=1, window=8, anchors=3))
-    mask = m._eviction_mask(16, torch.device("cpu"))[0, 0]
+    mask_opt = m._eviction_mask(16, torch.device("cpu"))
+    assert mask_opt is not None
+    mask = mask_opt[0, 0]
     i = torch.arange(16).unsqueeze(1); j = torch.arange(16).unsqueeze(0)
     want = (j <= i) & ((j < 3) | ((i - j) < 8))
     assert torch.equal(mask, want)
@@ -554,3 +556,22 @@ def test_distance_penalty_bias_and_telemetry():
     assert torch.allclose(out_pen, out_bias, atol=1e-3, rtol=1e-3), \
         "dist_pen must apply exactly the -pen*log(1+d) additive bias"
     assert not torch.allclose(out_none, out_pen)
+
+
+def test_depth_logits_capture_eval_only():
+    """T2 probe: collect_depth_logits=True emits per-depth node-1 logits/conf
+    (all depths, incl. final); default off = no capture, no behavior change."""
+    m = tiny_model(PathConfig(n_mtp=1, w_dense_exit=1.0))
+    m.eval()
+    x = torch.randint(0, 49, (2, M1.seq_len))
+    torch.manual_seed(0)
+    _, aux_off = m(x, tiny_paths(m.pcap, n=1), x)
+    assert "depth_logits" not in aux_off
+    m.pcap.collect_depth_logits = True
+    torch.manual_seed(0)
+    _, aux_on = m(x, tiny_paths(m.pcap, n=1), x)
+    dl, dc = aux_on["depth_logits"], aux_on["depth_conf"]
+    assert len(dl) == M1.n_layers and len(dc) == M1.n_layers
+    assert dl[0].shape == (2, M1.seq_len, 50), dl[0].shape  # node-1 heads, full row span
+    assert torch.allclose(dl[-1], aux_on["rounds"][0][1]["logits"].detach())
+    m.pcap.collect_depth_logits = False

@@ -4,7 +4,7 @@ Base anchor B0 = 1.5074 bpc. X1 = dist_pen 0.1; X3 = X1 + X2's eviction
 settings (window 128, anchors 8, p_needle 0.1).
 
 | Run | bpc | Δ vs B0 | Key numbers |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | X1 | 1.5006 | **−0.0068** | penalty is FREE (slightly positive!) |
 | X3 | 1.5117 | +0.0043 | needle in-window 90.7%, beyond 90.3%, anchor 93.3% |
 

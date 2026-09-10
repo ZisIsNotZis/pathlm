@@ -67,6 +67,10 @@ class PathConfig:
     reentry_mix: bool = False
     # Losses
     w_consistency: float = 0.0     # weight of T2 ~ T1@T1 consistency loss
+    # Depth-ensemble capture (T2 probe, eval only): when True, the dense-exit
+    # hook also stores per-depth node-1 logits + conf in aux["depth_logits"] /
+    # aux["depth_conf"]. Never set during training.
+    collect_depth_logits: bool = False
 
 
 @dataclass

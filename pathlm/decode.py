@@ -45,9 +45,12 @@ class Decoder:
         B, _, d = h.shape
         depth, depth_used = 0, model.mcfg.n_layers
         new_kv: dict[int, tuple] = {}
-        for i, block in enumerate(model.blocks):
+        from pathlm.model import Block  # local import: typing only
+        blocks = [b for b in model.blocks if isinstance(b, Block)]
+        for i, block in enumerate(blocks):
+            n_heads, d_head = block.n_heads, d // block.n_heads
             q, k, v = block.qkv(block.ln1(h)).chunk(3, dim=-1)
-            shape = lambda t: t.view(B, 1, block.n_heads, d // block.n_heads).transpose(1, 2)
+            shape = lambda t: t.view(B, 1, n_heads, d_head).transpose(1, 2)
             q, k, v = shape(q), shape(k), shape(v)
             kept = self._kept_for(i)
             if i in self.kv and kept:
@@ -122,6 +125,7 @@ def decode(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfig,
     for tok in prompt.tolist()[1:]:
         h, _ = dec.step(int(tok))  # prefill: always full depth
     gen, depths, retries = [], [], []
+    assert dec.last_nodes is not None, "decode() must run dec.step() before sampling"
     for _ in range(n_new):
         nodes = dec.last_nodes
         n_retry = 0
@@ -130,6 +134,7 @@ def decode(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfig,
             h = dec.retry(h)
             nodes = dec.last_nodes
             n_retry = 1
+        assert nodes is not None, "step/retry must populate last_nodes"
         logits = nodes[1]["logits"][0, 0] / max(temperature, 1e-6)
         if temperature <= 0:
             nxt = int(logits.argmax())

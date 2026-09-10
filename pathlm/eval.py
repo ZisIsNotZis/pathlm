@@ -35,6 +35,7 @@ def bpc(model: PathLM, eval_arr, vocab_size: int, n_batches: int = 200,
     ~1.4–1.6 for this size class."""
     T = model.mcfg.seq_len
     generator = generator or torch.Generator().manual_seed(7)
+    rng = random.Random(7)
     nats, tokens, correct = 0.0, 0, 0
     confs, hits = [], []
     with eval_pc(model, corrupt_wrong=0.0, corrupt_mask=0.0, p_retry=0.0,
@@ -42,7 +43,7 @@ def bpc(model: PathLM, eval_arr, vocab_size: int, n_batches: int = 200,
         for _ in range(n_batches):
             x, _ = batch(eval_arr, batch_size, T, generator)
             x = x.to(model.embed.weight.device)
-            _, aux = model(x, [sample_path(model.pcap, random, model.mcfg.n_layers)], x)
+            _, aux = model(x, [sample_path(model.pcap, rng, model.mcfg.n_layers)], x)
             node1 = aux["rounds"][0][1]
             logits = node1["logits"][:, :-1]  # node 1, rows 0..T-2
             tgt = x[:, 1:]

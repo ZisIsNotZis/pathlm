@@ -83,28 +83,36 @@ def needle_batch(batch_size: int, seq_len: int, n_real_tokens: int, mask_token: 
         row_meta = []
         used: list[int] = []
         for i in range(K):
-            # pair absent from the row's text (unambiguous association)
+            # pair absent from the row's text (unambiguous association).
+            # 16 tries is effectively always enough (205^2 pairs vs ~500
+            # occupied bigrams), but exhaustion must SKIP the needle, never
+            # place a colliding pair (the silent-ambiguous bug).
+            ok = False
+            xn, yn = -1, -1
             for _ in range(16):
                 xn = int(torch.randint(0, n_real_tokens, (1,), generator=generator))
                 yn = int(torch.randint(0, n_real_tokens, (1,), generator=generator))
-                pat = np.array([xn, yn], dtype=np.int64)
-                found = False
-                for s in range(len(row) - 1):
-                    if row[s] == xn and row[s + 1] == yn:
-                        found = True
-                        break
-                if not found:
+                hit = bool(np.any((row[:-1] == xn) & (row[1:] == yn)))
+                if not hit:
+                    ok = True
                     break
+            if not ok:
+                continue
+            p = -1  # set by the placement branches below
             if anchors > 0 and torch.rand(1, generator=generator).item() < anchor_frac:
                 for _ in range(32):  # same spacing discipline as the body branch
                     p = int(torch.randint(0, anchors, (1,), generator=generator))
                     if all(abs(p - u) > 2 for u in used):
                         break
+                if not all(abs(p - u) > 2 for u in used):
+                    continue  # no free anchor slot: skip this needle
             else:
                 for _ in range(32):
                     p = int(torch.randint(anchors, q0 - 2, (1,), generator=generator))
                     if all(abs(p - u) > 2 for u in used):
                         break
+                if not all(abs(p - u) > 2 for u in used):
+                    continue
             row[p], row[p + 1] = xn, yn
             used.append(p)
             q_row = q0 + 3 * i + 1

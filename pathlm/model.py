@@ -246,17 +246,18 @@ class PathLM(nn.Module):
                 elif pc.transport != "direct":
                     h = self._transport(h)  # overwrite re-entry (retry rounds only)
             pending_dense: list = []
-            depth_hook: Callable[[int, torch.Tensor], None] | None = None
+            hook_fn: Callable[[int, torch.Tensor], None] | None = None
             if r == 0 and pc.w_dense_exit > 0:
                 total_depths = sum(path.layer_repeats)
 
-                def depth_hook(depth: int, h_d: torch.Tensor, _p=path,
-                               _n=total_depths) -> None:
+                def depth_hook(depth: int, h_d: torch.Tensor) -> None:
                     # Dense early-exit supervision (L2): supervise the MTP block
                     # at every depth 1..n-1 of the base pass, so early exits are
                     # calibrated prefixes of the final estimate (design §6). CE AND
                     # confidence BCE — the decode exit gate reads sigmoid(conf)
                     # at depth d < n, so the head must be calibrated there too.
+                    # (total_depths/path close over this loop iteration's values,
+                    # which are fixed per pass — no late-binding hazard.)
                     nodes = self._mtp_nodes(h_d)
                     dloss = h_d.new_zeros(())
                     for k, node in nodes.items():
@@ -269,10 +270,14 @@ class PathLM(nn.Module):
                         dloss = dloss + F.binary_cross_entropy_with_logits(
                             node["conf"][:, :tgt.shape[1]], hit)
                     aux["depth_ce"].append(dloss.detach() / (pc.n_mtp + 1))
-                    if depth < _n:  # final depth is the normal pass below
+                    if pc.collect_depth_logits and 1 in nodes:
+                        aux.setdefault("depth_logits", []).append(nodes[1]["logits"].detach())
+                        aux.setdefault("depth_conf", []).append(nodes[1]["conf"].detach())
+                    if depth < total_depths:  # final depth is the normal pass below
                         pending_dense.append(pc.w_dense_exit * dloss)
+                hook_fn = depth_hook
             h, _dists = self._run_layers(h, path, attn_mask=attn_mask,
-                                         depth_hook=depth_hook, dist_pen=pc.dist_pen)
+                                         depth_hook=hook_fn, dist_pen=pc.dist_pen)
             if _dists:
                 # per-head mean attended distance, averaged over executed layers:
                 # [n_layers, B, H] -> [B, H]
