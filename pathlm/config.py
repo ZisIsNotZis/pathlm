@@ -45,6 +45,10 @@ class PathConfig:
     # act as the long-range channel (needle-in-anchor eval relies on this).
     window: int = 0
     anchors: int = 0
+    # Distance penalty (X1): additive attention bias `-dist_pen * log(1 + d)`
+    # on every head, d = query/key distance. Low weight — correctness
+    # dominates; the gate is the per-head distance telemetry, not the loss.
+    dist_pen: float = 0.0
     # Needle objective (X2): fraction of training batches replaced by the
     # copy-from-context task (see pathlm/data.py needle_batch).
     p_needle: float = 0.0

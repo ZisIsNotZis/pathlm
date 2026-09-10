@@ -180,9 +180,11 @@ def test_token_retry_adds_a_discrete_round():
     x = torch.randint(0, 49, (2, M1.seq_len))
     captured = []
     orig = m._run_layers
-    m._run_layers = lambda h, path, attn_mask=None, depth_hook=None: (
-        captured.append(h.detach().clone()), orig(h, path, attn_mask=attn_mask,
-                                                  depth_hook=depth_hook))[1]
+    def _spy(h, path, attn_mask=None, depth_hook=None, dist_pen=0.0, _o=orig):
+        captured.append(h.detach().clone())
+        return _o(h, path, attn_mask=attn_mask, depth_hook=depth_hook,
+                  dist_pen=dist_pen)
+    m._run_layers = _spy
     _, aux = m(x, tiny_paths(m.pcap), x)
     assert len(aux["rounds"]) == 2, "token retry must add a round"
     pred = aux["rounds"][0][0]["logits"].argmax(-1)
@@ -274,7 +276,9 @@ def test_decode_retry_keeps_positions_strictly_increasing():
         dec.step(t)
     for t in gen[:-1]:
         dec.step(t, exit_threshold=None)
-        dec.retry(dec.last_nodes[0]["latent"] * 0 + h)  # force the retry path
+        nodes = dec.last_nodes
+        assert nodes is not None, "step() must populate last_nodes"
+        dec.retry(nodes[0]["latent"] * 0 + h)  # force the retry path
     for i, pos in dec.layer_pos.items():
         assert pos == sorted(set(pos)), f"layer {i} positions must be unique+sorted: {pos}"
 
@@ -322,8 +326,11 @@ def test_repair_measures_token_retry_round():
     m = tiny_model(pc)
     passes = []
     orig = m._run_layers
-    m._run_layers = lambda h, path, attn_mask=None, depth_hook=None: (
-        passes.append(1), orig(h, path, attn_mask=attn_mask, depth_hook=depth_hook))[1]
+    def _spy(h, path, attn_mask=None, depth_hook=None, dist_pen=0.0, _o=orig):
+        passes.append(1)
+        return _o(h, path, attn_mask=attn_mask, depth_hook=depth_hook,
+                  dist_pen=dist_pen)
+    m._run_layers = _spy
     res = repair(m, arr, n_batches=1, batch_size=4)
     assert res["round_kinds"] == ["base", "pass1", "token"], res["round_kinds"]
     # reference: replay the identical seeded batch and read aux round 2 (token)
@@ -392,10 +399,10 @@ def test_mixture_reentry_transport_forms():
         x = torch.randint(0, 49, (1, M1.seq_len))
         lats, confs = [], []
         orig = m._run_layers
-        def spy(h, path, attn_mask=None, depth_hook=None, _orig=orig):
-            out = _orig(h, path, attn_mask=attn_mask, depth_hook=depth_hook)
+        def spy(h, path, attn_mask=None, depth_hook=None, dist_pen=0.0, _orig=orig):
+            out, _ = _orig(h, path, attn_mask=attn_mask, depth_hook=depth_hook)
             lats.append(out.detach().clone())  # round OUTPUT (what mix stores)
-            return out
+            return out, []
         m._run_layers = spy
         # capture confs via _mtp_nodes
         node_calls = []
@@ -433,8 +440,11 @@ def test_retry_curve_forces_rounds():
     m = tiny_model(PathConfig(n_mtp=1, corrupt_wrong=0.15, transport="direct", p_retry=0.5))
     passes = []
     orig = m._run_layers
-    m._run_layers = lambda h, path, attn_mask=None, depth_hook=None: (
-        passes.append(1), orig(h, path, attn_mask=attn_mask, depth_hook=depth_hook))[1]
+    def _spy(h, path, attn_mask=None, depth_hook=None, dist_pen=0.0, _o=orig):
+        passes.append(1)
+        return _o(h, path, attn_mask=attn_mask, depth_hook=depth_hook,
+                  dist_pen=dist_pen)
+    m._run_layers = _spy
     res = repair(m, arr, n_batches=1, batch_size=4, rounds=4)
     assert len(res["rounds"]) == 4 and res["round_kinds"] == ["base", "latent", "latent", "latent"]
     assert len(passes) == 4, f"forced 4-round loop must run 4 passes, got {len(passes)}"
@@ -460,11 +470,11 @@ def test_mixture_reentry_identity_for_transport_none():
     x = torch.randint(0, 49, (2, M1.seq_len))
     inputs, outputs = [], []
     orig = m._run_layers
-    def spy(h, path, attn_mask=None, depth_hook=None, _orig=orig):
-        out = _orig(h, path, attn_mask=attn_mask, depth_hook=depth_hook)
+    def spy(h, path, attn_mask=None, depth_hook=None, dist_pen=0.0, _orig=orig):
+        out, _ = _orig(h, path, attn_mask=attn_mask, depth_hook=depth_hook)
         inputs.append(h.detach().clone())
         outputs.append(out.detach().clone())
-        return out
+        return out, []
     m._run_layers = spy
     with torch.no_grad():
         _, aux = m(x, tiny_paths(m.pcap, n=2), x)
@@ -484,11 +494,11 @@ def test_mixture_accumulator_end_to_end_reference():
     x = torch.randint(0, 49, (1, M1.seq_len))
     outs, confs, reentry_inputs = [], [], []
     orig_layers, orig_nodes = m._run_layers, m._mtp_nodes
-    def layer_spy(h, path, attn_mask=None, depth_hook=None, _o=orig_layers):
+    def layer_spy(h, path, attn_mask=None, depth_hook=None, dist_pen=0.0, _o=orig_layers):
         reentry_inputs.append(h.detach().clone())
-        out = _o(h, path, attn_mask=attn_mask, depth_hook=depth_hook)
+        out, _ = _o(h, path, attn_mask=attn_mask, depth_hook=depth_hook)
         outs.append(out.detach().clone())
-        return out
+        return out, []
     def node_spy(h, _o=orig_nodes):
         nodes = _o(h)
         confs.append(nodes[0]["conf"].detach().sigmoid().clone())
@@ -505,3 +515,42 @@ def test_mixture_accumulator_end_to_end_reference():
     # reentry_inputs: [embed, reentry_r1, reentry_r2] — round 2's input is index 2
     assert torch.allclose(reentry_inputs[2], want, atol=1e-4), \
         "round-2 re-entry input must equal the accumulated mixture (anchor w=1, conf-weighted)"
+
+
+def test_distance_penalty_bias_and_telemetry():
+    """X1: dist_pen produces an additive -pen*log(1+d) attention bias and
+    per-head distance telemetry; off = exact no-op (bias None)."""
+    m = tiny_model(PathConfig(n_mtp=1, dist_pen=0.0))
+    m.eval()
+    x = torch.randint(0, 49, (2, M1.seq_len))
+    paths = tiny_paths(m.pcap, n=1)
+    torch.manual_seed(0)
+    _, aux_off = m(x, paths, x)
+    assert "attn_dist" not in aux_off
+    m.pcap.dist_pen = 0.5
+    torch.manual_seed(0)
+    _, aux_on = m(x, paths, x)
+    assert "attn_dist" in aux_on
+    dist = aux_on["attn_dist"]  # [B, H] mean attended distance (layers averaged)
+    assert dist.shape == (2, M1.n_heads), dist.shape
+    assert (dist > 0).all(), "attended distance must be positive under causal attention"
+    # bias correctness: an isolated block with dist_pen p must equal the same
+    # block with an explicit additive mask of -p*log(1+d). The block takes an
+    # optional mask; assert non-None to satisfy the type checker.
+    blk = m._run_layers.__self__.blocks[0] if hasattr(m._run_layers, "__self__") else m.blocks[0]
+    assert blk is not None
+    B, T, d = 1, 32, m.mcfg.d_model
+    h = torch.randn(B, T, d)
+    i = torch.arange(T).unsqueeze(1)
+    j = torch.arange(T).unsqueeze(0)
+    bias = -0.5 * torch.log1p((i - j).clamp_min(0).float())
+    bias = bias.masked_fill(j > i, float("-inf")).view(1, 1, T, T)
+    torch.manual_seed(3)
+    out_none, _ = blk(h)  # causal only, pen off
+    torch.manual_seed(3)
+    out_bias, _ = blk(h, attn_mask=bias)  # causal + penalty, pen off
+    torch.manual_seed(3)
+    out_pen, dist = blk(h, dist_pen=0.5)   # pen on
+    assert torch.allclose(out_pen, out_bias, atol=1e-3, rtol=1e-3), \
+        "dist_pen must apply exactly the -pen*log(1+d) additive bias"
+    assert not torch.allclose(out_none, out_pen)

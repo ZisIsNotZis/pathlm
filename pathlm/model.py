@@ -13,6 +13,7 @@ AR next-token head. Each round gets its own freshly sampled layer path (design
 """
 
 import random
+from collections.abc import Callable
 
 import torch
 import torch.nn as nn
@@ -43,15 +44,39 @@ class Block(nn.Module):
             nn.Linear(cfg.mlp_mult * d, d), nn.Dropout(cfg.dropout),
         )
 
-    def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
+                dist_pen: float = 0.0) -> tuple[torch.Tensor, torch.Tensor | None]:
+        """Returns (block output, per-head mean attended distance [B, H]).
+        The distance tensor is None when dist_pen == 0 (exact no-op path);
+        when dist_pen > 0 attention is computed explicitly (softmax over
+        causal + -pen*log(1+d) bias) so both the bias and the telemetry come
+        from the same probabilities."""
         B, T, d = x.shape
         q, k, v = self.qkv(self.ln1(x)).chunk(3, dim=-1)
         shape = lambda t: t.view(B, T, self.n_heads, d // self.n_heads).transpose(1, 2)
-        a = F.scaled_dot_product_attention(shape(q), shape(k), shape(v),
-                                           attn_mask=attn_mask, is_causal=attn_mask is None)
+        qs, ks, vs = shape(q), shape(k), shape(v)
+        dist = None
+        if dist_pen > 0:
+            i = torch.arange(T, device=x.device).unsqueeze(1)
+            j = torch.arange(T, device=x.device).unsqueeze(0)
+            dmat = (i - j).clamp_min(0).float()          # query-key distance
+            causal = (j <= i).view(1, 1, T, T)
+            dist_log = torch.log1p(dmat.clamp_min(0.0))  # non-negative domain
+            bias = (-dist_pen * dist_log).masked_fill(~causal, float("-inf"))
+            bias = bias.expand(B, 1, T, T)
+            if attn_mask is not None:
+                bias = bias + attn_mask.to(bias.dtype)   # eviction mask (bool 0/1)
+            scores = qs @ ks.transpose(-2, -1) / (d // self.n_heads) ** 0.5 + bias
+            w = scores.softmax(-1)                       # [B, H, T, T]
+            a = w @ vs
+            dist = (w * dmat.view(1, 1, T, T)).sum(-1).mean(2)  # [B, H] (mean over queries)
+        else:
+            a = F.scaled_dot_product_attention(qs, ks, vs,
+                                               attn_mask=attn_mask,
+                                               is_causal=attn_mask is None)
         a = a.transpose(1, 2).reshape(B, T, d)
         x = x + self.proj(a)
-        return x + self.mlp(self.ln2(x))
+        return x + self.mlp(self.ln2(x)), dist
 
 
 class TransformHead(nn.Module):
@@ -124,17 +149,25 @@ class PathLM(nn.Module):
     # ---------- stage L ----------
 
     def _run_layers(self, h: torch.Tensor, path: PathSample,
-                    attn_mask: torch.Tensor | None = None, depth_hook=None):
+                    attn_mask: torch.Tensor | None = None,
+                    depth_hook: Callable[[int, torch.Tensor], None] | None = None,
+                    dist_pen: float = 0.0) -> tuple[torch.Tensor, list[torch.Tensor]]:
         """Execute the sampled path. depth_hook(depth, h) fires after each
-        executed layer (depth = layers applied so far) for dense-exit training."""
+        executed layer (depth = layers applied so far) for dense-exit training.
+        dist_pen > 0 adds the X1 attention distance bias; dists collects the
+        per-layer per-head mean attended distance. Returns (h, dists) —
+        dists is [] when the penalty is off."""
         depth = 0
+        dists: list[torch.Tensor] = []
         for i, r in zip(path.layer_order, path.layer_repeats):
             for _ in range(r):
-                h = self.blocks[i](h, attn_mask=attn_mask)
+                h, dist = self.blocks[i](h, attn_mask=attn_mask, dist_pen=dist_pen)
+                if dist is not None:
+                    dists.append(dist)
                 depth += 1
                 if depth_hook is not None:
                     depth_hook(depth, h)
-        return h
+        return h, dists
 
     def _eviction_mask(self, T: int, device) -> torch.Tensor | None:
         """Causal AND eviction: position i attends j iff (j < anchors) or
@@ -212,15 +245,13 @@ class PathLM(nn.Module):
                     h = self._mixture_reentry(mix)
                 elif pc.transport != "direct":
                     h = self._transport(h)  # overwrite re-entry (retry rounds only)
-                # transport == "none": middle passes stay identity re-entry (the
-                # latent mean blurs token identity out of the input — measured
-                # in C5 v1); only the token round consumes the mixture.
             pending_dense: list = []
-            depth_hook = None
+            depth_hook: Callable[[int, torch.Tensor], None] | None = None
             if r == 0 and pc.w_dense_exit > 0:
                 total_depths = sum(path.layer_repeats)
 
-                def depth_hook(depth: int, h_d: torch.Tensor, _p=path, _n=total_depths):
+                def depth_hook(depth: int, h_d: torch.Tensor, _p=path,
+                               _n=total_depths) -> None:
                     # Dense early-exit supervision (L2): supervise the MTP block
                     # at every depth 1..n-1 of the base pass, so early exits are
                     # calibrated prefixes of the final estimate (design §6). CE AND
@@ -240,7 +271,12 @@ class PathLM(nn.Module):
                     aux["depth_ce"].append(dloss.detach() / (pc.n_mtp + 1))
                     if depth < _n:  # final depth is the normal pass below
                         pending_dense.append(pc.w_dense_exit * dloss)
-            h = self._run_layers(h, path, attn_mask=attn_mask, depth_hook=depth_hook)
+            h, _dists = self._run_layers(h, path, attn_mask=attn_mask,
+                                         depth_hook=depth_hook, dist_pen=pc.dist_pen)
+            if _dists:
+                # per-head mean attended distance, averaged over executed layers:
+                # [n_layers, B, H] -> [B, H]
+                aux["attn_dist"] = torch.stack(_dists).mean(0)
             for dloss in pending_dense:
                 loss = loss + dloss
             nodes = self._mtp_nodes(h)
@@ -280,7 +316,7 @@ class PathLM(nn.Module):
                              self.mcfg.norm_cap)
                 h = h.detach()
                 path2 = sample_path(pc, self._path_rng, self.mcfg.n_layers)
-                h = self._run_layers(h, path2, attn_mask=attn_mask)
+                h, _ = self._run_layers(h, path2, attn_mask=attn_mask)
                 nodes = self._mtp_nodes(h)
                 for k, node in nodes.items():
                     loss = self._node_loss(loss, node, targets[:, k:], self.vocab_size)
