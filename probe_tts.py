@@ -89,6 +89,7 @@ def bpc_depth_ens(model: PathLM, eval_arr, mode: str = "uniform",
     nats, tokens, correct = 0.0, 0, 0
     for _ in range(n_batches):
         x, _ = batch(eval_arr, batch_size, T, gen)
+        x = x.cuda()
         model.pcap.collect_depth_logits = True
         path = sample_path(model.pcap, rng, model.mcfg.n_layers)
         _, aux = model(x, [path], x)
@@ -120,6 +121,7 @@ def bpc_round_ens(model: PathLM, eval_arr, k_rounds: int, n_batches: int = 60,
     nats, tokens, correct = 0.0, 0, 0
     for _ in range(n_batches):
         x, _ = batch(eval_arr, batch_size, T, gen)
+        x = x.cuda()
         paths = []
         for _ in range(k_rounds):
             p = sample_path(model.pcap, rng, model.mcfg.n_layers)
