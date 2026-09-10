@@ -84,8 +84,6 @@ def sample_path(cfg: PathConfig, rng: random.Random, n_layers: int) -> PathSampl
         raise ValueError("needle batches are an eviction-training element: set window > 0")
     if cfg.p_retry > 0 and cfg.transport == "none":
         raise ValueError("latent retry needs a transport (retry without a return channel is a no-op)")
-    if cfg.reentry_mix and cfg.p_retry == 0 and cfg.p_token_retry == 0:
-        raise ValueError("mixture re-entry needs a loop to mix (p_retry or p_token_retry)")
 
     n = n_layers
     # Shuffle: sort key blends the index with i.i.d. uniform keys.

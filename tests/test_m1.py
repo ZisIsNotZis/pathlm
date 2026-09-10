@@ -438,3 +438,15 @@ def test_retry_curve_forces_rounds():
     res = repair(m, arr, 0.15, n_batches=1, batch_size=4, rounds=4)
     assert len(res["rounds"]) == 4 and res["round_kinds"] == ["base", "latent", "latent", "latent"]
     assert len(passes) == 4, f"forced 4-round loop must run 4 passes, got {len(passes)}"
+
+
+def test_eval_overrides_tolerate_reentry_mix():
+    """Regression: bpc/repair force p_retry=0 via eval_pc — that must NOT trip
+    config validation (mix without a loop is simply unused at eval time)."""
+    from pathlm.eval import bpc
+    import numpy as np
+    arr = np.random.randint(0, 49, size=4000).astype(np.uint16)
+    m = tiny_model(PathConfig(n_mtp=1, corrupt_wrong=0.15, transport="soft",
+                              p_retry=0.5, reentry_mix=True))
+    res = bpc(m, arr, vocab_size=50, n_batches=2, batch_size=4)
+    assert 0 < res["bpc"] < 10

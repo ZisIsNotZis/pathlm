@@ -95,6 +95,8 @@ def main():
     os.makedirs(run_dir, exist_ok=True)
     mcfg = ModelConfig(**cfg["model"])
     pcap = PathConfig(**cfg["path"])
+    if pcap.reentry_mix and pcap.p_retry == 0 and pcap.p_token_retry == 0:
+        raise ValueError("reentry_mix without a loop (p_retry/p_token_retry) is a no-op element")
     torch.manual_seed(cfg["train"]["seed"])
     train_arr, eval_arr, vocab_size = load_enwik8_full(".tmp/enwik8", "data/enwik8_full.npz")
     model = PathLM(mcfg, pcap, vocab_size).cuda()
