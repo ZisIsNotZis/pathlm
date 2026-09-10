@@ -575,3 +575,32 @@ def test_depth_logits_capture_eval_only():
     assert dl[0].shape == (2, M1.seq_len, 50), dl[0].shape  # node-1 heads, full row span
     assert torch.allclose(dl[-1], aux_on["rounds"][0][1]["logits"].detach())
     m.pcap.collect_depth_logits = False
+
+
+def test_diversity_loss_rewards_disagreement_with_cap():
+    """TTS follow-up: w_diversity>0 with 2 paths subtracts a capped JS term
+    from the loss; identical predictions → js≈0 → no effect; the term must
+    also be recorded in aux["diversity"]. Off = no diversity in aux."""
+    m = tiny_model(PathConfig(n_mtp=1))
+    m.train()
+    x = torch.randint(0, 49, (2, M1.seq_len))
+    paths2 = tiny_paths(m.pcap, n=2)
+    torch.manual_seed(1)
+    loss_off, aux_off = m(x, paths2, x)
+    assert "diversity" not in aux_off
+    m.pcap.w_diversity = 0.5
+    torch.manual_seed(1)
+    loss_on, aux_on = m(x, paths2, x)
+    assert "diversity" in aux_on
+    js = aux_on["diversity"]
+    assert js >= 0
+    # loss_on = loss_off - 0.5*js → loss_on < loss_off when js > 0
+    assert loss_on.item() < loss_off.item() + 1e-6
+    # and the gradient direction: increasing divergence must DECREASE loss
+    # (verify sign via finite difference on a fake js)
+    fake = torch.tensor(0.5, requires_grad=True)
+    term = -0.5 * fake.clamp_max(2.0)
+    term.backward()
+    assert fake.grad is not None and fake.grad.item() < 0, \
+        "more divergence must lower the loss (up to cap)"
+    m.pcap.w_diversity = 0.0

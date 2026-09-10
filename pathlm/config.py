@@ -65,6 +65,12 @@ class PathConfig:
     # (weighted mean of latents / expected embedding of the accumulated
     # distribution) and to the token round (re-embed argmax of the mixture).
     reentry_mix: bool = False
+    # Diversity pressure (TTS follow-up): when > 0, training samples one
+    # parallel path per step and adds a capped NEGATIVE JS-divergence term
+    # between the paths' node-1 predictions — paying the paths to decorrelate
+    # so test-time path ensembling has uncorrelated errors to average. The
+    # cap (2.0 nats) prevents the degenerate uniform-output optimum.
+    w_diversity: float = 0.0
     # Losses
     w_consistency: float = 0.0     # weight of T2 ~ T1@T1 consistency loss
     # Depth-ensemble capture (T2 probe, eval only): when True, the dense-exit

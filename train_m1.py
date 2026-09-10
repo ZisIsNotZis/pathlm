@@ -18,9 +18,15 @@ from pathlm.model import PathLM
 
 
 def sample_rounds(pcap: PathConfig, rng: random.Random, n_layers: int) -> list:
-    """Base path decides the retry count; each round gets its own fresh path."""
+    """Base path decides the retry count; each round gets its own fresh path.
+    w_diversity > 0 additionally samples one parallel path per step so the
+    diversity loss has a partner to decorrelate from (the partner is an extra
+    estimator pass, not a retry round)."""
     base = sample_path(pcap, rng, n_layers)
-    return [base] + [sample_path(pcap, rng, n_layers) for _ in range(base.n_retries)]
+    paths = [base] + [sample_path(pcap, rng, n_layers) for _ in range(base.n_retries)]
+    if pcap.w_diversity > 0:
+        paths.append(sample_path(pcap, rng, n_layers))
+    return paths
 
 
 def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str):

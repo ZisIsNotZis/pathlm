@@ -295,6 +295,20 @@ class PathLM(nn.Module):
                                                dim=-1).mean()
                 loss = loss + pc.w_consistency * cons
                 aux["consistency"] = cons.detach()
+            # Diversity pressure (TTS follow-up): with multiple paths per batch,
+            # reward useful disagreement between the paths' node-1 predictions —
+            # capped so the optimum cannot be uniform outputs. Each path still
+            # minimizes its own CE; this term pays the paths to decorrelate.
+            if pc.w_diversity > 0 and len(paths) > 1 and "diversity_pairs" in aux:
+                prev_logits = aux["diversity_pairs"]  # node-1 logits of path r-1
+                p = nodes[1]["logits"][:, :-1].log_softmax(-1).exp()
+                q = prev_logits[:, :-1].log_softmax(-1).exp()  # same row span
+                js = 0.5 * (F.kl_div(p.log(), q, reduction="none").sum(-1)
+                            + F.kl_div(q.log(), p, reduction="none").sum(-1)).mean()
+                loss = loss - pc.w_diversity * js.clamp_max(2.0)
+                aux["diversity"] = js.detach()
+            if 1 in nodes:  # node-1 may be absent (n_mtp=0)
+                aux["diversity_pairs"] = nodes[1]["logits"].detach()
             aux["rounds"].append(nodes)
             h = h.detach()  # retry rounds are separate estimator passes
             if pc.reentry_mix:
