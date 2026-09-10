@@ -58,12 +58,15 @@ def bpc(model: PathLM, eval_arr, vocab_size: int, n_batches: int = 200,
 
 
 @torch.no_grad()
-def repair(model: PathLM, eval_arr, corrupt_rate: float, n_batches: int = 40,
+def repair(model: PathLM, eval_arr, n_batches: int = 40,
            batch_size: int = 32, generator: torch.Generator | None = None,
            rounds: int | None = None) -> dict:
     """Self-node repair accuracy on corrupted positions, per round; ECE of the
     confidence heads; confidence-weighted ensemble over the per-round node-1
     estimates vs the best single round (design §8 battery columns).
+    Corruption is the RUN'S OWN element (whatever pcap has — wrong-token,
+    mask, noise) — for noise-only runs no positions are flagged, so only
+    self_acc_all is meaningful there.
     rounds=None: driven by the run's own config (base pass always, one latent
     round iff p_retry > 0, one token-retry round iff p_token_retry > 0).
     rounds=k: force a k-round loop — the retry-curve mode (inference-time
@@ -84,8 +87,7 @@ def repair(model: PathLM, eval_arr, corrupt_rate: float, n_batches: int = 40,
     masks = []                       # [B, T] corruption flags per batch
     streams = [[] for _ in range(n_paths + (pc.p_token_retry > 0))]  # per aux round
     tgt0s = []                       # per-batch clean targets (node 0 = tokens)
-    with eval_pc(model, corrupt_wrong=corrupt_rate, corrupt_mask=0.0, p_retry=0.0,
-                 p_token_retry=0.0, w_dense_exit=0.0):
+    with eval_pc(model, p_retry=0.0, p_token_retry=0.0, w_dense_exit=0.0):
         for _ in range(n_batches):
             x, _ = batch(eval_arr, batch_size, T, generator)
             x = x.to(model.embed.weight.device)
@@ -229,4 +231,19 @@ def decode_speed(model: PathLM, pcap: PathConfig, prompt_len: int = 256, n_new: 
         sync()
         out[name] = round(n_new / (time.time() - t0), 1)
     out["window_config"] = {"window": pcap.window, "anchors": pcap.anchors}
+    return out
+
+
+@torch.no_grad()
+def locality_sweep(model: PathLM, eval_arr, n_batches: int = 60, batch_size: int = 32,
+                   levels=(0.0, 0.25, 0.5, 1.0)) -> dict:
+    """Next-token bpc under evaluation-time shuffle locality — the order-
+    tolerance curve for shuffle-trained models (trained level vs OOD levels)."""
+    out = {}
+    for loc in levels:
+        with eval_pc(model, shuffle_locality=loc, p_retry=0.0, p_token_retry=0.0,
+                     w_dense_exit=0.0, corrupt_wrong=0.0):
+            res = bpc(model, eval_arr, model.vocab_size, n_batches=n_batches,
+                      batch_size=batch_size)
+        out[str(loc)] = res["bpc"]
     return out

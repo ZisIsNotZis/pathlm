@@ -324,7 +324,7 @@ def test_repair_measures_token_retry_round():
     orig = m._run_layers
     m._run_layers = lambda h, path, attn_mask=None, depth_hook=None: (
         passes.append(1), orig(h, path, attn_mask=attn_mask, depth_hook=depth_hook))[1]
-    res = repair(m, arr, 0.15, n_batches=1, batch_size=4)
+    res = repair(m, arr, n_batches=1, batch_size=4)
     assert res["round_kinds"] == ["base", "pass1", "token"], res["round_kinds"]
     # reference: replay the identical seeded batch and read aux round 2 (token)
     from pathlm.data import batch as data_batch
@@ -435,7 +435,7 @@ def test_retry_curve_forces_rounds():
     orig = m._run_layers
     m._run_layers = lambda h, path, attn_mask=None, depth_hook=None: (
         passes.append(1), orig(h, path, attn_mask=attn_mask, depth_hook=depth_hook))[1]
-    res = repair(m, arr, 0.15, n_batches=1, batch_size=4, rounds=4)
+    res = repair(m, arr, n_batches=1, batch_size=4, rounds=4)
     assert len(res["rounds"]) == 4 and res["round_kinds"] == ["base", "latent", "latent", "latent"]
     assert len(passes) == 4, f"forced 4-round loop must run 4 passes, got {len(passes)}"
 

@@ -13,7 +13,7 @@ import torch
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pathlm.config import ModelConfig, PathConfig, sample_path
 from pathlm.data import load_enwik8_full, batch, needle_batch
-from pathlm.eval import bpc, repair, depth_curve, needle_acc, decode_speed
+from pathlm.eval import bpc, repair, depth_curve, needle_acc, decode_speed, locality_sweep
 from pathlm.model import PathLM
 
 
@@ -63,15 +63,17 @@ def run_battery(model: PathLM, eval_arr, vocab_size: int, pcap: PathConfig) -> d
     res = {"bpc": bpc(model, eval_arr, vocab_size),
            "decode_speed": decode_speed(model, pcap)}
     if pcap.corrupt_wrong > 0 or pcap.corrupt_mask > 0:
-        res["repair"] = repair(model, eval_arr, max(pcap.corrupt_wrong, pcap.corrupt_mask))
+        res["repair"] = repair(model, eval_arr)
     if pcap.w_dense_exit > 0:
         res["depth_curve"] = depth_curve(model, eval_arr)
     if pcap.p_needle > 0:
         res["needle_acc"] = needle_acc(model, eval_arr)
+    if pcap.shuffle_locality > 0:
+        res["locality_sweep"] = locality_sweep(model, eval_arr)
     if pcap.p_retry > 0 or pcap.p_token_retry > 0:
         # retry curve: force 1..4 rounds at inference (no retraining) — the
         # recurrent-transformer question; also gives the trained-length point
-        res["retry_curve"] = {k: repair(model, eval_arr, max(pcap.corrupt_wrong, pcap.corrupt_mask),
+        res["retry_curve"] = {k: repair(model, eval_arr,
                                         rounds=k)["rounds"] for k in (2, 3, 4)}
     return res
 
