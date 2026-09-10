@@ -7,7 +7,8 @@ Decoupled ablation program for `docs/design.md`. Principles: one element per run
 - **Retry is information-free unless the return channel transforms the state.** Direct re-entry re-derives the same fixed point (gate d, measured at 2 layers). Retry experiments are transport experiments: repair value is expected from soft (repair-in-context) and discrete (token retry) channels, which re-embed a corrected or expected token. No new information enters a loop whose channel is the identity.
 - **Corruption + direct retry does not repair** (measured) — the transport, not the corruption, is the active ingredient.
 - **Ensemble voters sharing one trunk are too correlated for meaningful gains** — gains must come from decorrelated estimates (different transports/depths).
-- Consequence: C3 (soft) and R1 (discrete) are promoted into M1; C1 (direct) is retained as the fixed-point question at 8 layers (does a deeper stack converge in one pass?); C2 (linear) is deferred to M2.
+- **Hard discrete re-entry (token retry) is only safe gated by prob₀.** Ungated, it rewrites every position with the model's argmax: correct predictions are ~no-ops, but the ~49% wrong commits re-embed as tokens that look exactly like ground truth, erasing the uncertainty signal downstream attention could have discounted — and each wrong commit contaminates the context for every position that attends to it (measured: repair 51.3% → 46.7%, ECE 0.001 → 0.015, M1/R1). Direct/soft re-entry keep the uncertainty in the latent; quantization destroys it. Fix: fire per-position only where prob₀ is low (selective re-embed).
+- Consequence: C3 (soft) and R1 (discrete) are promoted into M1; C1 (direct) is retained as the fixed-point question at 12 layers (does a deeper stack converge in one pass?); C2 (linear) is deferred to M2.
 
 ## 1. Base config (identity element)
 
