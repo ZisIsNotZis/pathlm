@@ -52,10 +52,9 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str)
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         opt.step(); sched.step()
         if step % 200 == 0 or step == steps - 1:
+            # pi-lens-ignore: unchecked-throwing-call-python
             with open(log_path, "a") as f:
                 f.write(json.dumps({"step": step, "loss": round(float(loss), 4),
-                                    # pi-lens-ignore: unchecked-throwing-call-python
-                                    # pi-lens-ignore: unchecked-throwing-call-python
                                     "lr": round(float(sched.get_last_lr()[0]), 6),
                                     "min": round((time.time() - t0) / 60, 1)}) + "\n")
     return time.time() - t0
