@@ -1,6 +1,6 @@
 # 01 — Test-time scaling probes: can composition beat B0?
 
-- **Status:** claimed
+- **Status:** done
 - **Type:** experiment (eval-only)
 - **Blocked by:** 07-x1-x3/issues/01-x1-x3-distance-penalty
 - **need-review:** true
@@ -37,3 +37,5 @@ paths may make rounds identical on clean data — if so, that IS the finding
 ## Comments
 
 - 2026-09-10 — agent (pi) — created; claimed. Engine prep committed: config-gated depth-logit capture (T2, eval-only), needle-batch silent-ambiguity fix found on the way (exhausted pair-retry must skip, not place a colliding pair). probe_tts.py smoke-tested (L1 K=1 plumbing; L2 depth-mix works — uniform 1.604, conf 1.6009 on a 2-batch smoke slice). Full battery launched.
+- 2026-09-10 — agent — **battery complete** (after 3 self-caught bugs: batch-summed CE, CPU tensors, train-tail eval leak — all fixed & committed). Verdict: composition gain tracks path diversity exactly (L1 −0.047 monotone; deterministic-path X1/X3 exactly flat); depth-ens free but degrades (1.602 vs own 1.574 — depths are fallbacks, not voters); round-ens degrades on clean streams (retry is a repair mechanism, not an ensemble). **Nothing beats B0.** K_match: none exists; K_sat ≈ 8; score_sat = 1.6454 (L1@K8). Why: architectural math — taxes > ensemble returns + shared-trunk correlation (M0 lesson held) + fallback-trained auxiliaries. Fixes are design-level (diversity-preserving training / equal-footing aux supervision / scale). SUMMARY.md + tts_results.json committed.
+- **Status:** done
