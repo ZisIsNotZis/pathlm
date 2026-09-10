@@ -46,29 +46,32 @@ def load(name: str) -> PathLM:
     m = PathLM(ModelConfig(**cfg["model"]), PathConfig(**cfg["path"]), vocab_size=206)
     sd = torch.load(os.path.join(root, "model.pt"), map_location="cpu", weights_only=True)
     m.load_state_dict(sd)
-    m.eval()
+    m.eval().cuda()
     return m
 
 
 @torch.no_grad()
-def bpc_k(model: PathLM, eval_arr, k_paths: int, n_batches: int = 100,
+def bpc_k(model: PathLM, eval_arr, k_paths: int, n_batches: int = 60,
           batch_size: int = 32, temperature: float = 1.0) -> dict:
-    """node-1 bpc averaged over k sampled paths per batch (T1)."""
+    """node-1 bpc averaged over k sampled paths per batch (T1). CE is computed
+    per batch-row BEFORE averaging across paths (mixture of predictions, not
+    of rows)."""
     T = model.mcfg.seq_len
     rng = random.Random(11)
     gen = torch.Generator().manual_seed(11)
     nats, tokens, correct = 0.0, 0, 0
     for _ in range(n_batches):
         x, _ = batch(eval_arr, batch_size, T, gen)
-        probs = torch.zeros(T - 1, 206)
+        x = x.cuda()
+        probs = torch.zeros(batch_size, T - 1, 206, device="cuda")
         for _k in range(k_paths):
             path = sample_path(model.pcap, rng, model.mcfg.n_layers)
             _, aux = model(x, [path], x)
             logits = aux["rounds"][0][1]["logits"][:, :-1] / max(temperature, 1e-6)
-            probs = probs + logits.softmax(-1).sum(0)  # [B,T-1,V] -> sum over batch
+            probs = probs + logits.softmax(-1)
         probs = probs / k_paths
         tgt = x[:, 1:]
-        nats += -(probs.clamp_min(1e-12).log().gather(1, tgt).sum()).item()
+        nats += -(probs.clamp_min(1e-12).log().gather(2, tgt.unsqueeze(-1)).sum()).item()
         correct += (probs.argmax(-1) == tgt).sum().item()
         tokens += tgt.numel()
     return {"bpc": round(nats / tokens / 0.6931471805599453, 4),
@@ -77,7 +80,7 @@ def bpc_k(model: PathLM, eval_arr, k_paths: int, n_batches: int = 100,
 
 @torch.no_grad()
 def bpc_depth_ens(model: PathLM, eval_arr, mode: str = "uniform",
-                  n_batches: int = 100, batch_size: int = 32) -> dict:
+                  n_batches: int = 60, batch_size: int = 32) -> dict:
     """T2: average per-depth node-1 predictions (collect_depth_logits hook).
     mode: uniform | confidence (sigmoid-conf-weighted)."""
     T = model.mcfg.seq_len
@@ -108,7 +111,7 @@ def bpc_depth_ens(model: PathLM, eval_arr, mode: str = "uniform",
 
 
 @torch.no_grad()
-def bpc_round_ens(model: PathLM, eval_arr, k_rounds: int, n_batches: int = 100,
+def bpc_round_ens(model: PathLM, eval_arr, k_rounds: int, n_batches: int = 60,
                   batch_size: int = 32) -> dict:
     """T3: average node-1 across k forced retry rounds on the CLEAN stream."""
     T = model.mcfg.seq_len
@@ -124,13 +127,13 @@ def bpc_round_ens(model: PathLM, eval_arr, k_rounds: int, n_batches: int = 100,
             p.token_retry = False
             paths.append(p)
         _, aux = model(x, paths, x)
-        probs = torch.zeros(T - 1, 206)
+        probs = torch.zeros(batch_size, T - 1, 206, device="cuda")
         for r in range(len(aux["rounds"])):
             logits = aux["rounds"][r][1]["logits"][:, :-1]
-            probs = probs + logits.log_softmax(-1).exp().sum(0)
+            probs = probs + logits.softmax(-1)
         probs = probs / len(aux["rounds"])
         tgt = x[:, 1:]
-        nats += -(probs.clamp_min(1e-12).log().gather(1, tgt).sum()).item()
+        nats += -(probs.clamp_min(1e-12).log().gather(2, tgt.unsqueeze(-1)).sum()).item()
         correct += (probs.argmax(-1) == tgt).sum().item()
         tokens += tgt.numel()
     return {"bpc": round(nats / tokens / 0.6931471805599453, 4),
@@ -139,7 +142,7 @@ def bpc_round_ens(model: PathLM, eval_arr, k_rounds: int, n_batches: int = 100,
 
 def main() -> None:
     blob = np.load("data/enwik8_full.npz")
-    eval_arr = blob["train"][-10_000_000:]
+    eval_arr = blob["val"]  # held-out 10M tail — never train on it
     results: dict = {}
 
     # ---- T1: path-marginal ensemble, K sweep ----
