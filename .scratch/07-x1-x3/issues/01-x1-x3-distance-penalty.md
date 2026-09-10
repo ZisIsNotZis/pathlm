@@ -1,6 +1,6 @@
 # 01 — X1/X3: attention distance penalty (+ redundancy under eviction)
 
-- **Status:** claimed
+- **Status:** done (see final comment)
 - **Type:** experiment
 - **Blocked by:** 06-m2-sweep/issues/01-m2-breadth-sweep
 - **need-review:** true
@@ -29,3 +29,5 @@ aux["attn_dist"]; dist_pen == 0 stays the exact SDPA no-op). 34 tests green.
 ## Comments
 
 - 2026-09-10 — agent (pi) — created; claimed; dist_pen engine change + telemetry test (TDD) + configs committed. Self-review note: telemetry shape [B, H] = layers-averaged per-head mean distance; X1/X2 gate parts are covered by bpc + attn_dist + (X3) needle_acc.
+- 2026-09-10 — agent — results: X1 Δ−0.0068 (penalty free, mild regularizer), X3 Δ+0.0043 with needle in-window 90.7 / beyond 90.3 / anchor 93.3. Telemetry: head spread 26–43, no head collapses local-only (recorded post-hoc — battery doesn't surface attn_dist yet, noted). X3 verdict: beyond-window hits are local-LM strength, NOT eviction-proof recall; the anchor channel genuinely improves (76.8→93.3). Penalty composes with eviction at +0.004 total. SUMMARY.md written.
+- **Status:** done
