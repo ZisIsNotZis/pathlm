@@ -1,6 +1,6 @@
 # 01 — M1 follow-ups: mixture re-entry (C4/C5), retry curves, needle redesign (X2v2)
 
-- **Status:** claimed
+- **Status:** done
 - **Type:** implementation + experiment
 - **Blocked by:** 04-m1-runs/issues/01-m1-runs
 - **need-review:** true
@@ -42,3 +42,5 @@ Three follow-ups from the M1 results (user-approved design):
   C5 v1: token round FIXED (50.2% ≥ base 49.7%, ECE 0.005 vs R1's 46.7%/0.015) BUT middle passes re-entered via weighted latent mean (transport=none) and collapsed (self-acc 54%, ECE 0.35) — latent-mean blurs token identity (the direct-form caveat, now measured). Fix: transport=none middle passes stay identity re-entry; only the token round consumes the mixture. C5 v2 rerunning.
 - 2026-09-10 — agent (pi, volc2/glm-5.3-flash) — C5 v2 results: blur artifact GONE (pass1 self-acc 90.7% vs v1's 54%). But: token round 48.7% vs base 50.0% (−1.3pp, better than R1's −4.6pp, no longer catastrophic, ECE 0.007) and forced multi-round loops DEGRADE monotonically (identity passes: 50→43→36→30%) — unlike C1 where the same structural re-entry is stable. Net: at this scale the mixture vote removes token-retry's catastrophic failure mode but does not make it profitable; the remaining lever is prob0-gated per-position re-embed (only rewrite where the model itself flags doubt) — deferred as a design option, not scheduled.
 Ticket verdict: C4 PASS-equal (mixture = robustness at depth), C5 PASS-with-caveat (catastrophe removed, profit not found), X2v2 PASS (needle + anchors work), retry curves recorded (saturate ~r3).
+- 2026-09-10 — agent (pi, volc2/glm-5.3-flash) — review round 1: APPROVE with notes. P1s fixed: stale duplicate C4 row removed from experiments.md (+ M2 list corrected), needle-construction section rewritten to v2 with dated amendment. P2s fixed: needle bucket boundary (d >= window-1 — boundary needles are guaranteed misses), anchor-branch spacing retry, forward-based end-to-end accumulator reference test (weight source + anchor pinned). P2 follow-up recorded: decode.py retry uses single-round overwrite — must thread the mixture accumulator before C4-style checkpoints are promoted to deployment. 33 tests green.
+- **Status:** done

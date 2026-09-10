@@ -34,7 +34,6 @@ Type C — transport + latent retry (inherently coupled: a transport without a r
 | C3 | soft transport (+repair-in-context) | does repair-in-context pay? | PPL delta + repair accuracy |
 | C4 | soft transport + **mixture re-entry** (design §3 amendment) | does accumulated mixture beat overwrite at equal rounds? | repair after retry ≥ base; retry-curve vs C3 |
 | C5 | token retry + **mixture re-entry** (the R1 lesson fix: discrete re-entry on the accumulated distribution) | does mixture fix R1's error-commitment? | repair after token round ≥ base pass |
-| C4 | full-decode transport | token-space self-revision baseline | PPL delta; accept rate |
 
 Type L — depth elasticity:
 
@@ -74,7 +73,7 @@ Total: base + 15 main-effect runs.
 ## 4. Milestones
 
 - M1 (7 runs): B0, I1, C1, C3, R1, L2, X2. B0 doubles as the external sanity anchor (published small-model enwik8 range ~1.4–1.6 bpc for this size class). C3 is promoted per the M0 lesson — retry × soft transport is the first configuration where retry can add information. Any gate failure learned at ~30% of program cost.
-- M2: remaining main effects (I2–I4, C2, C4, L1, L3, L4).
+- M2: remaining main effects (I2–I4, C2, L1, L3, L4).
 - M3: interaction runs + integration run.
 
 Engine prerequisites per run: B0/I1 need the eval battery (bpc, repair, speed); C1/C3/R1 need the transport implementations; L2 needs dense early-exit supervision; X2 needs eviction + anchor slots.
@@ -85,6 +84,6 @@ Dataset: **enwik8** (char-level) — chosen for comparability: it is the standar
 
 Scale (approved): char-level ASCII vocab (~100 printable), d=256, 8 layers, ~10–15M params, seq 512. Sanity anchor: a vanilla transformer of this size should land in the published ~1.4–1.6 bits/char range on enwik8; landing far above that means our always-on machinery has a real cost. Probe-scale (M0) as above.
 Deviation (2026-09-07): 8 layers × 12d² cannot reach 10–15M params — the param count is the comparability-relevant number, so base scale is d=256, **12 layers, mlp_mult 6, ~13.1M params**.
-Needle construction (fixed 2026-09-07, X2): row = needle pair (x_n, y_n) at distance d before a query tail [mask, x_n, y_n]; filler is random with x_n/y_n purged, so node-1 accuracy at the query row measures pure attention reach. Needles are a TRAINED convention (p_needle=0.1 of X2 batches), not zero-shot; distances cover both the within-window and the anchor-channel regimes. Beyond-window non-anchor needles are ALLOWED to fail (the information is evicted — that is the design, not a bug).
+Needle construction (amended 2026-09-10 to v2 — v1's random-filler single-needle form starved the convention of signal and measured 0.0 everywhere; see ticket 05): row = real-text window with K=8 needle pairs (x_i, y_i) carved in at random positions p_i (anchor_frac of them inside the first `anchors` positions), query tail [mask, x_1, y_1, …, mask, x_K, y_K]; (x_i, y_i) pairs are chosen absent from the row's text so the association is unambiguous. Node-1 accuracy at the x_i query rows, bucketed by regime: in-window (reachable), anchor (survives eviction via the anchor channel), beyond (evicted — ALLOWED to fail; the information is gone, that is the design, not a bug).
 
 Defaults: λ_total=0.15 split among active I-elements; p_skip=p_redo=p_exit=0.1; shuffle-locality=0.5 in the L3 run; N=1 in the base config (k=0…1 — self + next-token; deeper MTP N>1 is an M2+ sweep, see §1); retry counts sampled geometrically during training (coverage), prob_0-threshold gated at inference; norm cap c = typical embedding norm. Corruption is part of the C1/C3/R1 units (a retry needs something to repair) — read their deltas against I1, not B0, to isolate the retry/transport element. Engine: PyTorch custom training loop (config-driven path sampling) — decided and implemented.

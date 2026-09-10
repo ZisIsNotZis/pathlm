@@ -189,7 +189,10 @@ def needle_acc(model: PathLM, eval_arr, dists=None,
                     hit = (logits[b, q_row].argmax(-1) == x[b, q_row + 1].cpu()).item()
                     if pc.window > 0 and p < pc.anchors:
                         buckets["anchor"].append(hit)
-                    elif pc.window > 0 and d > pc.window:
+                    elif pc.window > 0 and d >= pc.window - 1:
+                        # the needle's x byte is attendable only when q_row - p <
+                        # window, i.e. d <= window - 2 — boundary needles are
+                        # guaranteed misses and belong to the beyond bucket
                         buckets["beyond"].append(hit)
                     else:
                         buckets["in_window"].append(hit)

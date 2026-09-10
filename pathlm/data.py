@@ -96,7 +96,10 @@ def needle_batch(batch_size: int, seq_len: int, n_real_tokens: int, mask_token: 
                 if not found:
                     break
             if anchors > 0 and torch.rand(1, generator=generator).item() < anchor_frac:
-                p = int(torch.randint(0, anchors, (1,), generator=generator))
+                for _ in range(32):  # same spacing discipline as the body branch
+                    p = int(torch.randint(0, anchors, (1,), generator=generator))
+                    if all(abs(p - u) > 2 for u in used):
+                        break
             else:
                 for _ in range(32):
                     p = int(torch.randint(anchors, q0 - 2, (1,), generator=generator))

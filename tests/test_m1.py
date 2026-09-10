@@ -473,3 +473,35 @@ def test_mixture_reentry_identity_for_transport_none():
         "middle pass must re-enter from the base OUTPUT unchanged (identity)"
     assert not torch.allclose(inputs[2], outputs[1]), \
         "token round must re-embed the mixture vote, not reuse the latent"
+
+
+def test_mixture_accumulator_end_to_end_reference():
+    """Pins the forward-side accumulation (weight source = node-0 conf,
+    anchor w=1, weighted latents): the ACTUAL round-2 re-entry input must
+    equal the reference computed from captured round outputs and confs."""
+    m = tiny_model(PathConfig(n_mtp=1, transport="soft", p_retry=1.0, reentry_mix=True))
+    m.eval()
+    x = torch.randint(0, 49, (1, M1.seq_len))
+    outs, confs, reentry_inputs = [], [], []
+    orig_layers, orig_nodes = m._run_layers, m._mtp_nodes
+    def layer_spy(h, path, attn_mask=None, depth_hook=None, _o=orig_layers):
+        reentry_inputs.append(h.detach().clone())
+        out = _o(h, path, attn_mask=attn_mask, depth_hook=depth_hook)
+        outs.append(out.detach().clone())
+        return out
+    def node_spy(h, _o=orig_nodes):
+        nodes = _o(h)
+        confs.append(nodes[0]["conf"].detach().sigmoid().clone())
+        return nodes
+    m._run_layers, m._mtp_nodes = layer_spy, node_spy
+    with torch.no_grad():
+        m(x, tiny_paths(m.pcap, n=3), x)
+    m._run_layers, m._mtp_nodes = orig_layers, orig_nodes
+    U = m.embed.weight
+    w0, w1 = torch.ones_like(confs[0]), confs[1]
+    S = (w0.unsqueeze(-1) * (outs[0] @ U.T).softmax(-1)
+         + w1.unsqueeze(-1) * (outs[1] @ U.T).softmax(-1)) / (w0 + w1).unsqueeze(-1)
+    want = cap_norm(S @ U, 1.0)
+    # reentry_inputs: [embed, reentry_r1, reentry_r2] — round 2's input is index 2
+    assert torch.allclose(reentry_inputs[2], want, atol=1e-4), \
+        "round-2 re-entry input must equal the accumulated mixture (anchor w=1, conf-weighted)"
