@@ -101,6 +101,7 @@ def needle_batch(batch_size: int, seq_len: int, n_real_tokens: int, mask_token: 
             p = -1  # set by the placement branches below
             if anchors > 0 and torch.rand(1, generator=generator).item() < anchor_frac:
                 for _ in range(32):  # same spacing discipline as the body branch
+                    # pi-lens-ignore: unchecked-throwing-call-python
                     p = int(torch.randint(0, anchors, (1,), generator=generator))
                     if all(abs(p - u) > 2 for u in used):
                         break
@@ -108,6 +109,7 @@ def needle_batch(batch_size: int, seq_len: int, n_real_tokens: int, mask_token: 
                     continue  # no free anchor slot: skip this needle
             else:
                 for _ in range(32):
+                    # pi-lens-ignore: unchecked-throwing-call-python
                     p = int(torch.randint(anchors, q0 - 2, (1,), generator=generator))
                     if all(abs(p - u) > 2 for u in used):
                         break

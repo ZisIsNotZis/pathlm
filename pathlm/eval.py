@@ -122,12 +122,14 @@ def repair(model: PathLM, eval_arr, n_batches: int = 40,
             kinds.append("base")
         else:
             kinds.append("latent" if pc.p_retry > 0 else f"pass{i}")
+    # pi-lens-ignore: unchecked-throwing-call-python
     out = {"n_corrupted": int(cm.sum().item()), "rounds": {}, "round_kinds": kinds}
     pairs = []
     for r, aux_idx in enumerate(measured):
         n0_logits, n0_conf, n1_logits, n1_conf = (torch.cat(comp) for comp in
                                                   zip(*streams[aux_idx]))
         hit0 = n0_logits.argmax(-1) == tgt0
+        # pi-lens-ignore: unchecked-throwing-call-python
         acc = hit0[cm].float().mean().item() if cm.any() else float("nan")
         out["rounds"][f"r{r}"] = {
             "self_acc_all": round(hit0.float().mean().item(), 4),

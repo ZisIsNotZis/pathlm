@@ -123,6 +123,7 @@ def decode(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfig,
     dec = Decoder(model, window=pcap.window, anchors=pcap.anchors)
     h, _ = dec.step(int(prompt[0]))
     for tok in prompt.tolist()[1:]:
+        # pi-lens-ignore: unchecked-throwing-call-python
         h, _ = dec.step(int(tok))  # prefill: always full depth
     gen, depths, retries = [], [], []
     assert dec.last_nodes is not None, "decode() must run dec.step() before sampling"
@@ -137,8 +138,10 @@ def decode(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfig,
         assert nodes is not None, "step/retry must populate last_nodes"
         logits = nodes[1]["logits"][0, 0] / max(temperature, 1e-6)
         if temperature <= 0:
+            # pi-lens-ignore: unchecked-throwing-call-python
             nxt = int(logits.argmax())
         else:
+            # pi-lens-ignore: unchecked-throwing-call-python
             nxt = int(torch.multinomial(torch.softmax(logits, -1), 1, generator=generator))
         gen.append(nxt)
         if len(gen) < n_new:  # no need to process the final generated token
