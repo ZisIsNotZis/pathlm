@@ -450,3 +450,26 @@ def test_eval_overrides_tolerate_reentry_mix():
                               p_retry=0.5, reentry_mix=True))
     res = bpc(m, arr, vocab_size=50, n_batches=2, batch_size=4)
     assert 0 < res["bpc"] < 10
+
+
+def test_mixture_reentry_identity_for_transport_none():
+    """C5 v1 lesson: with transport=none, middle passes must NOT re-enter via
+    the latent mean (it blurs token identity: self-acc collapsed to 54%)."""
+    m = tiny_model(PathConfig(n_mtp=1, p_token_retry=1.0, reentry_mix=True))
+    m.eval()
+    x = torch.randint(0, 49, (2, M1.seq_len))
+    inputs, outputs = [], []
+    orig = m._run_layers
+    def spy(h, path, attn_mask=None, depth_hook=None, _orig=orig):
+        out = _orig(h, path, attn_mask=attn_mask, depth_hook=depth_hook)
+        inputs.append(h.detach().clone())
+        outputs.append(out.detach().clone())
+        return out
+    m._run_layers = spy
+    with torch.no_grad():
+        _, aux = m(x, tiny_paths(m.pcap, n=2), x)
+    assert len(aux["rounds"]) == 3  # base, pass1, token
+    assert torch.allclose(inputs[1], outputs[0]), \
+        "middle pass must re-enter from the base OUTPUT unchanged (identity)"
+    assert not torch.allclose(inputs[2], outputs[1]), \
+        "token round must re-embed the mixture vote, not reuse the latent"

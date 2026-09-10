@@ -1,23 +1,3 @@
-C5: 13.08M params, vocab 206, steps 6000
-Traceback (most recent call last):
-  File "/home/z/vibe/pathlm/train_m1.py", line 120, in <module>
-    main()
-  File "/home/z/vibe/pathlm/train_m1.py", line 109, in main
-    results = run_battery(model, eval_arr, vocab_size, pcap)
-              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/z/vibe/pathlm/train_m1.py", line 63, in run_battery
-    res = {"bpc": bpc(model, eval_arr, vocab_size),
-                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/z/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
-    return func(*args, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^
-  File "/home/z/vibe/pathlm/pathlm/eval.py", line 45, in bpc
-    _, aux = model(x, [sample_path(model.pcap, random, model.mcfg.n_layers)], x)
-                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/z/vibe/pathlm/pathlm/config.py", line 88, in sample_path
-    raise ValueError("mixture re-entry needs a loop to mix (p_retry or p_token_retry)")
-ValueError: mixture re-entry needs a loop to mix (p_retry or p_token_retry)
-C5: 13.08M params, vocab 206, steps 6000
 {
   "bpc": {
     "bpc": 1.6927,
@@ -131,6 +111,28 @@ C5: 13.08M params, vocab 206, steps 6000
         "repair_acc": 0.489,
         "ece_node0": 0.0046
       }
+    }
+  },
+  "config": {
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 512,
+      "mlp_mult": 6
+    },
+    "path": {
+      "n_mtp": 1,
+      "transport": "none",
+      "corrupt_wrong": 0.15,
+      "p_token_retry": 0.5,
+      "reentry_mix": true
+    },
+    "train": {
+      "steps": 6000,
+      "batch_size": 32,
+      "lr": 0.001,
+      "seed": 0
     }
   },
   "params": 13076483,

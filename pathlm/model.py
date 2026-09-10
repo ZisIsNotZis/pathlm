@@ -208,10 +208,13 @@ class PathLM(nn.Module):
         mix = None  # mixture accumulator (design §3 amendment): W, S (prob sum), L (latent sum)
         for r, path in enumerate(paths):
             if r > 0:
-                if pc.reentry_mix and mix is not None:
+                if pc.reentry_mix and mix is not None and pc.transport != "none":
                     h = self._mixture_reentry(mix)
                 elif pc.transport != "direct":
                     h = self._transport(h)  # overwrite re-entry (retry rounds only)
+                # transport == "none": middle passes stay identity re-entry (the
+                # latent mean blurs token identity out of the input — measured
+                # in C5 v1); only the token round consumes the mixture.
             pending_dense: list = []
             depth_hook = None
             if r == 0 and pc.w_dense_exit > 0:
