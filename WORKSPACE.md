@@ -5,7 +5,9 @@
 - **Design:** frozen in `docs/design.md` (stage ring 0–4, cycles, aggregation principle, training recipe). One post-freeze amendment: shuffle-locality formula in §L (v1 was mathematically a no-op).
 - **M0 probe: DONE, merged.** Micro-model (d=64, 2L, ~1M params, enwik8-12MB). Verdicts: (a) confidence calibration PASS (ECE 0.004–0.011); (b) ensemble ≥ best single PASS (+0.0008…+0.0015, 3 runs/2 seeds); (c) consistency loss tightens estimates PASS (cosine 0.9525→0.9882); (d) direct-transport retry FAIL (structural no-op). Evidence + report: `.scratch/02-engine-m0/evidence/REPORT.md`.
 - **M1 engine extensions: DONE, merged** (ticket 03, review APPROVE round 2 after fixing a P0 decode-retry position bug + 4 P1s). 27 tests green. Transports linear/soft, dense early-exit supervision, eviction+anchors, stage-4 token retry, KV-cache decode (per-layer caches, exit threshold, prob0 retry), full eval battery, configs/*.json. Base scale: d=256, 12 layers, mlp_mult 6 = 13.08M params (deviation recorded in experiments.md).
-- **M1 runs: RUNNING** (ticket 04) — sequential runner `.tmp/run_m1.sh` (PID log: `.scratch/04-m1-runs/evidence/runner.log`), order B0→I1→C1→C3→R1→L2→X2, ~35–60 min each, results.json per run in evidence/. Check `tail runner.log` and per-run stdout logs.
+- **M1 runs: DONE** (ticket 04) — B0 1.507 bpc (published anchor holds), I1 repair 52.8%, C1 retry +2.1pp, C3 ≈ C1, R1 token retry FAIL (ungated), L2 plateau at depth 6, X2 needle FAIL (signal starvation). Summary: `.scratch/04-m1-runs/evidence/SUMMARY.md`.
+- **M1 follow-ups: DONE** (ticket 05) — mixture re-entry implemented (design §3 amendment); C4 PASS-equal (mixture = robustness at depth, monotone to 4 rounds), C5 PASS-with-caveat (token-round catastrophe removed, −1.3pp remains; profit needs prob0-gated per-position re-embed — recorded, unscheduled), X2v2 PASS (in-window 84.9% / anchor 76.8% / beyond 0.4%), retry curves saturate ~round 3. Evidence: `.scratch/05-m1-followup/evidence/`. 33 tests green.
+- **Next:** M2 remaining main effects (I2–I4, C2, L1, L3, L4) — or prob0-gated re-embed design first (user's call).
 
 ## Key lessons (do not re-derive)
 
