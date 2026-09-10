@@ -39,8 +39,19 @@ CKPTS = {
 }
 
 
+def load_ckpt(root: str) -> PathLM:
+    # pi-lens-ignore: unchecked-throwing-call-python
+    with open(os.path.join(root, "results.json")) as f:
+        cfg = json.load(f)["config"]
+    m = PathLM(ModelConfig(**cfg["model"]), PathConfig(**cfg["path"]), vocab_size=206)
+    sd = torch.load(os.path.join(root, "model.pt"), map_location="cpu", weights_only=True)
+    m.load_state_dict(sd)
+    return m.eval().cuda()
+
+
 def load(name: str) -> PathLM:
     root = CKPTS[name]
+    # pi-lens-ignore: unchecked-throwing-call-python
     with open(os.path.join(root, "results.json")) as f:
         cfg = json.load(f)["config"]
     m = PathLM(ModelConfig(**cfg["model"]), PathConfig(**cfg["path"]), vocab_size=206)
