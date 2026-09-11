@@ -2,105 +2,149 @@
 
 One section per elastic-grammar mechanism, ordered by the design's stage map.
 Every number is a measured main effect on enwik8 (13M params, 12 layers, base
-B0 = 1.5074 bpc; Δ = clean-eval bpc tax vs B0). Evidence: `.scratch/*/evidence/`
-(tickets 04–09). Read with docs/experiments.md (the run table) — this file is
-the conclusions layer.
+B0 = 1.5074 bpc; Δ = clean-eval bpc tax vs B0; gain = what the mechanism
+buys, in its own currency). Evidence: `.scratch/*/evidence/` (tickets 04–09).
+Read with docs/experiments.md (the run table) — this file is the conclusions
+layer. Measured-gaps are stated explicitly per mechanism: a blank gain cell
+means NOT MEASURED, not zero.
 
 ## Redo (single-layer repeat, p_redo)
 
-Δ +0.044 — nearly free. Re-running a layer 10% of the time costs ~3% relative
-PPL. Cheapest depth-side element. No interference observed in combination
-(IX2's failure is attributable to shuffle, not redo). Use freely where extra
-per-layer compute is acceptable; it is the budget way to add depth adaptivity.
+Cost: Δ +0.044 — nearly free (re-running a layer 10% of the time costs ~3%
+relative PPL); no interference in the measured combination (IX2's failure is
+attributable to shuffle, not redo).
+Gain: **negligible measured so far** — no mechanism consumes a redo. Its
+theoretical payoffs (per-layer self-correction; depth-adaptive compute at the
+LAYER level) are unexploited: we never conditioned redo on layer identity, on
+confidence at that depth, or measured whether repeated layers refine their own
+output. Cheapest knob on the board; the gain column is open.
 
 ## Skip (p_skip)
 
-Δ +0.175 alone — the most expensive depth element: skipping 10% of layer
-executions costs more than any corruption type. BUT skip is the best
-test-time-scaling substrate: sampled paths give real ensemble diversity
-(bpc 1.6926 → 1.6454 at K=8, −0.047), and with diversity pressure training
-(DIVL1) both the baseline (1.6842) and the gain (−0.062) improve, breaking the
-plain-skip K=8 ceiling by 0.023. Reading: skip is expensive as insurance but
-converts to TTA capability better than anything else measured.
+Cost: Δ +0.175 — the most expensive depth element (skipping 10% of layer
+executions costs more than any corruption type).
+Gain: **the best test-time-scaling substrate measured.** Sampled paths give
+real ensemble diversity (1.6926 → 1.6454 at K=8, −0.047); with diversity-
+pressure training (DIVL1) BOTH terms improve — baseline 1.6842, gain −0.062,
+breaking the plain-skip K=8 ceiling by +0.023. Unmeasured: skip conditioned at
+run-time on per-layer confidence (adaptive skip), and FLOP-matched comparisons
+(skip should be credited per saved FLOP, not per run).
 
 ## Early exit (dense per-depth supervision, w_dense_exit)
 
-Δ +0.067; exit at confidence threshold = 1.4× decode speed at ~iso-PPL. Depth
-curve plateaus around depth 6/12 — half the stack adds ~0.003 bpc. Depth
-ENSEMBLING (averaging per-depth predictions) FAILS: early depths are strictly
-worse estimators (depth CE 1.06 → 0.74 is a 15× perplexity cliff), and the
-confidence heads rank depths, not per-token reliability — wrong signal for
-mixture weights. Reading: dense supervision buys calibrated early exits
-(deployment value), not ensemble voters.
+Cost: Δ +0.067.
+Gain: **1.4× decode speed at ~iso-PPL** (exit at confidence threshold); depth
+curve plateaus at depth ~6/12 (half the stack adds ~0.003 bpc) — the exit
+curve is shallow, so most of the speedup is nearly free of quality loss.
+Measured NEGATIVE result: depth ENSEMBLING fails (1.602 mixed vs 1.5744
+single-pass) — early depths are strictly worse estimators (depth CE 1.06 →
+0.74, a 15× perplexity cliff) and the confidence heads rank depths, not
+per-token reliability. Unmeasured: exit-threshold sweep (the 1.4× is one
+operating point), spec-decoding on top of exits.
 
 ## Shuffle (order-free layers, shuffle_locality)
 
-Δ +0.545 alone — in a class of its own; layer ORDER carries ~0.5 bpc. Hard
-boundary: trained at locality 0.5, it tolerates ≤0.5 at eval but collapses at
-full random order (3.84 bpc). Composition poison: every interaction run
-containing shuffle lands at 2.2+ bpc (IX2, IX3, INT), and it is specifically
-antagonistic with repair — the retry loop cannot refine what shuffle scrambled
-(repair drops 51% → 38%). Probable dead end for prediction quality at this
-scale, exactly as suspected; its only measured value is the (large) robustness
-it buys against layer dropout/failure scenarios, which nothing has needed yet.
+Cost: Δ +0.545 — in a class of its own; layer ORDER carries ~0.5 bpc. Hard
+boundary: trained at locality 0.5 it tolerates ≤0.5 at eval but collapses at
+full randomness (3.84). Composition poison: every combination containing
+shuffle lands at 2.2+ bpc (IX2, IX3, INT) — specifically antagonistic with
+repair (retry loop cannot refine scrambled state; repair 51% → 38%).
+Gain: **the only measured value is failure-robustness** (layer dropout/
+permuted-deployment scenarios), which nothing has needed yet. Probable dead
+end for prediction quality at this scale, exactly as suspected. Unmeasured:
+partial locality (<0.25) at 2–4× scale; order-canonicalization at eval
+(sorted execution as a free "repair to canonical order" mode).
 
 ## Future-token heads (MTP block, node k predicts t_{i+k})
 
-Infrastructure cost ~0 (always on; keeps every measured delta pure). The
-node-1 head IS the standard AR head. Extra heads (node-2, chain estimates)
-produced no clean-stream ensemble value in the probes run (n_mtp=1 everywhere;
-IX4's consistency loss on chained latents was neutral: 1.6589 ≈ C1's 1.6549).
-The heads' real payoff measured so far is indirect: they carry the confidence
-signals that gate exit/retry and the dense-exit supervision. Deeper MTP stacks
-(n_mtp ≥ 2 with spec-style self-speculative decoding) remain untested.
+Cost: ~0 (always-on infrastructure; keeps every measured delta pure).
+Gain: **indirect, measured** — the heads carry the confidence signals that
+gate early exit (calibrated by dense supervision), the retry gates, and the
+mixture votes; without them none of the elastic machinery has a control
+signal. Direct prediction-side gain: **not demonstrated** — node-2/chain
+estimates produced no ensemble value in the probes run, and the consistency
+loss on chained latents was neutral (IX4: 1.6589 ≈ C1's 1.6549).
+Measured gap: **latent-draft accept rate NEVER measured** (design §8 lists
+it; no run recorded it) — the self-speculative-decoding use of node-2
+(draft t+1+t+2 with the trunk verifying) is completely untested, as is
+cosine(predicted, actual latent) per head. This is the biggest open gain
+column on the board.
 
-## Latent retry (loop back through a transport)
+## Latent retry (loop back through a transport) — the 2×(transport × gating) matrix
 
-Δ ~+0.15 as a unit (retry requires corruption to act on; C-runs carry
-corrupt_wrong 0.15). Repair accuracy +2.0–2.5pp over the base pass at depth;
-gains saturate by round 3 (C1 dips at 4). Transport flavor does not matter:
-direct ≈ linear ≈ soft at this scale (C1 1.6549, C2 1.6621, C3 1.6578) — the
-value is the extra pass, not the return channel's geometry. Retry is a REPAIR
-mechanism, not an ensemble: averaging rounds on clean streams degrades (later
-rounds re-enter through transformed, distribution-shifted states).
+The C/R runs form a matrix: 4 transports × {ungated overwrite, mixture vote}.
+All C-runs carry corrupt_wrong 0.15 (retry is measured AS a repair unit — a
+transport without corruption has nothing to repair).
 
-## Token retry (discrete re-entry) and the mixture fix
+| Run | transport | re-entry | Δ cost | repair base→r1 | forced 4-round curve | note |
+| --- | --- | --- | --- | --- | --- | --- |
+| C1 | direct | overwrite | +0.147 | 0.507→0.528 | — | baseline loop |
+| C2 | linear | overwrite | +0.155 | 0.499→0.519 | 0.499/0.519/0.523/0.518 | saturates r3, dips r4 |
+| C3 | soft | overwrite | +0.150 | 0.496→0.521 | — | ≈ C1 — flavor irrelevant |
+| C4 | soft | **mixture** | +0.146 | 0.501→0.526 | 0.501/0.526/0.529/**0.530** | monotone, never dips |
+| C5 | none (token) | **mixture** | +0.178 | 0.500→0.431 | 0.500/0.431/0.361/0.303/**0.427** | token round recovers to −1.3pp vs base |
+| R1 | none (token) | overwrite | +0.170 | 0.513→0.467 | — | UNGATED = catastrophic |
 
-Ungated argmax re-embed (R1) is catastrophic: −4.6pp repair, ECE 0.001 → 0.015
-— wrong commits re-embed as ground-truth-looking tokens. Confidence-weighted
-mixture re-entry (design §3 amendment) removes the catastrophe (C5 v2: −1.3pp,
-ECE 0.007) and gives monotone robustness through 4 rounds (C4: 50.2→53.1%),
-but the token round still lands slightly below base on clean data. The
-remaining lever, recorded but unscheduled: prob0-gated per-position re-embed
-(rewrite only where the model itself flags doubt).
+Readings: (1) transport flavor is irrelevant — direct ≈ linear ≈ soft within
++0.01; the value is the extra pass, not the return-channel geometry. (2)
+Gating matters more than transport: mixture re-entry removes retry's failure
+modes (R1's −4.6pp → C5's −1.3pp; C4's curve monotone to r4 where C2 dips).
+(3) Retry is a REPAIR mechanism, not an ensemble: averaging rounds on clean
+streams DEGRADES (later rounds re-enter through transformed, distribution-
+shifted states). (4) L-loop × depth synergy: retry helps MORE at depth (C1's
++2.1pp at 12L vs ~0 at shallow stacks in M0) — deep stacks do not reach a
+fixed point in one pass.
+Measured gap: **latent-draft accept rate never measured** (does the retry
+round's prediction ever get "accepted" as better in a deployable gate?);
+per-position (prob0-gated) retry untested — the batch-level coin is the crude
+gating we have.
+
+## Token retry (discrete re-entry) — see matrix rows C5/R1
+
+Ungated argmax re-embed quantizes away uncertainty: wrong commits re-embed as
+ground-truth-looking tokens (R1: −4.6pp, ECE 0.001 → 0.015). Mixture vote
+(argmax of the accumulated distribution, anchor w=1) removes the catastrophe
+(C5: −1.3pp, ECE 0.007) but the token round still lands below base on clean
+data. Remaining lever, recorded but unscheduled: prob0-gated per-position
+re-embed (rewrite only where the model itself flags doubt) — needs a
+per-position accept mechanism, which is also the missing accept-rate
+measurement above.
 
 ## Input corruption (the I family) — flagged beats silent
 
-Mask replacement: Δ +0.059, repair 59.4%. Wrong-token: Δ +0.127, repair 52.8%.
+| Element | Δ cost | gain (repair acc at 15% corruption) |
+| --- | --- | --- |
+| `[mask]` replacement | +0.059 | 59.4% |
+| wrong-token | +0.127 | 52.8% |
+| embedding noise | ±0.000 | n/a (no flagged positions) |
+| pure-noise latent | +0.063 | n/a |
+
 Corruption with an explicit "I don't know" flag is BOTH cheaper and more
 repairable than silent adversarial corruption — a design input for how any
-writable-input interface should signal corruption. Embedding noise is FREE
-(±0.000); pure-noise latents (full writable-input claim) cost only +0.063.
-Retry × corruption composes sub-additively (IX1: +0.087 < 0.277 sum) — the one
-demonstrated composition win, because the mechanisms share repair machinery.
+writable-input interface should signal corruption. Noise is free (the norm
+cap geometry absorbs it); the full writable-input claim (pure noise) costs
+only ~4% relative PPL. Composition win: retry × corruption is SUB-ADDITIVE
+(IX1 mask×soft-retry: +0.087 < 0.277 sum) — the mechanisms share repair
+machinery, the one demonstrated composition gain.
 
 ## Attention distance penalty (X1) — a free regularizer
 
-Δ −0.007 (within noise but positive-signed): a low-weight locality prior costs
-nothing and slightly helps on local-structure-dominant text. Composes with
-eviction training at +0.004 total and IMPROVES the anchor channel
-(needle 76.8% → 93.3%). Per-head telemetry: mean attended distance spreads
-26–43, no head collapses to local-only. Beyond-window needle "hits" under the
-penalty are local-LM strength, NOT eviction-proof recall — do not read them as
-retention.
+Cost: Δ −0.007 (within noise but positive-signed) — the only element that
+IMPROVED clean bpc.
+Gain: composes with eviction at +0.004 total; IMPROVES the anchor channel
+(needle 76.8% → 93.3%); per-head telemetry (mean attended distance 26–43,
+no head collapses local-only). Caveat: beyond-window needle "hits" under the
+penalty are local-LM strength, NOT eviction-proof recall — do not read them
+as retention.
 
 ## Eviction + anchors (X2) — the ring-buffer deployment story
 
-Windowed attention with anchor slots trains stably without re-prefill; needle
-recall through the anchor channel reaches 76.8% (93.3% with the penalty).
-Decode with per-layer caches, early exit, and prob0-gated retry works at 1.4×
-speed. KV-cache positions stay strictly increasing across retry rounds (the
-P0-class bug class to keep testing).
+Cost: Δ +0.121 for X2's original run (v2 needle redesign: +0.058 — the
+improvement is measurement, not mechanism).
+Gain: ring-buffer decode without re-prefill works; anchor-channel needle
+recall 76.8% (93.3% with penalty); per-layer caches with early exit +
+prob0-gated retry at 1.4× speed; KV positions strictly increasing across
+retry rounds (P0-class bug class to keep testing).
 
 ## Cross-cutting laws
 
