@@ -64,12 +64,13 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str)
             continue
         opt.step(); sched.step()
         if step % 200 == 0 or step == steps - 1:
-            # pi-lens-ignore: unchecked-throwing-call-python
-            with open(log_path, "a") as f:
-                f.write(json.dumps({"step": step, "loss": round(float(loss), 4),
-                                    # pi-lens-ignore: unchecked-throwing-call-python
-                                    "lr": round(float(sched.get_last_lr()[0]), 6),
-                                    "min": round((time.time() - t0) / 60, 1)}) + "\n")
+            try:
+                with open(log_path, "a") as f:
+                    f.write(json.dumps({"step": step, "loss": round(float(loss), 4),
+                                        "lr": round(float(sched.get_last_lr()[0]), 6),
+                                        "min": round((time.time() - t0) / 60, 1)}) + "\n")
+            except OSError as e:
+                raise RuntimeError(f"cannot append train log {log_path}: {e}") from e
     return time.time() - t0
 
 
@@ -101,16 +102,20 @@ def main():
     ap.add_argument("--out-root", default=".scratch/04-m1-runs/evidence")
     args = ap.parse_args()
 
-    # pi-lens-ignore: unchecked-throwing-call-python
-    cfg = json.load(open(args.config))
+    try:
+        cfg = json.load(open(args.config))
+    except (OSError, json.JSONDecodeError) as e:
+        raise RuntimeError(f"cannot load config {args.config}: {e}") from e
     if args.steps is not None:
         cfg["train"]["steps"] = args.steps
     if args.seed is not None:
         cfg["train"]["seed"] = args.seed
 
     run_dir = os.path.join(args.out_root, args.run_name)
-    # pi-lens-ignore: unchecked-throwing-call-python
-    os.makedirs(run_dir, exist_ok=True)
+    try:
+        os.makedirs(run_dir, exist_ok=True)
+    except OSError as e:
+        raise RuntimeError(f"cannot create run dir {run_dir}: {e}") from e
     mcfg = ModelConfig(**cfg["model"])
     pcap = PathConfig(**cfg["path"])
     if pcap.reentry_mix and pcap.p_retry == 0 and pcap.p_token_retry == 0:
@@ -131,8 +136,11 @@ def main():
     results["params"] = n_params
     results["wall_minutes"] = round(wall / 60, 1)
     results["train_tokens"] = cfg["train"]["steps"] * cfg["train"]["batch_size"] * mcfg.seq_len
-    # pi-lens-ignore: unchecked-throwing-call-python
-    with open(os.path.join(run_dir, "results.json"), "w") as f:
+    try:
+        rf = open(os.path.join(run_dir, "results.json"), "w")
+    except OSError as e:
+        raise RuntimeError(f"cannot write results to {run_dir}: {e}") from e
+    with rf as f:
         json.dump(results, f, indent=2)
     print(json.dumps({k: v for k, v in results.items() if k not in ("config",)}, indent=2))
 

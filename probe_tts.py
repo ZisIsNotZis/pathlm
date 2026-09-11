@@ -40,7 +40,6 @@ CKPTS = {
 
 
 def load_ckpt(root: str) -> PathLM:
-    # pi-lens-ignore: unchecked-throwing-call-python
     with open(os.path.join(root, "results.json")) as f:
         cfg = json.load(f)["config"]
     m = PathLM(ModelConfig(**cfg["model"]), PathConfig(**cfg["path"]), vocab_size=206)
@@ -50,9 +49,7 @@ def load_ckpt(root: str) -> PathLM:
 
 
 def load(name: str) -> PathLM:
-    # pi-lens-ignore: unchecked-throwing-call-python
     root = CKPTS[name]
-    # pi-lens-ignore: unchecked-throwing-call-python
     with open(os.path.join(root, "results.json")) as f:
         cfg = json.load(f)["config"]
     m = PathLM(ModelConfig(**cfg["model"]), PathConfig(**cfg["path"]), vocab_size=206)
@@ -185,10 +182,12 @@ def main() -> None:
             print(f"T3 {name} K={k}: bpc={r['bpc']} acc={r['acc']}", flush=True)
 
     out = ".scratch/08-tts-probe/evidence/tts_results.json"
-    # pi-lens-ignore: unchecked-throwing-call-python
-    os.makedirs(".scratch/08-tts-probe/evidence", exist_ok=True)
-    # pi-lens-ignore: unchecked-throwing-call-python
-    with open(out, "w") as f:  # intended raise if the dir cannot be created
+    try:
+        os.makedirs(".scratch/08-tts-probe/evidence", exist_ok=True)
+        fout = open(out, "w")
+    except OSError as e:
+        raise RuntimeError(f"cannot write {out}: {e}") from e
+    with fout as f:
         json.dump({"anchor_b0": B0_BPC, "results": results}, f, indent=2)
     print("saved", out)
 
