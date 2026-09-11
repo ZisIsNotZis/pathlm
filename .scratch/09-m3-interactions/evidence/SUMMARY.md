@@ -3,7 +3,7 @@
 ## Interaction runs
 
 | Run | bpc | Δ vs B0 (1.5074) | Key numbers | Verdict |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | IX1 mask × repair-in-context | 1.5944 | +0.087 | repair 57.2→58.3% | ✅ SUB-ADDITIVE — cheaper than I1(+0.127)+C3(+0.150) separately; the one genuine composition win |
 | IX2 skip+exit+shuffle+redo | 2.287 | +0.780 | loc-1.0 → 3.48 | ❌ depth knobs interfere |
 | IX3 shuffle × retry | 2.2293 | +0.722 | repair 35.8→38.4% (vs C1's 51.4) | ❌ order-freeness breaks repair |
@@ -24,7 +24,7 @@ grad-norm guard. Engineering findings: reward terms need float32 + gradient
 sanity gates under bf16 autocast.
 
 | Model | K=1 | K=4 | K=8 | ensemble gain |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | L1 (plain skip) | 1.6926 | 1.6543 | 1.6454 | −0.047 |
 | **DIVL1** | **1.6842** | **1.6339** | **1.6227** | **−0.062** |
 
