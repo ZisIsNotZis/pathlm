@@ -13,11 +13,16 @@ means NOT MEASURED, not zero.
 Cost: Δ +0.044 — nearly free (re-running a layer 10% of the time costs ~3%
 relative PPL); no interference in the measured combination (IX2's failure is
 attributable to shuffle, not redo).
-Gain: **negligible measured so far** — no mechanism consumes a redo. Its
-theoretical payoffs (per-layer self-correction; depth-adaptive compute at the
-LAYER level) are unexploited: we never conditioned redo on layer identity, on
-confidence at that depth, or measured whether repeated layers refine their own
-output. Cheapest knob on the board; the gain column is open.
+Gain: **negligible measured so far** — but the with/without comparison is
+cheap and NOT yet done: (a) eval-time ablation (paths with p_redo forced to 0
+vs the trained config) — one battery re-run, no retraining; (b) the deeper
+per-layer question — does the second execution refine that layer's own
+output? — needs a probe comparing CE-through-frozen-head after 1× vs 2× on
+the same input. The theoretical payoffs (per-layer self-correction,
+depth-adaptive compute at the LAYER level) are unexploited: redo was never
+conditioned on layer identity or on confidence at that depth. Cheapest knob
+on the board; the gain column is open and now has two concrete measurement
+recipes attached.
 
 ## Skip (p_skip)
 
@@ -64,11 +69,16 @@ mixture votes; without them none of the elastic machinery has a control
 signal. Direct prediction-side gain: **not demonstrated** — node-2/chain
 estimates produced no ensemble value in the probes run, and the consistency
 loss on chained latents was neutral (IX4: 1.6589 ≈ C1's 1.6549).
-Measured gap: **latent-draft accept rate NEVER measured** (design §8 lists
-it; no run recorded it) — the self-speculative-decoding use of node-2
-(draft t+1+t+2 with the trunk verifying) is completely untested, as is
-cosine(predicted, actual latent) per head. This is the biggest open gain
-column on the board.
+Measured gap → now scheduled as the top open item: **MTP accept-rate and
+probability composition are untested.** At M0 scale (n_mtp=2) the offline
+proxy exists: node2_direct acc 0.2606, node2_chain 0.2581 (vs node-1's 0.3516;
+chance ~0.005) — node-2 drafts t_{i+2} at ~26%, a plausible spec-draft
+quality. But NO M1-scale checkpoint has n_mtp=2, and the interesting question
+is exactly the user's: does CHAINING the MTP heads and COMPOSING their
+probabilities (node-2's t_{i+2} estimate folded with node-1's t_{i+1} → t_{i+2}
+marginal) beat either head alone — measurable offline once one d=256 n_mtp=2
+run exists, plus the deployable accept-rate metric (draft verified by the
+next forward) in decode.
 
 ## Latent retry (loop back through a transport) — the 2×(transport × gating) matrix
 
@@ -94,10 +104,21 @@ streams DEGRADES (later rounds re-enter through transformed, distribution-
 shifted states). (4) L-loop × depth synergy: retry helps MORE at depth (C1's
 +2.1pp at 12L vs ~0 at shallow stacks in M0) — deep stacks do not reach a
 fixed point in one pass.
-Measured gap: **latent-draft accept rate never measured** (does the retry
-round's prediction ever get "accepted" as better in a deployable gate?);
-per-position (prob0-gated) retry untested — the batch-level coin is the crude
-gating we have.
+
+**Matrix coverage is NOT complete — the user is right.** Mixture re-entry is
+implemented for ALL transports (design §3: soft → expected embedding of S,
+linear → project the weighted latent mean, direct → weighted latent mean;
+all three pinned by test_mixture_reentry_transport_forms) but only TWO cells
+of the 2×4 were measured: C4 = soft×mixture and C5/R1 = token×{mixture,
+overwrite}. Direct×mixture and linear×mixture have never run. Given that
+gating mattered more than transport in the measured cells, the unmeasured
+mixtures are the natural next fills — and the theory sharpens it: C2's
+overwrite curve DIPS at r4 while C4's (soft×mixture) is monotone, so
+linear×mixture should also fix the dip; direct×mixture tests whether the
+weighted latent mean alone (no vocab projection) suffices. Two runs, ~10 min.
+Also still open: prob0-gated per-position re-embed (per-position accept
+decisions instead of the batch-level coin) — the deployable form of "gating
+matters more than transport".
 
 ## Token retry (discrete re-entry) — see matrix rows C5/R1
 
