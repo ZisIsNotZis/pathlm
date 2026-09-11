@@ -50,6 +50,7 @@ def load_ckpt(root: str) -> PathLM:
 
 
 def load(name: str) -> PathLM:
+    # pi-lens-ignore: unchecked-throwing-call-python
     root = CKPTS[name]
     # pi-lens-ignore: unchecked-throwing-call-python
     with open(os.path.join(root, "results.json")) as f:

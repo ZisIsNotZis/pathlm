@@ -1,0 +1,20 @@
+{
+  "id": "b980e520f",
+  "name": "DIVL1 v2b",
+  "command": "cd /home/z/vibe/pathlm && export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True && python3 train_m1.py DIVL1 --config configs/DIVL1.json --out-root .scratch/09-m3-interactions/evidence >> .scratch/09-m3-interactions/evidence/DIVL1v2_stdout.log 2>&1 && echo \"=== DIVL1 v2b exit 0 $(date +%H:%M:%S) ===\" >> .scratch/09-m3-interactions/evidence/runner.log && python3 -c \"\nimport sys, numpy as np\nsys.path.insert(0, '.')\nimport probe_tts as P\nblob = np.load('data/enwik8_full.npz')\nm = P.load_ckpt('.scratch/09-m3-interactions/evidence/DIVL1')\nfor k in (1, 2, 4, 8):\n    r = P.bpc_k(m, blob['val'], k)\n    print(f'DIVL1v2b K={k}: bpc={r[\\\"bpc\\\"]} acc={r[\\\"acc\\\"]}', flush=True)\" >> .scratch/09-m3-interactions/evidence/div_sweep.log 2>&1; echo \"=== DIV sweep v2b done $(date) ===\" >> .scratch/09-m3-interactions/evidence/runner.log",
+  "description": "DIVL1 v2b: retrain + K-sweep under bg_run (no nohup quirks)",
+  "status": "completed",
+  "outputPath": ".pi/tasks/session-2637850-2637850/b980e520f.output",
+  "cwd": "/home/z/vibe/pathlm",
+  "startTime": 1789099932128,
+  "endTime": 1789100152751,
+  "exitCode": 0,
+  "signal": null,
+  "pid": 3974586,
+  "bytesWritten": 0,
+  "isAgent": false,
+  "notified": true,
+  "notifyOnCompletion": true,
+  "triggerOnCompletion": true,
+  "timeoutSeconds": 7200
+}

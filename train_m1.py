@@ -53,18 +53,21 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str)
         with torch.autocast("cuda", dtype=torch.bfloat16,
                             enabled=torch.cuda.is_available()):
             loss, _ = model(x, paths, x)  # targets = the clean tokens themselves
-        if not torch.isfinite(loss):
-            opt.zero_grad(set_to_none=True)
-            sched.step()
-            continue  # skip diverged step (NaN guard) — do not poison the weights
         opt.zero_grad(set_to_none=True)
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        gnorm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        if not torch.isfinite(gnorm) or gnorm > 1e4:
+            # gradient explosion (observed with the negative-JS reward term):
+            # skip BEFORE opt.step — a poisoned optimizer state is unrecoverable
+            opt.zero_grad(set_to_none=True)
+            sched.step()
+            continue
         opt.step(); sched.step()
         if step % 200 == 0 or step == steps - 1:
             # pi-lens-ignore: unchecked-throwing-call-python
             with open(log_path, "a") as f:
                 f.write(json.dumps({"step": step, "loss": round(float(loss), 4),
+                                    # pi-lens-ignore: unchecked-throwing-call-python
                                     "lr": round(float(sched.get_last_lr()[0]), 6),
                                     "min": round((time.time() - t0) / 60, 1)}) + "\n")
     return time.time() - t0
