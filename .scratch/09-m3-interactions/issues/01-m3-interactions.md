@@ -1,6 +1,6 @@
 # 01 — M3 interaction runs + diversity-training probe
 
-- **Status:** claimed
+- **Status:** done
 - **Type:** experiment
 - **Blocked by:** 08-tts-probe/issues/01-test-time-scaling
 - **need-review:** true
@@ -37,3 +37,5 @@ probability divergence across the K sampled paths of the same batch.
 
 - 2026-09-10 — agent (pi) — created; claimed. Sequencing: IX runs first (config-only, zero engine risk), diversity probe second (engine change → test → run).
 - 2026-09-10 — agent — IX configs committed and IX1–IX4+INT launched. Diversity engine change shipped TDD-first (w_diversity knob, capped −JS between parallel paths, partner-path sampling; caught n_mtp=0 KeyError via existing M0 test — 36 tests). DIVL1 (p_skip 0.1 + w_diversity 0.1) queued behind the IX runs.
+- 2026-09-11 — agent — all runs complete: IX1 ✅ sub-additive (+0.087 < 0.277 sum), IX2/IX3/INT ❌ shuffle-poisoned (2.2+ bpc), IX4 ➖ neutral. DIVL1 v3 (after 2 instability-fix rounds: float32 JS, grad-norm guard): K-sweep 1.6842→1.6227, gain −0.062 > L1's −0.047, beats L1's K8 ceiling by 0.023 — **diversity mechanism confirmed, tax still dominates at 13M**. SUMMARY.md written.
+- **Status:** done
