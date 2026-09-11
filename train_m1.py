@@ -106,6 +106,7 @@ def main():
         cfg["train"]["seed"] = args.seed
 
     run_dir = os.path.join(args.out_root, args.run_name)
+    # pi-lens-ignore: unchecked-throwing-call-python
     os.makedirs(run_dir, exist_ok=True)
     mcfg = ModelConfig(**cfg["model"])
     pcap = PathConfig(**cfg["path"])
@@ -134,10 +135,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
-
-    main()
-main__":
-    main()
-
     main()
