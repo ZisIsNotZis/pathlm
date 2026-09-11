@@ -159,15 +159,19 @@ def depth_curve(model: PathLM, eval_arr, n_batches: int = 40, batch_size: int = 
     T = model.mcfg.seq_len
     rng = random.Random(2)
     generator = generator or torch.Generator().manual_seed(2)
-    curves = []
+    # With skips/redos the executed depth count VARIES per path — bucket by
+    # depth index and average each bucket (ragged-safe).
+    buckets: dict[int, list] = {}
     with eval_pc(model, corrupt_wrong=0.0, p_retry=0.0, p_token_retry=0.0,
                  w_dense_exit=1.0):  # hook must fire to record the curve
         for _ in range(n_batches):
             x, _ = batch(eval_arr, batch_size, T, generator)
             x = x.to(model.embed.weight.device)
             _, aux = model(x, [sample_path(model.pcap, rng, model.mcfg.n_layers)], x)
-            curves.append(torch.stack(aux["depth_ce"]))
-    return [round(v, 4) for v in torch.stack(curves).mean(0).tolist()]
+            for d, v in enumerate(aux["depth_ce"], start=1):
+                buckets.setdefault(d, []).append(v)
+    return [round(torch.stack(buckets[d]).mean().item(), 4)
+            for d in sorted(buckets)]
 
 
 @torch.no_grad()
