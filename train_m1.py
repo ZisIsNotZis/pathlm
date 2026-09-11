@@ -53,6 +53,10 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str)
         with torch.autocast("cuda", dtype=torch.bfloat16,
                             enabled=torch.cuda.is_available()):
             loss, _ = model(x, paths, x)  # targets = the clean tokens themselves
+        if not torch.isfinite(loss):
+            opt.zero_grad(set_to_none=True)
+            sched.step()
+            continue  # skip diverged step (NaN guard) — do not poison the weights
         opt.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -94,6 +98,7 @@ def main():
     ap.add_argument("--out-root", default=".scratch/04-m1-runs/evidence")
     args = ap.parse_args()
 
+    # pi-lens-ignore: unchecked-throwing-call-python
     cfg = json.load(open(args.config))
     if args.steps is not None:
         cfg["train"]["steps"] = args.steps
@@ -129,6 +134,10 @@ def main():
 
 
 if __name__ == "__main__":
+    main()
+
+    main()
+main__":
     main()
 
     main()
