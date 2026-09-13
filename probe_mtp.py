@@ -40,10 +40,11 @@ def main() -> None:
         _, aux = m(x, [sample_path(m.pcap, rng, m.mcfg.n_layers)], x)
         n1, n2 = aux["rounds"][0][1], aux["rounds"][0][2]
         # targets: node1 at row i predicts x[i+1]; node2 at row i predicts x[i+2]
-        t1, t2 = x[:, 1:], x[:, 2:]
-        l1 = n1["logits"][:, :-2]      # rows 0..T-3 predicting t1[i]
-        l2d = n2["logits"][:, :-2]     # node-2 direct: t2
-        l2c = n2["chain2"]["logits"][:, :-2] if "chain2" in n2 else l2d
+        t1 = x[:, 1:T - 1]             # x[i+1] for i = 0..T-3
+        t2 = x[:, 2:T]                 # x[i+2] for i = 0..T-3
+        l1 = n1["logits"][:, :T - 2]   # node-1 at rows 0..T-3
+        l2d = n2["logits"][:, :T - 2]  # node-2 direct: t2
+        l2c = n2["chain2"]["logits"][:, :T - 2] if "chain2" in n2 else l2d
         a1 = l1.argmax(-1) == t1
         a2d = l2d.argmax(-1) == t2
         a2c = l2c.argmax(-1) == t2
@@ -58,7 +59,7 @@ def main() -> None:
         draft_ok = draft.argmax(-1) == verify.argmax(-1)
         agree_draft.append(draft_ok.float().mean().item())
         # accept given node-1 was right at the verification row
-        v_right = (verify.argmax(-1) == t1[:, 1:])
+        v_right = l1.argmax(-1)[:, 1:] == t1[:, 1:]
         if v_right.any():
             accept_given_right.append(draft_ok[v_right].float().mean().item())
         # composition: P_comp(t_{i+2}) = sum_t P1(t|i+1) * P2chain(t|i)
@@ -71,7 +72,7 @@ def main() -> None:
                                            t2.reshape(-1)).item())
         ce_n2.append(F.cross_entropy(l2c.reshape(-1, m.vocab_size),
                                      t2.reshape(-1)).item())
-        ce_comp.append(F.cross_entropy(comp, t2).item())
+        ce_comp.append(-(comp.clamp_min(1e-12).log().gather(1, t2).mean()).item())
     out = {
         "acc_node1_t1": round(sum(acc1) / len(acc1), 4),
         "acc_node2_direct_t2": round(sum(acc2d) / len(acc2d), 4),
