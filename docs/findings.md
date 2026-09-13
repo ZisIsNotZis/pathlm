@@ -3,10 +3,20 @@
 One section per elastic-grammar mechanism, ordered by the design's stage map.
 Every number is a measured main effect on enwik8 (13M params, 12 layers, base
 B0 = 1.5074 bpc; Δ = clean-eval bpc tax vs B0; gain = what the mechanism
-buys, in its own currency). Evidence: `.scratch/*/evidence/` (tickets 04–09).
-Read with docs/experiments.md (the run table) — this file is the conclusions
-layer. Measured-gaps are stated explicitly per mechanism: a blank gain cell
-means NOT MEASURED, not zero.
+buys, in its own currency). Evidence: `.scratch/*/evidence/` (tickets 04–09;
+ticket 11 corrects the retry matrix — read that section before quoting any
+retry number). Read with docs/experiments.md (the run table) — this file is
+the conclusions layer. Measured-gaps are stated explicitly per mechanism: a
+blank gain cell means NOT MEASURED, not zero.
+
+**Caveat on every bpc number in this file (ticket 11):** all runs are single
+or double seed, and the two variance floors are run-to-run nondeterminism
+0.0019 bpc and per-cell seed variance 0.0001–0.0138 bpc. Deltas below ~0.014
+bpc — which includes most of the retry matrix and several main effects — are
+not resolvable at this replication. All runs are also ~1.1 epochs with a
+cosine LR still mid-anneal, so every "tax" may be a convergence-rate
+difference rather than an asymptote difference; that is being measured
+(ticket 11, D5).
 
 ## Redo (single-layer repeat, p_redo)
 
@@ -88,58 +98,95 @@ The C/R runs form a matrix: 4 transports × {ungated overwrite, mixture vote}.
 All C-runs carry corrupt_wrong 0.15 (retry is measured AS a repair unit — a
 transport without corruption has nothing to repair).
 
-| Run | transport | re-entry | Δ cost | repair base→r1 | forced 4-round curve | note |
+| Run | transport | re-entry | bpc | seeds | repair base→last | forced 4-round curve |
 | --- | --- | --- | --- | --- | --- | --- |
-| C1 | direct | overwrite | +0.147 | 0.507→0.528 | — | baseline loop |
-| C2 | linear | overwrite | +0.155 | 0.499→0.519 | 0.499/0.519/0.523/0.518 | saturates r3, dips r4 |
-| C3 | soft | overwrite | +0.150 | 0.496→0.521 | — | ≈ C1 — flavor irrelevant |
-| C4 | soft | **mixture** | +0.146 | 0.501→0.526 | 0.501/0.526/0.529/**0.530** | monotone, never dips |
-| C5 | none (token) | **mixture** | +0.178 | 0.500→0.431 | 0.500/0.431/0.361/0.303/**0.427** | token round recovers to −1.3pp vs base |
-| R1 | none (token) | overwrite | +0.170 | 0.513→0.467 | — | UNGATED = catastrophic |
+| C1 | direct | overwrite | 1.6549 | 1 | 0.507→0.528 | — |
+| C1M_n1 | direct | **mixture** | 1.6645 / 1.6595 | 2 | 0.493→0.518 | 0.493/0.518/0.521/0.522 |
+| C2 | linear | overwrite | 1.6621 | 1 | 0.499→0.519 | 0.499/0.519/0.523/0.518 |
+| C2M_n1 | linear | **mixture** | 1.6548 / 1.6686 | 2 | 0.503→0.522 | 0.503/0.522/0.524/0.524 |
+| C3 | soft | overwrite | 1.6584 | 4 | 0.496→0.521 | — |
+| C4 | soft | **mixture** | 1.6535 | 1 | 0.501→0.526 | 0.501/0.526/0.529/**0.530** |
+| R1 | token | overwrite | 1.6775 | 1 | 0.513→0.467 | — |
+| C5 | token | **mixture** | 1.6856 | 1 | 0.500→0.431 | 0.500/0.431/0.361/0.303/**0.427** |
 
-Readings: (1) transport flavor is irrelevant — direct ≈ linear ≈ soft within
-+0.01; the value is the extra pass, not the return-channel geometry. (2)
-Gating matters more than transport: mixture re-entry removes retry's failure
-modes (R1's −4.6pp → C5's −1.3pp; C4's curve monotone to r4 where C2 dips).
-(3) Retry is a REPAIR mechanism, not an ensemble: averaging rounds on clean
-streams DEGRADES (later rounds re-enter through transformed, distribution-
-shifted states). (4) L-loop × depth synergy: retry helps MORE at depth (C1's
-+2.1pp at 12L vs ~0 at shallow stacks in M0) — deep stacks do not reach a
-fixed point in one pass.
+**CORRECTED (ticket 11, 2026-09-11). The cell ORDERING this section used to
+state is WITHDRAWN — read this before quoting any number in it.**
 
-**Matrix now complete (ticket 10).** Mixture re-entry is implemented for ALL
-transports (design §3; all three forms pinned by tests). Measured:
+Four defects invalidated the comparison (full detail + evidence:
+`.scratch/11-retry-matrix-validity/`):
 
-| transport × gating | overwrite | mixture |
-|---|---|---|
-| direct | C1 +0.147 | C1M **+0.194** |
-| linear | C2 +0.155 | C2M **+0.164** |
-| soft | C3 +0.150 | C4 **+0.146** |
-| token | R1 +0.170 (catastrophic repair) | C5 +0.178 (−1.3pp) |
+- **D2 — config confound.** `C1M`/`C2M` omitted `n_mtp`, defaulting to 2 while
+  every cell they were tabulated against pins 1. The knob alone costs +0.041
+  (B2 1.5481 vs B0 1.5074). Published C1M +0.194 / C2M +0.164 were therefore
+  inflated; the controls at `n_mtp: 1` are C1M_n1 1.6645/1.6595 and C2M_n1
+  1.6548/1.6686.
+- **D1 — re-entry gauge.** `_mixture_reentry` applies the stage-E `norm_cap`
+  (1.0) to stage-L states whose norm is 29–88, while `_transport(direct)`
+  returns `h` uncapped. Measured: direct/linear mixture re-entry norm 1.00 vs
+  overwrite 28.7; soft 0.90 (cap is a no-op). Direct/linear mixture cells
+  therefore measured a ~30× rescale, not a latent mean, and the reported
+  soft > linear > direct ordering is monotone in how much the cap destroys.
+- **D3 — untrained accumulator.** `p_retry` is Bernoulli, so training never
+  exceeds 2 passes; the accumulator only differs from overwrite at r≥2, i.e.
+  only in the inference-time forced `rounds=k` loop. At r=1 soft mixture and
+  soft overwrite are bit-identical (`max|d| = 23.3726, cos = 0.92109` both
+  arms), so the soft arm could not have measured mixture at training depth.
+- **D4 — variance.** Two floors, measured separately: run-to-run
+  nondeterminism 0.0019 bpc (three same-seed 6000-step runs), seed variance
+  0.0001 (C3) / 0.0050 (C1M_n1) / **0.0138** (C2M_n1). Seed variance is
+  cell-dependent and for C2M_n1 alone exceeds the entire six-cell spread.
 
-Revised readings: (a) the earlier "flavor is irrelevant" was an artifact of
-comparing overwrite cells only — WITH mixture, geometry matters: soft×mixture
-is the best cell (+0.146, monotone to r4), and both latent-mean re-entries
-(direct +0.194, linear +0.164) are PRICED WORSE than their own overwrite
-versions. Re-entrant state quality: vocab-projected (soft) preserves token
-identity; raw/projected latent means blur it, and the accumulator amplifies
-the blur. (b) Gating still matters: mixture fixes C2's r4 dip (C2M curve
-0.482/0.507/0.510/0.511, monotone) and R1's catastrophe. (c) The best retry
-configuration = soft×mixture; the worst = direct×mixture. Practical rule: if
-using mixture, re-enter through the vocab space, not the latent mean.
+Values are in the table above. All cells `n_mtp: 1`; B0 = 1.5074 is itself
+single-seed, so cell-vs-cell comparisons are B0-free but absolute Δ's carry
+B0's unknown seed variance.
+
+Revised readings (folding in what survives of the original four):
+
+1. **No ordering among the latent cells is resolvable.** They span 0.011 bpc;
+   C2M_n1's seed spread alone is 0.014, and its mixture-vs-overwrite delta
+   *reverses sign between seed 0 and seed 1* (−0.0073 → +0.0065). Withdrawn:
+   "soft×mixture is best, direct×mixture is worst" (compared confounded cells)
+   and "re-enter through vocab space, not the latent mean" (single-seed winner).
+2. **Among overwrite cells the transport flavor is unresolvable** (spread
+   0.007 bpc). That describes the data; it is not a demonstrated equality.
+   What this section supports is the value of the extra pass, not the
+   return-channel geometry.
+3. **The retry tax itself is solid**: every C cell lands 1.6535–1.6856 vs B0's
+   1.5074, i.e. +0.146…+0.178, 10–100× any measured floor. Two passes through a
+   12-layer stack with 15% corruption costs ~0.15 bpc. Quote this one.
+4. **Gating's demonstrated value is on the repair side**, not clean bpc: R1's
+   −4.6pp → C5's −1.3pp (~20× the 0.16pp repair sampling error), and the
+   forced-round curves stop dipping (C2's r4 dip 0.523→0.518 removed in
+   C2M_n1's 0.524→0.524).
+5. **What direct/linear mixture measured is a rescale**, so those cells are not
+   evidence against latent-mean mixing in principle — only against this gauge.
+6. **Retry is a repair mechanism, not an ensemble**: averaging rounds on clean
+   streams degrades; later rounds re-enter through transformed, distribution-
+   shifted states.
+7. **L-loop × depth synergy**: retry helps more at depth (C1's +2.1pp at 12L vs
+   ~0 at shallow stacks in M0) — deep stacks do not reach a fixed point in one
+   pass.
+
 Still open: prob0-gated per-position re-embed (per-position accept decisions
-instead of the batch-level coin).
+instead of the batch-level coin); whether the retry tax in reading 3 is an
+asymptote difference or a convergence-rate difference (D5, in flight — all
+published numbers are ~1.1 epochs, and B0's train loss is still falling at the
+end).
 
 ## Token retry (discrete re-entry) — see matrix rows C5/R1
 
 Ungated argmax re-embed quantizes away uncertainty: wrong commits re-embed as
 ground-truth-looking tokens (R1: −4.6pp, ECE 0.001 → 0.015). Mixture vote
 (argmax of the accumulated distribution, anchor w=1) removes the catastrophe
-(C5: −1.3pp, ECE 0.007) but the token round still lands below base on clean
-data. Remaining lever, recorded but unscheduled: prob0-gated per-position
-re-embed (rewrite only where the model itself flags doubt) — needs a
-per-position accept mechanism, which is also the missing accept-rate
-measurement above.
+(C5: −1.3pp, ECE 0.007). These repair effects are ~3–4.5pp against a repair
+sampling error of 0.16pp (n≈98k corrupted positions) and survive ticket 11.
+The bpc side does not: R1 1.6775 and C5 1.6856 sit only 0.009–0.017 above the
+worst observed latent-transport cell (C2M_n1 seed 1, 1.6686), inside that
+cell's own 0.0138 seed spread — so "the token round lands below base on clean
+data" is suggestive, not established (single seed each). Remaining lever,
+recorded but unscheduled: prob0-gated per-position re-embed (rewrite only
+where the model itself flags doubt) — needs a per-position accept mechanism,
+which is also the missing accept-rate measurement above.
 
 ## Input corruption (the I family) — flagged beats silent
 

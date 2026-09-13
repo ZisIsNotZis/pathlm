@@ -29,7 +29,12 @@ def sample_rounds(pcap: PathConfig, rng: random.Random, n_layers: int) -> list:
     return paths
 
 
-def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str):
+def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
+          ckpt_dir: str | None = None, ckpt_every: int = 0):
+    """ckpt_every > 0 also writes model_step{step:06d}.pt every ckpt_every steps
+    (curve mode: probe_curve.py reads them for effectiveness-vs-steps). Derived
+    weights are intermediates, so ckpt_dir should stay out of git (runs/, .tmp/);
+    the committed evidence is the curve jsonl, not the weights."""
     steps, bs = tcfg["steps"], tcfg["batch_size"]
     seq = model.mcfg.seq_len
     opt = torch.optim.AdamW(model.parameters(), lr=tcfg["lr"], weight_decay=0.01)
@@ -63,6 +68,9 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str)
             sched.step()
             continue
         opt.step(); sched.step()
+        if ckpt_dir and ckpt_every > 0 and (step + 1) % ckpt_every == 0:
+            torch.save(model.state_dict(),
+                       os.path.join(ckpt_dir, f"model_step{step + 1:06d}.pt"))
         if step % 200 == 0 or step == steps - 1:
             try:
                 with open(log_path, "a") as f:
@@ -100,6 +108,11 @@ def main():
     ap.add_argument("--steps", type=int, default=None, help="override config steps (smoke tests)")
     ap.add_argument("--seed", type=int, default=None, help="override config seed")
     ap.add_argument("--out-root", default=".scratch/04-m1-runs/evidence")
+    ap.add_argument("--ckpt-every", type=int, default=0,
+                    help="also save an intermediate checkpoint every N steps (0 = final only)")
+    ap.add_argument("--ckpt-dir", default=None,
+                    help="where intermediate checkpoints go (default: <run_dir>/ckpts; "
+                         "keep it gitignored — use runs/ or .tmp/)")
     args = ap.parse_args()
 
     try:
@@ -127,8 +140,22 @@ def main():
     print(f"{args.run_name}: {n_params/1e6:.2f}M params, vocab {vocab_size}, "
           f"steps {cfg['train']['steps']}", flush=True)
 
+    ckpt_dir = None
+    if args.ckpt_every > 0:
+        ckpt_dir = args.ckpt_dir or os.path.join(run_dir, "ckpts")
+        try:
+            os.makedirs(ckpt_dir, exist_ok=True)
+        except OSError as e:
+            raise RuntimeError(f"cannot create ckpt dir {ckpt_dir}: {e}") from e
+        # derived weights must not bloat git: refuse an obvious in-repo track path
+        if ckpt_dir.startswith(run_dir) and args.ckpt_dir is None:
+            print(f"WARNING: intermediate checkpoints land in the run dir "
+                  f"({ckpt_dir}); pass --ckpt-dir under runs/ or .tmp/ to keep "
+                  f"them out of git", flush=True)
+
     log_path = os.path.join(run_dir, "train_log.jsonl")
-    wall = train(model, train_arr, cfg["train"], pcap, log_path)
+    wall = train(model, train_arr, cfg["train"], pcap, log_path,
+                 ckpt_dir=ckpt_dir, ckpt_every=args.ckpt_every)
     torch.save(model.state_dict(), os.path.join(run_dir, "model.pt"))
 
     results = run_battery(model, eval_arr, vocab_size, pcap)
