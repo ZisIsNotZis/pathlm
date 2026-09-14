@@ -101,39 +101,46 @@ by raising batch size, which needs no code change and no grouped-GEMM rewrite.
 Verdict: do not rewrite; treat batch size as the lever, with the caveat that it
 changes optimisation dynamics and therefore comparability.
 
-## D5 — effectiveness convergence (interim, partial checkpoints)
+## D5 — effectiveness convergence
 
-First run of the 24000-step horizon runs was killed by a Pi session reload (not
-a crash); it left checkpoints for B0 to step 8000 and C1/C1M_n1 to step 5000.
-Those are enough for a real early trend (`curve_*_partial.jsonl`, built with
-`probe_curve.py --batches 100`; bpc is the clean single-pass eval, so the extra
-corruption/retry loss terms do not enter it — the delta below is genuine
-generalisation gap, not training-loss bookkeeping).
+The interim answer (built from a run truncated at step 8000 by a Pi session
+reload) pointed the same way and is superseded by the full 24000-step run
+below; its curves are kept as `curve_*_partial.jsonl`.
 
-**Retry tax (C1 − B0), same 24000-step LR schedule, paired eval batches:**
+### D5 final — 24000 steps (≈4.4 epochs)
 
-| step | B0 | C1 | delta |
-|---|---|---|---|
-| 1000 | 2.2289 | 2.5926 | **+0.3637** |
-| 2000 | 1.8044 | 2.0179 | +0.2135 |
-| 3000 | 1.6920 | 1.8500 | +0.1580 |
-| 4000 | 1.6281 | 1.7768 | +0.1487 |
-| 5000 | 1.5902 | 1.7287 | **+0.1385** |
+24000 steps ≈ 4.4 epochs, one shared 24000-step LR cosine, ckpt-every 1000,
+`setsid nohup`-detached, ~32–41 min per run. bpc via `probe_curve.py
+--batches 100` on identical eval batches for both configs (paired). Results in
+`B0long/`, `C1long/`, `C1M_n1long/`; curves in `curve_*_long.jsonl`.
 
-`|Δ_last|/|Δ_first| = 0.38`, and the per-1000-step decrements are
-−0.150, −0.056, −0.009, −0.010 — a fast early collapse followed by a
-near-plateau around +0.14. So a substantial part of the published +0.147 tax is
-a **convergence-rate difference**, but it does not (yet) look like it decays to
-zero: the annealed tail (steps 18000–24000) decides whether the asymptote is
-~0.13 or much smaller. Unresolved until the relaunch completes.
+**Retry tax (C1 − B0), pre-D1/D3 engine — the published configuration:**
 
-**Mixture delta (C1M_n1 − C1)**: +0.0009, +0.0047, +0.0031, +0.0154, +0.0132 —
-no monotone trend, fluctuating across a 0.015 range. Consistent with the D4
-conclusion that the direct-mixture penalty is at the noise level.
+| step | 1000 | 2000 | 3000 | 5000 | 10000 | 20000 | 24000 |
+|---|---|---|---|---|---|---|---|
+| Δ | +0.3644 | +0.2166 | +0.1498 | +0.1385 | +0.1325 | +0.1239 | **+0.1217** |
 
-Caveat: n=1 seed per cell, 100-batch bpc subset. The delta is paired (identical
-eval batches for both configs), which suppresses eval-sampling noise but not
-seed variance.
+`|Δ_last|/|Δ_first| = 0.33`, and the curve **plateaus**: flat at +0.12–0.13
+from step 3000 onward, with only a slow drift down thereafter. So the retry tax
+is REAL, not a convergence-rate artifact — but ~20% smaller than the published
+1.1-epoch +0.147.
+
+**The more important number: B0 itself.** 1.5074 bpc at 1.1 epochs → **1.3459
+at 4.4 epochs**. Every tax in findings.md is a 1.1-epoch snapshot and therefore
+an **upper bound** on the asymptote; the rank ordering may survive, the
+absolute values do not.
+
+**Mixture delta (C1M_n1 − C1)**: −0.0046 → +0.0073, oscillating, no trend —
+noise level, consistent with D4.
+
+**Forced-round repair at 24000 steps**: C1 dips at r4 (0.5893 → 0.5893 →
+0.5903 → 0.5875); C1M_n1 monotone (0.5907 → 0.5928 → 0.5933). The r4-dip
+removal claim survives. Separately, pushing C1M_n1 to far-forced rounds in the
+curve probe collapses repair (0.578 → 0.231) — the accumulator is untrained
+past its trained depth (r≤1 here), which is D3's point made visible.
+
+Caveat: n=1 seed per cell; bpc is a 100-batch subset (paired, so cell-vs-cell
+deltas are clean, but absolute values are noisier than the 200-batch battery).
 
 ## GPU note
 

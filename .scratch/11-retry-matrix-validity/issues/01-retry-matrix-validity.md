@@ -121,7 +121,15 @@ not a vocab projection.
       with a `cap_norm` hiding it. Any change invalidates C2/C2M and needs
       re-measurement. `E E^T` is 206x206 here, so the inverse is cheap, but it
       must be cached, not recomputed per forward.
-- [ ] D5 resolved: effectiveness convergence measured — the delta between two
+- [x] D5 resolved (pre-fix engine, the published configuration). 24000 steps:
+      retry tax +0.3644 (1000) → +0.1217 (24000), |Δlast|/|Δfirst| = 0.33,
+      plateauing ~+0.12–0.13 from step 3000. B0 1.3459 at 4.4 epochs vs 1.5074
+      at 1.1. Opinions: the tax is real, ~20% smaller than the published
+      number; every findings.md tax is a 1.1-epoch upper bound. Mixture delta
+      (C1M_n1−C1) −0.0046 → +0.0073, no trend (D4). C1 dips at r4 (0.5903 →
+      0.5875), C1M_n1 monotone (0.5928 → 0.5933). Curves: evidence/curve_*_long
+      (to be copied). NOTE this is the pre-D1/D3 engine — the fixed engine is
+      unmeasured and changes retry depth. — the delta between two
       cells tracked over a 4× training horizon (24000 steps, shared LR
       schedule, ckpt-every 1000) via `probe_curve.py --compare`. A delta whose
       |Δ_last|/|Δ_first| → 0 is a convergence-rate difference, not a tax, and
@@ -154,6 +162,13 @@ not a vocab projection.
   and are promoted here on completion (weights stay out of git — 31 committed
   `model.pt` blobs already account for ~1.6 GB of `.git`, recorded as tech
   debt; removal is a history rewrite and therefore user-gated).
+- 2026-09-11 — agent (pi) — D5 complete (pre-fix engine, 24000 steps, shared
+  schedule). Retry tax plateaus rather than vanishing: +0.3644 (step 1000) →
+  +0.1217 (step 24000), |last|/|first| = 0.33, flat ~+0.12–0.13 from step 3000.
+  B0 1.3459 (4.4 ep) vs 1.5074 (1.1 ep). So the element-tax law holds as a
+  rank, but every published absolute tax is a 1.1-epoch overstatement of
+  ~20%. Mixture delta stays noise-level. This run predates D1/D3, so it
+  specifies the configuration under test; the fixed engine is unmeasured.
 - 2026-09-11 — agent (pi) — D6 found while validating D1 empirically. The D1
   fix was confirmed on the archived checkpoint: direct mixture re-entry norm
   1.00 -> 28.72 / 36.69 / 43.10 (was clamped to the embedding cap; now the same

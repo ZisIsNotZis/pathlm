@@ -168,12 +168,15 @@ Revised readings (folding in what survives of the original four):
    pass.
 
 Still open: prob0-gated per-position re-embed (per-position accept decisions
-instead of the batch-level coin). **Reading 3 is partly a convergence-rate
-difference — interim (ticket 11 D5):** on a 24000-step schedule the retry tax
-falls +0.364 (step 1000) → +0.139 (step 5000), |Δlast|/|Δfirst| = 0.38, then
-nearly plateaus (decrements −0.150, −0.056, −0.009, −0.010). The annealed tail
-(18000–24000) decides the asymptote; until it lands, read the ~0.15 retry tax
-as an upper bound, not a floor.
+instead of the batch-level coin). **Reading 3 measured (ticket 11 D5, 24000
+steps ≈ 4.4 epochs):** the retry tax falls +0.364 (step 1000) → +0.122 (step
+24000), |Δlast|/|Δfirst| = 0.33, but it *plateaus* around +0.12–0.13 from step
+~3000 rather than decaying to zero — a real tax, ~20% smaller than the
+published 1.1-epoch +0.147. Consequence for this whole file: every published
+number is a 1.1-epoch snapshot (B0 itself: 1.5074 at 1.1 epochs vs 1.3459 at
+4.4) and is an upper bound on the asymptote. Measured on the pre-D1/D3 engine
+(Bernoulli retry, capped direct mixture) — i.e. the configuration the published
+table describes; the fixed engine changes retry depth and must be re-measured.
 
 ## Token retry (discrete re-entry) — see matrix rows C5/R1
 
