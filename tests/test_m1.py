@@ -48,14 +48,55 @@ def test_transport_soft_is_expected_embedding():
 
 
 def test_transport_linear_projects_onto_vocab_span():
-    """linear re-entry = (h @ U^T) @ U — projecting the latent onto the vocab
-    embedding span. The test pins the formula (drift protection)."""
+    """linear re-entry is the ORTHOGONAL projection onto the vocab-embedding
+    span (design §3): P = pinv(U) @ U. Pins two properties that the previous
+    implementation (U^T U, top eigenvalue 72.9) violated — idempotence and
+    non-amplification. Drift protection for ticket 11/D6."""
     m = tiny_model(PathConfig(n_mtp=1, transport="linear"))
-    h = cap_norm(torch.randn(2, 8, M1.d_model), 1.0)
+    h = torch.randn(2, 8, M1.d_model) * 5.0   # deliberately over-cap scale
     got = m._transport(h)
-    U = m.embed.weight
-    want = cap_norm((h @ U.T) @ U, 1.0)
-    assert torch.allclose(got, want, atol=1e-5), "linear transport drifted from its definition"
+    P = m._vocab_projector()
+    assert torch.allclose(P @ P, P, atol=1e-3), "projector is not idempotent"
+    spec = torch.linalg.eigvalsh(P).max().item()
+    assert abs(spec - 1.0) < 1e-3, f"projector spectral norm {spec} != 1"
+    assert got.norm(dim=-1).max().item() <= h.norm(dim=-1).max().item() + 1e-4, \
+        "projection must never amplify the latent"
+    assert torch.allclose(got, h @ P, atol=1e-4), "linear transport drifted from its definition"
+    # the projector must be cached on the embedding version, not rebuilt per call
+    v0 = m._vocab_proj_ver
+    m._transport(h); m._transport(h)
+    assert m._vocab_proj_ver == v0, "projector rebuilt without a weight update"
+
+
+def test_token_chain_conditions_node2_on_the_next_token():
+    """chain_mode='token' re-embeds t_{i+1} and re-predicts (design §3), so the
+    node-2 estimate must CHANGE when the conditioning token changes — the old
+    latent chain was provably identical to the direct head (B2: acc 0.5597 both)."""
+    m = tiny_model(PathConfig(n_mtp=2, chain_mode="token"))
+    m.eval()
+    x = torch.randint(0, 49, (2, M1.seq_len))
+    cond_a = torch.randint(0, 49, (2, M1.seq_len - 1))
+    cond_b = (cond_a + 7) % 49
+    with torch.no_grad():
+        _, aux_a = m(x, tiny_paths(m.pcap), x, condition=cond_a)
+        _, aux_b = m(x, tiny_paths(m.pcap), x, condition=cond_b)
+    c_a = aux_a["rounds"][0][1]["chain2"]["logits"]
+    c_b = aux_b["rounds"][0][1]["chain2"]["logits"]
+    assert (c_a - c_b).abs().max().item() > 1e-4, \
+        "token-conditioned chain must depend on the conditioning token"
+    # ... while the direct node-2 head must NOT depend on it
+    d_a = aux_a["rounds"][0][1]["logits"]
+    d_b = aux_b["rounds"][0][1]["logits"]
+    assert torch.allclose(d_a, d_b, atol=1e-5), "direct node-2 must not read the condition"
+    # deploy mode: the condition is node-1's argmax, not the caller's tokens
+    m.deploy_chain = True
+    with torch.no_grad():
+        _, aux_d = m(x, tiny_paths(m.pcap), x, condition=cond_a)
+    c_d = aux_d["rounds"][0][1]["chain2"]["logits"]
+    with torch.no_grad():
+        _, argmax_cond = m(x, tiny_paths(m.pcap), x, condition=None)
+    assert torch.allclose(c_d, argmax_cond["rounds"][0][1]["chain2"]["logits"], atol=1e-5), \
+        "deploy_chain must override the caller's condition with node-1's argmax"
 
 
 def test_retry_round_applies_the_transport():
@@ -296,7 +337,7 @@ def test_dense_exit_calibrates_confidence_heads():
     confs, logits0, targets = [], [], []
     orig = m._mtp_nodes
     first = [False]
-    def spy(h):
+    def spy(h, condition=None):
         nodes = orig(h)
         if first[0]:  # depth-1 call only (the dense hook fires at every depth)
             confs.append(nodes[0]["conf"].detach().cpu())
@@ -409,7 +450,7 @@ def test_mixture_reentry_transport_forms():
         # capture confs via _mtp_nodes
         node_calls = []
         orig_nodes = m._mtp_nodes
-        def node_spy(h, _orig=orig_nodes):
+        def node_spy(h, condition=None, _orig=orig_nodes):
             nodes = _orig(h)
             node_calls.append(nodes[0]["conf"].detach().sigmoid().clone())
             return nodes
@@ -501,7 +542,7 @@ def test_mixture_accumulator_end_to_end_reference():
         out, _ = _o(h, path, attn_mask=attn_mask, depth_hook=depth_hook)
         outs.append(out.detach().clone())
         return out, []
-    def node_spy(h, _o=orig_nodes):
+    def node_spy(h, condition=None, _o=orig_nodes):
         nodes = _o(h)
         confs.append(nodes[0]["conf"].detach().sigmoid().clone())
         return nodes

@@ -54,6 +54,12 @@ class PathConfig:
     p_needle: float = 0.0
     # Stage 2/3 — MTP block and return transport
     n_mtp: int = 2                 # heads k=1..n_mtp (self k=0 always present)
+    # node-2 chain conditioning: "latent" = T1 applied to the same latent
+    # (the old chain2, which produced node-2 identical to the direct head);
+    # "token" = condition node-2 on the actual t_{i+1}: re-embed the true
+    # token under teacher forcing / node-1's argmax at inference (design §3,
+    # "chain through node-1's sampled token, re-embed + re-predict").
+    chain_mode: str = "latent"
     transport: str = "none"        # "none" | "direct" | "linear" | "soft"
     p_retry: float = 0.0           # P(at least one latent-retry round) — the
                                    # count is geometric: P(n>=k) = p_retry**k,
@@ -95,6 +101,7 @@ class PathSample:
 def sample_path(cfg: PathConfig, rng: random.Random, n_layers: int) -> PathSample:
     """Sample one global path. Called once per batch during training."""
     for knob, val, allowed in (("span_mode", cfg.span_mode, ("iid",)),
+                               ("chain_mode", cfg.chain_mode, ("latent", "token")),
                                ("transport", cfg.transport, ("none", "direct", "linear", "soft"))):
         if val not in allowed:
             raise NotImplementedError(f"{knob}={val!r} not implemented (allowed: {allowed})")

@@ -113,6 +113,18 @@ class PathLM(nn.Module):
         self.transforms = nn.ModuleList(TransformHead(d) for _ in range(pcap.n_mtp))
         self.conf = nn.ModuleList(nn.Linear(d, 1) for _ in range(pcap.n_mtp + 1))
         self.conf_chain2 = nn.Linear(d, 1)  # separate head for the chained node-2 estimate
+        # Cached orthogonal projector onto the vocab-embedding row space, for the
+        # linear transport: P = pinv(U) @ U, spectral norm 1. design §3 calls the
+        # linear transport a "projection onto the vocab subspace"; the previous
+        # implementation applied U^T U (top eigenvalue 72.9 on the real embedding)
+        # and hid the blow-up behind cap_norm. Recomputed when the embedding
+        # version changes (i.e. after each optimizer step), not per call.
+        self._vocab_proj: torch.Tensor | None = None
+        self._vocab_proj_ver = -1
+        # Deployed conditional chain: when True, node-2's token condition is
+        # node-1's argmax (what inference actually has) instead of the teacher-
+        # forcing token. Never set during training.
+        self.deploy_chain = False
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, std=0.02)
@@ -183,6 +195,17 @@ class PathLM(nn.Module):
         is_anchor = j < pc.anchors
         return (causal & (in_window | is_anchor)).view(1, 1, T, T)
 
+    def _vocab_projector(self) -> torch.Tensor:
+        """Orthogonal projector onto span(U rows): P = pinv(U) @ U, [d,d],
+        symmetric, spectral norm 1 (asserted by test). Cached on the embedding's
+        version so training pays one pinv per step, not per re-entry call."""
+        U = self.embed.weight
+        ver = U._version
+        if self._vocab_proj is None or self._vocab_proj_ver != ver:
+            self._vocab_proj = (torch.linalg.pinv(U) @ U).detach()
+            self._vocab_proj_ver = ver
+        return self._vocab_proj
+
     def _reentry_gauge(self, latent: torch.Tensor | None,
                        probs: torch.Tensor | None = None) -> torch.Tensor:
         """Stage-3 re-entry transform — ONE definition shared by the overwrite
@@ -208,7 +231,10 @@ class PathLM(nn.Module):
                 probs = (latent @ U.T).softmax(-1)
             return cap_norm(probs @ U, self.mcfg.norm_cap)
         if tr == "linear":
-            return cap_norm((latent @ U.T) @ U, self.mcfg.norm_cap)
+            # TRUE vocab-span projection (design §3). The projection cannot grow
+            # the norm (||Ph|| <= ||h||), so no cap is needed here — and none is
+            # applied, matching the direct arm's uncapped latent gauge.
+            return latent @ self._vocab_projector().to(latent.dtype)
         return latent  # direct: identity, uncapped — matches overwrite exactly
 
     def _transport(self, h: torch.Tensor) -> torch.Tensor:
@@ -219,17 +245,40 @@ class PathLM(nn.Module):
 
     # ---------- stage 2 ----------
 
-    def _mtp_nodes(self, h: torch.Tensor) -> dict:
-        """One round of MTP node outputs. Node k=0 is the self estimate;
-        node k>=1 is the direct transform estimate; node 1 additionally
-        carries the chained estimate of node 2 (T1 @ T1) with its own head."""
+    def _mtp_nodes(self, h: torch.Tensor,
+                   condition: torch.Tensor | None = None) -> dict:
+        """One round of MTP node outputs. Node k=0 is the self estimate; node
+        k>=1 is the direct transform estimate; node 1 additionally carries the
+        chained estimate of node 2 with its own head.
+
+        chain_mode="token" conditions node 2 on the ACTUAL t_{i+1} (design §3:
+        "node-2 CONDITIONED on node-1's sampled token, re-embed + re-predict"):
+        `condition` holds those token ids [B, T-1] — the clean targets under
+        teacher forcing, or node-1's argmax when `deploy_chain` is set. It is
+        right-padded to T rows so row i is conditioned on t_{i+1}.
+        chain_mode="latent" keeps the old T1-on-the-same-latent form, which the
+        B2 probe showed is indistinguishable from the direct head."""
         nodes = {}
         for k in range(self.pcap.n_mtp + 1):
             latent = h if k == 0 else self.transforms[k - 1](h)
             node = {"latent": latent, "logits": latent @ self.embed.weight.T,
                     "conf": self.conf[k](latent).squeeze(-1)}
             if k == 1 and self.pcap.n_mtp >= 2:
-                chain = self.transforms[0](latent)
+                if self.pcap.chain_mode == "token":
+                    if condition is None:
+                        # no explicit condition: use node-1's own argmax
+                        condition = node["logits"].argmax(-1)[:, :h.shape[1] - 1]
+                    cond = condition
+                    if self.deploy_chain:
+                        cond = node["logits"].argmax(-1)[:, :h.shape[1] - 1]
+                    t_next = torch.cat([cond, cond[:, -1:]], dim=1)  # right-pad row T-1
+                    h_c = cap_norm(self.embed(t_next)
+                                   + self.pos_embed.weight[:h.shape[1]],
+                                   self.mcfg.norm_cap)
+                else:
+                    h_c = latent   # latent chain = T1 applied to node-1's own
+                                   # latent, i.e. the T1@T1 composition
+                chain = self.transforms[0](h_c)
                 node["chain2"] = {"latent": chain, "logits": chain @ self.embed.weight.T,
                                   "conf": self.conf_chain2(chain).squeeze(-1)}
             nodes[k] = node
@@ -248,13 +297,16 @@ class PathLM(nn.Module):
 
     # ---------- forward / loss ----------
 
-    def forward(self, tokens: torch.Tensor, paths: list[PathSample], targets: torch.Tensor):
+    def forward(self, tokens: torch.Tensor, paths: list[PathSample], targets: torch.Tensor,
+                condition: torch.Tensor | None = None):
         """tokens = the CLEAN input sequence (corruption happens internally).
         targets = the clean token stream the nodes predict into: node k of round
         r is supervised on targets[:, k:] (with targets = tokens, node k
         predicts t_{i+k}; node 0 is the self/repair estimate of the current
         token). paths: one sampled layer path per round (design: fresh
-        shuffle/skips each pass)."""
+        shuffle/skips each pass). condition: explicit t_{i+1} ids for the
+        token-mode chain (defaults to targets[:, 1:], i.e. teacher forcing; the
+        probe passes node-1's argmax via deploy_chain instead)."""
         h, corrupt_mask = self._input_latents(tokens)
         pc = self.pcap
         attn_mask = self._eviction_mask(tokens.shape[1], tokens.device)
@@ -307,7 +359,14 @@ class PathLM(nn.Module):
                 aux["attn_dist"] = torch.stack(_dists).mean(0)
             for dloss in pending_dense:
                 loss = loss + dloss
-            nodes = self._mtp_nodes(h)
+            # teacher forcing for the token-mode chain: node-2 at row i is
+            # conditioned on the TRUE t_{i+1} (targets[:, 1:]) unless the caller
+            # supplied its own condition; inference swaps in node-1's argmax via
+            # deploy_chain
+            cond = condition
+            if self.pcap.chain_mode == "token" and cond is None:
+                cond = targets[:, 1:]
+            nodes = self._mtp_nodes(h, condition=cond)
             for k, node in nodes.items():
                 tgt = targets[:, k:]
                 loss = self._node_loss(loss, node, tgt, self.vocab_size)
