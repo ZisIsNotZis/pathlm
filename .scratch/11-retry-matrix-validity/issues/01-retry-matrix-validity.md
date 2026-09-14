@@ -80,15 +80,24 @@ loss 8.6881 vs 8.6275) and land at bpc 3.3108 vs 3.3122.
 
 ## Acceptance criteria
 
-- [ ] D1 resolved: the re-entry gauge contract is decided and applied to BOTH
-      `_transport` and `_mixture_reentry` (stage-1 ⇒ both capped; stage-L ⇒
-      neither capped); a regression test pins the re-entry norm regime so a
-      stage-E cap can never be silently applied to a stage-L state again
-- [ ] D2 resolved: C1M/C2M re-run at `n_mtp: 1` recorded in evidence (done)
-      and the published table corrected; configs pin every path knob explicitly
-      rather than relying on defaults
-- [ ] D3 resolved: retry depth sampled geometrically (mean ≥ 2) so the
-      accumulator is trained at the rounds it is evaluated at
+- [x] D1 resolved: ONE shared `_reentry_gauge` now serves both `_transport` and
+      `_mixture_reentry`, so the two paths cannot drift into different gauges;
+      `direct` re-entry is the uncapped identity. Regression tests:
+      `test_mixture_and_overwrite_agree_at_round_one` (round-1 equality for every
+      transport — the invariant `direct` violated),
+      `test_direct_reentry_is_uncapped_identity`.
+- [x] D2 resolved: C1M/C2M re-run at `n_mtp: 1` recorded in evidence; the two
+      configs now pin `n_mtp: 1`; and `results.json` records the RESOLVED
+      model/path config plus `unspecified_path_keys`, so a default leak is
+      visible in the evidence instead of silent. (Every config is sparse by
+      design — only deltas from base — so the guard is visibility, not forcing
+      all 22 keys into each file.)
+- [x] D3 resolved: retry count is geometric with `P(n>=k) = p_retry**k` and a
+      `max_retries` cap — training now reaches r>=2, where the accumulator
+      differs from overwrite. Test: `test_retry_count_is_geometric_and_capped`.
+      Note this changes every `p_retry>0` config: at p=0.5 the mean retry count
+      goes 0.5 -> 1.0, so the retry runs get ~33% more expected rounds and all
+      prior retry numbers must be re-measured on the fixed engine.
 - [ ] D4 resolved: BOTH variance sources measured per cell — run-to-run
       nondeterminism (0.0019 bpc @ 6000 steps, same seed) and seed variance
       (measured 0.0001 to 0.0138 bpc, cell-dependent). Operative rule: no cell
@@ -127,6 +136,19 @@ loss 8.6881 vs 8.6275) and land at bpc 3.3108 vs 3.3122.
   and are promoted here on completion (weights stay out of git — 31 committed
   `model.pt` blobs already account for ~1.6 GB of `.git`, recorded as tech
   debt; removal is a history rewrite and therefore user-gated).
+- 2026-09-11 — agent (pi) — D1/D2/D3 implemented. `_reentry_gauge` unifies the
+  overwrite and mixture re-entry gauges (one function, so they cannot drift);
+  `direct` is the uncapped identity. `sample_path` samples retry counts
+  geometrically with `max_retries` cap. `train_m1.py` records the resolved
+  config + `unspecified_path_keys` in results.json. `configs/C1M.json` and
+  `configs/C2M.json` pin `n_mtp: 1`. 39 tests green (3 new).
+- 2026-09-11 — agent (pi) — IMPORTANT scoping note: the in-flight 24000-step
+  horizon run was started BEFORE these edits and therefore measures the
+  pre-fix engine (Bernoulli retry, capped direct mixture). That is deliberate:
+  it answers D5 about the PUBLISHED configuration (reading 3's +0.147 tax).
+  The fixed engine needs its own re-measurement — the retry cells change
+  materially under D3 (mean retry count 0.5 -> 1.0 at p=0.5), so no retry
+  number in findings.md survives as-is.
 - 2026-09-11 — agent (pi) — D5 first result (partial). The 24000-step horizon
   attempt was truncated by a Pi session reload (`bg_run` wrapper SIGTERM'd, not
   OOM); checkpoints survived to step 8000 (B0) / 5000 (C1, C1M_n1) and yielded

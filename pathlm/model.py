@@ -183,17 +183,39 @@ class PathLM(nn.Module):
         is_anchor = j < pc.anchors
         return (causal & (in_window | is_anchor)).view(1, 1, T, T)
 
-    def _transport(self, h: torch.Tensor) -> torch.Tensor:
-        """Stage-3 re-entry transform (retry rounds only). Only transforms that
-        can inject information are meaningful here; direct re-derives the same
-        fixed point (M0 gate d)."""
+    def _reentry_gauge(self, latent: torch.Tensor | None,
+                       probs: torch.Tensor | None = None) -> torch.Tensor:
+        """Stage-3 re-entry transform — ONE definition shared by the overwrite
+        transport and the mixture accumulator, so the two paths can never
+        drift into different gauges (ticket 11/D1).
+
+        Contract: the re-entry state must carry the same gauge as what the
+        corresponding OVERWRITE path feeds. The stage-E `norm_cap` belongs to
+        fresh token embeddings (its `soft` output, and the token-retry path);
+        it must never be applied to a raw depth-L latent, because the residual
+        stream runs at norm ~30-90 by depth 12 — capping it there divides the
+        state by ~30, which is a rescale, not a blend. At round 1 the mixture
+        holds a single term, so mixture and overwrite must agree exactly for
+        every transport; that equality is pinned by a test.
+
+        `probs` supplies an already-accumulated token distribution (mixture
+        path, soft transport); when None it is computed from `latent`.
+        """
         U = self.embed.weight  # [V, d], tied E=U
-        if self.pcap.transport == "linear":
-            return cap_norm((h @ U.T) @ U, self.mcfg.norm_cap)  # project onto vocab span
-        if self.pcap.transport == "soft":
-            # expected embedding under the current token distribution
-            return cap_norm((h @ U.T).softmax(-1) @ U, self.mcfg.norm_cap)
-        return h
+        tr = self.pcap.transport
+        if tr == "soft":
+            if probs is None:
+                probs = (latent @ U.T).softmax(-1)
+            return cap_norm(probs @ U, self.mcfg.norm_cap)
+        if tr == "linear":
+            return cap_norm((latent @ U.T) @ U, self.mcfg.norm_cap)
+        return latent  # direct: identity, uncapped — matches overwrite exactly
+
+    def _transport(self, h: torch.Tensor) -> torch.Tensor:
+        """Stage-3 overwrite re-entry (retry rounds only). Transforms that can
+        inject information are meaningful here; direct re-derives the same
+        fixed point (M0 gate d). Shares its gauge with `_mixture_reentry`."""
+        return self._reentry_gauge(h)
 
     # ---------- stage 2 ----------
 
@@ -347,15 +369,11 @@ class PathLM(nn.Module):
 
     def _mixture_reentry(self, mix: dict) -> torch.Tensor:
         """Re-entry state from the accumulated mixture: S = Σ w·P / Σ w is the
-        confidence-weighted distribution over tokens; per transport — soft:
-        expected embedding of S; linear: project the weighted latent mean;
-        direct: the weighted latent mean itself. All detached inputs."""
+        confidence-weighted distribution over tokens; the latent mean L_bar is
+        used by the latent transports. Gauge is decided in `_reentry_gauge`,
+        shared with the overwrite path. All inputs detached."""
         W = mix["W"]                                   # [B, T, 1]
         if self.pcap.transport == "soft":
-            S = mix["S"] / W
-            return cap_norm(S @ self.embed.weight, self.mcfg.norm_cap)
+            return self._reentry_gauge(None, mix["S"] / W)
         L_bar = mix["L"].sum(0) / W                    # weighted latent mean
-        if self.pcap.transport == "linear":
-            U = self.embed.weight
-            return cap_norm((L_bar @ U.T) @ U, self.mcfg.norm_cap)
-        return cap_norm(L_bar, self.mcfg.norm_cap)  # direct
+        return self._reentry_gauge(L_bar)

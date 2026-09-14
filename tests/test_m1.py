@@ -424,7 +424,7 @@ def test_mixture_reentry_transport_forms():
                  + w1.unsqueeze(-1) * (lats[1] @ U.T).softmax(-1)) / (w0 + w1).unsqueeze(-1)
             want = cap_norm(S @ U, 1.0)
         else:
-            want = cap_norm((lats[0] + w1.unsqueeze(-1) * lats[1]) / (w0 + w1).unsqueeze(-1), 1.0)
+            want = (lats[0] + w1.unsqueeze(-1) * lats[1]) / (w0 + w1).unsqueeze(-1)
         got = m._mixture_reentry({"W": (w0 + w1).unsqueeze(-1),
                                   "S": (w0.unsqueeze(-1) * (lats[0] @ U.T).softmax(-1)
                                         + w1.unsqueeze(-1) * (lats[1] @ U.T).softmax(-1)),
@@ -604,3 +604,62 @@ def test_diversity_loss_rewards_disagreement_with_cap():
     assert fake.grad is not None and fake.grad.item() < 0, \
         "more divergence must lower the loss (up to cap)"
     m.pcap.w_diversity = 0.0
+
+
+# ---------- ticket 11: re-entry gauge + retry depth ----------
+
+def test_mixture_and_overwrite_agree_at_round_one():
+    """D1 regression (ticket 11). At round 1 the accumulator holds exactly one
+    term, so mixture re-entry MUST equal the overwrite transport for EVERY
+    transport — otherwise a 'mixture' arm measures a rescale, not an
+    accumulation. This is the invariant the direct arm violated by applying the
+    stage-E norm_cap (1.0) to a depth-L latent (norm ~30), which was the whole
+    of the published 'direct x mixture is priced worse' effect."""
+    for tr in ("direct", "linear", "soft"):
+        m = tiny_model(PathConfig(n_mtp=1, transport=tr, p_retry=1.0,
+                                  reentry_mix=True))
+        m.eval()
+        h = torch.randn(2, M1.seq_len, M1.d_model) * 5.0   # depth-L-ish scale
+        assert h.norm(dim=-1).mean() > m.mcfg.norm_cap, "test needs an over-cap state"
+        with torch.no_grad():
+            over = m._transport(h)
+            U = m.embed.weight
+            got = m._mixture_reentry({"W": torch.ones(2, M1.seq_len, 1),
+                                      "S": (h @ U.T).softmax(-1),
+                                      "L": h.unsqueeze(0)})
+        assert torch.allclose(got, over, atol=1e-5), \
+            f"{tr}: mixture re-entry drifted from the overwrite gauge at round 1"
+
+
+def test_direct_reentry_is_uncapped_identity():
+    """The stage-E cap belongs to fresh token embeddings, never to a raw
+    depth-L latent: the residual stream runs at norm ~30-90 by depth 12, so
+    clamping it to norm_cap divides the state by ~30."""
+    m = tiny_model(PathConfig(n_mtp=1, transport="direct", p_retry=1.0))
+    m.eval()
+    h = torch.randn(2, M1.seq_len, M1.d_model) * 5.0
+    with torch.no_grad():
+        assert torch.allclose(m._transport(h), h)
+        assert torch.allclose(m._mixture_reentry(
+            {"W": torch.ones(2, M1.seq_len, 1), "S": None, "L": h.unsqueeze(0)}), h)
+
+
+def test_retry_count_is_geometric_and_capped():
+    """D3 (ticket 11). design §7 asks for SAMPLED retry counts, not a coin
+    flip: P(n>=1) = p_retry (matching the old Bernoulli's P(retry)), and
+    P(n>=k) = p_retry**k so training actually reaches the rounds where the
+    mixture accumulator differs from overwrite (r>=2). Capped so p_retry=1.0
+    cannot loop forever."""
+    cfg = PathConfig(n_mtp=1, transport="soft", p_retry=0.5)
+    rng = random.Random(0)
+    counts = [sample_path(cfg, rng, M1.n_layers).n_retries for _ in range(4000)]
+    p0 = counts.count(0) / len(counts)
+    ge2 = sum(c >= 2 for c in counts) / len(counts)
+    assert abs(p0 - 0.5) < 0.04, f"P(n=0) should be 1-p_retry, got {p0}"
+    assert abs(ge2 - 0.25) < 0.04, f"P(n>=2) should be p_retry^2, got {ge2}"
+    assert ge2 > 0, "the old implementation could only ever emit 0 or 1 retry"
+    assert max(counts) <= cfg.max_retries
+    cfg.p_retry = 1.0
+    assert sample_path(cfg, random.Random(1), M1.n_layers).n_retries == cfg.max_retries
+    cfg.p_retry = 0.0
+    assert sample_path(cfg, random.Random(1), M1.n_layers).n_retries == 0

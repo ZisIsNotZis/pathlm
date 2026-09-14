@@ -7,6 +7,7 @@ results.json carries the full config, so each row is reproducible.
 """
 
 import argparse, json, math, os, random, sys, time
+from dataclasses import asdict
 
 import torch
 
@@ -160,6 +161,18 @@ def main():
 
     results = run_battery(model, eval_arr, vocab_size, pcap)
     results["config"] = cfg
+    # D2 (ticket 11): results.json used to record only the RAW config file, so a
+    # knob left unset silently took a PathConfig default and the leak was
+    # invisible in the evidence (this is how C1M/C2M ended up at n_mtp=2 while
+    # the rest of the table pinned 1). Record the RESOLVED config and name the
+    # keys the file did not set.
+    results["resolved"] = {"model": asdict(mcfg), "path": asdict(pcap)}
+    unspecified = sorted(set(asdict(pcap)) - set(cfg.get("path", {})))
+    results["unspecified_path_keys"] = unspecified
+    if unspecified:
+        print(f"WARNING: {args.run_name} relies on PathConfig defaults for "
+              f"{unspecified} — pin them in the config if this run is compared "
+              f"against others", flush=True)
     results["params"] = n_params
     results["wall_minutes"] = round(wall / 60, 1)
     results["train_tokens"] = cfg["train"]["steps"] * cfg["train"]["batch_size"] * mcfg.seq_len

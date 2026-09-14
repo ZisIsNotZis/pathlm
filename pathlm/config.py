@@ -55,7 +55,11 @@ class PathConfig:
     # Stage 2/3 — MTP block and return transport
     n_mtp: int = 2                 # heads k=1..n_mtp (self k=0 always present)
     transport: str = "none"        # "none" | "direct" | "linear" | "soft"
-    p_retry: float = 0.0           # P(one latent-retry round), sampled per batch
+    p_retry: float = 0.0           # P(at least one latent-retry round) — the
+                                   # count is geometric: P(n>=k) = p_retry**k,
+                                   # capped at max_retries (design §7 wants
+                                   # sampled retry counts, not a coin flip)
+    max_retries: int = 4           # cap on sampled latent-retry rounds
     # Stage 4 — token retry: discrete re-entry (re-embed the self node's
     # predicted correction, re-run the stack). One coin per batch.
     p_token_retry: float = 0.0
@@ -116,7 +120,9 @@ def sample_path(cfg: PathConfig, rng: random.Random, n_layers: int) -> PathSampl
     kept = [(i, r) for i, r in zip(order, repeats) if rng.random() >= cfg.p_skip]
     order = [i for i, _ in kept] or [order[0]]  # never drop the entire stack
     repeats = [r for _, r in kept]
-    n_retries = 1 if rng.random() < cfg.p_retry else 0
+    n_retries = 0
+    while n_retries < cfg.max_retries and rng.random() < cfg.p_retry:
+        n_retries += 1
     token_retry = rng.random() < cfg.p_token_retry
     return PathSample(layer_order=order, layer_repeats=repeats, n_retries=n_retries,
                       token_retry=token_retry)

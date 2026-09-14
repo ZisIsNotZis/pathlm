@@ -139,7 +139,11 @@ def test_sample_rounds_gives_each_round_its_own_path():
     from train_m0 import sample_rounds
     pcap = PathConfig(shuffle_locality=1.0, p_retry=1.0, n_mtp=2, transport="direct")
     rounds = sample_rounds(pcap, random.Random(0), n_layers=4)
-    assert len(rounds) == 2 and rounds[0].n_retries == 1
+    # p_retry is geometric (ticket 11/D3): p=1.0 saturates the cap, so this is
+    # 1 + max_retries paths, one fresh path per round.
+    assert len(rounds) == 1 + rounds[0].n_retries
+    assert rounds[0].n_retries >= 2, \
+        "p_retry=1.0 must exercise rounds beyond the first (where mixture differs)"
     assert rounds[0].layer_order != rounds[1].layer_order, "rounds must not share one path"
 
 
@@ -152,6 +156,7 @@ def test_sample_path_extremes():
     orders = {tuple(sample_path(PathConfig(shuffle_locality=1.0), rng, n_layers=4).layer_order)
               for _ in range(20)}
     assert len(orders) >= 10, f"locality=1 barely permutes: {orders}"
-    chaos = sample_path(PathConfig(shuffle_locality=1.0, p_skip=0.9, p_redo=0.9, p_retry=1.0, transport="direct"),
-                        rng, n_layers=2)
-    assert len(chaos.layer_order) >= 1 and chaos.n_retries == 1
+    pcap = PathConfig(shuffle_locality=1.0, p_skip=0.9, p_redo=0.9, p_retry=1.0, transport="direct")
+    chaos = sample_path(pcap, rng, n_layers=2)
+    assert len(chaos.layer_order) >= 1
+    assert chaos.n_retries == pcap.max_retries  # p_retry=1.0 saturates the cap
