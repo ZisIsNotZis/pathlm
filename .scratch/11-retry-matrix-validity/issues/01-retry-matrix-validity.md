@@ -78,6 +78,18 @@ matrix cell is single-seed. Fixed-seed training is nondeterministic: two
 identical 600-step runs (seed 0) diverge from the first logged step (step-200
 loss 8.6881 vs 8.6275) and land at bpc 3.3108 vs 3.3122.
 
+### D6 — the linear transport is not a projection (found while fixing D1)
+
+design §3 defines it as "projection onto the vocab subspace". With tied E=U,
+`(h @ U.T) @ U` applies `M = E^T E`, whose top eigenvalue is **72.9** on the
+real embedding (measured `||Mh||/||h||` = 71.7, matching). A genuine orthogonal
+projector `E^T (E E^T)^-1 E` has spectral norm exactly 1.000 (verified). So the
+linear transport amplifies by ~72x and the `cap_norm` in that branch is
+load-bearing — not a projection being clipped, but a blow-up being contained.
+This is why linear's re-entry gauge (1.0) differs from direct's (28.7): after
+the D1 fix both linear arms sit at norm 1.00, consistent with each other, but
+not a vocab projection.
+
 ## Acceptance criteria
 
 - [x] D1 resolved: ONE shared `_reentry_gauge` now serves both `_transport` and
@@ -103,6 +115,12 @@ loss 8.6881 vs 8.6275) and land at bpc 3.3108 vs 3.3122.
       (measured 0.0001 to 0.0138 bpc, cell-dependent). Operative rule: no cell
       ordering is claimed unless it survives ≥2 seeds AND |Δ| exceeds that
       cell's measured seed spread — a single global floor is not sufficient
+- [ ] D6 resolved: decide whether the linear transport should be a real
+      orthogonal projection (`E^T (E E^T)^-1 E`, spectral norm 1) or an
+      explicitly normalised scale — currently it is `E^T E` (amplifies 72x)
+      with a `cap_norm` hiding it. Any change invalidates C2/C2M and needs
+      re-measurement. `E E^T` is 206x206 here, so the inverse is cheap, but it
+      must be cached, not recomputed per forward.
 - [ ] D5 resolved: effectiveness convergence measured — the delta between two
       cells tracked over a 4× training horizon (24000 steps, shared LR
       schedule, ckpt-every 1000) via `probe_curve.py --compare`. A delta whose
@@ -136,6 +154,16 @@ loss 8.6881 vs 8.6275) and land at bpc 3.3108 vs 3.3122.
   and are promoted here on completion (weights stay out of git — 31 committed
   `model.pt` blobs already account for ~1.6 GB of `.git`, recorded as tech
   debt; removal is a history rewrite and therefore user-gated).
+- 2026-09-11 — agent (pi) — D6 found while validating D1 empirically. The D1
+  fix was confirmed on the archived checkpoint: direct mixture re-entry norm
+  1.00 -> 28.72 / 36.69 / 43.10 (was clamped to the embedding cap; now the same
+  gauge as its own layer outputs, 28.7 -> 48.4 -> 68.1). Linear is still 1.00
+  in BOTH arms — consistent, so the comparison is honest, but it exposed that
+  `(h @ U.T) @ U` = `E^T E` with top eigenvalue 72.9 is not a projection at all
+  (D6). Also: loading the archived C1M checkpoint now fails against
+  `configs/C1M.json` because that checkpoint is n_mtp=2 while the config pins 1
+  — the D2 defect reproducing itself against live artifacts; the probe sets
+  `n_mtp` explicitly for that reason.
 - 2026-09-11 — agent (pi) — D1/D2/D3 implemented. `_reentry_gauge` unifies the
   overwrite and mixture re-entry gauges (one function, so they cannot drift);
   `direct` is the uncapped identity. `sample_path` samples retry counts

@@ -8,6 +8,10 @@ def probe(run, transp, mix, n_rounds=3):
     cfg = json.load(open(f'configs/{run}.json'))
     mcfg = ModelConfig(**cfg['model']); pcap = PathConfig(**cfg['path'])
     pcap.transport = transp; pcap.reentry_mix = mix
+    # The archived C1M checkpoint was trained at the DEFAULT n_mtp=2, while
+    # configs/C1M.json now pins n_mtp=1 (ticket 11/D2). Set it explicitly so the
+    # probe does not silently depend on a default — the exact failure mode D2 fixed.
+    pcap.n_mtp = 2
     pcap.p_retry=0.0; pcap.p_token_retry=0.0; pcap.w_dense_exit=0.0
     pcap.corrupt_wrong=0.15; pcap.corrupt_mask=0.0
     model = PathLM(mcfg, pcap, 206).cuda()
