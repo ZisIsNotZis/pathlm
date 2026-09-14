@@ -47,3 +47,18 @@ to the existing table: same steps/batch/lr/seed, tokens-matched).
 ## Comments
 
 - 2026-09-11 — agent (pi) — created; claimed. GPU note: single training runs use ~20% SM (39ms/step vs ~8.6ms ideal at 40-60 TFLOPS effective) — batch-size increase would break comparability with the existing table; logged as a known efficiency debt, tokens-matched vs steps-matched caveat recorded.
+- 2026-09-11 — agent (pi) — WARNING, batch-2 T1 results invalidated. `C1M` and
+  `C2M` were run without `n_mtp` set, so `PathConfig` defaulted them to 2 while
+  every cell in the table they were added to pins 1; `B2` puts that knob at
+  +0.041 bpc, ~78% of the reported C1M/C2M penalty. Controls at n_mtp=1:
+  C1M_n1 1.6645, C2M_n1 1.6548/1.6686. On top of that, mixture re-entry
+  applied the stage-E norm cap to stage-L states (re-entry norm 1.00 vs 28.7),
+  and the accumulator is never trained past round 1 (`p_retry` is Bernoulli).
+  Full finding + evidence + corrected conclusion:
+  11-retry-matrix-validity/issues/01-retry-matrix-validity. The findings.md
+  matrix has been corrected in place; the acceptance criterion "C1M/C2M
+  results + matrix table completed in findings.md" was met but is superseded —
+  this ticket's T1 should be treated as redone, not complete.
+- 2026-09-11 — agent (pi) — process note: long runs must be launched detached
+  (`setsid nohup … &`); the harness background wrapper is killed by a Pi
+  session shutdown/reload (this truncated the first 24000-step horizon run).

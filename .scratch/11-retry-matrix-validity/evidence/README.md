@@ -101,7 +101,45 @@ by raising batch size, which needs no code change and no grouped-GEMM rewrite.
 Verdict: do not rewrite; treat batch size as the lever, with the caveat that it
 changes optimisation dynamics and therefore comparability.
 
+## D5 — effectiveness convergence (interim, partial checkpoints)
+
+First run of the 24000-step horizon runs was killed by a Pi session reload (not
+a crash); it left checkpoints for B0 to step 8000 and C1/C1M_n1 to step 5000.
+Those are enough for a real early trend (`curve_*_partial.jsonl`, built with
+`probe_curve.py --batches 100`; bpc is the clean single-pass eval, so the extra
+corruption/retry loss terms do not enter it — the delta below is genuine
+generalisation gap, not training-loss bookkeeping).
+
+**Retry tax (C1 − B0), same 24000-step LR schedule, paired eval batches:**
+
+| step | B0 | C1 | delta |
+|---|---|---|---|
+| 1000 | 2.2289 | 2.5926 | **+0.3637** |
+| 2000 | 1.8044 | 2.0179 | +0.2135 |
+| 3000 | 1.6920 | 1.8500 | +0.1580 |
+| 4000 | 1.6281 | 1.7768 | +0.1487 |
+| 5000 | 1.5902 | 1.7287 | **+0.1385** |
+
+`|Δ_last|/|Δ_first| = 0.38`, and the per-1000-step decrements are
+−0.150, −0.056, −0.009, −0.010 — a fast early collapse followed by a
+near-plateau around +0.14. So a substantial part of the published +0.147 tax is
+a **convergence-rate difference**, but it does not (yet) look like it decays to
+zero: the annealed tail (steps 18000–24000) decides whether the asymptote is
+~0.13 or much smaller. Unresolved until the relaunch completes.
+
+**Mixture delta (C1M_n1 − C1)**: +0.0009, +0.0047, +0.0031, +0.0154, +0.0132 —
+no monotone trend, fluctuating across a 0.015 range. Consistent with the D4
+conclusion that the direct-mixture penalty is at the noise level.
+
+Caveat: n=1 seed per cell, 100-batch bpc subset. The delta is paired (identical
+eval batches for both configs), which suppresses eval-sampling noise but not
+seed variance.
+
 ## GPU note
 
 Five concurrent 13M runs OOM at 23.5 GiB (~5.4–5.8 GiB each). Concurrency for
 this ticket's runs is capped at 2–3.
+
+Long runs are launched detached with `setsid nohup … &` — the harness `bg_run`
+wrapper was killed by a Pi session shutdown/reload, which is what truncated the
+first horizon attempt (checkpoints, not the wrapper, are the durable artifact).

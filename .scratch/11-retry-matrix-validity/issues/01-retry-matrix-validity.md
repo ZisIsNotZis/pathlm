@@ -127,9 +127,28 @@ loss 8.6881 vs 8.6275) and land at bpc 3.3108 vs 3.3122.
   and are promoted here on completion (weights stay out of git — 31 committed
   `model.pt` blobs already account for ~1.6 GB of `.git`, recorded as tech
   debt; removal is a history rewrite and therefore user-gated).
+- 2026-09-11 — agent (pi) — D5 first result (partial). The 24000-step horizon
+  attempt was truncated by a Pi session reload (`bg_run` wrapper SIGTERM'd, not
+  OOM); checkpoints survived to step 8000 (B0) / 5000 (C1, C1M_n1) and yielded
+  a usable early trend via `probe_curve.py`. Retry tax (C1−B0) falls +0.3637 →
+  +0.2135 → +0.1580 → +0.1487 → +0.1385 over steps 1000–5000
+  (|Δlast|/|Δfirst| = 0.38), with decelerating decrements (−0.150, −0.056,
+  −0.009, −0.010) — a large early component is convergence-rate, but it does
+  not yet trend to zero. Mixture delta (C1M_n1−C1) shows no monotone trend
+  (+0.0009…+0.0154), matching D4. Relaunched detached with `setsid nohup` for
+  the full 24000; the annealed tail decides the asymptote. Curves:
+  `evidence/curve_*_partial.jsonl`.
+- 2026-09-11 — agent (pi) — process note: long runs must be launched detached
+  (`setsid nohup … &`), not via the harness background wrapper, which a session
+  shutdown/reload kills. Checkpoints, not the wrapper, are the durable
+  artifact — which is why adding `--ckpt-every` before the long runs was worth
+  doing first.
 - 2026-09-11 — agent (pi) — model-stacking idea assessed with measurement, not
   judgement: solo 39-48 ms/step, 3-way concurrent 98-113 ms/step, aggregate
-  ~1.1-1.3x, GPU 100% util, 5.75 GB/run capping concurrency at 3-4. No idle
-  compute pool for an `(M,B,T,d)` rewrite to reclaim. Pending the batch-scaling
-  test (ms/token vs batch size) as the one measurement that could overrule
-  this.
+  ~1.1-1.3x, GPU 100% util, 5.75 GB/run capping concurrency at 3-4. Batch
+  scaling (B0, 400 steps, solo): batch 32 = 30 ms/step / 1.83 us-token, batch
+  64 = 45 ms/step / 1.37 us-token — so ~25% of per-step cost IS fixed overhead
+  (launches/Python), which means the merged-op rewrite is not useless in
+  principle. Verdict stands on cost/risk, not on impossibility: the same ~25%
+  is capturable by raising batch size, with no grouped-GEMM rewrite and no
+  correctness risk, at the price of changed optimisation dynamics.

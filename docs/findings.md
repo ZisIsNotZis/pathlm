@@ -168,10 +168,12 @@ Revised readings (folding in what survives of the original four):
    pass.
 
 Still open: prob0-gated per-position re-embed (per-position accept decisions
-instead of the batch-level coin); whether the retry tax in reading 3 is an
-asymptote difference or a convergence-rate difference (D5, in flight — all
-published numbers are ~1.1 epochs, and B0's train loss is still falling at the
-end).
+instead of the batch-level coin). **Reading 3 is partly a convergence-rate
+difference — interim (ticket 11 D5):** on a 24000-step schedule the retry tax
+falls +0.364 (step 1000) → +0.139 (step 5000), |Δlast|/|Δfirst| = 0.38, then
+nearly plateaus (decrements −0.150, −0.056, −0.009, −0.010). The annealed tail
+(18000–24000) decides the asymptote; until it lands, read the ~0.15 retry tax
+as an upper bound, not a floor.
 
 ## Token retry (discrete re-entry) — see matrix rows C5/R1
 

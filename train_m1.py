@@ -74,7 +74,7 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
         if step % 200 == 0 or step == steps - 1:
             try:
                 with open(log_path, "a") as f:
-                    f.write(json.dumps({"step": step, "loss": round(float(loss), 4),
+                    f.write(json.dumps({"step": step, "loss": round(float(loss.detach()), 4),
                                         "lr": round(float(sched.get_last_lr()[0]), 6),
                                         "min": round((time.time() - t0) / 60, 1)}) + "\n")
             except OSError as e:
