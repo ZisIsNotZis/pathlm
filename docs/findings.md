@@ -91,6 +91,16 @@ loss on chained latents was neutral (IX4: 1.6589 ≈ C1's 1.6549).
   the correct chain needs node-2 CONDITIONED on node-1's sampled token
   (re-embed + re-predict), i.e. chain2-through-embedding, not through latents.
   Recorded as the designed-but-unbuilt conditional-chain head.
+- **CONDITIONAL CHAIN BUILT AND MEASURED (ticket 12 P1, 6000 steps x 2 seeds):**
+  DeepSeek-style concat+proj (`Linear(2d,d)` on [context latent h; embed(t_{i+1})])
+  then T1. **Oracle (true t_{i+1}) t+2 acc 0.682 ≈ node-1's own t+1 acc 0.693** —
+  the information is there and the conditioning uses it. **Deploy (node-1 argmax
+  condition) 0.547 < direct 0.560**: ~31% draft error injects more noise than the
+  conditioning recovers; accept rate 0.75 ≈ direct 0.77. Verdict: mechanism sound,
+  no deployable gain at this scale — bottleneck is draft quality; re-test gated on
+  a better t+1 draft (prob0-gated retry is the candidate). k=1 draft also gives NO
+  throughput gain in greedy decode (the verify round is the next generation round);
+  throughput needs chain expansion to node-3 (unbuilt).
 
 ## Latent retry (loop back through a transport) — the 2×(transport × gating) matrix
 
@@ -177,6 +187,16 @@ number is a 1.1-epoch snapshot (B0 itself: 1.5074 at 1.1 epochs vs 1.3459 at
 4.4) and is an upper bound on the asymptote. Measured on the pre-D1/D3 engine
 (Bernoulli retry, capped direct mixture) — i.e. the configuration the published
 table describes; the fixed engine changes retry depth and must be re-measured.
+
+**FIXED-ENGINE RETRY (ticket 12 P2, 12000 steps x 2 seeds) — D1 causally
+confirmed:** on the repaired gauge the mixture run's round-2 corrupted-input
+bpc improves monotonically — 2.71 → 2.33 → 2.19 → 2.09 → 2.03 → 1.98 → 1.95 →
+**1.936** (2 seeds 1.943/1.932) — where the pre-fix engine diverged
+(3.7 → 8.5 → 32.9 → 95.2 by step 21000). Round order is now the designed one:
+r1 1.993 → r2 1.936 → r3 1.934 saturating — the retry round genuinely refines.
+The pre-fix explosion was the gauge, not the mechanism. (probe_e2e's metric is
+node-1 next-token accuracy on corrupted positions, NOT eval.repair's node-0
+self-repair; not comparable.)
 
 ## Token retry (discrete re-entry) — see matrix rows C5/R1
 
