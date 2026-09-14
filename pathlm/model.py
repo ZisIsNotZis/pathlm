@@ -281,7 +281,12 @@ class PathLM(nn.Module):
                     # the A/B.
                     cond = condition
                     if self.deploy_chain or cond is None:
-                        cond = node["logits"].argmax(-1)[:, :h.shape[1] - 1]
+                        # condition = node-1's own prediction of t_{i+1}: row i's
+                        # argmax predicts t_{i+1}. In batch training that is
+                        # rows 0..T-2 (row i reads row i's argmax); in single-
+                        # position decode T-1 == 0, so keep one row instead.
+                        n_cond = max(h.shape[1] - 1, 1)
+                        cond = node["logits"].argmax(-1)[:, :n_cond]
                     t_next = torch.cat([cond, cond[:, -1:]], dim=1)  # right-pad row T-1
                     h_c = self.chain_cat(torch.cat([h, self.embed(t_next)], dim=-1))
                 else:
