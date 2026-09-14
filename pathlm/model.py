@@ -113,7 +113,10 @@ class PathLM(nn.Module):
         self.transforms = nn.ModuleList(TransformHead(d) for _ in range(pcap.n_mtp))
         self.conf = nn.ModuleList(nn.Linear(d, 1) for _ in range(pcap.n_mtp + 1))
         self.conf_chain2 = nn.Linear(d, 1)  # separate head for the chained node-2 estimate
-        # Cached orthogonal projector onto the vocab-embedding row space, for the
+        # Deployed conditional chain: when True, node-2's token condition is
+        # node-1's argmax (what inference actually has) instead of the teacher-
+        # forcing token. Never set during training.
+        self.deploy_chain = False
         # linear transport: P = pinv(U) @ U, spectral norm 1. design §3 calls the
         # linear transport a "projection onto the vocab subspace"; the previous
         # implementation applied U^T U (top eigenvalue 72.9 on the real embedding)
@@ -121,10 +124,13 @@ class PathLM(nn.Module):
         # version changes (i.e. after each optimizer step), not per call.
         self._vocab_proj: torch.Tensor | None = None
         self._vocab_proj_ver = -1
-        # Deployed conditional chain: when True, node-2's token condition is
-        # node-1's argmax (what inference actually has) instead of the teacher-
-        # forcing token. Never set during training.
-        self.deploy_chain = False
+        # chain_cat: token-mode chain head input projection (DeepSeek-MTP
+        # pattern: the context latent concatenated with the conditioning token's
+        # embedding, projected back to d). The first token-mode implementation
+        # replaced the whole state with the bare embedding and was falsified by
+        # the A/B (oracle 0.24 vs direct 0.56 — context-free). The concat+proj
+        # form keeps context AND injects the token; W_cat learns the scale.
+        self.chain_cat = nn.Linear(2 * d, d) if pcap.chain_mode == "token" else None
         for m in self.modules():
             if isinstance(m, nn.Linear):
                 nn.init.normal_(m.weight, std=0.02)
@@ -265,16 +271,19 @@ class PathLM(nn.Module):
                     "conf": self.conf[k](latent).squeeze(-1)}
             if k == 1 and self.pcap.n_mtp >= 2:
                 if self.pcap.chain_mode == "token":
-                    if condition is None:
-                        # no explicit condition: use node-1's own argmax
-                        condition = node["logits"].argmax(-1)[:, :h.shape[1] - 1]
+                    # DeepSeek-style conditional MTP (design §3 "chain-through-
+                    # embedding"): the MAIN model's context latent h (not the
+                    # transform head's output) concatenated with the embedding
+                    # of the conditioning token t_{i+1}, projected back to d,
+                    # then the chain transform predicts t_{i+2}. Concat+proj
+                    # handles the 29x vs 1x norm mismatch; a bare re-embed (the
+                    # first attempt) dropped all context and was falsified by
+                    # the A/B.
                     cond = condition
-                    if self.deploy_chain:
+                    if self.deploy_chain or cond is None:
                         cond = node["logits"].argmax(-1)[:, :h.shape[1] - 1]
                     t_next = torch.cat([cond, cond[:, -1:]], dim=1)  # right-pad row T-1
-                    h_c = cap_norm(self.embed(t_next)
-                                   + self.pos_embed.weight[:h.shape[1]],
-                                   self.mcfg.norm_cap)
+                    h_c = self.chain_cat(torch.cat([h, self.embed(t_next)], dim=-1))
                 else:
                     h_c = latent   # latent chain = T1 applied to node-1's own
                                    # latent, i.e. the T1@T1 composition

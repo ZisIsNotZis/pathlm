@@ -41,31 +41,37 @@ clean_bpc / 吞吐)。税率只作对照列。种子方差 0.0001–0.0138/格,<
 
 ## 阶段与状态
 
-### P0 引擎(条件链 + D6 真投影)+ 测试 — [进行中]
-- [ ] `chain_mode: "latent"|"token"`;token 版重嵌入 t_{i+1} 再进 MTP
-- [ ] `_vocab_projector`(缓存,谱范数断言测试)
-- [ ] 单测;提交
+### P0 引擎(条件链 + D6 真投影)+ 测试 — [✅ 完成, commit 1fc943d]
+- [x] `chain_mode: "latent"|"token"`;token 版重嵌入 t_{i+1} 再进 MTP
+- [x] `_vocab_projector`(缓存,谱范数断言测试)
+- [x] 单测;提交(40 绿)
 
-### P1 条件链 A/B(bpc 优先)— [未开始]
-- n_mtp=2,chain_mode latent vs token,6000 步 × 2 种子 = 4 run(~15min 并发)
-- 判据:node-2 条件版 t+2 bpc/acc 是否胜过直连版 0.5597/1.5754;部署版(argmax 条件)
-  与 oracle 版的差距;spec-decode 接受率变化
-- 证据:`.scratch/12-overnight/evidence/`
+### P1 条件链 A/B(bpc 优先)— [进行中]
+- **v1 被自己的 A/B 立即证伪(用户"先想清有效性"规则的直接收益):**
+  第一版把整个状态换成裸 token embedding(embed(t_{i+1})+pos → T1),上下文全丢,
+  6000 步时 oracle 0.24 ≪ direct 0.56 —— 从单 token 预测 t+2 当然输给有 12 层
+  上下文的 direct 头。
+- **v2(DeepSeek-MTP 形态):** concat+投影 —— `chain_cat = Linear(2d,d)`,输入 =
+  **主模型上下文 latent h**(不是 transform 头的输出)拼上 `embed(t_{i+1})`,投影回 d
+  再过 T1。concat+proj 学到 29×/1× 的范数差;保留上下文 + 注入 token。
+  冒烟验证: 600 步时 oracle 0.4011 > direct 0.2811 ✓(v1 在同点位是 0.19 < 0.23)
+- 判据不变: deploy 版(argmax 条件)才是真话;oracle 只作上界;另报 spec-decode 接受率
+- 运行: CH_token_s0/s1 × 6000 步(nohup, .tmp/p1b);latent 对照复用 CH_latent_s0/s1
+  (latent 路径两次实现位相同,已由 M0 offset 测试钉住 T1@T1)
+- 证据: `.tmp/curves3/`(收尾后拷入 evidence/)
 
-### P2 修复引擎 retry,E2E + D1 因果确认 — [未开始]
-- C1 / C1M_n1 × 2 种子,12000 步(爆炸在 9000 步已到 8.5 bpc,够用),ckpt-every 1500
-- 判据:修复引擎下 C1M 的 r2 是否不再随训练爆炸(D1 因果证据);
+### P2 修复引擎 retry,E2E + D1 因果确认 — [运行中]
+- 4 run × 12000 步(爆炸在 9000 步已 8.5 bpc,12000 步够分辨): C1×2种子(对照),
+  C1M×2种子(混合), ckpt-every 1500, nohup
+- 判据: 修复引擎下 C1M 的 r2 是否不再随训练爆炸(D1 因果证据);
   E2E 台账(税 +1.98 bpc 收益是否复现)
-- 若时间够:补 24000 步一对
+- 另: C2/C2M(6000步) 重测 = D6 修复的行为确认(投影不再放大)
 
-### P3 集成 INT′(终极形态)- [未开始]
-- 全部优势元素 ON,**去掉 shuffle**(它是组合毒药,旧 INT 失败可能全因它):
-  mask+wrong 损坏、MTP(条件链)、早退、retry(mixture+prob0 门控)、
-  驱逐+锚、距离惩罚、多样性压力;24000 步 × 1-2 种子
-- 对照:B0long 24000(已有,1.3459)
-- 判据:INT′ bpc vs B0 + E2E 电池 + 解码速度。旧结论"INT 不组合"含 shuffle,
-  INT′ 是真未测问题
-- 失败也要如实记录:组合极限本身就是结论
+### P3 集成 INT′(终极形态)- [配置已暂存 .tmp/INT2.json]
+- 全部优势元素 ON,**去掉 shuffle/redo**: mask+wrong 损坏、MTP(条件链,P1 结果决定
+  token/latent)、早退、retry(mixture+几何深度)、驱逐+锚+needle、距离惩罚、多样性
+- 24000 步 × 1-2 种子,对照 B0long(1.3459@4.4ep)
+- **门控条件**: P1 的 deploy 版 ≥ direct×0.9 才用 token 链,否则退回 latent
 
 ### P4 报告 — [未开始]
 - `docs/report.md`:自解释、完整;每机制 = 受益域 | 收益类型 | 收益值 | 税 | 证据
