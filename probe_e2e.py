@@ -8,7 +8,10 @@ the operating point it was built for, and what it costs at inference.
 Per checkpoint, per retry depth n:
   bpc_round_n   node-1 CE of round n's OWN output, corrupted input — the
                 quality-vs-compute curve the tax view cannot show
-  repair_rn     self-node repair accuracy at round n (round 1 included)
+  ntok_corr     node-1 NEXT-TOKEN accuracy on corrupted positions — NOTE: this
+                is NOT the published node-0 self-repair metric (eval.repair);
+                it is the generation-quality-under-corruption view, which is
+                the E2E-relevant one. The two are not comparable.
   clean_bpc     no corruption, 1 round — the capacity-tax view
   tok_per_s     measured throughput of the 1-round and the k-round path
 
