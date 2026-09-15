@@ -1,6 +1,6 @@
 # Workspace
 
-## Status (2026-09-07)
+## Status (2026-09-14)
 
 - **Design:** frozen in `docs/design.md` (stage ring 0–4, cycles, aggregation principle, training recipe). One post-freeze amendment: shuffle-locality formula in §L (v1 was mathematically a no-op).
 - **M0 probe: DONE, merged.** Micro-model (d=64, 2L, ~1M params, enwik8-12MB). Verdicts: (a) confidence calibration PASS (ECE 0.004–0.011); (b) ensemble ≥ best single PASS (+0.0008…+0.0015, 3 runs/2 seeds); (c) consistency loss tightens estimates PASS (cosine 0.9525→0.9882); (d) direct-transport retry FAIL (structural no-op). Evidence + report: `.scratch/02-engine-m0/evidence/REPORT.md`.
@@ -11,7 +11,8 @@
 - **X1/X3: DONE** (ticket 07) — distance penalty FREE (−0.007, mild regularizer), composes with eviction (+0.004), anchor channel improves 76.8→93.3%.
 - **TTS probes: DONE** (ticket 08) — composition gain ∝ path diversity (L1 −0.047); deterministic-path checkpoints gain 0; depth/round ensembles degrade (auxiliaries are fallbacks, not voters); nothing beats B0 — taxes dominate.
 - **M3 + diversity: DONE** (ticket 09) — IX1 sub-additive win (+0.087 < 0.277 sum); composition law: shuffle is the poison (every shuffle combo lands 2.2+; order-freeness antagonizes repair); INT full grammar does not compose at 13M. DIVL1: diversity pressure (capped −JS, float32 + grad-norm guard) improves both baseline AND ensemble slope (−0.062 > −0.047, ceiling +0.023) — mechanism proven, tax still dominates at this scale.
-- **Next:** program complete through M3. Open directions (user's call): scale-up (taxes vs diversity at 2–4× size), prob0-gated re-embed, diversity weight sweep / better reward shaping.
+- **Overnight research (ticket 12):** conditional chain built+measured (oracle 0.682 ≈ node1, deploy 0.547 < direct 0.560 — draft-quality bottleneck), D1 causally confirmed (fixed-engine mixture r2 1.936 vs pre-fix 95.2), D6 fixed (true vocab projector), INT2 integration (sub-additive +0.309, corrupted-input −1.79 bpc vs B0, needle×corruption antagonism 85%→0.5%), scale probe (2.2×: tax flat, E2E gap narrows). Final report: `docs/report.md`. Verdict tree: `.scratch/11-retry-matrix-validity/VERDICTS.md`.
+- **Next:** prob0-gated per-position re-embed; node-3+ chain expansion (spec-decode throughput); dual-channel (anchor exempt from corruption) for copy+robust; conditional chain × gated-retry (draft quality); scale study with 2 seeds & wider span.
 
 ## Key lessons (do not re-derive)
 
