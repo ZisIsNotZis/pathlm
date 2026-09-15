@@ -12,6 +12,7 @@
 - **TTS probes: DONE** (ticket 08) — composition gain ∝ path diversity (L1 −0.047); deterministic-path checkpoints gain 0; depth/round ensembles degrade (auxiliaries are fallbacks, not voters); nothing beats B0 — taxes dominate.
 - **M3 + diversity: DONE** (ticket 09) — IX1 sub-additive win (+0.087 < 0.277 sum); composition law: shuffle is the poison (every shuffle combo lands 2.2+; order-freeness antagonizes repair); INT full grammar does not compose at 13M. DIVL1: diversity pressure (capped −JS, float32 + grad-norm guard) improves both baseline AND ensemble slope (−0.062 > −0.047, ceiling +0.023) — mechanism proven, tax still dominates at this scale.
 - **Overnight research (ticket 12):** conditional chain built+measured (oracle 0.682 ≈ node1, deploy 0.547 < direct 0.560 — draft-quality bottleneck), D1 causally confirmed (fixed-engine mixture r2 1.936 vs pre-fix 95.2), D6 fixed (true vocab projector), INT2 integration (sub-additive +0.309, corrupted-input −1.79 bpc vs B0, needle×corruption antagonism 85%→0.5%), scale probe (2.2×: tax flat, E2E gap narrows). Final report: `docs/report.md`. Verdict tree: `.scratch/11-retry-matrix-validity/VERDICTS.md`.
+- **Four experiments (ticket 13, fork=false subagents):** ① per-position retry gating — FALSIFIED (direct re-entry is a fixed point ⇒ vacuous; linear ~15% fire makes r2 worse; state masking saves no compute — needs sparse gather/scatter); ② anchor-exempt corruption — FALSIFIED three ways (anchor recall 0.764 → 0.016 / 0.033 / 0.035 with no exemption / positional / task-level; task-level also worsened bpc 1.680→1.997) ⇒ repair-vs-copy needs an explicit mode/channel signal; ③ n_mtp=3 + Medusa batched-verify spec decode — **POSITIVE: 1.68–1.90× measured tok/s for +0.0166 tax** (independently reproduced); ④ findings.md restructured 325→163 lines (ledger), detail in report §3.7. Two review catches: a flaky gate test (unseeded numpy) and a real `needle_acc` eval leak (`corrupt_mask` not zeroed — verdict-neutral, proven by positive control X2v2 reproducing 0.8658/0.7637).
 - **Next:** prob0-gated per-position re-embed; node-3+ chain expansion (spec-decode throughput); dual-channel (anchor exempt from corruption) for copy+robust; conditional chain × gated-retry (draft quality); scale study with 2 seeds & wider span.
 
 ## Key lessons (do not re-derive)
@@ -28,6 +29,17 @@
 - Tests: `python3 -m pytest tests/ -q` (10 tests, all fail-capable). Review gate: fresh-context subagent reads diff + spec only; two rounds were needed for M0.
 - Training runs go to background nohup with log polling; ~2.5 min per M0-size run on the RTX 4090, M1 runs est. 30–60 min.
 
-## Open decisions
+## Open decisions (for the user)
 
-- None blocking M1. (Dataset/scale/engine decided: enwik8, d=256/8L/seq512, PyTorch custom loop.)
+- **Parallel writer?** An untracked `.scratch/13-mechanism-refinement/` + stashed
+  `gate`/`gate_tau`/`corrupt_spare_anchors` work appeared mid-run from another
+  writer; stashed at `.tmp/stale_mechanism_refinement.patch`, left untracked and
+  uncommitted. Confirm whether another agent/machine is active (⇒ switch to the
+  remote/multi-writer mode) or whether it should be discarded.
+- **Docs size:** `docs/report.md` is 289 lines (the deliverable report). If the
+  200-line budget applies to it too, split into report.md + report_details.md.
+- **`.git` 1.6 GB** of committed `model.pt` blobs — removal is a history rewrite.
+- **Copy + repair coexistence** needs a designed mode/channel signal before more
+  needle work is worth running (three exemptions failed).
+- **Per-position retry** would need sparse (gather/scatter) compute to pay off —
+  a real engine change, not a knob.
