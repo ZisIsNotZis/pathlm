@@ -185,7 +185,15 @@ def needle_acc(model: PathLM, eval_arr, dists=None,
     pc = model.pcap
     generator = generator or torch.Generator().manual_seed(3)
     buckets = {"in_window": [], "beyond": [], "anchor": []}
-    with eval_pc(model, corrupt_wrong=0.0, p_retry=0.0, p_token_retry=0.0, w_dense_exit=0.0):
+    # The needle task is a COPY task: evaluating it with stage-0 corruption on
+    # would damage the very content being copied, so recall ~0 would be an
+    # artifact of the eval protocol, not a property of the model. This call used
+    # to zero corrupt_wrong only, leaking `corrupt_mask` for every run that
+    # configured it (X2C / X2C-v2 / X2Cv3 / INT2) — that leak produced the
+    # spurious "corruption destroys needle recall" verdict (ticket 13, exp 2).
+    with eval_pc(model, corrupt_wrong=0.0, corrupt_mask=0.0, p_retry=0.0,
+                 p_token_retry=0.0, w_dense_exit=0.0,
+                 perturb_noise=0.0, pure_noise=0.0):
         for _ in range(40):
             x, _, meta = needle_batch(batch_size, T, model.n_real_tokens,
                                       model.mask_token, generator, data=eval_arr,

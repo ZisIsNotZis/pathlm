@@ -33,6 +33,13 @@ class PathConfig:
     # training. Motivated by the X2C isolation: corruption training collapsed
     # needle-in-window recall from 84.9% to 0.5%. No effect when anchors == 0.
     corrupt_spare_anchors: bool = False
+    # Task-level corruption exemption: when True, needle batches (drawn with
+    # probability p_needle) are forwarded with corruption OFF. Motivated by the
+    # finding that corruption is a GLOBAL suppression of exact copying (X2C
+    # 84.9%->0.5%), which a per-position exemption (corrupt_spare_anchors) could
+    # not undo (anchor recall 1.3%->3.4%). This makes copy and repair two
+    # explicit tasks instead of one conflicting objective.
+    needle_corrupt_free: bool = False
     span_mode: str = "iid"        # "iid" | "span" (span deferred past M0)
     # Stage 1 — latent perturbation (rates per-position)
     perturb_noise: float = 0.0    # add Gaussian noise (sigma relative to norm cap)

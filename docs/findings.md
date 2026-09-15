@@ -274,7 +274,23 @@ recall 76.8% (93.3% with penalty); per-layer caches with early exit +
 prob0-gated retry at 1.4× speed; KV positions strictly increasing across
 retry rounds (P0-class bug class to keep testing).
 
-**锚区豁免损坏（ticket 13 实验 2）— 判据不成立：锚区召回 1.29% → 3.38%，远低于 50%。**
+**损坏 × 复制 = 目标冲突，三路尝试全部失败（ticket 13 实验 2）：**
+
+| 策略 | in_window | anchor | clean bpc |
+|---|---|---|---|
+| 无损坏（X2v2 基线） | 0.8658 | 0.7637 | 1.5652 |
+| 损坏，无豁免（X2C） | 0.0057 | 0.0161 | 1.6797 |
+| + 锚区位置豁免（X2C-v2，`corrupt_spare_anchors`） | 0.0062 | 0.0327 | 1.6841 |
+| + needle 批次整体豁免（X2Cv3，`needle_corrupt_free`） | 0.0505 | 0.0354 | 1.9974 |
+
+**位置豁免救回不到 4%；任务级豁免也没救回来且 bpc 恶化到 1.9974。** 结论：
+损坏鲁棒与精确复制在单模型里目标冲突，修复必须靠**显式模式/通道信号**，不能靠
+位置或批次的损坏豁免。附带在 `needle_acc` 发现并修复一个评测协议 bug（`eval_pc`
+只清了 `corrupt_wrong`，漏了 `corrupt_mask`，导致复制评测时输入仍被损坏）；已加
+可失败单测钉住；阳性对照 X2v2 复现 0.8658/0.7637 证明该 bug 对结论无影响。
+证据 `.scratch/13-four-experiments/evidence/needle_antagonism/`。
+
+（下段为第一次尝试的原始记录，保留以见过程）锚区豁免：
 新旋钮 `corrupt_spare_anchors` 把驱逐的“锚 = 可靠长程通道”原样延伸到 stage-0
 损坏（`anchors > 0` 时前 N 个位置的 `mask_pos`/`wrong_pos` 清零，返回的
 `corrupt_mask` 反映实际损坏）。6000 步 X2C-v2 对比 X2C：in_window 0.47% →

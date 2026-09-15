@@ -953,3 +953,28 @@ def test_spec_decode_window_eviction_matches_greedy():
     ref, _ = decode(m, prompt, 18, m.pcap)
     got, _ = decode_spec(m, prompt, 18, m.pcap)
     assert got == ref, f"windowed spec {got} != greedy {ref}"
+
+
+def test_needle_acc_evaluates_with_corruption_off():
+    """Regression (ticket 13, exp 2): the needle task is a COPY task, so
+    evaluating it with stage-0 corruption on damages the very content being
+    copied — recall ~0 would then be a protocol artifact, not a model property.
+    `needle_acc` used to zero corrupt_wrong but leak `corrupt_mask`, which
+    silently corrupts the eval for every run that configures it. Fail if any
+    corruption leaks into the forward."""
+    from pathlm.eval import needle_acc
+    m = tiny_model(PathConfig(n_mtp=1, window=8, anchors=2,
+                              corrupt_mask=0.9, corrupt_wrong=0.9))
+    seen = []
+    orig = m.forward
+
+    def spy(*a, **k):
+        seen.append((m.pcap.corrupt_mask, m.pcap.corrupt_wrong))
+        return orig(*a, **k)
+
+    m.forward = spy
+    data = np.random.RandomState(0).randint(0, 49, size=4000).astype(np.uint16)
+    needle_acc(m, data, batch_size=2)
+    assert seen, "needle_acc must run at least one forward"
+    assert all(cm == 0.0 and cw == 0.0 for cm, cw in seen), \
+        f"needle_acc leaked corruption into the copy eval: {sorted(set(seen))}"

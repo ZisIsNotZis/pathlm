@@ -6,7 +6,7 @@ Every metric that is meaningless for a run's config is auto-skipped; the
 results.json carries the full config, so each row is reproducible.
 """
 
-import argparse, json, math, os, random, sys, time
+import argparse, contextlib, json, math, os, random, sys, time
 from dataclasses import asdict
 
 import torch
@@ -14,7 +14,7 @@ import torch
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pathlm.config import ModelConfig, PathConfig, sample_path
 from pathlm.data import load_enwik8_full, batch, needle_batch
-from pathlm.eval import bpc, repair, depth_curve, needle_acc, decode_speed, locality_sweep
+from pathlm.eval import bpc, repair, depth_curve, needle_acc, decode_speed, locality_sweep, eval_pc
 from pathlm.model import PathLM
 
 
@@ -46,7 +46,8 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
     t0 = time.time()
     for step in range(steps):
         model.train()
-        if pcap.p_needle > 0 and rng.random() < pcap.p_needle:
+        is_needle = pcap.p_needle > 0 and rng.random() < pcap.p_needle
+        if is_needle:
             x, _, _ = needle_batch(bs, seq, model.n_real_tokens, model.mask_token,
                                    torch_rng, data=train_arr, anchors=pcap.anchors,
                                    anchor_frac=0.2, n_needles=8)
@@ -56,8 +57,13 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
         paths = sample_rounds(pcap, rng, model.mcfg.n_layers)
         # bf16 autocast: halves activation memory (the GPU is shared with a
         # resident llama-server) and speeds up base-scale training.
-        with torch.autocast("cuda", dtype=torch.bfloat16,
-                            enabled=torch.cuda.is_available()):
+        # task-level corruption exemption: needle steps train the COPY task on
+        # clean input (corruption is a global suppression of exact copying)
+        clean_needle = pcap.needle_corrupt_free and is_needle
+        ctx = (eval_pc(model, corrupt_wrong=0.0, corrupt_mask=0.0)
+               if clean_needle else contextlib.nullcontext())
+        with ctx, torch.autocast("cuda", dtype=torch.bfloat16,
+                                 enabled=torch.cuda.is_available()):
             loss, _ = model(x, paths, x)  # targets = the clean tokens themselves
         opt.zero_grad(set_to_none=True)
         loss.backward()
