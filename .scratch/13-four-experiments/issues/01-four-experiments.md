@@ -106,7 +106,7 @@ Medusa 式**批量验证**。先测前提，再决定是否写解码路径。
 | 1 | ② prob0 逐位置门控 | ✅ 完成（判据不成立） | 见下 |
 | 2 | ③ 锚区豁免损坏 | ✅ 完成（判据不成立） | 见下 |
 | 3 | ① n_mtp=3 + 批量验证 | ✅ 完成（判据成立，已实现 b） | 见下 |
-| 4 | ④ 文档重构 | 未开始 | |
+| 4 | ④ 文档重构 | ✅ 完成（无 GPU） | 见下 |
 
 ## 实验 1 裁决 — 判据不成立（工具 commit f26b405）
 
@@ -160,6 +160,22 @@ Medusa 式**批量验证**。先测前提，再决定是否写解码路径。
   判据通过**。
 - 证据 `.scratch/13-four-experiments/evidence/mtp3/`；report §3.6 与 findings
   MTP 节已更新。
+
+## 实验 4 裁决 — 完成（findings 账本化）
+
+- `docs/findings.md` 从 325 行重构为 **163 行**（预算 200）的纯结论账本：每机制
+  给出「税 | 收益 | 裁决 | 证据」，叙事与逐 run 表移到 `docs/report.md` 新增的
+  **§3.7**（retry 8 行矩阵 + D2/D3/D4 + 各机制细节）。
+- **0 条事实丢弃**：所有删减内容已归档到 report §3.7 或原有 ticket/evidence。
+  被移动的关键细节：retry 矩阵全表、D2 config 混杂、D3 accumulator、D4 方差、
+  修订读法 5（rescale 非反证）、MTP/条件链逐值、Gating 扫描逐值、
+  redo/skip/early/shuffle 的未测项与食谱、token retry ECE/采样误差。
+- 硬裁决全部保留且不软化：retry 排序撤回、1.1-epoch 上界（B0 1.5074→1.3459，
+  retry 平台 +0.122）、D1 因果确认（1.936 vs 95.2）、条件链 oracle 成/deploy 败、
+  needle×损坏三路全败（0.764→0.016/0.033/0.035，需显式通道）、shuffle/redo 死路、
+  逐位置 latent 门控证伪（需稀疏计算）、`needle_acc` bug verdict-neutral。
+- 交叉引用：`§I`/`§MTP`/`§Early`/`§Skip`/`§X1`/`§X2`/`§TTS`/`Latent retry` 锚点
+  全部保留（新增 `§TTS` 修复原有悬空引用）。`pytest` 52 绿。
 
 ## 工作区异常（需用户留意）
 

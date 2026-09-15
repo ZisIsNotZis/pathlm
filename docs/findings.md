@@ -1,325 +1,163 @@
-# Findings — what the program measured about each mechanism
+# Findings — mechanism conclusions ledger
 
-One section per elastic-grammar mechanism, ordered by the design's stage map.
-Every number is a measured main effect on enwik8 (13M params, 12 layers, base
-B0 = 1.5074 bpc; Δ = clean-eval bpc tax vs B0; gain = what the mechanism
-buys, in its own currency). Evidence: `.scratch/*/evidence/` (tickets 04–09;
-ticket 11 corrects the retry matrix — read that section before quoting any
-retry number). Read with docs/experiments.md (the run table) — this file is
-the conclusions layer. Measured-gaps are stated explicitly per mechanism: a
-blank gain cell means NOT MEASURED, not zero.
+弹性语法的逐机制结论账本（SSOT）。每机制：**税**（Δ clean bpc vs B0）|
+**收益**（各自货币）| **裁决** | 证据。叙事、中间值、逐 run 表在
+`docs/report.md`（retry 矩阵 + D2–D4 见 §3.7）；运行表 `docs/experiments.md`。
+空白 = 未测，不是 0。
 
-**Caveat on every bpc number in this file (ticket 11):** all runs are single
-or double seed, and the two variance floors are run-to-run nondeterminism
-0.0019 bpc and per-cell seed variance 0.0001–0.0138 bpc. Deltas below ~0.014
-bpc — which includes most of the retry matrix and several main effects — are
-not resolvable at this replication. All runs are also ~1.1 epochs with a
-cosine LR still mid-anneal, so every "tax" may be a convergence-rate
-difference rather than an asymptote difference; that is being measured
-(ticket 11, D5).
+- 尺度 enwik8，13M（d=256/12L）；B0 = **1.5074 bpc**（1.1 epoch 快照，
+  4.4 epoch 渐近 1.3459）。Δ = clean-eval bpc 税 vs B0。
+- 证据 `.scratch/*/evidence/`（tickets 04–09、11–13）；引用 retry 数前先读 ticket 11。
+- 所有 run 为单/双 seed；**方差**（ticket 11）：同种子 nondeterminism 0.0019；
+  per-cell 种子方差 0.0001–0.0138。**Δ < ~0.014 不可排序**（含大部分 retry 矩阵
+  与若干主效应）。
+- 所有 run ~1.1 epoch、cosine LR 仍在退火中，**税可能是收敛率差异而非渐近差异**；
+  **所有已发布绝对税是 1.1-epoch 上界**：retry 税 +0.364@1k step → +0.122@24k step，
+  ~3k 起平台，比已发布 +0.147 小 ~20%（ticket 11 D5）。
 
 ## Redo (single-layer repeat, p_redo)
 
-Cost: Δ +0.044 — nearly free (re-running a layer 10% of the time costs ~3%
-relative PPL); no interference in the measured combination (IX2's failure is
-attributable to shuffle, not redo).
-Gain: **negligible measured so far** — but the with/without comparison is
-cheap and NOT yet done: (a) eval-time ablation (paths with p_redo forced to 0
-vs the trained config) — one battery re-run, no retraining; (b) the deeper
-per-layer question — does the second execution refine that layer's own
-output? — needs a probe comparing CE-through-frozen-head after 1× vs 2× on
-the same input. The theoretical payoffs (per-layer self-correction,
-depth-adaptive compute at the LAYER level) are unexploited: redo was never
-conditioned on layer identity or on confidence at that depth. Cheapest knob
-on the board; the gain column is open and now has two concrete measurement
-recipes attached.
+- 税：Δ **+0.044**（10% 层重复 ≈ +3% 相对 PPL）；测量过的组合无干扰（IX2 失败归因 shuffle）。
+- 收益：**尚无正收益**；with/without 未做，两个食谱：(a) eval-only ablation（p_redo→0）；
+  (b) 层内自校正 probe（同输入 1× vs 2× 的 frozen-head CE）。理论收益（层内自校正、
+  层级自适应算力）从未按层身份/置信度条件化。
+- 裁决：**最便宜的旋钮，收益列开放**。
 
 ## Skip (p_skip)
 
-Cost: Δ +0.175 — the most expensive depth element (skipping 10% of layer
-executions costs more than any corruption type).
-Gain: **the best test-time-scaling substrate measured.** Sampled paths give
-real ensemble diversity (1.6926 → 1.6454 at K=8, −0.047); with diversity-
-pressure training (DIVL1) BOTH terms improve — baseline 1.6842, gain −0.062,
-breaking the plain-skip K=8 ceiling by +0.023. Unmeasured: skip conditioned at
-run-time on per-layer confidence (adaptive skip), and FLOP-matched comparisons
-(skip should be credited per saved FLOP, not per run).
+- 税：Δ **+0.175** —— 最贵的深度元素。
+- 收益：**最好的 TTS 基底**。采样路径有真实多样性（K=8 1.6926→1.6454，−0.047）；
+  多样性压力训练（DIVL1）两项同时改善：baseline 1.6842、增益 −0.062，比 plain-skip
+  K=8 上限再 +0.023。
+- 未测：按层置信度自适应 skip；FLOP-matched 比较（应按省下的 FLOP 记账）。
 
 ## Early exit (dense per-depth supervision, w_dense_exit)
 
-Cost: Δ +0.067.
-Gain: **1.4× decode speed at ~iso-PPL** (exit at confidence threshold); depth
-curve plateaus at depth ~6/12 (half the stack adds ~0.003 bpc) — the exit
-curve is shallow, so most of the speedup is nearly free of quality loss.
-Measured NEGATIVE result: depth ENSEMBLING fails (1.602 mixed vs 1.5744
-single-pass) — early depths are strictly worse estimators (depth CE 1.06 →
-0.74, a 15× perplexity cliff) and the confidence heads rank depths, not
-per-token reliability. Unmeasured: exit-threshold sweep (the 1.4× is one
-operating point), spec-decoding on top of exits.
+- 税：Δ **+0.067**。
+- 收益：**~iso-PPL 下 1.4× 解码**（按置信阈值退出）；深度曲线 ~6/12 平台（半栈仅 ~0.003 bpc）。
+- 负结果：深度**集成失败**（mixed 1.602 vs single 1.5744）——浅层严格更差（depth CE
+  1.06→0.74，15× PPL 悬崖），置信头只排序深度、不排序逐 token 可靠性。
+- 未测：退出阈值扫描（1.4× 仅一个工作点）；退出上叠 spec-decoding。
 
 ## Shuffle (order-free layers, shuffle_locality)
 
-Cost: Δ +0.545 — in a class of its own; layer ORDER carries ~0.5 bpc. Hard
-boundary: trained at locality 0.5 it tolerates ≤0.5 at eval but collapses at
-full randomness (3.84). Composition poison: every combination containing
-shuffle lands at 2.2+ bpc (IX2, IX3, INT) — specifically antagonistic with
-repair (retry loop cannot refine scrambled state; repair 51% → 38%).
-Gain: **the only measured value is failure-robustness** (layer dropout/
-permuted-deployment scenarios), which nothing has needed yet. Probable dead
-end for prediction quality at this scale, exactly as suspected. Unmeasured:
-partial locality (<0.25) at 2–4× scale; order-canonicalization at eval
-(sorted execution as a free "repair to canonical order" mode).
+- 税：Δ **+0.545** —— 独一档；层序携带 ~0.5 bpc。
+- 硬边界：locality 0.5 训练，eval ≤0.5 可容忍，全随机崩（3.84）。
+- 组合毒药：任何含 shuffle 的组合落到 2.2+ bpc（IX2/IX3/INT）；与修复拮抗（重试
+  无法精修乱序状态；repair 51%→38%）。
+- 收益：**唯一测到的是失败鲁棒性**（层 dropout/置换部署），至今无需求。
+- 裁决：**预测质量上的死路**。未测：2–4× 规模 partial locality（<0.25）；eval 时
+  order-canonicalization（排序执行当免费"修复到规范序"）。
 
 ## Future-token heads (MTP block, node k predicts t_{i+k})
 
-Cost: ~0 (always-on infrastructure; keeps every measured delta pure).
-Gain: **indirect, measured** — the heads carry the confidence signals that
-gate early exit (calibrated by dense supervision), the retry gates, and the
-mixture votes; without them none of the elastic machinery has a control
-signal. Direct prediction-side gain: **not demonstrated** — node-2/chain
-estimates produced no ensemble value in the probes run, and the consistency
-loss on chained latents was neutral (IX4: 1.6589 ≈ C1's 1.6549).
-**MEASURED (ticket 10, B2 = n_mtp=2 at M1 scale, bpc 1.5481 / Δ+0.041):**
-- node-2 drafts t_{i+2} at **55.97% accuracy** (vs node-1's 68.8% on t+1;
-  chance 0.5%) — much stronger than M0's 0.26; a real draft head.
-- **Deployable accept signal measured**: node-2's draft agrees with node-1's
-  verification 65.8% overall; **conditioned on node-1 being right, the draft
-  is accepted 77.3%** — a usable spec-decode accept rate.
-- **Naive probability composition FAILS**: folding P1(t_{i+1}) with
-  P2chain(t_{i+2}) via product-marginal gives CE 3.96 vs node-2 alone 1.58.
-  The product treats both distributions as marginals over the same variable —
-  the correct chain needs node-2 CONDITIONED on node-1's sampled token
-  (re-embed + re-predict), i.e. chain2-through-embedding, not through latents.
-  Recorded as the designed-but-unbuilt conditional-chain head.
-- **CONDITIONAL CHAIN BUILT AND MEASURED (ticket 12 P1, 6000 steps x 2 seeds):**
-  DeepSeek-style concat+proj (`Linear(2d,d)` on [context latent h; embed(t_{i+1})])
-  then T1. **Oracle (true t_{i+1}) t+2 acc 0.682 ≈ node-1's own t+1 acc 0.693** —
-  the information is there and the conditioning uses it. **Deploy (node-1 argmax
-  condition) 0.547 < direct 0.560**: ~31% draft error injects more noise than the
-  conditioning recovers; accept rate 0.75 ≈ direct 0.77. Verdict: mechanism sound,
-  no deployable gain at this scale — bottleneck is draft quality; re-test gated on
-  a better t+1 draft (prob0-gated retry is the candidate). k=1 draft also gives NO
-  throughput gain under the naive verify-next-round scheme; throughput needs
-  batched verification (below).
-- **n_mtp=3 + MEDUSA BATCHED VERIFICATION BUILT AND MEASURED (ticket 13 exp 3,
-  B3 = B2 + n_mtp 3, 6000 steps seed 0; B2fresh paired baseline):** tax of the
-  third head **+0.0166 bpc** (B3 1.5604 vs B2fresh 1.5438) — cheaper than the
-  1→2 step (+0.0407). node-3 t+3 acc 45.1%, teacher-forced cascade a₂=0.660 /
-  a₃=0.514 (conditional 0.774 / 0.621); **deployable (verifier conditioned on
-  the model's own token) a₂=0.844 / a₃|a₂=0.653 → 2.40 tokens/forward.**
-  `decode.py::decode_spec` drafts node-2..n_mtp + node-1's next token, feeds
-  them in ONE forward, verifies against node-1's argmax and truncates rejected
-  suffixes — output is bit-identical to per-position greedy (5 tests, incl.
-  forced-all-accept, forced-reject, window eviction). Measured steady-state
-  generation: **enwik8 1.68× (k=2), 1.42× (k=1); random 1.85× (k=2)**;
-  width-3 forward costs 1.28× a width-1 forward. Passes the 1.3× gate.
+- 税：always-on infra（保 Δ 纯净）；n_mtp 1→2 **+0.041**（B2 1.5481）；2→3 **+0.0166**
+  （B3 1.5604 vs B2fresh 1.5438；1→2 为 +0.0407）。
+- 收益（间接，已测）：承载全部弹性机制的控制信号（早退置信、retry 门、mixture 票）。
+- 直接预测收益：**未证实**——node-2/链估计无集成价值；consistency loss 中性
+  （IX4 1.6589 ≈ C1 1.6549）。
+- 草稿头（ticket 10）：node-2 对 t+2 acc **55.97%**（node-1 t+1 68.8%，chance 0.5%，
+  M0 仅 0.26）；与 node-1 验证一致 65.8%，**给定 node-1 正确则接受 77.3%**。朴素概率
+  复合失败（CE 3.96 vs node-2 单独 1.58），正确链需 node-2 条件在 node-1 采样 token 上。
+- **条件链（ticket 12 P1，6000步×2 seed）**：DeepSeek 式 concat+proj
+  `Linear(2d,d)([h; embed(t_{i+1})])`+T1。**oracle（真 t+1）t+2 acc 0.682 ≈ node-1 自身
+  0.693；deploy（node-1 argmax）0.547 < direct 0.560**（~31% 草稿错误），接受率
+  0.75 ≈ direct 0.77。**裁决：机制成立、此规模无部署收益，瓶颈是草稿质量**；k=1 naive
+  verify-next-round 零吞吐收益，需批量验证。
+- **n_mtp=3 + Medusa 批量验证（ticket 13 实验 3）**：`decode.py::decode_spec` 一次 forward
+  验证 node-2..n_mtp + node-1 下一 token，输出**逐位 == 逐位置贪心**（5 单测）。部署口径
+  a₂=0.844 / a₃|a₂=0.653 → 2.40 tok/forward；稳态 enwik8 **1.68×**(k=2)/1.42×(k=1)、
+  random **1.85×**(k=2)；宽度-3 前向成本仅 1.28×。**≥1.3× 判据通过。**
 
 ## Latent retry (loop back through a transport) — the 2×(transport × gating) matrix
 
-The C/R runs form a matrix: 4 transports × {ungated overwrite, mixture vote}.
-All C-runs carry corrupt_wrong 0.15 (retry is measured AS a repair unit — a
-transport without corruption has nothing to repair).
-
-| Run | transport | re-entry | bpc | seeds | repair base→last | forced 4-round curve |
-| --- | --- | --- | --- | --- | --- | --- |
-| C1 | direct | overwrite | 1.6549 | 1 | 0.507→0.528 | — |
-| C1M_n1 | direct | **mixture** | 1.6645 / 1.6595 | 2 | 0.493→0.518 | 0.493/0.518/0.521/0.522 |
-| C2 | linear | overwrite | 1.6621 | 1 | 0.499→0.519 | 0.499/0.519/0.523/0.518 |
-| C2M_n1 | linear | **mixture** | 1.6548 / 1.6686 | 2 | 0.503→0.522 | 0.503/0.522/0.524/0.524 |
-| C3 | soft | overwrite | 1.6584 | 4 | 0.496→0.521 | — |
-| C4 | soft | **mixture** | 1.6535 | 1 | 0.501→0.526 | 0.501/0.526/0.529/**0.530** |
-| R1 | token | overwrite | 1.6775 | 1 | 0.513→0.467 | — |
-| C5 | token | **mixture** | 1.6856 | 1 | 0.500→0.431 | 0.500/0.431/0.361/0.303/**0.427** |
-
-**CORRECTED (ticket 11, 2026-09-11). The cell ORDERING this section used to
-state is WITHDRAWN — read this before quoting any number in it.**
-
-Four defects invalidated the comparison (full detail + evidence:
-`.scratch/11-retry-matrix-validity/`):
-
-- **D2 — config confound.** `C1M`/`C2M` omitted `n_mtp`, defaulting to 2 while
-  every cell they were tabulated against pins 1. The knob alone costs +0.041
-  (B2 1.5481 vs B0 1.5074). Published C1M +0.194 / C2M +0.164 were therefore
-  inflated; the controls at `n_mtp: 1` are C1M_n1 1.6645/1.6595 and C2M_n1
-  1.6548/1.6686.
-- **D1 — re-entry gauge.** `_mixture_reentry` applies the stage-E `norm_cap`
-  (1.0) to stage-L states whose norm is 29–88, while `_transport(direct)`
-  returns `h` uncapped. Measured: direct/linear mixture re-entry norm 1.00 vs
-  overwrite 28.7; soft 0.90 (cap is a no-op). Direct/linear mixture cells
-  therefore measured a ~30× rescale, not a latent mean, and the reported
-  soft > linear > direct ordering is monotone in how much the cap destroys.
-- **D3 — untrained accumulator.** `p_retry` is Bernoulli, so training never
-  exceeds 2 passes; the accumulator only differs from overwrite at r≥2, i.e.
-  only in the inference-time forced `rounds=k` loop. At r=1 soft mixture and
-  soft overwrite are bit-identical (`max|d| = 23.3726, cos = 0.92109` both
-  arms), so the soft arm could not have measured mixture at training depth.
-- **D4 — variance.** Two floors, measured separately: run-to-run
-  nondeterminism 0.0019 bpc (three same-seed 6000-step runs), seed variance
-  0.0001 (C3) / 0.0050 (C1M_n1) / **0.0138** (C2M_n1). Seed variance is
-  cell-dependent and for C2M_n1 alone exceeds the entire six-cell spread.
-
-Values are in the table above. All cells `n_mtp: 1`; B0 = 1.5074 is itself
-single-seed, so cell-vs-cell comparisons are B0-free but absolute Δ's carry
-B0's unknown seed variance.
-
-Revised readings (folding in what survives of the original four):
-
-1. **No ordering among the latent cells is resolvable.** They span 0.011 bpc;
-   C2M_n1's seed spread alone is 0.014, and its mixture-vs-overwrite delta
-   *reverses sign between seed 0 and seed 1* (−0.0073 → +0.0065). Withdrawn:
-   "soft×mixture is best, direct×mixture is worst" (compared confounded cells)
-   and "re-enter through vocab space, not the latent mean" (single-seed winner).
-2. **Among overwrite cells the transport flavor is unresolvable** (spread
-   0.007 bpc). That describes the data; it is not a demonstrated equality.
-   What this section supports is the value of the extra pass, not the
-   return-channel geometry.
-3. **The retry tax itself is solid**: every C cell lands 1.6535–1.6856 vs B0's
-   1.5074, i.e. +0.146…+0.178, 10–100× any measured floor. Two passes through a
-   12-layer stack with 15% corruption costs ~0.15 bpc. Quote this one.
-4. **Gating's demonstrated value is on the repair side**, not clean bpc: R1's
-   −4.6pp → C5's −1.3pp (~20× the 0.16pp repair sampling error), and the
-   forced-round curves stop dipping (C2's r4 dip 0.523→0.518 removed in
-   C2M_n1's 0.524→0.524).
-5. **What direct/linear mixture measured is a rescale**, so those cells are not
-   evidence against latent-mean mixing in principle — only against this gauge.
-6. **Retry is a repair mechanism, not an ensemble**: averaging rounds on clean
-   streams degrades; later rounds re-enter through transformed, distribution-
-   shifted states.
-7. **L-loop × depth synergy**: retry helps more at depth (C1's +2.1pp at 12L vs
-   ~0 at shallow stacks in M0) — deep stacks do not reach a fixed point in one
-   pass.
-
-Still open: prob0-gated per-position re-embed (per-position accept decisions
-instead of the batch-level coin). **Reading 3 measured (ticket 11 D5, 24000
-steps ≈ 4.4 epochs):** the retry tax falls +0.364 (step 1000) → +0.122 (step
-24000), |Δlast|/|Δfirst| = 0.33, but it *plateaus* around +0.12–0.13 from step
-~3000 rather than decaying to zero — a real tax, ~20% smaller than the
-published 1.1-epoch +0.147. Consequence for this whole file: every published
-number is a 1.1-epoch snapshot (B0 itself: 1.5074 at 1.1 epochs vs 1.3459 at
-4.4) and is an upper bound on the asymptote. Measured on the pre-D1/D3 engine
-(Bernoulli retry, capped direct mixture) — i.e. the configuration the published
-table describes; the fixed engine changes retry depth and must be re-measured.
-
-**FIXED-ENGINE RETRY (ticket 12 P2, 12000 steps x 2 seeds) — D1 causally
-confirmed:** on the repaired gauge the mixture run's round-2 corrupted-input
-bpc improves monotonically — 2.71 → 2.33 → 2.19 → 2.09 → 2.03 → 1.98 → 1.95 →
-**1.936** (2 seeds 1.943/1.932) — where the pre-fix engine diverged
-(3.7 → 8.5 → 32.9 → 95.2 by step 21000). Round order is now the designed one:
-r1 1.993 → r2 1.936 → r3 1.934 saturating — the retry round genuinely refines.
-The pre-fix explosion was the gauge, not the mechanism. (probe_e2e's metric is
-node-1 next-token accuracy on corrupted positions, NOT eval.repair's node-0
-self-repair; not comparable.)
-
-**逐位置门控（ticket 13 实验 1，eval-only）— 指定的重入点位对 direct 传输是空操作。**
-`retry_gate=τ` 在 r>0 逐位置门控重入状态（`h = where(sigmoid(conf) < τ,
-reentry_state, h)`）。在 fixed-engine 12k direct checkpoint 上扫描
-τ∈{0,0.5,…,1.0}：开火率从 0 到 100%，但 C1M_s0 的 r2 bpc 恒为 1.9353
-（r1 1.9928）、C1_s1 恒为 1.9287（r1 1.9861），ntok_corr 亦逐位不变。原因：
-direct 重入状态就是 `h`（mixture 在 r=1 只有一个累加项），`torch.where`
-无可切换。在真正变换状态的 linear checkpoint 上，门控有害：~15% 开火时
-r2 劣于 r1 —— bpc 保留率 C2M −0.15 / C2 −0.48，ntok 保留 0.40 / 0.07。
-6000 步 gated 训练（direct+mixture，τ=0.9）对比同引擎无门控对照：clean bpc
-1.6884 vs 1.6860（Δ=+0.0024，落在 0.0019 同种子噪声底内），税未缩小。判据
-（~15% 开火保留 ≥80% r1→r2 收益）不成立。证据
-`.scratch/13-four-experiments/evidence/gating/`。
+- 矩阵（4 transport × {ungated overwrite, mixture vote}，全带 corrupt_wrong 0.15）与逐 run
+  表已移到 **docs/report.md §3.7**。
+- **裁决：无任何 cell 排序可分辨（ticket 11）。** 6 个 latent cell 跨度仅 0.011 bpc；
+  C2M_n1 种子散布 **0.0138** 已超整个 cell 跨度，其 mixture-vs-overwrite delta 在
+  seed 0/1 间**变号**（−0.0073 → +0.0065）。撤回"soft×mixture 最好、direct×mixture
+  最差"与"经 vocab 空间重入而非 latent 均值"。overwrite cells 内 transport flavor
+  亦不可分辨（跨度 0.007）——支持的是"多一遍"的价值，不是回传几何。
+- **税本身可靠**：每个 C cell 1.6535–1.6856 vs B0 1.5074，即 **+0.146…+0.178**，
+  10–100× 任何测得底；12 层栈两遍 + 15% 损坏 ≈ +0.15 bpc。此数可引用。
+- 门控的已证价值在**修复侧**：R1 −4.6pp → C5 −1.3pp（~20× 0.16pp 修复采样误差），
+  forced-round 曲线停止下探。retry 是修复不是集成：干净流上平均 rounds 退化。
+  L-loop×depth 协同：12L 上 retry 更值（C1 +2.1pp；M0 浅栈 ~0）。
+- **D1 因果确认（ticket 12 P2，12000步×2 seed）**：修复 gauge 后 mixture run 的 round-2
+  损坏输入 bpc **单调改善 2.71→2.33→2.19→2.09→2.03→1.98→1.95→1.936**（2 seed
+  1.943/1.932），pre-fix 引擎发散（3.7→8.5→32.9→**95.2**）；round 序 r1 1.993→r2 1.936→
+  r3 1.934 饱和。爆炸是 gauge 不是机制（probe_e2e 指标为 node-1 下一 token acc on
+  损坏位置，非 node-0 自修复）。D5 测于 pre-D1/D3 引擎；fixed engine 改变 retry 深度，需重测。
+- **逐位置 latent 门控（ticket 13 实验 1）被证伪，此路不通**：`retry_gate=τ` 门控重入
+  状态。fixed-engine direct ckpt 上 τ 从 0→100% 开火但 r2 bpc 恒为 C1M_s0 1.9353
+  （r1 1.9928）/ C1_s1 1.9287（r1 1.9861）——direct 重入状态 == h，`torch.where` 无可
+  切换。linear ckpt 上 ~15% 开火使 r2 劣于 r1（bpc 保留 C2M −0.15/C2 −0.48）；6000 步
+  gated 训练税未缩（1.6884 vs 1.6860）。**状态掩码不省算力，收益需稀疏计算**；仍 open
+  的是 prob0 门控逐位置 **re-embed**（token 重入，与已证伪的 latent 状态掩码不同）。
+- 缺陷 D2/D3/D4 细节见 report §3.7。
 
 ## Token retry (discrete re-entry) — see matrix rows C5/R1
 
-Ungated argmax re-embed quantizes away uncertainty: wrong commits re-embed as
-ground-truth-looking tokens (R1: −4.6pp, ECE 0.001 → 0.015). Mixture vote
-(argmax of the accumulated distribution, anchor w=1) removes the catastrophe
-(C5: −1.3pp, ECE 0.007). These repair effects are ~3–4.5pp against a repair
-sampling error of 0.16pp (n≈98k corrupted positions) and survive ticket 11.
-The bpc side does not: R1 1.6775 and C5 1.6856 sit only 0.009–0.017 above the
-worst observed latent-transport cell (C2M_n1 seed 1, 1.6686), inside that
-cell's own 0.0138 seed spread — so "the token round lands below base on clean
-data" is suggestive, not established (single seed each). Remaining lever,
-recorded but unscheduled: prob0-gated per-position re-embed (rewrite only
-where the model itself flags doubt) — needs a per-position accept mechanism,
-which is also the missing accept-rate measurement above.
+- 未门控 argmax re-embed 量化掉不确定性：错提交以"真值样" token 重入（R1 **−4.6pp**，
+  ECE 0.001→0.015）；mixture vote（累积分布 argmax，anchor w=1）消除灾难（C5 **−1.3pp**，
+  ECE 0.007）。修复效应 ~3–4.5pp vs 0.16pp 采样误差（n≈98k），过 ticket 11。
+- bpc 侧不成立：R1 1.6775 / C5 1.6856 仅在 worst latent cell 上方 0.009–0.017，
+  落在该 cell 0.0138 种子散布内（各单 seed），故"token round 在干净数据上低于 base"
+  仅 suggestive、未确立。
+- open：prob0 门控逐位置 re-embed（只在模型自认不确定处重写），需逐位置 accept 机制。
 
 ## Input corruption (the I family) — flagged beats silent
 
-| Element | Δ cost | gain (repair acc at 15% corruption) |
-| --- | --- | --- |
-| `[mask]` replacement | +0.059 | 59.4% |
-| wrong-token | +0.127 | 52.8% |
-| embedding noise | ±0.000 | n/a (no flagged positions) |
-| pure-noise latent | +0.063 | n/a |
-
-Corruption with an explicit "I don't know" flag is BOTH cheaper and more
-repairable than silent adversarial corruption — a design input for how any
-writable-input interface should signal corruption. Noise is free (the norm
-cap geometry absorbs it); the full writable-input claim (pure noise) costs
-only ~4% relative PPL. Composition win: retry × corruption is SUB-ADDITIVE
-(IX1 mask×soft-retry: +0.087 < 0.277 sum) — the mechanisms share repair
-machinery, the one demonstrated composition gain.
+- 各元素 [税 | 15% 损坏下修复 acc]：`[mask]` 替换 **+0.059 | 59.4%**；wrong-token
+  **+0.127 | 52.8%**；embedding noise **±0.000 | n/a**（无 flag）；pure-noise latent
+  **+0.063 | n/a**。
+- **带显式"I don't know" flag 的损坏既更便宜又更可修复**（vs 静默对抗性损坏）——
+  writable-input 接口应显式标注损坏。噪声免费（norm-cap 几何吸收）；纯噪声
+  writable-input 只 ~4% 相对 PPL。
+- 组合胜：**retry × corruption 次可加**（IX1 mask×soft-retry +0.087 < 0.277 之和）——
+  共享修复机器，唯一已证组合增益。
 
 ## Attention distance penalty (X1) — a free regularizer
 
-Cost: Δ −0.007 (within noise but positive-signed) — the only element that
-IMPROVED clean bpc.
-Gain: composes with eviction at +0.004 total; IMPROVES the anchor channel
-(needle 76.8% → 93.3%); per-head telemetry (mean attended distance 26–43,
-no head collapses local-only). Caveat: beyond-window needle "hits" under the
-penalty are local-LM strength, NOT eviction-proof recall — do not read them
-as retention.
+- 税：Δ **−0.007**（在噪声内但正号）——唯一改善 clean bpc 的元素。
+- 收益：与驱逐组合共 +0.004；**改善 anchor 通道（needle 76.8%→93.3%）**；per-head
+  遥测平均注意距离 26–43，无头塌成纯 local。
+- 警告：penalty 下 beyond-window needle "命中"是 local-LM 强度，**不是**抗驱逐召回。
 
 ## Eviction + anchors (X2) — the ring-buffer deployment story
 
-Cost: Δ +0.121 for X2's original run (v2 needle redesign: +0.058 — the
-improvement is measurement, not mechanism).
-Gain: ring-buffer decode without re-prefill works; anchor-channel needle
-recall 76.8% (93.3% with penalty); per-layer caches with early exit +
-prob0-gated retry at 1.4× speed; KV positions strictly increasing across
-retry rounds (P0-class bug class to keep testing).
+- 税：Δ +0.121（原 X2；v2 needle 重设计 +0.058——改善是测量不是机制）。
+- 收益：ring-buffer 解码免重 prefill；anchor 通道 needle 召回 76.8%（+penalty 93.3%）；
+  per-layer cache + 早退 + prob0 retry 下 1.4×；retry 轮间 KV 位置严格递增
+  （P0 类 bug，须持续测试）。
+- **损坏 × 复制 = 目标冲突，三路尝试全失败（ticket 13 实验 2）**：anchor 召回
+  0.764（X2v2 无损坏）→ X2C 无豁免 **0.016**、X2C-v2 锚区位置豁免 `corrupt_spare_anchors`
+  **0.033**（in_window 0.47%→0.52%、beyond 0.59%→0.67%，clean bpc +0.0044）、X2Cv3
+  needle 批次整体豁免 `needle_corrupt_free` **0.035**（且 clean bpc 1.680→**1.997**）。
+  位置豁免救不回 4%；任务级豁免也没救回且 bpc 更糟。
+- **裁决：损坏鲁棒与精确复制在单模型里目标冲突，修复必须靠显式模式/通道信号**，
+  不能靠位置或批次的损坏豁免（非锚 needle 仍低是全局"别抄"策略，单点豁免不够）。
+- 附带：`needle_acc` 评测协议 bug 实为真 bug（`eval_pc` 只清 `corrupt_wrong`，漏
+  `corrupt_mask`），已加可失败单测钉住；**verdict-neutral**——阳性对照 X2v2 复现
+  **0.8658/0.7637**。证据 `.scratch/13-four-experiments/evidence/{anchor_exempt,needle_antagonism}/`。
 
-**损坏 × 复制 = 目标冲突，三路尝试全部失败（ticket 13 实验 2）：**
+## Diversity pressure (TTS, div_weight)
 
-| 策略 | in_window | anchor | clean bpc |
-|---|---|---|---|
-| 无损坏（X2v2 基线） | 0.8658 | 0.7637 | 1.5652 |
-| 损坏，无豁免（X2C） | 0.0057 | 0.0161 | 1.6797 |
-| + 锚区位置豁免（X2C-v2，`corrupt_spare_anchors`） | 0.0062 | 0.0327 | 1.6841 |
-| + needle 批次整体豁免（X2Cv3，`needle_corrupt_free`） | 0.0505 | 0.0354 | 1.9974 |
-
-**位置豁免救回不到 4%；任务级豁免也没救回来且 bpc 恶化到 1.9974。** 结论：
-损坏鲁棒与精确复制在单模型里目标冲突，修复必须靠**显式模式/通道信号**，不能靠
-位置或批次的损坏豁免。附带在 `needle_acc` 发现并修复一个评测协议 bug（`eval_pc`
-只清了 `corrupt_wrong`，漏了 `corrupt_mask`，导致复制评测时输入仍被损坏）；已加
-可失败单测钉住；阳性对照 X2v2 复现 0.8658/0.7637 证明该 bug 对结论无影响。
-证据 `.scratch/13-four-experiments/evidence/needle_antagonism/`。
-
-（下段为第一次尝试的原始记录，保留以见过程）锚区豁免：
-新旋钮 `corrupt_spare_anchors` 把驱逐的“锚 = 可靠长程通道”原样延伸到 stage-0
-损坏（`anchors > 0` 时前 N 个位置的 `mask_pos`/`wrong_pos` 清零，返回的
-`corrupt_mask` 反映实际损坏）。6000 步 X2C-v2 对比 X2C：in_window 0.47% →
-0.52%，anchor 1.29% → 3.38%，beyond 0.59% → 0.67%；clean bpc 1.6841 vs
-1.6797（+0.0044，略超同种子噪声底 0.0019，落在 per-cell 种子散布
-0.0001–0.0138 内）。非锚 needle 保持低位符合预期（模型学会不信任非锚内容），
-但锚区通道也未恢复复制——损坏训练对复制的摧毁是全局策略性抑制，单点位置
-豁免不够。证据 `.scratch/13-four-experiments/evidence/anchor_exempt/`。
+- 机制：并行路径间 capped −JS 压差（bf16 下 float32 + pre-step grad-norm gate）。
+- 收益：**同时改善 baseline 与 TTS 斜率**（DIVL1 −0.062 > plain −0.047，上限 +0.023）。
+- 税：Δ +0.023。确定性路径 checkpoint 从 K-path 集成恰得 0——多样性必须练进去。
 
 ## Cross-cutting laws
 
-1. **Element-tax split**: mechanisms that destroy identity/order structure
-   (wrong-token, skip, shuffle) are expensive (Δ 0.13–0.55); mechanisms that
-   preserve or flag identity (mask, noise, redo, penalty) are nearly free
-   (Δ ≤ 0.07).
-2. **TTA gain ∝ trained path diversity**: deterministic-path checkpoints gain
-   exactly 0 from K-path ensembling; diversity must be trained in, and the
-   diversity-pressure knob (capped −JS between parallel paths, float32 +
-   grad-norm guard under bf16) measurably improves both baseline and slope.
-3. **Composition is selective**: sub-additive when mechanisms share machinery
-   (corruption × repair); antagonistic when one destroys the structure the
-   other needs (shuffle × everything).
-4. **Auxiliaries are fallbacks, not voters**: depth prefixes and retry rounds
-   are trained as repairs/exits; mixing them into predictions degrades. To get
-   ensemble value from auxiliary estimators, supervise them as co-equal
-   predictors (untested) rather than fallbacks.
-5. **Stability engineering for reward terms**: any negative/reward loss term
-   under bf16 autocast needs float32 computation and a pre-step gradient-norm
-   gate (two diverged runs taught this).
-6. **Scale is the untested variable**: every "tax dominates" verdict above is
-   at 13M params; whether tax floors and ensemble gains scale favorably is the
-   main open question.
+1. **元素税分割**：破坏 identity/order 结构的机制（wrong-token、skip、shuffle）贵
+   （Δ 0.13–0.55）；保留或 flag identity 的（mask、noise、redo、penalty）~免费（Δ ≤ 0.07）。
+2. **TTA 增益 ∝ 训练路径多样性**：确定性路径 ckpt 从 K-path 集成恰得 0；多样性必须
+   练进去；DIVL1（capped −JS，float32 + grad-norm gate）同时改善 baseline 与斜率。
+3. **组合有选择性**：共享机器时次可加（corruption × repair）；一方破坏另一方所需结构
+   时拮抗（shuffle × everything）。
+4. **辅助输出是 fallback 不是 voter**：深度前缀与 retry 轮按修复/退出训练，混进预测会
+   退化。要集成价值需当 co-equal predictor 监督（未测）。
+5. **reward 项的稳定性工程**：bf16 autocast 下任何 negative/reward loss 需 float32 +
+   pre-step grad-norm gate（两次发散教会）。
+6. **规模是未测变量**：以上"税主导"判决均在 13M；税底与集成增益是否随规模改善是
+   主要 open 问题。
