@@ -855,3 +855,101 @@ def test_corrupt_spare_anchors_noop_when_anchors_zero():
         _, masks[spare] = m._input_latents(tokens)
     assert torch.equal(masks[False], masks[True]), \
         "spare-anchors with anchors=0 must be a no-op"
+
+
+# ---------- Medusa-style spec decode (ticket 13 exp 3) ----------
+
+def _spec_model(n_mtp=3, window=0, anchors=0, steps=80):
+    pcap = PathConfig(n_mtp=n_mtp, window=window, anchors=anchors)
+    m = tiny_model(pcap)
+    train_tiny(m, steps=steps)
+    return m.eval()
+
+
+def test_step_multi_matches_per_position_logits():
+    """K tokens in one batched forward must give each position the same
+    node-1 argmax as calling step() K times (KV cache + causal mask)."""
+    from pathlm.decode import Decoder
+    m = _spec_model()
+    toks = [int(t) for t in torch.randint(0, 49, (5,))]
+    with torch.no_grad():
+        d1 = Decoder(m, window=0, anchors=0)
+        per_pos = []
+        for t in toks:
+            d1.step(t)
+            per_pos.append(d1.last_nodes[1]["logits"][0, 0].argmax().item())
+        d2 = Decoder(m, window=0, anchors=0)
+        _, nodes = d2.step_multi(toks)
+    for j in range(len(toks)):
+        want = per_pos[j]
+        got = nodes[1]["logits"][0, j].argmax().item()
+        assert got == want, f"position {j}: step_multi {got} != step {want}"
+
+
+def test_spec_decode_matches_greedy():
+    """The batched-verification path must emit exactly the same greedy
+    sequence as the per-position path (accept and reject both exercised)."""
+    from pathlm.decode import decode, decode_spec
+    m = _spec_model()
+    prompt = torch.randint(0, 49, (8,))
+    ref, _ = decode(m, prompt, 18, m.pcap)
+    got, st = decode_spec(m, prompt, 18, m.pcap)
+    assert got == ref, f"spec {got} != greedy {ref}"
+    assert st["n_forward"] <= len(ref), "a forward must cover at least one token"
+
+
+def test_spec_decode_all_accepted_is_bit_identical():
+    """Drafts forced to the reference greedy tokens are all accepted, and the
+    output stays bit-identical to the per-position decode."""
+    from pathlm.decode import decode, decode_spec
+    m = _spec_model()
+    prompt = torch.randint(0, 49, (8,))
+    n_new = 18
+    ref, _ = decode(m, prompt, n_new, m.pcap)
+    counter = {"i": 0}
+
+    def draft_fn(nodes, n):
+        i = counter["i"]
+        out = [ref[i + 1 + j] for j in range(n)]
+        counter["i"] += 1 + n  # all accepted in this round
+        return out
+
+    got, st = decode_spec(m, prompt, n_new, m.pcap, draft_fn=draft_fn)
+    assert got == ref, f"all-accepted spec {got} != greedy {ref}"
+    assert st["accepts"] and all(a == 2 for a in st["accepts"]), \
+        f"expected every round to accept both drafts, got {st['accepts']}"
+
+
+def test_spec_decode_wrong_drafts_do_not_corrupt():
+    """Deliberately wrong drafts must always be rejected, leave the emitted
+    sequence identical to greedy, and leave the KV cache exactly at the
+    committed prefix (truncation discards the rejected suffix)."""
+    from pathlm.decode import decode, decode_spec
+    m = _spec_model()
+    prompt = torch.randint(0, 49, (8,))
+    n_new = 18
+    # a longer reference keeps every draft's verification index in range
+    ref, _ = decode(m, prompt, n_new + 3, m.pcap)
+    counter = {"i": 0}
+
+    def bad_drafts(nodes, n):
+        i = counter["i"]
+        wrong = (ref[i + 1] + 1) % 49  # != the verifier's greedy token
+        counter["i"] += 1              # rejection commits exactly one token
+        return [wrong] * n
+
+    got, st = decode_spec(m, prompt, n_new, m.pcap, draft_fn=bad_drafts)
+    assert got == ref[:n_new], f"wrong drafts corrupted the sequence: {got} != {ref[:n_new]}"
+    assert st["drafts_accepted"] == 0, f"wrong drafts were accepted: {st}"
+    assert st["cache_len"] == 8 + n_new, (st["cache_len"], 8 + n_new)
+
+
+def test_spec_decode_window_eviction_matches_greedy():
+    """The per-query eviction mask in the batched forward must reproduce the
+    windowed per-position sequence exactly."""
+    from pathlm.decode import decode, decode_spec
+    m = _spec_model(window=8, anchors=2)
+    prompt = torch.randint(0, 49, (8,))
+    ref, _ = decode(m, prompt, 18, m.pcap)
+    got, _ = decode_spec(m, prompt, 18, m.pcap)
+    assert got == ref, f"windowed spec {got} != greedy {ref}"

@@ -99,8 +99,20 @@ loss on chained latents was neutral (IX4: 1.6589 ≈ C1's 1.6549).
   conditioning recovers; accept rate 0.75 ≈ direct 0.77. Verdict: mechanism sound,
   no deployable gain at this scale — bottleneck is draft quality; re-test gated on
   a better t+1 draft (prob0-gated retry is the candidate). k=1 draft also gives NO
-  throughput gain in greedy decode (the verify round is the next generation round);
-  throughput needs chain expansion to node-3 (unbuilt).
+  throughput gain under the naive verify-next-round scheme; throughput needs
+  batched verification (below).
+- **n_mtp=3 + MEDUSA BATCHED VERIFICATION BUILT AND MEASURED (ticket 13 exp 3,
+  B3 = B2 + n_mtp 3, 6000 steps seed 0; B2fresh paired baseline):** tax of the
+  third head **+0.0166 bpc** (B3 1.5604 vs B2fresh 1.5438) — cheaper than the
+  1→2 step (+0.0407). node-3 t+3 acc 45.1%, teacher-forced cascade a₂=0.660 /
+  a₃=0.514 (conditional 0.774 / 0.621); **deployable (verifier conditioned on
+  the model's own token) a₂=0.844 / a₃|a₂=0.653 → 2.40 tokens/forward.**
+  `decode.py::decode_spec` drafts node-2..n_mtp + node-1's next token, feeds
+  them in ONE forward, verifies against node-1's argmax and truncates rejected
+  suffixes — output is bit-identical to per-position greedy (5 tests, incl.
+  forced-all-accept, forced-reject, window eviction). Measured steady-state
+  generation: **enwik8 1.68× (k=2), 1.42× (k=1); random 1.85× (k=2)**;
+  width-3 forward costs 1.28× a width-1 forward. Passes the 1.3× gate.
 
 ## Latent retry (loop back through a transport) — the 2×(transport × gating) matrix
 
