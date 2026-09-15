@@ -191,3 +191,39 @@ Medusa 式**批量验证**。先测前提，再决定是否写解码路径。
 `tests/test_m1.py::test_needle_batch_format` 原本用**未播种的 `np.random.randint`**
 造 filler，间歇性失败（needle 只放下 K-1 对 → `len(meta[b]) == K` 失败）。已改为
 `np.random.RandomState(0)`，连跑 3 次全绿。
+
+## 实验 2 裁决 — 判据不成立，且三路尝试全败
+
+| 策略 | in_window | anchor | clean bpc |
+|---|---|---|---|
+| 无损坏（X2v2 基线） | 0.8658 | 0.7637 | 1.5652 |
+| 损坏，无豁免（X2C） | 0.0057 | 0.0161 | 1.6797 |
+| + 锚区位置豁免 `corrupt_spare_anchors`（X2C-v2） | 0.0062 | 0.0327 | 1.6841 |
+| + needle 批次整体豁免 `needle_corrupt_free`（X2Cv3） | 0.0505 | 0.0354 | **1.9974** |
+
+位置豁免救回不到 4%；任务级豁免也没救回来且 bpc 恶化 0.32。**损坏鲁棒与精确复制
+在单模型里目标冲突，需显式模式/通道信号。**
+另修 `needle_acc` 评测协议 bug（`eval_pc` 漏清 `corrupt_mask`，复制评测时输入仍被
+损坏）；阳性对照 X2v2 复现 0.8658/0.7637 证明该 bug 对结论 verdict-neutral；已加
+可失败单测。证据 `.scratch/13-four-experiments/evidence/needle_antagonism/`。
+
+## 实验 3 裁决 — 判据成立（本程序唯一"税小收益大"的机制）
+
+- B3（n_mtp=3）税增量 **+0.0166**（B2fresh 1.5438 → B3 1.5604）；n_mtp 1→2 的税是
+  +0.0407。逐节点：t+1 0.687 / t+2 0.559 / t+3 0.451。
+- 接受级联：a₂ 0.774（条件）/0.660（无条件）；a₃ 0.621 / 0.514；**部署口径
+  a₂=0.844, a₃|a₂=0.653 → 2.40 tokens/forward**。teacher forcing 系统性低估。
+- 已建 `decode_spec`（Medusa 式批量验证）+ 5 个可失败单测（逐位一致 / 全接受 /
+  错草稿拒绝且 cache 恰为已提交前缀 / 驱逐等价）。
+- **实测稳态生成吞吐：enwik8 k=2 1.68×、k=1 1.38×；random k=2 1.90×**；
+  宽度-3 前向成本 = 宽度-1 的 1.28×。独立复现一致。
+- 口径警示：若把未批量 prefill 计入（`eval.decode_speed` 口径），加速稀释到
+  ~1.0–1.1×；部署中 prefill 应批量完成。
+
+## 实验 4 裁决 — 完成
+
+`docs/findings.md` 325 → **163 行**（≤200），叙事/中间值/逐 run 细节移入
+`docs/report.md` §3.7；核对无事实丢失（丢弃 = 0）；被引锚点
+（§I/§MTP/§Early/§Skip/§X1/§X2/§TTS/Latent retry）全部可解析；52 测试绿。
+`docs/report.md` 289 行（**交付物报告，非工作笔记；若需 ≤200 可拆分为
+report.md + report_details.md —— 待用户定**）。
