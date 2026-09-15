@@ -104,7 +104,7 @@ Medusa 式**批量验证**。先测前提，再决定是否写解码路径。
 | # | 实验 | 状态 | 结果 |
 |---|---|---|---|
 | 1 | ② prob0 逐位置门控 | ✅ 完成（判据不成立） | 见下 |
-| 2 | ③ 锚区豁免损坏 | 进行中 | |
+| 2 | ③ 锚区豁免损坏 | ✅ 完成（判据不成立） | 见下 |
 | 3 | ① n_mtp=3 + 批量验证 | 未开始 | |
 | 4 | ④ 文档重构 | 未开始 | |
 
@@ -124,6 +124,22 @@ Medusa 式**批量验证**。先测前提，再决定是否写解码路径。
 - 结论：**逐位置 latent 重入门控（状态掩码）此路不通**。仍在 backlog 的是
   findings.md 记的“prob0 门控逐位置 **re-embed**”（token 重入，语义上本就逐位置），
   与本次被证伪的“latent 状态掩码”不是同一件事。
+
+## 实验 2 裁决 — 判据不成立（commit 见下）
+
+- 实现 `corrupt_spare_anchors: bool = False`；开启且 `anchors > 0` 时
+  `_input_latents` 在应用前把前 N 个位置的 `mask_pos`/`wrong_pos` 清零，
+  返回的 `corrupt_mask` 仍反映实际损坏。3 个可失败单测（46 绿，原 43）——
+  旋钮关逐位一致且与 anchors 无关；开启 + anchors=N 时前 N 位跨 8 seed/4 batch
+  恒不损坏、尾部仍按 ~0.6 速率损坏；anchors=0 时开启为 no-op。
+- **训练 X2C-v2**（`configs/X2.json` 路径块 + `corrupt_mask/wrong 0.075` +
+  `corrupt_spare_anchors: true`，6000 步，seed 0，`.tmp/p3`）：clean bpc **1.6841**
+  （X2C 1.6797，+0.0044），needle in_window 0.0052 / **anchor 0.0338** /
+  beyond 0.0067（X2C 0.0047/0.0129/0.0059；无损坏 X2v2 0.8485/0.7684）。
+- **判据（anchor recall ≥ 50% 且 clean bpc 不劣于 1.6797 超种子方差）不成立**：
+  锚区召回仅 3.38%，远低于 50%。非锚 needle 保持低位符合预期，但锚区通道
+  也未恢复复制——损坏训练对精确复制的摧毁是全局策略性抑制，单点位置豁免不够。
+- 证据 `.scratch/13-four-experiments/evidence/anchor_exempt/`。
 
 ## 工作区异常（需用户留意）
 

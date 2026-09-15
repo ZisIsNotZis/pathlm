@@ -26,6 +26,13 @@ class PathConfig:
     # Stage 0 — token source corruption (rates are per-position probabilities)
     corrupt_wrong: float = 0.0    # replace token with a uniform random vocab token
     corrupt_mask: float = 0.0     # replace token with the [mask] token
+    # Stage-0 corruption exemption for the anchor region: the eviction design
+    # (window/anchors) treats the first `anchors` positions as the reliable
+    # long-range channel; when True this extends that exemption to corruption,
+    # so exact-copy (needle) content in the anchor region survives corruption
+    # training. Motivated by the X2C isolation: corruption training collapsed
+    # needle-in-window recall from 84.9% to 0.5%. No effect when anchors == 0.
+    corrupt_spare_anchors: bool = False
     span_mode: str = "iid"        # "iid" | "span" (span deferred past M0)
     # Stage 1 — latent perturbation (rates per-position)
     perturb_noise: float = 0.0    # add Gaussian noise (sigma relative to norm cap)

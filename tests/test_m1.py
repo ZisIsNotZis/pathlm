@@ -782,3 +782,76 @@ def test_retry_gate_intermediate_spares_high_confidence_positions():
     g = gate.unsqueeze(-1).expand_as(h0)
     assert torch.equal(in1[g], want[g]), "low-confidence positions must re-enter"
     assert torch.equal(in1[~g], h0[~g]), "high-confidence positions must keep h exactly"
+
+
+# ---------- anchor-exempt corruption ----------
+
+def test_corrupt_spare_anchors_off_is_bit_identical():
+    """corrupt_spare_anchors=False must reproduce the documented pre-change
+    stage-0 mask exactly (same seed) and must not depend on `anchors`. Fails
+    if the anchor exemption leaks into the default path."""
+    tokens = torch.randint(0, 49, (4, M1.seq_len))
+    ref = None
+    for anchors in (0, 8):
+        m = tiny_model(PathConfig(n_mtp=1, corrupt_mask=0.3, corrupt_wrong=0.2,
+                                  anchors=anchors, corrupt_spare_anchors=False))
+        torch.manual_seed(7)
+        _, mask = m._input_latents(tokens)
+        # independent reimplementation of the pre-change mask rule
+        torch.manual_seed(7)
+        u0 = torch.rand(*tokens.shape)
+        want = (u0 < 0.3) | ((u0 >= 0.3) & (u0 < 0.3 + 0.2))
+        assert torch.equal(mask, want), \
+            f"knob off with anchors={anchors} drifted from the pre-change mask"
+        if ref is None:
+            ref = mask
+        else:
+            assert torch.equal(mask, ref), "knob off must be independent of anchors"
+
+
+def test_corrupt_spare_anchors_exempts_only_the_prefix():
+    """Knob on + anchors=N: no position < N is ever corrupted across many
+    seeds/batches, while positions >= N are still corrupted at ~the configured
+    rate. Fails if the exemption is absent, inverted, or silently rescales the
+    corruption distribution (tested at 4x the configured tail rate)."""
+    N, T = 8, M1.seq_len
+    m = tiny_model(PathConfig(n_mtp=1, corrupt_mask=0.3, corrupt_wrong=0.3,
+                              anchors=N, corrupt_spare_anchors=True))
+    tail_hits = tail_slots = 0
+    any_prefix_hit = False
+    for seed in range(8):
+        torch.manual_seed(seed)
+        tokens = torch.randint(0, 49, (4, T))
+        _, mask = m._input_latents(tokens)
+        assert not mask[:, :N].any(), f"anchor position corrupted at seed {seed}"
+        any_prefix_hit = any_prefix_hit or bool(mask[:, :N].any())
+        tail_hits += int(mask[:, N:].sum())
+        tail_slots += mask[:, N:].numel()
+    rate = tail_hits / tail_slots
+    assert 0.5 < rate < 0.7, f"tail corruption rate {rate:.3f} far from configured 0.6"
+    # sanity: the default path DOES corrupt the prefix, so the exemption above
+    # is not vacuous
+    m0 = tiny_model(PathConfig(n_mtp=1, corrupt_mask=0.3, corrupt_wrong=0.3,
+                               anchors=N, corrupt_spare_anchors=False))
+    off_hit = False
+    for seed in range(8):
+        torch.manual_seed(seed)
+        tokens = torch.randint(0, 49, (4, T))
+        _, mask = m0._input_latents(tokens)
+        off_hit = off_hit or bool(mask[:, :N].any())
+    assert off_hit, "reference path never corrupted the prefix — test would be vacuous"
+    assert not any_prefix_hit
+
+
+def test_corrupt_spare_anchors_noop_when_anchors_zero():
+    """Knob on but anchors=0 means no anchor region exists: behaviour must be
+    bit-identical to the knob off."""
+    tokens = torch.randint(0, 49, (4, M1.seq_len))
+    masks = {}
+    for spare in (False, True):
+        m = tiny_model(PathConfig(n_mtp=1, corrupt_mask=0.3, corrupt_wrong=0.2,
+                                  anchors=0, corrupt_spare_anchors=spare))
+        torch.manual_seed(11)
+        _, masks[spare] = m._input_latents(tokens)
+    assert torch.equal(masks[False], masks[True]), \
+        "spare-anchors with anchors=0 must be a no-op"

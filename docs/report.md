@@ -53,6 +53,7 @@ PathLM 的弹性语法里, **税不是设计的语言, 能力才是。** 机制�
 | retry 逐位置门控 | 损坏输入 | 能力型(重入状态) | direct 上 r2 不变(空洞);linear ~15% 开火 r2 保留 −0.15…−0.48 | 0(不省算力/不缩税) | ticket 13 gating |
 | skip | 测试时扩展 | 速度×质量斜率 | K=8 −0.047(DIVL1 −0.062) | +0.175 | findings §Skip |
 | 驱逐+锚 | 长上下文/有界内存 | 能力型(不重 prefill) | needle 76.8→93.3 | +0.058 | findings §X2 |
+| 锚区免疫损坏 | needle+损坏组合 | 能力型(救复制) | anchor 1.29%→3.38%(判据 ≥50% **失败**),in_window 保持低位 | +0.0044 | ticket 13 anchor_exempt |
 | 距离惩罚 | 长程注意 | 免费正则 | needle 通道 93.3 | **−0.007** | findings §X1 |
 | 多样性压力 | TTS 扩展 | 斜率 | −0.062(DIVL1) | +0.023 | findings §TTS |
 

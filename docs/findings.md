@@ -262,6 +262,16 @@ recall 76.8% (93.3% with penalty); per-layer caches with early exit +
 prob0-gated retry at 1.4× speed; KV positions strictly increasing across
 retry rounds (P0-class bug class to keep testing).
 
+**锚区豁免损坏（ticket 13 实验 2）— 判据不成立：锚区召回 1.29% → 3.38%，远低于 50%。**
+新旋钮 `corrupt_spare_anchors` 把驱逐的“锚 = 可靠长程通道”原样延伸到 stage-0
+损坏（`anchors > 0` 时前 N 个位置的 `mask_pos`/`wrong_pos` 清零，返回的
+`corrupt_mask` 反映实际损坏）。6000 步 X2C-v2 对比 X2C：in_window 0.47% →
+0.52%，anchor 1.29% → 3.38%，beyond 0.59% → 0.67%；clean bpc 1.6841 vs
+1.6797（+0.0044，略超同种子噪声底 0.0019，落在 per-cell 种子散布
+0.0001–0.0138 内）。非锚 needle 保持低位符合预期（模型学会不信任非锚内容），
+但锚区通道也未恢复复制——损坏训练对复制的摧毁是全局策略性抑制，单点位置
+豁免不够。证据 `.scratch/13-four-experiments/evidence/anchor_exempt/`。
+
 ## Cross-cutting laws
 
 1. **Element-tax split**: mechanisms that destroy identity/order structure

@@ -149,6 +149,15 @@ class PathLM(nn.Module):
         u0 = torch.rand(B, T, device=dev)
         mask_pos = u0 < pc.corrupt_mask
         wrong_pos = (u0 >= pc.corrupt_mask) & (u0 < pc.corrupt_mask + pc.corrupt_wrong)
+        if pc.corrupt_spare_anchors and pc.anchors > 0:
+            # Anchors are the reliable long-range channel (same logic as the
+            # eviction mask): exempt [0, anchors) from stage-0 corruption so
+            # exact-copy content there is never destroyed. Zero the flags
+            # BEFORE applying them so the returned corrupt_mask reflects the
+            # corruption actually applied (repair metrics stay honest).
+            a = min(pc.anchors, T)
+            mask_pos[:, :a] = False
+            wrong_pos[:, :a] = False
         x = torch.where(mask_pos, torch.full_like(tokens, self.mask_token), tokens)
         rand_tok = torch.randint_like(tokens, self.n_real_tokens)
         rand_tok = (rand_tok + (rand_tok == tokens).int()) % self.n_real_tokens  # no collision
