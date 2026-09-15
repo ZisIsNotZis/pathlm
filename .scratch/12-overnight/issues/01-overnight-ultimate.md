@@ -80,25 +80,25 @@ clean_bpc / 吞吐)。税率只作对照列。种子方差 0.0001–0.0138/格,<
   假设: prob0 门控重试如果改善了草稿 t+1, 条件链就会随之变赚 —— 记入报告的组合问题。
   INT2 用 n_mtp=2 + latent 链(node-2 direct 头在), 保留 0.77 接受率的草稿能力。
 
-### P2 修复引擎 retry,E2E + D1 因果确认 — [运行中]
+### P2 修复引擎 retry,E2E + D1 因果确认 — [✅ 完成]
 - 4 run × 12000 步(爆炸在 9000 步已 8.5 bpc,12000 步够分辨): C1×2种子(对照),
   C1M×2种子(混合), ckpt-every 1500, nohup
 - 判据: 修复引擎下 C1M 的 r2 是否不再随训练爆炸(D1 因果证据);
   E2E 台账(税 +1.98 bpc 收益是否复现)
 - 另: C2/C2M(6000步) 重测 = D6 修复的行为确认(投影不再放大)
 
-### P3 集成 INT′(终极形态)- [配置已暂存 .tmp/INT2.json]
+### P3 集成 INT′(终极形态)— [✅ 完成, 见 docs/report.md §4]
 - 全部优势元素 ON,**去掉 shuffle/redo**: mask+wrong 损坏、MTP(条件链,P1 结果决定
   token/latent)、早退、retry(mixture+几何深度)、驱逐+锚+needle、距离惩罚、多样性
 - 24000 步 × 1-2 种子,对照 B0long(1.3459@4.4ep)
 - **门控条件**: P1 的 deploy 版 ≥ direct×0.9 才用 token 链,否则退回 latent
 
-### P4 报告 — [未开始]
+### P4 报告 — [✅ 完成, docs/report.md + VERDICTS.md + findings.md]
 - `docs/report.md`:自解释、完整;每机制 = 受益域 | 收益类型 | 收益值 | 税 | 证据
 - findings.md 重构成账本格式(解决 250 行超预算)
 - WORKSPACE.md 状态更新
 
-### P5 (时间富余) 规模探针 — [未开始]
+### P5 规模探针 — [✅ 完成(2.2× 单种子),见 docs/report.md §4.5]
 - 2× 参数(d=362)6000 步,验"税随规模"的跨机制定律
 
 ## 运行登记(追加式)
