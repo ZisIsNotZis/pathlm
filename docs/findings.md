@@ -198,6 +198,19 @@ The pre-fix explosion was the gauge, not the mechanism. (probe_e2e's metric is
 node-1 next-token accuracy on corrupted positions, NOT eval.repair's node-0
 self-repair; not comparable.)
 
+**逐位置门控（ticket 13 实验 1，eval-only）— 指定的重入点位对 direct 传输是空操作。**
+`retry_gate=τ` 在 r>0 逐位置门控重入状态（`h = where(sigmoid(conf) < τ,
+reentry_state, h)`）。在 fixed-engine 12k direct checkpoint 上扫描
+τ∈{0,0.5,…,1.0}：开火率从 0 到 100%，但 C1M_s0 的 r2 bpc 恒为 1.9353
+（r1 1.9928）、C1_s1 恒为 1.9287（r1 1.9861），ntok_corr 亦逐位不变。原因：
+direct 重入状态就是 `h`（mixture 在 r=1 只有一个累加项），`torch.where`
+无可切换。在真正变换状态的 linear checkpoint 上，门控有害：~15% 开火时
+r2 劣于 r1 —— bpc 保留率 C2M −0.15 / C2 −0.48，ntok 保留 0.40 / 0.07。
+6000 步 gated 训练（direct+mixture，τ=0.9）对比同引擎无门控对照：clean bpc
+1.6884 vs 1.6860（Δ=+0.0024，落在 0.0019 同种子噪声底内），税未缩小。判据
+（~15% 开火保留 ≥80% r1→r2 收益）不成立。证据
+`.scratch/13-four-experiments/evidence/gating/`。
+
 ## Token retry (discrete re-entry) — see matrix rows C5/R1
 
 Ungated argmax re-embed quantizes away uncertainty: wrong commits re-embed as

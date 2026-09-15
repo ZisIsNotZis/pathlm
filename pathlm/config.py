@@ -66,6 +66,13 @@ class PathConfig:
                                    # capped at max_retries (design §7 wants
                                    # sampled retry counts, not a coin flip)
     max_retries: int = 4           # cap on sampled latent-retry rounds
+    # Per-position retry gating (design §4 "prob0-gated"): on retry rounds
+    # r>0, only positions whose previous round's prob0 (sigmoid of the node-0
+    # confidence) is below tau advance to the re-entry state; the rest keep
+    # the state they already had. 0.0 = OFF (exact pre-gate behaviour). The
+    # decision is detached, so training and inference read the same
+    # self-confidence signal and the gate carries no gradient.
+    retry_gate: float = 0.0
     # Stage 4 — token retry: discrete re-entry (re-embed the self node's
     # predicted correction, re-run the stack). One coin per batch.
     p_token_retry: float = 0.0

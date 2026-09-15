@@ -704,3 +704,77 @@ def test_retry_count_is_geometric_and_capped():
     assert sample_path(cfg, random.Random(1), M1.n_layers).n_retries == cfg.max_retries
     cfg.p_retry = 0.0
     assert sample_path(cfg, random.Random(1), M1.n_layers).n_retries == 0
+
+
+# ---------- per-position retry gating (prob0) ----------
+
+def _capture_round_inputs(m: PathLM):
+    """Record the input h of every _run_layers call (one per round)."""
+    inputs = []
+    orig = m._run_layers
+
+    def spy(h, path, attn_mask=None, depth_hook=None, dist_pen=0.0, _o=orig):
+        inputs.append(h.detach().clone())
+        return _o(h, path, attn_mask=attn_mask, depth_hook=depth_hook, dist_pen=dist_pen)
+
+    m._run_layers = spy
+    return inputs
+
+
+def test_retry_gate_zero_is_ungated():
+    """retry_gate=0.0 must keep the pre-change re-entry exactly: every position
+    is transformed by the transport, none is spared. Fails if the gate is
+    applied unconditionally (sigmoid(conf) < 0.0 is never true, so the state
+    would be left unchanged)."""
+    m = tiny_model(PathConfig(n_mtp=1, transport="soft", p_retry=1.0,
+                              retry_gate=0.0))
+    m.eval()
+    x = torch.randint(0, 49, (2, M1.seq_len))
+    inputs = _capture_round_inputs(m)
+    with torch.no_grad():
+        _, aux = m(x, tiny_paths(m.pcap, n=2), x)
+    h0 = aux["rounds"][0][0]["latent"]
+    want = m._transport(h0)
+    assert not torch.allclose(h0, want), "test needs a transport that changes the state"
+    assert torch.equal(inputs[1], want), "tau=0.0 must re-enter every position via the transport"
+
+
+def test_retry_gate_one_equals_ungated():
+    """tau=1.0 gates every position (sigmoid(conf) < 1.0 always), so the whole
+    run must be bit-identical to the ungated model at every round."""
+    x = torch.randint(0, 49, (2, M1.seq_len))
+    lats = {}
+    for tau in (0.0, 1.0):
+        m = tiny_model(PathConfig(n_mtp=1, transport="soft", p_retry=1.0,
+                                  retry_gate=tau))
+        m.eval()
+        torch.manual_seed(3)
+        with torch.no_grad():
+            _, aux = m(x, tiny_paths(m.pcap, n=3), x)
+        lats[tau] = [aux["rounds"][r][0]["latent"] for r in range(3)]
+    for r in range(3):
+        assert torch.equal(lats[0.0][r], lats[1.0][r]), \
+            f"tau=1.0 must equal the ungated re-entry at round {r}"
+
+
+def test_retry_gate_intermediate_spares_high_confidence_positions():
+    """At an intermediate tau the two regimes must split exactly: positions
+    with sigmoid(conf) >= tau keep their pre-reentry h bit-for-bit, positions
+    below tau receive the transport. Fails if the gate is ignored or inverted."""
+    tau = 0.5
+    m = tiny_model(PathConfig(n_mtp=1, transport="soft", p_retry=1.0,
+                              retry_gate=tau))
+    m.eval()
+    x = torch.randint(0, 49, (2, M1.seq_len))
+    inputs = _capture_round_inputs(m)
+    with torch.no_grad():
+        _, aux = m(x, tiny_paths(m.pcap, n=2), x)
+    h0 = aux["rounds"][0][0]["latent"]
+    conf0 = aux["rounds"][0][0]["conf"]
+    gate = conf0.sigmoid() < tau
+    assert gate.any() and (~gate).any(), "test needs both gated and spared positions"
+    want = m._transport(h0)
+    in1 = inputs[1]
+    g = gate.unsqueeze(-1).expand_as(h0)
+    assert torch.equal(in1[g], want[g]), "low-confidence positions must re-enter"
+    assert torch.equal(in1[~g], h0[~g]), "high-confidence positions must keep h exactly"

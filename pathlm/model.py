@@ -331,9 +331,21 @@ class PathLM(nn.Module):
         for r, path in enumerate(paths):
             if r > 0:
                 if pc.reentry_mix and mix is not None and pc.transport != "none":
-                    h = self._mixture_reentry(mix)
+                    reentry = self._mixture_reentry(mix)
                 elif pc.transport != "direct":
-                    h = self._transport(h)  # overwrite re-entry (retry rounds only)
+                    reentry = self._transport(h)  # overwrite re-entry (retry rounds only)
+                else:
+                    reentry = h
+                if pc.retry_gate > 0:
+                    # Per-position retry gate (design §4 "prob0-gated"): a
+                    # position re-enters only when the PREVIOUS round's
+                    # self-confidence is below tau; high-confidence positions
+                    # keep their state exactly. The decision is detached — it
+                    # is the model's own prob0, never a gradient path.
+                    gate = (torch.sigmoid(nodes[0]["conf"]) < pc.retry_gate).detach()
+                    h = torch.where(gate.unsqueeze(-1), reentry, h)
+                else:
+                    h = reentry
             pending_dense: list = []
             hook_fn: Callable[[int, torch.Tensor], None] | None = None
             if r == 0 and pc.w_dense_exit > 0:
