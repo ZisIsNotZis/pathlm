@@ -184,7 +184,11 @@ def test_needle_batch_format():
     metadata (query_row, needle_pos, dist) consistent."""
     T, n_real, mask, K = 64, 49, 49, 4
     g = torch.Generator().manual_seed(0)
-    data = np.random.randint(0, n_real, size=5000).astype(np.uint16)
+    # seed numpy explicitly: an unseeded global RNG made this test flaky (the
+    # filler text changes per run, so needle placement occasionally finds only
+    # K-1 unambiguous pairs and the len(meta[b]) == K assert fails). Observed
+    # 2026-09-15; the gate must be reproducible.
+    data = np.random.RandomState(0).randint(0, n_real, size=5000).astype(np.uint16)
     x, y, meta = needle_batch(4, T, n_real, mask, g, data=data, anchors=4,
                               anchor_frac=0.25, n_needles=K)
     q0 = T - 3 * K

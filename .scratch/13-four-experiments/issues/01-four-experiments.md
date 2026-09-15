@@ -98,3 +98,44 @@ Medusa 式**批量验证**。先测前提，再决定是否写解码路径。
 ## Comments
 
 - 2026-09-14 — agent (pi) — 用户批准四项全做，按序、fork=false 子代理执行。
+
+## 运行登记
+
+| # | 实验 | 状态 | 结果 |
+|---|---|---|---|
+| 1 | ② prob0 逐位置门控 | ✅ 完成（判据不成立） | 见下 |
+| 2 | ③ 锚区豁免损坏 | 进行中 | |
+| 3 | ① n_mtp=3 + 批量验证 | 未开始 | |
+| 4 | ④ 文档重构 | 未开始 | |
+
+## 实验 1 裁决 — 判据不成立（工具 commit f26b405）
+
+- 实现 `retry_gate: float`（0=关）+ 逐位置 `where(sigmoid(conf)<τ, reentry, h)`，
+  3 个可失败单测。
+- **指定 direct checkpoint（C1M_s0/C1_s1）：门控是空操作**——τ 从 0 到 1.0，开火率
+  0→100%，r2 bpc 与 ntok_corr **逐位不变**。原因与 M0 的结论一致：direct 重入是
+  不动点迭代，重入状态 ≈ h，`where` 无可切换。
+- **linear checkpoint（C2M/C2，门控非平凡）：~15% 开火使 r2 劣于 r1**
+  （bpc 保留率 −0.15/−0.48，ntok 保留 0.40/0.07）。即部分门控制造了训练时未见的
+  “状态混合体”（模型是在所有位置都推进的条件下训练的）。
+- 训练侧：税未缩小（Δ +0.0024，落在同种子 nondeterminism 底 0.0019 附近）。
+- **规格缺陷（我的责任）**：状态门控**不省算力**（`_run_layers` 仍对所有位置执行）。
+  要拿到收益必须做**稀疏计算**（gather/scatter 只算被门控的位置）——更大的引擎改动。
+- 结论：**逐位置 latent 重入门控（状态掩码）此路不通**。仍在 backlog 的是
+  findings.md 记的“prob0 门控逐位置 **re-embed**”（token 重入，语义上本就逐位置），
+  与本次被证伪的“latent 状态掩码”不是同一件事。
+
+## 工作区异常（需用户留意）
+
+进入实验 1 时发现**另一个写者**留下的未提交工作：ticket `.scratch/13-mechanism-refinement/`
+（19:29 创建，编号与我的 `13-four-experiments` 撞号，内容同源）+ `gate`/`gate_tau`/
+`corrupt_spare_anchors` 的实现（19:40）。子代理为保持单 concern 提交把它 stash 到
+`.tmp/stale_mechanism_refinement.patch` 并回退；该 untracked ticket 目录**未删除、
+未提交**（保留对方状态）。本 ticket 以已提交、已测试的 `retry_gate` 为准。
+**请用户确认是否有并行 agent 在跑**——若有，需切到多写者模式。
+
+## Gate 修复
+
+`tests/test_m1.py::test_needle_batch_format` 原本用**未播种的 `np.random.randint`**
+造 filler，间歇性失败（needle 只放下 K-1 对 → `len(meta[b]) == K` 失败）。已改为
+`np.random.RandomState(0)`，连跑 3 次全绿。
