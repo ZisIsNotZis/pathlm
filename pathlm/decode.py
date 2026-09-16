@@ -144,12 +144,19 @@ class Decoder:
             # new keys are causal (position p0 + j attends new keys 0..j)
             mask[:, L - K:] = torch.ones(K, K, dtype=torch.bool,
                                          device=h.device).tril()
-            if self.window > 0:  # per-query eviction of the old keys
-                for j in range(K):
-                    qpos = p0 + j
-                    for t, p in enumerate(old_pos[jj] for jj in kept):
-                        if p < self.anchors or qpos - p < self.window:
-                            mask[j, t] = True
+            if self.window > 0:
+                # per-query eviction of the old keys, vectorised: keep old
+                # position p for query q iff p < anchors or q - p < window.
+                # (A Python double loop here made every batched-verification
+                # forward O(K*L) in interpreter time — measured ~2.4x slower
+                # than the per-position path on windowed models, which killed
+                # speculative decoding on eviction deployments.)
+                pos_t = torch.tensor([old_pos[jj] for jj in kept],
+                                     dtype=torch.long, device=h.device)
+                qpos = p0 + torch.arange(K, device=h.device).unsqueeze(1)
+                evict_ok = (pos_t.unsqueeze(0) < self.anchors) | \
+                           ((qpos - pos_t.unsqueeze(0)) < self.window)
+                mask[:, :L - K] = evict_ok
             else:
                 mask[:, :L - K] = True
             a = F.scaled_dot_product_attention(
@@ -237,7 +244,9 @@ def _slice_nodes(nodes: dict, j: int) -> dict:
 @torch.no_grad()
 def decode_spec(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfig,
                 max_drafts: int | None = None,
-                draft_fn=None) -> tuple[list[int], dict]:
+                draft_fn=None,
+                exit_threshold: float | None = None,
+                retry_threshold: float | None = None) -> tuple[list[int], dict]:
     """Medusa-style batched verification (greedy, temperature 0).
 
     At the current position we draft node-2..node-n_mtp and node-1's own next
@@ -247,30 +256,50 @@ def decode_spec(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfi
     the same greedy node-1, the emitted sequence is identical to `decode`'s.
 
     `draft_fn(nodes, n)` overrides the draft source (tests inject wrong drafts).
+
+    Composed levers:
+    - `retry_threshold`: before drawing v1 and the drafts, if the last committed
+      position's prob0 is below the threshold, one latent-retry round refines
+      that position (transport + stack re-run), and v1/drafts are re-drawn from
+      the refined nodes. Same fire condition as `decode(retry_threshold=...)`.
+    - `exit_threshold`: applies to the prefill `step`s only. The steady-state
+      batched verification (`_run_stack_multi`) must run the FULL stack: per-
+      position depth in a batched forward would desynchronise the per-position
+      caches, so early exit does NOT compose with speculative decoding in this
+      engine (documented limitation; see docs/mental_model.md §4).
+
     Returns (generated ids, stats with per-round accept counts).
     """
     if model.pcap.n_mtp < 2:
         return decode(model, prompt, n_new, pcap)
     dec = Decoder(model, window=pcap.window, anchors=pcap.anchors)
     # pi-lens-ignore: unchecked-throwing-call-python
-    dec.step(int(prompt[0]))
+    h_cur, _ = dec.step(int(prompt[0]), exit_threshold=exit_threshold)
     for tok in prompt.tolist()[1:]:
         # pi-lens-ignore: unchecked-throwing-call-python
-        dec.step(int(tok))
+        h_cur, _ = dec.step(int(tok), exit_threshold=exit_threshold)  # prefill: full depth unless exit
     if max_drafts is None:
         max_drafts = model.pcap.n_mtp - 1  # node-2..node-n_mtp
     max_drafts = max(min(max_drafts, model.pcap.n_mtp - 1), 0)
     gen: list[int] = []
     accepts: list[int] = []
     n_forward = 0
+    n_retries = 0
     while len(gen) < n_new:
         nodes = dec.last_nodes
         assert nodes is not None, "step must populate last_nodes"
+        if (retry_threshold is not None and pcap.transport != "none"
+                and torch.sigmoid(nodes[0]["conf"]).item() < retry_threshold):
+            # prob0-gated refinement of the last committed position, BEFORE
+            # drawing v1/drafts — same fire condition as decode(retry_threshold)
+            h_cur = dec.retry(h_cur)
+            nodes = dec.last_nodes
+            n_retries += 1
         v1 = int(nodes[1]["logits"][0, 0].argmax())
         if max_drafts == 0:
             gen.append(v1)
             if len(gen) < n_new:
-                dec.step(v1)
+                h_cur, _ = dec.step(v1, exit_threshold=exit_threshold)
             accepts.append(0)
             continue
         if draft_fn is None:
@@ -281,7 +310,9 @@ def decode_spec(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfi
         inputs = [v1] + drafts
         if dec.n + len(inputs) > model.mcfg.seq_len:
             break  # position budget exhausted; caller sees a short sequence
-        _, fnodes = dec.step_multi(inputs)
+        # full depth: per-position exit inside a batched forward would
+        # desynchronise the per-position caches (engine limitation, documented)
+        h_multi, fnodes = dec.step_multi(inputs)
         n_forward += 1
         n_acc = 0
         while n_acc < len(drafts):
@@ -294,9 +325,12 @@ def decode_spec(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfi
         if n_acc < len(drafts):
             dec.truncate(dec.n - len(inputs) + n_acc)  # reject suffix, re-anchor
             dec.last_nodes = _slice_nodes(fnodes, n_acc)
+            h_cur = h_multi[:, n_acc:n_acc + 1, :]
         else:
             dec.last_nodes = _slice_nodes(fnodes, len(inputs) - 1)
+            h_cur = h_multi[:, len(inputs) - 1:len(inputs), :]
     return gen[:n_new], {
+        "retries": n_retries,
         "accepts": accepts,
         "n_forward": n_forward,
         "drafts_accepted": int(sum(accepts)),

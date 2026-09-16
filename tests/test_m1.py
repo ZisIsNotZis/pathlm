@@ -978,3 +978,38 @@ def test_needle_acc_evaluates_with_corruption_off():
     assert seen, "needle_acc must run at least one forward"
     assert all(cm == 0.0 and cw == 0.0 for cm, cw in seen), \
         f"needle_acc leaked corruption into the copy eval: {sorted(set(seen))}"
+
+
+def test_spec_decode_retry_gating():
+    """Composed levers (ticket 14): prob0-gated retry inside the speculative
+    loop. With transport='soft' and forced-low confidence the retry must fire,
+    keep the KV cache consistent with the committed prefix, and leave the
+    emitted sequence a valid greedy continuation. With transport='none' it
+    must never fire (no return channel)."""
+    from pathlm.decode import decode_spec
+    import torch as _t
+
+    m = _spec_model(n_mtp=2)
+    m.pcap.transport = "soft"
+    prompt = _t.randint(0, 49, (8,))
+    # force the retry gate: patch node-0 confidence to be very low at read time
+    orig_nodes = m._mtp_nodes
+
+    def low_conf_nodes(h, condition=None):
+        nodes = orig_nodes(h, condition=condition)
+        nodes[0]["conf"] = nodes[0]["conf"] - 10.0  # sigmoid ≈ 0 < any tau
+        return nodes
+
+    m._mtp_nodes = low_conf_nodes
+    got, st = decode_spec(m, prompt, 12, m.pcap, retry_threshold=0.9)
+    assert len(got) == 12
+    assert st["retries"] > 0, f"gated retry never fired: {st}"
+    assert st["cache_len"] == 8 + 12, (st["cache_len"], 8 + 12)
+
+    # transport='none': the gate must never fire (no return channel)
+    m2 = _spec_model(n_mtp=2)
+    m2.pcap.transport = "none"
+    m2._mtp_nodes = low_conf_nodes
+    got2, st2 = decode_spec(m2, prompt, 12, m2.pcap, retry_threshold=0.9)
+    assert st2["retries"] == 0, "retry must not fire without a transport"
+    assert len(got2) == 12

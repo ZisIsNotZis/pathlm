@@ -57,8 +57,9 @@ Slider 实现：
 | retry(门控) × 损坏 | ✅ **翻正** | 均匀 −0.019 → 门控 +0.021（INT2）/ +0.128（C1M） |
 | **dense-exit × retry** | ❌ 拮抗 | ALLOC 各桶全负 → 深度头需改 probe 式 |
 | 逐位置门控（状态掩码） | ❌ 需稀疏计算 | gather/scatter 未建；选择性价值已证（+0.04~+0.07） |
-| **exit × spec / retry × spec** | ⬜ 本轮测 | 预期近乘法（省深度 × 摊销宽度正交） |
-| spec × 损坏 | ⬜ | 草稿在损坏输入上的接受率 |
+| retry(门控) × spec | ✅ **复合成立且严格占优** | INT2 损坏输入：plain 42.7 tok/s @2.040 bpc → spec+门控 50.8 tok/s @2.031（**又快又好**）；门控收益在 spec 下保持 |
+| spec × 损坏 | ✅ | INT2 上 k=1 spec 1.31×（驱逐向量化后） |
+| **exit × spec** | ❌ 本引擎不可组合 | 批量验证必须全深度（逐位置深度会使缓存失步）；exit 单独实测 2.4×（103-105 tok/s）但质量需 dense-exit 训练校准，而它与 retry 冲突 → 见 §4 的 probe 式深度头解法 |
 
 **已知设计冲突与解法**：dense-exit 的深度监督梯度会重塑 trunk、破坏 retry 精炼
 （ALLOC 各置信桶全负）。解法：深度置信头改为 **probe 式**（对 trunk stop-grad，
@@ -68,8 +69,7 @@ Slider 实现：
 ## 5. 验证阶梯（4090 包络内）
 
 - **Rung 1 ✅** 单机制（12 个验证，6 存活：MTP/prob0、早退、retry、损坏、驱逐、距离惩罚）
-- **Rung 2 ⬜** 成对组合（retry×损坏 ✓、exit×驱逐 ✓、dense-exit×retry ✗、
-  exit×spec ⬜、retry×spec ⬜、spec×损坏 ⬜）
+- **Rung 2 ✅** 成对组合全部测毕（retry×损坏 ✓ 次可加、exit×驱逐 ✓、retry门控×spec ✓ 严格占优、dense-exit×retry ✗、spec×损坏 ✓ 1.31×、exit×spec ❌ 引擎不支持）
 - **Rung 3 ⬜** 完整分配器（Slider 端到端，13M，4090 可行）
 - **Rung 4 ⬜** 规模（100M+；训练 1–2h/6000 步，可行但慢）
 
