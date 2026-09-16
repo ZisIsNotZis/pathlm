@@ -1,5 +1,22 @@
 # Workspace
 
+## Goal (业务目标, 2026-09-15 用户明确)
+
+做一个**在同等算力下比常规单路径模型更强**的模型。机制:放弃"每 token 一次前向"
+的均匀推理,改为**概率驱动的碎片化精细算力分配**——探索多条独立路径、每条按置信
+加权、是否继续探索由其探索代价决定。
+
+- **主度量**: 同等推理 FLOPs 下的质量(次要: 同等训练算力)。oracle 与部署口径分开报。
+- **阶段划分**: 第一步 = 逐机制验证(单独有效性 / 组合方向 / 采纳与否),产出
+  **采纳账本**;完成后第二步 = 组合形态 + 外部基线 + 规模。
+- **愿景的三个已证支柱**: prob0 校准(ECE 0.002–0.011,信号存在)、重试精炼
+  (r1→r3 单调,花费侧)、早退+spec decode(1.45× / 1.68–1.90×,节省侧)。
+- **最大缺口**: "碎片化分配"的**选择性**未被直接测量——按位置置信分桶后,低置信
+  位置的每 FLOP 收益是否更高?若收益与置信无关,均匀分配就够了,愿景的核心命题
+  不成立。这是下一步的关键实验(先 dense 测价值,有价值再建稀疏计算)。
+- **口径假设**(用户可推翻): 探索代价 v1 = 每多一轮 ≈ 一次等价 forward;
+  "更强"的对照 = 同等训练算力下的常规单路径模型(外部基线校准在第二步)。
+
 ## Status (2026-09-14)
 
 - **Design:** frozen in `docs/design.md` (stage ring 0–4, cycles, aggregation principle, training recipe). One post-freeze amendment: shuffle-locality formula in §L (v1 was mathematically a no-op).
@@ -13,6 +30,7 @@
 - **M3 + diversity: DONE** (ticket 09) — IX1 sub-additive win (+0.087 < 0.277 sum); composition law: shuffle is the poison (every shuffle combo lands 2.2+; order-freeness antagonizes repair); INT full grammar does not compose at 13M. DIVL1: diversity pressure (capped −JS, float32 + grad-norm guard) improves both baseline AND ensemble slope (−0.062 > −0.047, ceiling +0.023) — mechanism proven, tax still dominates at this scale.
 - **Overnight research (ticket 12):** conditional chain built+measured (oracle 0.682 ≈ node1, deploy 0.547 < direct 0.560 — draft-quality bottleneck), D1 causally confirmed (fixed-engine mixture r2 1.936 vs pre-fix 95.2), D6 fixed (true vocab projector), INT2 integration (sub-additive +0.309, corrupted-input −1.79 bpc vs B0, needle×corruption antagonism 85%→0.5%), scale probe (2.2×: tax flat, E2E gap narrows). Final report: `docs/report.md`. Verdict tree: `.scratch/11-retry-matrix-validity/VERDICTS.md`.
 - **Four experiments (ticket 13, fork=false subagents):** ① per-position retry gating — FALSIFIED (direct re-entry is a fixed point ⇒ vacuous; linear ~15% fire makes r2 worse; state masking saves no compute — needs sparse gather/scatter); ② anchor-exempt corruption — FALSIFIED three ways (anchor recall 0.764 → 0.016 / 0.033 / 0.035 with no exemption / positional / task-level; task-level also worsened bpc 1.680→1.997) ⇒ repair-vs-copy needs an explicit mode/channel signal; ③ n_mtp=3 + Medusa batched-verify spec decode — **POSITIVE: 1.68–1.90× measured tok/s for +0.0166 tax** (independently reproduced); ④ findings.md restructured 325→163 lines (ledger), detail in report §3.7. Two review catches: a flaky gate test (unseeded numpy) and a real `needle_acc` eval leak (`corrupt_mask` not zeroed — verdict-neutral, proven by positive control X2v2 reproducing 0.8658/0.7637).
+- **Step 1 (进行中, ticket 14):** 采纳账本收尾——allocator 选择性实验 + 剩余机制裁决。
 - **Next:** prob0-gated per-position re-embed; node-3+ chain expansion (spec-decode throughput); dual-channel (anchor exempt from corruption) for copy+robust; conditional chain × gated-retry (draft quality); scale study with 2 seeds & wider span.
 
 ## Key lessons (do not re-derive)
