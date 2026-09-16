@@ -49,11 +49,7 @@
 
 ## Open decisions (for the user)
 
-- **Parallel writer?** An untracked `.scratch/13-mechanism-refinement/` + stashed
-  `gate`/`gate_tau`/`corrupt_spare_anchors` work appeared mid-run from another
-  writer; stashed at `.tmp/stale_mechanism_refinement.patch`, left untracked and
-  uncommitted. Confirm whether another agent/machine is active (⇒ switch to the
-  remote/multi-writer mode) or whether it should be discarded.
+- **Parallel writer — resolved (2026-09-16).** The untracked `.scratch/13-mechanism-refinement/` + stashed patch (`.tmp/stale_mechanism_refinement.patch`) contained: a `gate`/`gate_tau` variant (superseded by the committed `retry_gate`, and the mechanism itself was falsified), a `corrupt_spare_anchors` implementation (independently reimplemented and tested in ticket 13 exp 2), and a cosmetic type-checker refactor. User confirmed no second agent; work is reasonable in intent but fully superseded — keep the stash archived, directory stays untracked.
 - **Docs size:** `docs/report.md` is 289 lines (the deliverable report). If the
   200-line budget applies to it too, split into report.md + report_details.md.
 - **`.git` 1.6 GB** of committed `model.pt` blobs — removal is a history rewrite.
