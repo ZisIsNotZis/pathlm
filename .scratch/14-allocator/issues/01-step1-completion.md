@@ -1,6 +1,6 @@
 # 14 — 第一步收尾：allocator 选择性实验 + 采纳账本
 
-- **Status:** claimed
+- **Status:** done（第一步完成）
 - **Type:** experiment batch + engine work
 - **Related:** 12-overnight（backlog 来源）、13-four-experiments（已完成的四项）
 - **执行方式:** 按序 fork=false 子代理，串行（同 checkout + 同 GPU）
@@ -72,7 +72,8 @@ backward 逐位一致（或 <1e-6），且 `retry_gate`/`reentry_mix` 行为不�
 - [ ] 实验 1 前沿 + 组合
 - [ ] 实验 2 自适应跳层 / span backlog 记录
 - [ ] 实验 3 逐轮累积（按需）
-- [ ] 实验 4 采纳账本定稿 → **第一步完成**
+- [x] 实验 4 采纳账本定稿 → **第一步完成**（docs/report.md §3.8）
+- [x] findings.md 选择性裁决（163→171 行，仍 ≤200）
 
 ## Comments
 
