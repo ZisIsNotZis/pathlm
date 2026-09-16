@@ -94,6 +94,14 @@
   切换。linear ckpt 上 ~15% 开火使 r2 劣于 r1（bpc 保留 C2M −0.15/C2 −0.48）；6000 步
   gated 训练税未缩（1.6884 vs 1.6860）。**状态掩码不省算力，收益需稀疏计算**；仍 open
   的是 prob0 门控逐位置 **re-embed**（token 重入，与已证伪的 latent 状态掩码不同）。
+
+- **分配选择性成立（ticket 14 实验 1，3 checkpoint 交叉验证）——愿景核心命题获证**：
+  按 round-0 prob0 分桶测 r1→r2 的 node-1 bpc 收益，门控（只对最低 15% 位置开第二轮）
+  vs 均匀（全位置重试）：ALLOC(dense-exit) −0.0651 vs −0.0554；**INT2 +0.0211 vs
+  −0.0193**；**C1M +0.1284 vs +0.0570**。门控把重试从净有害翻成净有益（计算 2×→1.15×）；
+  C1M 同一第二轮收益翻 2.2 倍。收益形状：中低置信带 +0.04~+0.06，高置信带（87%
+  token）≈0/负。**限制：dense-exit 监督摧毁重试精炼**（ALLOC 各桶全负）→ 分配器
+  底座 = retry + corruption，**不带 dense-exit**。证据 `.scratch/14-allocator/evidence/`。
 - 缺陷 D2/D3/D4 细节见 report §3.7。
 
 ## Token retry (discrete re-entry) — see matrix rows C5/R1
