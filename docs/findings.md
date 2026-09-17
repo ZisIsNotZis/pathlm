@@ -149,6 +149,13 @@
   `corrupt_mask`），已加可失败单测钉住；**verdict-neutral**——阳性对照 X2v2 复现
   **0.8658/0.7637**。证据 `.scratch/13-four-experiments/evidence/{anchor_exempt,needle_antagonism}/`。
 
+- **用户裁决（2026-09-16）：无需模式信号**。设计原则——模型从不"保留错误"，
+  **目标恒为正确的 token**（损坏只是输入侧增广；训练 targets 一直是干净流，
+  实现已满足此原则）。实测限制：13M 下损坏训练会压低精确复制行为（X2Cv3 连
+  干净 needle 批次也未恢复 0.05，且 clean bpc 1.680→1.997）——属容量/训练规模
+  限制，非目标冲突。needle 保持 backlog；若未来需要精确复制，优先更大规模/
+  更长训练或专门检索头，而非模式信号。
+
 ## Diversity pressure (TTS, div_weight)
 
 - 机制：并行路径间 capped −JS 压差（bf16 下 float32 + pre-step grad-norm gate）。

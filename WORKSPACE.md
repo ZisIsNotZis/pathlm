@@ -63,13 +63,11 @@ Slider 端到端(预算 b → 阈值求解 → 分配解码 → 在线质量代�
 - **Docs size:** `docs/report.md` is 289 lines (the deliverable report). If the
   200-line budget applies to it too, split into report.md + report_details.md.
 - **`.git` 1.6 GB** of committed `model.pt` blobs — removal is a history rewrite.
-- **复制+修复共存(需要你决策设计方向)**: 训练"容忍任意 token 错误"(容错)与
-  "精确抄录锚点对"(复制)目标冲突,三种豁免(无/锚区位置/任务级)全部失败
-  (anchor 召回 0.764→0.016/0.033/0.035,任务级豁免还使 bpc 1.680→1.997)。
-  要共存必须给模型**显式模式信号**,候选:(a) 模式 token(词表加一槽,输入前缀
-  标注任务模式,成本最低,推荐);(b) 复制旁路通道(独立小头读未损坏输入);
-  (c) 部署期按画像分离(复制能力放独立 profile)。**前提问题:你的部署是否需要
-  "从上下文精确复制"(引用/抽取/检索增强)?** 若不需要 → needle 永久 backlog,
-  该决策即关闭。
+- ~~复制+修复共存的设计决策~~ **已关闭(2026-09-16 用户裁决)**: **无需模式信号**。
+  设计原则——模型从不"保留错误",**目标恒为正确的 token**(损坏只是输入侧增广,
+  训练 targets 一直是干净流,实现已满足)。实测: 13M 下损坏训练会压低精确复制
+  行为(X2Cv3 连干净 needle 批次也未恢复,0.05;且 bpc 1.680→1.997),属容量/训练
+  规模限制而非目标冲突 → needle 保持 backlog;若未来需要精确复制,优先更大规模
+  /更长训练,或专门检索头,而非模式信号。
 - **Per-position retry** would need sparse (gather/scatter) compute to pay off —
   a real engine change, not a knob.
