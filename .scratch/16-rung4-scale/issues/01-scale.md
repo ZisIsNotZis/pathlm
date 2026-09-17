@@ -1,6 +1,6 @@
 # 16 — Rung 4：规模研究（100M，2 seeds，定案税/增益缩放）
 
-- **Status:** in_progress
+- **Status:** done（Rung 4 完成）
 - **Type:** scale study
 - **Related:** 15-slider-rung3（Rung 3 关闭）、12-overnight（§4.5 的 29M 单种子探针）
 - **目标（WORKSPACE 新会话入口）:** Rung 4 = 规模。100M+ 训练，**2 seeds +
