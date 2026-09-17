@@ -81,7 +81,10 @@ Slider 实现（**Rung 3 已建成并验证，ticket 15**，`pathlm/slider.py` +
   求解器→验证解码→在线代理；严格占优点在新权重复现（corrupt：k=1 τ=0.98
   比 plain **少 37% forwards 且 bpc 更好**）；单轮重试 mixture==overwrite
   （设计保证，引擎无损失）
-- **Rung 4 ⬜** 规模（100M+；训练 1–2h/6000 步，可行但慢）
+- **Rung 4 ✅（实质完成）** 规模（ticket 16/17）：100M 2 seeds 定案——税首次不增
+  （+0.126）、能力溢价持续（≥1.54 bpc）、prob0 校准存活；Slider 分配器在 100M
+  闭环自洽（spec 占优复现；门控重试质量杠杆随规模自衰减 ≤0.001）。
+  更远：node-3+ 接受率随规模、exit 校准（probe 式深度头）、4.4-epoch 渐近口径。
 
 ## 6. 质量的角色（诚实地）
 
