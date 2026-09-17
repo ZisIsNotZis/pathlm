@@ -104,6 +104,28 @@
   底座 = retry + corruption，**不带 dense-exit**。证据 `.scratch/14-allocator/evidence/`。
 - 缺陷 D2/D3/D4 细节见 report §3.7。
 
+## Slider — the runtime allocator (Rung 3, ticket 15)
+
+- **端到端建成并验证**（`pathlm/slider.py` + 根探针；证据 `.scratch/15-slider-rung3/evidence/`，
+  底座 INT2_r3 重训，clean bpc 1.6698 vs 已发布 1.6548，Δ 在重训非确定性内）：
+  校准 → 双货币成本模型 → 求解器（预算/质量两模式）→ 验证解码 → 在线代理。
+- **成本可预测**：fire 曲线 split gap ≤ 0.004；k=0 预测误差 **±8%**（判据 ±15% 过）；
+  k=1 −13~−20%，根源 = a2 的 TF-vs-部署差（0.59–0.64 vs 0.83–0.89，自生成文本
+  自一致率更高），预测偏保守（真实成本 ≤ 预测）；修正项入 backlog。
+- **双货币必须双报**：forwards（§1 口径，spec 摊销后 0.55–0.64）与 flop（等价
+  width-1 单位，spec ≥1.26）结论分歧——corrupt profile 的 k=1 τ=0.98 点在
+  forwards 口径比 plain **少 37% 且 bpc 更好**（严格占优复现），flop 口径则是
+  +39.5% 算力换 −0.0043 bpc。
+- **在线代理（prob0）**：TF 窗口上 prob0 ≈ P(当前 token 正确)，ECE **0.0011**
+  (corrupt) / 0.0079 (clean)；门控后有效代理 ECE 0.0018；跨 τ 与 next-token
+  acc 相关 r=0.91–0.98。
+- **负结果 ×2**：① 自由生成段的 mean-prob0 劣化检测反向（损坏把生成推进
+  高置信重复吸引子，0.954→0.976）——prob0 代理只适用于 ingest/prefill 窗口；
+  ② 单轮重试的 mixture-vs-overwrite 引擎差距不存在（共享 gauge 的设计保证，
+  单项 mixture == overwrite；差异只在 round-3+）。
+- 开放：exit 不在前沿内（INT2 无 dense-exit 训练）；flop 口径 cost<1.0 不可达
+  （需深度头）。
+
 ## Token retry (discrete re-entry) — see matrix rows C5/R1
 
 - 未门控 argmax re-embed 量化掉不确定性：错提交以"真值样" token 重入（R1 **−4.6pp**，

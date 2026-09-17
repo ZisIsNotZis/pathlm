@@ -32,13 +32,20 @@ PathLM 推理 = **分配策略 π(状态) → (深度 d, 精炼轮数 r, 草稿�
 两级参数：
 
 - **规模参数**（部署时定）：模型大小、最大深度、n_mtp——决定前沿曲线的**形状**
-- **Slider**（运行时调）：θ = (τ_exit, τ_retry, k)——在前沿曲线上**移动**
+- **Slider**（运行时调）：θ = (τ_retry, k)——在前沿曲线上**移动**
 
-Slider 实现：
-1. 校准集测 P(prob0 < τ) 曲线 → 每个 τ 的开火率（成本可预测）
-2. 前沿曲线上质量(τ) 插值 → 质量可预测
-3. 给定 b：二分 θ 使 E[cost](θ) = b；给定 (s\*, q\*)：找可行 θ
-4. 在线质量代理 = 生成窗口的平均 prob0（ECE 校准 ⇒ 平均置信 ≈ 准确率）
+Slider 实现（**Rung 3 已建成并验证，ticket 15**，`pathlm/slider.py` + 根探针
+`slider.py`；证据 `.scratch/15-slider-rung3/evidence/`）：
+1. ✅ **校准**：gate_probe 在校准集测 P(prob0<τ) 曲线（clean/corrupt 双 profile）
+   → 每个 τ 的开火率可预测；split gap ≤ 0.004
+2. ✅ **成本模型**：双货币（forwards = 每 token 前向次数，§1 口径；flop = 等价
+   width-1 单位）。k=0 预测误差 ±8%；k=1 −13~−20%（a2 的 TF-vs-部署差，
+   预测偏保守）。**两口径结论会分歧，必须双报**（spec 在 forwards 口径
+   0.55–0.64、flop 口径 ≥1.26）
+3. ✅ **求解器**：给定 b 在前沿插值上选 (k,τ)（预算/质量两模式，货币可选）；
+   验证解码实测成本与预测对账
+4. ✅/**⚠** **在线质量代理**：prob0 ≈ P(当前 token 正确)，TF 窗口 ECE 0.0011–0.0079
+   ——**有真值对齐的读出上成立**；**自由生成段失败**（负结果，见 §7）
 
 **草稿的三种模式**：
 
@@ -70,7 +77,10 @@ Slider 实现：
 
 - **Rung 1 ✅** 单机制（12 个验证，6 存活：MTP/prob0、早退、retry、损坏、驱逐、距离惩罚）
 - **Rung 2 ✅** 成对组合全部测毕（retry×损坏 ✓ 次可加、exit×驱逐 ✓、retry门控×spec ✓ 严格占优、dense-exit×retry ✗、spec×损坏 ✓ 1.31×、exit×spec ❌ 引擎不支持）
-- **Rung 3 ⬜** 完整分配器（Slider 端到端，13M，4090 可行）
+- **Rung 3 ✅** 完整分配器（Slider 端到端，ticket 15）：校准→双货币成本模型→
+  求解器→验证解码→在线代理；严格占优点在新权重复现（corrupt：k=1 τ=0.98
+  比 plain **少 37% forwards 且 bpc 更好**）；单轮重试 mixture==overwrite
+  （设计保证，引擎无损失）
 - **Rung 4 ⬜** 规模（100M+；训练 1–2h/6000 步，可行但慢）
 
 ## 6. 质量的角色（诚实地）
@@ -84,6 +94,16 @@ TTS 探针已证 "nothing beats B0"——**这套东西不卖质量，卖可控�
 - shuffle（+0.545 组合毒药）、redo（≈0）、朴素概率复合（数学错误）、
   条件链部署版（草稿质量瓶颈）、逐位置 latent 状态掩码（需稀疏计算）、
   dense-exit×retry 共训（拮抗）
+- **Rung 3 新证伪（ticket 15）**：
+  - **自由生成段的 mean-prob0 劣化检测**：损坏把自由生成推进高置信重复
+    吸引子，prob0 反而升高（clean 0.954 vs 流式损坏 0.976，反向）。
+    prob0 代理只用于 ingest/prefill 窗口（真值对齐读出，ECE ≤ 0.008），
+    不用于自由生成段的输出质量监测（需别的信号）
+  - **单轮重试的 mixture-vs-overwrite 引擎差距**：不存在（设计保证，
+    单项 mixture == overwrite，共享 gauge；差异只在 round-3+）
 - backlog：span 损坏（mask/wrong 已覆盖语义）、needle 双通道（需模式信号设计）、
   prob0 门控逐位置 re-embed（token 重入版，未测）、稀疏 gather/scatter 引擎
-  （选择性已证价值 +0.04~+0.07 bpc，前提成立后建设）
+  （选择性已证价值 +0.04~+0.07 bpc，前提成立后建设）、
+  **a2 部署口径校准**（求解器 k=1 预测误差 −13~−20% 的根源；用实测接受率
+  校准后可收敛）、**自由生成段的质量信号**（prob0 失效后的替代）、
+  **probe 式深度头**（exit×retry 共存前提，mental_model §4 已有方案）

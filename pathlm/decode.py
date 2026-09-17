@@ -246,7 +246,9 @@ def decode_spec(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfi
                 max_drafts: int | None = None,
                 draft_fn=None,
                 exit_threshold: float | None = None,
-                retry_threshold: float | None = None) -> tuple[list[int], dict]:
+                retry_threshold: float | None = None,
+                prob0_log: list | None = None,
+                input_fn=None) -> tuple[list[int], dict]:
     """Medusa-style batched verification (greedy, temperature 0).
 
     At the current position we draft node-2..node-n_mtp and node-1's own next
@@ -269,15 +271,28 @@ def decode_spec(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfi
       engine (documented limitation; see docs/mental_model.md §4).
 
     Returns (generated ids, stats with per-round accept counts).
+
+    `prob0_log`: when a list is passed, one entry per loop iteration is
+    appended: {"prob0_pre", "prob0_post", "fired", "n_emitted"} — the
+    Slider's online-quality probe (pre-retry prob0 is the value an online
+    observer sees; post is the refined one when the gate fired). All tokens
+    emitted in one loop (v1 + accepted drafts) share the same predictor row,
+    so the entry carries n_emitted copies' weight.
+
+    `input_fn`: environment-side transform applied to EVERY token fed to the
+    decoder (prefill and steady state) — the deployment hook for a noisy
+    channel / stream corruption. Emitted ids stay the clean hypotheses;
+    only what the model READS is transformed. None = identity.
     """
     if model.pcap.n_mtp < 2:
         return decode(model, prompt, n_new, pcap)
     dec = Decoder(model, window=pcap.window, anchors=pcap.anchors)
     # pi-lens-ignore: unchecked-throwing-call-python
-    h_cur, _ = dec.step(int(prompt[0]), exit_threshold=exit_threshold)
+    rd = (lambda t: int(input_fn(t))) if input_fn is not None else int
+    h_cur, _ = dec.step(rd(prompt[0]))
     for tok in prompt.tolist()[1:]:
         # pi-lens-ignore: unchecked-throwing-call-python
-        h_cur, _ = dec.step(int(tok), exit_threshold=exit_threshold)  # prefill: full depth unless exit
+        h_cur, _ = dec.step(rd(tok), exit_threshold=exit_threshold)  # prefill: full depth unless exit
     if max_drafts is None:
         max_drafts = model.pcap.n_mtp - 1  # node-2..node-n_mtp
     max_drafts = max(min(max_drafts, model.pcap.n_mtp - 1), 0)
@@ -288,19 +303,27 @@ def decode_spec(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfi
     while len(gen) < n_new:
         nodes = dec.last_nodes
         assert nodes is not None, "step must populate last_nodes"
+        p0_pre = torch.sigmoid(nodes[0]["conf"]).item()
+        fired = False
+        p0_post = None
         if (retry_threshold is not None and pcap.transport != "none"
-                and torch.sigmoid(nodes[0]["conf"]).item() < retry_threshold):
+                and p0_pre < retry_threshold):
             # prob0-gated refinement of the last committed position, BEFORE
             # drawing v1/drafts — same fire condition as decode(retry_threshold)
             h_cur = dec.retry(h_cur)
             nodes = dec.last_nodes
-            n_retries += 1
+            fired = True
+            p0_post = torch.sigmoid(nodes[0]["conf"]).item()
         v1 = int(nodes[1]["logits"][0, 0].argmax())
         if max_drafts == 0:
             gen.append(v1)
+            if prob0_log is not None:
+                prob0_log.append({"prob0_pre": p0_pre, "prob0_post": p0_post,
+                                  "fired": fired, "n_emitted": 1})
             if len(gen) < n_new:
-                h_cur, _ = dec.step(v1, exit_threshold=exit_threshold)
+                h_cur, _ = dec.step(rd(v1), exit_threshold=exit_threshold)
             accepts.append(0)
+            n_retries += fired
             continue
         if draft_fn is None:
             drafts = [int(nodes[k]["logits"][0, 0].argmax())
@@ -308,6 +331,8 @@ def decode_spec(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfi
         else:
             drafts = [int(t) for t in draft_fn(nodes, max_drafts)]
         inputs = [v1] + drafts
+        if input_fn is not None:
+            inputs = [rd(t) for t in inputs]
         if dec.n + len(inputs) > model.mcfg.seq_len:
             break  # position budget exhausted; caller sees a short sequence
         # full depth: per-position exit inside a batched forward would
@@ -322,6 +347,10 @@ def decode_spec(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfi
         gen.append(v1)
         gen.extend(drafts[:n_acc])
         accepts.append(n_acc)
+        if prob0_log is not None:
+            prob0_log.append({"prob0_pre": p0_pre, "prob0_post": p0_post,
+                              "fired": fired, "n_emitted": 1 + n_acc})
+        n_retries += fired
         if n_acc < len(drafts):
             dec.truncate(dec.n - len(inputs) + n_acc)  # reject suffix, re-anchor
             dec.last_nodes = _slice_nodes(fnodes, n_acc)
@@ -342,25 +371,30 @@ def decode_spec(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfi
 @torch.no_grad()
 def decode(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfig,
            exit_threshold: float | None = None, retry_threshold: float | None = None,
-           temperature: float = 0.0, generator: torch.Generator | None = None) -> tuple[list[int], dict]:
+           temperature: float = 0.0, generator: torch.Generator | None = None,
+           prob0_log: list | None = None, input_fn=None) -> tuple[list[int], dict]:
     """Greedy (temperature=0) or sampled decode with the configured elastic
     knobs. Retry fires when the final node-0 confidence falls below
     retry_threshold (and a transport exists). Returns (generated ids, stats)."""
     dec = Decoder(model, window=pcap.window, anchors=pcap.anchors)
-    h, _ = dec.step(int(prompt[0]))
+    rd = (lambda t: int(input_fn(t))) if input_fn is not None else int
+    h, _ = dec.step(rd(prompt[0]))
     for tok in prompt.tolist()[1:]:
         # pi-lens-ignore: unchecked-throwing-call-python
-        h, _ = dec.step(int(tok))  # prefill: always full depth
+        h, _ = dec.step(rd(tok))  # prefill: always full depth
     gen, depths, retries = [], [], []
     assert dec.last_nodes is not None, "decode() must run dec.step() before sampling"
     for _ in range(n_new):
         nodes = dec.last_nodes
         n_retry = 0
+        p0_pre = torch.sigmoid(nodes[0]["conf"]).item()
+        p0_post = None
         if (retry_threshold is not None and pcap.transport != "none"
-                and torch.sigmoid(nodes[0]["conf"]).item() < retry_threshold):
+                and p0_pre < retry_threshold):
             h = dec.retry(h)
             nodes = dec.last_nodes
             n_retry = 1
+            p0_post = torch.sigmoid(nodes[0]["conf"]).item()
         assert nodes is not None, "step/retry must populate last_nodes"
         logits = nodes[1]["logits"][0, 0] / max(temperature, 1e-6)
         if temperature <= 0:
@@ -369,8 +403,11 @@ def decode(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfig,
             # pi-lens-ignore: unchecked-throwing-call-python
             nxt = int(torch.multinomial(torch.softmax(logits, -1), 1, generator=generator))
         gen.append(nxt)
+        if prob0_log is not None:
+            prob0_log.append({"prob0_pre": p0_pre, "prob0_post": p0_post,
+                              "fired": bool(n_retry), "n_emitted": 1})
         if len(gen) < n_new:  # no need to process the final generated token
-            h, depth = dec.step(nxt, exit_threshold=exit_threshold)
+            h, depth = dec.step(rd(nxt), exit_threshold=exit_threshold)
             depths.append(depth)
         retries.append(n_retry)
     return gen, {"depths": depths, "retries": retries}

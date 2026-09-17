@@ -20,11 +20,16 @@
 ## 新会话入口(2026-09-16 重整)
 
 1. 目标:本文件 §Goal。2. 愿景与用法:`docs/mental_model.md`。3. 结果:`docs/report.md`
-(账本在 §3/§3.8,细节在 `docs/report_details.md`)。4. 逐机制账本:`docs/findings.md`。
+(账本在 §3/§3.8/§3.9,细节在 `docs/report_details.md`)。4. 逐机制账本:`docs/findings.md`。
 5. 裁决树:`.scratch/11-retry-matrix-validity/VERDICTS.md`。
-**状态**: 第一步(逐机制验证+采纳账本)已完成(ticket 14 关闭)。**下一步 = Rung 3**:
-Slider 端到端(预算 b → 阈值求解 → 分配解码 → 在线质量代理),13M 上 4090 可行;
-其后 Rung 4 = 规模。**待决策**: 无阻塞项(复制-修复的通道设计已裁决关闭,needle 保持 backlog)。
+**状态**: 第一步(逐机制验证+采纳账本)已完成(ticket 14 关闭)。**Rung 3 已完成**
+(ticket 15):Slider 端到端建成并验证——校准→双货币成本模型(forwards/flop)→
+预算/质量求解器→验证解码→在线代理;严格占优点复现(corrupt: k=1 τ=0.98 比 plain
+少 37% forwards 且 bpc 更好);prob0 代理 TF 窗口 ECE ≤ 0.008;负结果:自由生成段
+prob0 检测反向(吸引子混淆)、单轮重试 mixture==overwrite(设计保证)。
+**下一步 = Rung 4**: 规模(100M+;训练 1–2h/6000 步,4090 可行但慢;2 seeds +
+更大跨度定案税/增益缩放)。**待决策**: 无阻塞项(backlog: a2 部署口径校准、
+自由生成段质量信号、probe 式深度头/exit 校准)。
 **工程债**: 确定性开关、resume/长日程、FLOPs 记账、逐轮梯度累积、探针 CLI 整合。
 
 ## Status (2026-09-14)
@@ -40,8 +45,15 @@ Slider 端到端(预算 b → 阈值求解 → 分配解码 → 在线质量代�
 - **M3 + diversity: DONE** (ticket 09) — IX1 sub-additive win (+0.087 < 0.277 sum); composition law: shuffle is the poison (every shuffle combo lands 2.2+; order-freeness antagonizes repair); INT full grammar does not compose at 13M. DIVL1: diversity pressure (capped −JS, float32 + grad-norm guard) improves both baseline AND ensemble slope (−0.062 > −0.047, ceiling +0.023) — mechanism proven, tax still dominates at this scale.
 - **Overnight research (ticket 12):** conditional chain built+measured (oracle 0.682 ≈ node1, deploy 0.547 < direct 0.560 — draft-quality bottleneck), D1 causally confirmed (fixed-engine mixture r2 1.936 vs pre-fix 95.2), D6 fixed (true vocab projector), INT2 integration (sub-additive +0.309, corrupted-input −1.79 bpc vs B0, needle×corruption antagonism 85%→0.5%), scale probe (2.2×: tax flat, E2E gap narrows). Final report: `docs/report.md`. Verdict tree: `.scratch/11-retry-matrix-validity/VERDICTS.md`.
 - **Four experiments (ticket 13, fork=false subagents):** ① per-position retry gating — FALSIFIED (direct re-entry is a fixed point ⇒ vacuous; linear ~15% fire makes r2 worse; state masking saves no compute — needs sparse gather/scatter); ② anchor-exempt corruption — FALSIFIED three ways (anchor recall 0.764 → 0.016 / 0.033 / 0.035 with no exemption / positional / task-level; task-level also worsened bpc 1.680→1.997) ⇒ repair-vs-copy needs an explicit mode/channel signal; ③ n_mtp=3 + Medusa batched-verify spec decode — **POSITIVE: 1.68–1.90× measured tok/s for +0.0166 tax** (independently reproduced); ④ findings.md restructured 325→163 lines (ledger), detail in report §3.7. Two review catches: a flaky gate test (unseeded numpy) and a real `needle_acc` eval leak (`corrupt_mask` not zeroed — verdict-neutral, proven by positive control X2v2 reproducing 0.8658/0.7637).
-- **Step 1 (进行中, ticket 14):** 采纳账本收尾——allocator 选择性实验 + 剩余机制裁决。
-- **Next:** prob0-gated per-position re-embed; node-3+ chain expansion (spec-decode throughput); dual-channel (anchor exempt from corruption) for copy+robust; conditional chain × gated-retry (draft quality); scale study with 2 seeds & wider span.
+- **Step 1 (done, ticket 14):** 采纳账本收尾——allocator 选择性实验 + 剩余机制裁决。
+- **Rung 3 (done, ticket 15):** Slider 端到端(INT2_r3 重训底座;原 INT2 权重未入库):
+  校准(fire 曲线 split gap ≤0.004)、双货币成本模型(k=0 误差 ±8%;k=1 a2 口径差
+  −13~−20%,保守)、求解器+验证解码、在线代理(TF 窗口 ECE 0.0011–0.0079;
+  自由生成段失效=负结果);严格占优复现;单轮 mixture==overwrite(引擎无损失)。
+  证据 `.scratch/15-slider-rung3/evidence/`;代码 `pathlm/slider.py` + 根探针 `slider.py`。
+- **Next (Rung 4):** 规模研究——100M+ 训练(1–2h/6000 步),2 seeds + 更大跨度,
+  定案税/增益缩放;顺带 backlog: a2 部署口径校准、自由生成段质量信号、
+  probe 式深度头(exit 校准)。
 
 ## Key lessons (do not re-derive)
 
