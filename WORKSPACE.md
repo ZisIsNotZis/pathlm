@@ -24,7 +24,7 @@
 5. 裁决树:`.scratch/11-retry-matrix-validity/VERDICTS.md`。
 **状态**: 第一步(逐机制验证+采纳账本)已完成(ticket 14 关闭)。**下一步 = Rung 3**:
 Slider 端到端(预算 b → 阈值求解 → 分配解码 → 在线质量代理),13M 上 4090 可行;
-其后 Rung 4 = 规模。**待决策**: 见 Open decisions(复制+修复的通道设计最优先)。
+其后 Rung 4 = 规模。**待决策**: 无阻塞项(复制-修复的通道设计已裁决关闭,needle 保持 backlog)。
 **工程债**: 确定性开关、resume/长日程、FLOPs 记账、逐轮梯度累积、探针 CLI 整合。
 
 ## Status (2026-09-14)
