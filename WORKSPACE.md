@@ -17,6 +17,16 @@
 - **口径假设**(用户可推翻): 探索代价 v1 = 每多一轮 ≈ 一次等价 forward;
   "更强"的对照 = 同等训练算力下的常规单路径模型(外部基线校准在第二步)。
 
+## 新会话入口(2026-09-16 重整)
+
+1. 目标:本文件 §Goal。2. 愿景与用法:`docs/mental_model.md`。3. 结果:`docs/report.md`
+(账本在 §3/§3.8,细节在 `docs/report_details.md`)。4. 逐机制账本:`docs/findings.md`。
+5. 裁决树:`.scratch/11-retry-matrix-validity/VERDICTS.md`。
+**状态**: 第一步(逐机制验证+采纳账本)已完成(ticket 14 关闭)。**下一步 = Rung 3**:
+Slider 端到端(预算 b → 阈值求解 → 分配解码 → 在线质量代理),13M 上 4090 可行;
+其后 Rung 4 = 规模。**待决策**: 见 Open decisions(复制+修复的通道设计最优先)。
+**工程债**: 确定性开关、resume/长日程、FLOPs 记账、逐轮梯度累积、探针 CLI 整合。
+
 ## Status (2026-09-14)
 
 - **Design:** frozen in `docs/design.md` (stage ring 0–4, cycles, aggregation principle, training recipe). One post-freeze amendment: shuffle-locality formula in §L (v1 was mathematically a no-op).
@@ -53,7 +63,13 @@
 - **Docs size:** `docs/report.md` is 289 lines (the deliverable report). If the
   200-line budget applies to it too, split into report.md + report_details.md.
 - **`.git` 1.6 GB** of committed `model.pt` blobs — removal is a history rewrite.
-- **Copy + repair coexistence** needs a designed mode/channel signal before more
-  needle work is worth running (three exemptions failed).
+- **复制+修复共存(需要你决策设计方向)**: 训练"容忍任意 token 错误"(容错)与
+  "精确抄录锚点对"(复制)目标冲突,三种豁免(无/锚区位置/任务级)全部失败
+  (anchor 召回 0.764→0.016/0.033/0.035,任务级豁免还使 bpc 1.680→1.997)。
+  要共存必须给模型**显式模式信号**,候选:(a) 模式 token(词表加一槽,输入前缀
+  标注任务模式,成本最低,推荐);(b) 复制旁路通道(独立小头读未损坏输入);
+  (c) 部署期按画像分离(复制能力放独立 profile)。**前提问题:你的部署是否需要
+  "从上下文精确复制"(引用/抽取/检索增强)?** 若不需要 → needle 永久 backlog,
+  该决策即关闭。
 - **Per-position retry** would need sparse (gather/scatter) compute to pay off —
   a real engine change, not a knob.
