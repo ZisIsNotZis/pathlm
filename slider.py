@@ -147,17 +147,26 @@ def bench(model: PathLM, pcap: PathConfig, prompts: list[torch.Tensor],
 
 
 def build_frontier(model: PathLM, pcap: PathConfig, calib, qual, prompts,
-                   n_new: int, profile: str, probe_batches: int) -> Frontier:
+                   n_new: int, profile: str, probe_batches: int,
+                   calib_prompts: list[torch.Tensor] | None = None) -> Frontier:
     """One profile's frontier: calibration -> predicted cost; quality probe ->
-    quality axis; decode bench -> measured behaviour."""
+    quality axis; decode bench -> measured behaviour.
+
+    a2 calibration: the TF hit_spec estimate systematically underestimates
+    the deploy accept rate (self-generated text is more self-consistent),
+    which made k=1 cost predictions conservative by 13-20%. We therefore
+    calibrate a2 the deployment way -- decode on CALIBRATION prompts (tau
+    off, short) -- and keep the TF estimate alongside for the record."""
     corr = profile == "corrupt"
     cal = gate_probe(model, calib, model.vocab_size, n_batches=probe_batches,
                      corrupted=corr, seed=0)
     ql = gate_probe(model, qual, model.vocab_size, n_batches=probe_batches,
                     corrupted=corr, seed=1)
-    # oracle reference: training-time mixture re-entry for round 2 — the
-    # decode engine currently produces only the overwrite transport
-    # (Decoder.retry); this row quantifies that engine gap
+    # oracle reference: training-time mixture re-entry for round 2 -- KEPT
+    # as a designed-consistency check: at a single retry round the mixture
+    # holds one term and shares the gauge with the overwrite transport, so
+    # the two must agree exactly (they do; the decode-engine-gap hypothesis
+    # was refuted). Differences would only appear at round-3+.
     qo = gate_probe(model, qual, model.vocab_size, n_batches=probe_batches,
                     corrupted=corr, seed=1, mixture_round2=True)
     gq_oracle = gated_quality(qo, TAUS)
@@ -165,6 +174,11 @@ def build_frontier(model: PathLM, pcap: PathConfig, calib, qual, prompts,
     gq = gated_quality(ql, TAUS)
     gq_calib = gated_quality(cal, TAUS)   # split-consistency reference
     a2_pred = float(cal["hit_spec"].mean())
+    # deploy-calibrated a2: short decode on calibration prompts (tau off)
+    a2_deploy = None
+    if calib_prompts and pcap.n_mtp >= 2:
+        a2_deploy = bench(model, pcap, calib_prompts, min(n_new, 128), 1, None,
+                          corrupted_input=corr).get("a2_measured")
     rel = reliability(ql["prob0"], ql["hit_r1"])
     points = []
     for k in (0, 1):
@@ -172,7 +186,7 @@ def build_frontier(model: PathLM, pcap: PathConfig, calib, qual, prompts,
             continue
         for tau in [None] + TAUS:
             fire = 0.0 if tau is None else fire_cal[tau]
-            a2 = 1.0 if k == 0 else a2_pred
+            a2 = 1.0 if k == 0 else (a2_deploy if a2_deploy is not None else a2_pred)
             qrow = gq["off" if tau is None else tau]
             quality = {"gated_bpc": qrow["gated_bpc"], "gated_acc": qrow["gated_acc"]}
             if "gated_acc_corr" in qrow:
@@ -191,6 +205,8 @@ def build_frontier(model: PathLM, pcap: PathConfig, calib, qual, prompts,
         "profile": profile,
         "fire_curve_calib": {str(t): round(v, 5) for t, v in fire_cal.items()},
         "a2_pred_tf": round(a2_pred, 4),
+        "a2_deploy_calib": a2_deploy,
+        "a2_used": a2_deploy if a2_deploy is not None else a2_pred,
         "gated_quality_split": {str(t): v for t, v in gq.items()},
         "gated_quality_calib": {str(t): v for t, v in gq_calib.items()},
         "oracle_gated_quality_mixture": {str(t): v for t, v in gq_oracle.items()},
@@ -238,6 +254,9 @@ def main():
     g2 = torch.Generator().manual_seed(99)   # fresh prompts for validation
     val_prompts = [torch.randint(0, model.n_real_tokens, (64,), generator=g2).cuda()
                    for _ in range(args.bench_prompts)]
+    g3 = torch.Generator().manual_seed(5)    # calib-side prompts for a2 deploy calibration
+    calib_prompts = [torch.randint(0, model.n_real_tokens, (64,), generator=g3).cuda()
+                     for _ in range(args.bench_prompts)]
 
     out: dict = {"model": args.ckpt, "config": args.config,
                  "taus": TAUS, "budgets": BUDGETS,
@@ -250,7 +269,8 @@ def main():
     for profile in ("clean", "corrupt"):
         print(f"== profile {profile} ==", flush=True)
         f, m = build_frontier(model, pcap, calib, qual, frontier_prompts,
-                              args.n_new, profile, args.probe_batches)
+                              args.n_new, profile, args.probe_batches,
+                              calib_prompts=calib_prompts)
         frontiers[profile], meta[profile] = f, m
     out["calibration"] = meta
 

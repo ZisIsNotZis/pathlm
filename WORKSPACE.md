@@ -25,8 +25,8 @@
 **状态**: 第一步(逐机制验证+采纳账本)已完成(ticket 14 关闭)。**Rung 3 已完成**
 (ticket 15):Slider 端到端建成并验证——校准→双货币成本模型(forwards/flop)→
 预算/质量求解器→验证解码→在线代理;严格占优点复现(corrupt: k=1 τ=0.98 比 plain
-少 37% forwards 且 bpc 更好);prob0 代理 TF 窗口 ECE ≤ 0.008;负结果:自由生成段
-prob0 检测反向(吸引子混淆)、单轮重试 mixture==overwrite(设计保证)。
+少 37% forwards 且 bpc 更好);prob0 代理 TF 窗口 ECE ≤ 0.008;a2 部署口径校准后成本预测全线 ≤±13%;
+负结果:自由生成段 prob0 检测反向(吸引子混淆)、单轮重试 mixture==overwrite(设计保证)。
 **下一步 = Rung 4**: 规模(100M+;训练 1–2h/6000 步,4090 可行但慢;2 seeds +
 更大跨度定案税/增益缩放)。**待决策**: 无阻塞项(backlog: a2 部署口径校准、
 自由生成段质量信号、probe 式深度头/exit 校准)。
@@ -52,7 +52,7 @@ prob0 检测反向(吸引子混淆)、单轮重试 mixture==overwrite(设计保�
   自由生成段失效=负结果);严格占优复现;单轮 mixture==overwrite(引擎无损失)。
   证据 `.scratch/15-slider-rung3/evidence/`;代码 `pathlm/slider.py` + 根探针 `slider.py`。
 - **Next (Rung 4):** 规模研究——100M+ 训练(1–2h/6000 步),2 seeds + 更大跨度,
-  定案税/增益缩放;顺带 backlog: a2 部署口径校准、自由生成段质量信号、
+  定案税/增益缩放;顺带 backlog: 自由生成段质量信号、
   probe 式深度头(exit 校准)。
 
 ## Key lessons (do not re-derive)
