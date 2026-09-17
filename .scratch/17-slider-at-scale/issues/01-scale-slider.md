@@ -1,6 +1,6 @@
 # 17 — Slider 上规模：INT profile @100M 的前沿复测
 
-- **Status:** in_progress
+- **Status:** done（Slider @100M 完成）
 - **Type:** scale study + allocator
 - **Related:** 15-slider-rung3（Rung 3）、16-rung4-scale（100M 底座成立）
 - **目标（WORKSPACE 下一步）:** INT profile @100M 的 Slider 前沿复测——把

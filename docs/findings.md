@@ -8,9 +8,8 @@
 - 尺度 enwik8，13M（d=256/12L）；B0 = **1.5074 bpc**（1.1 epoch 快照，
   4.4 epoch 渐近 1.3459）。Δ = clean-eval bpc 税 vs B0。
 - 证据 `.scratch/*/evidence/`（tickets 04–09、11–13）；引用 retry 数前先读 ticket 11。
-- 所有 run 为单/双 seed；**方差**（ticket 11）：同种子 nondeterminism 0.0019；
-  per-cell 种子方差 0.0001–0.0138。**Δ < ~0.014 不可排序**（含大部分 retry 矩阵
-  与若干主效应）。
+- 所有 run 单/双 seed；**方差**（ticket 11）：同种子 nondeterminism 0.0019；per-cell
+  种子方差 0.0001–0.0138；**Δ < ~0.014 不可排序**。
 - 所有 run ~1.1 epoch、cosine LR 仍在退火中，**税可能是收敛率差异而非渐近差异**；
   **所有已发布绝对税是 1.1-epoch 上界**：retry 税 +0.364@1k step → +0.122@24k step，
   ~3k 起平台，比已发布 +0.147 小 ~20%（ticket 11 D5）。
@@ -18,9 +17,8 @@
 ## Redo (single-layer repeat, p_redo)
 
 - 税：Δ **+0.044**（10% 层重复 ≈ +3% 相对 PPL）；测量过的组合无干扰（IX2 失败归因 shuffle）。
-- 收益：**尚无正收益**；with/without 未做，两个食谱：(a) eval-only ablation（p_redo→0）；
-  (b) 层内自校正 probe（同输入 1× vs 2× 的 frozen-head CE）。理论收益（层内自校正、
-  层级自适应算力）从未按层身份/置信度条件化。
+- 收益：**尚无正收益**；两个未做食谱：(a) eval-only ablation；(b) 层内自校正 probe。
+  理论收益（层级自适应算力）从未按层身份/置信度条件化。
 - 裁决：**最便宜的旋钮，收益列开放**。
 
 ## Skip (p_skip)
@@ -46,8 +44,7 @@
 - 组合毒药：任何含 shuffle 的组合落到 2.2+ bpc（IX2/IX3/INT）；与修复拮抗（重试
   无法精修乱序状态；repair 51%→38%）。
 - 收益：**唯一测到的是失败鲁棒性**（层 dropout/置换部署），至今无需求。
-- 裁决：**预测质量上的死路**。未测：2–4× 规模 partial locality（<0.25）；eval 时
-  order-canonicalization（排序执行当免费"修复到规范序"）。
+- 裁决：**预测质量上的死路**。未测：2–4× 规模 partial locality；eval 时 order-canonicalization。
 
 ## Future-token heads (MTP block, node k predicts t_{i+k})
 
@@ -75,9 +72,8 @@
   表已移到 **docs/report.md §3.7**。
 - **裁决：无任何 cell 排序可分辨（ticket 11）。** 6 个 latent cell 跨度仅 0.011 bpc；
   C2M_n1 种子散布 **0.0138** 已超整个 cell 跨度，其 mixture-vs-overwrite delta 在
-  seed 0/1 间**变号**（−0.0073 → +0.0065）。撤回"soft×mixture 最好、direct×mixture
-  最差"与"经 vocab 空间重入而非 latent 均值"。overwrite cells 内 transport flavor
-  亦不可分辨（跨度 0.007）——支持的是"多一遍"的价值，不是回传几何。
+  seed 0/1 间**变号**。撤回"soft×mixture 最好"等排序结论；overwrite cells 内
+  transport flavor 亦不可分辨——支持的是"多一遍"的价值，不是回传几何。
 - **税本身可靠**：每个 C cell 1.6535–1.6856 vs B0 1.5074，即 **+0.146…+0.178**，
   10–100× 任何测得底；12 层栈两遍 + 15% 损坏 ≈ +0.15 bpc。此数可引用。
 - 门控的已证价值在**修复侧**：R1 −4.6pp → C5 −1.3pp（~20× 0.16pp 修复采样误差），
@@ -95,13 +91,11 @@
   gated 训练税未缩（1.6884 vs 1.6860）。**状态掩码不省算力，收益需稀疏计算**；仍 open
   的是 prob0 门控逐位置 **re-embed**（token 重入，与已证伪的 latent 状态掩码不同）。
 
-- **分配选择性成立（ticket 14 实验 1，3 checkpoint 交叉验证）——愿景核心命题获证**：
-  按 round-0 prob0 分桶测 r1→r2 的 node-1 bpc 收益，门控（只对最低 15% 位置开第二轮）
-  vs 均匀（全位置重试）：ALLOC(dense-exit) −0.0651 vs −0.0554；**INT2 +0.0211 vs
-  −0.0193**；**C1M +0.1284 vs +0.0570**。门控把重试从净有害翻成净有益（计算 2×→1.15×）；
-  C1M 同一第二轮收益翻 2.2 倍。收益形状：中低置信带 +0.04~+0.06，高置信带（87%
-  token）≈0/负。**限制：dense-exit 监督摧毁重试精炼**（ALLOC 各桶全负）→ 分配器
-  底座 = retry + corruption，**不带 dense-exit**。证据 `.scratch/14-allocator/evidence/`。
+- **分配选择性成立（ticket 14，3 checkpoint 交叉验证）——愿景核心命题获证**：
+  按 round-0 prob0 分桶测 r1→r2 收益，门控（最低 15% 位置开第二轮）vs 均匀：
+  **INT2 +0.0211 vs −0.0193**；**C1M +0.1284 vs +0.0570**（2.2 倍）；门控把重试从
+  净有害翻成净有益（2×→1.15×）。收益形状：中低置信带 +0.04~+0.06，高置信带
+  ≈0/负。**限制：dense-exit 监督摧毁重试精炼** → 分配器底座不带 dense-exit。
 - 缺陷 D2/D3/D4 细节见 report §3.7。
 
 ## Slider — the runtime allocator (Rung 3, ticket 15)
@@ -109,11 +103,10 @@
 - **端到端建成并验证**（`pathlm/slider.py` + 根探针；证据 `.scratch/15-slider-rung3/evidence/`，
   底座 INT2_r3 重训，clean bpc 1.6698 vs 已发布 1.6548）：校准 → 双货币成本模型 → 求解器 → 验证解码 → 在线代理。
 - **成本可预测**：fire 曲线 split gap ≤ 0.004；a2 部署口径校准后全线预测误差
-  **≤ ±13%**（TF 估 a2 系统性低估部署接受率，偏保守）。**双货币必须双报**
-  （forwards vs flop 结论分歧：corrupt 下 k=1 τ=0.98 = 0.635 fwd/tok @ 2.0502 bpc
-  严格占优 plain；flop 口径则 +39.5% 算力换 −0.0043）。
+  **≤ ±13%**（TF 估 a2 系统性低估，偏保守）。**双货币必须双报**（corrupt 下
+  k=1 τ=0.98 = 0.635 fwd/tok @ 2.0502 严格占优 plain；flop 口径 +39.5% 换 −0.0043）。
 - **在线代理**：TF 窗口 prob0 ≈ P(当前 token 正确)，ECE 0.0011–0.0079；跨 τ 与
-  next-token acc 相关 r=0.91–0.98。负结果：自由生成段劣化检测反向（吸引子混淆）。
+  next-token acc 相关 r=0.91–0.98。
 - 引擎无损失：单轮重试 mixture==overwrite（共享 gauge 设计保证，oracle 证伪差距假设）。
 - 开放：exit 不在前沿内；flop 口径 cost<1.0 不可达（需深度头）。
 
@@ -124,7 +117,18 @@
   batch 13M:32 → 100M:8）。
 - **能力溢价持续**：同损坏下 B0 崩至 3.551（r2 反而 4.18）；C1 修复 2.015→1.949
   （r3 饱和）；**E2E 差距 ≥1.54 bpc**；ECE ≤0.0091，prob0 校准在 100M 存活。
-- 未做：INT profile @100M Slider 前沿复测、4.4-epoch 渐近口径、batch 一致性。
+
+## Slider @100M (ticket 17) — 分配器闭环上规模
+
+- **全链在同一 100M 权重上自洽成立**（INT_100M_s0，INT2 协议、p_needle=0，
+  clean 1.7175 vs B0_100M 堆叠溢价 +0.256，13M 同口径 +0.309 收窄）：
+  成本预测 clean +0.7% / corrupt ≤11.1%；fire split gap ≤0.0028；prob0 ECE
+  0.0014/0.0096；spec 严格占优复现（0.566 fwd/tok @ 2.0954 vs plain 2.0961）。
+- **门控重试质量杠杆在 100M 消失**（corrupt 门控 bpc τ 轴平坦 ±0.002）：
+  低置信带（~7%）内轮次价值 ≤0.001、超出后为负；轮次价值仍在训练侧
+  （C1_100M forced-round r1→r2 −0.066）。
+- **劣化检测反转**：13M 自由生成段反向（吸引子混淆）→ 100M 恢复正向
+  （0.984→0.948，开火率 0.9%→8.9%）——13M 失败是容量现象。
 
 ## Token retry (discrete re-entry) — see matrix rows C5/R1
 
@@ -167,16 +171,12 @@
   位置豁免救不回 4%；任务级豁免也没救回且 bpc 更糟。
 - **裁决：损坏鲁棒与精确复制在单模型里目标冲突，修复必须靠显式模式/通道信号**，
   不能靠位置或批次的损坏豁免（非锚 needle 仍低是全局"别抄"策略，单点豁免不够）。
-- 附带：`needle_acc` 评测协议 bug（漏清 `corrupt_mask`）已修并有可失败单测钉住；
-  **verdict-neutral**（阳性对照 X2v2 复现 0.8658/0.7637）。证据
-  `.scratch/13-four-experiments/evidence/{anchor_exempt,needle_antagonism}/`。
+- 附带：`needle_acc` 评测协议 bug（漏清 `corrupt_mask`）已修并有可失败单测钉住；verdict-neutral（阳性对照 X2v2 复现 0.8658/0.7637）。
 
 - **用户裁决（2026-09-16）：无需模式信号**。设计原则——模型从不"保留错误"，
-  **目标恒为正确的 token**（损坏只是输入侧增广；训练 targets 一直是干净流，
-  实现已满足此原则）。实测限制：13M 下损坏训练会压低精确复制行为（X2Cv3 连
-  干净 needle 批次也未恢复 0.05，且 clean bpc 1.680→1.997）——属容量/训练规模
-  限制，非目标冲突。needle 保持 backlog；若未来需要精确复制，优先更大规模/
-  更长训练或专门检索头，而非模式信号。
+  **目标恒为正确的 token**（损坏只是输入侧增广）。实测限制：13M 下损坏训练
+  会压低精确复制行为（X2Cv3 连干净 needle 批次也未恢复 0.05，clean bpc
+  1.680→1.997）——属容量/训练规模限制。needle 保持 backlog。
 
 ## Diversity pressure (TTS, div_weight)
 
