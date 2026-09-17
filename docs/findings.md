@@ -122,10 +122,9 @@
   acc 相关 r=0.91–0.98。
 - **负结果 ×2**：① 自由生成段的 mean-prob0 劣化检测反向（损坏把生成推进
   高置信重复吸引子，0.954→0.976）——prob0 代理只适用于 ingest/prefill 窗口；
-  ② 单轮重试的 mixture-vs-overwrite 引擎差距不存在（共享 gauge 的设计保证，
+  ② 单轮重试的 mixture-vs-overwrite 引擎差距不存在（共享 gauge 设计保证，
   单项 mixture == overwrite；差异只在 round-3+）。
-- 开放：exit 不在前沿内（INT2 无 dense-exit 训练）；flop 口径 cost<1.0 不可达
-  （需深度头）。
+- 开放：exit 不在前沿内（INT2 无 dense-exit 训练）；flop 口径 cost<1.0 不可达（需深度头）。
 
 ## Token retry (discrete re-entry) — see matrix rows C5/R1
 
