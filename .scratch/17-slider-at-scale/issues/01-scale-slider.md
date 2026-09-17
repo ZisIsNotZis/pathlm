@@ -11,7 +11,8 @@
 1. **训练 INT_100M_s0**：configs/INT_100M.json（INT2 协议 @100M：
    n_mtp=2 + latent chain + 损坏 0.075+0.075 + soft transport + p_retry 0.5 +
    window/anchors；**偏离记录：p_needle=0**——needle 已裁决 backlog，与
-   Slider 前沿无关且去除拮抗变量）。24000 步 × batch 8，~1.5–2h。
+   Slider 前沿无关且去除拮抗变量）。24000×8 首跑 OOM（blender 重启抢占余量，16.6+6.4GB≈23/23.5）；
+   改 **32000 步 × batch 6**（token 预算 98.3M 不变），~2–2.5h。
 2. **Slider 探针**：slider.py 直接复用（--config configs/INT_100M.json），
    校准→前沿→双货币求解→验证→代理，与 13M 版同一代码路径。
 3. **判读**（vs 13M INT2_r3 前沿）：
