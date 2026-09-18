@@ -17,9 +17,8 @@
 ## Redo (single-layer repeat, p_redo)
 
 - 税：Δ **+0.044**（10% 层重复 ≈ +3% 相对 PPL）；测量过的组合无干扰（IX2 失败归因 shuffle）。
-- 收益：**尚无正收益**；两个未做食谱：(a) eval-only ablation；(b) 层内自校正 probe。
-  理论收益（层级自适应算力）从未按层身份/置信度条件化。
-- 裁决：**最便宜的旋钮，收益列开放**。
+- 收益：**尚无正收益**；未做食谱：eval-only ablation、层内自校正 probe。
+- 裁决：**最便宜的旋钮，收益列开放**（理论收益从未按层置信度条件化）。
 
 ## Skip (p_skip)
 
@@ -33,12 +32,13 @@
   无 dense INT2_r3 1.6698——aux 深度监督起正则作用，corrupt 也好 0.08）。
 - 收益：**~iso-PPL 下 1.4× 解码**（按置信阈值退出）；深度曲线 ~6/12 平台（半栈仅 ~0.003 bpc）。
 - 负结果：深度**集成失败**——置信头只排序深度、不排序逐 token 可靠性。
-- **exit×retry 权衡定案（ticket 18）**：整形与 retry 是同一梯度的两面——probe 式头
-  （trunk stop-grad）保住 retry（−0.0098，优于无 dense 参照）但浅层读出贵
-  （depth 6 +0.93）；dense 0.2 温和整形仍杀 retry（+0.0146）但 exit 轴好
-  （depth 6 +0.199）且 clean/corrupt 双升。**两全证伪，双边前沿以两 profile 成立**
-  （质量 profile=EX2 / 自适应 profile=probe）。conf 逐深度校准在训练分布上极好，
-  阈值跨 profile 需重校准。
+- **exit×retry 权衡定案（ticket 18；100M 复测 ticket 21）**：整形与 retry 是同一
+  梯度的两面——probe 式头（trunk stop-grad）保 retry，浅层读出贵；dense 整形
+  exit 轴好但杀 retry。**100M 复现且更锐利**：probe 税≈0（1.5928 vs 1.5871）且
+  门控更强（−0.0291 vs 13M −0.0098）；dense 0.2 在 100M 恶化为 corrupt 崩溃
+  （off 2.8988 vs ~2.05）+ retry 灾难（+1.73）——**剂量响应随规模变化**
+  （13M 温和、100M 灾难）。两全证伪，自适应 profile（probe）是 100M 明确赢家。
+  conf 逐深度校准在训练分布上极好，阈值跨 profile 需重校准。
 
 ## Shuffle (order-free layers, shuffle_locality)
 
@@ -70,8 +70,7 @@
 
 ## Latent retry (loop back through a transport) — the 2×(transport × gating) matrix
 
-- 矩阵（4 transport × {ungated overwrite, mixture vote}，全带 corrupt_wrong 0.15）与逐 run
-  表已移到 **docs/report.md §3.7**。
+- 矩阵与逐 run 表在 **docs/report.md §3.7**。
 - **裁决：无任何 cell 排序可分辨（ticket 11）。** 6 个 latent cell 跨度仅 0.011 bpc；
   C2M_n1 种子散布 **0.0138** 已超整个 cell 跨度，其 mixture-vs-overwrite delta 在
   seed 0/1 间**变号**。撤回"soft×mixture 最好"等排序结论；overwrite cells 内
@@ -159,9 +158,8 @@
 ## Eviction + anchors (X2) — the ring-buffer deployment story
 
 - 税：Δ +0.121（原 X2；v2 needle 重设计 +0.058——改善是测量不是机制）。
-- 收益：ring-buffer 解码免重 prefill；anchor 通道 needle 召回 76.8%（+penalty 93.3%）；
-  per-layer cache + 早退 + prob0 retry 下 1.4×；retry 轮间 KV 位置严格递增
-  （P0 类 bug，须持续测试）。
+  收益：ring-buffer 解码免重 prefill；anchor 通道 needle 召回 76.8%
+  （+penalty 93.3%）；retry 轮间 KV 位置严格递增（P0 类 bug，须持续测试）。
 - **损坏 × 复制 = 目标冲突，三路尝试全失败（ticket 13 实验 2）**：anchor 召回
   0.764（X2v2 无损坏）→ X2C 无豁免 **0.016**、X2C-v2 锚区位置豁免 `corrupt_spare_anchors`
   **0.033**（in_window 0.47%→0.52%、beyond 0.59%→0.67%，clean bpc +0.0044）、X2Cv3
@@ -192,8 +190,10 @@
    时拮抗（shuffle × everything）。
 4. **辅助输出是 fallback 不是 voter**：深度前缀与 retry 轮按修复/退出训练，混进预测会
    退化。要集成价值需当 co-equal predictor 监督（未测）。
-7. **整形 vs 自适应**（ticket 18）：trunk 被浅层目标塑形（exit 质量好）就毁 retry
-   精炼；保 retry 就浅层贵——同一梯度的两面，以 profile 选择而非单模型两全。
+7. **整形 vs 自适应**（ticket 18/21）：trunk 被浅层目标塑形（exit 质量好）就毁
+   retry 精炼；保 retry 就浅层贵——同一梯度的两面，以 profile 选择而非单模型
+   两全。**剂量响应随规模变化**：dense 0.2 在 13M 温和、100M 灾难；probe 在
+   100M 零税且门控更强。
 5. **reward 项的稳定性工程**：bf16 autocast 下任何 negative/reward loss 需 float32 +
    pre-step grad-norm gate（两次发散教会）。
 6. **规模**（Rung 4 定案 @100M，2 seeds）：税首次不增（+0.126）、能力溢价持续
