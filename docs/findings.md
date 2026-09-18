@@ -24,18 +24,21 @@
 ## Skip (p_skip)
 
 - 税：Δ **+0.175** —— 最贵的深度元素。
-- 收益：**最好的 TTS 基底**。采样路径有真实多样性（K=8 1.6926→1.6454，−0.047）；
-  多样性压力训练（DIVL1）两项同时改善：baseline 1.6842、增益 −0.062，比 plain-skip
-  K=8 上限再 +0.023。
-- 未测：按层置信度自适应 skip；FLOP-matched 比较（应按省下的 FLOP 记账）。
+- 收益：**最好的 TTS 基底**（K=8 −0.047；DIVL1 再 +0.023）。未测：按层置信度
+  自适应 skip；FLOP-matched 记账。
 
 ## Early exit (dense per-depth supervision, w_dense_exit)
 
-- 税：Δ **+0.067**。
+- 税：Δ **+0.067**（dense 1.0 整形）；**dense 0.2 剂量税为负**（EX2 1.6097 vs
+  无 dense INT2_r3 1.6698——aux 深度监督起正则作用，corrupt 也好 0.08）。
 - 收益：**~iso-PPL 下 1.4× 解码**（按置信阈值退出）；深度曲线 ~6/12 平台（半栈仅 ~0.003 bpc）。
-- 负结果：深度**集成失败**（mixed 1.602 vs single 1.5744）——浅层严格更差（depth CE
-  1.06→0.74，15× PPL 悬崖），置信头只排序深度、不排序逐 token 可靠性。
-- 未测：退出阈值扫描（1.4× 仅一个工作点）；退出上叠 spec-decoding。
+- 负结果：深度**集成失败**——置信头只排序深度、不排序逐 token 可靠性。
+- **exit×retry 权衡定案（ticket 18）**：整形与 retry 是同一梯度的两面——probe 式头
+  （trunk stop-grad）保住 retry（−0.0098，优于无 dense 参照）但浅层读出贵
+  （depth 6 +0.93）；dense 0.2 温和整形仍杀 retry（+0.0146）但 exit 轴好
+  （depth 6 +0.199）且 clean/corrupt 双升。**两全证伪，双边前沿以两 profile 成立**
+  （质量 profile=EX2 / 自适应 profile=probe）。conf 逐深度校准在训练分布上极好，
+  阈值跨 profile 需重校准。
 
 ## Shuffle (order-free layers, shuffle_locality)
 
@@ -50,17 +53,14 @@
 
 - 税：always-on infra（保 Δ 纯净）；n_mtp 1→2 **+0.041**（B2 1.5481）；2→3 **+0.0166**
   （B3 1.5604 vs B2fresh 1.5438；1→2 为 +0.0407）。
-- 收益（间接，已测）：承载全部弹性机制的控制信号（早退置信、retry 门、mixture 票）。
-- 直接预测收益：**未证实**——node-2/链估计无集成价值；consistency loss 中性
-  （IX4 1.6589 ≈ C1 1.6549）。
+- 收益（间接）：承载全部弹性机制的控制信号（早退置信、retry 门、mixture 票）。
+  直接预测收益**未证实**（node-2/链无集成价值；consistency loss 中性）。
 - 草稿头（ticket 10）：node-2 对 t+2 acc **55.97%**（node-1 t+1 68.8%，chance 0.5%，
   M0 仅 0.26）；与 node-1 验证一致 65.8%，**给定 node-1 正确则接受 77.3%**。朴素概率
   复合失败（CE 3.96 vs node-2 单独 1.58），正确链需 node-2 条件在 node-1 采样 token 上。
-- **条件链（ticket 12 P1，6000步×2 seed）**：DeepSeek 式 concat+proj
-  `Linear(2d,d)([h; embed(t_{i+1})])`+T1。**oracle（真 t+1）t+2 acc 0.682 ≈ node-1 自身
-  0.693；deploy（node-1 argmax）0.547 < direct 0.560**（~31% 草稿错误），接受率
-  0.75 ≈ direct 0.77。**裁决：机制成立、此规模无部署收益，瓶颈是草稿质量**；k=1 naive
-  verify-next-round 零吞吐收益，需批量验证。
+- **条件链（ticket 12，6000步×2 seed）**：DeepSeek 式 concat+proj。**oracle 0.682 ≈
+  node-1 自身 0.693；deploy 0.547 < direct 0.560**——机制成立、此规模无部署收益，
+  瓶颈是草稿质量；需批量验证。
 - **n_mtp=3 + Medusa 批量验证（ticket 13 实验 3）**：`decode.py::decode_spec` 一次 forward
   验证 node-2..n_mtp + node-1 下一 token，输出**逐位 == 逐位置贪心**（5 单测）。部署口径
   a₂=0.844 / a₃|a₂=0.653 → 2.40 tok/forward；稳态 enwik8 **1.68×**(k=2)/1.42×(k=1)、
@@ -75,10 +75,8 @@
   seed 0/1 间**变号**。撤回"soft×mixture 最好"等排序结论；overwrite cells 内
   transport flavor 亦不可分辨——支持的是"多一遍"的价值，不是回传几何。
 - **税本身可靠**：每个 C cell 1.6535–1.6856 vs B0 1.5074，即 **+0.146…+0.178**，
-  10–100× 任何测得底；12 层栈两遍 + 15% 损坏 ≈ +0.15 bpc。此数可引用。
-- 门控的已证价值在**修复侧**：R1 −4.6pp → C5 −1.3pp（~20× 0.16pp 修复采样误差），
-  forced-round 曲线停止下探。retry 是修复不是集成：干净流上平均 rounds 退化。
-  L-loop×depth 协同：12L 上 retry 更值（C1 +2.1pp；M0 浅栈 ~0）。
+  10–100× 任何测得底；此数可引用。门控的已证价值在**修复侧**（retry 是修复不是
+  集成：干净流上平均 rounds 退化）；L-loop×depth 协同：12L 上 retry 更值。
 - **D1 因果确认（ticket 12 P2，12000步×2 seed）**：修复 gauge 后 mixture run 的 round-2
   损坏输入 bpc **单调改善 2.71→2.33→2.19→2.09→2.03→1.98→1.95→1.936**（2 seed
   1.943/1.932），pre-fix 引擎发散（3.7→8.5→32.9→**95.2**）；round 序 r1 1.993→r2 1.936→
@@ -100,8 +98,8 @@
 
 ## Slider — the runtime allocator (Rung 3, ticket 15)
 
-- **端到端建成并验证**（`pathlm/slider.py` + 根探针；证据 `.scratch/15-slider-rung3/evidence/`，
-  底座 INT2_r3 重训，clean bpc 1.6698 vs 已发布 1.6548）：校准 → 双货币成本模型 → 求解器 → 验证解码 → 在线代理。
+- **端到端建成并验证**（`pathlm/slider.py`；证据 `.scratch/15-slider-rung3/evidence/`，
+  底座 INT2_r3，clean 1.6698）：校准 → 双货币成本模型 → 求解器 → 验证解码 → 在线代理。
 - **成本可预测**：fire 曲线 split gap ≤ 0.004；a2 部署口径校准后全线预测误差
   **≤ ±13%**（TF 估 a2 系统性低估，偏保守）。**双货币必须双报**（corrupt 下
   k=1 τ=0.98 = 0.635 fwd/tok @ 2.0502 严格占优 plain；flop 口径 +39.5% 换 −0.0043）。
@@ -146,8 +144,7 @@
   **+0.127 | 52.8%**；embedding noise **±0.000 | n/a**（无 flag）；pure-noise latent
   **+0.063 | n/a**。
 - **带显式"I don't know" flag 的损坏既更便宜又更可修复**（vs 静默对抗性损坏）——
-  writable-input 接口应显式标注损坏。噪声免费（norm-cap 几何吸收）；纯噪声
-  writable-input 只 ~4% 相对 PPL。
+  writable-input 接口应显式标注损坏；噪声免费；纯噪声只 ~4% 相对 PPL。
 - 组合胜：**retry × corruption 次可加**（IX1 mask×soft-retry +0.087 < 0.277 之和）——
   共享修复机器，唯一已证组合增益。
 
@@ -155,8 +152,8 @@
 
 - 税：Δ **−0.007**（在噪声内但正号）——唯一改善 clean bpc 的元素。
 - 收益：与驱逐组合共 +0.004；**改善 anchor 通道（needle 76.8%→93.3%）**；per-head
-  遥测平均注意距离 26–43，无头塌成纯 local。
-- 警告：penalty 下 beyond-window needle "命中"是 local-LM 强度，**不是**抗驱逐召回。
+  遥测距离 26–43。警告：penalty 下 beyond-window needle "命中"是 local-LM 强度，
+  非抗驱逐召回。
 
 ## Eviction + anchors (X2) — the ring-buffer deployment story
 
@@ -181,8 +178,8 @@
 ## Diversity pressure (TTS, div_weight)
 
 - 机制：并行路径间 capped −JS 压差（bf16 下 float32 + pre-step grad-norm gate）。
-- 收益：**同时改善 baseline 与 TTS 斜率**（DIVL1 −0.062 > plain −0.047，上限 +0.023）。
-- 税：Δ +0.023。确定性路径 checkpoint 从 K-path 集成恰得 0——多样性必须练进去。
+  收益：**同时改善 baseline 与 TTS 斜率**（DIVL1 −0.062 > plain −0.047）；税 Δ +0.023。
+  确定性路径 checkpoint 从 K-path 集成恰得 0——多样性必须练进去。
 
 ## Cross-cutting laws
 
@@ -194,6 +191,8 @@
    时拮抗（shuffle × everything）。
 4. **辅助输出是 fallback 不是 voter**：深度前缀与 retry 轮按修复/退出训练，混进预测会
    退化。要集成价值需当 co-equal predictor 监督（未测）。
+7. **整形 vs 自适应**（ticket 18）：trunk 被浅层目标塑形（exit 质量好）就毁 retry
+   精炼；保 retry 就浅层贵——同一梯度的两面，以 profile 选择而非单模型两全。
 5. **reward 项的稳定性工程**：bf16 autocast 下任何 negative/reward loss 需 float32 +
    pre-step grad-norm gate（两次发散教会）。
 6. **规模**（Rung 4 定案 @100M，2 seeds）：税首次不增（+0.126）、能力溢价持续

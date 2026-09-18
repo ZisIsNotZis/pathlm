@@ -68,10 +68,13 @@ Slider 实现（**Rung 3 已建成并验证，ticket 15**，`pathlm/slider.py` +
 | spec × 损坏 | ✅ | INT2 上 k=1 spec 1.31×（驱逐向量化后） |
 | **exit × spec** | ❌ 本引擎不可组合 | 批量验证必须全深度（逐位置深度会使缓存失步）；exit 单独实测 2.4×（103-105 tok/s）但质量需 dense-exit 训练校准，而它与 retry 冲突 → 见 §4 的 probe 式深度头解法 |
 
-**已知设计冲突与解法**：dense-exit 的深度监督梯度会重塑 trunk、破坏 retry 精炼
-（ALLOC 各置信桶全负）。解法：深度置信头改为 **probe 式**（对 trunk stop-grad，
-只训头本身）——深度头是"读出探针"而非"训练信号"。未测，是 exit×retry 共存的
-前提。
+**已知设计冲突——已定案（ticket 18）**：整形与 retry 是同一梯度的两面，**两全被
+证伪**。probe 式头（trunk stop-grad）确实解掉引擎拮抗（retry 活，−0.0098 优于
+参照）；但 exit 质量轴需要 trunk 塑形——dense 0.2 温和整形仍杀 retry（+0.0146）
+而 exit 轴好（depth 6 +0.199 vs probe 的 +0.93），dense 0.2 还顺带改善 clean/
+corrupt（aux 正则）。**双边前沿以两个 profile 成立**：质量 profile（EX2：1.0 flop
+1.54 → 0.5 flop 1.74）+ 自适应 profile（probe/无 dense：retry+spec+门控活）。
+conf 逐深度校准在训练分布上极好；阈值跨 profile 需重校准（Slider 校准框架职责）。
 
 ## 5. 验证阶梯（4090 包络内）
 
@@ -81,7 +84,7 @@ Slider 实现（**Rung 3 已建成并验证，ticket 15**，`pathlm/slider.py` +
   求解器→验证解码→在线代理；严格占优点在新权重复现（corrupt：k=1 τ=0.98
   比 plain **少 37% forwards 且 bpc 更好**）；单轮重试 mixture==overwrite
   （设计保证，引擎无损失）
-- **Rung 4 ✅（实质完成）** 规模（ticket 16/17）：100M 2 seeds 定案——税首次不增
+- **Rung 4 ✅（实质完成；exit 双 profile 定案见 §4）** 规模（ticket 16/17）：100M 2 seeds 定案——税首次不增
   （+0.126）、能力溢价持续（≥1.54 bpc）、prob0 校准存活；Slider 分配器在 100M
   闭环自洽（spec 占优复现；门控重试质量杠杆随规模自衰减 ≤0.001）。
   更远：node-3+ 接受率随规模、exit 校准（probe 式深度头）、4.4-epoch 渐近口径。
