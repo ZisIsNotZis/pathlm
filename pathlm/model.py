@@ -368,7 +368,10 @@ class PathLM(nn.Module):
                     # at depth d < n, so the head must be calibrated there too.
                     # (total_depths/path close over this loop iteration's values,
                     # which are fixed per pass — no late-binding hazard.)
-                    nodes = self._mtp_nodes(h_d)
+                    # Probe mode (exit_probe): stop-grad trunk — the depth head
+                    # is a readout, never a training signal (ticket 14 showed
+                    # dense-exit trunk gradients destroy retry refinement).
+                    nodes = self._mtp_nodes(h_d.detach() if pc.exit_probe else h_d)
                     dloss = h_d.new_zeros(())
                     for k, node in nodes.items():
                         tgt = targets[:, k:]

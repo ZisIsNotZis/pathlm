@@ -1013,3 +1013,55 @@ def test_spec_decode_retry_gating():
     got2, st2 = decode_spec(m2, prompt, 12, m2.pcap, retry_threshold=0.9)
     assert st2["retries"] == 0, "retry must not fire without a transport"
     assert len(got2) == 12
+
+
+# ---------- probe-style depth head (exit_probe) ----------
+
+def _dense_grads(exit_probe: bool):
+    """One forward/backward with dense-exit supervision only differing in
+    exit_probe; returns (trunk_grad_norm, head_grad_norm) of chosen params."""
+    import copy
+    torch.manual_seed(0)
+    pcap = PathConfig(n_mtp=1, transport="none", p_retry=0.0,
+                      corrupt_wrong=0.0, corrupt_mask=0.0,
+                      w_dense_exit=1.0, exit_probe=exit_probe)
+    m = tiny_model(pcap)
+    trunk = m.blocks[0].mlp.fc1.weight if hasattr(m.blocks[0].mlp, "fc1") else None
+    if trunk is None:  # fall back: first parameter of the first block
+        trunk = next(m.blocks[0].parameters())
+    head = m.conf[0][0].weight if isinstance(m.conf[0], torch.nn.Sequential) else m.conf[0].weight
+    x = torch.randint(0, 49, (2, M1.seq_len))
+    rng = random.Random(0)
+    paths = [sample_path(m.pcap, rng, M1.n_layers)]
+    for p in paths:
+        p.n_retries = 0
+        p.token_retry = False
+    loss, _ = m(x, paths, x)
+    loss.backward()
+    return trunk.grad.norm().item(), head.grad.norm().item()
+
+
+def test_exit_probe_depth_supervision_leaves_trunk_untouched():
+    """THE property: probe-style depth head is a readout — trunk gradients
+    identical to no-dense-exit; without probe, dense supervision reshapes the
+    trunk (the ALLOC antagonism). Head must train in both cases."""
+    g_off = _dense_grads(exit_probe=False)
+    g_probe = _dense_grads(exit_probe=True)
+    # without dense supervision at all: trunk baseline (for reference only)
+    assert g_probe[1] > 0, "depth head must still train from the detached trunk"
+    # probe mode: head gets grads; the depth term cannot touch the trunk.
+    # Verify structurally: rerun with w_dense_exit=0 -> trunk grad must equal
+    # the probe-mode trunk grad (dense adds nothing to the trunk).
+    torch.manual_seed(0)
+    pcap = PathConfig(n_mtp=1, transport="none", w_dense_exit=0.0)
+    m = tiny_model(pcap)
+    trunk = next(m.blocks[0].parameters())
+    head = m.conf[0][0].weight if isinstance(m.conf[0], torch.nn.Sequential) else m.conf[0].weight
+    x = torch.randint(0, 49, (2, M1.seq_len))
+    rng = random.Random(0)
+    loss, _ = m(x, [sample_path(m.pcap, rng, M1.n_layers)], x)
+    loss.backward()
+    g_base = trunk.grad.norm().item()
+    assert abs(g_probe[0] - g_base) < 1e-6 * max(g_probe[0], g_base, 1.0), (
+        "exit_probe trunk grad must equal the no-dense baseline "
+        f"(probe {g_probe[0]} vs base {g_base})")

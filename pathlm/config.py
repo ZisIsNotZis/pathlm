@@ -54,6 +54,13 @@ class PathConfig:
     # inference, exit at the first depth whose prob_0 clears exit_threshold.
     w_dense_exit: float = 0.0
     exit_threshold: float = 0.9
+    # Probe-style depth head (mental_model §4): supervise the per-depth MTP
+    # block on a STOP-GRAD trunk — the depth head is a readout probe, not a
+    # training signal. Motivation: dense-exit's trunk gradients destroyed
+    # retry refinement (ticket 14 ALLOC antagonism); with the trunk untouched
+    # the exit head should coexist with retry. The final depth keeps the
+    # normal (non-detached) pass.
+    exit_probe: bool = False
     # Eviction (X2): attention may see the last `window` positions plus the
     # first `anchors` positions. 0 = off. Anchors are exempt from eviction and
     # act as the long-range channel (needle-in-anchor eval relies on this).
