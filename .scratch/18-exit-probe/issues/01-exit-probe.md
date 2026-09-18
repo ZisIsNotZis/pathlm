@@ -1,6 +1,6 @@
 # 18 — probe 式深度头：exit 杠杆校准 + exit×retry 共存（双边前沿）
 
-- **Status:** in_progress
+- **Status:** done（EX1/EX2 双实验 + 权衡定案）
 - **Type:** mechanism + engine
 - **Related:** 14-allocator（dense-exit×retry 拮抗的发现）、15-slider-rung3、
   mental_model §4（probe 式深度头方案）
