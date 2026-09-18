@@ -44,16 +44,18 @@ def _sync():
 @torch.no_grad()
 def depth_bpc(model, eval_arr, vocab_size, corrupted: bool,
               n_batches=24, batch_size=32, seed=1):
-    """Per-depth node-1 bpc (the exit quality axis). Uses the model's own
-    dense-exit hook (collect_depth_logits) so depths 1..n report their
-    readout quality; clean and corrupted curves share the unit (bpc)."""
+    """Per-executed-depth node-1 bpc (the exit quality axis). Uses the model's
+    own dense-exit hook (collect_depth_logits). Skips are DISABLED for the
+    measurement (p_skip=0): with random skips the executed-depth index blurs
+    across heterogeneous layer sets, and ragged buckets would need their own
+    denominators. Exit deployment runs a full ordered stack per token."""
     T = model.mcfg.seq_len
     rng = random.Random(seed)
     gen = torch.Generator().manual_seed(seed)
     torch.manual_seed(1234)  # eval corruption convention
     sums: dict[int, float] = {}
     with eval_pc(model, w_dense_exit=1.0, collect_depth_logits=True,
-                 p_retry=0.0, p_token_retry=0.0,
+                 p_skip=0.0, p_retry=0.0, p_token_retry=0.0,
                  corrupt_wrong=(model.pcap.corrupt_wrong if corrupted else 0.0),
                  corrupt_mask=(model.pcap.corrupt_mask if corrupted else 0.0)):
         for _ in range(n_batches):
@@ -110,6 +112,38 @@ def exit_sweep(model, pcap, prompts, n_new=256, taus_retry=(None, 0.9)):
     return rows
 
 
+@torch.no_grad()
+def depth_conf_calibration(model, eval_arr, vocab_size, corrupted=True,
+                           n_batches=24, batch_size=32, seed=1, depths=(1, 4, 8, 12)):
+    """Per-depth confidence calibration: mean sigmoid(conf[0]) vs realized
+    next-token hit rate at each executed depth. The exit gate shares conf[0]
+    across depths — if it saturates at shallow depths the threshold becomes
+    unusable (the gate fires at depth 1 regardless of tau)."""
+    T = model.mcfg.seq_len
+    rng = random.Random(seed)
+    gen = torch.Generator().manual_seed(seed)
+    torch.manual_seed(1234)
+    conf_sum, hit_sum, n = {}, {}, {}
+    with eval_pc(model, w_dense_exit=1.0, collect_depth_logits=True,
+                 p_skip=0.0, p_retry=0.0, p_token_retry=0.0,
+                 corrupt_wrong=(model.pcap.corrupt_wrong if corrupted else 0.0),
+                 corrupt_mask=(model.pcap.corrupt_mask if corrupted else 0.0)):
+        for _ in range(n_batches):
+            x, _ = batch(eval_arr, batch_size, T, gen)
+            x = x.to(model.embed.weight.device)
+            tgt = x[:, 1:]
+            _, aux = model(x, [sample_path(model.pcap, rng, model.mcfg.n_layers)], x)
+            for d, (lg, cf) in enumerate(zip(aux["depth_logits"], aux["depth_conf"]), start=1):
+                lg, cf = lg[:, :tgt.shape[1]], cf[:, :tgt.shape[1]]
+                hit = (lg.argmax(-1) == tgt).float()
+                conf_sum[d] = conf_sum.get(d, 0.0) + torch.sigmoid(cf).sum().item()
+                hit_sum[d] = hit_sum.get(d, 0.0) + hit.sum().item()
+                n[d] = n.get(d, 0) + hit.numel()
+    return {d: {"mean_conf": round(conf_sum[d] / n[d], 4),
+                "acc": round(hit_sum[d] / n[d], 4)}
+            for d in sorted(n) if d in depths or d == max(n)}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", required=True)
@@ -140,8 +174,11 @@ def main():
     corr = depth_bpc(model, ev, V, corrupted=True, n_batches=24)
     out["depth_curve_clean"] = clean
     out["depth_curve_corrupt"] = corr
+    out["depth_conf_calibration_corrupt"] = depth_conf_calibration(
+        model, ev, V, corrupted=True, n_batches=24)
     print(f"depth clean : {clean}", flush=True)
     print(f"depth corrupt: {corr}", flush=True)
+    print(f"depth conf calib (corrupt): {out['depth_conf_calibration_corrupt']}", flush=True)
 
     # ---- 2. exit sweep (composed with retry gate) ----
     print("== exit sweep ==", flush=True)
