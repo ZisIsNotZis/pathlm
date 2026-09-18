@@ -48,3 +48,25 @@ clean 输入浅层过自信（τ=0.95 也在 depth 1 退出）：头在损坏分
    （不整形 trunk 的必然）。
 3. **剂量问题开放**：温和整形（EX2 = dense 0.2 非 probe）能否以小 retry 损伤
    换 L2 级 exit 质量——EX2 运行中，结果出来后本文件补判读。
+
+## EX2 剂量实验（dense 0.2 非 probe）——判读定案
+
+| | EX1（probe，零整形） | **EX2（dense 0.2）** | INT2_r3（无 dense） |
+|---|---|---|---|
+| clean battery bpc | 1.7065 | **1.6097** | 1.6698 |
+| corrupt off（TF） | 2.1139 | **1.9740** | 2.0545 |
+| depth 6（clean，p_skip=0） | 2.5530（+0.93 vs 12） | **1.7432（+0.199）** | — |
+| depth 1 conf/acc（corrupt） | 0.257/0.261 ✓ | 0.487/0.489 ✓ | — |
+| retry 门控（corrupt，τ=0.98） | **−0.0098 活** | **+0.0146 死** | −0.0043 |
+
+1. **温和整形（0.2 剂量）仍杀死 retry**（门控单调恶化，拮抗在 0.2 剂量不衰减）
+   ——整形与 retry 是同一梯度的两面，"exit×retry 两全"被证伪。
+2. **但 dense-0.2 是更好的纯质量模型**：clean/corrupt 双好于无 dense（aux 深度
+   监督起正则作用，+0.06/+0.08），且 exit 质量轴大幅改善——**质量 profile** 的
+   便宜侧前沿点真实可用（0.5 flop @ +0.199）。
+3. **最终形态：双边前沿以两个 profile 成立**——质量 profile（EX2：1.0 flop
+   1.54 → 0.5 flop 1.74 → 0.08 flop 2.19）+ 自适应 profile（INT2_r3/EX1：
+   retry+spec+门控活，绝对质量略低）。"形态即配置"再加一档：exit 校准方式
+   本身是形态选择（probe=保自适应，dense=保质量）。
+4. conf 逐深度校准在训练分布（corrupt）上极好；阈值跨 profile 需重校准
+   （Slider 校准框架的职责，非引擎缺陷）。
