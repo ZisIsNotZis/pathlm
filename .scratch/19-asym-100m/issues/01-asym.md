@@ -1,6 +1,6 @@
 # 19 — 4.4-epoch 渐近口径 @100M：税上界定案
 
-- **Status:** in_progress
+- **Status:** done（渐近定案：税 +0.082，随规模下降；溢价随训练扩大）
 - **Type:** scale study（长训）
 - **Related:** 16-rung4-scale（100M 1.1-epoch 税 +0.126）、11（D5：13M 税随步数
   收缩 +0.364@1k → +0.122@24k，~3k 平台；"所有已发布绝对税是 1.1-epoch 上界"）
