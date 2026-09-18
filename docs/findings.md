@@ -43,9 +43,8 @@
 ## Shuffle (order-free layers, shuffle_locality)
 
 - 税：Δ **+0.545** —— 独一档；层序携带 ~0.5 bpc。
-- 硬边界：locality 0.5 训练，eval ≤0.5 可容忍，全随机崩（3.84）。
-- 组合毒药：任何含 shuffle 的组合落到 2.2+ bpc（IX2/IX3/INT）；与修复拮抗（重试
-  无法精修乱序状态；repair 51%→38%）。
+- 硬边界：locality 0.5 训练，eval ≤0.5 可容忍，全随机崩（3.84）；组合毒药：
+  任何含 shuffle 的组合落到 2.2+ bpc，与修复拮抗（repair 51%→38%）。
 - 收益：**唯一测到的是失败鲁棒性**（层 dropout/置换部署），至今无需求。
 - 裁决：**预测质量上的死路**。未测：2–4× 规模 partial locality；eval 时 order-canonicalization。
 
@@ -61,10 +60,13 @@
 - **条件链（ticket 12，6000步×2 seed）**：DeepSeek 式 concat+proj。**oracle 0.682 ≈
   node-1 自身 0.693；deploy 0.547 < direct 0.560**——机制成立、此规模无部署收益，
   瓶颈是草稿质量；需批量验证。
-- **n_mtp=3 + Medusa 批量验证（ticket 13 实验 3）**：`decode.py::decode_spec` 一次 forward
-  验证 node-2..n_mtp + node-1 下一 token，输出**逐位 == 逐位置贪心**（5 单测）。部署口径
-  a₂=0.844 / a₃|a₂=0.653 → 2.40 tok/forward；稳态 enwik8 **1.68×**(k=2)/1.42×(k=1)、
-  random **1.85×**(k=2)；宽度-3 前向成本仅 1.28×。**≥1.3× 判据通过。**
+- **n_mtp=3 + Medusa 批量验证（ticket 13）**：一次 forward 验证全部草稿，13M 上
+  **逐位 == 逐位置贪心**；a₂=0.844 / a₃|a₂=0.653 → 2.40 tok/fwd；稳态 **1.68×**(k=2)；
+  宽度-3 前向成本 1.28×（launch-bound）。
+- **spec 缩放定案（ticket 20 @100M）**：接受级联稳定（a₂ 0.80，a₃|a₂ **0.767↑**，
+  2.4 tok/fwd 不变）；前向 compute-bound（宽度-3 **3.4–5.3×**）→ 墙钟 k=2 仅
+  1.15–1.29×、**k=1 负**。fp 平局翻转首现：top-2 gap 0.008 处翻 argmax
+  （1/400，级联 68）——逐位相等是 13M 规模性质。
 
 ## Latent retry (loop back through a transport) — the 2×(transport × gating) matrix
 
@@ -105,8 +107,8 @@
   k=1 τ=0.98 = 0.635 fwd/tok @ 2.0502 严格占优 plain；flop 口径 +39.5% 换 −0.0043）。
 - **在线代理**：TF 窗口 prob0 ≈ P(当前 token 正确)，ECE 0.0011–0.0079；跨 τ 与
   next-token acc 相关 r=0.91–0.98。
-- 引擎无损失：单轮重试 mixture==overwrite（共享 gauge 设计保证，oracle 证伪差距假设）。
-- 开放：exit 不在前沿内；flop 口径 cost<1.0 不可达（需深度头）。
+- 引擎无损失：单轮重试 mixture==overwrite（设计保证，oracle 证伪）。开放：exit
+  不在前沿内；flop 口径 cost<1.0 不可达（需深度头）。
 
 ## Scale (Rung 4, ticket 16) — 100M, 2 seeds
 
@@ -122,9 +124,8 @@
   clean 1.7175 vs B0_100M 堆叠溢价 +0.256，13M 同口径 +0.309 收窄）：
   成本预测 clean +0.7% / corrupt ≤11.1%；fire split gap ≤0.0028；prob0 ECE
   0.0014/0.0096；spec 严格占优复现（0.566 fwd/tok @ 2.0954 vs plain 2.0961）。
-- **门控重试质量杠杆在 100M 消失**（corrupt 门控 bpc τ 轴平坦 ±0.002）：
-  低置信带（~7%）内轮次价值 ≤0.001、超出后为负；轮次价值仍在训练侧
-  （C1_100M forced-round r1→r2 −0.066）。
+- **门控重试质量杠杆在 100M 消失**（τ 轴平坦 ±0.002；低置信带 ≤0.001、超出后
+  为负）；轮次价值仍在训练侧（C1_100M forced-round r1→r2 −0.066）。
 - **劣化检测反转**：13M 自由生成段反向（吸引子混淆）→ 100M 恢复正向
   （0.984→0.948，开火率 0.9%→8.9%）——13M 失败是容量现象。
 

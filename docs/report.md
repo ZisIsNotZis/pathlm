@@ -229,6 +229,12 @@ soft retry，32000×6，token 预算同）训练+探针链完成：堆叠溢价 
 1.54 → 1.89）。B0_asym 1.341 ≈ 13M 渐近 1.346：396M tokens 下参数增益饱和。
 证据 `.scratch/19-asym-100m/evidence/`。
 
+**spec 宽度缩放定案（ticket 20，INT3_100M）**：接受级联规模稳定（a₂ 0.80、
+a₃|a₂ 0.767↑、2.4 tok/fwd 不变）；但 100M 前向 compute-bound（宽度-3 成本
+3.4–5.3× vs 13M 1.28×）——**spec 墙钟收益消失**（k=2 1.15–1.29×，k=1 负），
+forwards 口径仍在。fp 平局翻转首现（top-2 gap 0.008，1/400 token；逐位相等
+是 13M 规模性质）。证据 `.scratch/20-spec-scale/evidence/`。
+
 ## 5. 尚存问题 / 已验证边界
 
 - 已验证边界: 13M/4.4epoch 下, 税与收益的账本在本文件 §3 与 findings.md。

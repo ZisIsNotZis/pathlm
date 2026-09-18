@@ -1,6 +1,6 @@
 # 20 — node-3+ spec 宽度缩放 @100M
 
-- **Status:** in_progress
+- **Status:** done（spec 缩放定案：级联稳定、墙钟消失、fp 平局记录）
 - **Type:** scale study（spec 机制）
 - **Related:** 13-four-experiments（13M：a₂=0.844，a₃|a₂=0.653，2.40 tok/fwd，
   k=2 1.68× 稳态）、17-slider-at-scale（INT_100M，n_mtp=2）
