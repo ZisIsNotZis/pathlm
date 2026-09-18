@@ -1,6 +1,6 @@
 # 21 — 整形 vs 自适应定律 @100M 复测（exit 双 profile）
 
-- **Status:** in_progress
+- **Status:** done（定律 @100M 复现且更锐利：probe 零税+门控更强；dense 0.2 corrupt 崩溃）
 - **Type:** scale study（exit 机制）
 - **Related:** 18-exit-probe（13M 定案：两全证伪，整形/retry 同一梯度两面）
 - **目标：** ticket 18 的权衡在 100M 是否成立——

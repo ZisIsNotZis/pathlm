@@ -72,9 +72,11 @@ Slider 实现（**Rung 3 已建成并验证，ticket 15**，`pathlm/slider.py` +
 证伪**。probe 式头（trunk stop-grad）确实解掉引擎拮抗（retry 活，−0.0098 优于
 参照）；但 exit 质量轴需要 trunk 塑形——dense 0.2 温和整形仍杀 retry（+0.0146）
 而 exit 轴好（depth 6 +0.199 vs probe 的 +0.93），dense 0.2 还顺带改善 clean/
-corrupt（aux 正则）。**双边前沿以两个 profile 成立**：质量 profile（EX2：1.0 flop
-1.54 → 0.5 flop 1.74）+ 自适应 profile（probe/无 dense：retry+spec+门控活）。
-conf 逐深度校准在训练分布上极好；阈值跨 profile 需重校准（Slider 校准框架职责）。
+corrupt（aux 正则）。**双边前沿以两个 profile 成立，且 100M 复测更锐利（ticket 21）**：probe profile
+在 100M 零税（1.5928 vs 1.5871）且 retry 门控更强（−0.029）；dense 0.2 在 100M
+**剂量响应恶化**——corrupt 崩溃（off 2.90）、retry 灾难（+1.73），仅剩 clean
+优势与 exit 轴。自适应 profile（probe）是规模下的明确赢家。conf 逐深度校准
+在训练分布上极好；阈值跨 profile 需重校准（Slider 校准框架职责）。
 
 ## 5. 验证阶梯（4090 包络内）
 
