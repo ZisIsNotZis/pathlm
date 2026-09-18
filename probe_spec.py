@@ -21,6 +21,8 @@ import torch
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import probe_tts as P  # noqa: E402
+
+blob = __import__("numpy").load("data/enwik8_full.npz")  # module-level: val split for real prompts
 from pathlm.decode import Decoder, decode, decode_spec  # noqa: E402
 
 PROMPT_LEN, N_NEW, REPS = 32, 400, 5
