@@ -28,6 +28,16 @@ Pure pieces (unit-tested in tests/test_gen_quality.py, no GPU):
 - ``signal_bins``        equal-count bins of a signal vs realized miss rate.
 - ``monotone_frac``      adjacent-bin error-rate monotonicity (detecting dir).
 
+Text repetition statistics (ticket 22b, the collapse-domain monitor js is
+blind to: attractor-collapsed windows read js=0 / agree=1, i.e. HEALTHY):
+
+- ``unique_ratio``         fraction of unique tokens in a sequence.
+- ``distinct_ngram_ratio`` #distinct n-grams / #n-gram positions.
+- ``max_token_share``      largest single-token frequency share.
+- ``label_collapse``       pre-registered window collapse label.
+- ``collapse_summary``     AUC of repetition vs the label + the js
+                           decoupling block (criterion 22b).
+
 GPU probe:
 
 - ``rescore_disagreement``  teacher-forced multi-path pass over token
@@ -177,6 +187,103 @@ def joint_high_conf_bucketing(js, prob0, miss) -> dict:
             "monotone": bool(errs[0] < errs[1] < errs[2]),
             "spread": round(errs[2] - errs[0], 4),
             "n": int(hi.sum())}
+
+
+# ------------------------------------------- text repetition (ticket 22b)
+
+def unique_ratio(ids) -> float:
+    """Fraction of unique tokens in a 1-D id sequence (1.0 = all distinct)."""
+    t = torch.as_tensor(ids).flatten()
+    if t.numel() == 0:
+        raise ValueError("unique_ratio needs a non-empty sequence")
+    return float(t.unique().numel()) / t.numel()
+
+
+def distinct_ngram_ratio(ids, n: int = 2) -> float:
+    """#distinct n-grams / #n-gram positions of a 1-D id sequence — the
+    repetition-rate collapse metric (1.0 = no n-gram ever repeats)."""
+    if n < 1:
+        raise ValueError("n must be >= 1")
+    t = torch.as_tensor(ids).flatten().tolist()
+    if len(t) < n:
+        raise ValueError(f"distinct_ngram_ratio needs >= n={n} tokens")
+    grams = [tuple(t[i:i + n]) for i in range(len(t) - n + 1)]
+    return len(set(grams)) / len(grams)
+
+
+def max_token_share(ids) -> float:
+    """Largest single-token frequency share of a 1-D id sequence
+    (1.0 = one token hammers the whole window — the loop fingerprint)."""
+    t = torch.as_tensor(ids).flatten()
+    if t.numel() == 0:
+        raise ValueError("max_token_share needs a non-empty sequence")
+    return float(torch.bincount(t).max()) / t.numel()
+
+
+def label_collapse(distinct2: float, unique: float, thr_distinct2: float = 0.5,
+                   thr_unique: float = 0.15) -> bool:
+    """Pre-registered ticket-22b collapse label for one generated window:
+    distinct-2 ratio below threshold OR unique-token ratio below threshold
+    (either repetition fingerprint suffices)."""
+    if not 0 < thr_distinct2 <= 1 or not 0 < thr_unique <= 1:
+        raise ValueError("collapse thresholds must be in (0, 1]")
+    return bool(distinct2 < thr_distinct2 or unique < thr_unique)
+
+
+def collapse_summary(distinct2, unique, js, thr_distinct2: float = 0.5,
+                     thr_unique: float = 0.15, labels=None) -> dict:
+    """Ticket-22b criterion block over one window set.
+
+    Inputs are per-window aligned sequences: distinct-2 ratio, unique-token
+    ratio, and window-level path-disagreement js. Labels default to the
+    ``label_collapse`` threshold rule; pass ``labels`` (0/1 per window) for
+    externally (manually) assigned semantic labels — recorded as
+    ``label_source`` so the AUC is never silently circular (threshold
+    labels are a function of the metric itself). Criterion: the repetition
+    metric separates collapse from healthy windows with AUC >= 0.9
+    (detecting direction = LOW distinct-2), AND js is DECOUPLED on the
+    collapsed domain — js reads the collapsed windows as at-least-median
+    healthy (their mean js BELOW the healthy mean and at least half of them
+    at/below the pooled js median). ``auc_js_alarm`` interprets HIGH js as
+    a degradation alarm, so a value <= 0.5 means the alarm never fires on
+    the collapse domain (anti-aligned)."""
+    d2 = torch.as_tensor(distinct2, dtype=torch.float32).flatten()
+    uq = torch.as_tensor(unique, dtype=torch.float32).flatten()
+    j = torch.as_tensor(js, dtype=torch.float32).flatten()
+    if not (d2.numel() == uq.numel() == j.numel()) or d2.numel() == 0:
+        raise ValueError("collapse_summary needs equal-length non-empty inputs")
+    if labels is None:
+        labels_t = torch.tensor([label_collapse(a, b, thr_distinct2, thr_unique)
+                                 for a, b in zip(d2.tolist(), uq.tolist())])
+        label_source = "threshold"
+    else:
+        labels_t = torch.as_tensor(labels).flatten().float()
+        if labels_t.numel() != d2.numel():
+            raise ValueError("manual labels must align with the windows")
+        if not ((labels_t == 0) | (labels_t == 1)).all():
+            raise ValueError("manual labels must be 0/1")
+        label_source = "manual"
+    n_col = int(labels_t.sum())
+    if n_col == 0 or n_col == d2.numel():
+        raise ValueError("collapse_summary needs both classes present")
+    col = labels_t.bool()
+    rep = -d2                                    # LOW distinct-2 marks collapse
+    mean_col, mean_hea = float(j[col].mean()), float(j[~col].mean())
+    below_med = int(((j <= j.median()) & col).sum())
+    out = {
+        "thresholds": {"distinct2": thr_distinct2, "unique": thr_unique},
+        "label_source": label_source,
+        "n_windows": int(d2.numel()), "n_collapse": n_col,
+        "auc_rep_distinct2": discrimination_auc(rep, labels_t.float()),
+        "auc_js_alarm_direction": discrimination_auc(j, labels_t.float()),
+        "mean_js_collapse": round(mean_col, 5),
+        "mean_js_healthy": round(mean_hea, 5),
+        "frac_collapse_at_below_js_median": round(below_med / n_col, 4),
+        "rank_corr_js_vs_rep": round(rank_corr(j, rep), 4),
+    }
+    out["decoupled"] = bool(mean_col < mean_hea and below_med / n_col >= 0.5)
+    out["pass"] = bool(out["auc_rep_distinct2"] >= 0.9 and out["decoupled"])
+    return out
 
 
 # ----------------------------------------------------------------- GPU probe

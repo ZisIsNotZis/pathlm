@@ -1,0 +1,441 @@
+{
+ "model": ".scratch/15-slider-rung3/evidence/INT2_r3/model.pt",
+ "config": ".tmp/INT2.json",
+ "ticket": "22b",
+ "n_prompts": 8,
+ "n_new": 400,
+ "label_rule": "distinct2 < thr OR unique < thr (generated region)",
+ "thresholds": {
+  "distinct2": 0.5,
+  "unique": 0.15
+ },
+ "natural_baseline": {
+  "n_windows": 64,
+  "window_len": 400,
+  "distinct2_mean": 0.4596,
+  "distinct2_min": 0.213,
+  "unique_mean": 0.11,
+  "unique_min": 0.07,
+  "max_share_mean": 0.136,
+  "max_share_max": 0.185
+ },
+ "kind_means": {
+  "real": {
+   "n": 8,
+   "n_collapse_manual": 5,
+   "distinct2_mean": 0.1792,
+   "js_mean": 0.01291
+  },
+  "random": {
+   "n": 8,
+   "n_collapse_manual": 8,
+   "distinct2_mean": 0.1046,
+   "js_mean": 0.05783
+  },
+  "corrupt": {
+   "n": 8,
+   "n_collapse_manual": 5,
+   "distinct2_mean": 0.1989,
+   "js_mean": 0.04288
+  }
+ },
+ "threshold_rule_d2_axis_sweep": {
+  "0.05": {
+   "n_collapse": 1,
+   "n_healthy": 23,
+   "auc_rep_distinct2": 1.0
+  },
+  "0.1": {
+   "n_collapse": 7,
+   "n_healthy": 17,
+   "auc_rep_distinct2": 1.0
+  },
+  "0.15": {
+   "n_collapse": 14,
+   "n_healthy": 10,
+   "auc_rep_distinct2": 1.0
+  },
+  "0.2": {
+   "n_collapse": 17,
+   "n_healthy": 7,
+   "auc_rep_distinct2": 1.0
+  },
+  "0.25": {
+   "n_collapse": 20,
+   "n_healthy": 4,
+   "auc_rep_distinct2": 1.0
+  },
+  "0.3": {
+   "n_collapse": 22,
+   "n_healthy": 2,
+   "auc_rep_distinct2": 1.0
+  },
+  "0.4": {
+   "n_collapse": 24,
+   "n_healthy": 0,
+   "auc_rep_distinct2": null
+  }
+ },
+ "criterion_22b": {
+  "thresholds": {
+   "distinct2": 0.5,
+   "unique": 0.15
+  },
+  "label_source": "manual",
+  "n_windows": 24,
+  "n_collapse": 18,
+  "auc_rep_distinct2": 0.9815,
+  "auc_js_alarm_direction": 0.3889,
+  "mean_js_collapse": 0.03529,
+  "mean_js_healthy": 0.04563,
+  "frac_collapse_at_below_js_median": 0.5556,
+  "rank_corr_js_vs_rep": 0.1366,
+  "decoupled": true,
+  "pass": true
+ },
+ "threshold_rule_summary": {
+  "error": "collapse_summary needs both classes present",
+  "label_source": "threshold",
+  "note": "fixed thresholds label ALL windows collapse (greedy output sits wholly below the natural distinct-2 level)"
+ },
+ "threshold_rule_caveat": "threshold labels are a function of the repetition metric itself -> circular AUC; kept for the pre-registered rule audit only",
+ "per_window": [
+  {
+   "kind": "real",
+   "pi": 0,
+   "n_gen": 400,
+   "distinct2": 0.2757,
+   "unique": 0.1075,
+   "max_share": 0.1075,
+   "threshold_label": true,
+   "window_js": 0.04288,
+   "window_agree": 0.94,
+   "mean_prob0_decode": 0.9956,
+   "manual_class": "T",
+   "manual_label": 0
+  },
+  {
+   "kind": "random",
+   "pi": 0,
+   "n_gen": 400,
+   "distinct2": 0.0652,
+   "unique": 0.035,
+   "max_share": 0.215,
+   "threshold_label": true,
+   "window_js": 0.37255,
+   "window_agree": 0.155,
+   "mean_prob0_decode": 0.975,
+   "manual_class": "D2",
+   "manual_label": 1
+  },
+  {
+   "kind": "corrupt",
+   "pi": 0,
+   "n_gen": 400,
+   "distinct2": 0.0977,
+   "unique": 0.05,
+   "max_share": 0.185,
+   "threshold_label": true,
+   "window_js": 0.05036,
+   "window_agree": 0.9725,
+   "mean_prob0_decode": 0.9438,
+   "manual_class": "D2",
+   "manual_label": 1
+  },
+  {
+   "kind": "real",
+   "pi": 1,
+   "n_gen": 400,
+   "distinct2": 0.0476,
+   "unique": 0.025,
+   "max_share": 0.2,
+   "threshold_label": true,
+   "window_js": 0.00299,
+   "window_agree": 1.0,
+   "mean_prob0_decode": 0.9992,
+   "manual_class": "D2",
+   "manual_label": 1
+  },
+  {
+   "kind": "random",
+   "pi": 1,
+   "n_gen": 400,
+   "distinct2": 0.0752,
+   "unique": 0.0425,
+   "max_share": 0.3875,
+   "threshold_label": true,
+   "window_js": 0.01719,
+   "window_agree": 0.77,
+   "mean_prob0_decode": 0.9751,
+   "manual_class": "D2",
+   "manual_label": 1
+  },
+  {
+   "kind": "corrupt",
+   "pi": 1,
+   "n_gen": 400,
+   "distinct2": 0.0777,
+   "unique": 0.03,
+   "max_share": 0.1975,
+   "threshold_label": true,
+   "window_js": 0.04603,
+   "window_agree": 0.9375,
+   "mean_prob0_decode": 0.9703,
+   "manual_class": "D2",
+   "manual_label": 1
+  },
+  {
+   "kind": "real",
+   "pi": 2,
+   "n_gen": 400,
+   "distinct2": 0.1454,
+   "unique": 0.0625,
+   "max_share": 0.15,
+   "threshold_label": true,
+   "window_js": 0.00254,
+   "window_agree": 0.9875,
+   "mean_prob0_decode": 0.9988,
+   "manual_class": "P",
+   "manual_label": 1
+  },
+  {
+   "kind": "random",
+   "pi": 2,
+   "n_gen": 400,
+   "distinct2": 0.0927,
+   "unique": 0.055,
+   "max_share": 0.1525,
+   "threshold_label": true,
+   "window_js": 0.00663,
+   "window_agree": 0.965,
+   "mean_prob0_decode": 0.9964,
+   "manual_class": "P",
+   "manual_label": 1
+  },
+  {
+   "kind": "corrupt",
+   "pi": 2,
+   "n_gen": 400,
+   "distinct2": 0.218,
+   "unique": 0.0675,
+   "max_share": 0.16,
+   "threshold_label": true,
+   "window_js": 0.04346,
+   "window_agree": 0.855,
+   "mean_prob0_decode": 0.9327,
+   "manual_class": "P",
+   "manual_label": 1
+  },
+  {
+   "kind": "real",
+   "pi": 3,
+   "n_gen": 400,
+   "distinct2": 0.386,
+   "unique": 0.115,
+   "max_share": 0.1575,
+   "threshold_label": true,
+   "window_js": 0.00619,
+   "window_agree": 0.9525,
+   "mean_prob0_decode": 0.9984,
+   "manual_class": "T",
+   "manual_label": 0
+  },
+  {
+   "kind": "random",
+   "pi": 3,
+   "n_gen": 400,
+   "distinct2": 0.1153,
+   "unique": 0.07,
+   "max_share": 0.15,
+   "threshold_label": true,
+   "window_js": 0.02611,
+   "window_agree": 0.9625,
+   "mean_prob0_decode": 0.9975,
+   "manual_class": "P",
+   "manual_label": 1
+  },
+  {
+   "kind": "corrupt",
+   "pi": 3,
+   "n_gen": 400,
+   "distinct2": 0.386,
+   "unique": 0.1175,
+   "max_share": 0.145,
+   "threshold_label": true,
+   "window_js": 0.00052,
+   "window_agree": 0.98,
+   "mean_prob0_decode": 0.9735,
+   "manual_class": "T",
+   "manual_label": 0
+  },
+  {
+   "kind": "real",
+   "pi": 4,
+   "n_gen": 400,
+   "distinct2": 0.1729,
+   "unique": 0.0525,
+   "max_share": 0.1725,
+   "threshold_label": true,
+   "window_js": 0.00739,
+   "window_agree": 0.9375,
+   "mean_prob0_decode": 0.9984,
+   "manual_class": "P",
+   "manual_label": 1
+  },
+  {
+   "kind": "random",
+   "pi": 4,
+   "n_gen": 400,
+   "distinct2": 0.1328,
+   "unique": 0.0625,
+   "max_share": 0.15,
+   "threshold_label": true,
+   "window_js": 0.0,
+   "window_agree": 1.0,
+   "mean_prob0_decode": 0.998,
+   "manual_class": "P",
+   "manual_label": 1
+  },
+  {
+   "kind": "corrupt",
+   "pi": 4,
+   "n_gen": 400,
+   "distinct2": 0.1178,
+   "unique": 0.055,
+   "max_share": 0.14,
+   "threshold_label": true,
+   "window_js": 0.00903,
+   "window_agree": 0.9925,
+   "mean_prob0_decode": 0.9706,
+   "manual_class": "P",
+   "manual_label": 1
+  },
+  {
+   "kind": "real",
+   "pi": 5,
+   "n_gen": 400,
+   "distinct2": 0.1003,
+   "unique": 0.055,
+   "max_share": 0.1575,
+   "threshold_label": true,
+   "window_js": 0.00654,
+   "window_agree": 0.985,
+   "mean_prob0_decode": 0.9987,
+   "manual_class": "P",
+   "manual_label": 1
+  },
+  {
+   "kind": "random",
+   "pi": 5,
+   "n_gen": 400,
+   "distinct2": 0.1278,
+   "unique": 0.06,
+   "max_share": 0.1575,
+   "threshold_label": true,
+   "window_js": 0.01617,
+   "window_agree": 0.98,
+   "mean_prob0_decode": 0.9964,
+   "manual_class": "P",
+   "manual_label": 1
+  },
+  {
+   "kind": "corrupt",
+   "pi": 5,
+   "n_gen": 400,
+   "distinct2": 0.1955,
+   "unique": 0.0675,
+   "max_share": 0.225,
+   "threshold_label": true,
+   "window_js": 0.00076,
+   "window_agree": 0.98,
+   "mean_prob0_decode": 0.9384,
+   "manual_class": "P",
+   "manual_label": 1
+  },
+  {
+   "kind": "real",
+   "pi": 6,
+   "n_gen": 400,
+   "distinct2": 0.2005,
+   "unique": 0.085,
+   "max_share": 0.1575,
+   "threshold_label": true,
+   "window_js": 0.03131,
+   "window_agree": 0.9425,
+   "mean_prob0_decode": 0.9985,
+   "manual_class": "T",
+   "manual_label": 0
+  },
+  {
+   "kind": "random",
+   "pi": 6,
+   "n_gen": 400,
+   "distinct2": 0.1754,
+   "unique": 0.0675,
+   "max_share": 0.105,
+   "threshold_label": true,
+   "window_js": 0.0,
+   "window_agree": 1.0,
+   "mean_prob0_decode": 0.9975,
+   "manual_class": "P",
+   "manual_label": 1
+  },
+  {
+   "kind": "corrupt",
+   "pi": 6,
+   "n_gen": 400,
+   "distinct2": 0.2857,
+   "unique": 0.11,
+   "max_share": 0.1475,
+   "threshold_label": true,
+   "window_js": 0.02433,
+   "window_agree": 0.89,
+   "mean_prob0_decode": 0.9476,
+   "manual_class": "T",
+   "manual_label": 0
+  },
+  {
+   "kind": "real",
+   "pi": 7,
+   "n_gen": 400,
+   "distinct2": 0.1053,
+   "unique": 0.0475,
+   "max_share": 0.16,
+   "threshold_label": true,
+   "window_js": 0.00343,
+   "window_agree": 0.985,
+   "mean_prob0_decode": 0.9992,
+   "manual_class": "P",
+   "manual_label": 1
+  },
+  {
+   "kind": "random",
+   "pi": 7,
+   "n_gen": 400,
+   "distinct2": 0.0526,
+   "unique": 0.0375,
+   "max_share": 0.1975,
+   "threshold_label": true,
+   "window_js": 0.02398,
+   "window_agree": 0.9875,
+   "mean_prob0_decode": 0.9985,
+   "manual_class": "D2",
+   "manual_label": 1
+  },
+  {
+   "kind": "corrupt",
+   "pi": 7,
+   "n_gen": 400,
+   "distinct2": 0.213,
+   "unique": 0.0725,
+   "max_share": 0.1175,
+   "threshold_label": true,
+   "window_js": 0.16854,
+   "window_agree": 0.6275,
+   "mean_prob0_decode": 0.9444,
+   "manual_class": "T",
+   "manual_label": 0
+  }
+ ],
+ "generation_seconds": 93.7
+}

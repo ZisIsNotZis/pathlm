@@ -11,9 +11,11 @@ import torch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pathlm.config import ModelConfig, PathConfig, PathSample, sample_path
 from pathlm.eval import eval_pc
-from pathlm.gen_quality import (discrimination_auc, js_bits, monotone_frac,
-                                pairwise_agreement, pairwise_js, rank_corr,
-                                rescore_disagreement, signal_bins)
+from pathlm.gen_quality import (collapse_summary, discrimination_auc,
+                                distinct_ngram_ratio, js_bits, label_collapse,
+                                max_token_share, monotone_frac, pairwise_agreement,
+                                pairwise_js, rank_corr, rescore_disagreement,
+                                signal_bins, unique_ratio)
 from pathlm.model import PathLM
 
 MC = ModelConfig(d_model=32, n_layers=3, n_heads=4, seq_len=32, mlp_mult=2)
@@ -118,6 +120,101 @@ def test_monotone_frac_directions():
                           {"err_rate": 0.2}]) == pytest.approx(0.5)
     with pytest.raises(ValueError):
         monotone_frac([{"err_rate": 0.1}])
+
+
+# ------------------------------------------- text repetition (ticket 22b)
+
+def test_text_repetition_metrics_hand_examples():
+    # "abab": bigrams (a,b)(b,a)(a,b) -> 2 distinct / 3; unique 2/4; 'a' share 1/2
+    assert distinct_ngram_ratio([0, 1, 0, 1]) == pytest.approx(2 / 3)
+    assert unique_ratio([0, 1, 0, 1]) == pytest.approx(0.5)
+    assert max_token_share([0, 1, 0, 1]) == pytest.approx(0.5)
+    # "aaaa": the loop fingerprint — distinct-2 1/3, unique 1/4, share 1.0
+    assert distinct_ngram_ratio([3, 3, 3, 3]) == pytest.approx(1 / 3)
+    assert unique_ratio([3, 3, 3, 3]) == pytest.approx(0.25)
+    assert max_token_share([3, 3, 3, 3]) == pytest.approx(1.0)
+    # all-distinct text scores the healthy extreme on every metric
+    assert distinct_ngram_ratio([0, 1, 2, 3]) == pytest.approx(1.0)
+    assert unique_ratio([0, 1, 2, 3]) == pytest.approx(1.0)
+    assert max_token_share([0, 1, 2, 3]) == pytest.approx(0.25)
+    with pytest.raises(ValueError):
+        distinct_ngram_ratio([0, 1], n=3)   # shorter than n
+    with pytest.raises(ValueError):
+        unique_ratio([])
+    with pytest.raises(ValueError):
+        max_token_share([])
+
+
+def test_label_collapse_or_semantics_and_threshold_bounds():
+    assert label_collapse(0.4, 0.9) is True            # distinct-2 below thr
+    assert label_collapse(0.9, 0.1) is True            # unique below thr (OR)
+    assert label_collapse(0.9, 0.9) is False           # healthy on both
+    assert label_collapse(0.5, 0.15) is False          # thresholds are >=-kept
+    with pytest.raises(ValueError):
+        label_collapse(0.9, 0.9, thr_distinct2=0.0)
+    with pytest.raises(ValueError):
+        label_collapse(0.9, 0.9, thr_unique=1.5)
+
+
+def test_collapse_summary_separation_with_js_decoupling():
+    # 3 collapsed windows: repetition extreme, js at the BOTTOM (reads healthy);
+    # 3 healthy windows: natural repetition, higher js
+    d2 = [0.05, 0.08, 0.10, 0.70, 0.75, 0.80]
+    uq = [0.10, 0.12, 0.14, 0.80, 0.85, 0.90]
+    js = [0.000, 0.001, 0.002, 0.020, 0.010, 0.030]
+    s = collapse_summary(d2, uq, js)
+    assert s["n_collapse"] == 3 and s["n_windows"] == 6
+    assert s["auc_rep_distinct2"] == pytest.approx(1.0)
+    assert s["auc_js_alarm_direction"] == pytest.approx(0.0)  # anti-aligned
+    assert s["mean_js_collapse"] < s["mean_js_healthy"]
+    assert s["frac_collapse_at_below_js_median"] == pytest.approx(1.0)
+    assert s["decoupled"] is True and s["pass"] is True
+
+
+def test_collapse_summary_falsifies_when_js_sees_collapse():
+    # same repetition separation, but collapsed windows carry the HIGHEST js:
+    # repetition detects collapse yet js is NOT decoupled -> pass must fail
+    d2 = [0.05, 0.08, 0.10, 0.70, 0.75, 0.80]
+    uq = [0.10, 0.12, 0.14, 0.80, 0.85, 0.90]
+    js = [0.200, 0.150, 0.100, 0.030, 0.020, 0.010]
+    s = collapse_summary(d2, uq, js)
+    assert s["auc_rep_distinct2"] == pytest.approx(1.0)
+    assert s["auc_js_alarm_direction"] == pytest.approx(1.0)
+    assert s["decoupled"] is False and s["pass"] is False
+    # labels mixed (via the unique arm) while the distinct-2 metric ties
+    # across classes -> the primary repetition AUC is exactly chance 0.5
+    s2 = collapse_summary([0.6, 0.6, 0.6, 0.6], [0.10, 0.10, 0.90, 0.90],
+                          [0.1, 0.1, 0.1, 0.1])
+    assert s2["n_collapse"] == 2
+    assert s2["auc_rep_distinct2"] == pytest.approx(0.5)
+    assert s2["pass"] is False
+    with pytest.raises(ValueError):                    # single class
+        collapse_summary([0.1, 0.1], [0.1, 0.1], [0.0, 0.0])
+    with pytest.raises(ValueError):                    # length mismatch
+        collapse_summary([0.1, 0.9], [0.1], [0.0, 0.1])
+
+
+def test_collapse_summary_manual_labels_and_validation():
+    # external (manual) semantic labels: not a function of the metric, so the
+    # AUC is non-circular; label_source must say so
+    s = collapse_summary([0.2, 0.2, 0.8, 0.8], [0.5, 0.5, 0.5, 0.5],
+                         [0.1, 0.1, 0.1, 0.1], labels=[1, 1, 0, 0])
+    assert s["label_source"] == "manual"
+    assert s["auc_rep_distinct2"] == pytest.approx(1.0)
+    assert s["n_collapse"] == 2
+    # metric ties everywhere yet labels separate -> exactly chance AUC,
+    # proving the score is not leaking the label
+    s2 = collapse_summary([0.5, 0.5, 0.5, 0.5], [0.5, 0.5, 0.5, 0.5],
+                          [0.1, 0.1, 0.1, 0.1], labels=[1, 1, 0, 0])
+    assert s2["label_source"] == "manual"
+    assert s2["auc_rep_distinct2"] == pytest.approx(0.5)
+    with pytest.raises(ValueError):
+        collapse_summary([0.1, 0.9], [0.5, 0.5], [0.0, 0.1], labels=[1])
+    with pytest.raises(ValueError):
+        collapse_summary([0.1, 0.9], [0.5, 0.5], [0.0, 0.1], labels=[1, 2])
+    # threshold path still reports its source
+    s3 = collapse_summary([0.1, 0.9], [0.9, 0.9], [0.0, 0.1])
+    assert s3["label_source"] == "threshold"
 
 
 # --------------------------------------------------- rescore_disagreement

@@ -51,8 +51,13 @@ exit 质量贵(+0.93@depth6);dense 0.2 温和整形仍杀 retry(+0.0146)但 exit
 **ticket-15“13M prob0 反向”未复现**(同权重同协议 n=6 方向转正,原反向系 n=1
 假象,与 100M 一致,findings/report 已修正)。证据 `.scratch/22-gen-quality/evidence/`;
 代码 `pathlm/gen_quality.py` + 根探针 `probe_gen_quality.py`(14 新单测,全绿 88)。
-**下一步(无阻塞,按优先级)**:自由生成段塌缩域专用监测(信号类型未定)、
-13M 渐近全账本重校(可选)。**待决策**: 无阻塞项(backlog: probe 式深度头/exit 校准)。
+**塌缩域监测已定案**(ticket 22b,纯推理,INT2_r3):文本重复率(distinct-2)区分塌缩/健康窗
+AUC 0.9815(人工语义标注)且与 js 正交(rank_corr 0.14)——js 在塌缩域双向失灵(假阴 js=0
+与假阳 js=0.37 并存);监测栈定形:prob0 管 token 对错+js 管分歧+distinct-2 管塌缩;注意
+greedy 生成全局重复偏置(全部低于自然 enwik8 水平),监测参考水平需相对化。证据同目录
+(`SUMMARY_22b.md`+`collapse_monitor_INT2r3.json`+人工标注文件);代码 `probe_collapse_monitor.py`
++`collapse_summary` 等纯函数(5 新单测,全绿 93)。
+**下一步(无阻塞,按优先级)**:13M 渐近全账本重校(可选)。**待决策**: 无阻塞项(backlog: probe 式深度头/exit 校准)。
 **工程债**: 确定性开关、resume/长日程、FLOPs 记账、逐轮梯度累积、探针 CLI 整合。
 
 ## Status (2026-09-14)
