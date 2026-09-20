@@ -235,14 +235,31 @@ a₃|a₂ 0.767↑、2.4 tok/fwd 不变）；但 100M 前向 compute-bound（宽
 forwards 口径仍在。fp 平局翻转首现（top-2 gap 0.008，1/400 token；逐位相等
 是 13M 规模性质）。证据 `.scratch/20-spec-scale/evidence/`。
 
+## 4.7 自由生成段质量信号（ticket 22，2026-09-18）
+
+**路径分歧度（同窗多条独立层路径 TF 重评分的成对 JS，不生成只读出）是真实但
+不完备的生成段质量信号**（INT2_r3）。判据 A 成立（互补路线）：TF corrupt 流上
+prob0 高置信半区内 js 三分位错误率 0.12→0.37→0.48，js AUC 0.66–0.69 > prob0
+0.58–0.62（但 js 顶桶饱和，桶单调性主路线输给 prob0）；判据 B 成立：真实前缀
+生成段窗口 js 严格 real 0.0114 < corrupt 0.0250 < random 0.0390（prob0 压在
+0.955–1.00 分不开 real/random）；判据 C 成立：同窗注入 wrong 0/7.5/15% 合并 js
+单调（15/18 窗单调）。**盲区**：吸引子塌缩窗 js→0 且 agree=1.0（随机 prompt+
+流损坏域 js 反而低于 clean）——js 只能作 prob0 的互补信号，不能单独监测塌缩。
+**ticket-15“13M prob0 反向”未复现**：同权重同协议 n=6 复刻 corrupt prob0 0.9323
+< clean 0.9961（方向转正，开火 13.0%>0.6%）——原反向系 n=1 单 prompt 假象，
+方向与 100M 一致；findings.md 已修正 ticket 17 行。协议要点：每路径独立 forward
++ 损坏种子逐路径重放（多条路径塞一次 forward 会从上一轮 latent 重入——是加深
+不是重评分，有单测钉住）。代码 `pathlm/gen_quality.py` + 根探针
+`probe_gen_quality.py`；证据 `.scratch/22-gen-quality/evidence/`。
+
 ## 5. 尚存问题 / 已验证边界
 
 - 已验证边界: 13M/4.4epoch 下, 税与收益的账本在本文件 §3 与 findings.md。
   Slider 端到端已建成（§3.9）：校准/成本/求解/代理四件套验证，严格占优点复现。
 - 未实现: prob0 门控逐位置重入(状态掩码已证伪)、按画像自动组装工具、
-  自由生成段的质量信号（prob0 在生成段失效，负结果）、probe 式深度头
-  （exit×retry 共存前提）。a2 部署口径校准已完成（ticket 15 收尾）。
-  node-3+ 草稿与 Medusa 批量验证已在实验 3 建成(§3.6)。
+  吸引子塌缩段的专用监测（ticket 22：路径分歧度作为互补信号已成立，但塌缩窗
+  js→0 盲区仍在）、probe 式深度头（exit×retry 共存前提）。a2 部署口径校准
+  已完成（ticket 15 收尾）。node-3+ 草稿与 Medusa 批量验证已在实验 3 建成(§3.6)。
 - 未测: 规模(2-4× 参数下税/增益缩放，Rung 4)、条件链 × prob0 门控重试
   (草稿质量组合)、exit 校准（probe 式深度头训练）。
 - 方法债: .git 1.6GB 已提交权重(history rewrite,user-gated)。findings.md 账本

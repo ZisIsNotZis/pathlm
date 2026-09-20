@@ -8,8 +8,7 @@
 - 尺度 enwik8，13M（d=256/12L）；B0 = **1.5074 bpc**（1.1 epoch 快照，
   4.4 epoch 渐近 1.3459）。Δ = clean-eval bpc 税 vs B0。
 - 证据 `.scratch/*/evidence/`（tickets 04–09、11–13）；引用 retry 数前先读 ticket 11。
-- 所有 run 单/双 seed；**方差**（ticket 11）：同种子 nondeterminism 0.0019；per-cell
-  种子方差 0.0001–0.0138；**Δ < ~0.014 不可排序**。
+- 所有 run 单/双 seed；**方差**（ticket 11）：nondeterminism 0.0019，种子方差 ≤0.0138——**Δ < ~0.014 不可排序**。
 - 所有 run ~1.1 epoch、cosine LR 仍在退火中，**税可能是收敛率差异而非渐近差异**；
   **所有已发布绝对税是 1.1-epoch 上界**：retry 税 +0.364@1k step → +0.122@24k step，
   ~3k 起平台，比已发布 +0.147 小 ~20%（ticket 11 D5）。
@@ -17,14 +16,13 @@
 ## Redo (single-layer repeat, p_redo)
 
 - 税：Δ **+0.044**（10% 层重复 ≈ +3% 相对 PPL）；测量过的组合无干扰（IX2 失败归因 shuffle）。
-- 收益：**尚无正收益**；未做食谱：eval-only ablation、层内自校正 probe。
-- 裁决：**最便宜的旋钮，收益列开放**（理论收益从未按层置信度条件化）。
+- 收益：**尚无正收益**（理论收益从未按层置信度条件化）；未做食谱：eval-only
+  ablation、层内自校正 probe——**最便宜的旋钮，收益列开放**。
 
 ## Skip (p_skip)
 
 - 税：Δ **+0.175** —— 最贵的深度元素。
-- 收益：**最好的 TTS 基底**（K=8 −0.047；DIVL1 再 +0.023）。未测：按层置信度
-  自适应 skip；FLOP-matched 记账。
+- 收益：**最好的 TTS 基底**（K=8 −0.047；DIVL1 再 +0.023）。未测：按层置信度自适应 skip、FLOP-matched 记账。
 
 ## Early exit (dense per-depth supervision, w_dense_exit)
 
@@ -34,11 +32,10 @@
 - 负结果：深度**集成失败**——置信头只排序深度、不排序逐 token 可靠性。
 - **exit×retry 权衡定案（ticket 18；100M 复测 ticket 21）**：整形与 retry 是同一
   梯度的两面——probe 式头（trunk stop-grad）保 retry，浅层读出贵；dense 整形
-  exit 轴好但杀 retry。**100M 复现且更锐利**：probe 税≈0（1.5928 vs 1.5871）且
-  门控更强（−0.0291 vs 13M −0.0098）；dense 0.2 在 100M 恶化为 corrupt 崩溃
-  （off 2.8988 vs ~2.05）+ retry 灾难（+1.73）——**剂量响应随规模变化**
-  （13M 温和、100M 灾难）。两全证伪，自适应 profile（probe）是 100M 明确赢家。
-  conf 逐深度校准在训练分布上极好，阈值跨 profile 需重校准。
+  exit 轴好但杀 retry。**100M 复现且更锐利**：probe 税≈0 且门控更强；dense 0.2
+  在 100M 恶化为 corrupt 崩溃 + retry 灾难——**剂量响应随规模变化**（13M 温和、
+  100M 灾难）。两全证伪，自适应 profile（probe）是 100M 明确赢家。conf 逐深度
+  校准在训练分布上极好，阈值跨 profile 需重校准。
 
 ## Shuffle (order-free layers, shuffle_locality)
 
@@ -50,23 +47,18 @@
 
 ## Future-token heads (MTP block, node k predicts t_{i+k})
 
-- 税：always-on infra（保 Δ 纯净）；n_mtp 1→2 **+0.041**（B2 1.5481）；2→3 **+0.0166**
-  （B3 1.5604 vs B2fresh 1.5438；1→2 为 +0.0407）。
+- 税：always-on infra（保 Δ 纯净）；n_mtp 1→2 **+0.041**（B2 1.5481）；2→3 **+0.0166**。
 - 收益（间接）：承载全部弹性机制的控制信号（早退置信、retry 门、mixture 票）。
   直接预测收益**未证实**（node-2/链无集成价值；consistency loss 中性）。
-- 草稿头（ticket 10）：node-2 对 t+2 acc **55.97%**（node-1 t+1 68.8%，chance 0.5%，
-  M0 仅 0.26）；与 node-1 验证一致 65.8%，**给定 node-1 正确则接受 77.3%**。朴素概率
-  复合失败（CE 3.96 vs node-2 单独 1.58），正确链需 node-2 条件在 node-1 采样 token 上。
-- **条件链（ticket 12，6000步×2 seed）**：DeepSeek 式 concat+proj。**oracle 0.682 ≈
-  node-1 自身 0.693；deploy 0.547 < direct 0.560**——机制成立、此规模无部署收益，
-  瓶颈是草稿质量；需批量验证。
+- 草稿头（ticket 10）：node-2 对 t+2 acc **55.97%**（node-1 t+1 68.8%，chance 0.5%）；
+  朴素概率复合失败——正确链需 node-2 条件在 node-1 采样 token 上。
+- **条件链（ticket 12，2 seed）**：DeepSeek 式 concat+proj。**oracle 0.682 ≈ node-1 自身
+  0.693；deploy 0.547 < direct 0.560**——机制成立、无部署收益（瓶颈草稿质量）；需批量验证。
 - **n_mtp=3 + Medusa 批量验证（ticket 13）**：一次 forward 验证全部草稿，13M 上
-  **逐位 == 逐位置贪心**；a₂=0.844 / a₃|a₂=0.653 → 2.40 tok/fwd；稳态 **1.68×**(k=2)；
-  宽度-3 前向成本 1.28×（launch-bound）。
+  **逐位 == 逐位置贪心**；a₂=0.844 / a₃|a₂=0.653 → 2.40 tok/fwd，稳态 **1.68×**(k=2)。
 - **spec 缩放定案（ticket 20 @100M）**：接受级联稳定（a₂ 0.80，a₃|a₂ **0.767↑**，
   2.4 tok/fwd 不变）；前向 compute-bound（宽度-3 **3.4–5.3×**）→ 墙钟 k=2 仅
-  1.15–1.29×、**k=1 负**。fp 平局翻转首现：top-2 gap 0.008 处翻 argmax
-  （1/400，级联 68）——逐位相等是 13M 规模性质。
+  1.15–1.29×、**k=1 负**。fp 平局翻转首现（top-2 gap 0.008 处翻 argmax）——逐位相等是 13M 规模性质。
 
 ## Latent retry (loop back through a transport) — the 2×(transport × gating) matrix
 
@@ -78,24 +70,20 @@
 - **税本身可靠**：每个 C cell 1.6535–1.6856 vs B0 1.5074，即 **+0.146…+0.178**，
   10–100× 任何测得底；此数可引用。门控的已证价值在**修复侧**（retry 是修复不是
   集成：干净流上平均 rounds 退化）；L-loop×depth 协同：12L 上 retry 更值。
-- **D1 因果确认（ticket 12 P2，12000步×2 seed）**：修复 gauge 后 mixture run 的 round-2
-  损坏输入 bpc **单调改善 2.71→2.33→2.19→2.09→2.03→1.98→1.95→1.936**（2 seed
-  1.943/1.932），pre-fix 引擎发散（3.7→8.5→32.9→**95.2**）；round 序 r1 1.993→r2 1.936→
-  r3 1.934 饱和。爆炸是 gauge 不是机制（probe_e2e 指标为 node-1 下一 token acc on
-  损坏位置，非 node-0 自修复）。D5 测于 pre-D1/D3 引擎；fixed engine 改变 retry 深度，需重测。
-- **逐位置 latent 门控（ticket 13 实验 1）被证伪，此路不通**：`retry_gate=τ` 门控重入
-  状态。fixed-engine direct ckpt 上 τ 从 0→100% 开火但 r2 bpc 恒为 C1M_s0 1.9353
-  （r1 1.9928）/ C1_s1 1.9287（r1 1.9861）——direct 重入状态 == h，`torch.where` 无可
-  切换。linear ckpt 上 ~15% 开火使 r2 劣于 r1（bpc 保留 C2M −0.15/C2 −0.48）；6000 步
-  gated 训练税未缩（1.6884 vs 1.6860）。**状态掩码不省算力，收益需稀疏计算**；仍 open
-  的是 prob0 门控逐位置 **re-embed**（token 重入，与已证伪的 latent 状态掩码不同）。
+- **D1 因果确认（ticket 12 P2，12000步×2 seed）**：修复 gauge 后 mixture 的 round-2
+  损坏输入 bpc **单调改善 2.71→1.936**（饱和）；pre-fix 引擎发散至 **95.2**——爆炸是
+  gauge 不是机制。D5 测于 pre-D1/D3 引擎；fixed engine 改变 retry 深度，需重测。
+- **逐位置 latent 门控（ticket 13 实验 1）被证伪，此路不通**：`retry_gate=τ` 开火但
+  r2 bpc 恒为 direct 固定点值（direct 重入状态 == h，`torch.where` 无可切换）；linear
+  ckpt 上 ~15% 开火使 r2 劣于 r1；gated 训练税未缩。**状态掩码不省算力，收益需稀疏
+  计算**；仍 open 的是 prob0 门控逐位置 **re-embed**（token 重入）。
 
 - **分配选择性成立（ticket 14，3 checkpoint 交叉验证）——愿景核心命题获证**：
   按 round-0 prob0 分桶测 r1→r2 收益，门控（最低 15% 位置开第二轮）vs 均匀：
   **INT2 +0.0211 vs −0.0193**；**C1M +0.1284 vs +0.0570**（2.2 倍）；门控把重试从
   净有害翻成净有益（2×→1.15×）。收益形状：中低置信带 +0.04~+0.06，高置信带
-  ≈0/负。**限制：dense-exit 监督摧毁重试精炼** → 分配器底座不带 dense-exit。
-- 缺陷 D2/D3/D4 细节见 report §3.7。
+  ≈0/负。**限制：dense-exit 监督摧毁重试精炼** → 分配器底座不带 dense-exit；
+  缺陷 D2/D3/D4 见 report §3.7。
 
 ## Slider — the runtime allocator (Rung 3, ticket 15)
 
@@ -125,35 +113,47 @@
   0.0014/0.0096；spec 严格占优复现（0.566 fwd/tok @ 2.0954 vs plain 2.0961）。
 - **门控重试质量杠杆在 100M 消失**（τ 轴平坦 ±0.002；低置信带 ≤0.001、超出后
   为负）；轮次价值仍在训练侧（C1_100M forced-round r1→r2 −0.066）。
-- **劣化检测反转**：13M 自由生成段反向（吸引子混淆）→ 100M 恢复正向
-  （0.984→0.948，开火率 0.9%→8.9%）——13M 失败是容量现象。
+- **劣化检测方向修正（ticket 22 复核）**：原判“13M 自由生成段反向（吸引子混淆）→
+  100M 恢复正向（0.984→0.948，开火率 0.9%→8.9%）——13M 失败是容量现象”；
+  ticket 22 同权重同协议 n=6 复刻**未复现 13M 反向**（corrupt prob0 0.932 < clean
+  0.996，开火 13.0%>0.6%）——原反向系 n=1 单 prompt 假象，方向本就正向且跨规模一致。
+
+## Free-generation quality signals (ticket 22) — path disagreement
+
+- **路径分歧度（同窗多条独立层路径 TF 重评分的成对 JS）是真实但不完备的生成段
+  质量信号**（INT2_r3；证据 `.scratch/22-gen-quality/evidence/`）。判据 A 成立
+  （互补路线）：prob0 高置信半区内 js 三分位错误率 0.12→0.37→0.48，js AUC
+  0.66–0.69 > prob0 0.58–0.62（但 js 顶桶饱和，桶单调性主路线输给 prob0）。
+  B 成立：生成段窗口 js 严格 real 0.0114 < corrupt 0.0250 < random 0.0390（prob0
+  压在 0.955–1.00，分不开 real/random）。C 成立：同窗注入 0/7.5/15% wrong 合并
+  js 单调 0.0251/0.0314/0.0375（15/18 窗单调）。
+- **盲区：吸引子塌缩窗 js→0 且 agree=1.0**（注入 15% 也不动；随机 prompt+流损坏域
+  js 反而 0.0084 < clean 0.0393）——js 只能作互补信号，不能单独监测塌缩。
+- **ticket-15“13M prob0 反向”未复现**（同权重同协议 n=6：corrupt 0.9323 < clean
+  0.9961，方向转正；见 ticket 17 行修正）——原反向系 n=1 假象；塌缩域监测仍需
+  新信号类型（如文本重复率，未测），“需要全新信号”弱化为“互补信号+专用监测”。
 
 ## Token retry (discrete re-entry) — see matrix rows C5/R1
 
-- 未门控 argmax re-embed 量化掉不确定性：错提交以"真值样" token 重入（R1 **−4.6pp**，
-  ECE 0.001→0.015）；mixture vote（累积分布 argmax，anchor w=1）消除灾难（C5 **−1.3pp**，
-  ECE 0.007）。修复效应 ~3–4.5pp vs 0.16pp 采样误差（n≈98k），过 ticket 11。
-- bpc 侧不成立：R1 1.6775 / C5 1.6856 仅在 worst latent cell 上方 0.009–0.017，
-  落在该 cell 0.0138 种子散布内（各单 seed），故"token round 在干净数据上低于 base"
-  仅 suggestive、未确立。
-- open：prob0 门控逐位置 re-embed（只在模型自认不确定处重写），需逐位置 accept 机制。
+- 未门控 argmax re-embed 量化掉不确定性（R1 **−4.6pp**，ECE 0.001→0.015）；mixture
+  vote 消除灾难（C5 **−1.3pp**，ECE 0.007）。修复效应 ~3–4.5pp vs 0.16pp 采样误差
+  （n≈98k），过 ticket 11。
+- bpc 侧不成立：R1/C5 仅在 worst latent cell 上方 0.009–0.017，落在 0.0138 种子
+  散布内——“token round 低于 base”仅 suggestive、未确立。
 
 ## Input corruption (the I family) — flagged beats silent
 
 - 各元素 [税 | 15% 损坏下修复 acc]：`[mask]` 替换 **+0.059 | 59.4%**；wrong-token
-  **+0.127 | 52.8%**；embedding noise **±0.000 | n/a**（无 flag）；pure-noise latent
-  **+0.063 | n/a**。
-- **带显式"I don't know" flag 的损坏既更便宜又更可修复**（vs 静默对抗性损坏）——
-  writable-input 接口应显式标注损坏；噪声免费；纯噪声只 ~4% 相对 PPL。
-- 组合胜：**retry × corruption 次可加**（IX1 mask×soft-retry +0.087 < 0.277 之和）——
-  共享修复机器，唯一已证组合增益。
+  **+0.127 | 52.8%**；embedding noise **±0.000**（无 flag）；pure-noise latent **+0.063**。
+- **带显式“I don't know” flag 的损坏既更便宜又更可修复**（vs 静默对抗性损坏）——
+  writable-input 接口应显式标注损坏。组合胜：**retry × corruption 次可加**
+  （IX1 +0.087 < 0.277 之和）——共享修复机器，唯一已证组合增益。
 
 ## Attention distance penalty (X1) — a free regularizer
 
-- 税：Δ **−0.007**（在噪声内但正号）——唯一改善 clean bpc 的元素。
-- 收益：与驱逐组合共 +0.004；**改善 anchor 通道（needle 76.8%→93.3%）**；per-head
-  遥测距离 26–43。警告：penalty 下 beyond-window needle "命中"是 local-LM 强度，
-  非抗驱逐召回。
+- 税：Δ **−0.007**（在噪声内但正号）——唯一改善 clean bpc 的元素。收益：与驱逐
+  组合共 +0.004；**改善 anchor 通道（needle 76.8%→93.3%）**；per-head 遥测距离 26–43。
+  警告：penalty 下 beyond-window needle “命中”是 local-LM 强度，非抗驱逐召回。
 
 ## Eviction + anchors (X2) — the ring-buffer deployment story
 

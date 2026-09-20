@@ -1,0 +1,72 @@
+loaded .scratch/15-slider-rung3/evidence/INT2_r3/model.pt (V=206, seq_len=512)
+== 1. tf calibration ==
+  [clean] n=392448 miss=0.3358 js=0.01868 p0=0.9902 auc js/p0=0.6913/0.5797 mono js/p0=0.8889/0.7778 (2s)
+  [corrupt] n=392448 miss=0.4084 js=0.02361 p0=0.9263 auc js/p0=0.6596/0.6176 mono js/p0=0.7778/0.8889 (2s)
+  criterion A: pass=True (mono js 0.7778 vs p0 0.8889; auc js 0.6596 vs p0 0.6176; joint [0.1203, 0.3729, 0.4818] spread 0.3615)
+== 2. free generation ==
+  [real#0] 400 tok 4.1s prob0=0.9956
+  [random#0] 400 tok 4.0s prob0=0.9969
+  [corrupt#0] 400 tok 4.0s prob0=0.9438
+  [real#1] 400 tok 4.0s prob0=0.9992
+  [random#1] 400 tok 4.0s prob0=0.9956
+  [corrupt#1] 400 tok 4.0s prob0=0.9703
+  [real#2] 400 tok 4.0s prob0=0.9988
+  [random#2] 400 tok 4.0s prob0=0.9977
+  [corrupt#2] 400 tok 4.1s prob0=0.9327
+  [real#3] 400 tok 4.0s prob0=0.9984
+  [random#3] 400 tok 4.1s prob0=0.9982
+  [corrupt#3] 400 tok 4.0s prob0=0.9735
+  [real#4] 400 tok 4.1s prob0=0.9984
+  [random#4] 400 tok 4.0s prob0=0.9933
+  [corrupt#4] 400 tok 4.1s prob0=0.9706
+  [real#5] 400 tok 4.1s prob0=0.9987
+  [random#5] 400 tok 4.0s prob0=0.9973
+  [corrupt#5] 400 tok 4.1s prob0=0.9384
+  [real#0] js=0.04288 agree=0.94 prob0=0.9956
+  [random#0] js=0.1807 agree=0.8025 prob0=0.9969
+  [corrupt#0] js=0.05036 agree=0.9725 prob0=0.9438
+  [real#1] js=0.00299 agree=1.0 prob0=0.9992
+  [random#1] js=0.00771 agree=0.975 prob0=0.9956
+  [corrupt#1] js=0.04603 agree=0.9375 prob0=0.9703
+  [real#2] js=0.00254 agree=0.9875 prob0=0.9988
+  [random#2] js=0.00849 agree=0.955 prob0=0.9977
+  [corrupt#2] js=0.04346 agree=0.855 prob0=0.9327
+  [real#3] js=0.00619 agree=0.9525 prob0=0.9984
+  [random#3] js=0.02074 agree=0.975 prob0=0.9982
+  [corrupt#3] js=0.00052 agree=0.98 prob0=0.9735
+  [real#4] js=0.00739 agree=0.9375 prob0=0.9984
+  [random#4] js=0.0 agree=1.0 prob0=0.9933
+  [corrupt#4] js=0.00903 agree=0.9925 prob0=0.9706
+  [real#5] js=0.00654 agree=0.985 prob0=0.9987
+  [random#5] js=0.01613 agree=0.9875 prob0=0.9973
+  [corrupt#5] js=0.00076 agree=0.98 prob0=0.9384
+  criterion B: pass=True js={'real': 0.01142, 'random': 0.03896, 'corrupt': 0.02503} prob0={'real': 0.9982, 'random': 0.9965, 'corrupt': 0.9549}
+== 2b. ticket-15 replica (random prompts, k=1 tau=0.9, 192 tok) ==
+  [repl#0] clean p0=0.9951 js=0.05215 | corrupt p0=0.931 js=0.02309
+  [repl#1] clean p0=0.9979 js=0.01771 | corrupt p0=0.9704 js=0.00731
+  [repl#2] clean p0=0.9975 js=0.04285 | corrupt p0=0.9024 js=0.0
+  [repl#3] clean p0=0.9968 js=0.01378 | corrupt p0=0.8846 js=0.0
+  [repl#4] clean p0=0.9965 js=0.0 | corrupt p0=0.9684 js=0.00959
+  [repl#5] clean p0=0.993 js=0.10931 | corrupt p0=0.9371 js=0.01009
+  replica: prob0_reversed=False js_separates=False p0 clean/corrupt=0.9961/0.9323 js clean/corrupt=0.0393/0.00835
+== 3. injection control ==
+  [real#0] js@0/.075/.15 = [0.04288, 0.04583, 0.05449] monotone=True
+  [random#0] js@0/.075/.15 = [0.1807, 0.20705, 0.21856] monotone=True
+  [corrupt#0] js@0/.075/.15 = [0.05036, 0.05138, 0.06109] monotone=True
+  [real#1] js@0/.075/.15 = [0.00299, 0.00736, 0.01923] monotone=True
+  [random#1] js@0/.075/.15 = [0.00771, 0.00904, 0.01196] monotone=True
+  [corrupt#1] js@0/.075/.15 = [0.04603, 0.06945, 0.09089] monotone=True
+  [real#2] js@0/.075/.15 = [0.00254, 0.00689, 0.00976] monotone=True
+  [random#2] js@0/.075/.15 = [0.00849, 0.01053, 0.01639] monotone=True
+  [corrupt#2] js@0/.075/.15 = [0.04346, 0.05011, 0.04541] monotone=False
+  [real#3] js@0/.075/.15 = [0.00619, 0.00791, 0.01397] monotone=True
+  [random#3] js@0/.075/.15 = [0.02074, 0.0359, 0.04325] monotone=True
+  [corrupt#3] js@0/.075/.15 = [0.00052, 0.00092, 0.0011] monotone=True
+  [real#4] js@0/.075/.15 = [0.00739, 0.01408, 0.02271] monotone=True
+  [random#4] js@0/.075/.15 = [0.0, 0.0, 0.0] monotone=False
+  [corrupt#4] js@0/.075/.15 = [0.00903, 0.0135, 0.0208] monotone=True
+  [real#5] js@0/.075/.15 = [0.00654, 0.00843, 0.0097] monotone=True
+  [random#5] js@0/.075/.15 = [0.01613, 0.02686, 0.03535] monotone=True
+  [corrupt#5] js@0/.075/.15 = [0.00076, 0.00057, 0.00079] monotone=False
+  criterion C: pass=True pooled={'0.0': 0.02514, '0.075': 0.03143, '0.15': 0.03753} monotone_frac=0.8333
+saved .scratch/22-gen-quality/evidence/gen_quality_INT2r3.json
