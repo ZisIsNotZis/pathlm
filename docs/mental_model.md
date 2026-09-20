@@ -102,11 +102,14 @@ TTS 探针已证 "nothing beats B0"——**这套东西不卖质量，卖可控�
 - shuffle（+0.545 组合毒药）、redo（≈0）、朴素概率复合（数学错误）、
   条件链部署版（草稿质量瓶颈）、逐位置 latent 状态掩码（需稀疏计算）、
   dense-exit×retry 共训（拮抗）
-- **Rung 3 新证伪（ticket 15）**：
-  - **自由生成段的 mean-prob0 劣化检测**：损坏把自由生成推进高置信重复
-    吸引子，prob0 反而升高（clean 0.954 vs 流式损坏 0.976，反向）。
-    prob0 代理只用于 ingest/prefill 窗口（真值对齐读出，ECE ≤ 0.008），
-    不用于自由生成段的输出质量监测（需别的信号）
+- **Rung 3 提出并于 ticket 22 修正**：
+  - **自由生成段的输出质量监测**：原判"13M prob0 反向（吸引子混淆）"经
+    n=6 复刻**未复现**（系单 prompt 假象，方向与 100M 一致转正）。现存
+    结论：prob0 在生成段压天花板、分不开 real/random；**路径分歧度（多路径
+    TF 重评分的成对 JS）是真实但不完备的互补信号**——TF 高置信半区内 js
+    分层错误率 0.12→0.48、AUC 0.66–0.69 > prob0；生成段 js 严格排序
+    real<corrupt<random、注入剂量单调。**盲区：吸引子塌缩窗 js→0**（塌缩域
+    需专用信号，如文本重复率，未测）。
   - **单轮重试的 mixture-vs-overwrite 引擎差距**：不存在（设计保证，
     单项 mixture == overwrite，共享 gauge；差异只在 round-3+）
 - backlog：span 损坏（mask/wrong 已覆盖语义）、needle 双通道（需模式信号设计）、
