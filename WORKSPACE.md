@@ -1,5 +1,13 @@
 # Workspace
 
+## 收口状态（2026-09-29，ticket 26）：**ARCHIVED / CLOSED**
+
+项目正式收口。最终结论一句话：**「等智商免费加速」证伪——所有影响正常推理路径的设计
+（回环、重试、跳层、全深度监督、结构切分）都带来结构性性能税；税不可被收，只能被
+交易；transformer 主干保持纯粹，速度只能走成熟旁路（MTP/spec、probe 式早退）。**
+完整轨迹叙事见 **`docs/retrospective.md`**；逐机制账本 `docs/findings.md`；
+证据索引 `docs/artifacts.md`。本文件以下内容为历史记录（按时间倒序的状态快照），
+不再维护；实验 backlog 见 retrospective §8 与各 ticket issues。
 ## 方向修订（2026-09-20，用户明确）
 
 用户反思后重聚焦：**等参数、等智商、decode 选择性更快**。回环（重试/修复）
@@ -112,8 +120,9 @@ FLOPs 口径主指标）＝交易目标下当前最优配方；门收小归因�
 `--exit-anneal`/等效验证成本模型 + workspace 探针切分感知），7 新单测含变异
 验证，**129 全绿**。证据 `.scratch/25-tax-attribution/evidence/`（SUMMARY 判读
 表逐格）；findings 25 行（只追加）。
-**文档缺口(待主会话/用户)**: docs/mental_model.md 磁盘上无 §0 章节(方向修订
-全文只在 WORKSPACE 本节;commit 4280dec 仅改 WORKSPACE)。
+**文档缺口（已解决，commit 9e1e4fb）**: docs/mental_model.md §0 已补入磁盘
+（方向修订全文以 mental_model §0 为准；commit 4280dec 当时仅改 WORKSPACE，
+上一轮写入静默失败由 ticket 23 子代理发现后补齐）。
 
 ## Status (2026-09-14)
 
