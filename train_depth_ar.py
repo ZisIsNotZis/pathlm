@@ -36,11 +36,14 @@ def aux_weight_at(step: int, steps: int, aux_weight: float,
 def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
           gate_log_path: str, exit_mode: str = "uniform",
           aux_weight: float = 1.0, aux_anneal_to: float | None = None,
+          final_weight: float = 1.0,
           shallow_stopgrad: bool = False, dense_aux: bool = False):
     """随机退出深度训练：每步均匀采样 d_i ∈ {0..L}；记录逐深度 CE 与门均值。
-    浅层 CE 权重按 aux_weight_at(step) 调度（默认恒 1 = v1 等权）。
+    浅层 CE 权重按 aux_weight_at(step) 调度（默认恒 1 = v1 等权）；最终深度
+    权重 final_weight（ticket 24：默认 1.0 = v1，2.0 = 契约「最终深度 2×」）。
     ticket 23c 开关：shallow_stopgrad = H3（浅头纯读出）；
-    dense_aux = H1（dense 臂全深度监督，需 model.cfg.dense）。"""
+    dense_aux = H1（dense 臂全深度监督，需 model.cfg.dense）。
+    梯度范数监控（ticket 24）：全程累计 gnorm max/mean 与跳步数，随结果落盘。"""
     steps, bs = tcfg["steps"], tcfg["batch_size"]
     seq = model.cfg.seq_len
     L = model.cfg.n_layers
@@ -53,6 +56,9 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
     depth_ce_acc = [0.0] * n_ce
     gate_acc = [0.0] * L
     n_logged = 0
+    gnorm_sum = 0.0
+    gnorm_max = 0.0
+    n_grad_skip = 0
     for step in range(steps):
         model.train()
         x, _ = batch(train_arr, bs, seq, torch_rng)
@@ -70,7 +76,11 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
         opt.zero_grad(set_to_none=True)
         loss.backward()
         gnorm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        gnorm_f = float(gnorm)
+        gnorm_sum += gnorm_f
+        gnorm_max = max(gnorm_max, gnorm_f)
         if not torch.isfinite(gnorm) or gnorm > 1e4:
+            n_grad_skip += 1
             opt.zero_grad(set_to_none=True)
             sched.step()
             continue
@@ -96,7 +106,10 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                                     "gate_mean": [round(float(g), 4)
                                                   for g in aux["gate_mean"]]}) + "\n")
     return time.time() - t0, [c / max(n_logged, 1) for c in depth_ce_acc], \
-        [g / max(n_logged, 1) for g in gate_acc]
+        [g / max(n_logged, 1) for g in gate_acc], {
+            "gnorm_max": round(gnorm_max, 2),
+            "gnorm_mean": round(gnorm_sum / max(steps, 1), 3),
+            "grad_skips": n_grad_skip}
 
 
 def main():
@@ -106,6 +119,8 @@ def main():
     ap.add_argument("--layers", type=int, default=4)
     ap.add_argument("--heads", type=int, default=4)
     ap.add_argument("--seq-len", type=int, default=256)
+    ap.add_argument("--mlp-mult", type=int, default=4,
+                    help="MLP 隐层倍数（ticket 24：100M 规格用 6）")
     ap.add_argument("--dense", action="store_true")
     ap.add_argument("--exit-mode", choices=("uniform", "full"), default="uniform",
                     help="uniform = 随机退出深度 dᵢ~U{0..L}（混合深度填充）；"
@@ -122,6 +137,9 @@ def main():
     ap.add_argument("--aux-anneal-to", type=float, default=None,
                     help="给定则浅层权重在最后 20%% 步从 --aux-weight 线性退火"
                          "到该值（W3：--aux-weight 1.0 --aux-anneal-to 0.1）")
+    ap.add_argument("--final-weight", type=float, default=1.0,
+                    help="最终深度 CE 权重（ticket 24：1.0 = v1 等权；"
+                         "2.0 = 契约「权重均匀 + 最终深度 2×」）")
     ap.add_argument("--shallow-stopgrad", action="store_true",
                     help="浅层（depth 0..L-1）读出前 detach 状态：浅层 CE 只训练 "
                          "tied U 头，梯度不穿 trunk（ticket 23c，H3）")
@@ -144,7 +162,8 @@ def main():
     torch.manual_seed(args.seed)
     train_arr, eval_arr, vocab_size = load_enwik8_full(".tmp/enwik8", "data/enwik8_full.npz")
     cfg = DepthARConfig(d_model=args.d, n_layers=args.layers, n_heads=args.heads,
-                        seq_len=args.seq_len, dense=args.dense,
+                        seq_len=args.seq_len, mlp_mult=args.mlp_mult,
+                        dense=args.dense,
                         gate_bias_init=args.gate_bias_init,
                         fill_kv=args.fill_kv, proj_fill=args.proj_fill)
     model = DepthARModel(cfg, vocab_size).cuda()
@@ -155,14 +174,16 @@ def main():
 
     tcfg = {"steps": args.steps, "batch_size": args.batch_size, "lr": args.lr,
             "seed": args.seed}
-    wall, avg_depth_ce, avg_gate = train(model, train_arr, tcfg,
-                                         os.path.join(run_dir, "train_log.jsonl"),
-                                         os.path.join(run_dir, "gate_log.jsonl"),
-                                         exit_mode=args.exit_mode,
-                                         aux_weight=args.aux_weight,
-                                         aux_anneal_to=args.aux_anneal_to,
-                                         shallow_stopgrad=args.shallow_stopgrad,
-                                         dense_aux=args.dense_aux)
+    wall, avg_depth_ce, avg_gate, train_stats = train(
+        model, train_arr, tcfg,
+        os.path.join(run_dir, "train_log.jsonl"),
+        os.path.join(run_dir, "gate_log.jsonl"),
+        exit_mode=args.exit_mode,
+        aux_weight=args.aux_weight,
+        aux_anneal_to=args.aux_anneal_to,
+        final_weight=args.final_weight,
+        shallow_stopgrad=args.shallow_stopgrad,
+        dense_aux=args.dense_aux)
     torch.save(model.state_dict(), os.path.join(run_dir, "model.pt"))
 
     model.eval()
@@ -171,7 +192,9 @@ def main():
         "exit_mode": args.exit_mode,
         "fill_kv": args.fill_kv, "proj_fill": args.proj_fill,
         "aux_weight": args.aux_weight, "aux_anneal_to": args.aux_anneal_to,
+        "final_weight": args.final_weight,
         "shallow_stopgrad": args.shallow_stopgrad, "dense_aux": args.dense_aux,
+        "gnorm_monitor": train_stats,
         "params": n_params, "vocab_size": vocab_size,
         "train_tokens": args.steps * args.batch_size * args.seq_len,
         "wall_minutes": round(wall / 60, 2),

@@ -78,6 +78,19 @@ greedy 生成全局重复偏置(全部低于自然 enwik8 水平),监测参考�
 +0.167 次因,代码 bug 已排除)。意外:soft 提交 OOD 污染 context,默认待重验。
 证据 `.scratch/23-depth-ar/evidence/`;账本 findings「Depth-adaptive AR」章;
 **stage-2 入口** = 监督深度加权 sweep(先定案税归零配方,再谈规模)。
+**形态税 @100M 重大节点已完成**(ticket 24,2026-09-28,同 token 预算
+98.3M=1.09ep,全量 32 min,无 OOM):**税 +0.4563**(clean 1.9175 − B0_100M
+1.4612)——高于 13M matched +0.31、未过 +0.5 恶化线,**形态税未随规模收缩、
+方向反向,契约「缩放定律修正」分支触发**;ticket-19 经验不外推(快照口径)。
+判读混杂(必读):对照 B0 系 train_m1 跨引擎 + 本 run 按契约用 final 2× 配方
+(13M matched 系等权),规模/配方/引擎归属本轮不可分,stage-2 需等权臂与同引擎
+dense-100M 拆账。机制侧存活且出口资产变厚:depth 曲线 13 格单调(极端半栈平台
+d6−d12=0.0003)、tf@4 0.9726 / tf@6 0.9946、墙钟实测 exit-4 3.1× /
+uniform-exit 1.8×;soft OOD 污染跨规模复现;**门 100M 新形态**=全层从 0.119
+收小(精化压缩为 layer0–1 小门×大 delta);workspace null 能量 52% 但
+functional_dirs=0。代码 additive(`--mlp-mult`/`--final-weight`+gnorm 聚合;
+`final_weight` 缺省 1.0 逐位还原 v1),122 单测全绿。证据
+`.scratch/24-depth-ar-100m/evidence/`;账本 findings 24 行(只追加)。
 **文档缺口(待主会话/用户)**: docs/mental_model.md 磁盘上无 §0 章节(方向修订
 全文只在 WORKSPACE 本节;commit 4280dec 仅改 WORKSPACE)。
 

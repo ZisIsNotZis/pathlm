@@ -122,6 +122,7 @@ class DepthARModel(nn.Module):
     def forward(self, tokens: torch.Tensor, exit_depths: torch.Tensor | None = None,
                 targets: torch.Tensor | None = None,
                 shallow_weight: float = 1.0,
+                final_weight: float = 1.0,
                 shallow_stopgrad: bool = False,
                 dense_aux: bool = False):
         """tokens [B,T] = 干净输入流（无 corruption）；targets 缺省 = tokens
@@ -137,7 +138,12 @@ class DepthARModel(nn.Module):
         损失值不变，只改梯度通道。
 
         dense_aux（ticket 23c，H1）：dense 臂开启全深度并行监督（L+1 个 CE
-        分量，梯度穿 trunk）；缺省 False 保持 dense 臂仅最终深度 CE。"""
+        分量，梯度穿 trunk）；缺省 False 保持 dense 臂仅最终深度 CE。
+
+        final_weight（ticket 24 契约配方）：最终深度 CE 权重（浅层恒
+        shallow_weight）；总损失按 (w·L + final_weight) 归一保持量级。
+        1.0 严格还原 v1 等权（ticket 23 复现点）；2.0 = 契约的
+        「权重均匀 + 最终深度 2×」。"""
         B, T = tokens.shape
         L = self.cfg.n_layers
         h = self._input_states(tokens)
@@ -201,10 +207,11 @@ class DepthARModel(nn.Module):
                 mask = exit_depths[:, :-1] >= k  # 预测行必须真正到达 depth k
             ce = self._masked_ce(logits[:, :-1], targets[:, 1:], mask)
             depth_ce.append(ce)
-            # aux 加权（ticket 23b）：浅层深度乘 w，最终深度恒 1
-            wk = 1.0 if k == len(readouts) - 1 else w
+            # aux 加权（ticket 23b）：浅层深度乘 w，最终深度乘 final_weight
+            # （ticket 24：缺省 1.0 = v1 等权复现点）
+            wk = final_weight if k == len(readouts) - 1 else w
             loss = loss + wk * ce
-        loss = loss / (w * (len(readouts) - 1) + 1.0)
+        loss = loss / (w * (len(readouts) - 1) + final_weight)
         aux = {"states": states, "depth_logits": depth_logits, "depth_ce": depth_ce,
                "gate_mean": gate_means, "exit_depths": exit_depths}
         return loss, aux

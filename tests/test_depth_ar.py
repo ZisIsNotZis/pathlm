@@ -526,3 +526,38 @@ def test_proj_fill_identity_init_equals_fill():
         raise AssertionError("proj_fill+fill_kv=False 必须拒绝")
     except ValueError:
         pass
+
+
+# ---------- ticket 24：最终深度权重（契约「权重均匀 + 最终深度 2×」） ----------
+
+
+def test_final_weight_one_restores_v1():
+    """final_weight=1.0 必须逐位还原 v1 等权损失（ticket 23 复现点不被
+    参数化改动扰动）；final_weight 只进损失加权，不改 states。"""
+    m = tiny_model()
+    torch.manual_seed(12)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, m.cfg.n_layers,
+                                torch.Generator().manual_seed(13))
+    l_v1, a_v1 = m(x, exit_depths=depths)
+    l_fw1, a_fw1 = m(x, exit_depths=depths, final_weight=1.0)
+    assert torch.allclose(l_v1, l_fw1, atol=0.0)
+    for s1, s2 in zip(a_v1["states"], a_fw1["states"]):
+        assert torch.allclose(s1, s2, atol=0.0)
+
+
+def test_final_weight_two_matches_hand_weighting():
+    """final_weight=2.0：loss == (Σ浅层 ce + 2·最终 ce) / (L + 2)
+    （量级保持归一），且梯度可流（backward 有限）。"""
+    m = tiny_model()
+    torch.manual_seed(14)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, m.cfg.n_layers,
+                                torch.Generator().manual_seed(15))
+    loss, aux = m(x, exit_depths=depths, final_weight=2.0)
+    ces = torch.stack(aux["depth_ce"])
+    expected = (ces[:-1].sum() + 2.0 * ces[-1]) / (m.cfg.n_layers + 2.0)
+    assert torch.allclose(loss, expected, atol=1e-6)
+    loss.backward()
+    gnorm = torch.nn.utils.clip_grad_norm_(m.parameters(), 1e9)
+    assert torch.isfinite(gnorm)

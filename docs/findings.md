@@ -270,3 +270,19 @@
   `proj_fill` 两开关，5 新可失败单测全套 120 绿（变异 M1/M2/M3 均抓红）。
   证据 `.scratch/23-depth-ar/evidence/`（23e-*，SUMMARY §12）。
 
+- **24 形态税 @100M 重大节点（ticket 24，同 token 预算 98.3M=1.09ep，24000 步×bs8，32 min）**：
+  **税 +0.4563**（本 run clean 1.9175 − B0_100M 1.4612），高于 13M matched 同预算
+  +0.33、未过 +0.5 恶化线——**形态税未随规模收缩、方向反向，契约「缩放定律修正」
+  分支触发**；ticket-19「税随规模下降」不外推到深度自适应形态（快照口径）。机制侧
+  全部存活：depth 曲线 13 格单调（4.77→2.01 一跳后极端半栈平台，d6−d12=0.0003）、
+  **出口资产变厚**（tf@4 0.9726 / tf@6 0.9946；墙钟实测 exit-4 3.1×、uniform-exit
+  1.8×）、生成 18/18 合法且 **soft OOD 污染跨规模复现**（d12 自洽 rescore soft 8.42
+  vs hard 0.79）。**门行为 100M 新形态**：全层从 carry 初始化 0.119 收小（p90≤0.13、
+  frac>0.5≈0），精化压缩为 layer0–1「小门×大 delta」——「渐进开门」未出现。workspace：
+  null 能量 52%（携带量轴远超 13M 的 10%）但 functional_dirs=0（功能化未兑现，δ 口径
+  未冻结）。**判读混杂必读**：对照 B0_100M 系 train_m1 跨引擎 + 配方差（本 run 按契约
+  用 final 2×，13M matched 系等权；23b 方向证据提示 2× 可能贡献部分税）——+0.46 的
+  规模/配方/引擎归属本轮不可分。stage-2 排序：等权臂@100M 拆配方混杂 → 同引擎
+  dense-100M 拆引擎混杂 → 4.4ep 渐近 run。证据 `.scratch/24-depth-ar-100m/evidence/`
+  （SUMMARY + 100m-s0/ + smoke-20/）；代码 additive（`--mlp-mult`/`--final-weight` +
+  gnorm 聚合；`final_weight` 缺省 1.0 逐位还原 v1）；122 单测全绿。
