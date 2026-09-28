@@ -1,141 +1,89 @@
-# PathLM — 概率驱动碎片化算力分配的弹性语言模型
+# PathLM — 概率驱动算力分配的弹性语言模型（已收口）
 
-> 一句话：常规 LLM 推理是"每 token 固定算力"的一个**点**；PathLM 的目标是
-> 一条**连续、可审计、可调的质量-算力前沿曲线**——用模型自己的已校准概率
-> 决定每个 token 花多少算力。这条曲线穿过常规点，向两侧延伸（更便宜-略差 /
-> 更贵-更好）。
+> 一句话：本项目从一个想法出发——"让模型按位置置信度分配每 token 的算力，
+> 用回环/权重复用换解码吞吐"——经过 25 个执行 ticket、两个规模（13M/100M）、
+> 两代架构的系统测量，最终**证伪了"等智商免费加速"**：一切侵入正常推理
+> 路径的设计都带来结构性性能税；主干保持纯粹，速度只能走成熟旁路。
+> 完整轨迹见 **`docs/retrospective.md`**。
 
-状态：13M 与 100M 两个规模上的机制验证与缩放研究已完成（验证阶梯 Rung 1–4
-全部定案）。这不是一篇论文，是一个进行中的研究仓库——证据都在
-`.scratch/*/evidence/`，结论都有数字和对照。
+## 探索过什么
 
----
+- **回环时代（tickets 01–22）**：冻结架构（stage ring + 层路径采样）上系统探索
+  弹性语法——损坏训练、latent/token 重试、层 shuffle/skip/redo、早退、驱逐+锚、
+  MTP/spec 解码、TTS 集成、多样性压力；建成端到端分配器（Slider：校准→成本模型→
+  求解器→验证解码→在线代理）并在 100M 上规模复测。
+- **深度自适应 AR 时代（tickets 23–25）**：目标重聚焦（等参数、等智商、更快解码）
+  后的新形态——纯 AR + 全深度并行监督 + 逐通道携带门 + 随机退出深度 + 自 spec；
+  在 13M 与 100M 上完成机制验证、形态税归因与收口判决。
 
-## 哲学与理想
+## 发现了什么
 
-**核心命题：算力应该按位置置信分配。** 低置信位置每 FLOP 的收益更高
-（已证，见下）；均匀分配是浪费。模型不缺能力，缺的是"知道自己在哪
-不确定，并把算力花在那里"的机制。
+**成立的**：
 
-三个设计支柱（全部实测成立）：
+- **分配选择性**：按 prob0 只对最低置信 15% 位置分配额外算力，把重试从净有害
+  翻成净有益（+0.021 vs −0.019；C1M 2.2 倍收益）——项目原始命题获证。
+- **prob0 校准跨规模存活**（ECE 0.001–0.011）——全程可审计的控制信号；
+  三信号生成监测栈（prob0 + 路径分歧 js + distinct-2 重复率，AUC 0.9815）。
+- **成熟旁路有效**：MTP + 批量验证 spec（forwards 口径 1.68–1.90×，税 +0.017）；
+  probe 式早退（100M 上零税、门控更强）。
+- **能力溢价**：损坏输入下机制模型比基线好 1.5–1.9 bpc，差距随规模与训练扩大
+  （1.54→1.89 bpc）；基线脆性不随训练改善。
 
-1. **prob0 校准**：模型对"当前 token 是否正确"的自我估计是校准的
-   （ECE 0.001–0.008），损坏检测、重试门控、在线质量监测共用这一个信号。
-2. **retry 是修复不是集成**：一次带传输的额外前向能在损坏/困难位置精炼
-   状态（corrupt 输入 +1.8 bpc 量级），但干净流上平均收益为零——所以
-   必须门控。
-3. **能力溢价而非低税**：这套机制不卖"更低的困惑度"，卖的是鲁棒性、
-   可控性、可审计性；税（clean bpc 溢价）随规模与训练下降，能力溢价
-   随两者扩大。
+**证伪的（同样重要，各有对照实验）**：
 
-## 机制账本（6 存活 + 一堆证否）
+- **等智商免费加速（最终判决）**：深度自适应 AR 形态税 +0.44 bpc @100M
+  （96% 干净归属），对"结构切分"（反向恶化 −50.4%）与"2× 训练+冷却退火"
+  （形态特异收回 ≈0）两个干预都分文不收回——**税结构性存在，只能被交易**
+  （+0.44 bpc 换 exit-4 3.1× 墙钟与出口资产 tf@6 0.9946）。
+- **回环换速度**：retry 作为解码加速三次失败（价值实为损坏修复）；门控重试质量
+  杠杆随规模自衰减（100M 消失）；spec 墙钟收益在 compute-bound 下消失（k=1 转负）。
+- **目标竞争**：损坏训练 × 精确复制不可兼得（anchor 召回 0.764→0.016–0.035，
+  三路豁免全败）；dense-exit 整形 × retry 不可两全（同一梯度两面，剂量响应随
+  规模恶化为 corrupt 崩溃）。
+- **元素税定律**：破坏 identity/order 的机制贵（shuffle +0.545 组合毒药、skip
+  +0.175）；保留或 flag identity 的近乎免费（mask/noise/redo ≤0.06、距离惩罚
+  −0.007）。
 
-**采纳的机制**（税 = clean bpc 相对 B0 的溢价；收益各自计价）：
+**方法学教训**：排序前先看方差（Δ<0.014 不可排序，曾据此撤回整个 retry 矩阵
+排序）；绝对税必须标注口径（1.1-epoch 上界 vs 4.4-epoch 渐近 vs matched-step）；
+成本要双货币记账（forwards vs FLOPs 结论会分歧）；对照必须同引擎同配方（否则
+要像 24b 那样花三臂拆混杂）；n=1 负结果必须复现后再入账本。
 
-| 机制 | 税 | 收益 | 状态 |
-|---|---|---|---|
-| MTP + prob0（多步预测头） | +0.04（n=2） | 全部弹性机制的控制信号；spec 草稿 | ✅ |
-| 门控重试（prob0 门控 + soft 传输） | +0.12~0.15 | corrupt 输入 +1.8 bpc；损坏修复 52→55% | ✅ |
-| 输入损坏训练（mask+wrong） | +0.19 | corrupt 输入下比 B0 好 1.5–1.9 bpc | ✅ |
-| 驱逐+锚（有界内存） | +0.06 | ring-buffer 解码免重 prefill；锚通道 93% | ✅ |
-| 距离惩罚 | **−0.007** | 免费正则；锚通道 76.8%→93.3% | ✅ |
-| 早退（probe 式深度头） | ≈0 | 便宜侧前沿点（flop<1.0） | ✅（见下） |
+## 交付了什么资产
 
-**已证伪/不采纳**（同样重要——每条都有对照实验）：
+- **机制库**：`pathlm/`（引擎、深度自适应 AR、Slider、生成质量/塌缩监测）+
+  根目录探针 + configs；129 个可失败单测钉死语义。
+- **测量方法学**：三列账本（税/收益/各自货币）、受益域先行、方差界、口径标注、
+  双货币、冒烟+变异测试——全部沉淀在 docs 与 ticket 契约中。
+- **证据链**：25 个 ticket 的 evidence 目录（results.json/曲线/探针输出/SUMMARY），
+  索引见 `docs/artifacts.md`；每个结论可回溯到 run 与 commit。
 
-- **shuffle（层序自由）**：税 +0.545，组合毒药（任何组合落到 2.2+ bpc）。
-  层序携带 ~0.5 bpc 信息，死路。
-- **redo（层重复）**：税 +0.044，收益 ≈0。
-- **朴素概率复合**：数学错误（CE 3.96 vs 1.58）。
-- **条件链（token 条件 MTP）部署版**：草稿质量瓶颈（deploy 0.547 < direct 0.560）。
-- **逐位置 latent 状态掩码**：direct 重入是固定点，门控无可切换；需稀疏计算。
-- **needle×损坏共存**：三路豁免全败；用户裁决——目标恒为正确 token，
-  无需模式信号。
-- **dense-exit 与 retry 共训**：整形与 retry 是同一梯度的两面，两全证伪
-  （见缩放定律）。
+## 文档导航
 
-## 三杠杆与 Slider
-
-运行时旋钮 θ = (τ_retry, τ_exit, k)，沿前沿移动；规模参数（模型大小、
-n_mtp、深度）定前沿形状。
-
-- **retry（花钱）**：prob0 门控只开低置信 15% 位置 → 重试从净有害翻成
-  净有益（INT2 −0.019→+0.021；C1M +0.057→+0.128）。
-- **spec（摊销）**：Medusa 式批量验证，2.40 tok/forward（13M）。**注意：
-  墙钟收益是 launch-bound 小模型现象**——100M compute-bound 下宽度线性
-  计价，k=2 只剩 1.15–1.29×，k=1 转负（ticket 20）。
-- **exit（省钱）**：双 profile 定案（ticket 18/21）——
-  - **自适应 profile**（probe 式深度头，trunk stop-grad）：retry 门控活
-    （100M 上门控 −0.029，比 13M 更强），clean 税≈0，但浅层读出贵；
-  - **质量 profile**（dense 整形）：浅层读出好（half-stack +0.14~0.20）、
-    clean 更好（aux 正则），但 retry 死（13M 温和负、100M 剂量响应恶化
-    为 corrupt 崩溃）。
-  - **整形 vs 自适应是同一梯度的两面**——跨规模成立，以 profile 选择。
-
-## 关键缩放结论（100M，2 seeds，13M 交叉验证）
-
-1. **税随规模与训练下降**：1.1-epoch 快照 +0.126（13M +0.147 → 100M
-   "不增"）；4.4-epoch 渐近 **+0.082**，等训练口径 13M +0.122 → 100M
-   +0.082——快照口径的"不缩"全是 1.1-epoch 上界。
-2. **能力溢价随规模与训练扩大**：corrupt 输入下 B0 崩至 3.55–3.71（脆性
-   不随训练改善），机制模型 2.02→1.82——E2E 差距 1.54→1.89。
-3. **prob0 校准跨规模存活**（ECE ≤0.0096）；a₂ 部署口径 0.74–0.86 稳定。
-4. **门控重试质量杠杆随规模自衰减**（13M −0.004 → 100M 无 dense 时 ≈0、
-   probe 头下 −0.029）——机制价值转向训练侧与监测侧。
-5. 396M tokens（enwik8 4.4 epoch）下 100M ≈ 13M 渐近 bpc（1.341 vs 1.346）
-   ——**data-limited**，参数增益要靠更多数据兑现。
-
-## 诚实的负结果清单（省得重新踩坑）
-
-- 生成段输出质量需要**三信号监测栈**：prob0（token 对错）+ 路径分歧度 js
-  （语义分歧，TF 重评分）+ distinct-2 重复率（塌缩检测，零额外前向）——
-  三者正交（ticket 22/22b）；13M greedy 生成存在全局重复偏置
-  （distinct-2 全部低于自然文本水平）。
-- fp 平局翻转：100M 起 batched 与逐位置 SDPA 在 top-2 gap ~0.008 处翻
-  argmax（1/400 token）——"spec==greedy 逐位相等"是 13M 规模性质。
-- 单轮重试 mixture==overwrite（设计保证，共享 gauge）——引擎无损失，
-  但也别指望 mixture 在单轮带来增益。
-- 预算要**双货币记账**（forwards vs FLOP-normalized）：spec 在 forwards
-  口径赢、flop 口径平/亏，混用会得出错误结论。
-
-## 仓库结构
-
-```
-pathlm/            # 库：config / data / model / decode / eval / metrics / slider
-train_m0.py        # M0 微型模型训练（机制验证）
-train_m1.py        # M1 主训练器（config-driven，results.json 全量落盘）
-slider.py          # Slider 端到端探针（校准→前沿→求解→验证→代理）
-probe_*.py         # 机制探针：e2e / spec / exit / frontier / selectivity …
-configs/           # 全部 run 配置（B0/C1/INT/EX/asym …）
-tests/             # 74 个可失败测试（含 fp/门控/成本模型性质）
-docs/              # design（冻结）/ mental_model（实用思路）/ findings（账本，SSOT）
-                   # / report（结论层）/ report_details（审计层）/ experiments
-.scratch/NN-slug/  # 每 ticket 一目录：issues + evidence（results/曲线/探针输出）
-```
+| 想读什么 | 去哪 |
+|---|---|
+| 全轨迹叙事（起点→引擎迭代→两次转向→机制验证→规模判决→归因收口→教训） | `docs/retrospective.md` |
+| 逐机制结论账本（SSOT，每条带数字与证据路径） | `docs/findings.md` |
+| 实验报告（结论层）与逐实验审计层 | `docs/report.md` / `docs/report_details.md` |
+| 设计哲学演化（回环时代 → 深度自适应 AR） | `docs/mental_model.md` §0 |
+| 冻结架构（回环时代，历史文档） | `docs/design.md` |
+| run 级证据索引（25 个 ticket） | `docs/artifacts.md` |
+| 逐 ticket 执行契约与判据 | `.scratch/NN-slug/issues/` |
 
 ## 复现
 
 ```bash
-python3 -m pytest tests/ -q                 # 74 绿
-python3 train_m1.py MYRUN --config configs/B0.json          # 13M 基线（~10 min @4090）
+python3 -m pytest tests/ -q                  # 129 绿
+python3 train_m1.py MYRUN --config configs/B0.json            # 13M 回环基线
+python3 train_depth_ar.py MYRUN --d 256 --layers 8 ...        # 深度自适应 AR（CLI 旋钮，无 config）
 python3 slider.py --config configs/INT2.json --ckpt <ckpt> --out out.json
-python3 probe_e2e.py --config configs/C1.json --ckpt-dir <dir> --out out.jsonl
 ```
 
-数据：enwik8（自动下载至 `.tmp/enwik8`，缓存 `data/enwik8_full.npz`）。
-所有 results.json 携带完整 resolved config；权重不入库（*.pt gitignored，
-派生物）。单卡 RTX 4090 24GB 即可（13M 全部实验 + 100M 训练 batch 8 实测）。
+数据 enwik8 自动下载；所有 results.json 携带完整 resolved config；权重 `*.pt`
+不入库（gitignored，派生物——证据 json/log/md 入库）。单卡 RTX 4090 24GB 包络。
 
-## 文档地图（想深入按此顺序）
+## 状态
 
-1. `docs/mental_model.md` —— 实用思路模型（哲学/三杠杆/Slider/验证阶梯/缩放定律）
-2. `docs/findings.md` —— 逐机制结论账本（SSOT，≤200 行，每条带证据路径）
-3. `docs/report.md` —— 研究报告（结论层）；细节在 `report_details.md`
-4. `docs/design.md` —— 冻结架构（stage ring、cycles、聚合原则、训练配方）
-5. `.scratch/NN-*/issues/` —— 21 个 ticket 的执行契约与判据
-
-## Backlog（无阻塞，按优先级）
-
-1. 自由生成段的质量信号（prob0 在生成段 13M 失效/100M 恢复，专用信号未建）
-2. 13M 全账本渐近重校（把历史税数字统一到 4.4-epoch 口径）
-3. 更大数据下的 100M+（当前 data-limited，参数增益待兑现）
+**项目已收口（2026-09-29）**：主结论已定（见 retrospective），无进行中实验；
+backlog（自由生成段专用监测深化、4.4-epoch 渐近配方重验等）记录于
+WORKSPACE.md 与各 ticket issues。
