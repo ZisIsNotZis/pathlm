@@ -18,9 +18,26 @@ from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
 from pathlm.data import load_enwik8_full, batch
 
 
+def aux_weight_at(step: int, steps: int, aux_weight: float,
+                  anneal_to: float | None = None,
+                  anneal_frac: float = 0.2) -> float:
+    """浅层 aux 权重时间表（ticket 23b）：常数 aux_weight；anneal_to 给定时
+    在最后 anneal_frac 比例的步数内从 aux_weight 线性退火到 anneal_to
+    （W3 = 1.0 → 0.1，最后 20% 步）。起点连续：step ≤ start 恒 aux_weight。"""
+    if anneal_to is None:
+        return aux_weight
+    start = (1.0 - anneal_frac) * steps
+    if step <= start:
+        return aux_weight
+    frac = min((step - start) / max(steps - start, 1.0), 1.0)
+    return aux_weight + (anneal_to - aux_weight) * frac
+
+
 def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
-          gate_log_path: str, exit_mode: str = "uniform"):
-    """随机退出深度训练：每步均匀采样 d_i ∈ {0..L}；记录逐深度 CE 与门均值。"""
+          gate_log_path: str, exit_mode: str = "uniform",
+          aux_weight: float = 1.0, aux_anneal_to: float | None = None):
+    """随机退出深度训练：每步均匀采样 d_i ∈ {0..L}；记录逐深度 CE 与门均值。
+    浅层 CE 权重按 aux_weight_at(step) 调度（默认恒 1 = v1 等权）。"""
     steps, bs = tcfg["steps"], tcfg["batch_size"]
     seq = model.cfg.seq_len
     L = model.cfg.n_layers
@@ -43,7 +60,8 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
             depths = sample_exit_depths(bs, seq, L, torch_rng).cuda()
         with torch.autocast("cuda", dtype=torch.bfloat16,
                             enabled=torch.cuda.is_available()):
-            loss, aux = model(x, exit_depths=depths)
+            w = aux_weight_at(step, steps, aux_weight, aux_anneal_to)
+            loss, aux = model(x, exit_depths=depths, shallow_weight=w)
         opt.zero_grad(set_to_none=True)
         loss.backward()
         gnorm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -65,6 +83,7 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                     "depth_ce": [round(float(c), 4) for c in aux["depth_ce"]],
                     "gate_mean": [round(float(g), 4) for g in aux["gate_mean"]],
                     "gnorm": round(float(gnorm), 2),
+                    "aux_w": round(w, 4),
                     "lr": round(float(sched.get_last_lr()[0]), 6),
                     "min": round((time.time() - t0) / 60, 2)}) + "\n")
             with open(gate_log_path, "a") as f:
@@ -92,6 +111,12 @@ def main():
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--gate-bias-init", type=float, default=-2.0)
+    ap.add_argument("--aux-weight", type=float, default=1.0,
+                    help="浅层（depth 0..L-1）CE 权重，最终深度恒 1；1.0 = "
+                         "v1 等权（ticket 23b）")
+    ap.add_argument("--aux-anneal-to", type=float, default=None,
+                    help="给定则浅层权重在最后 20%% 步从 --aux-weight 线性退火"
+                         "到该值（W3：--aux-weight 1.0 --aux-anneal-to 0.1）")
     ap.add_argument("--eval-batches", type=int, default=20)
     ap.add_argument("--out-root", default=".scratch/23-depth-ar/evidence")
     args = ap.parse_args()
@@ -114,13 +139,16 @@ def main():
     wall, avg_depth_ce, avg_gate = train(model, train_arr, tcfg,
                                          os.path.join(run_dir, "train_log.jsonl"),
                                          os.path.join(run_dir, "gate_log.jsonl"),
-                                         exit_mode=args.exit_mode)
+                                         exit_mode=args.exit_mode,
+                                         aux_weight=args.aux_weight,
+                                         aux_anneal_to=args.aux_anneal_to)
     torch.save(model.state_dict(), os.path.join(run_dir, "model.pt"))
 
     model.eval()
     results = {
         "run": args.run_name, "config": asdict(cfg), "train": tcfg,
         "exit_mode": args.exit_mode,
+        "aux_weight": args.aux_weight, "aux_anneal_to": args.aux_anneal_to,
         "params": n_params, "vocab_size": vocab_size,
         "train_tokens": args.steps * args.batch_size * args.seq_len,
         "wall_minutes": round(wall / 60, 2),

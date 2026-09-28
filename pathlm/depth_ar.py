@@ -3,7 +3,8 @@
 纯 AR（无 corruption / 无 retry / 无 mask 站），渐进精化 + 早退 + 自 spec：
 
 - **全深度并行监督**：depth 0..L 每层都有 tied-unembed fp32 读出
-  （depth 0 = embedding 直连读出），各深度 CE 等权平均。
+  （depth 0 = embedding 直连读出），各深度 CE 等权平均（v1；ticket 23b 起
+  支持浅层 aux 降权 `shallow_weight`，最终深度恒权重 1）。
 - **逐通道携带门**：h_{k+1} = h_k + g_k ⊙ Refine_k(h_k)，
   g_k = σ(Gate_k(h_k))，Gate 偏置负初始化（carry：g≈0，恒等起步）。
 - **随机退出深度（训练）**：每个 position 采样 d_i ∈ {0..L}。位置 i 在
@@ -103,10 +104,15 @@ class DepthARModel(nn.Module):
     # ---------- forward / loss ----------
 
     def forward(self, tokens: torch.Tensor, exit_depths: torch.Tensor | None = None,
-                targets: torch.Tensor | None = None):
+                targets: torch.Tensor | None = None,
+                shallow_weight: float = 1.0):
         """tokens [B,T] = 干净输入流（无 corruption）；targets 缺省 = tokens
         本身，标准 AR 移位在 loss 内完成（行 i 的 depth-k 读出预测 t_{i+1}，
-        仅当该行确实到达 depth k，即 d_i ≥ k）。"""
+        仅当该行确实到达 depth k，即 d_i ≥ k）。
+
+        shallow_weight（ticket 23b）：浅层深度 0..L-1 的 CE 权重，最终深度恒
+        权重 1；总损失按 (w·L + 1) 归一保持量级。w=1 严格还原 v1 等权平均
+        （W0 复现点）；dense 臂只有最终深度 CE，不受此参数影响。"""
         B, T = tokens.shape
         L = self.cfg.n_layers
         h = self._input_states(tokens)
@@ -140,6 +146,7 @@ class DepthARModel(nn.Module):
         readouts = depth_logits if not self.cfg.dense else depth_logits[-1:]
         loss = tokens.new_zeros(()).float()
         depth_ce: list[torch.Tensor] = []
+        w = float(shallow_weight)
         for k, logits in enumerate(readouts):
             if self.cfg.dense:
                 mask = torch.ones(tokens.shape[0], tokens.shape[1] - 1,
@@ -148,8 +155,10 @@ class DepthARModel(nn.Module):
                 mask = exit_depths[:, :-1] >= k  # 预测行必须真正到达 depth k
             ce = self._masked_ce(logits[:, :-1], targets[:, 1:], mask)
             depth_ce.append(ce)
-            loss = loss + ce
-        loss = loss / len(readouts)
+            # aux 加权（ticket 23b）：浅层深度乘 w，最终深度恒 1
+            wk = 1.0 if k == len(readouts) - 1 else w
+            loss = loss + wk * ce
+        loss = loss / (w * (len(readouts) - 1) + 1.0)
         aux = {"states": states, "depth_logits": depth_logits, "depth_ce": depth_ce,
                "gate_mean": gate_means, "exit_depths": exit_depths}
         return loss, aux

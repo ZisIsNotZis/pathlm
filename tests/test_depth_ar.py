@@ -249,3 +249,75 @@ def test_tf_acceptance_shapes():
     acc = tf_acceptance(m, arr, n_batches=2, batch_size=4)
     assert len(acc) == m.cfg.n_layers
     assert all(0.0 <= a["accept"] <= 1.0 for a in acc)
+
+
+# ---------- ticket 23b：浅层 aux 加权 ----------
+
+
+def test_shallow_weight_one_is_v1_uniform():
+    """w=1 与缺省严格等值，且 == 逐深度 CE 的手算等权平均（W0 复现点）。"""
+    m = tiny_model()
+    torch.manual_seed(11)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, m.cfg.n_layers,
+                                torch.Generator().manual_seed(1))
+    l_def, aux = m(x, exit_depths=depths)
+    l_one, _ = m(x, exit_depths=depths, shallow_weight=1.0)
+    assert torch.allclose(l_def, l_one, atol=1e-7)
+    expected = sum(aux["depth_ce"]) / len(aux["depth_ce"])
+    assert torch.allclose(l_def, expected, atol=1e-6)
+
+
+def test_shallow_weight_zero_is_final_depth_only():
+    """w=0：总损失 == 最终深度 CE（浅层读出 CE 完全退出损失）。"""
+    m = tiny_model()
+    torch.manual_seed(12)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, m.cfg.n_layers,
+                                torch.Generator().manual_seed(2))
+    loss, aux = m(x, exit_depths=depths, shallow_weight=0.0)
+    assert torch.allclose(loss, aux["depth_ce"][-1], atol=1e-6)
+
+
+def test_shallow_weight_interp_matches_manual_formula():
+    """w=0.1：loss == (w·Σ浅层 CE + ce_L) / (w·L + 1)（归一化保量级）。"""
+    w = 0.1
+    m = tiny_model()
+    torch.manual_seed(13)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, m.cfg.n_layers,
+                                torch.Generator().manual_seed(3))
+    loss, aux = m(x, exit_depths=depths, shallow_weight=w)
+    ces = aux["depth_ce"]
+    L = m.cfg.n_layers
+    expected = (w * sum(ces[:L]) + ces[L]) / (w * L + 1)
+    assert torch.allclose(loss, expected, atol=1e-6)
+
+
+def test_shallow_weight_zero_grad_matches_final_ce_backward():
+    """梯度通道钉（w=0）：参数梯度 == 手动对 depth_ce[-1] 反传（浅层加权
+    若被静默忽略或错乘到最终深度，此处失配）。"""
+    m1, m2 = tiny_model(), tiny_model()  # 同 seed → 同初始化
+    torch.manual_seed(14)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, m1.cfg.n_layers,
+                                torch.Generator().manual_seed(4))
+    loss1, _ = m1(x, exit_depths=depths, shallow_weight=0.0)
+    loss1.backward()
+    aux2 = m2(x, exit_depths=depths)[1]
+    aux2["depth_ce"][-1].backward()
+    for name in ("embed.weight", "blocks.0.qkv.weight", "gates.0.weight"):
+        g1 = dict(m1.named_parameters())[name].grad
+        g2 = dict(m2.named_parameters())[name].grad
+        assert torch.allclose(g1, g2, atol=1e-7), name
+
+
+def test_aux_weight_schedule_constants_and_anneal():
+    """train_depth_ar.aux_weight_at：常数臂恒 aux_weight；退火臂最后 20%
+    步从 1.0 线性降到 0.1，起点连续、中点 0.55、终点精确 0.1（W3）。"""
+    import train_depth_ar as t
+    assert t.aux_weight_at(0, 3600, 0.1, None) == 0.1
+    assert t.aux_weight_at(1234, 3600, 1.0, 0.1) == 1.0      # 退火前
+    assert t.aux_weight_at(2880, 3600, 1.0, 0.1) == 1.0      # 起点（0.8·3600）
+    assert abs(t.aux_weight_at(3600, 3600, 1.0, 0.1) - 0.1) < 1e-12  # 终点
+    assert abs(t.aux_weight_at(3240, 3600, 1.0, 0.1) - 0.55) < 1e-9  # 中点
