@@ -105,14 +105,23 @@ class DepthARModel(nn.Module):
 
     def forward(self, tokens: torch.Tensor, exit_depths: torch.Tensor | None = None,
                 targets: torch.Tensor | None = None,
-                shallow_weight: float = 1.0):
+                shallow_weight: float = 1.0,
+                shallow_stopgrad: bool = False,
+                dense_aux: bool = False):
         """tokens [B,T] = 干净输入流（无 corruption）；targets 缺省 = tokens
         本身，标准 AR 移位在 loss 内完成（行 i 的 depth-k 读出预测 t_{i+1}，
         仅当该行确实到达 depth k，即 d_i ≥ k）。
 
         shallow_weight（ticket 23b）：浅层深度 0..L-1 的 CE 权重，最终深度恒
         权重 1；总损失按 (w·L + 1) 归一保持量级。w=1 严格还原 v1 等权平均
-        （W0 复现点）；dense 臂只有最终深度 CE，不受此参数影响。"""
+        （W0 复现点）；dense 臂只有最终深度 CE，不受此参数影响。
+
+        shallow_stopgrad（ticket 23c，H3）：浅层（depth 0..L-1）读出前对状态
+        detach——浅层 CE 只训练 tied U 读出头，梯度不穿 trunk（纯读出）；
+        损失值不变，只改梯度通道。
+
+        dense_aux（ticket 23c，H1）：dense 臂开启全深度并行监督（L+1 个 CE
+        分量，梯度穿 trunk）；缺省 False 保持 dense 臂仅最终深度 CE。"""
         B, T = tokens.shape
         L = self.cfg.n_layers
         h = self._input_states(tokens)
@@ -142,8 +151,13 @@ class DepthARModel(nn.Module):
                 states.append(h)
 
         targets = tokens if targets is None else targets
-        depth_logits = [self.readout(s) for s in states]
-        readouts = depth_logits if not self.cfg.dense else depth_logits[-1:]
+        sg = bool(shallow_stopgrad)
+        n_states = len(states)
+        # H3 stop-grad：浅层读出走 detached 状态（梯度不穿 trunk）；最终深度不变
+        depth_logits = [self.readout(s.detach() if sg and k < n_states - 1 else s)
+                        for k, s in enumerate(states)]
+        # H1 dense+aux：dense 臂也监督全部深度；缺省 dense 仅最终深度
+        readouts = depth_logits if (not self.cfg.dense or dense_aux) else depth_logits[-1:]
         loss = tokens.new_zeros(()).float()
         depth_ce: list[torch.Tensor] = []
         w = float(shallow_weight)

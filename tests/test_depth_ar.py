@@ -321,3 +321,70 @@ def test_aux_weight_schedule_constants_and_anneal():
     assert t.aux_weight_at(2880, 3600, 1.0, 0.1) == 1.0      # 起点（0.8·3600）
     assert abs(t.aux_weight_at(3600, 3600, 1.0, 0.1) - 0.1) < 1e-12  # 终点
     assert abs(t.aux_weight_at(3240, 3600, 1.0, 0.1) - 0.55) < 1e-9  # 中点
+
+
+# ---------- ticket 23c：三消融开关（H1 dense+aux / H3 stop-grad 浅头） ----------
+
+
+def test_shallow_stopgrad_trunk_grad_equals_final_only():
+    """H3 梯度通道钉：shallow_stopgrad=True 时 trunk 梯度 == 仅最终深度 CE
+    反传（w=0 臂同模型同输入）——浅层 CE 不穿 trunk；同时 tied U 头仍从浅层
+    CE 收梯度（embed 梯度必不同，证明浅头仍在训练而非被丢弃）。
+    detach 被静默忽略或错加到最终深度时，此测试变红。"""
+    m1, m2 = tiny_model(), tiny_model()  # 同 seed → 同初始化
+    torch.manual_seed(21)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, m1.cfg.n_layers,
+                                torch.Generator().manual_seed(5))
+    loss1, _ = m1(x, exit_depths=depths, shallow_weight=1.0, shallow_stopgrad=True)
+    loss1.backward()
+    # 参照臂：手动反传 depth_ce[-1]/(L+1)——与 stop-grad 臂同归一化（w=0 臂的
+    # 分母是 1，不能直接用）；trunk 梯度应逐位一致
+    aux2 = m2(x, exit_depths=depths)[1]
+    (aux2["depth_ce"][-1] / (m1.cfg.n_layers + 1)).backward()
+    p1, p2 = dict(m1.named_parameters()), dict(m2.named_parameters())
+    for name in ("blocks.0.qkv.weight", "blocks.2.mlp.0.weight", "gates.1.weight"):
+        assert torch.allclose(p1[name].grad, p2[name].grad, atol=1e-7), name
+    # 浅层 CE 仍训练读出头：stop-grad 只断状态通道，tied U 的梯度分量仍在
+    assert not torch.allclose(p1["embed.weight"].grad,
+                              p2["embed.weight"].grad, atol=1e-7)
+
+
+def test_shallow_stopgrad_loss_value_unchanged():
+    """H3 只改梯度通道不改损失值：同输入下 stop-grad 与否的 loss 与逐深度
+    CE 逐位一致（评测路径 / 日志数字不受开关影响）。"""
+    m = tiny_model()
+    torch.manual_seed(22)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, m.cfg.n_layers,
+                                torch.Generator().manual_seed(6))
+    l_plain, aux = m(x, exit_depths=depths)
+    l_sg, aux_sg = m(x, exit_depths=depths, shallow_stopgrad=True)
+    assert torch.allclose(l_plain, l_sg, atol=1e-6)
+    assert torch.allclose(torch.stack(aux["depth_ce"]),
+                          torch.stack(aux_sg["depth_ce"]), atol=1e-6)
+
+
+def test_dense_aux_full_depth_supervision():
+    """H1 dense+aux：dense 臂开启全深度并行监督——L+1 个 CE 分量、损失 =
+    (w·Σ浅层 CE + ce_L)/(w·L+1)；缺省 dense 臂仍只 1 个分量。且 aux 梯度
+    确实穿 trunk（w=1 vs w=0 的 block 梯度必不同）。dense_aux 被忽略时变红。"""
+    m1, m2 = tiny_model(dense=True), tiny_model(dense=True)
+    torch.manual_seed(23)
+    x = torch.randint(0, 10, (2, 12))
+    loss1, aux1 = m1(x, dense_aux=True)
+    L = m1.cfg.n_layers
+    assert len(aux1["depth_ce"]) == L + 1
+    expected = sum(aux1["depth_ce"]) / (L + 1)
+    assert torch.allclose(loss1, expected, atol=1e-6)
+    # 缺省不变：dense 仅最终深度 CE（v1 dense-B 语义）
+    loss_def, aux_def = m1(x)
+    assert len(aux_def["depth_ce"]) == 1
+    assert torch.allclose(loss_def, aux1["depth_ce"][-1], atol=1e-6)
+    # aux 梯度穿 trunk：同初始化下 w=1 与 w=0 的 block 梯度不同
+    loss1.backward()
+    loss2, _ = m2(x, dense_aux=True, shallow_weight=0.0)
+    loss2.backward()
+    p1, p2 = dict(m1.named_parameters()), dict(m2.named_parameters())
+    assert not torch.allclose(p1["blocks.0.qkv.weight"].grad,
+                              p2["blocks.0.qkv.weight"].grad, atol=1e-7)

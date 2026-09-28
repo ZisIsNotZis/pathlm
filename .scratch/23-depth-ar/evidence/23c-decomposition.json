@@ -1,0 +1,70 @@
+{
+ "ticket": "23c — 形态税因果分解三消融（issues/03-ablation.md）",
+ "date": "2026-09-28",
+ "baseline_dense_B": 1.7375,
+ "W0_3600_depth8": 2.4501,
+ "W0_tax": 0.7126,
+ "criterion_tax_lt": 0.05,
+ "config": "sanity-B：d=256/L=8/h=8，bs32×seq256，seed 0；H1/H3 3600 步，H2 12000 步",
+ "bf16_noise_note": "同 story 复现差 ~0.03（23b-W0 2.4501 vs ticket-23 2.4161）；下述分量均 >> 噪声",
+ "arms": [
+  {
+   "run": "dense-B（对照，ticket 23）",
+   "stack": "dense trunk，无 aux，无门/退出/填充",
+   "steps": 3600,
+   "d8": 1.7375,
+   "tax": 0.0
+  },
+  {
+   "run": "23c-H1-dense-aux",
+   "stack": "dense trunk + 全深度 aux 监督（梯度穿 trunk）",
+   "steps": 3600,
+   "d8": 2.0216,
+   "d4": 2.0535,
+   "tax": 0.2841,
+   "mono": true,
+   "acc8": 0.5969
+  },
+  {
+   "run": "23b-W0-repro（对照，ticket 23b）",
+   "stack": "门+随机退出+混合填充 + aux（梯度穿 trunk）",
+   "steps": 3600,
+   "d8": 2.4501,
+   "d4": 2.4546,
+   "tax": 0.7126,
+   "tf4": 0.9727
+  },
+  {
+   "run": "23c-H3-stopgrad",
+   "stack": "门+随机退出+混合填充 + aux stop-grad（浅头纯读出）",
+   "steps": 3600,
+   "d8": 2.7129,
+   "d4": 2.9115,
+   "tax": 0.9754,
+   "mono": true,
+   "tf4": 0.7911,
+   "avg_gate": [0.1287, 0.0876, 0.086, 0.0793, 0.0815, 0.0792, 0.082, 0.0822]
+  },
+  {
+   "run": "23c-H2-w0-12k",
+   "stack": "= W0 配置，12000 步（98.3M tokens）",
+   "steps": 12000,
+   "d8": 1.8582,
+   "d4": 1.8628,
+   "tax": 0.1207,
+   "mono": true,
+   "tf4": 0.9694,
+   "avg_gate": [0.2013, 0.2292, 0.1496, 0.0706, 0.0408, 0.028, 0.0239, 0.0213]
+  }
+ ],
+ "chain_decomposition_3600": {
+  "aux_supervision_dense": {"term": "H1 − dense-B", "value": 0.2841,
+   "meaning": "等权全深度 aux 监督在 dense trunk 上的代价（非无罪）"},
+  "gate_exit_fill_stack_given_aux": {"term": "W0 − H1", "value": 0.4285,
+   "meaning": "门+退出+填充堆栈在 aux 开启时的代价；细分（vs ticket-23 nofill 2.2496）：门本身 +0.228、退出+填充 +0.200"},
+  "aux_trunk_grad_given_gates": {"term": "W0 − H3", "value": -0.2628,
+   "meaning": "aux 穿 trunk 梯度在门堆栈存在时是净收益（去掉恶化）；stop-grad 化不是解法"}
+ },
+ "time_term": {"term": "W0 − H2", "value": 0.5919,
+  "meaning": "欠拟合项：3.33× 训练把税从 +0.7126 压到 +0.1207（收缩 83%）；H2 深层门开度更大（g1 0.229/g2 0.150）且残税仍 >0.05"}
+}

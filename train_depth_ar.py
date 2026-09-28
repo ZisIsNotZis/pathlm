@@ -35,13 +35,16 @@ def aux_weight_at(step: int, steps: int, aux_weight: float,
 
 def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
           gate_log_path: str, exit_mode: str = "uniform",
-          aux_weight: float = 1.0, aux_anneal_to: float | None = None):
+          aux_weight: float = 1.0, aux_anneal_to: float | None = None,
+          shallow_stopgrad: bool = False, dense_aux: bool = False):
     """随机退出深度训练：每步均匀采样 d_i ∈ {0..L}；记录逐深度 CE 与门均值。
-    浅层 CE 权重按 aux_weight_at(step) 调度（默认恒 1 = v1 等权）。"""
+    浅层 CE 权重按 aux_weight_at(step) 调度（默认恒 1 = v1 等权）。
+    ticket 23c 开关：shallow_stopgrad = H3（浅头纯读出）；
+    dense_aux = H1（dense 臂全深度监督，需 model.cfg.dense）。"""
     steps, bs = tcfg["steps"], tcfg["batch_size"]
     seq = model.cfg.seq_len
     L = model.cfg.n_layers
-    n_ce = 1 if model.cfg.dense else L + 1
+    n_ce = 1 if (model.cfg.dense and not dense_aux) else L + 1
     opt = torch.optim.AdamW(model.parameters(), lr=tcfg["lr"], weight_decay=0.01)
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min((s + 1) / 200, 0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * s / steps))))
@@ -61,7 +64,9 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
         with torch.autocast("cuda", dtype=torch.bfloat16,
                             enabled=torch.cuda.is_available()):
             w = aux_weight_at(step, steps, aux_weight, aux_anneal_to)
-            loss, aux = model(x, exit_depths=depths, shallow_weight=w)
+            loss, aux = model(x, exit_depths=depths, shallow_weight=w,
+                              shallow_stopgrad=shallow_stopgrad,
+                              dense_aux=dense_aux)
         opt.zero_grad(set_to_none=True)
         loss.backward()
         gnorm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -117,6 +122,12 @@ def main():
     ap.add_argument("--aux-anneal-to", type=float, default=None,
                     help="给定则浅层权重在最后 20%% 步从 --aux-weight 线性退火"
                          "到该值（W3：--aux-weight 1.0 --aux-anneal-to 0.1）")
+    ap.add_argument("--shallow-stopgrad", action="store_true",
+                    help="浅层（depth 0..L-1）读出前 detach 状态：浅层 CE 只训练 "
+                         "tied U 头，梯度不穿 trunk（ticket 23c，H3）")
+    ap.add_argument("--dense-aux", action="store_true",
+                    help="dense 臂开启全深度并行监督（L+1 个 CE，梯度穿 trunk；"
+                         "ticket 23c，H1；需配合 --dense）")
     ap.add_argument("--eval-batches", type=int, default=20)
     ap.add_argument("--out-root", default=".scratch/23-depth-ar/evidence")
     args = ap.parse_args()
@@ -141,7 +152,9 @@ def main():
                                          os.path.join(run_dir, "gate_log.jsonl"),
                                          exit_mode=args.exit_mode,
                                          aux_weight=args.aux_weight,
-                                         aux_anneal_to=args.aux_anneal_to)
+                                         aux_anneal_to=args.aux_anneal_to,
+                                         shallow_stopgrad=args.shallow_stopgrad,
+                                         dense_aux=args.dense_aux)
     torch.save(model.state_dict(), os.path.join(run_dir, "model.pt"))
 
     model.eval()
@@ -149,6 +162,7 @@ def main():
         "run": args.run_name, "config": asdict(cfg), "train": tcfg,
         "exit_mode": args.exit_mode,
         "aux_weight": args.aux_weight, "aux_anneal_to": args.aux_anneal_to,
+        "shallow_stopgrad": args.shallow_stopgrad, "dense_aux": args.dense_aux,
         "params": n_params, "vocab_size": vocab_size,
         "train_tokens": args.steps * args.batch_size * args.seq_len,
         "wall_minutes": round(wall / 60, 2),
@@ -166,6 +180,8 @@ def main():
                                                    prompt_len=64, n_new=128)
     else:
         curve = depth_curve(model, eval_arr, device="cuda", n_batches=args.eval_batches)
+        # 23c H1（dense+aux）也需全深度曲线（depth-L 主数字 + depth-4 出口 bpc）
+        results["depth_curve"] = curve
         results["bpc"] = curve[-1]["bpc"]
         results["next_token_acc"] = curve[-1]["acc"]
     with open(os.path.join(run_dir, "results.json"), "w") as f:
