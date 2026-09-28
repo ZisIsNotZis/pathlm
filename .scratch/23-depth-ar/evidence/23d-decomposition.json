@@ -1,0 +1,82 @@
+{
+ "ticket": "23d — 残税 +0.121 分解（issues/04-residual.md；dense-B-12k / H1-12k 对照）",
+ "date": "2026-09-28",
+ "baseline_dense_B_3600": 1.7375,
+ "residual_tax_vs_3600_anchor": 0.1207,
+ "config": "sanity-B：d=256/L=8/h=8，bs32×seq256，seed 0；两新臂各 12000 步（98.3M tokens ≈ 1.0 enwik8 epoch）",
+ "bf16_noise_note": "同 story 复现差 ~0.03（23b-W0 vs ticket-23）；aux 残余 0.1075 = 3.6× 噪声，方向稳健",
+ "arms": [
+  {
+   "run": "dense-B（对照，ticket 23）",
+   "stack": "dense trunk，无 aux，无门/退出/填充",
+   "steps": 3600,
+   "d8": 1.7375,
+   "acc8": 0.6488,
+   "wall_minutes": 1.94
+  },
+  {
+   "run": "23d-dense-B-12k",
+   "stack": "dense trunk，无 aux，无门/退出/填充",
+   "steps": 12000,
+   "d8": 1.5287,
+   "d4_note": "dense 臂 depth<L 曲线为无 aux 头的截断诊断读出（未训练），主数字只用 depth-8",
+   "tax_vs_3600_anchor": -0.2088,
+   "mono": true,
+   "acc8": 0.6894,
+   "wall_minutes": 6.32
+  },
+  {
+   "run": "23d-H1-12k",
+   "stack": "dense trunk + 全深度 aux 监督（梯度穿 trunk），无门/退出/填充",
+   "steps": 12000,
+   "d8": 1.6362,
+   "d4": 1.6691,
+   "d1": 2.294,
+   "tax_vs_3600_anchor": -0.1013,
+   "mono": true,
+   "acc8": 0.6679,
+   "wall_minutes": 7.33
+  },
+  {
+   "run": "23c-H2-w0-12k（对照，ticket 23c）",
+   "stack": "门+随机退出+混合填充 + aux（梯度穿 trunk），= W0 配置",
+   "steps": 12000,
+   "d8": 1.8582,
+   "d4": 1.8628,
+   "tf4": 0.9694,
+   "avg_gate": [0.2013, 0.2292, 0.1496, 0.0706, 0.0408, 0.028, 0.0239, 0.0213]
+  }
+ ],
+ "decomposition_12k_vs_3600_anchor": {
+  "identity": "W0_12k − denseB_3.6k = (denseB_12k − denseB_3.6k) + (H1_12k − denseB_12k) + (W0_12k − H1_12k)",
+  "dense_underfit_credit": {"term": "denseB_12k − denseB_3.6k", "value": -0.2088,
+   "meaning": "dense 基线自身 3.33× 训练收益（记账负项）：+0.121 表观残税中约 2/3 的堆栈+aux 分量被 dense 欠拟合掩盖"},
+  "aux_residual_12k": {"term": "H1_12k − denseB_12k", "value": 0.1075,
+   "meaning": "等权全深度 aux 监督在 12k 的残余代价（3.6k 时 +0.2841 → 收缩 62%）"},
+  "gate_exit_fill_inherent_12k": {"term": "W0_12k − H1_12k", "value": 0.2220,
+   "meaning": "门+随机退出+混合填充堆栈在 12k、aux 对齐下的代价（3.6k 时 +0.4285 → 收缩 48%）"},
+  "sum_check": 0.1207,
+  "matched_tax_12k": {"term": "W0_12k − denseB_12k", "value": 0.3295,
+   "meaning": "matched-step 真税 = aux 0.1075 + 堆栈 0.2220；vs matched 税@3.6k 0.7126 收缩 54%"}
+ },
+ "criterion_verdict": {
+  "contract_criterion": "dense-B-12k ≈ 1.34–1.38 且 W0_12k 差 ≈ 残税 → 残税主要是堆栈固有",
+  "observed": "dense-B-12k = 1.5287（不在区间）；W0_12k − denseB_12k = +0.3295 ≠ +0.1207",
+  "verdict": "不成立——+0.121 不是『主要是堆栈固有』：matched 口径堆栈固有 = +0.222、aux 残余 = +0.108，且两分量 3.6k→12k 均仍在收缩（−48% / −62%），未平台化；23c §10『12k 下 aux+门堆栈合计必已 <0.12』的推断被推翻（实际 +0.3295），原因是锚点 dense-B 3.6k 自身欠拟合"
+ },
+ "extrapolation_100M": {
+  "ticket19_asym_fact": "100M 等训练 1.1ep→4.4ep：税 +0.126→+0.082（收缩 35%，docs/report.md §渐近口径定案）；12k 步 = 98.3M tokens ≈ 1.0 epoch，4.4 epoch ≈ 53k 步等效",
+  "method": "matched 税@12k +0.3295 施 ticket-19 收缩系数 0.65（契约指定外推系数）",
+  "predicted_tax_100M_4p4ep": 0.2142,
+  "predicted_tax_rounded": "+0.21 bpc",
+  "range": "+0.15…+0.23（本地观测分量收缩 48–62% 包络 × 0.65 中心）",
+  "predicted_components": {"aux_residual": 0.0699, "gate_exit_fill": 0.1443},
+  "caveats": [
+   "ticket-19 的 35% 系数测自回环时代栈（retry 族）@100M，非 23 系形态直接证据",
+   "本地 3.6k→12k 观测收缩（−54%/3.33×步）快于 0.65 系数，但呈减速形态，0.65 为保守锚",
+   "ticket-19 规模趋势（等训练 13M +0.122 → 100M +0.082，税随规模降）若同向适用于 23 系，+0.21 为偏保守上界；未并入主预测"
+  ],
+  "implication": "训练加长 + 规模外推不足以过 |税|<0.05 判据（预测 +0.21 ≫ 0.05）：过判据需配方级干预（Q4 fill 变体 / 门堆栈二元跳层路由 fork），或改交易目标为出口资产（tf@4 ≈0.97）"
+ },
+ "side_observation": "12k 下 dense+aux 逐深度支配门堆栈（d1 2.294 vs 2.382、d4 1.669 vs 1.863、d8 1.636 vs 1.858）：门+随机退出+填充在两个测点步数上都未在 bpc 轴买回成本；其独特资产仍是退出机制本身（随机退出训练 + tf 接受率），与回环时代 dense-exit 先例（税 +0.067、1.4× 解码）的取舍对照留给 stage-2"
+}
