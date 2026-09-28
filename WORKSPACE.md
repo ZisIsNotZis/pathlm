@@ -68,6 +68,18 @@ greedy 生成全局重复偏置(全部低于自然 enwik8 水平),监测参考�
 +`collapse_summary` 等纯函数(5 新单测,全绿 93)。
 **下一步(无阻塞,按优先级)**:13M 渐近全账本重校(可选)。**待决策**: 无阻塞项(backlog: probe 式深度头/exit 校准)。
 **工程债**: 确定性开关、resume/长日程、FLOPs 记账、逐轮梯度累积、探针 CLI 整合。
+**深度自适应 AR 首验已完成**(ticket 23,方向修订后第一个实验,2026-09-28):
+新形态 `pathlm/depth_ar.py`(纯 AR+全深度并行监督+携带门+随机退出+混合深度 KV
+填充+逐深度 tied 读出+soft/hard/latent 提交,14 新单测全绿 107)。小模型
+四性质:深度精化成立(曲线全单调)、宽度-workspace 假设成立(d=256 null 62 维
+~10% 能量且 26 条功能性读取;d=128 结构性 0)、出口提交可用(半栈 TF 接受率
+0.9667,18/18 生成合法)、门行为健康(浅层开深层微开);**形态税判据证伪**
+(+0.6786 ≫ 0.05;归因 ablation B-nofill:监督稀释 +0.512 主因、混合填充扰动
++0.167 次因,代码 bug 已排除)。意外:soft 提交 OOD 污染 context,默认待重验。
+证据 `.scratch/23-depth-ar/evidence/`;账本 findings「Depth-adaptive AR」章;
+**stage-2 入口** = 监督深度加权 sweep(先定案税归零配方,再谈规模)。
+**文档缺口(待主会话/用户)**: docs/mental_model.md 磁盘上无 §0 章节(方向修订
+全文只在 WORKSPACE 本节;commit 4280dec 仅改 WORKSPACE)。
 
 ## Status (2026-09-14)
 

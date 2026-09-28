@@ -45,14 +45,30 @@ class Block(nn.Module):
         )
 
     def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
-                dist_pen: float = 0.0) -> tuple[torch.Tensor, torch.Tensor | None]:
+                dist_pen: float = 0.0,
+                kv_from: torch.Tensor | None = None,
+                gate_vec: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor | None]:
         """Returns (block output, per-head mean attended distance [B, H]).
         The distance tensor is None when dist_pen == 0 (exact no-op path);
         when dist_pen > 0 attention is computed explicitly (softmax over
         causal + -pen*log(1+d) bias) so both the bias and the telemetry come
-        from the same probabilities."""
+        from the same probabilities.
+
+        Depth-AR extensions (ticket 23, both default-None = legacy behaviour):
+        - kv_from: K/V are computed from ln1(kv_from) while the query stays
+          ln1(x) — the mixed-depth context fill (an already-exited position
+          contributes the KV projection of its frozen exit-depth state).
+          Only supported on the SDPA path (dist_pen must be 0).
+        - gate_vec: per-channel carry gate — the output is
+          x + gate_vec * (block_delta(x)) instead of x + block_delta(x)."""
+        if kv_from is not None and dist_pen > 0:
+            raise ValueError("kv_from is only supported on the SDPA path (dist_pen=0)")
         B, T, d = x.shape
+        x_in = x  # kept for the gate_vec carry form: out = x_in + g*(delta)
         q, k, v = self.qkv(self.ln1(x)).chunk(3, dim=-1)
+        if kv_from is not None:
+            kv = self.qkv(self.ln1(kv_from))
+            k, v = kv[..., d:2 * d], kv[..., 2 * d:]
         shape = lambda t: t.view(B, T, self.n_heads, d // self.n_heads).transpose(1, 2)
         qs, ks, vs = shape(q), shape(k), shape(v)
         dist = None
@@ -77,7 +93,10 @@ class Block(nn.Module):
                                                is_causal=attn_mask is None)
         a = a.transpose(1, 2).reshape(B, T, d)
         x = x + self.proj(a)
-        return x + self.mlp(self.ln2(x)), dist
+        x = x + self.mlp(self.ln2(x))
+        if gate_vec is not None:
+            x = x_in + gate_vec * (x - x_in)
+        return x, dist
 
 
 class TransformHead(nn.Module):

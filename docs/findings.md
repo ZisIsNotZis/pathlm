@@ -197,3 +197,32 @@
    pre-step grad-norm gate（两次发散教会）。
 6. **规模**（Rung 4 定案 @100M，2 seeds）：税首次不增（+0.126）、能力溢价持续
    （E2E 差距 ≥1.54 bpc，B0 脆性加深）——13M 的"税主导"判决在 100M 不再成立。
+
+## Depth-adaptive AR (ticket 23) — 方向修订后的新形态首验
+
+- **形态 v1**（mental_model §0 方向，规格见 `.scratch/23-depth-ar/issues/01-sanity.md`）：
+  纯 AR 无 corruption/retry；全深度并行监督（depth 0..L 各挂 tied-unembed fp32
+  读出，等权 CE）；逐通道携带门 h_{k+1}=h_k+g⊙Refine(h_k)（偏置 −2 恒等起步）；
+  训练随机退出深度 dᵢ~U{0..L}，已退出行深层 KV = kv_proj(冻结表征)（混合深度
+  context）；提交 soft(Σp·E[t])/hard/latent。代码 `pathlm/depth_ar.py`；混合
+  填充/解码器等价/门语义由 14 单测钉死（变异验证可失败）。
+- **四性质 + 一判据**（enwik8 小模型，d=128/256，L=4/8，29.5M tokens，总 GPU
+  11.4 min；证据 `.scratch/23-depth-ar/evidence/SUMMARY.md`）：
+  - 深度精化 **成立**：depth-bpc 全 run 单调降（B: 6.250→2.4161；深层平台形态
+    与 L2 一致）；门行为健康（浅层开 g1≈0.18–0.43、深层微开 0.04–0.11，无发散）。
+  - **宽度-workspace 假设成立**：d=256>V=206 时状态把 ~10% 能量放在读出不可见
+    null 空间（62 维）且 26 条 (batch,方向,±) 扰动响应 >δ —— 携带信息确被后续
+    读取；d=128<V 时 null 维结构性为 0。探针口径 = null 方向 ±5% 扰动 → 后续
+    depth-L logits 响应（当前行对照 3.4e-05 通过）。
+  - **出口提交可用**：半栈出口（B depth-4/8）TF 草稿接受率 **0.9667**、depth-1
+    已 0.80；18/18 深度×提交方式生成合法无发散。意外：**soft 提交的 OOD 期望
+    嵌入污染 context**（生成文本 rescore 6.9 vs hard 1.2）——soft 默认待重验；
+    latent 直通两极（塌缩自洽 0.52 / 漂移 8.5）符合预判。
+  - **形态税判据证伪**：B depth-L 2.4161 vs dense-B 1.7375 = **+0.6786 ≫ 0.05**。
+    归因 ablation（B-nofill：去随机退出/填充、保留全深度监督）→ **监督稀释
+    +0.512 主因、混合填充扰动 +0.167 次因**。代码 bug 排除（语义单测钉死），
+    属配方层证伪：**等权全深度监督不保底座**。
+- **对 stage-2 的直接推论**：(a) 监督需深度加权/浅层降权/浅头 stop-grad（回环
+  时代 probe profile 教训可复用）；(b) 混合填充 fill 变体（冻结 KV 直通 vs
+  重投影）未测，值一个 ablation；(c) 出口轴（0.97@半栈）是本形态最强资产，
+  自 spec 组合优先于深度均摊训练。
