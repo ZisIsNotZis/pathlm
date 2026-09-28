@@ -1,0 +1,164 @@
+{
+  "ticket": "23e — Q4 fill 变体对决（12k matched 步）",
+  "protocol": {
+    "config": "sanity-B d=256/L=8/h=8, seq256, 12000 步 × bs32 (98.3M tokens), seed 0",
+    "unified": "随机退出深度 U{0..L}、aux 等权 w=1、bf16 autocast、fp32 tied 头——除 KV 填充策略外与 W0-12k 逐设置一致",
+    "judge": "主判据 nofill vs fill depth-8 bpc（±0.03 平局带）；副判据 depth 曲线、depth-4 bpc、tf@4"
+  },
+  "arms": {
+    "fill (W0-12k, 23c-H2 对照)": {
+      "fill_semantics": "kv_proj_k(冻结退出表征) 填充深层 KV",
+      "depth8_bpc": 1.8582,
+      "depth4_bpc": 1.8628,
+      "bpc_by_depth": [
+        5.4191,
+        2.3819,
+        1.9988,
+        1.8863,
+        1.8628,
+        1.8593,
+        1.8585,
+        1.8584,
+        1.8582
+      ],
+      "acc_by_depth": [
+        0.0535,
+        0.54,
+        0.6036,
+        0.623,
+        0.6266,
+        0.627,
+        0.6272,
+        0.6271,
+        0.6271
+      ],
+      "tf_by_depth": [
+        0.057,
+        0.7187,
+        0.8597,
+        0.9348,
+        0.9694,
+        0.9871,
+        0.9938,
+        0.998
+      ],
+      "tf4": 0.9694,
+      "wall_minutes": 9.91,
+      "train_tokens": 98304000
+    },
+    "nofill (23e-nofill-12k)": {
+      "fill_semantics": "ragged：早退位置在未跑层 KV 缺席（因果键 ∩ d_j≥k 掩码，原引擎 per-layer cache 语义）",
+      "depth8_bpc": 1.9438,
+      "depth4_bpc": 1.9478,
+      "bpc_by_depth": [
+        5.3054,
+        2.4307,
+        2.076,
+        1.9789,
+        1.9478,
+        1.9447,
+        1.944,
+        1.9438,
+        1.9438
+      ],
+      "acc_by_depth": [
+        0.0535,
+        0.5294,
+        0.5902,
+        0.6047,
+        0.609,
+        0.6097,
+        0.6099,
+        0.61,
+        0.61
+      ],
+      "tf_by_depth": [
+        0.0569,
+        0.7336,
+        0.8726,
+        0.9409,
+        0.9798,
+        0.99,
+        0.9965,
+        0.9985
+      ],
+      "tf4": 0.9798,
+      "wall_minutes": 9.24,
+      "train_tokens": 98304000
+    },
+    "projfill (23e-projfill-12k, 可选臂)": {
+      "fill_semantics": "fill + 逐层线性 adapter（恒等初始化学得 remap）",
+      "depth8_bpc": 1.8356,
+      "depth4_bpc": 1.8398,
+      "bpc_by_depth": [
+        5.214,
+        2.3695,
+        1.9474,
+        1.8579,
+        1.8398,
+        1.8362,
+        1.8357,
+        1.8357,
+        1.8356
+      ],
+      "acc_by_depth": [
+        0.0535,
+        0.5407,
+        0.615,
+        0.6295,
+        0.6326,
+        0.6334,
+        0.6334,
+        0.6334,
+        0.6334
+      ],
+      "tf_by_depth": [
+        0.0586,
+        0.7102,
+        0.8781,
+        0.9442,
+        0.9788,
+        0.9908,
+        0.9963,
+        0.9984
+      ],
+      "tf4": 0.9788,
+      "wall_minutes": 10.57,
+      "train_tokens": 98304000
+    }
+  },
+  "verdict": {
+    "primary": {
+      "nofill_minus_fill_depth8": 0.0856,
+      "tie_band": 0.03,
+      "ruling": "fill 胜（|Δ|>平局带）：填充在 12k matched 步下是净收益，3.6k 反向信号（+0.200）不复现"
+    },
+    "secondary": {
+      "monotone_curves": true,
+      "tf4": {
+        "fill": 0.9694,
+        "nofill": 0.9798,
+        "projfill": 0.9788
+      },
+      "depth4": {
+        "fill": 1.8628,
+        "nofill": 1.9478,
+        "projfill": 1.8398
+      }
+    },
+    "projfill": {
+      "projfill_minus_fill_depth8": -0.0226,
+      "note": "平局带内正向；全深度曲线逐深度支配 fill，深度自适应族新最优"
+    },
+    "tax_vs_denseB12k": {
+      "dense_B_12k": 1.5287,
+      "fill": 0.3295,
+      "nofill": 0.4151,
+      "projfill": 0.3069
+    },
+    "attribution_note": "ticket-23 §4 / 23c §10 的「退出+填充 +0.200 @3.6k」需改判：其中填充分量在 12k 为 −0.086（fill 方向），3.6k 反向信号系欠拟合伪影 + 对照混淆（B-nofill 同时无随机退出）",
+    "stage2": "填充砍除路线关闭，部署语义保留 fill（零实现成本）；压堆栈残税优先 proj-fill 强化变体，其次二元跳层路由 fork"
+  },
+  "tests": "pytest 120 绿（基线 115 + 5 新：ragged 手写规则重建 B=4≠H、缺席键扰动对照、全深度退化、全零深度有限性、proj-fill 恒等起步+非法组合拒绝）；变异验证 M1 丢 d_j 筛选 / M2 回落 fill / M3 掩码维错位 均抓红",
+  "gpu": "nofill 训练 wall 9.24 min + projfill 10.57 min，含评测电池总 GPU ≈29 min（≤30 预算）"
+}

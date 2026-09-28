@@ -388,3 +388,141 @@ def test_dense_aux_full_depth_supervision():
     p1, p2 = dict(m1.named_parameters()), dict(m2.named_parameters())
     assert not torch.allclose(p1["blocks.0.qkv.weight"].grad,
                               p2["blocks.0.qkv.weight"].grad, atol=1e-7)
+
+
+# ---------- ticket 23e：填充策略对决（no-fill ragged / proj-fill） ----------
+
+
+def _manual_ragged_layer(m, k0: int, h: torch.Tensor,
+                         depths: torch.Tensor) -> torch.Tensor:
+    """手写 ragged 层规则（no-fill 参照实现）：层 k0+1 的注意力只在
+    因果键 ∩ 已达层 k0+1 的行（d_j ≥ k0+1）上归一化，键值取当前表征
+    （无冻结填充）；输出带门精化。"""
+    blk = m.blocks[k0]
+    B, T, d = h.shape
+    qkv = blk.qkv(blk.ln1(h))
+    q, k, v = qkv[..., :d], qkv[..., d:2 * d], qkv[..., 2 * d:]
+    nh, dh = blk.n_heads, d // blk.n_heads
+    shape = lambda t: t.view(B, T, nh, dh).transpose(1, 2)
+    qs, ks, vs = shape(q), shape(k), shape(v)
+    allow = torch.tril(torch.ones(T, T, dtype=torch.bool)) \
+        & (depths[:, None, :] >= k0 + 1)
+    allow = allow | torch.eye(T, dtype=torch.bool)
+    scores = qs @ ks.transpose(-2, -1) / dh ** 0.5
+    scores = scores.masked_fill(~allow.unsqueeze(1), float("-inf"))
+    a = (scores.softmax(-1) @ vs).transpose(1, 2).reshape(B, T, d)
+    y = h + blk.proj(a)
+    y = y + blk.mlp(blk.ln2(y))
+    g = torch.sigmoid(m.gates[k0](h))
+    return h + g * (y - h)
+
+
+def test_nofill_states_match_manual_ragged_attention():
+    """no-fill ragged 语义钉（对照 test_mixed_depth_kv_fill_semantics）：
+    fill_kv=False 的混合深度前向 = 手写 ragged 规则逐层重建——已退出行
+    在更深层的 KV 中缺席而非冻结填充；实现若静默回落 fill 或掩码漏因果/
+    漏 d_j 筛选/掩码 batch-head 维错位，此处失配。B=4 ≠ n_heads=2 且各行
+    深度模式不同（掩码逐 batch 内容钉住，防 [B,T,T]/[1,B,T,T] 侥幸通过）。"""
+    m = tiny_model(fill_kv=False)
+    torch.manual_seed(3)
+    x = torch.randint(0, 10, (4, 12))
+    depths = torch.tensor([[0, 1, 2, 3, 1, 0, 3, 2, 0, 1, 3, 2],
+                           [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3],
+                           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                           [2, 1, 3, 0, 2, 1, 3, 0, 2, 1, 3, 0]])
+    st = m(x, exit_depths=depths)[1]["states"]
+    L = m.cfg.n_layers
+    # 冻结不变量与 fill 臂相同（退出行状态定格）
+    for b in range(4):
+        for i in range(12):
+            for k in range(int(depths[b, i]) + 1, L + 1):
+                assert torch.allclose(st[k][b, i], st[int(depths[b, i])][b, i],
+                                      atol=1e-6)
+    h, frozen = st[0], st[0]
+    for k in range(1, L + 1):
+        active = depths >= k
+        out = _manual_ragged_layer(m, k - 1, h, depths)
+        h = torch.where(active.unsqueeze(-1), out, frozen)
+        frozen = torch.where((depths == k).unsqueeze(-1), h, frozen)
+        assert torch.allclose(st[k], h, atol=1e-5), f"ragged layer {k}"
+
+
+def test_nofill_exited_key_absent_fill_contrast():
+    """缺席语义的双向钉：d_j=0 位置换 token，no-fill 下任何 i≠j 行的
+    depth-1 logits 逐位不变（键缺席）；同扰动同初始化的 fill 臂 i>j 行
+    必变（键在）。只改行 j 自身读出（其 depth-1 = 冻结 depth-0 态）不算。"""
+    torch.manual_seed(7)
+    m_ragged = tiny_model(fill_kv=False)
+    m_fill = tiny_model(fill_kv=True)          # 同 seed → 同初始化
+    x = torch.randint(0, 10, (1, 12))
+    depths = torch.full((1, 12), 3, dtype=torch.long)
+    depths[0, 2] = 0
+    x2 = x.clone()
+    x2[0, 2] = (x[0, 2] + 1) % 10
+    rows = [i for i in range(11) if i != 2]
+    with torch.no_grad():
+        lg_r1 = m_ragged(x, exit_depths=depths)[1]["depth_logits"][1]
+        lg_r2 = m_ragged(x2, exit_depths=depths)[1]["depth_logits"][1]
+        assert torch.allclose(lg_r1[0, rows], lg_r2[0, rows], atol=1e-6), \
+            "no-fill：早退键必须缺席"
+        lg_f1 = m_fill(x, exit_depths=depths)[1]["depth_logits"][1]
+        lg_f2 = m_fill(x2, exit_depths=depths)[1]["depth_logits"][1]
+        assert not torch.allclose(lg_f1[0, 3:], lg_f2[0, 3:], atol=1e-6), \
+            "fill 对照臂：填充键必被读到（对照失效=实验设计错误）"
+
+
+def test_nofill_full_depth_equals_fill_and_none():
+    """全深度退化：dᵢ=L 时 ragged 掩码 == 纯因果，no-fill 与 fill 及
+    exit_depths=None 的 states/loss 一致——评测电池（全深度前向）数字
+    不受填充策略开关影响。"""
+    m1 = tiny_model(fill_kv=False)
+    m2 = tiny_model(fill_kv=True)              # 同 seed → 同初始化
+    torch.manual_seed(8)
+    x = torch.randint(0, 10, (2, 12))
+    depths = torch.full((2, 12), m1.cfg.n_layers, dtype=torch.long)
+    l1, a1 = m1(x, exit_depths=depths)
+    l2, a2 = m2(x, exit_depths=depths)
+    assert torch.allclose(l1, l2, atol=1e-5)
+    for s1, s2 in zip(a1["states"], a2["states"]):
+        assert torch.allclose(s1, s2, atol=1e-5)
+    l0, a0 = m1(x, exit_depths=None)
+    assert torch.allclose(l0, l1, atol=1e-5)
+    assert torch.allclose(a0["states"][-1], a1["states"][-1], atol=1e-5)
+
+
+def test_nofill_all_zero_depths_finite_no_nan():
+    """极端 ragged（全 dᵢ=0）：每查询只余对角键（开对角防全掩码 NaN），
+    loss/逐深度 CE 有限且 depth-k>0 CE == 0（监督掩码语义与 fill 一致）。"""
+    m = tiny_model(fill_kv=False)
+    torch.manual_seed(9)
+    x = torch.randint(0, 10, (2, 12))
+    depths = torch.zeros(2, 12, dtype=torch.long)
+    loss, aux = m(x, exit_depths=depths)
+    assert torch.isfinite(loss)
+    assert all(bool(torch.isfinite(c)) for c in aux["depth_ce"])
+    for k in range(1, m.cfg.n_layers + 1):
+        assert aux["depth_ce"][k].item() == 0.0
+
+
+def test_proj_fill_identity_init_equals_fill():
+    """proj-fill 恒等初始化：起步 states/loss 与 fill 逐位一致（remap 从
+    fill 出发学，w 对齐 W0 复现点）；恒等复制不消耗随机数（同 seed 下其余
+    参数初始化逐位相同）。proj_fill+no-fill 组合必须被拒绝。"""
+    m1 = tiny_model(fill_kv=True, proj_fill=True)
+    m2 = tiny_model(fill_kv=True)
+    torch.manual_seed(10)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, m1.cfg.n_layers,
+                                torch.Generator().manual_seed(11))
+    l1, a1 = m1(x, exit_depths=depths)
+    l2, a2 = m2(x, exit_depths=depths)
+    assert torch.allclose(l1, l2, atol=1e-6)
+    for s1, s2 in zip(a1["states"], a2["states"]):
+        assert torch.allclose(s1, s2, atol=1e-6)
+    # 非法组合
+    m3 = tiny_model(fill_kv=False, proj_fill=True)
+    try:
+        m3(x, exit_depths=depths)
+        raise AssertionError("proj_fill+fill_kv=False 必须拒绝")
+    except ValueError:
+        pass

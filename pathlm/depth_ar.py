@@ -45,6 +45,13 @@ class DepthARConfig:
     gate_bias_init: float = -2.0
     # 对照 arm：纯 dense AR（无门 / 无退出采样 / 仅最终深度 CE）
     dense: bool = False
+    # 混合深度 context 填充策略（ticket 23e）：True = v1 fill（已退出行 KV 用
+    # 冻结表征经本层 kv 投影填充，W0 复现点）；False = no-fill ragged（早退
+    # 位置在未跑层的 KV 中缺席，原引擎 per-layer cache 语义，decode.Decoder 同款）
+    fill_kv: bool = True
+    # proj-fill 臂（ticket 23e 可选）：fill 基础上给已退出行 KV 源加逐层线性
+    # adapter（恒等初始化——起步严格等于 fill，remap 从 fill 出发学）。需 fill_kv
+    proj_fill: bool = False
 
 
 def sample_exit_depths(B: int, T: int, n_layers: int, generator: torch.Generator,
@@ -88,6 +95,15 @@ class DepthARModel(nn.Module):
                 nn.init.normal_(m.weight, std=0.02)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
+        # proj-fill 逐层 KV 源 adapter：恒等初始化（不消耗随机数，同 seed 下
+        # 其余参数初始化与 fill 臂逐位一致），起步 == fill（单测钉住）
+        if cfg.proj_fill:
+            self.kv_adapters = nn.ModuleList(
+                nn.Linear(d, d) for _ in range(cfg.n_layers))
+            for a in self.kv_adapters:
+                nn.init.zeros_(a.bias)
+                with torch.no_grad():
+                    a.weight.copy_(torch.eye(d))
 
     # ---------- 读出 ----------
 
@@ -128,16 +144,32 @@ class DepthARModel(nn.Module):
         states = [h]
         gate_means: list[torch.Tensor] = []
         if not self.cfg.dense:
+            if self.cfg.proj_fill and not self.cfg.fill_kv:
+                raise ValueError("proj_fill requires fill_kv=True")
             if exit_depths is None:
                 exit_depths = torch.full((B, T), L, dtype=torch.long,
                                          device=tokens.device)
             frozen = h
             for k in range(1, L + 1):
                 active = exit_depths >= k                       # [B,T]
-                # 混合深度 KV 源：活跃行用当前表征，已退出行用冻结表征
-                kv_in = torch.where(active.unsqueeze(-1), h, frozen)
                 g = torch.sigmoid(self.gates[k - 1](h))
-                out, _ = self.blocks[k - 1](h, kv_from=kv_in, gate_vec=g)
+                if self.cfg.fill_kv:
+                    # 混合深度 KV 源：活跃行用当前表征，已退出行用冻结表征
+                    # （proj-fill 臂：冻结表征先经本层线性 adapter remap）
+                    kv_src = frozen
+                    if self.cfg.proj_fill:
+                        kv_src = self.kv_adapters[k - 1](frozen)
+                    kv_in = torch.where(active.unsqueeze(-1), h, kv_src)
+                    out, _ = self.blocks[k - 1](h, kv_from=kv_in, gate_vec=g)
+                else:
+                    # no-fill ragged：早退位置在本层 KV 中缺席（原引擎语义，
+                    # decode.Decoder per-layer cache 同款）——只有因果键 ∩
+                    # 已达层 k 的行参与注意力，无填充。掩码显式 expand 到各
+                    # head（CUDA SDPA 内核不广播 bool 掩码的 head 维）
+                    mask = self._ragged_mask(exit_depths, k)
+                    mask = mask.expand(-1, self.cfg.n_heads, -1, -1)
+                    out, _ = self.blocks[k - 1](h, attn_mask=mask,
+                                                gate_vec=g)
                 h_next = torch.where(active.unsqueeze(-1), out, frozen)
                 # 本层退出的位置在此冻结（其 depth-k 表征定格）
                 frozen = torch.where((exit_depths == k).unsqueeze(-1),
@@ -185,6 +217,21 @@ class DepthARModel(nn.Module):
                              targets.reshape(-1), reduction="none")
         m = mask.reshape(-1).float()
         return (ce * m).sum() / m.sum().clamp_min(1.0)
+
+    def _ragged_mask(self, exit_depths: torch.Tensor, k: int) -> torch.Tensor:
+        """层 k 的 no-fill 注意力掩码 [B,1,T,T]（bool，True=允许）：
+        允许 = 因果（j ≤ i）且 key 行已到达层 k（d_j ≥ k）。对角恒开——
+        全掩码行（必为已退出行，输出本就被丢弃）softmax 全 -inf 会产生 NaN
+        并经共享 K/V 梯度扩散；开对角对其余行语义零影响。"""
+        T = exit_depths.shape[1]
+        device = exit_depths.device
+        causal = torch.ones(1, 1, T, T, dtype=torch.bool,
+                            device=device).tril()               # [1,1,T,T]
+        key_reached = exit_depths[:, None, None, :] >= k         # [B,1,1,T]
+        allow = causal & key_reached                             # [B,1,T,T]
+        allow = allow | torch.eye(T, dtype=torch.bool,
+                                  device=device)
+        return allow
 
     def _gated_step(self, k0: int, h: torch.Tensor) -> torch.Tensor:
         """层 k0（0-index）的带门精化：h + g ⊙ delta，KV 取 ln1(h)

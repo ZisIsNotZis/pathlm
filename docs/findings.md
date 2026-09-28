@@ -258,3 +258,15 @@
   1.863、d8 1.636 vs 1.858），门堆栈在 bpc 轴两个测点均未买回成本，独特资产仍是
   退出机制本身。证据 `.scratch/23-depth-ar/evidence/`（23d-*，
   23d-decomposition.json，SUMMARY §11）。
+- **23e Q4 fill 变体对决（ticket 05，12k matched 步，总 GPU ≈29 min）**：三分支
+  同配置唯一变量 = KV 填充策略——**fill 1.8582 胜 ragged nofill 1.9438**
+  （+0.0856 ≫ ±0.03 平局带）：**「填充必须」在 matched 步数下成立**，ticket 23
+  3.6k 的「填充是负分量 +0.200」反转不复现（欠拟合伪影 + 对照混淆：当时 nofill
+  臂同时无随机退出）；可选 proj-fill 臂（fill + 逐层恒等初始化 adapter）=
+  **1.8356，全深度逐深度支配 fill，族新最优**（残税 vs dense-B-12k +0.307，
+  平局带内正向）。副判据：三臂曲线全单调；tf@4 0.969–0.980 全存活且 nofill
+  最高（0.980）——底座质量与出口自洽轴向分离，支持「交易目标 = 出口资产」写法。
+  代码：`fill_kv`（ragged = 因果键 ∩ d_j≥k 掩码，原引擎 per-layer cache 语义）+
+  `proj_fill` 两开关，5 新可失败单测全套 120 绿（变异 M1/M2/M3 均抓红）。
+  证据 `.scratch/23-depth-ar/evidence/`（23e-*，SUMMARY §12）。
+

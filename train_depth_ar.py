@@ -128,6 +128,13 @@ def main():
     ap.add_argument("--dense-aux", action="store_true",
                     help="dense 臂开启全深度并行监督（L+1 个 CE，梯度穿 trunk；"
                          "ticket 23c，H1；需配合 --dense）")
+    ap.add_argument("--no-fill-kv", dest="fill_kv", action="store_false",
+                    help="no-fill ragged 语义（ticket 23e）：早退位置在未跑层"
+                         "的 KV 中缺席（原引擎 per-layer cache 语义）；缺省 = "
+                         "v1 fill（W0 复现点）")
+    ap.add_argument("--proj-fill", action="store_true",
+                    help="fill 基础上加逐层线性 adapter（恒等初始化，学得 "
+                         "remap；ticket 23e 可选臂，需 fill_kv）")
     ap.add_argument("--eval-batches", type=int, default=20)
     ap.add_argument("--out-root", default=".scratch/23-depth-ar/evidence")
     args = ap.parse_args()
@@ -138,7 +145,8 @@ def main():
     train_arr, eval_arr, vocab_size = load_enwik8_full(".tmp/enwik8", "data/enwik8_full.npz")
     cfg = DepthARConfig(d_model=args.d, n_layers=args.layers, n_heads=args.heads,
                         seq_len=args.seq_len, dense=args.dense,
-                        gate_bias_init=args.gate_bias_init)
+                        gate_bias_init=args.gate_bias_init,
+                        fill_kv=args.fill_kv, proj_fill=args.proj_fill)
     model = DepthARModel(cfg, vocab_size).cuda()
     n_params = sum(p.numel() for p in model.parameters())
     print(f"{args.run_name}: {n_params/1e6:.2f}M params, vocab {vocab_size}, "
@@ -161,6 +169,7 @@ def main():
     results = {
         "run": args.run_name, "config": asdict(cfg), "train": tcfg,
         "exit_mode": args.exit_mode,
+        "fill_kv": args.fill_kv, "proj_fill": args.proj_fill,
         "aux_weight": args.aux_weight, "aux_anneal_to": args.aux_anneal_to,
         "shallow_stopgrad": args.shallow_stopgrad, "dense_aux": args.dense_aux,
         "params": n_params, "vocab_size": vocab_size,
