@@ -1,0 +1,86 @@
+{
+  "arm": "dense",
+  "run_dir": ".scratch/24-depth-ar-100m/evidence/24b-dense-s0",
+  "wall": {
+    "full_depth_12": {
+      "tok_s_gen_mean": 142.99,
+      "tok_s_total_mean": 145.57,
+      "per_prompt": [
+        {
+          "prefill_s": 0.577,
+          "gen_s": 0.692,
+          "tok_s_gen": 138.82,
+          "tok_s_total": 126.16,
+          "legal": true
+        },
+        {
+          "prefill_s": 0.371,
+          "gen_s": 0.661,
+          "tok_s_gen": 145.19,
+          "tok_s_total": 155.07,
+          "legal": true
+        },
+        {
+          "prefill_s": 0.367,
+          "gen_s": 0.662,
+          "tok_s_gen": 144.95,
+          "tok_s_total": 155.48,
+          "legal": true
+        }
+      ]
+    }
+  },
+  "protocol": "greedy hard commit；prefill 64 + 96 new × 3 prompts （generator seed 7，两臂同 prompt）；增量逐层 KV cache；tok/s 报 gen-only 与含 prefill 两口径",
+  "note": "Python 循环+kernel-launch 主导的小 batch 解码，墙钟为方向性参考（非 FLOPs 口径）",
+  "tf_acceptance": [
+    {
+      "depth": 0,
+      "accept": 0.0584
+    },
+    {
+      "depth": 1,
+      "accept": 0.1346
+    },
+    {
+      "depth": 2,
+      "accept": 0.1589
+    },
+    {
+      "depth": 3,
+      "accept": 0.1309
+    },
+    {
+      "depth": 4,
+      "accept": 0.1199
+    },
+    {
+      "depth": 5,
+      "accept": 0.1268
+    },
+    {
+      "depth": 6,
+      "accept": 0.1598
+    },
+    {
+      "depth": 7,
+      "accept": 0.1804
+    },
+    {
+      "depth": 8,
+      "accept": 0.1929
+    },
+    {
+      "depth": 9,
+      "accept": 0.2285
+    },
+    {
+      "depth": 10,
+      "accept": 0.3055
+    },
+    {
+      "depth": 11,
+      "accept": 0.5099
+    }
+  ],
+  "tf_note": "dense 中间深度读出无直接监督（仅最终 CE），tf 为 depth-k 残差态 tied 读出与 depth-L 读出的 argmax 一致率——截断资产 proxy，非训练出口资产"
+}

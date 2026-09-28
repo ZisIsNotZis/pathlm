@@ -91,6 +91,14 @@ uniform-exit 1.8×;soft OOD 污染跨规模复现;**门 100M 新形态**=全层�
 functional_dirs=0。代码 additive(`--mlp-mult`/`--final-weight`+gnorm 聚合;
 `final_weight` 缺省 1.0 逐位还原 v1),122 单测全绿。证据
 `.scratch/24-depth-ar-100m/evidence/`;账本 findings 24 行(只追加)。
+**24b 拆混杂已完成**(ticket 24b,2026-09-29,两臂各 24000×8,EQ 31.2 min /
+dense 20.2 min,无 OOM):ticket 24 的 +0.4563 **归属拆清 ≈ 形态 +0.44(96%)+
+引擎 +0.02(4%)+ 配方 ≈0**——等权臂 1.9200 ≈ final-2× 1.9175(Q7:配方项非
+税源)、同引擎 dense-AR 1.4813 ≈ B0 1.4612(引擎基本无罪);**同引擎形态税
++0.4362**,13M +0.31 → 100M +0.44 规模斜率为正坐实,主判读维持且升级干净
+归属。副发现:出口资产系全深度监督产物(纯 dense tf@4 0.12 vs 形态 0.97);
+等权臂门收敛与 final-2× 同款(门收小非配方现象)。证据同目录 24b-*;
+findings 24b 行(只追加)。
 **文档缺口(待主会话/用户)**: docs/mental_model.md 磁盘上无 §0 章节(方向修订
 全文只在 WORKSPACE 本节;commit 4280dec 仅改 WORKSPACE)。
 

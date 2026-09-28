@@ -286,3 +286,21 @@
   dense-100M 拆引擎混杂 → 4.4ep 渐近 run。证据 `.scratch/24-depth-ar-100m/evidence/`
   （SUMMARY + 100m-s0/ + smoke-20/）；代码 additive（`--mlp-mult`/`--final-weight` +
   gnorm 聚合；`final_weight` 缺省 1.0 逐位还原 v1）；122 单测全绿。
+
+- **24b 拆混杂定案（ticket 24b，等权臂 + 同引擎 dense 对照 @100M，各 24000×8，
+  GPU ~70 min）**：ticket 24 的 +0.4563 **归属拆清：形态 +0.44（~96%）+ 引擎
+  +0.02（~4%）+ 配方 ≈0**——等权臂 1.9200 ≈ final-2× 1.9175（Δ 0.0025，噪声级；
+  **Q7 裁决：配方项非税源**，final 2× 不加分不减分）；同引擎 dense-AR 1.4813 ≈
+  B0_100M 1.4612（+0.0201，引擎基本无罪，非系统差分支）；**同引擎形态税
+  = +0.4362**——13M 同引擎 matched +0.31 → 100M +0.44，规模斜率为正在同引擎
+  口径下坐实，主判读「税未随规模收缩、方向反向」维持且升级为干净归属（不再依赖
+  跨引擎对照）。副发现：**出口资产是全深度监督（形态）的产物**——纯 dense trunk
+  无浅层截断资产（tf@4 0.12 / tf@6 0.16 vs 形态臂 0.97/0.99；dense 中间读出无
+  监督，截断资产 proxy 口径）；EQ 出口资产配方鲁棒（等权 tf@4 0.9699）、
+  uniform-exit 墙钟 1.67× / exit-4 2.82× 复现；形态 full-depth 解码 ~1.5× 慢于
+  dense（143 vs 94 tok/s，方向性口径）；等权臂门收敛与 final-2× 完全同款
+  （g0 0.069，深层 ~0.008）——**「门 100M 收小」非配方现象**（Q8 剩规模/时长
+  两候选）。dense 增量解码器（逐层 KV 无填充）与并行 forward 逐位一致
+  （max|Δlogit| 9e-5）；uniform-exit wall 对 dense N/A（引擎无退出机制）。
+  证据 `.scratch/24-depth-ar-100m/evidence/`（24b-eq-s0/、24b-dense-s0/、
+  24b-decode-wall-*.json、24b-probe-wall-tf.py、SUMMARY §12）。
