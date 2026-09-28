@@ -13,7 +13,8 @@ import torch.nn.functional as F
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
                              commit_input, generate, token_input, workspace_probe,
-                             tf_acceptance)
+                             tf_acceptance, readout_workspace_energy,
+                             spec_cost_model)
 from pathlm.model import Block
 
 
@@ -561,3 +562,150 @@ def test_final_weight_two_matches_hand_weighting():
     loss.backward()
     gnorm = torch.nn.utils.clip_grad_norm_(m.parameters(), 1e9)
     assert torch.isfinite(gnorm)
+
+
+# ---------- ticket 25 B 臂：结构切分（readout_dims） ----------
+
+
+def test_readout_dims_slice_excludes_workspace_from_logits():
+    """B 臂切片钉（ticket 25）：readout_dims=r 时 (a) logits == 手算
+    h[..., :r] @ E[:, :r].T；(b) workspace 维（r..d）扰动不进该状态 logits
+    （逐位不变）；(c) workspace 维仍经 trunk 残差参与计算——mid-depth 状态
+    workspace 扰动经后半栈改变 depth-L logits。切片被静默忽略、清零或
+    trunk 误读切片时，本测试变红。"""
+    r = 10
+    m = tiny_model(readout_dims=r)
+    assert m.embed.weight.shape == (10, 16)      # embedding 端不动（全维）
+    torch.manual_seed(24)
+    x = torch.randint(0, 10, (2, 12))
+    _, aux = m(x, exit_depths=None)
+    h1 = aux["states"][1]
+    E = m.embed.weight.float()
+    manual = h1[..., :r].float() @ E[:, :r].T
+    assert torch.allclose(aux["depth_logits"][1], manual, atol=1e-5)
+    # (b) workspace 扰动：本状态读出逐位不变
+    delta = torch.zeros_like(h1)
+    delta[..., r:] = torch.randn_like(h1[..., r:])
+    assert torch.equal(m.readout(h1), m.readout(h1 + delta))
+    # (c) workspace 经 trunk 参与：后半栈重跑后 depth-L 读出必变
+    def restack(h):
+        hh = h
+        for k0 in range(1, m.cfg.n_layers):
+            hh = m._gated_step(k0, hh)
+        return m.readout(hh)
+    assert not torch.allclose(restack(h1), restack(h1 + delta), atol=1e-6)
+    # 非法 r 必须拒绝
+    try:
+        tiny_model(readout_dims=17)
+        raise AssertionError("readout_dims > d_model 必须拒绝")
+    except ValueError:
+        pass
+
+
+def test_readout_dims_default_restores_full_readout_bitwise():
+    """缺省（None）与显式 r=d 都必须逐位还原 v1 全维度读出（logits 与 loss
+    torch.equal；ticket-23 复现点不被参数化改动扰动）。"""
+    m = tiny_model()
+    m_r = tiny_model(readout_dims=16)
+    m_r.load_state_dict(m.state_dict())
+    torch.manual_seed(25)
+    x = torch.randint(0, 10, (2, 12))
+    _, a1 = m(x, exit_depths=None)
+    _, a2 = m_r(x, exit_depths=None)
+    for l1, l2 in zip(a1["depth_logits"], a2["depth_logits"]):
+        assert torch.equal(l1, l2)
+    depths = sample_exit_depths(2, 12, m.cfg.n_layers,
+                                torch.Generator().manual_seed(26))
+    l1, _ = m(x, exit_depths=depths)
+    l2, _ = m_r(x, exit_depths=depths)
+    assert torch.equal(l1, l2)
+
+
+def test_workspace_probe_readout_dims_structural_null():
+    """workspace 探针 readout_dims 感知：有效读出表 = E[:, :r]，结构性
+    workspace 维（r..d）计入 null。d=16/V=10/r=8：切片满秩 8 →
+    null = 16−8 = 8（含 8 个结构维）；缺省 r=16：null = 16−10 = 6。
+    控制量（当前行读出不变）两配置下都 ≈0。"""
+    torch.manual_seed(0)
+    m8 = tiny_model(readout_dims=8)
+    arr = torch.randint(0, 10, (200,)).numpy()
+    wp = workspace_probe(m8, arr, n_batches=1, batch_size=2)
+    assert wp["readout_rank"] == 8 and wp["null_dim"] == 8
+    assert wp["control_same_row_max_dlogit"] < 1e-5
+    wp_def = workspace_probe(tiny_model(), arr, n_batches=1, batch_size=2)
+    assert wp_def["readout_rank"] == 10 and wp_def["null_dim"] == 6
+
+
+def test_readout_workspace_energy_probe_contract():
+    """B 臂范数比探针：读出/workspace 能量占比互补（和为 1）且在 [0,1]；
+    readout_dims=None 时读出占比恒 1。"""
+    arr = torch.randint(0, 10, (200,)).numpy()
+    rwe = readout_workspace_energy(tiny_model(readout_dims=8), arr,
+                                   n_batches=1, batch_size=2)
+    assert rwe["readout_dims"] == 8 and rwe["d_model"] == 16
+    assert len(rwe["readout_energy_frac_by_depth"]) == 4  # L+1 = 3+1
+    for f, wf in zip(rwe["readout_energy_frac_by_depth"],
+                     rwe["workspace_energy_frac_by_depth"]):
+        assert abs(f + wf - 1.0) < 1e-6 and 0.0 <= f <= 1.0
+    rwe_full = readout_workspace_energy(tiny_model(), arr,
+                                        n_batches=1, batch_size=2)
+    assert all(f == 1.0 for f in rwe_full["readout_energy_frac_by_depth"])
+
+
+# ---------- ticket 25 C 臂：--exit-anneal 冷却退火调度 ----------
+
+
+def test_exit_anneal_schedule_values():
+    """C 臂调度值（48k 口径）：75% 均匀、末 25% 线性；aux 1.0→0.3、final
+    2.0→1.0 同窗（起点连续/中点精确/终点精确）；关断恒等（aux 恒 1.0、
+    final 恒 2.0 = ticket-24 语义）。"""
+    import train_depth_ar as t
+    steps, start = 48000, 36000          # (1−0.25)·48000
+    for s in (0, 20000, start):
+        assert t.aux_weight_at(s, steps, 1.0, 0.3, 0.25) == 1.0
+        assert t.final_weight_at(s, steps, 2.0, 1.0, 0.25) == 2.0
+    mid = (start + steps) // 2           # 42000 → 窗口中点
+    assert abs(t.aux_weight_at(mid, steps, 1.0, 0.3, 0.25) - 0.65) < 1e-9
+    assert abs(t.final_weight_at(mid, steps, 2.0, 1.0, 0.25) - 1.5) < 1e-9
+    assert abs(t.aux_weight_at(steps, steps, 1.0, 0.3, 0.25) - 0.3) < 1e-12
+    assert abs(t.final_weight_at(steps, steps, 2.0, 1.0, 0.25) - 1.0) < 1e-12
+    # 关断恒等
+    assert t.aux_weight_at(47999, steps, 1.0, None) == 1.0
+    assert t.final_weight_at(47999, steps, 2.0, None) == 2.0
+
+
+def test_exit_anneal_endpoints_match_loss_formula():
+    """C 臂端点接线钉：step 0 调度值 (1.0, 2.0) 逐位等于 A 配方
+    （shallow_weight=1.0, final_weight=2.0）；末步调度值 (0.3, 1.0) 的损失
+    == 手工公式 (0.3·Σ浅层 ce + ce_L)/(0.3·L + 1)（归一保量级）。"""
+    import train_depth_ar as t
+    m = tiny_model()
+    torch.manual_seed(27)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, m.cfg.n_layers,
+                                torch.Generator().manual_seed(28))
+    w0 = t.aux_weight_at(0, 48000, 1.0, 0.3, 0.25)
+    fw0 = t.final_weight_at(0, 48000, 2.0, 1.0, 0.25)
+    l_start, _ = m(x, exit_depths=depths, shallow_weight=w0, final_weight=fw0)
+    l_a, _ = m(x, exit_depths=depths, shallow_weight=1.0, final_weight=2.0)
+    assert torch.equal(l_start, l_a)
+    w_end = t.aux_weight_at(48000, 48000, 1.0, 0.3, 0.25)
+    fw_end = t.final_weight_at(48000, 48000, 2.0, 1.0, 0.25)
+    l_end, aux = m(x, exit_depths=depths, shallow_weight=w_end,
+                   final_weight=fw_end)
+    ces = torch.stack(aux["depth_ce"])
+    expected = (0.3 * ces[:-1].sum() + ces[-1]) / (0.3 * m.cfg.n_layers + 1.0)
+    assert torch.allclose(l_end, expected, atol=1e-6)
+
+
+def test_spec_cost_model_formula():
+    """等效验证加速公式（契约主口径）：speedup = (1+a_k)/(1+k/L)；k=4,
+    a=0.9726, L=12 → (1.9726)/(1.3333) ≈ 1.479。"""
+    tf = [{"depth": k, "accept": a} for k, a in ((4, 0.9726), (6, 0.9946))]
+    out = spec_cost_model(tf, n_layers=12, draft_depths=(4, 6))
+    assert abs(out[0]["equivalent_validation_speedup"]
+               - (1 + 0.9726) / (1 + 4 / 12)) < 1e-3
+    assert abs(out[1]["equivalent_validation_speedup"]
+               - (1 + 0.9946) / (1 + 6 / 12)) < 1e-3
+    assert out[0]["tf_accept"] == 0.9726
+    assert out[0]["cost_per_cycle"] == 1.3333

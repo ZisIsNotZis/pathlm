@@ -304,3 +304,32 @@
   （max|Δlogit| 9e-5）；uniform-exit wall 对 dense N/A（引擎无退出机制）。
   证据 `.scratch/24-depth-ar-100m/evidence/`（24b-eq-s0/、24b-dense-s0/、
   24b-decode-wall-*.json、24b-probe-wall-tf.py、SUMMARY §12）。
+
+- **25 税收归因定案（ticket 25，三臂 @100M 同引擎：B 切分 24k / C 48k+冷却 /
+  dense-48k，GPU ~185 min ≤4h）**：形态税 +0.4362 **结构性存在，两候选机制均不
+  成立——「等智商免费加速」正式证伪收口**。判读表逐格：**格 1 否证**（H-短视/
+  B 臂结构切分 readout_dims 360：clean 2.1475，税 +0.6863，恢复 **−50.4%** 反向
+  恶化——机制探针显示训练把状态能量整体迁出读出空间：切片能量占比 depth0
+  0.85 → depth2 0.026 → ≈0、null 能量 100% 但 functional_dirs=176（workspace
+  被真用、读出空间被放弃），伴随门动力学反转（layer 3–11 p90=1.0 vs 24 全层
+  ≤0.07）与 depth 曲线尾部倒退（d7→d12 +0.012）；tied 表不对称副发现：读出
+  梯度只打 E[:, :360] → 输入态能量比 0.85（随机基线 0.50））；**格 2 否**
+  （H-时长/C 臂 48k+冷却退火：clean 1.8429，名义恢复 +16.4% <50% 线）；**格 3
+  不触发**（B 负恢复，D 组合臂不建）；**格 4 成立（收口）**——同引擎 48k 锚
+  拆解：形态税 24k 锚 +0.4362 → 48k 锚 **+0.4372（零收缩）**，C 对 A 的改善
+  0.0746 与 dense 侧训练收益 0.0756（1.4813→1.4057）逐位镜像——**名义恢复全部
+  是通用训练收益，形态特异收回 ≈ 0**；ticket-19「税随训练收缩」在深度自适应
+  形态快照+此处 2× 训练两口径下一致不成立。副产出：**C（48k+冷却）等效验证
+  吞吐三臂最高**（tf@4 0.9666 → 加速 1.4750 → 122.8 tok/s vs A 112.9，+9%；
+  主口径 = spec_cost_model FLOPs 估计，纯跳层 wall 副记录）——「出口资产+等效
+  吞吐」交易目标下当前最优配方，但底座税本体不可被训练/结构收回，**税只能被
+  交易**。门收小归因再排除一候选（C 48k 仍全层收小 → Q8 剩规模）；出口资产
+  稳健性加票（三形态臂 tf@4 全 ≥0.95 vs dense proxy 0.16）；soft OOD 污染
+  三度复现（C d12 soft 3.36 vs hard 0.74）。代码 additive：depth_ar.py 加
+  `readout_dims`（tied 表列切片，缺省逐位还原 v1）+`readout_workspace_energy`
+  +`spec_cost_model`+workspace 探针 readout_dims 感知；train_depth_ar.py 加
+  `--exit-anneal` 调度（末 25% 线性 1.0→0.3、final 2×→1.0 同窗、纯 trunk CE
+  恒 1）+dense 臂 tf 电池；7 新可失败单测（变异 M1 切片忽略/M2 调度退化均
+  抓红），**129 全绿**（基线 122 保持）。三臂先 20 步冒烟（切片生效/调度接线
+  逐点验证）再全跑；证据 `.scratch/25-tax-attribution/evidence/`（SUMMARY
+  判读表逐格 + 三 run + 探针 json）。

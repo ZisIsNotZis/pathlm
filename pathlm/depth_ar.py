@@ -52,6 +52,11 @@ class DepthARConfig:
     # proj-fill 臂（ticket 23e 可选）：fill 基础上给已退出行 KV 源加逐层线性
     # adapter（恒等初始化——起步严格等于 fill，remap 从 fill 出发学）。需 fill_kv
     proj_fill: bool = False
+    # 结构切分（ticket 25 B 臂）：读出维度数 r ≤ d_model。unembed（全部出口头
+    # 与最终头共用同一 tied 读出）只读 h[..., :r]，tied 表取列切片 E[:, :r]；
+    # trunk 与 embedding 端保持全维度——workspace 维（r..d）经残差参与全层
+    # 计算但不进 logits。None = 全维度读出（v1 复现点，逐位一致）。
+    readout_dims: int | None = None
 
 
 def sample_exit_depths(B: int, T: int, n_layers: int, generator: torch.Generator,
@@ -74,6 +79,9 @@ class DepthARModel(nn.Module):
         self.cfg = cfg
         self.vocab_size = vocab_size
         d = cfg.d_model
+        if cfg.readout_dims is not None and not 0 < cfg.readout_dims <= d:
+            raise ValueError(
+                f"readout_dims must be in (0, {d}], got {cfg.readout_dims}")
         # Tied E=U：embedding 行 norm ~1（init std = d^-0.5），U = E^T（fp32 头）
         self.embed = nn.Embedding(vocab_size, d)
         nn.init.normal_(self.embed.weight, std=d ** -0.5)
@@ -108,9 +116,17 @@ class DepthARModel(nn.Module):
     # ---------- 读出 ----------
 
     def readout(self, h: torch.Tensor) -> torch.Tensor:
-        """Tied unembed，fp32 头（autocast 之外强制 fp32）。"""
+        """Tied unembed，fp32 头（autocast 之外强制 fp32）。
+
+        readout_dims（ticket 25 B 臂）：只读前 r 个通道，tied 表取列切片
+        E[:, :r]（unembed 与全部出口头同一切片，机制一致）；workspace 维
+        不进 logits。缺省（None）与 r=d 走原表达式，逐位还原 v1。"""
         with torch.autocast("cuda", enabled=False):
-            return h.float() @ self.embed.weight.float().T
+            r = self.cfg.readout_dims
+            if r is None or r == self.cfg.d_model:
+                return h.float() @ self.embed.weight.float().T
+            U = self.embed.weight.float()[:, :r]
+            return h[..., :r].float() @ U.T
 
     def _input_states(self, tokens: torch.Tensor) -> torch.Tensor:
         T = tokens.shape[1]
@@ -326,13 +342,20 @@ def workspace_probe(model: DepthARModel, eval_arr, n_batches: int = 4,
     结构性 0）。
     """
     from .data import batch
-    U = model.embed.weight.detach().float()          # [V, d]
-    V, d = U.shape
+    d = model.cfg.d_model
+    r = model.cfg.readout_dims or d
+    # 有效读出表 = tied 表列切片（与 readout 同一切片）：null 空间 = 切片内
+    # SVD null ∪ 结构性 workspace 维（r..d）——与 logits 不可见子空间精确一致
+    U = model.embed.weight.detach().float()[:, :r]    # [V, r]
+    V = U.shape[0]
     _, S, Vt = torch.linalg.svd(U, full_matrices=True)
-    sv = S[: min(V, d)]
+    sv = S[: min(V, r)]
     rank = int((sv > sv[0] * 0.01).sum().item())
     null_dim = d - rank
-    Nb = Vt[rank:]                                    # [null_dim, d]，正交规范
+    Nb_slice = Vt[rank:]                              # [r−rank, r]
+    pad = torch.zeros(Nb_slice.shape[0], d - r, device=U.device)
+    Nb = torch.cat([torch.cat([Nb_slice, pad], dim=1),
+                    torch.eye(d, device=U.device)[r:]], dim=0)  # [null_dim, d]
     L = model.cfg.n_layers
     k_mid = L // 2
     generator = generator or torch.Generator().manual_seed(4)
@@ -371,6 +394,7 @@ def workspace_probe(model: DepthARModel, eval_arr, n_batches: int = 4,
     med = sorted(dir_medians)
     return {
         "vocab_size": V, "d_model": d,
+        "readout_dims": r if model.cfg.readout_dims is not None else None,
         "readout_rank": rank,
         "null_dim": null_dim,
         "null_energy_frac_by_depth": [round(sum(e) / len(e), 4) for e in energy],
@@ -382,6 +406,54 @@ def workspace_probe(model: DepthARModel, eval_arr, n_batches: int = 4,
         "control_same_row_max_dlogit": (round(control, 8)
                                         if control != float("inf") else None),
     }
+
+
+@torch.no_grad()
+def readout_workspace_energy(model: DepthARModel, eval_arr, n_batches: int = 4,
+                             batch_size: int = 8, device: str = "cpu",
+                             generator: torch.Generator | None = None) -> dict:
+    """B 臂探针（ticket 25）：各深度状态能量在「读出切片 h[:r]」与
+    「workspace h[r:]」的占比——结构切分后 workspace 维是否真被占用。
+    readout_dims=None 时读出占比恒 1（全维度读出，无结构性 workspace）。"""
+    from .data import batch
+    r = model.cfg.readout_dims or model.cfg.d_model
+    generator = generator or torch.Generator().manual_seed(6)
+    model.eval()
+    read_frac = [[] for _ in range(model.cfg.n_layers + 1)]
+    for _ in range(n_batches):
+        x, _ = batch(eval_arr, batch_size, model.cfg.seq_len, generator)
+        x = x.to(device)
+        _, aux = model(x, exit_depths=None)
+        for k, s in enumerate(aux["states"]):
+            s = s.float()
+            f = (s[..., :r].norm(dim=-1) ** 2) / \
+                s.norm(dim=-1).pow(2).clamp_min(1e-12)
+            read_frac[k].append(f.mean().item())
+    rf = [round(sum(v) / len(v), 4) for v in read_frac]
+    return {"readout_dims": r, "d_model": model.cfg.d_model,
+            "readout_energy_frac_by_depth": rf,
+            "workspace_energy_frac_by_depth": [round(1 - v, 4) for v in rf]}
+
+
+def spec_cost_model(tf_table: list[dict], n_layers: int,
+                    draft_depths: tuple[int, ...] = (4, 6)) -> list[dict]:
+    """等效验证吞吐估计（ticket 25 契约主口径，纯 FLOPs 模型非墙钟）。
+
+    贪心自 spec（depth-k 出口草稿 + 全栈验证）：每循环草稿成本 k/L（trunk
+    单位）+ 验证成本 1；TF 接受率 a_k 下期望产出 token = 1 + a_k（接受出
+    2 个：草稿 + 验证红利；拒绝出 1 个修正）→ 等效验证加速 = (1+a_k)/(1+k/L)。
+    全深度墙钟 × 加速 = 等效 tok/s（换算基数由调用方并报）。"""
+    accept = {row["depth"]: row["accept"] for row in tf_table}
+    out = []
+    for k in draft_depths:
+        a = accept[k]
+        out.append({"draft_depth": k, "tf_accept": a,
+                    "draft_cost_frac": round(k / n_layers, 4),
+                    "expected_tokens_per_cycle": round(1.0 + a, 4),
+                    "cost_per_cycle": round(1.0 + k / n_layers, 4),
+                    "equivalent_validation_speedup":
+                        round((1.0 + a) / (1.0 + k / n_layers), 4)})
+    return out
 
 
 # ---------- 提交与增量解码 ----------
