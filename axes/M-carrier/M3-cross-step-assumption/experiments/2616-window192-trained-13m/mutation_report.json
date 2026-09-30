@@ -1,0 +1,113 @@
+{
+  "target": "pathlm/depth_ar.py",
+  "sha256_before": "6c7454581af30291688cf825c39f01ce2175c0e447ef5e83b772f2d063ddfea5",
+  "note": "本实验未改动实现（`pathlm/depth_ar.py` 与 2615 记录同 sha256）；变异验证的对象是既有实现，目的 = 证明「window=192 真的生效」这件事被可失败单测钉住。",
+  "mutations": [
+    {
+      "id": "Q1",
+      "desc": "掩码丢掉「锚点恒可见」项（j < anchors 被删）",
+      "expected_tests": [
+        "test_window192_keep_mask_counts_and_boundary_at_real_scale",
+        "test_window_anchor_keep_mask_semantics"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "e266a42426664f15449efe8977fa4aa48878dc4846ddf5fb36952d912f69fc04",
+      "tests_actually_red": [
+        "test_window192_keep_mask_counts_and_boundary_at_real_scale",
+        "test_window_anchor_keep_mask_semantics"
+      ],
+      "pytest_summary": "2 failed, 78 deselected in 2.01s"
+    },
+    {
+      "id": "Q2",
+      "desc": "窗口边界 off-by-one（< 写成 ≤ ⇒ 多放一个位置：192→193）",
+      "expected_tests": [
+        "test_window192_keep_mask_counts_and_boundary_at_real_scale",
+        "test_window_anchor_keep_mask_semantics"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "534625b97c3ae539286abe3f0cd70824ee461d108dafaab64e6c09e54062c63a",
+      "tests_actually_red": [
+        "test_window192_keep_mask_counts_and_boundary_at_real_scale",
+        "test_window_anchor_keep_mask_semantics"
+      ],
+      "pytest_summary": "2 failed, 78 deselected in 1.94s"
+    },
+    {
+      "id": "Q3",
+      "desc": "窗口长度被**夹到 32**（192 的取值失效 ⇒ 本实验的干预其实没生效）",
+      "expected_tests": [
+        "test_window192_keep_mask_counts_and_boundary_at_real_scale",
+        "test_window192_forward_matches_eval_mask_and_differs_from_32"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "8fb500a4fe95e8ea5e49fc1dd0c47e3f8d8f8f4241890a51c2bc1fe5d9f58d0e",
+      "tests_actually_red": [
+        "test_window192_forward_matches_eval_mask_and_differs_from_32",
+        "test_window192_keep_mask_counts_and_boundary_at_real_scale"
+      ],
+      "pytest_summary": "2 failed, 78 deselected in 1.95s"
+    },
+    {
+      "id": "Q4",
+      "desc": "forward 里掩码没被真的传给注意力（死开关）",
+      "expected_tests": [
+        "test_window192_forward_matches_eval_mask_and_differs_from_32",
+        "test_train_window_restricts_attention_to_recent_positions"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "b149d1d012796df294a03cc1fa869bc0f5db76e1c9f88c886727fd987590ed4f",
+      "tests_actually_red": [
+        "test_train_window_restricts_attention_to_recent_positions",
+        "test_window192_forward_matches_eval_mask_and_differs_from_32"
+      ],
+      "pytest_summary": "2 failed, 78 deselected in 1.94s"
+    },
+    {
+      "id": "Q5",
+      "desc": "锚点取在窗口**末端**（j ≥ T−anchors）而不是最前面",
+      "expected_tests": [
+        "test_window192_keep_mask_counts_and_boundary_at_real_scale",
+        "test_window_anchor_keep_mask_semantics"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "f5488824f765bfea254d4b5bd468c5467acd1a0b6b1b27276f8657a156e1221a",
+      "tests_actually_red": [
+        "test_window192_keep_mask_counts_and_boundary_at_real_scale",
+        "test_window_anchor_keep_mask_semantics"
+      ],
+      "pytest_summary": "2 failed, 78 deselected in 1.83s"
+    },
+    {
+      "id": "Q6",
+      "desc": "forward 侧掩码漏掉 anchors（训练掩码 ≠ 评测掩码）",
+      "expected_tests": [
+        "test_window192_forward_matches_eval_mask_and_differs_from_32",
+        "test_train_window_forward_matches_eval_mask_path"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "069d07c3a30b7ce67d322dc5f4fb6b73e98799a8592c15877ea329851cc64a8a",
+      "tests_actually_red": [
+        "test_train_window_forward_matches_eval_mask_path",
+        "test_window192_forward_matches_eval_mask_and_differs_from_32"
+      ],
+      "pytest_summary": "2 failed, 78 deselected in 1.86s"
+    }
+  ],
+  "sha256_after": "6c7454581af30291688cf825c39f01ce2175c0e447ef5e83b772f2d063ddfea5",
+  "restored_bitwise": true,
+  "all_expected_outcomes": true,
+  "all_caught": true
+}
