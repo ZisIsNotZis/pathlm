@@ -1,0 +1,152 @@
+{
+  "contract": "axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/README.md",
+  "config": {
+    "trunk": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true
+    },
+    "eval": {
+      "n_batches": 24,
+      "batch_size": 16,
+      "seed": 7
+    },
+    "reuse": {
+      "trunk_ckpt": "../2610-frozen-trunk-jumphead-13m/trunk.pt",
+      "trunk_sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+      "head_ckpts": {
+        "0": "../2610-frozen-trunk-jumphead-13m/head_s0.pt",
+        "1": "../2610-frozen-trunk-jumphead-13m/head_s1.pt"
+      },
+      "head_sha256": {
+        "0": "0a90537dc93d34aba6fd72f4d3cded6248d5ef6a3be5e1b01358d7682daf077f",
+        "1": "aa07b532813c2c258e1ae4d5fefa763c13ab7832aab78de2a434aa5400d44174"
+      }
+    }
+  },
+  "reused_weights": {
+    "trunk": {
+      "path": "../2610-frozen-trunk-jumphead-13m/trunk.pt",
+      "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+      "size_bytes": 54193675
+    },
+    "heads": {
+      "0": {
+        "path": "../2610-frozen-trunk-jumphead-13m/head_s0.pt",
+        "sha256": "0a90537dc93d34aba6fd72f4d3cded6248d5ef6a3be5e1b01358d7682daf077f",
+        "size_bytes": 2106893
+      },
+      "1": {
+        "path": "../2610-frozen-trunk-jumphead-13m/head_s1.pt",
+        "sha256": "aa07b532813c2c258e1ae4d5fefa763c13ab7832aab78de2a434aa5400d44174",
+        "size_bytes": 2106893
+      }
+    }
+  },
+  "trunk": {
+    "params": 13536768,
+    "frozen_assertion_ok": true,
+    "frozen_offenders": {
+      "requires_grad_true": [],
+      "grad_not_none": []
+    }
+  },
+  "intervention": {
+    "arm": "ar1_deploy (1-step AR: 只替换紧邻位置 i+1)",
+    "replacement_frac": 0.3066,
+    "replacement_note": "被替换 token ≠ 真值的比例 = 1 − trunk_t1_hit；>0 ⇒ 反馈非平凡",
+    "jump_head": {
+      "0": {
+        "params": 262912,
+        "w_fro": 21.3943,
+        "w_absmax": 0.226045,
+        "nonzero_frac": 1.0
+      },
+      "1": {
+        "params": 262912,
+        "w_fro": 21.3805,
+        "w_absmax": 0.236681,
+        "nonzero_frac": 1.0
+      }
+    },
+    "alive": true
+  },
+  "arms": {
+    "0": {
+      "n_positions": 97536,
+      "trunk_t1_hit": 0.6934,
+      "jump_t2_hit": 0.4684,
+      "ar1_deploy_t2_hit": 0.5489,
+      "accept_jump_t2": 0.6003,
+      "oracle_t2_hit": 0.6953,
+      "accept_jump_t2_vs_oracle": 0.5354,
+      "ratio_jump_over_ar1": 0.8533,
+      "equiv_speedup": 1.9514,
+      "head_activity": {
+        "params": 262912,
+        "w_fro": 21.3943,
+        "w_absmax": 0.226045,
+        "nonzero_frac": 1.0
+      }
+    },
+    "1": {
+      "n_positions": 97536,
+      "trunk_t1_hit": 0.6934,
+      "jump_t2_hit": 0.4649,
+      "ar1_deploy_t2_hit": 0.5489,
+      "accept_jump_t2": 0.5994,
+      "oracle_t2_hit": 0.6953,
+      "accept_jump_t2_vs_oracle": 0.532,
+      "ratio_jump_over_ar1": 0.8469,
+      "equiv_speedup": 1.9514,
+      "head_activity": {
+        "params": 262912,
+        "w_fro": 21.3805,
+        "w_absmax": 0.236681,
+        "nonzero_frac": 1.0
+      }
+    }
+  },
+  "arms_mean": {
+    "trunk_t1_hit": 0.6934,
+    "jump_t2_hit": 0.4667,
+    "ar1_deploy_t2_hit": 0.5489,
+    "accept_jump_t2": 0.5998,
+    "oracle_t2_hit": 0.6953,
+    "accept_jump_t2_vs_oracle": 0.5337,
+    "ratio_jump_over_ar1": 0.8501,
+    "equiv_speedup": 1.9514
+  },
+  "equiv_speedup_detail": {
+    "trunk_macs_per_token": 12635648,
+    "head_macs_per_token": 314880,
+    "forward_calls_jump": 1,
+    "forward_calls_ar": 2,
+    "equiv_speedup": 1.9514
+  },
+  "criteria": {
+    "reconciliation_lower_bound": 0.4822,
+    "reconciliation_ar1_deploy_t2_hit": 0.5489,
+    "reconciliation_ok": true,
+    "numerator_jump_t2_hit": 0.4667,
+    "denominator_ar1_deploy_t2_hit": 0.5489,
+    "ratio": 0.8502,
+    "main_threshold_0.90x": 0.494,
+    "main_criterion_ok": false,
+    "neutral_band": [
+      0.8,
+      0.9
+    ],
+    "parallel_accept_threshold": 0.9,
+    "parallel_accept_criterion_ok": false,
+    "oracle_is_upper_bound_only": true,
+    "verdict": "中性：比值 ∈ [0.80, 0.90)"
+  },
+  "cost": {
+    "wall_minutes": 0.05,
+    "peak_mem_mib": 298.7
+  }
+}

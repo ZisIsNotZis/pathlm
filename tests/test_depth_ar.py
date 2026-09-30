@@ -7,6 +7,7 @@ carry 门恒等起步、提交方式、增量解码与并行 forward 的逐位�
 
 import os, sys
 
+import pytest
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -834,3 +835,126 @@ def test_readout_gated_init_escapes_saddle():
     g2 = g.readout_w2.weight.grad
     assert g2 is not None and torch.count_nonzero(g2) > 0
     assert torch.count_nonzero(g.readout_w1.weight.grad) == 0
+
+
+# ---------- W4 契约 B 对照臂：线性等参数读出（readout_linear_resid） ----------
+
+
+def test_readout_linear_resid_off_matches_v1_bitwise():
+    """① --readout-linear-resid 关闭逐位还原 A 臂：logits 与 v1 表达式
+    h.float() @ Eᵀ torch.equal（全深度与随机退出深度两条路径都钉）。"""
+    m = tiny_model()
+    torch.manual_seed(31)
+    x = torch.randint(0, 10, (2, 12))
+    _, aux = m(x, exit_depths=None)
+    for s, lg in zip(aux["states"], aux["depth_logits"]):
+        assert torch.equal(lg, s.float() @ m.embed.weight.float().T)
+    depths = sample_exit_depths(2, 12, m.cfg.n_layers,
+                                torch.Generator().manual_seed(32))
+    _, aux_d = m(x, exit_depths=depths)
+    for s, lg in zip(aux_d["states"], aux_d["depth_logits"]):
+        assert torch.equal(lg, s.float() @ m.embed.weight.float().T)
+
+
+def test_readout_linear_resid_identity_start():
+    """② init 规范（写死）：Q ~ N(0,0.02)、P = 0（单边零）⇒ 起步 transform
+    = P(Qh) = 0，读出与 tied 线性逐位一致（严格恒等起步，不引入初始税）。
+    P、Q 建在参数 init 循环之后 ⇒ 同 seed 下与 A 臂**其余全部参数逐位一致**
+    （单因素：只加读出几何）。"""
+    a = tiny_model()
+    r = tiny_model(readout_linear_resid=True)
+    sa, sr = a.state_dict(), r.state_dict()
+    assert set(sr) - set(sa) == {"readout_p.weight", "readout_q.weight"}
+    for k in sa:
+        assert torch.equal(sa[k], sr[k]), k
+    assert torch.count_nonzero(sr["readout_p.weight"]) == 0
+    assert torch.count_nonzero(sr["readout_q.weight"]) > 0
+    torch.manual_seed(33)
+    x = torch.randint(0, 10, (2, 12))
+    for model in (a, r):
+        _, aux = model(x, exit_depths=None)
+        for s, lg in zip(aux["states"], aux["depth_logits"]):
+            assert torch.equal(lg, s.float() @ model.embed.weight.float().T)
+    _, a1 = a(x, exit_depths=None)
+    _, a2 = r(x, exit_depths=None)
+    for l1, l2 in zip(a1["depth_logits"], a2["depth_logits"]):
+        assert torch.equal(l1, l2)
+
+
+def test_readout_linear_resid_formula_linearity_and_switch_guard():
+    """③ 对照臂读数公式 = (h + P·(Q h))·Eᵀ，且**严格线性**（与 gated 臂的
+    区别就是无非线性）：readout(a·h1 + b·h2) == a·readout(h1) + b·readout(h2)。
+    变异必抓红：(a) 忽略开关（P/Q 非零时仍返回 tied）；(b) 误把 gated 的非线性
+    接上来（exact 公式对照）。"""
+    r = tiny_model(readout_linear_resid=True)
+    torch.manual_seed(34)
+    with torch.no_grad():
+        nn.init.normal_(r.readout_p.weight, std=0.3)
+        nn.init.normal_(r.readout_q.weight, std=0.3)
+    h = torch.randn(2, 12, 16)
+    hf = h.float()
+    expected = (hf + r.readout_p(r.readout_q(hf))) @ r.embed.weight.float().T
+    got = r.readout(h)
+    assert torch.allclose(got, expected, atol=0)
+    # (a) 开关必须生效：P/Q 非零下读出必须偏离 tied
+    assert not torch.allclose(got, hf @ r.embed.weight.float().T, atol=1e-6)
+    # (b) 纯线性：叠加律成立（非线性读出会破坏它，gated 臂即反例）
+    h1, h2 = torch.randn(2, 12, 16), torch.randn(2, 12, 16)
+    got_mix = r.readout(0.7 * h1 - 1.3 * h2)
+    mix = 0.7 * r.readout(h1) - 1.3 * r.readout(h2)
+    assert torch.allclose(got_mix, mix, atol=1e-5)
+    # 对照：同一叠加测试在 gated 臂上必须失败（证明该测试真的能区分非线性）
+    g = tiny_model(readout_gated=True)
+    torch.manual_seed(34)
+    with torch.no_grad():
+        nn.init.normal_(g.readout_w1.weight, std=0.3)
+        nn.init.normal_(g.readout_w2.weight, std=0.3)
+    g_mix = g.readout(0.7 * h1 - 1.3 * h2)
+    g_lin = 0.7 * g.readout(h1) - 1.3 * g.readout(h2)
+    assert not torch.allclose(g_mix, g_lin, atol=1e-4)
+
+
+def test_readout_linear_resid_init_escapes_saddle():
+    """干预活性门（SCHEMA §10 强制项）：P=Q=0 是鞍点（同 gated 零初始）。
+    本 init（Q~N(0,0.02)、P=0）必须：(a) 起步严格恒等；(b) 一步 backward 后
+    ∂L/∂P = grad ⊗ (Q h) ≠ 0 ⇒ 可逃逸鞍点；(c) 一步 optimizer 后 P 非零，
+    且第二/三步 ∂L/∂Q ≠ 0（嵌套线性因子：Q 靠 P 离零后获得梯度）⇒ 全参数
+    梯度可流。"""
+    r = tiny_model(readout_linear_resid=True)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, r.cfg.n_layers,
+                                torch.Generator().manual_seed(35))
+    # (a) 起步恒等（P=0 ⇒ transform = 0）
+    _, aux = r(x, exit_depths=depths)
+    for s, lg in zip(aux["states"], aux["depth_logits"]):
+        assert torch.equal(lg, s.float() @ r.embed.weight.float().T)
+    opt = torch.optim.AdamW(r.parameters(), lr=1e-3)
+    # (b) 起步 ∂L/∂P ≠ 0（非鞍点）；∂L/∂Q 在 P=0 处仍为 0（嵌套因子的固有
+    # 现象——靠 P 先离零开通 Q 的梯度通道，故训练不会停住）
+    loss, _ = r(x, exit_depths=depths)
+    loss.backward()
+    assert torch.count_nonzero(r.readout_p.weight.grad) > 0
+    assert torch.count_nonzero(r.readout_q.weight.grad) == 0
+    opt.step()
+    opt.zero_grad(set_to_none=True)
+    assert torch.count_nonzero(r.readout_p.weight) > 0
+    # (c) P 离零后 ∂L/∂Q ≠ 0 ⇒ 全参数梯度可流
+    loss, _ = r(x, exit_depths=depths)
+    loss.backward()
+    assert torch.count_nonzero(r.readout_q.weight.grad) > 0
+
+
+def test_readout_linear_resid_equal_params_to_gated():
+    """参数量判据（契约 B 核心）：线性对照臂与 gated 臂的**新增参数量完全
+    相等**（各 2·d²）——只有「非线性」这一处功能差异。"""
+    a = tiny_model()
+    g = tiny_model(readout_gated=True)
+    r = tiny_model(readout_linear_resid=True)
+    n = lambda m: sum(p.numel() for p in m.parameters())
+    assert n(g) - n(a) == n(r) - n(a) == 2 * 16 * 16
+
+
+def test_readout_gated_and_linear_resid_mutually_exclusive():
+    """单因素纪律：两种读出几何干预不得同时开启（否则混淆参数量/非线性）。"""
+    with pytest.raises(ValueError):
+        tiny_model(readout_gated=True, readout_linear_resid=True)

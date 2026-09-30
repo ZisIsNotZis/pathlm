@@ -32,7 +32,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pathlm.data import batch, load_enwik8_full
 from pathlm.depth_ar import DepthARConfig, DepthARModel, depth_curve
 from pathlm.metrics import ece
-from pathlm.model import TransformHead
+from pathlm.model import TransformHead, cap_norm
 from train_depth_ar import train as train_trunk_fn
 
 LN2 = 0.6931471805599453
@@ -52,6 +52,73 @@ def trunk_hidden(trunk: DepthARModel, x: torch.Tensor) -> torch.Tensor:
     for blk in trunk.blocks:
         h, _ = blk(h)
     return h
+
+
+def trunk_layer_inputs(trunk: DepthARModel, x: torch.Tensor
+                       ) -> tuple[list[torch.Tensor], torch.Tensor]:
+    """逐层输入表征 + 末态。inputs[l] = 第 l 个 block 的输入 [B,T,d]，final = 末态。
+
+    trunk_layer_inputs(...)[1] 与 trunk_hidden(...) 逐位一致（单测钉住）。
+    AR-1 对照臂用 inputs 拿真值前缀的逐层 K/V。
+    """
+    h = trunk._input_states(x)
+    inputs: list[torch.Tensor] = []
+    for blk in trunk.blocks:
+        inputs.append(h)
+        h, _ = blk(h)
+    return inputs, h
+
+
+@torch.no_grad()
+def ar1_second_step_readout(trunk: DepthARModel, x: torch.Tensor,
+                            a1: torch.Tensor) -> torch.Tensor:
+    """诚实 1-step AR 的第二次前向：**只把位置 i+1 替换**为 pass-1 自身 argmax。
+
+    与 ticket 28 的旧 deploy 臂（`xp[:, 1:] = L[:, :-1].argmax(-1)`，把**整段
+    上下文**都换成自预测）不同：这里对每个目标行 i，位置 0..i 保持**真值**，
+    只有紧邻的前一个位置 i+1 被替换为 `a1[:, i]`，再读出位置 i+1 的 logits
+    （预测 t_{i+2}）。这正是「自回归跑两次、第二次只吃自己生成的那**一个**
+    token」的真实对手。
+
+    工程实现：因果注意力下，真值前缀位置 ≤ i 的表征只依赖 x[0..i]，故它们的
+    逐层 K/V 由第一次前向的逐层输入唯一确定；新位置 i+1 的表征只需在本层
+    attention 里查询真值前缀 0..i 加上自身（KV-cache 语义一次算完所有行 i）。
+    与「逐行各跑一次标准前向」逐位等价（test_ar1_matches_bruteforce_rowloop）。
+
+    a1: [B,T]，a1[:,i] = pass-1 对 t_{i+1} 的 argmax。返回 logits [B,T-2,V]，
+    行 i = 对 x[i+2] 的预测。
+    """
+    B, T = x.shape
+    r = T - 2
+    if r < 1:
+        raise ValueError(f"seq_len must be >= 3, got {T}")
+    cfg = trunk.cfg
+    d, H = cfg.d_model, cfg.n_heads
+    dh = d // H
+    scale = dh ** -0.5
+    inputs, _ = trunk_layer_inputs(trunk, x)     # 真值前缀逐层输入（K/V 来源）
+    tok = a1[:, :r].to(x.device)                 # 新位置 i+1 的 token = a1[:,i]
+    pos = torch.arange(1, r + 1, device=x.device)
+    new = cap_norm(trunk.embed(tok) + trunk.pos_embed.weight[pos], cfg.norm_cap)
+    causal = (torch.arange(T, device=x.device).unsqueeze(0)
+              <= torch.arange(r, device=x.device).unsqueeze(1))   # [r,T] 键 j ≤ i
+    for l, blk in enumerate(trunk.blocks):
+        qp, kp, vp = blk.qkv(blk.ln1(inputs[l])).chunk(3, dim=-1)
+        qn, kn, vn = blk.qkv(blk.ln1(new)).chunk(3, dim=-1)
+        qn_h = qn.view(B, r, H, dh).transpose(1, 2)             # [B,H,r,dh]
+        kp_h = kp.view(B, T, H, dh).permute(0, 2, 3, 1)         # [B,H,dh,T]
+        vp_h = vp.view(B, T, H, dh).transpose(1, 2)            # [B,H,T,dh]
+        pref = (qn_h @ kp_h) * scale                           # [B,H,r,T]
+        pref = pref.masked_fill(~causal.view(1, 1, r, T), float("-inf"))
+        kn_h = kn.view(B, r, H, dh).transpose(1, 2)
+        self_s = (qn_h * kn_h).sum(-1, keepdim=True) * scale   # [B,H,r,1]
+        w = torch.cat([pref, self_s], dim=-1).softmax(-1)      # [B,H,r,T+1]
+        out = (torch.einsum("bhij,bhjd->bhid", w[..., :T], vp_h)
+               + w[..., T:] * vn.view(B, r, H, dh).transpose(1, 2))
+        a = out.transpose(1, 2).reshape(B, r, d)
+        new = new + blk.proj(a)
+        new = new + blk.mlp(blk.ln2(new))
+    return trunk.readout(new)                    # [B,r,V]
 
 
 def freeze_trunk(trunk: nn.Module) -> None:
@@ -300,6 +367,80 @@ def evaluate(trunk: DepthARModel, bank: HeadBank, eval_arr, ecfg: dict,
                    * (jhit_all.float() - jhit_all.float().mean())).mean()
                   / (t1_all.float().std() * jhit_all.float().std() + 1e-12)), 4),
     }
+    return out
+
+
+# ------------------------------------------------------ 契约 29-A：诚实 AR-1 对照
+
+
+def equiv_speedup_from_dims(trunk: DepthARModel, head: JumpHead) -> dict:
+    """产 1 个 token 的等效成本比（contract A 口径）。
+
+    跳跃头臂（1 次主干前向 + 头前向）同时给出 t+1 与 t+2 ⇒ 每 token 成本
+    = trunk_macs + head_macs；AR 臂（2 次主干前向）给出同样两个 token ⇒
+    每 token 成本 = 2·trunk_macs。比值 > 1 表示跳跃头更便宜。
+    """
+    cfg = trunk.cfg
+    d, L, ml, V = cfg.d_model, cfg.n_layers, cfg.mlp_mult, trunk.vocab_size
+    trunk_macs = L * (3 * d * d + d * d + 2 * ml * d * d) + d * V   # qkv+proj+mlp+readout
+    head_macs = 4 * d * d + d * V                                   # TransformHead(2d)+tied readout
+    return {"trunk_macs_per_token": trunk_macs,
+            "head_macs_per_token": head_macs,
+            "forward_calls_jump": 1, "forward_calls_ar": 2,
+            "equiv_speedup": round(2 * trunk_macs / (trunk_macs + head_macs), 4)}
+
+
+@torch.no_grad()
+def evaluate_ar1(trunk: DepthARModel, bank: HeadBank, eval_arr, ecfg: dict,
+                 device: str = "cuda") -> dict:
+    """契约 29-A 的量（全部在「行 i 预测 t_{i+2}」的同一位置集上打分）。
+
+    - jump_t2_hit：跳跃头 1 前向 argmax == 真值 t+2（质量口径）
+    - ar1_deploy_t2_hit：诚实 1-step AR（只替换位置 i+1）argmax == 真值 t+2（主对手）
+    - accept_jump_t2：P(跳跃头 argmax == 主干自身 1-step AR argmax)（草稿接受率，无作弊）
+    - oracle_t2_hit：喂真 t+1 的上界（仅参考，不作判据）
+    """
+    trunk.eval()
+    bank.eval()
+    gen = torch.Generator().manual_seed(ecfg["seed"])
+    T = trunk.cfg.seq_len
+    r = T - 2
+    E = trunk.embed.weight
+    acc = defaultdict(float)
+    n_pos = 0
+    for _ in range(ecfg["n_batches"]):
+        x, _ = batch(eval_arr, ecfg["batch_size"], T, gen)
+        x = x.to(device)
+        h = trunk_hidden(trunk, x)
+        L = trunk.readout(h)                     # [B,T,V] fp32
+        xt1, xt2 = x[:, 1:r + 1], x[:, 2:r + 2]  # 行 i 的 t+1 / t+2 目标
+        row = slice(0, r)
+        a1 = L.argmax(-1)                        # [B,T] pass-1 自身 argmax（行 i → t_{i+1}）
+        acc["trunk_t1_hit"] += (a1[:, row] == xt1).sum().item()
+        # 跳跃头 t+2（1 前向）
+        j = bank.t2(h, E)[:, row].argmax(-1)     # [B,r]
+        jhit = (j == xt2)
+        acc["jump_t2"] += jhit.sum().item()
+        # 诚实 1-step AR：只替换位置 i+1，保留真值前缀
+        ar1 = ar1_second_step_readout(trunk, x, a1).argmax(-1)   # [B,r]
+        acc["ar1_deploy_t2"] += (ar1 == xt2).sum().item()
+        acc["accept_jump"] += (j == ar1).sum().item()           # 草稿接受率（对照物 = 主干自身）
+        # oracle（喂真 t+1，仅上界参考）
+        orc = L[:, 1:r + 1].argmax(-1)
+        acc["oracle_t2"] += (orc == xt2).sum().item()
+        acc["accept_jump_vs_oracle"] += (j == orc).sum().item()
+        n_pos += x.shape[0] * r
+    out = {
+        "n_positions": n_pos,
+        "trunk_t1_hit": round(acc["trunk_t1_hit"] / n_pos, 4),
+        "jump_t2_hit": round(acc["jump_t2"] / n_pos, 4),
+        "ar1_deploy_t2_hit": round(acc["ar1_deploy_t2"] / n_pos, 4),
+        "accept_jump_t2": round(acc["accept_jump"] / n_pos, 4),
+        "oracle_t2_hit": round(acc["oracle_t2"] / n_pos, 4),
+        "accept_jump_t2_vs_oracle": round(acc["accept_jump_vs_oracle"] / n_pos, 4),
+        "ratio_jump_over_ar1": round(acc["jump_t2"] / max(acc["ar1_deploy_t2"], 1.0), 4),
+    }
+    out["equiv_speedup"] = equiv_speedup_from_dims(trunk, bank.t2)["equiv_speedup"]
     return out
 
 

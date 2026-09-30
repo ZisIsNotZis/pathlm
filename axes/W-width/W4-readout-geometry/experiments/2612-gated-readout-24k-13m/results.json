@@ -1,0 +1,959 @@
+{
+  "experiment": "2612-gated-readout-24k-13m",
+  "ticket": "29-verify-batch",
+  "contract": "C",
+  "config": {
+    "experiment": "2612-gated-readout-24k-13m",
+    "ticket": "29-verify-batch",
+    "contract": "C",
+    "seed": 0,
+    "steps": 24000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "exit_mode": "uniform",
+    "data": "data/enwik8_full.npz",
+    "data_split": "first 90M train / last 10M eval, vocab from full file",
+    "vocab_size": 206,
+    "train_tokens": 196608000,
+    "A_arm": {
+      "readout": "tied linear h·Eᵀ",
+      "readout_gated": false,
+      "run": "A-24k-s0"
+    },
+    "gated_arm": {
+      "readout": "h + SiLU(W1 h)·(W2 h) then ·Eᵀ",
+      "readout_gated": true,
+      "readout_w1_w2_init": "W1 ~ N(0, 0.02), W2 = 0 (identity start, non-saddle)",
+      "params_extra": 131072,
+      "run": "gated-24k-s0"
+    },
+    "base": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 4,
+      "dense": false,
+      "fill_kv": true,
+      "proj_fill": false,
+      "gate_bias_init": -2.0,
+      "aux_weight": 1.0,
+      "final_weight": 1.0,
+      "shallow_stopgrad": false,
+      "dense_aux": false
+    },
+    "gpu_wall_budget": "两臂 ≈50 min（共享卡 2× 折扣口径）"
+  },
+  "A_arm": {
+    "source": "runs/A-24k-s0",
+    "run_name": "A-24k-s0",
+    "readout_gated": false,
+    "params": 6962688,
+    "wall_min": 21.03,
+    "peak_child_mem_gb": 1.82,
+    "eval_wall_min": 0.37,
+    "gnorm_monitor": {
+      "gnorm_max": 6.8,
+      "gnorm_mean": 1.269,
+      "grad_skips": 0
+    },
+    "avg_train_depth_ce": [
+      3.746,
+      1.7449,
+      1.5037,
+      1.4464,
+      1.4324,
+      1.4301,
+      1.4299,
+      1.4299,
+      1.4299
+    ],
+    "depth_curve": [
+      {
+        "depth": 0,
+        "bpc": 5.0061,
+        "acc": 0.0598
+      },
+      {
+        "depth": 1,
+        "bpc": 2.3081,
+        "acc": 0.55
+      },
+      {
+        "depth": 2,
+        "bpc": 1.8392,
+        "acc": 0.6344
+      },
+      {
+        "depth": 3,
+        "bpc": 1.7292,
+        "acc": 0.6523
+      },
+      {
+        "depth": 4,
+        "bpc": 1.7002,
+        "acc": 0.6577
+      },
+      {
+        "depth": 5,
+        "bpc": 1.6939,
+        "acc": 0.6586
+      },
+      {
+        "depth": 6,
+        "bpc": 1.6936,
+        "acc": 0.6587
+      },
+      {
+        "depth": 7,
+        "bpc": 1.6938,
+        "acc": 0.6589
+      },
+      {
+        "depth": 8,
+        "bpc": 1.6938,
+        "acc": 0.6589
+      }
+    ],
+    "tf_acceptance": [
+      {
+        "depth": 0,
+        "accept": 0.065
+      },
+      {
+        "depth": 1,
+        "accept": 0.6951
+      },
+      {
+        "depth": 2,
+        "accept": 0.8508
+      },
+      {
+        "depth": 3,
+        "accept": 0.9193
+      },
+      {
+        "depth": 4,
+        "accept": 0.9654
+      },
+      {
+        "depth": 5,
+        "accept": 0.9892
+      },
+      {
+        "depth": 6,
+        "accept": 0.9951
+      },
+      {
+        "depth": 7,
+        "accept": 0.9981
+      }
+    ],
+    "spec_cost_model": [
+      {
+        "draft_depth": 4,
+        "tf_accept": 0.9654,
+        "draft_cost_frac": 0.5,
+        "expected_tokens_per_cycle": 1.9654,
+        "cost_per_cycle": 1.5,
+        "equivalent_validation_speedup": 1.3103
+      },
+      {
+        "draft_depth": 6,
+        "tf_accept": 0.9951,
+        "draft_cost_frac": 0.75,
+        "expected_tokens_per_cycle": 1.9951,
+        "cost_per_cycle": 1.75,
+        "equivalent_validation_speedup": 1.1401
+      }
+    ],
+    "workspace": {
+      "vocab_size": 206,
+      "d_model": 256,
+      "readout_dims": null,
+      "readout_rank": 161,
+      "null_dim": 95,
+      "null_energy_frac_by_depth": [
+        0.041,
+        0.3267,
+        0.3405,
+        0.3342,
+        0.335,
+        0.3347,
+        0.3344,
+        0.3343,
+        0.3343
+      ],
+      "perturb_eps_frac": 0.05,
+      "delta": 0.01,
+      "functional_dirs": 760,
+      "median_dlogit_over_dirs": 0.019586,
+      "max_dlogit_over_dirs": 0.034698,
+      "control_same_row_max_dlogit": 5.341e-05
+    },
+    "readout_workspace_energy": {
+      "readout_dims": 256,
+      "d_model": 256,
+      "readout_energy_frac_by_depth": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "workspace_energy_frac_by_depth": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "generation": [
+      {
+        "depth": 0,
+        "commit": "soft",
+        "legal": true,
+        "distinct2": 0.0315,
+        "rescore_bpc": 36.1194,
+        "exit_top1_prob_tf": 0.0934
+      },
+      {
+        "depth": 0,
+        "commit": "hard",
+        "legal": true,
+        "distinct2": 0.0079,
+        "rescore_bpc": 2.453,
+        "exit_top1_prob_tf": 0.0934
+      },
+      {
+        "depth": 0,
+        "commit": "latent",
+        "legal": true,
+        "distinct2": 0.0157,
+        "rescore_bpc": 0.3435,
+        "exit_top1_prob_tf": 0.0934
+      },
+      {
+        "depth": 4,
+        "commit": "soft",
+        "legal": true,
+        "distinct2": 0.2362,
+        "rescore_bpc": 5.7102,
+        "exit_top1_prob_tf": 0.507
+      },
+      {
+        "depth": 4,
+        "commit": "hard",
+        "legal": true,
+        "distinct2": 0.2835,
+        "rescore_bpc": 0.6959,
+        "exit_top1_prob_tf": 0.507
+      },
+      {
+        "depth": 4,
+        "commit": "latent",
+        "legal": true,
+        "distinct2": 0.0394,
+        "rescore_bpc": 7.866,
+        "exit_top1_prob_tf": 0.507
+      },
+      {
+        "depth": 8,
+        "commit": "soft",
+        "legal": true,
+        "distinct2": 0.2992,
+        "rescore_bpc": 4.7088,
+        "exit_top1_prob_tf": 0.5066
+      },
+      {
+        "depth": 8,
+        "commit": "hard",
+        "legal": true,
+        "distinct2": 0.3386,
+        "rescore_bpc": 0.5919,
+        "exit_top1_prob_tf": 0.5066
+      },
+      {
+        "depth": 8,
+        "commit": "latent",
+        "legal": true,
+        "distinct2": 0.0394,
+        "rescore_bpc": 1.6044,
+        "exit_top1_prob_tf": 0.5066
+      }
+    ],
+    "calibration": {
+      "prob0_ece": 0.0071,
+      "exit4_ece": 0.0059,
+      "ece_by_depth": [
+        0.0578,
+        0.0199,
+        0.0081,
+        0.0065,
+        0.0059,
+        0.0068,
+        0.0067,
+        0.0071,
+        0.0071
+      ],
+      "n_bins": 15
+    },
+    "transform_rel_mag_by_depth": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "gated_arm": {
+    "source": "runs/gated-24k-s0",
+    "run_name": "gated-24k-s0",
+    "readout_gated": true,
+    "params": 7093760,
+    "wall_min": 22.7,
+    "peak_child_mem_gb": 2.14,
+    "eval_wall_min": 0.48,
+    "gnorm_monitor": {
+      "gnorm_max": 17.4,
+      "gnorm_mean": 0.796,
+      "grad_skips": 0
+    },
+    "avg_train_depth_ce": [
+      2.972,
+      1.6373,
+      1.4958,
+      1.3997,
+      1.3818,
+      1.3799,
+      1.3796,
+      1.3796,
+      1.3796
+    ],
+    "depth_curve": [
+      {
+        "depth": 0,
+        "bpc": 3.9932,
+        "acc": 0.2376
+      },
+      {
+        "depth": 1,
+        "bpc": 2.1386,
+        "acc": 0.5753
+      },
+      {
+        "depth": 2,
+        "bpc": 1.8719,
+        "acc": 0.6226
+      },
+      {
+        "depth": 3,
+        "bpc": 1.6853,
+        "acc": 0.6616
+      },
+      {
+        "depth": 4,
+        "bpc": 1.6529,
+        "acc": 0.6668
+      },
+      {
+        "depth": 5,
+        "bpc": 1.6482,
+        "acc": 0.6679
+      },
+      {
+        "depth": 6,
+        "bpc": 1.6478,
+        "acc": 0.668
+      },
+      {
+        "depth": 7,
+        "bpc": 1.6476,
+        "acc": 0.668
+      },
+      {
+        "depth": 8,
+        "bpc": 1.6475,
+        "acc": 0.668
+      }
+    ],
+    "tf_acceptance": [
+      {
+        "depth": 0,
+        "accept": 0.2933
+      },
+      {
+        "depth": 1,
+        "accept": 0.7293
+      },
+      {
+        "depth": 2,
+        "accept": 0.8339
+      },
+      {
+        "depth": 3,
+        "accept": 0.9262
+      },
+      {
+        "depth": 4,
+        "accept": 0.9675
+      },
+      {
+        "depth": 5,
+        "accept": 0.986
+      },
+      {
+        "depth": 6,
+        "accept": 0.9938
+      },
+      {
+        "depth": 7,
+        "accept": 0.9977
+      }
+    ],
+    "spec_cost_model": [
+      {
+        "draft_depth": 4,
+        "tf_accept": 0.9675,
+        "draft_cost_frac": 0.5,
+        "expected_tokens_per_cycle": 1.9675,
+        "cost_per_cycle": 1.5,
+        "equivalent_validation_speedup": 1.3117
+      },
+      {
+        "draft_depth": 6,
+        "tf_accept": 0.9938,
+        "draft_cost_frac": 0.75,
+        "expected_tokens_per_cycle": 1.9938,
+        "cost_per_cycle": 1.75,
+        "equivalent_validation_speedup": 1.1393
+      }
+    ],
+    "workspace": {
+      "vocab_size": 206,
+      "d_model": 256,
+      "readout_dims": null,
+      "readout_rank": 198,
+      "null_dim": 58,
+      "null_energy_frac_by_depth": [
+        0.1071,
+        0.2621,
+        0.2544,
+        0.2364,
+        0.2279,
+        0.2257,
+        0.225,
+        0.2249,
+        0.2249
+      ],
+      "perturb_eps_frac": 0.05,
+      "delta": 0.01,
+      "functional_dirs": 464,
+      "median_dlogit_over_dirs": 0.057489,
+      "max_dlogit_over_dirs": 0.080644,
+      "control_same_row_max_dlogit": 0.84769022
+    },
+    "readout_workspace_energy": {
+      "readout_dims": 256,
+      "d_model": 256,
+      "readout_energy_frac_by_depth": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "workspace_energy_frac_by_depth": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "generation": [
+      {
+        "depth": 0,
+        "commit": "soft",
+        "legal": true,
+        "distinct2": 0.0394,
+        "rescore_bpc": 2.9089,
+        "exit_top1_prob_tf": 0.2359
+      },
+      {
+        "depth": 0,
+        "commit": "hard",
+        "legal": true,
+        "distinct2": 0.0315,
+        "rescore_bpc": 2.0358,
+        "exit_top1_prob_tf": 0.2359
+      },
+      {
+        "depth": 0,
+        "commit": "latent",
+        "legal": true,
+        "distinct2": 0.0787,
+        "rescore_bpc": 5.1076,
+        "exit_top1_prob_tf": 0.2359
+      },
+      {
+        "depth": 4,
+        "commit": "soft",
+        "legal": true,
+        "distinct2": 0.4016,
+        "rescore_bpc": 5.9637,
+        "exit_top1_prob_tf": 0.5252
+      },
+      {
+        "depth": 4,
+        "commit": "hard",
+        "legal": true,
+        "distinct2": 0.2441,
+        "rescore_bpc": 0.4069,
+        "exit_top1_prob_tf": 0.5252
+      },
+      {
+        "depth": 4,
+        "commit": "latent",
+        "legal": true,
+        "distinct2": 0.1181,
+        "rescore_bpc": 7.2431,
+        "exit_top1_prob_tf": 0.5252
+      },
+      {
+        "depth": 8,
+        "commit": "soft",
+        "legal": true,
+        "distinct2": 0.3307,
+        "rescore_bpc": 5.4793,
+        "exit_top1_prob_tf": 0.5265
+      },
+      {
+        "depth": 8,
+        "commit": "hard",
+        "legal": true,
+        "distinct2": 0.2441,
+        "rescore_bpc": 0.4069,
+        "exit_top1_prob_tf": 0.5265
+      },
+      {
+        "depth": 8,
+        "commit": "latent",
+        "legal": true,
+        "distinct2": 0.0866,
+        "rescore_bpc": 10.1088,
+        "exit_top1_prob_tf": 0.5265
+      }
+    ],
+    "calibration": {
+      "prob0_ece": 0.0074,
+      "exit4_ece": 0.0067,
+      "ece_by_depth": [
+        0.01,
+        0.0094,
+        0.0073,
+        0.0076,
+        0.0067,
+        0.0065,
+        0.0063,
+        0.0068,
+        0.0074
+      ],
+      "n_bins": 15
+    },
+    "transform_rel_mag_by_depth": [
+      7.5462,
+      1.3226,
+      1.3263,
+      1.3301,
+      1.3041,
+      1.3021,
+      1.3027,
+      1.3037,
+      1.3038
+    ],
+    "intervention": {
+      "readout_gated": true,
+      "params_added": 131072,
+      "w1_fro": 37.5059,
+      "w2_fro": 98.0651,
+      "w_absmax": 5.8534,
+      "nonzero_frac": 1.0,
+      "w1_spec_norm": 21.1162,
+      "w2_spec_norm": 65.1628
+    }
+  },
+  "intervention": {
+    "readout_gated": true,
+    "params_added": 131072,
+    "w1_fro": 37.5059,
+    "w2_fro": 98.0651,
+    "w_absmax": 5.8534,
+    "nonzero_frac": 1.0,
+    "w1_spec_norm": 21.1162,
+    "w2_spec_norm": 65.1628
+  },
+  "arm_field_equivalence": [
+    {
+      "field": "config.d_model",
+      "A_arm": 256,
+      "gated_arm": 256,
+      "equal": true
+    },
+    {
+      "field": "config.n_layers",
+      "A_arm": 8,
+      "gated_arm": 8,
+      "equal": true
+    },
+    {
+      "field": "config.n_heads",
+      "A_arm": 8,
+      "gated_arm": 8,
+      "equal": true
+    },
+    {
+      "field": "config.seq_len",
+      "A_arm": 256,
+      "gated_arm": 256,
+      "equal": true
+    },
+    {
+      "field": "config.mlp_mult",
+      "A_arm": 4,
+      "gated_arm": 4,
+      "equal": true
+    },
+    {
+      "field": "config.dropout",
+      "A_arm": 0.0,
+      "gated_arm": 0.0,
+      "equal": true
+    },
+    {
+      "field": "config.norm_cap",
+      "A_arm": 1.0,
+      "gated_arm": 1.0,
+      "equal": true
+    },
+    {
+      "field": "config.gate_bias_init",
+      "A_arm": -2.0,
+      "gated_arm": -2.0,
+      "equal": true
+    },
+    {
+      "field": "config.dense",
+      "A_arm": false,
+      "gated_arm": false,
+      "equal": true
+    },
+    {
+      "field": "config.fill_kv",
+      "A_arm": true,
+      "gated_arm": true,
+      "equal": true
+    },
+    {
+      "field": "config.proj_fill",
+      "A_arm": false,
+      "gated_arm": false,
+      "equal": true
+    },
+    {
+      "field": "config.readout_dims",
+      "A_arm": null,
+      "gated_arm": null,
+      "equal": true
+    },
+    {
+      "field": "config.readout_gated",
+      "A_arm": false,
+      "gated_arm": true,
+      "equal": false
+    },
+    {
+      "field": "config.readout_linear_resid",
+      "A_arm": false,
+      "gated_arm": false,
+      "equal": true
+    },
+    {
+      "field": "train.steps",
+      "A_arm": 24000,
+      "gated_arm": 24000,
+      "equal": true
+    },
+    {
+      "field": "train.batch_size",
+      "A_arm": 32,
+      "gated_arm": 32,
+      "equal": true
+    },
+    {
+      "field": "train.lr",
+      "A_arm": 0.001,
+      "gated_arm": 0.001,
+      "equal": true
+    },
+    {
+      "field": "train.seed",
+      "A_arm": 0,
+      "gated_arm": 0,
+      "equal": true
+    },
+    {
+      "field": "exit_mode",
+      "A_arm": "uniform",
+      "gated_arm": "uniform",
+      "equal": true
+    },
+    {
+      "field": "fill_kv",
+      "A_arm": true,
+      "gated_arm": true,
+      "equal": true
+    },
+    {
+      "field": "proj_fill",
+      "A_arm": false,
+      "gated_arm": false,
+      "equal": true
+    },
+    {
+      "field": "aux_weight",
+      "A_arm": 1.0,
+      "gated_arm": 1.0,
+      "equal": true
+    },
+    {
+      "field": "aux_anneal_to",
+      "A_arm": null,
+      "gated_arm": null,
+      "equal": true
+    },
+    {
+      "field": "final_weight",
+      "A_arm": 1.0,
+      "gated_arm": 1.0,
+      "equal": true
+    },
+    {
+      "field": "readout_dims",
+      "A_arm": null,
+      "gated_arm": null,
+      "equal": true
+    },
+    {
+      "field": "readout_gated",
+      "A_arm": false,
+      "gated_arm": true,
+      "equal": false
+    },
+    {
+      "field": "readout_linear_resid",
+      "A_arm": false,
+      "gated_arm": false,
+      "equal": true
+    },
+    {
+      "field": "exit_anneal",
+      "A_arm": false,
+      "gated_arm": false,
+      "equal": true
+    },
+    {
+      "field": "exit_anneal_to",
+      "A_arm": null,
+      "gated_arm": null,
+      "equal": true
+    },
+    {
+      "field": "exit_anneal_frac",
+      "A_arm": null,
+      "gated_arm": null,
+      "equal": true
+    },
+    {
+      "field": "final_anneal_to",
+      "A_arm": null,
+      "gated_arm": null,
+      "equal": true
+    },
+    {
+      "field": "shallow_stopgrad",
+      "A_arm": false,
+      "gated_arm": false,
+      "equal": true
+    },
+    {
+      "field": "dense_aux",
+      "A_arm": false,
+      "gated_arm": false,
+      "equal": true
+    },
+    {
+      "field": "vocab_size",
+      "A_arm": 206,
+      "gated_arm": 206,
+      "equal": true
+    },
+    {
+      "field": "train_tokens",
+      "A_arm": 196608000,
+      "gated_arm": 196608000,
+      "equal": true
+    }
+  ],
+  "arm_field_equivalence_all_equal_except_readout": true,
+  "convergence": {
+    "method": "末 1000 步 = 采样点（每 200 步一落）在 [steps−1000, steps] 区间的 loss 最小二乘线性斜率 ×1000；两臂同一方法。另报末 25% / 末 50% 窗口与末深度 CE 斜率交叉核对。",
+    "A_arm": {
+      "n_logged_samples": 121,
+      "step_first": 0,
+      "step_last": 23999,
+      "loss_slope_last1000_per_1k": 0.0777,
+      "loss_slope_last25pct_per_1k": -0.011,
+      "loss_slope_last50pct_per_1k": -0.0109,
+      "depthL_ce_slope_last1000_per_1k": 0.1522,
+      "depthL_ce_slope_last25pct_per_1k": -0.0069,
+      "loss_mean_12k_window": 1.601,
+      "loss_mean_24k_window": 1.4912,
+      "depthL_ce_mean_12k_window": 1.2775,
+      "depthL_ce_mean_24k_window": 1.1857,
+      "loss_first": 5.2764,
+      "loss_last": 1.4785,
+      "loss_max_step_increase": 0.1442,
+      "loss_jumps_gt_0.25": 0,
+      "all_finite": true,
+      "gnorm_monitor_all_steps": {
+        "gnorm_max": 6.8,
+        "gnorm_mean": 1.269,
+        "grad_skips": 0
+      }
+    },
+    "gated_arm": {
+      "n_logged_samples": 121,
+      "step_first": 0,
+      "step_last": 23999,
+      "loss_slope_last1000_per_1k": 0.0589,
+      "loss_slope_last25pct_per_1k": -0.0111,
+      "loss_slope_last50pct_per_1k": -0.0094,
+      "depthL_ce_slope_last1000_per_1k": 0.1188,
+      "depthL_ce_slope_last25pct_per_1k": -0.0083,
+      "loss_mean_12k_window": 1.4707,
+      "loss_mean_24k_window": 1.373,
+      "depthL_ce_mean_12k_window": 1.236,
+      "depthL_ce_mean_24k_window": 1.1509,
+      "loss_first": 5.2764,
+      "loss_last": 1.3543,
+      "loss_max_step_increase": 0.1715,
+      "loss_jumps_gt_0.25": 0,
+      "all_finite": true,
+      "gnorm_monitor_all_steps": {
+        "gnorm_max": 17.4,
+        "gnorm_mean": 0.796,
+        "grad_skips": 0
+      }
+    },
+    "loss_slope_last1000_delta": -0.0188
+  },
+  "verdict": {
+    "criterion": "Δbpc(24k) ≤ −0.05 ⇒ 保持（成功）；|Δ| ≤ 0.014 ⇒ 撤回；中间如实报（附两臂末 1000 步 loss 斜率）",
+    "A_clean_bpc_24k": 1.6938,
+    "gated_clean_bpc_24k": 1.6475,
+    "delta_clean_bpc_24k": -0.0463,
+    "snapshot_12k_reference": {
+      "A_clean_bpc": 1.8582,
+      "gated_clean_bpc": 1.777,
+      "delta_gated_vs_A": -0.0812,
+      "source": "2611-equalparams-linear-control-13m/results.json::verdict（2610 的 12k checkpoint 在当前代码下重测）"
+    },
+    "A_tf4": 0.9654,
+    "gated_tf4": 0.9675,
+    "A_prob0_ece": 0.0071,
+    "gated_prob0_ece": 0.0074,
+    "delta_ece": 0.0003,
+    "dense_bpc_ref_13m": 1.5287,
+    "A_tax_vs_dense_24k": 0.1651,
+    "gated_tax_vs_dense_24k": 0.1188,
+    "params_A": 6962688,
+    "params_gated": 7093760,
+    "params_extra": 131072,
+    "ruling": "中间情况（弱正向）：−0.05 < Δbpc(24k) = -0.0463 < −0.014，如实报，不裁决"
+  },
+  "reconciliation": {
+    "arithmetic": {
+      "params_A": 6962688,
+      "params_gated": 7093760,
+      "params_extra": 131072,
+      "params_extra_equals_2d2": true,
+      "delta_bpc_definition": "bpc_gated − bpc_A（负 = gated 更好）",
+      "variance_bound": 0.014,
+      "criterion_kept_threshold": -0.05,
+      "criterion_withdraw_threshold": 0.014,
+      "delta_bpc_24k": -0.0463,
+      "delta_bpc_12k_reference": -0.0812,
+      "delta_change_12k_to_24k": 0.0349,
+      "loss_slope_last1000_per_1k_A": 0.0777,
+      "loss_slope_last1000_per_1k_gated": 0.0589,
+      "slope_based_12k_extrapolation": {
+        "note": "粗算术核对：若两臂末 1000 步斜率线性外推 12k 步，Δ 的变化 ≈ (gated_slope − A_slope)×12；与实测 delta_change_12k_to_24k 对照，判断 Δ 变化是否与「两臂仍在以不同速度下降」一致。",
+        "predicted_delta_change": -0.2256,
+        "observed_delta_change": 0.0349,
+        "caveat": "日志 loss 是单 batch 随机退出混合 loss，逐点噪声大，该外推只作量级核对，不作判据。"
+      }
+    },
+    "task": {
+      "same_task": "同一 enwik8 char 级 AR 任务、同一 eval 切分（末 10M）",
+      "same_position_set": "全序列逐位置、同一目标定义（tokens 自移位）",
+      "same_battery": "两臂用同一 run.py::run_battery（同 n_batches/seed/batch_size）",
+      "deploy_correspondence": "两臂都是 depth-AR 的标准读出路径，无额外输入、无真值泄漏；对照只改读出前状态变换（gated 新增 2·d² 参数）"
+    },
+    "caliber": {
+      "matched_step_snapshot": true,
+      "steps": 24000,
+      "train_tokens": 196608000,
+      "seed": 0,
+      "n_seed": 1,
+      "note": "两臂同为 fresh 24k 步 / 196.6M token / seed 0 的 matched-step 快照口径（非渐近、非墙钟、非 FLOPs）；A 臂不是 2610 的 12k 历史 checkpoint 续训（无 optimizer state），而是同配方全新训练——保证两臂逐字段一致。"
+    },
+    "background_slope_audit": {
+      "note": "契约背景「主臂末 25% loss 斜率 −0.0298/1k、A 臂 −0.0054/1k」口径可疑：−0.0054 确实是 A 臂末 25% 窗（9000–12000）的斜率，但 −0.0298 是该损失在**末 50% 窗（6000–12000）**的斜率（末 25% 窗同法得 −0.0039）。两腿窗口不一致 ⇒ 背景里「主臂下降快 5.5×」的比较不成立。本实验用同一方法（末 1000 步）重算。",
+      "recomputed_2610_12k": {
+        "gated_loss_slope_last25pct_per_1k": -0.0039,
+        "A_loss_slope_last25pct_per_1k": -0.0054,
+        "gated_loss_slope_last50pct_per_1k": -0.0298,
+        "A_loss_slope_last50pct_per_1k": -0.0333
+      }
+    }
+  },
+  "cost": {
+    "A_train_wall_min": 21.03,
+    "gated_train_wall_min": 22.7,
+    "eval_wall_min": 0.85,
+    "peak_child_mem_gb": 2.14,
+    "wall_total_min": 44.61
+  }
+}

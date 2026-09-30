@@ -1,0 +1,45 @@
+{
+  "experiment": "2611-equalparams-linear-control-13m",
+  "seed": 0,
+  "steps": 12000,
+  "batch_size": 32,
+  "lr": 0.001,
+  "exit_mode": "uniform",
+  "data": "data/enwik8_full.npz",
+  "data_split": "first 90M train / last 10M eval, vocab from full file",
+  "vocab_size": 206,
+  "A_arm": {
+    "readout": "tied linear h·Eᵀ",
+    "readout_gated": false,
+    "readout_linear_resid": false,
+    "source": ".scratch/23-depth-ar/evidence/23c-H2-w0-12k"
+  },
+  "gated_arm": {
+    "readout": "h + SiLU(W1 h)·(W2 h) then ·Eᵀ",
+    "readout_gated": true,
+    "readout_w1_w2_init": "W1 ~ N(0, 0.02), W2 = 0",
+    "params_extra": 131072,
+    "source": "axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/runs/gated-12k-s0"
+  },
+  "linear_arm": {
+    "readout": "h + P·(Q h) then ·Eᵀ（整体 = (I + PQ) h）",
+    "readout_linear_resid": true,
+    "readout_p_q_init": "Q ~ N(0, 0.02), P = 0 (identity start, non-saddle)",
+    "params_extra": 131072
+  },
+  "base": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dense": false,
+    "fill_kv": true,
+    "proj_fill": false,
+    "gate_bias_init": -2.0,
+    "aux_weight": 1.0,
+    "final_weight": 1.0,
+    "shallow_stopgrad": false,
+    "dense_aux": false
+  }
+}

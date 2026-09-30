@@ -18,8 +18,9 @@ import torch.nn.functional as F
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pathlm.depth_ar import DepthARConfig, DepthARModel
-from train_jumphead import (HeadBank, JumpHead, assert_frozen, freeze_trunk,
-                            init_heads, shift_pairs, trunk_hidden)
+from train_jumphead import (HeadBank, JumpHead, ar1_second_step_readout,
+                            assert_frozen, freeze_trunk, init_heads, shift_pairs,
+                            trunk_hidden, trunk_layer_inputs)
 
 
 def tiny_trunk(vocab: int = 12) -> DepthARModel:
@@ -111,3 +112,79 @@ def test_unfrozen_trunk_is_caught_by_freeze_assertion():
     ok, info = assert_frozen(trunk)
     assert not ok, "变异后 assert_frozen 必须为 False（否则冻结断言失效）"
     assert info["grad_not_none"], "放开梯度后主干应有 .grad，冻结断言必须看到"
+
+
+# ------------------------------------------------- ticket 29-A：诚实 1-step AR 对照
+
+
+def _bruteforce_ar1_row(trunk, x: torch.Tensor, a1: torch.Tensor, i: int) -> torch.Tensor:
+    """逐行参考实现：只把位置 i+1 换成 a1[:,i]，其余保留真值，标准前向读位置 i+1。"""
+    xp = x.clone()
+    xp[:, i + 1] = a1[:, i]
+    with torch.no_grad():
+        return trunk.readout(trunk_hidden(trunk, xp))[:, i + 1]
+
+
+def test_trunk_layer_inputs_final_matches_trunk_hidden():
+    """trunk_layer_inputs 的末态必须逐位等于 trunk_hidden（不重写层语义）。"""
+    trunk = tiny_trunk()
+    trunk.eval()
+    x = torch.randint(0, trunk.vocab_size, (2, 12))
+    with torch.no_grad():
+        inputs, final = trunk_layer_inputs(trunk, x)
+        h = trunk_hidden(trunk, x)
+    assert len(inputs) == len(trunk.blocks)
+    assert torch.allclose(final, h, atol=1e-6)
+
+
+def test_ar1_matches_bruteforce_rowloop():
+    """AR-1 快路径必须与「逐行各跑一次标准前向」逐位等价（只替换位置 i+1）。
+
+    这是 correctness 钉子：mask / 前缀 K/V / 自注意力若写错，逐行对不上必红。
+    """
+    trunk = tiny_trunk()
+    trunk.eval()
+    x = torch.randint(0, trunk.vocab_size, (2, 12))
+    with torch.no_grad():
+        a1 = trunk.readout(trunk_hidden(trunk, x)).argmax(-1)
+        fast = ar1_second_step_readout(trunk, x, a1)
+    assert fast.shape == (2, x.shape[1] - 2, trunk.vocab_size)
+    for i in range(x.shape[1] - 2):
+        bf = _bruteforce_ar1_row(trunk, x, a1, i)
+        assert torch.allclose(bf, fast[:, i], atol=1e-4), \
+            f"AR-1 快路径与逐行前向在行 {i} 不一致"
+
+
+def test_ar1_prefix_keeps_ground_truth_not_whole_context():
+    """回归：AR-1 只替换紧邻位置 i+1，前缀 0..i 保持真值。
+
+    旧 ticket 28 deploy 把**整段** xp[:,1:] 都换成自预测——行 0 恰好只替换了
+    位置 1（两者一致），但行 ≥1 的前缀被污染（两者必须不同）。任何把前缀
+    也替换掉的实现都会在这里被抓红。"""
+    trunk = tiny_trunk()
+    trunk.eval()
+    x = torch.randint(0, trunk.vocab_size, (2, 12))
+    T = x.shape[1]
+    with torch.no_grad():
+        L = trunk.readout(trunk_hidden(trunk, x))
+        a1 = L.argmax(-1)
+        fast = ar1_second_step_readout(trunk, x, a1)
+        xp = x.clone()
+        xp[:, 1:] = L[:, :-1].argmax(-1)          # 旧 bug：整段替换
+        buggy = trunk.readout(trunk_hidden(trunk, xp))[:, 1:T - 1]
+    assert torch.allclose(fast[:, 0], buggy[:, 0], atol=1e-4), "行 0 只替换位置 1，二者应一致"
+    assert not torch.allclose(fast[:, 1], buggy[:, 1], atol=1e-4), \
+        "行 ≥1 前缀被污染：整段替换与只替换紧邻位置必须不同"
+
+
+def test_ar1_is_live_to_fed_token():
+    """活性：第二次前向确实吃了 a1（改变 fed token 必须改变输出），排除死通路。"""
+    trunk = tiny_trunk()
+    trunk.eval()
+    x = torch.randint(0, trunk.vocab_size, (2, 12))
+    with torch.no_grad():
+        a1 = trunk.readout(trunk_hidden(trunk, x)).argmax(-1)
+        a1b = (a1 + 1) % trunk.vocab_size
+        o1 = ar1_second_step_readout(trunk, x, a1)
+        o2 = ar1_second_step_readout(trunk, x, a1b)
+    assert not torch.allclose(o1, o2), "改变 fed token 输出必须变化（否则 AR-1 通路是死的）"

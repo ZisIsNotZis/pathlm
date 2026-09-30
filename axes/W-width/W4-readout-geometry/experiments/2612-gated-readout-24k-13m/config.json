@@ -1,0 +1,42 @@
+{
+  "experiment": "2612-gated-readout-24k-13m",
+  "ticket": "29-verify-batch",
+  "contract": "C",
+  "seed": 0,
+  "steps": 24000,
+  "batch_size": 32,
+  "lr": 0.001,
+  "exit_mode": "uniform",
+  "data": "data/enwik8_full.npz",
+  "data_split": "first 90M train / last 10M eval, vocab from full file",
+  "vocab_size": 206,
+  "train_tokens": 196608000,
+  "A_arm": {
+    "readout": "tied linear h·Eᵀ",
+    "readout_gated": false,
+    "run": "A-24k-s0"
+  },
+  "gated_arm": {
+    "readout": "h + SiLU(W1 h)·(W2 h) then ·Eᵀ",
+    "readout_gated": true,
+    "readout_w1_w2_init": "W1 ~ N(0, 0.02), W2 = 0 (identity start, non-saddle)",
+    "params_extra": 131072,
+    "run": "gated-24k-s0"
+  },
+  "base": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dense": false,
+    "fill_kv": true,
+    "proj_fill": false,
+    "gate_bias_init": -2.0,
+    "aux_weight": 1.0,
+    "final_weight": 1.0,
+    "shallow_stopgrad": false,
+    "dense_aux": false
+  },
+  "gpu_wall_budget": "两臂 ≈50 min（共享卡 2× 折扣口径）"
+}

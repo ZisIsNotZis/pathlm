@@ -67,6 +67,14 @@ class DepthARConfig:
     # ∂L/∂W2 ∝ SiLU(W1h)⊗h = SiLU(0)⊗h = 0、∂L/∂W1 ∝ diag(W2h)·SiLU'(W1h)·(h⊗I) = 0
     # 同时为零 ⇒ 永不可学的鞍点（已实测：零初始 12k 步后 |W1|=|W2|=0）。
     readout_gated: bool = False
+    # 线性等参数对照读出（W4 契约 B，2611）：读出前加一个**纯线性**状态变换
+    # h → h + P·(Q h)（P、Q 各 d×d 无偏置），再走 tied 线性读出。与 gated 臂
+    # **参数量完全相同**（2·d²），但整体等价于一个线性映射
+    # (I + PQ) h——用来判定 gated 臂的增益来自参数量还是非线性。
+    # init：Q ~ N(0, 0.02)、**P = 0**（单边零，与 gated 臂同款）⇒ 起步
+    # transform = P(Qh) = 0 严格恒等起步（单测钉住）；∂L/∂P = grad ⊗ (Qh) ≠ 0
+    # ⇒ 非鞍点。**不能 P=Q=0**（同 gated 的零初始鞍点）。与 readout_gated 互斥。
+    readout_linear_resid: bool = False
 
 
 def sample_exit_depths(B: int, T: int, n_layers: int, generator: torch.Generator,
@@ -130,6 +138,19 @@ class DepthARModel(nn.Module):
             self.readout_w2 = nn.Linear(d, d, bias=False)
             nn.init.normal_(self.readout_w1.weight, std=0.02)
             nn.init.zeros_(self.readout_w2.weight)
+        # 线性等参数对照读出（W4 契约 B，2611）：P 外、Q 内；Q ~ N(0, 0.02)、
+        # **P = 0** ⇒ 起步 transform = P(Qh) = 0，严格 == tied 线性；
+        # ∂L/∂P ≠ 0（非鞍点）。同样建在参数 init 循环之后——不消耗其余参数的
+        # 随机数，同 seed 下与 A 臂其余参数逐位一致。与 readout_gated 互斥。
+        if cfg.readout_linear_resid:
+            if cfg.readout_gated:
+                raise ValueError(
+                    "readout_linear_resid 与 readout_gated 互斥：读出几何"
+                    "只允许一个干预（单因素）")
+            self.readout_p = nn.Linear(d, d, bias=False)
+            self.readout_q = nn.Linear(d, d, bias=False)
+            nn.init.normal_(self.readout_q.weight, std=0.02)
+            nn.init.zeros_(self.readout_p.weight)
 
     # ---------- 读出 ----------
 
@@ -143,11 +164,18 @@ class DepthARModel(nn.Module):
         readout_gated（W4 主臂）：先做非线性状态变换
         h → h + SiLU(W1 h) ⊙ (W2 h)，再走 tied 读出。变换在**全维度 h** 上
         做（workspace 维经 W1/W2 进入读出），之后才按 readout_dims 切片。
-        缺省（False）与上述全维度/切片路径都逐位还原 v1。"""
+
+        readout_linear_resid（W4 契约 B 对照臂）：先做纯线性状态变换
+        h → h + P·(Q h)（整体 = (I + PQ) h），再走 tied 读出；参数量与 gated
+        臂相同（2·d²）但**无任何非线性**。切片语义同 gated。
+
+        缺省（两者皆 False）与上述全维度/切片路径都逐位还原 v1。"""
         with torch.autocast("cuda", enabled=False):
             hf = h.float()
             if self.cfg.readout_gated:
                 hf = hf + F.silu(self.readout_w1(hf)) * self.readout_w2(hf)
+            elif self.cfg.readout_linear_resid:
+                hf = hf + self.readout_p(self.readout_q(hf))
             r = self.cfg.readout_dims
             if r is None or r == self.cfg.d_model:
                 return hf @ self.embed.weight.float().T

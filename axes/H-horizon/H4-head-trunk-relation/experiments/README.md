@@ -10,6 +10,7 @@
 |---|---|
 | [`2521-exit-scale-confirm`](2521-exit-scale-confirm/README.md) | 目录内 README |
 | [`2610-frozen-trunk-jumphead-13m`](2610-frozen-trunk-jumphead-13m/README.md) | 目录内 README |
+| [`2611-jumphead-ar-control-13m`](2611-jumphead-ar-control-13m/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 

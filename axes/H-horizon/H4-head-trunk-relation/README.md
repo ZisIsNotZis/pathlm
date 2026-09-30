@@ -8,9 +8,9 @@ judge: "税（挂头是否扰动主干）+ 头自身质量 + 校准"
 cost: "13M 单臂 ~5–25 min；冻结主干可复用已有 checkpoint → 单臂 ~5 min"
 tax: "probe 式头 @100M ≈0（1.5928 vs 1.5871）；停梯度使浅层读出贵（13M depth6 +0.93）；冻结主干挂跳跃头 13M：Δbpc = **0.0000**（1.4836→1.4836，冻结断言通过）"
 benefit: "保 retry（−0.0098）且门控更强（−0.029 @100M）；MTP 头是 d×d 变换、无 vocab 参数（~free 的基础设施）；宽头 ECE 0.0064 ≤0.01 且 10 桶严格单调（0.073→0.982）可作分配信号"
-verdict: "挂头是免费旁路（零税坐实：Δbpc = 0.0000）。冻结主干上跳跃头 t+2 命中 0.4667 < 预登记阈值 0.5617（= 0.81 × oracle 两次前向）→ 按当时判据判失败；但该判据取向已被用户否决（oracle 属作弊基线），改判口径 = vs 1-step AR 两次前向 + 草稿接受率 vs 主干自身输出（重测见 ticket 29）。原对照臂 0.3128 已查明为构造错误并撤回。"
+verdict: "挂头零税坐实（Δbpc = 0.0000）。按修正后的诚实口径（vs 1-step AR 两次前向，只替换紧邻位置）**判中性**：对手 54.89%（≥ 算术下界 0.4822 ✓ 对账过），跳跃头 46.67% = 对手的 **85%**（预登记成功线 90% 未过，落 [0.80,0.90) 中性带）；**草稿接受率仅 0.5998**（< 0.90 未过）。等效加速 **1.95×** 真实，但质量缺口使其不足以单独替代两次前向。"
 deps: ["C1-layers-per-token", "W4-readout-geometry", "H3-composition"]
-evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scale/evidence @9fe4cf1", "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/analysis.md @1181cd4"]
+evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scale/evidence @9fe4cf1", "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/analysis.md @1181cd4", "axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/analysis.md @ticket29"]
 ---
 
 <!-- AUTO:begin -->
@@ -19,7 +19,7 @@ evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scal
 
 > 轴：**H 视界（一次前向产生几个位置）** ｜ 状态：**✅ judged**
 
-> **判读**：挂头是免费旁路（零税坐实：Δbpc = 0.0000）。冻结主干上跳跃头 t+2 命中 0.4667 < 预登记阈值 0.5617（= 0.81 × oracle 两次前向）→ 按当时判据判失败；但该判据取向已被用户否决（oracle 属作弊基线），改判口径 = vs 1-step AR 两次前向 + 草稿接受率 vs 主干自身输出（重测见 ticket 29）。原对照臂 0.3128 已查明为构造错误并撤回。
+> **判读**：挂头零税坐实（Δbpc = 0.0000）。按修正后的诚实口径（vs 1-step AR 两次前向，只替换紧邻位置）**判中性**：对手 54.89%（≥ 算术下界 0.4822 ✓ 对账过），跳跃头 46.67% = 对手的 **85%**（预登记成功线 90% 未过，落 [0.80,0.90) 中性带）；**草稿接受率仅 0.5998**（< 0.90 未过）。等效加速 **1.95×** 真实，但质量缺口使其不足以单独替代两次前向。
 
 ## 1. 命题
 
@@ -42,7 +42,7 @@ evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scal
 
 - **税**：probe 式头 @100M ≈0（1.5928 vs 1.5871）；停梯度使浅层读出贵（13M depth6 +0.93）；冻结主干挂跳跃头 13M：Δbpc = **0.0000**（1.4836→1.4836，冻结断言通过）
 - **收益**：保 retry（−0.0098）且门控更强（−0.029 @100M）；MTP 头是 d×d 变换、无 vocab 参数（~free 的基础设施）；宽头 ECE 0.0064 ≤0.01 且 10 桶严格单调（0.073→0.982）可作分配信号
-- **判读**：挂头是免费旁路（零税坐实：Δbpc = 0.0000）。冻结主干上跳跃头 t+2 命中 0.4667 < 预登记阈值 0.5617（= 0.81 × oracle 两次前向）→ 按当时判据判失败；但该判据取向已被用户否决（oracle 属作弊基线），改判口径 = vs 1-step AR 两次前向 + 草稿接受率 vs 主干自身输出（重测见 ticket 29）。原对照臂 0.3128 已查明为构造错误并撤回。
+- **判读**：挂头零税坐实（Δbpc = 0.0000）。按修正后的诚实口径（vs 1-step AR 两次前向，只替换紧邻位置）**判中性**：对手 54.89%（≥ 算术下界 0.4822 ✓ 对账过），跳跃头 46.67% = 对手的 **85%**（预登记成功线 90% 未过，落 [0.80,0.90) 中性带）；**草稿接受率仅 0.5998**（< 0.90 未过）。等效加速 **1.95×** 真实，但质量缺口使其不足以单独替代两次前向。
 
 ## 5. 失败路径与原因
 
@@ -50,7 +50,8 @@ evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scal
 2. **冻结主干上跳跃头质量不可达**：t+2 0.4667（宽头 0.5081）< 0.81×0.6934；决策树排除 off-by-one（shift 单测 + oracle 恒等式）/ 冻结失败（Δbpc=0 且 grad is None）/ 头映射（直接 t+1 0.6951 ≈ 主干 0.6934）/ 步数与容量（宽头仅 +4.1pp）→ 归因**设计无效**：冻结表征只被 t+1 目标塑形，t+2 映射不可达（回环时代 joint 的 55.97% 是表征可用性差异）
 3. 对照臂构造错误（已撤回，主 Agent 复核 + ERRATA，2026-09-30）：所谓两次前向 deploy 臂把整段上下文替换为模型自预测（xp[:,1:] = L[:,:-1].argmax(-1)），再用真值打分 → 量的是「假上下文猜真值」这个不可能任务（0.3128），不是 AR 两次前向。正确的 1-step AR 对照只替换紧邻位置，算术下界 = 0.6934×0.6953 = 0.4822，下一批重测（ticket 29）
 4. 判据取向被用户否决（2026-09-30）：oracle 是作弊基线、不得作判据；改判口径 = vs 1-step AR 两次前向 + 草稿接受率 vs 主干自身输出（SCHEMA §11）。原预登记判据（0.81×oracle）保留为历史记录、不追溯修改
-5. 对照 3（联合臂）口径缺陷：lr 3e-4 把主干改坏（bpc 1.48→1.85），非干净对照，仅记录
+5. 修正后实测（ticket 29）：诚实对手 1-step AR = **0.5489**（只替换紧邻位置，≥ 算术下界 0.4822）；跳跃头 0.4667 = 85%（中性带）；**草稿接受率 0.5998** ⇒ 作草稿质量不足；等效加速 1.95× 但需接受率门控；两 seed 比值 0.8533/0.8469（极差 0.0064）
+6. 对照 3（联合臂）口径缺陷：lr 3e-4 把主干改坏（bpc 1.48→1.85），非干净对照，仅记录
 
 ## 6. 判据与判决实验设计
 
@@ -71,6 +72,7 @@ evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scal
 1. .scratch/18-exit-probe/evidence @83bf1ac
 2. .scratch/21-exit-at-scale/evidence @9fe4cf1
 3. axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/analysis.md @1181cd4
+4. axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/analysis.md @ticket29
 
 ## 备注
 

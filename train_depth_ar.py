@@ -195,6 +195,11 @@ def main():
                          "h + SiLU(W1 h) ⊙ (W2 h)，再走 tied 线性读出（init "
                          "W1~N(0,0.02)/W2=0 ⇒ 严格恒等起步、非鞍点）；缺省 = "
                          "tied 线性（v1 逐位还原）")
+    ap.add_argument("--readout-linear-resid", action="store_true",
+                    help="线性等参数对照读出（W4 契约 B，2611）：读出前加纯线性"
+                         "状态变换 h + P·(Q h)（init Q~N(0,0.02)/P=0 ⇒ 严格恒等"
+                         "起步、非鞍点）；参数与 --readout-gated 相同（2·d²）但"
+                         "无非线性；两者互斥", dest="readout_linear_resid")
     ap.add_argument("--exit-anneal", action="store_true",
                     help="C 臂冷却退火（ticket 25）：浅层 aux 权重均匀到 "
                          "(1−frac) 处、末 frac 线性降到 --exit-anneal-to；"
@@ -220,7 +225,8 @@ def main():
                         gate_bias_init=args.gate_bias_init,
                         fill_kv=args.fill_kv, proj_fill=args.proj_fill,
                         readout_dims=args.readout_dims,
-                        readout_gated=args.readout_gated)
+                        readout_gated=args.readout_gated,
+                        readout_linear_resid=args.readout_linear_resid)
     model = DepthARModel(cfg, vocab_size).cuda()
     n_params = sum(p.numel() for p in model.parameters())
     print(f"{args.run_name}: {n_params/1e6:.2f}M params, vocab {vocab_size}, "
@@ -253,6 +259,7 @@ def main():
         "final_weight": args.final_weight,
         "readout_dims": args.readout_dims,
         "readout_gated": args.readout_gated,
+        "readout_linear_resid": args.readout_linear_resid,
         "exit_anneal": args.exit_anneal,
         "exit_anneal_to": args.exit_anneal_to if args.exit_anneal else None,
         "exit_anneal_frac": args.exit_anneal_frac if args.exit_anneal else None,

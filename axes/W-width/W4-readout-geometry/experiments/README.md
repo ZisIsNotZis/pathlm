@@ -9,6 +9,8 @@
 | 实验 | 来源 |
 |---|---|
 | [`2610-gated-readout-13m-depthar`](2610-gated-readout-13m-depthar/README.md) | 目录内 README |
+| [`2611-equalparams-linear-control-13m`](2611-equalparams-linear-control-13m/README.md) | 目录内 README |
+| [`2612-gated-readout-24k-13m`](2612-gated-readout-24k-13m/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 
