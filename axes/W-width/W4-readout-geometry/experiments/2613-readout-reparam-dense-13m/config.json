@@ -1,0 +1,63 @@
+{
+  "experiment": "2613-readout-reparam-dense-13m",
+  "contract": "契约 F（.scratch/30-batch3/issues/01-batch3.md）",
+  "seed": 1,
+  "steps": 12000,
+  "batch_size": 32,
+  "lr": 0.001,
+  "exit_mode": "uniform",
+  "data": "/home/z/vibe/pathlm/data/enwik8_full.npz",
+  "data_split": "first 90M train / last 10M eval, vocab from full file",
+  "vocab_size": 206,
+  "device": "cuda",
+  "base": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dense": true,
+    "fill_kv": true,
+    "proj_fill": false,
+    "topology": "sequential",
+    "gate_bias_init": -2.0,
+    "readout_dims": null,
+    "aux_weight": 1.0,
+    "final_weight": 1.0,
+    "shallow_stopgrad": false,
+    "dense_aux": false
+  },
+  "arms": [
+    "baseline",
+    "linres"
+  ],
+  "intervention": {
+    "baseline": {
+      "readout": "tied linear h·Eᵀ",
+      "readout_linear_resid": false,
+      "readout_gated": false
+    },
+    "linres": {
+      "readout": "(h + P·(Q h))·Eᵀ（整体 (I+PQ)h）",
+      "readout_linear_resid": true,
+      "init": "Q ~ N(0,0.02), P = 0（单边零，恒等起步、非鞍点）",
+      "params_added": 131072
+    },
+    "gated": {
+      "readout": "(h + SiLU(W1 h)⊙(W2 h))·Eᵀ",
+      "readout_gated": true,
+      "init": "W1 ~ N(0,0.02), W2 = 0（单边零）",
+      "params_added": 131072
+    }
+  },
+  "criterion": {
+    "definition": "Δbpc_improvement = bpc_baseline − bpc_linres（正 = 改善）",
+    "transferable": "Δ ≥ +0.014",
+    "not_transferable": "|Δ| < 0.014",
+    "negative_transfer": "Δ ≤ −0.014",
+    "variance_bound": 0.014,
+    "same_method_slope_required": true
+  },
+  "reference_depthar_12k": -0.0888,
+  "reference_depthar_24k": -0.0463
+}

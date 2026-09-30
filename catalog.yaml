@@ -464,15 +464,24 @@ grids:
       - 无残差（纯前馈堆栈）
     judge: clean bpc（同参数量）+ 训练稳定性 + 深度可截断性
     cost: 13M 单臂 ~25–40 min
-    status: stub
+    status: judged
+    verdict: 首探无优势：**并行子层明确有害**（+0.0458，等参数对照 +0.0402 复现），**层间学习加权和中性**（−0.0008）。
+    local:
+      tax: "parallel +0.0458（1.5254 → 1.5712）/ parallel-dual-ln（等参数） +0.0402 / dense 层间加权和 −0.0008（中性）；12k 步 / 13M / seed0 / 98.3M token"
+      benefit: "（无）"
+      failure:
+        - "并行子层（PaLM/GPT-J 式）在此规模明确有害：+0.0458，且用逐位等参数的 dual-LN 对照复现 +0.0402（排除参数量混杂）"
+        - "层间学习加权和（DenseFormer 式）中性 −0.0008（|Δ| < 0.014）：层权确实活着（fro 3.305、偏离恒等起步 1.361、浅层被放大 2.36×）但质量无收益"
+        - "收敛对账（同方法末 25% 窗斜率 0.0025–0.0045 nats/1k，极差 0.0020）⇒ 差异是水平差不是收敛速度差"
+        - "**契约缺陷（主 Agent 认领）**：并列判据 tf@4 ≥ 0.95 对 stock dense 形态不适用（只监督最终深度，历史同配置 dense tf@4 = 0.444；四臂 0.31–0.46 全部不可达）→ 该判据零区分度，执行者如实报不作区分量"
+        - "n=1 seed；dense 的层权无单纯形约束（≠ 原论文严格凸组合语义）；24k 收敛点未跑"
+      evidence: ["axes/C-vertical/C3-inter-layer-topology/experiments/2613-inter-layer-topology-13m/analysis.md @b3c2484"]
     industry: |
-      并行化（PaLM/GPT-J）已被大模型广泛采纳（吞吐收益）；
-      密集/跨层注意（DenseFormer、Hyper-Connections）报告同规模下的稳定小幅增益，
-      但未成为主流。
-    local: {}
+      并行化（PaLM/GPT-J）已被大模型广泛采纳（吞吐收益）；本地实测其质量代价 +0.05（等参数对照复现）。
+      密集/跨层注意（DenseFormer、Hyper-Connections）报告同规模小幅增益；本地 dense 加权和为中性。
     notes: |
-      本地零经验 + 与「同空间」哲学自洽（不引入新空间，只改连接拓扑）→
-      最便宜的真空白之一。用户 hint：「残差换成层间 attention」。
+      首探结论：**改层间连接在 13M/12k 上没有便宜可捡**。未测：跨层注意力（Hyper-Connections 式）、
+      跨层跳连、无残差、以及 24k/更大尺寸。
 
   # ==================== C4
   - id: C4-weight-sharing
@@ -597,16 +606,19 @@ grids:
       - beam 多线 + 重排
     judge: 同 FLOPs 的质量（等算力对照）+ 草稿接受率 + 组合置信度的校准（ECE）
     cost: 13M 单臂 ~25–30 min
-    status: partial
-    verdict: 组合的结构问题从未被测过：已测的是「条件链 deploy 输给直接头」，归因是草稿质量瓶颈而非结构。
+    status: judged
+    verdict: 自门控组合**被实测否决为主张**：门控混合 0.4738 仅比直跳 0.4672 高 +0.0020（<0.014 噪声带），且等参数无门对照 0.4785 更高 ⇒ 增益归容量不归门控；门不是「选择」而是**坍缩到连跳**（96.7% 位置 g≈0.82，被压掉的直跳分支只训到 0.262 vs 单训 0.467）。
     local:
-      tax: "（组合机制本身的税未单独测；MTP 头的税见 H1）"
-      benefit: "oracle 链 0.682 ≈ node-1 0.693（机制上限成立）；给定 node-1 正确则接受 77.3%"
+      tax: "（头机制，挂冻结主干：零税；头的税见 H1）"
+      benefit: "省算力：等效 1.95×（H4 口径）；门是可观测量（g 分布 + 逐桶命中单调 0.17→0.68）"
       failure:
-        - "朴素复合 P1·P2chain CE 3.96 vs node-2 单独 1.58 —— 数学错误（正确链必须条件在 node-1 的采样 token 上）"
-        - "可部署条件链 0.547 < direct 0.560，~31% 草稿错误、接受 0.75≈0.77；k=1 naive verify-next-round 零吞吐收益 → 瓶颈是草稿质量，不是组合结构"
-        - "consistency loss 中性（IX4 1.6589 ≈ C1 1.6549）→「让组合被训练出来」的既有手段实测无效"
-      evidence: [".scratch/12-overnight/evidence @216a00a", ".scratch/04-m1-runs/evidence @e38349f"]
+        - "**主判据未过**：gated 0.4738 vs 阈值 max(direct 0.4672, composed 0.4718)+0.014 = 0.4858 ⇒ Δ = +0.0020"
+        - "草稿接受率 0.6113（< 0.90）⇒ 不可作草稿"
+        - "**等参数无门对照 direct_eq（394,496 参数，与 gated 逐位相同）反而最高 0.4785** ⇒ 那 +0.0020 归容量、不归门控结构（SCHEMA §15）"
+        - "门**坍缩到单支**：起点 g≡0.5 → 均值 0.82（96.7% 位置偏两跳），被抑制的直跳分支退化到 0.262（单独训练为 0.467）⇒ 不是「选择组合深度」而是「偏好一支」"
+        - "2× 训练（4000 步）后 Δ = +0.0042 仍 < 0.014；快照口径（四臂同窗斜率 −0.060~−0.069/1k 仍在下降）"
+        - "契约缺陷（主 Agent 认领）：sigmoid 门 + 单边零 + 「起步等价 direct 或 composed」三者不可兼得（σ(0)=0.5）"
+      evidence: [".scratch/12-overnight/evidence @216a00a", ".scratch/04-m1-runs/evidence @e38349f", "axes/H-horizon/H3-composition/experiments/2613-self-gated-composition-13m/analysis.md @15eeac0"]
     metrics:
       - "解决什么：多跳组合是否有结构优势（用户新设计）"
       - "代价：Δ clean bpc（同尺寸同 token 预算）；附加头参数量"
@@ -746,10 +758,11 @@ grids:
         - "vocab×hidden 的 MLP 读出**不可 scale**（真词表 100k+ 是瓶颈）→ 只作对照臂，不采纳"
         - "**增益来源不是非线性**：等参数纯线性对照（h' = h + P·(Q h)，2d² 参数）Δ = −0.0888 与 gated 的 −0.0812 不可排序 ⇒ 非线性无额外贡献，增益来自读出重参数化/容量（SCHEMA §15 归因规则）。"
         - "**增益随训练缩减**：Δ 12k −0.0812 → 24k −0.0463（缩 43%）；两臂 24k 仍未收敛（末 25% 窗斜率均 ≈ −0.011/1k）⇒ 快照口径，疑为收敛加速而非最终质量。"
+        - "**不可迁移到普通 dense 模型**：同一读出重参数化在 stock dense 上 Δ = −0.0055（seed0）/ −0.0026（seed1），两 seed 同号且都远小于 0.014 ⇒ 只在本形态有效（差距 16×）。机制证据：dense 上读出变换相对幅度仅 0.6–1.2%（本形态 164–170%），Q 的 fro 从 5.13 被训练收缩到 0.86 → **模型主动不用这块自由度** ⇒ 该增益是**补本形态的读出缺陷**，不是通用改进（SCHEMA §15）。"
         - "**单 seed、单配置（13M / 8L）**：量级与规模外推未做（按 methodology §10 需多档次小实验拟合）"
         - "宽度约束是硬的：d=256 / V=205 时 null 空间仅 62 维、功能性读取 26 条；d=128 < V 时结构性为 0（无余量）"
         - "结构性切分（只读前 r 维）→ 能量迁出读出子空间（W1）"
-      evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/25-tax-attribution/evidence @2e86924", "axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/analysis.md @cba2f39", "axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/analysis.md @2f25fec", "axes/W-width/W4-readout-geometry/experiments/2612-gated-readout-24k-13m/analysis.md @2f25fec"]
+      evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/25-tax-attribution/evidence @2e86924", "axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/analysis.md @cba2f39", "axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/analysis.md @2f25fec", "axes/W-width/W4-readout-geometry/experiments/2612-gated-readout-24k-13m/analysis.md @2f25fec", "axes/W-width/W4-readout-geometry/experiments/2613-readout-reparam-dense-13m/analysis.md @15eeac0"]
     metrics:
       - "解决什么：计算空间与读出可见空间的耦合（宽度约束的来源）"
       - "代价：Δ clean bpc（同尺寸同 token 预算）；读出参数量"

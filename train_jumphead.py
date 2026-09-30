@@ -218,7 +218,209 @@ def init_heads(bank: HeadBank) -> None:
                 nn.init.zeros_(m.bias)
 
 
+# ------------------------------------------- 契约 30-G：自门控多跳组合（H3）
+#
+# 命题：预测 t+2 可以「先后跳 1 两次」（T∘T），也可以「直接跳两步」；由逐通道门
+# 在两者之间插值。三臂（direct / composed / gated）参数量对齐（direct 与 composed
+# 逐位相同；gated 多一个门 G），外加一个 §15 等参数对照臂 direct_eq。
+
+COMPOSE_MODES = ("direct", "composed", "gated", "direct_eq")
+
+
+def tied_logits(z: torch.Tensor, embed_weight: torch.Tensor) -> torch.Tensor:
+    """tied 读出（fp32，autocast 之外）：logits = z @ Eᵀ。与 JumpHead 同几何。"""
+    with torch.autocast("cuda", enabled=False):
+        return z.float() @ embed_weight.float().T
+
+
+class WideDirectHead(nn.Module):
+    """§15 等参数对照：去掉门控/组合结构，把参数花在更宽的 MLP 上。
+
+    参数量 = MLP 隐层 3d（6d²+4d）+ 逐通道偏置（d）= 6d²+5d，与 gated 臂
+    （T 的 4d²+3d + G 的 2d²+2d = 6d²+5d）**逐位相同**；d=256 ⇒ 394,496。
+    逐通道偏置是为逐位对齐而加的通用容量项（不是门控结构）。
+    """
+
+    def __init__(self, d_model: int):
+        super().__init__()
+        self.mlp = nn.Sequential(nn.Linear(d_model, 3 * d_model), nn.GELU(),
+                                 nn.Linear(3 * d_model, d_model))
+        self.bias = nn.Parameter(torch.zeros(d_model))
+
+    def forward(self, h: torch.Tensor) -> torch.Tensor:
+        return h + self.mlp(h) + self.bias
+
+
+class BranchGate(nn.Module):
+    """逐通道自门控 G(h) = fc2(GELU(fc1(h)))，g = sigmoid(G(h)) ∈ (0,1)。
+
+    单边零初始化（SCHEMA §10）：输出侧 fc2 = 0，输入侧 fc1 ~ N(0, 0.02)。
+    起点 G(h) ≡ 0 ⇒ g ≡ 0.5（direct 与 composed 的 50/50 混合，**不是**任一臂
+    的逐位等价——sigmoid 门下要 g≡0 只能靠负偏置，那就不是单边零；见 README §4）。
+    fc2 在首步即拿到非零梯度（∂L/∂fc2 ∝ g'(0)·(T∘T(h)−T(h))·upstream ≠ 0，
+    两分支不同 ⇒ 非零），所以不是鞍点。
+    tests/test_jumphead.py::test_gate_single_sided_zero_escapes 钉住（含变异版）。
+    """
+
+    def __init__(self, d_model: int):
+        super().__init__()
+        self.fc1 = nn.Linear(d_model, d_model)
+        self.fc2 = nn.Linear(d_model, d_model)
+
+    def forward(self, h: torch.Tensor) -> torch.Tensor:
+        return self.fc2(F.gelu(self.fc1(h)))
+
+
+class CompositionHead(nn.Module):
+    """契约 30-G 的组合头：一个 T（+ 可选门）作用一次/两次，tied 读出 t+2。
+
+    direct    : z = T(h)                     （T 作用一次）
+    composed  : z = T(T(h))                  （同一个 T 作用两次，参数与 direct 逐位相同）
+    gated     : z = g⊙T(T(h)) + (1−g)⊙T(h)   （g = sigmoid(G(h)) 逐通道）
+    direct_eq : z = WideDirectHead(h)         （§15 等参数对照：无门、无组合）
+    """
+
+    def __init__(self, d_model: int, mode: str):
+        super().__init__()
+        if mode not in COMPOSE_MODES:
+            raise ValueError(f"unknown composition mode {mode!r} (expect {COMPOSE_MODES})")
+        self.mode = mode
+        self.T = WideDirectHead(d_model) if mode == "direct_eq" else TransformHead(d_model)
+        self.G = BranchGate(d_model) if mode == "gated" else None
+
+    def branches(self, h: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor | None]:
+        """(z1, z2) = (T(h), T(T(h)))；非组合臂的 z2 为 None。"""
+        z1 = self.T(h)
+        z2 = self.T(z1) if self.mode in ("composed", "gated") else None
+        return z1, z2
+
+    def mixture(self, h: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor | None]:
+        """返回 (z_mix, g)：g 只对 gated 臂非 None（逐通道门开度 [.., d]）。"""
+        z1, z2 = self.branches(h)
+        if z2 is None:
+            return z1, None
+        if self.mode == "composed":
+            return z2, None
+        g = torch.sigmoid(self.G(h))
+        return g * z2 + (1.0 - g) * z1, g
+
+    def forward(self, h: torch.Tensor, embed_weight: torch.Tensor) -> torch.Tensor:
+        z, _ = self.mixture(h)
+        return tied_logits(z, embed_weight)
+
+
+def init_composition_head(head: CompositionHead) -> None:
+    """头初始化（std=0.02，bias 0）+ 门的单边零（输出侧 fc2 清零）。"""
+    for m in head.modules():
+        if isinstance(m, nn.Linear):
+            nn.init.normal_(m.weight, std=0.02)
+            if m.bias is not None:
+                nn.init.zeros_(m.bias)
+    if head.G is not None:
+        nn.init.zeros_(head.G.fc2.weight)
+        nn.init.zeros_(head.G.fc2.bias)
+
+
+def param_stats(module: nn.Module) -> dict:
+    """§10 活性量：参数量 / Frobenius 范数 / 逐位最大绝对值 / 非零占比。"""
+    flat = torch.cat([p.detach().float().flatten() for p in module.parameters()])
+    return {"params": int(flat.numel()), "w_fro": round(float(flat.norm()), 4),
+            "w_absmax": round(float(flat.abs().max()), 6),
+            "nonzero_frac": round(float((flat != 0).float().mean()), 6)}
+
+
+def head_activity(head: CompositionHead) -> dict:
+    """干预活性块（T 与门分开报；门的开度分布在评测里报）。"""
+    out = {"mode": head.mode,
+           "params": sum(p.numel() for p in head.parameters()),
+           "T": param_stats(head.T)}
+    if head.G is not None:
+        out["G"] = param_stats(head.G)
+    return out
+
+
 # ----------------------------------------------------------------- 训练
+
+
+def train_composition_head(trunk: DepthARModel, train_arr, hcfg: dict, seed: int,
+                           mode: str, log_path: str,
+                           device: str = "cuda") -> tuple[CompositionHead, float, dict]:
+    """在冻结主干上只训一个 t+2 组合头（契约 30-G）。loss = CE(t+2)，无 t+1 头。
+
+    与 train_heads 的区别只有两处：① 只监督 t+2；② 头是 CompositionHead(mode)。
+    其余（冻结主干 / AdamW / 同一 cosine 调度 / 同一 batch 流 / 同一日志格式）
+    逐字段一致，使三个臂与等参数对照臂互为单因素对照。
+    """
+    steps, bs = hcfg["steps"], hcfg["batch_size"]
+    seq = trunk.cfg.seq_len
+    torch.manual_seed(seed)
+    head = CompositionHead(trunk.cfg.d_model, mode).to(device)
+    init_composition_head(head)
+    opt = torch.optim.AdamW(head.parameters(), lr=hcfg["lr"], weight_decay=0.01)
+    sched = torch.optim.lr_scheduler.LambdaLR(
+        opt, lambda s: min((s + 1) / 200,
+                           0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * s / steps))))
+    gen = torch.Generator().manual_seed(seed)
+    t0 = time.time()
+    loss_acc = 0.0
+    frozen_checked = False
+    for step in range(steps):
+        head.train()
+        x, _ = batch(train_arr, bs, seq, gen)
+        x = x.to(device)
+        with torch.autocast("cuda", dtype=torch.bfloat16,
+                            enabled=torch.cuda.is_available()):
+            with torch.no_grad():
+                h = trunk_hidden(trunk, x)
+            z, _ = head.mixture(h)
+            l2, y2 = shift_pairs(tied_logits(z, trunk.embed.weight), x, 2)
+            loss = F.cross_entropy(l2.reshape(-1, trunk.vocab_size), y2.reshape(-1))
+        opt.zero_grad(set_to_none=True)
+        loss.backward()
+        if not frozen_checked:
+            ok, info = assert_frozen(trunk)
+            if not ok:
+                raise AssertionError(f"trunk not frozen after backward: {info}")
+            frozen_checked = True
+        torch.nn.utils.clip_grad_norm_(head.parameters(), 1.0)
+        opt.step()
+        sched.step()
+        loss_acc += float(loss.detach())
+        if step % 200 == 0 or step == steps - 1:
+            with open(log_path, "a") as f:
+                f.write(json.dumps({
+                    "step": step, "loss": round(float(loss.detach()), 4),
+                    "lr": round(float(sched.get_last_lr()[0]), 6),
+                    "min": round((time.time() - t0) / 60, 3)}) + "\n")
+    wall = time.time() - t0
+    return head, wall, {"loss_mean": round(loss_acc / max(steps, 1), 4),
+                        "steps": steps, "seed": seed, "mode": mode,
+                        "frozen": True, "activity": head_activity(head)}
+
+
+def loss_slope_from_log(log_path: str, tail_frac: float = 0.25) -> dict:
+    """§16 收敛对账：同一窗口（末 tail_frac）、同一算法（对日志点做 OLS）的 loss 斜率。
+
+    所有臂共用同一日志间隔（每 200 步）与同一窗口定义，斜率可直接横比。
+    返回斜率（每 1k 步的 loss 变化，负 = 还在下降）与该窗口的点数。
+    """
+    rows = [json.loads(l) for l in open(log_path) if l.strip()]
+    if not rows:
+        return {"slope_per_1k": None, "n_points": 0, "window": None}
+    steps = max(r["step"] for r in rows)
+    lo = (1.0 - tail_frac) * steps
+    win = [(r["step"], r["loss"]) for r in rows if r["step"] >= lo]
+    n = len(win)
+    if n < 2:
+        return {"slope_per_1k": None, "n_points": n,
+                "window": [round(lo, 1), steps]}
+    mx = sum(s for s, _ in win) / n
+    my = sum(v for _, v in win) / n
+    den = sum((s - mx) ** 2 for s, _ in win)
+    slope = sum((s - mx) * (v - my) for s, v in win) / den if den else 0.0
+    return {"slope_per_1k": round(slope * 1000, 5), "n_points": n,
+            "window": [round(lo, 1), steps],
+            "tail_mean_loss": round(my, 4)}
 
 
 def train_heads(trunk: DepthARModel, train_arr, hcfg: dict, seed: int,
@@ -444,6 +646,305 @@ def evaluate_ar1(trunk: DepthARModel, bank: HeadBank, eval_arr, ecfg: dict,
     return out
 
 
+# -------------------------------------- 契约 30-G：三臂同位置集评测
+
+
+@torch.no_grad()
+def evaluate_composition(trunk: DepthARModel, heads: dict[str, CompositionHead],
+                         eval_arr, ecfg: dict, g_bins: int = 10,
+                         device: str = "cuda") -> dict:
+    """三臂 + 等参数对照臂在**同一位置集**（同一 eval seed / 批次顺序）上打分。
+
+    位置集：行 i 预测 t_{i+2}（i = 0..T-3），与 2610/2611 逐位相同。
+    对照物（§11/§13）：
+    - ar1_deploy：主干自身 1-step AR（只替换紧邻位置 i+1）——诚实对手，草稿接受率的
+      分母就是它（= 头 argmax == 主干自身 argmax），无真值参与；
+    - oracle：喂真 t+1 —— 只是上界参考，不作判据。
+    两臂共享的量（trunk_t1 / ar1 / oracle）只算一次，所有臂吃同一批位置。
+    """
+    trunk.eval()
+    for hd in heads.values():
+        hd.eval()
+    gen = torch.Generator().manual_seed(ecfg["seed"])
+    T = trunk.cfg.seq_len
+    r = T - 2
+    V = trunk.vocab_size
+    E = trunk.embed.weight
+    shared = defaultdict(float)
+    per_arm = {m: defaultdict(float) for m in heads}
+    ce_sum = {m: 0.0 for m in heads}
+    g_scalar, g_hit, g_b1, g_b2, g_chan = [], [], [], [], []
+    n_pos = 0
+    for _ in range(ecfg["n_batches"]):
+        x, _ = batch(eval_arr, ecfg["batch_size"], T, gen)
+        x = x.to(device)
+        h = trunk_hidden(trunk, x)
+        L = trunk.readout(h)
+        xt1, xt2 = x[:, 1:r + 1], x[:, 2:r + 2]
+        row = slice(0, r)
+        a1 = L.argmax(-1)
+        shared["trunk_t1_hit"] += (a1[:, row] == xt1).sum().item()
+        ar1 = ar1_second_step_readout(trunk, x, a1).argmax(-1)     # [B,r]
+        shared["ar1_deploy_t2_hit"] += (ar1 == xt2).sum().item()
+        orc = L[:, 1:r + 1].argmax(-1)
+        shared["oracle_t2_hit"] += (orc == xt2).sum().item()
+        for mode, head in heads.items():
+            z, g = head.mixture(h)
+            logits = tied_logits(z, E)[:, row]                     # [B,r,V]
+            j = logits.argmax(-1)
+            per_arm[mode]["t2_hit"] += (j == xt2).sum().item()
+            per_arm[mode]["accept_vs_ar1"] += (j == ar1).sum().item()
+            per_arm[mode]["accept_vs_oracle"] += (j == orc).sum().item()
+            ce_sum[mode] += F.cross_entropy(
+                logits.reshape(-1, V), xt2.reshape(-1), reduction="sum").item()
+            if g is not None:
+                z1, z2 = head.branches(h)
+                b1 = tied_logits(z1, E)[:, row].argmax(-1)
+                b2 = tied_logits(z2, E)[:, row].argmax(-1)
+                gv = g[:, row]                                     # [B,r,d]
+                g_scalar.append(gv.mean(-1).flatten().cpu())
+                g_chan.append(gv.mean(dim=(0, 1)).cpu())
+                g_hit.append((j == xt2).flatten().cpu())
+                g_b1.append((b1 == xt2).flatten().cpu())
+                g_b2.append((b2 == xt2).flatten().cpu())
+        n_pos += x.shape[0] * r
+
+    out = {"n_positions": n_pos, "shared": {k: round(v / n_pos, 4) for k, v in shared.items()},
+           "arms": {}}
+    for mode in heads:
+        out["arms"][mode] = {k: round(v / n_pos, 4) for k, v in per_arm[mode].items()}
+        out["arms"][mode]["eval_ce_t2"] = round(ce_sum[mode] / n_pos, 4)
+        out["arms"][mode]["activity"] = head_activity(heads[mode])
+    if g_scalar:
+        gs = torch.cat(g_scalar)
+        hit = torch.cat(g_hit)
+        b1_ok = torch.cat(g_b1)
+        b2_ok = torch.cat(g_b2)
+        cm = torch.stack(g_chan).mean(0)                          # 逐通道跨位置均值 [d]
+        q = torch.quantile(gs, torch.tensor([0.1, 0.5, 0.9]))
+        edges = torch.linspace(0, 1, g_bins + 1)
+        bins = []
+        for k, (lo, hi) in enumerate(zip(edges[:-1], edges[1:])):
+            m = (gs >= lo) & (gs <= hi) if k == 0 else (gs > lo) & (gs <= hi)
+            n = int(m.sum())
+            bins.append({"bin": k, "g_lo": round(float(lo), 2), "g_hi": round(float(hi), 2),
+                         "n": n,
+                         "g_mean": round(float(gs[m].mean()), 4) if n else None,
+                         "t2_hit": round(float(hit[m].float().mean()), 4) if n else None,
+                         "direct_branch_hit": round(float(b1_ok[m].float().mean()), 4) if n else None,
+                         "composed_branch_hit": round(float(b2_ok[m].float().mean()), 4) if n else None})
+        # 可控性：门能不能指向「那一步正确的分支」
+        comp_only = b2_ok & (~b1_ok)          # composed 分支对、direct 分支错
+        dir_only = b1_ok & (~b2_ok)           # direct 分支对、composed 分支错
+        out["gated_g"] = {
+            "n_positions": int(gs.numel()),
+            "direct_branch_hit_overall": round(float(b1_ok.float().mean()), 4),
+            "composed_branch_hit_overall": round(float(b2_ok.float().mean()), 4),
+            "mean": round(float(gs.mean()), 4), "std": round(float(gs.std()), 4),
+            "q10": round(float(q[0]), 4), "q50": round(float(q[1]), 4),
+            "q90": round(float(q[2]), 4),
+            "frac_prefer_two_hops": round(float((gs > 0.5).float().mean()), 4),
+            "channel_mean_min": round(float(cm.min()), 4),
+            "channel_mean_max": round(float(cm.max()), 4),
+            "dead_channels_frac": round(float(((cm < 0.05) | (cm > 0.95)).float().mean()), 4),
+            "n_composed_branch_better": int(comp_only.sum()),
+            "n_direct_branch_better": int(dir_only.sum()),
+            "g_mean_when_composed_branch_better": (
+                round(float(gs[comp_only].mean()), 4) if int(comp_only.sum()) else None),
+            "g_mean_when_direct_branch_better": (
+                round(float(gs[dir_only].mean()), 4) if int(dir_only.sum()) else None),
+            "note": "g 按位置取通道均值后再分桶；channel_mean_* 是逐通道跨位置的均值",
+            "bins": bins,
+        }
+    return out
+
+
+def compose_verdict(delta: float, margin: float = 0.014) -> str:
+    """契约 G §4 的预登记判据线归类（代码只做归类，不改线）。
+
+    成功 = gated t+2 命中 ≥ max(direct, composed) + 0.014；
+    |Δ| < 0.014 ⇒ 中性（本项目方差界内不可排序）；Δ ≤ −0.014 ⇒ 失败（自门控组合有害）。
+    """
+    if delta >= margin:
+        return "成功：自门控组合有效"
+    if delta <= -margin:
+        return "失败：自门控组合劣于 max(direct, composed)"
+    return "中性：Δ 在方差界内，不可排序"
+
+
+def run_composition(cfg: dict, args) -> None:
+    """契约 30-G 主流程：冻结主干上训 direct / composed / gated / direct_eq 四臂。
+
+    direct_eq 是 §15 的等参数对照（与 gated 参数量逐位相同、无门无组合），
+    不是判据线的一部分；判据线只有 README §4 那一条。
+    """
+    out_dir = args.out_dir
+    os.makedirs(out_dir, exist_ok=True)
+    cfg_dir = os.path.dirname(os.path.abspath(args.config))
+    rel = cfg["trunk_reuse"]["path"]
+    trunk_path = rel if os.path.isabs(rel) else os.path.normpath(os.path.join(cfg_dir, rel))
+    sha_expect = cfg["trunk_reuse"].get("sha256")
+    sha_actual = sha256_file(trunk_path)
+    if sha_expect and sha_actual != sha_expect:
+        raise SystemExit(f"trunk sha256 不符：{sha_actual} != {sha_expect}")
+
+    hcfg = dict(cfg["head_train"])
+    ecfg = dict(cfg["eval"])
+    ccfg = dict(cfg.get("convergence_check", {}) or {})
+    modes = list(hcfg["arms"])
+    seeds = [int(s) for s in hcfg["seeds"]]
+    if args.head_steps is not None:
+        hcfg["steps"] = args.head_steps
+    if args.smoke:
+        ccfg = {}
+
+    torch.cuda.reset_peak_memory_stats()
+    torch.manual_seed(seeds[0])
+    train_arr, eval_arr, vocab_size = load_enwik8_full(".tmp/enwik8", "data/enwik8_full.npz")
+    trunk = DepthARModel(DepthARConfig(**cfg["trunk"]), vocab_size).cuda()
+    trunk.load_state_dict(torch.load(trunk_path, map_location="cuda"))
+    freeze_trunk(trunk)
+    ok, info = assert_frozen(trunk)
+    n_trunk_params = sum(p.numel() for p in trunk.parameters())
+    print(f"trunk {trunk_path}\n  sha256 {sha_actual} ({os.path.getsize(trunk_path)} B), "
+          f"params {n_trunk_params}, frozen ok={ok} {info}", flush=True)
+
+    t_start = time.time()
+    arms, ckpts = {m: {} for m in modes}, {}
+    gate_dist = {}
+    last_shared = None
+    for seed in seeds:
+        heads = {}
+        for mode in modes:
+            log = os.path.join(out_dir, f"compose_log_{mode}_s{seed}.jsonl")
+            head, wall, stats = train_composition_head(trunk, train_arr, hcfg, seed, mode, log)
+            ckpt = os.path.join(out_dir, f"compose_head_{mode}_s{seed}.pt")
+            torch.save(head.state_dict(), ckpt)
+            ckpts[f"{mode}_s{seed}"] = {
+                "path": os.path.basename(ckpt), "sha256": sha256_file(ckpt),
+                "size_bytes": os.path.getsize(ckpt)}
+            arms[mode][str(seed)] = {"train": stats, "wall_minutes": round(wall / 60, 2)}
+            heads[mode] = head
+            print(f"seed {seed} {mode}: loss_mean {stats['loss_mean']} "
+                  f"({wall / 60:.2f} min)", flush=True)
+        ev = evaluate_composition(trunk, heads, eval_arr, ecfg)
+        for mode in modes:
+            arms[mode][str(seed)].update(ev["arms"][mode])
+            arms[mode][str(seed)]["n_positions"] = ev["n_positions"]
+        last_shared = ev["shared"]
+        if "gated_g" in ev:
+            gate_dist[str(seed)] = ev["gated_g"]
+        print(f"seed {seed} eval: " + " ".join(
+            f"{m}={ev['arms'][m]['t2_hit']:.4f}/{ev['arms'][m]['accept_vs_ar1']:.4f}"
+            for m in modes) + f"  ar1={ev['shared']['ar1_deploy_t2_hit']:.4f}", flush=True)
+
+    # --- §16 收敛对账：同一主干、同一方法（同窗口同算法），只改步数 ---
+    conv = {}
+    if ccfg.get("steps"):
+        conv_cfg = dict(hcfg)
+        conv_cfg["steps"] = int(ccfg["steps"])
+        for seed in [int(s) for s in ccfg.get("seeds", [])]:
+            heads = {}
+            for mode in modes:
+                log = os.path.join(out_dir, f"compose_log_{mode}_s{seed}_{conv_cfg['steps']}step.jsonl")
+                head, wall, stats = train_composition_head(trunk, train_arr, conv_cfg,
+                                                           seed, mode, log)
+                ckpt = os.path.join(out_dir, f"compose_head_{mode}_s{seed}_{conv_cfg['steps']}step.pt")
+                torch.save(head.state_dict(), ckpt)
+                ckpts[f"{mode}_s{seed}_{conv_cfg['steps']}step"] = {
+                    "path": os.path.basename(ckpt), "sha256": sha256_file(ckpt),
+                    "size_bytes": os.path.getsize(ckpt)}
+                heads[mode] = head
+                print(f"conv seed {seed} {mode}: {stats['loss_mean']} ({wall/60:.2f} min)", flush=True)
+            ev = evaluate_composition(trunk, heads, eval_arr, ecfg)
+            conv[str(seed)] = {"steps": conv_cfg["steps"], **ev}
+            print(f"conv seed {seed} eval: " + " ".join(
+                f"{m}={ev['arms'][m]['t2_hit']:.4f}" for m in modes), flush=True)
+
+    peak_mb = torch.cuda.max_memory_allocated() / 2 ** 20
+    mean = lambda mode, key: round(
+        sum(arms[mode][s][key] for s in arms[mode]) / len(arms[mode]), 4)
+    dm, cmo, gm = mean("direct", "t2_hit"), mean("composed", "t2_hit"), mean("gated", "t2_hit")
+    best = max(dm, cmo)
+    acc_gated = mean("gated", "accept_vs_ar1")
+    shared0 = last_shared
+
+    def slopes(mode: str, steps: int, seed: int = 0) -> dict:
+        tag = "" if steps == hcfg["steps"] else f"_{steps}step"
+        return loss_slope_from_log(os.path.join(out_dir, f"compose_log_{mode}_s{seed}{tag}.jsonl"))
+
+    conv_summary = {}
+    if conv:
+        for steps in sorted({v["steps"] for v in conv.values()}):
+            conv_summary[str(steps)] = {
+                "t2_hit": {m: round(sum(conv[s]["arms"][m]["t2_hit"] for s in conv) / len(conv), 4)
+                           for m in modes},
+                "delta_gated_vs_best": round(
+                    sum(conv[s]["arms"]["gated"]["t2_hit"] for s in conv) / len(conv)
+                    - max(sum(conv[s]["arms"][m]["t2_hit"] for s in conv) / len(conv)
+                          for m in ("direct", "composed")), 4),
+                "slope_per_1k": {m: slopes(m, steps)["slope_per_1k"] for m in modes},
+                "window": slopes("gated", steps)["window"],
+            }
+
+    results = {
+        "contract": ("axes/H-horizon/H3-composition/experiments/"
+                     "2613-self-gated-composition-13m/README.md"),
+        "config": cfg,
+        "reused_trunk": {"path": trunk_path, "sha256": sha_actual,
+                         "sha256_verified": bool(sha_expect) and sha_actual == sha_expect,
+                         "size_bytes": os.path.getsize(trunk_path),
+                         "params": n_trunk_params, "frozen_assertion_ok": bool(ok),
+                         "frozen_offenders": info},
+        "intervention": {
+            "variable": "组合结构（唯一变量）",
+            "arms": {m: (arms[m][str(seeds[0])]["train"]["activity"]) for m in modes},
+            "gated_g_at_eval": gate_dist,
+            "alive": all(arms[m][str(seeds[0])]["train"]["activity"]["T"]["nonzero_frac"] > 0
+                         for m in modes),
+        },
+        "arms": arms,
+        "arms_mean": {m: {k: mean(m, k) for k in
+                           ("t2_hit", "accept_vs_ar1", "accept_vs_oracle", "eval_ce_t2")}
+                      for m in modes},
+        "params": {m: arms[m][str(seeds[0])]["train"]["activity"]["params"] for m in modes},
+        "convergence": {
+            "main": {m: {"steps": hcfg["steps"], **slopes(m, hcfg["steps"])} for m in modes},
+            "longer": conv_summary,
+            "raw": conv,
+            "note": ("每臂日志每 200 步一点；斜率 = 末 25% 窗口内对日志点做 OLS，"
+                     "所有臂同窗口同算法（§16）"),
+        },
+        "criteria": {
+            "main": {"metric": "t2_hit（行 i 的 argmax == 真值 t_{i+2}）",
+                     "gated": gm, "direct": dm, "composed": cmo,
+                     "best_baseline": best, "margin": 0.014,
+                     "delta_vs_best": round(gm - best, 4),
+                     "ok": gm >= best + 0.014},
+            "parallel_draft_accept": {
+                "metric": "accept_vs_ar1 = P(头 argmax == 主干自身 1-step AR argmax)",
+                "gated": acc_gated, "threshold": 0.90, "ok": acc_gated >= 0.90},
+            "oracle": {"t2_hit": shared0["oracle_t2_hit"], "used_as_criterion": False,
+                      "note": "喂真 t+1 的上界，只作参考（SCHEMA §11）"},
+            "verdict": compose_verdict(gm - best),
+        },
+        "reuse_anchors": {
+            "note": "同主干上的历史锚点（不同训练配方：2610/2611 同时训 t1+t2 两头）",
+            "2610_head_t2_hit": 0.4667, "2611_ar1_deploy_t2_hit": 0.5489,
+            "2611_accept_jump_t2": 0.5998, "2611_oracle_t2_hit": 0.6953,
+        },
+        "heads": ckpts,
+        "cost": {"gpu_wall_minutes": round((time.time() - t_start) / 60, 2),
+                 "peak_mem_mib": round(peak_mb, 1),
+                 "runs": len(seeds) * len(modes) + len(ccfg.get("seeds", [])) * len(modes)},
+    }
+    with open(os.path.join(out_dir, "results.json"), "w") as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+    print(json.dumps({k: v for k, v in results.items()
+                      if k not in ("config", "heads", "arms")},
+                     indent=2, ensure_ascii=False))
+
+
 # ----------------------------------------------------------------- 主流程
 
 
@@ -482,13 +983,15 @@ def main():
                     help="已训主干权重路径；给定则跳过主干训练（容量消融复用同一冻结主干）")
     ap.add_argument("--head-hidden-mult", type=int, default=None, help="头 MLP 隐层倍数（缺省 2）")
     ap.add_argument("--head-blocks", type=int, default=None, help="头残差块数（缺省 1）")
+    ap.add_argument("--composition", action="store_true",
+                    help="契约 30-G：冻结主干上训 direct/composed/gated/direct_eq 四臂（H3 自门控组合）")
     ap.add_argument("--smoke", action="store_true",
                     help="20 步冒烟：主干 20 步 + 头 20 步 + 小评测，打印步时与显存")
     args = ap.parse_args()
 
     cfg = json.load(open(args.config))
     if args.smoke:
-        cfg["trunk_train"]["steps"] = 20
+        cfg.setdefault("trunk_train", {})["steps"] = 20
         cfg["head_train"]["steps"] = 20
         cfg["eval"]["n_batches"] = 2
         cfg["eval"]["batch_size"] = 4
@@ -500,6 +1003,9 @@ def main():
         cfg["trunk_train"]["steps"] = args.trunk_steps
     if args.head_steps is not None:
         cfg["head_train"]["steps"] = args.head_steps
+
+    if args.composition:
+        return run_composition(cfg, args)
 
     os.makedirs(args.out_dir, exist_ok=True)
     torch.manual_seed(cfg["trunk_train"]["seed"])

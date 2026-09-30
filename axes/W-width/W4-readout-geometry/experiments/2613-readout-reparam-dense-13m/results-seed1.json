@@ -1,0 +1,751 @@
+{
+  "experiment": "2613-readout-reparam-dense-13m",
+  "config": {
+    "experiment": "2613-readout-reparam-dense-13m",
+    "contract": "契约 F（.scratch/30-batch3/issues/01-batch3.md）",
+    "seed": 1,
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "exit_mode": "uniform",
+    "data": "/home/z/vibe/pathlm/data/enwik8_full.npz",
+    "data_split": "first 90M train / last 10M eval, vocab from full file",
+    "vocab_size": 206,
+    "device": "cuda",
+    "base": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 4,
+      "dense": true,
+      "fill_kv": true,
+      "proj_fill": false,
+      "topology": "sequential",
+      "gate_bias_init": -2.0,
+      "readout_dims": null,
+      "aux_weight": 1.0,
+      "final_weight": 1.0,
+      "shallow_stopgrad": false,
+      "dense_aux": false
+    },
+    "arms": [
+      "baseline",
+      "linres"
+    ],
+    "intervention": {
+      "baseline": {
+        "readout": "tied linear h·Eᵀ",
+        "readout_linear_resid": false,
+        "readout_gated": false
+      },
+      "linres": {
+        "readout": "(h + P·(Q h))·Eᵀ（整体 (I+PQ)h）",
+        "readout_linear_resid": true,
+        "init": "Q ~ N(0,0.02), P = 0（单边零，恒等起步、非鞍点）",
+        "params_added": 131072
+      },
+      "gated": {
+        "readout": "(h + SiLU(W1 h)⊙(W2 h))·Eᵀ",
+        "readout_gated": true,
+        "init": "W1 ~ N(0,0.02), W2 = 0（单边零）",
+        "params_added": 131072
+      }
+    },
+    "criterion": {
+      "definition": "Δbpc_improvement = bpc_baseline − bpc_linres（正 = 改善）",
+      "transferable": "Δ ≥ +0.014",
+      "not_transferable": "|Δ| < 0.014",
+      "negative_transfer": "Δ ≤ −0.014",
+      "variance_bound": 0.014,
+      "same_method_slope_required": true
+    },
+    "reference_depthar_12k": -0.0888,
+    "reference_depthar_24k": -0.0463
+  },
+  "train": {
+    "baseline": {
+      "source": "runs/dense-base-12000-s1",
+      "wall_min": 5.64,
+      "peak_child_mem_gb": 1.47,
+      "params": 6962688,
+      "gnorm_monitor": {
+        "gnorm_max": 6.58,
+        "gnorm_mean": 0.534,
+        "grad_skips": 0
+      }
+    },
+    "linres": {
+      "source": "runs/dense-linres-12000-s1",
+      "wall_min": 6.16,
+      "peak_child_mem_gb": 1.71,
+      "params": 7093760,
+      "gnorm_monitor": {
+        "gnorm_max": 6.58,
+        "gnorm_mean": 0.542,
+        "grad_skips": 0
+      }
+    }
+  },
+  "historical_reproduction": {
+    "source": ".scratch/23-depth-ar/evidence/23d-dense-B-12k",
+    "state_dict_missing": [],
+    "state_dict_unexpected": [],
+    "reproduced_bpc": 1.5287,
+    "hist_bpc": 1.5287,
+    "bitwise_equal": true,
+    "note": "同一评测代码（depth_curve, 20 batches）重测历史 checkpoint；bpc 逐位复现 ⇒ 当前引擎与历史实现等价。"
+  },
+  "config_equivalence": {
+    "rows": [
+      {
+        "field": "d_model",
+        "values": {
+          "baseline": 256,
+          "linres": 256
+        },
+        "all_equal": true,
+        "source": "results.json::config"
+      },
+      {
+        "field": "n_layers",
+        "values": {
+          "baseline": 8,
+          "linres": 8
+        },
+        "all_equal": true,
+        "source": "results.json::config"
+      },
+      {
+        "field": "n_heads",
+        "values": {
+          "baseline": 8,
+          "linres": 8
+        },
+        "all_equal": true,
+        "source": "results.json::config"
+      },
+      {
+        "field": "seq_len",
+        "values": {
+          "baseline": 256,
+          "linres": 256
+        },
+        "all_equal": true,
+        "source": "results.json::config"
+      },
+      {
+        "field": "mlp_mult",
+        "values": {
+          "baseline": 4,
+          "linres": 4
+        },
+        "all_equal": true,
+        "source": "results.json::config"
+      },
+      {
+        "field": "dropout",
+        "values": {
+          "baseline": 0.0,
+          "linres": 0.0
+        },
+        "all_equal": true,
+        "source": "results.json::config"
+      },
+      {
+        "field": "norm_cap",
+        "values": {
+          "baseline": 1.0,
+          "linres": 1.0
+        },
+        "all_equal": true,
+        "source": "results.json::config"
+      },
+      {
+        "field": "gate_bias_init",
+        "values": {
+          "baseline": -2.0,
+          "linres": -2.0
+        },
+        "all_equal": true,
+        "source": "results.json::config"
+      },
+      {
+        "field": "dense",
+        "values": {
+          "baseline": true,
+          "linres": true
+        },
+        "all_equal": true,
+        "source": "results.json::config"
+      },
+      {
+        "field": "fill_kv",
+        "values": {
+          "baseline": true,
+          "linres": true
+        },
+        "all_equal": true,
+        "source": "results.json::config"
+      },
+      {
+        "field": "proj_fill",
+        "values": {
+          "baseline": false,
+          "linres": false
+        },
+        "all_equal": true,
+        "source": "results.json::config"
+      },
+      {
+        "field": "readout_dims",
+        "values": {
+          "baseline": null,
+          "linres": null
+        },
+        "all_equal": true,
+        "source": "results.json::config"
+      },
+      {
+        "field": "topology",
+        "values": {
+          "baseline": "sequential",
+          "linres": "sequential"
+        },
+        "all_equal": true,
+        "source": "results.json::config"
+      },
+      {
+        "field": "exit_mode",
+        "values": {
+          "baseline": "uniform",
+          "linres": "uniform"
+        },
+        "all_equal": true,
+        "source": "results.json"
+      },
+      {
+        "field": "aux_weight",
+        "values": {
+          "baseline": 1.0,
+          "linres": 1.0
+        },
+        "all_equal": true,
+        "source": "results.json"
+      },
+      {
+        "field": "aux_anneal_to",
+        "values": {
+          "baseline": null,
+          "linres": null
+        },
+        "all_equal": true,
+        "source": "results.json"
+      },
+      {
+        "field": "final_weight",
+        "values": {
+          "baseline": 1.0,
+          "linres": 1.0
+        },
+        "all_equal": true,
+        "source": "results.json"
+      },
+      {
+        "field": "shallow_stopgrad",
+        "values": {
+          "baseline": false,
+          "linres": false
+        },
+        "all_equal": true,
+        "source": "results.json"
+      },
+      {
+        "field": "dense_aux",
+        "values": {
+          "baseline": false,
+          "linres": false
+        },
+        "all_equal": true,
+        "source": "results.json"
+      },
+      {
+        "field": "exit_anneal",
+        "values": {
+          "baseline": false,
+          "linres": false
+        },
+        "all_equal": true,
+        "source": "results.json"
+      },
+      {
+        "field": "train_tokens",
+        "values": {
+          "baseline": 98304000,
+          "linres": 98304000
+        },
+        "all_equal": true,
+        "source": "results.json"
+      },
+      {
+        "field": "vocab_size",
+        "values": {
+          "baseline": 206,
+          "linres": 206
+        },
+        "all_equal": true,
+        "source": "results.json"
+      },
+      {
+        "field": "train.steps",
+        "values": {
+          "baseline": 12000,
+          "linres": 12000
+        },
+        "all_equal": true,
+        "source": "results.json::train"
+      },
+      {
+        "field": "train.batch_size",
+        "values": {
+          "baseline": 32,
+          "linres": 32
+        },
+        "all_equal": true,
+        "source": "results.json::train"
+      },
+      {
+        "field": "train.lr",
+        "values": {
+          "baseline": 0.001,
+          "linres": 0.001
+        },
+        "all_equal": true,
+        "source": "results.json::train"
+      },
+      {
+        "field": "train.seed",
+        "values": {
+          "baseline": 1,
+          "linres": 1
+        },
+        "all_equal": true,
+        "source": "results.json::train"
+      },
+      {
+        "field": "readout_gated",
+        "values": {
+          "baseline": false,
+          "linres": false
+        },
+        "all_equal": true,
+        "source": "唯一变量 = 读出几何（预期不等；params 差 = 2·d²）"
+      },
+      {
+        "field": "readout_linear_resid",
+        "values": {
+          "baseline": false,
+          "linres": true
+        },
+        "all_equal": false,
+        "source": "唯一变量 = 读出几何（预期不等；params 差 = 2·d²）"
+      },
+      {
+        "field": "params",
+        "values": {
+          "baseline": 6962688,
+          "linres": 7093760
+        },
+        "all_equal": false,
+        "source": "唯一变量 = 读出几何（预期不等；params 差 = 2·d²）"
+      }
+    ],
+    "all_equal_except_readout_geometry": true,
+    "baseline_source": "axes/W-width/W4-readout-geometry/experiments/2613-readout-reparam-dense-13m/runs/dense-base-12000-s1"
+  },
+  "baseline_arm": {
+    "source": "runs/dense-base-12000-s1",
+    "params": 6962688,
+    "wall_min": 5.64,
+    "peak_child_mem_gb": 1.47,
+    "eval_wall_min": 0.01,
+    "gnorm_monitor": {
+      "gnorm_max": 6.58,
+      "gnorm_mean": 0.534,
+      "grad_skips": 0
+    },
+    "train_wall_min_reported": 5.64,
+    "depth_curve": [
+      {
+        "depth": 0,
+        "bpc": 7.3917,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "bpc": 4.9325,
+        "acc": 0.1303
+      },
+      {
+        "depth": 2,
+        "bpc": 4.3779,
+        "acc": 0.1911
+      },
+      {
+        "depth": 3,
+        "bpc": 3.8723,
+        "acc": 0.2736
+      },
+      {
+        "depth": 4,
+        "bpc": 3.2837,
+        "acc": 0.3774
+      },
+      {
+        "depth": 5,
+        "bpc": 2.67,
+        "acc": 0.4889
+      },
+      {
+        "depth": 6,
+        "bpc": 2.1154,
+        "acc": 0.5896
+      },
+      {
+        "depth": 7,
+        "bpc": 1.7237,
+        "acc": 0.6575
+      },
+      {
+        "depth": 8,
+        "bpc": 1.5298,
+        "acc": 0.6879
+      }
+    ],
+    "tf_acceptance": [
+      {
+        "depth": 0,
+        "accept": 0.0554
+      },
+      {
+        "depth": 1,
+        "accept": 0.1445
+      },
+      {
+        "depth": 2,
+        "accept": 0.2096
+      },
+      {
+        "depth": 3,
+        "accept": 0.3083
+      },
+      {
+        "depth": 4,
+        "accept": 0.4276
+      },
+      {
+        "depth": 5,
+        "accept": 0.5613
+      },
+      {
+        "depth": 6,
+        "accept": 0.6871
+      },
+      {
+        "depth": 7,
+        "accept": 0.8088
+      }
+    ],
+    "tf_note": "dense 形态的中间深度读出无直接监督，tf@k 是 depth-k 残差态 tied 读出与最终读出的 argmax 一致率 proxy（非训练出口资产）",
+    "calibration": {
+      "prob0_ece": 0.0047,
+      "exit4_ece": 0.02,
+      "ece_by_depth": [
+        0.0462,
+        0.1008,
+        0.0709,
+        0.0494,
+        0.02,
+        0.0245,
+        0.0254,
+        0.038,
+        0.0047
+      ],
+      "n_bins": 15
+    },
+    "transform_rel_mag_by_depth": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ]
+  },
+  "linres_arm": {
+    "source": "runs/dense-linres-12000-s1",
+    "params": 7093760,
+    "wall_min": 6.16,
+    "peak_child_mem_gb": 1.71,
+    "eval_wall_min": 0.01,
+    "gnorm_monitor": {
+      "gnorm_max": 6.58,
+      "gnorm_mean": 0.542,
+      "grad_skips": 0
+    },
+    "train_wall_min_reported": 6.16,
+    "depth_curve": [
+      {
+        "depth": 0,
+        "bpc": 7.3793,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "bpc": 4.7247,
+        "acc": 0.1442
+      },
+      {
+        "depth": 2,
+        "bpc": 4.2997,
+        "acc": 0.1971
+      },
+      {
+        "depth": 3,
+        "bpc": 3.8489,
+        "acc": 0.2728
+      },
+      {
+        "depth": 4,
+        "bpc": 3.3125,
+        "acc": 0.3754
+      },
+      {
+        "depth": 5,
+        "bpc": 2.6948,
+        "acc": 0.4852
+      },
+      {
+        "depth": 6,
+        "bpc": 2.155,
+        "acc": 0.5789
+      },
+      {
+        "depth": 7,
+        "bpc": 1.7366,
+        "acc": 0.6565
+      },
+      {
+        "depth": 8,
+        "bpc": 1.5324,
+        "acc": 0.6891
+      }
+    ],
+    "tf_acceptance": [
+      {
+        "depth": 0,
+        "accept": 0.056
+      },
+      {
+        "depth": 1,
+        "accept": 0.1629
+      },
+      {
+        "depth": 2,
+        "accept": 0.2233
+      },
+      {
+        "depth": 3,
+        "accept": 0.3121
+      },
+      {
+        "depth": 4,
+        "accept": 0.4246
+      },
+      {
+        "depth": 5,
+        "accept": 0.5518
+      },
+      {
+        "depth": 6,
+        "accept": 0.6773
+      },
+      {
+        "depth": 7,
+        "accept": 0.808
+      }
+    ],
+    "tf_note": "dense 形态的中间深度读出无直接监督，tf@k 是 depth-k 残差态 tied 读出与最终读出的 argmax 一致率 proxy（非训练出口资产）",
+    "calibration": {
+      "prob0_ece": 0.0067,
+      "exit4_ece": 0.0233,
+      "ece_by_depth": [
+        0.0465,
+        0.0728,
+        0.037,
+        0.0362,
+        0.0233,
+        0.0185,
+        0.0345,
+        0.0335,
+        0.0067
+      ],
+      "n_bins": 15
+    },
+    "transform_rel_mag_by_depth": [
+      0.0119,
+      0.0061,
+      0.007,
+      0.0073,
+      0.0075,
+      0.0077,
+      0.0077,
+      0.0076,
+      0.0071
+    ],
+    "intervention": {
+      "p_fro": 1.3467,
+      "q_fro": 0.8579,
+      "w_absmax": 0.0669,
+      "p_spec_norm": 0.5011,
+      "q_spec_norm": 0.3254,
+      "params_added": 131072,
+      "readout": "linear-resid",
+      "nonzero_frac": 1.0
+    }
+  },
+  "intervention": {
+    "p_fro": 1.3467,
+    "q_fro": 0.8579,
+    "w_absmax": 0.0669,
+    "p_spec_norm": 0.5011,
+    "q_spec_norm": 0.3254,
+    "params_added": 131072,
+    "readout": "linear-resid",
+    "nonzero_frac": 1.0
+  },
+  "convergence": {
+    "method": "末 25% 窗（同一窗口比例、同一最小二乘算法）loss 对 step 的斜率 ×1000（每 1000 步的 loss 变化）；bench 同一口径。",
+    "window_def": "last 25% = steps 9000..12000",
+    "by_arm": {
+      "baseline": {
+        "loss_last25pct": {
+          "n_points": 16,
+          "step_first": 9000,
+          "step_last": 11999,
+          "slope_per_1k_steps": -0.00153
+        },
+        "loss_last50pct": {
+          "n_points": 31,
+          "step_first": 6000,
+          "step_last": 11999,
+          "slope_per_1k_steps": -0.01773
+        },
+        "loss_last1000": {
+          "n_points": 6,
+          "step_first": 11000,
+          "step_last": 11999,
+          "slope_per_1k_steps": 0.03951
+        },
+        "final_ce_last25pct": {
+          "n_points": 16,
+          "step_first": 9000,
+          "step_last": 11999,
+          "slope_per_1k_steps": -0.00153
+        },
+        "loss_first": 5.2982,
+        "loss_last": 1.1211,
+        "step_first": 0,
+        "step_last": 11999,
+        "slope_minus_baseline_last25pct": 0.0
+      },
+      "linres": {
+        "loss_last25pct": {
+          "n_points": 16,
+          "step_first": 9000,
+          "step_last": 11999,
+          "slope_per_1k_steps": 0.00038
+        },
+        "loss_last50pct": {
+          "n_points": 31,
+          "step_first": 6000,
+          "step_last": 11999,
+          "slope_per_1k_steps": -0.01699
+        },
+        "loss_last1000": {
+          "n_points": 6,
+          "step_first": 11000,
+          "step_last": 11999,
+          "slope_per_1k_steps": 0.03482
+        },
+        "final_ce_last25pct": {
+          "n_points": 16,
+          "step_first": 9000,
+          "step_last": 11999,
+          "slope_per_1k_steps": 0.00038
+        },
+        "loss_first": 5.2982,
+        "loss_last": 1.1164,
+        "step_first": 0,
+        "step_last": 11999,
+        "slope_minus_baseline_last25pct": 0.00191
+      }
+    },
+    "note": "loss 是单 batch 的最终深度 CE（dense 形态 n_ce=1，无混合深度噪声）；斜率用于「是否只是收敛加速」的对账，不单独作判据。"
+  },
+  "reconciliation": {
+    "arithmetic": {
+      "bpc_baseline": 1.5298,
+      "bpc_linres": 1.5324,
+      "delta_improvement": -0.0026,
+      "delta_arm_minus_baseline": 0.0026,
+      "criterion_transferable": "Δ ≥ +0.014",
+      "met": false,
+      "criterion_negative": "Δ ≤ −0.014",
+      "is_negative": false,
+      "within_variance_bound": true,
+      "params_baseline": 6962688,
+      "params_linres": 7093760,
+      "params_extra": 131072,
+      "params_extra_expected": 131072,
+      "params_extra_equal_2d2": true,
+      "bpc_lower_bound": 0.0,
+      "fresh_baseline_vs_hist_retrain": 0.0011,
+      "fresh_baseline_vs_hist_note": "全新重训的 baseline 与历史 23d-dense-B-12k（同配置同 seed）的 bpc 差 = run-to-run 数值不确定性底噪（CUDA bf16 归约顺序）；历史 checkpoint 重载评测仍逐位得 1.5287（见 historical_reproduction）。",
+      "reference_depthar_12k_delta_improvement": 0.0888,
+      "reference_depthar_24k_delta_improvement": 0.0463
+    },
+    "task": {
+      "same_task": "同一 enwik8 char 级 AR 任务、同一数据切分（前 90M/末 10M）、同一位置集（全序列逐位置、最终深度读出）、同一目标定义（tokens 自移位）",
+      "same_battery": "两臂用同一 run.py::run_battery（同 n_batches/seed/batch_size/评测代码）",
+      "no_truth_leak": "两臂读出只依赖模型自身状态，无真值泄漏，无「假上下文」式对照",
+      "deploy_correspondence": "两臂都是 stock decoder-only 形态的标准读出路径；对照只改读出前状态变换"
+    },
+    "caliber": {
+      "matched_step_snapshot": true,
+      "steps": 12000,
+      "train_tokens": 98304000,
+      "seed": 1,
+      "n_seed": 1,
+      "note": "两臂同为 matched-step 快照口径（非渐近、非墙钟、非 FLOPs）；梯度计算含 CUDA 非确定性，快照 bpc 以实测为准。"
+    }
+  },
+  "verdict": {
+    "criterion": "Δbpc_improvement = bpc_baseline − bpc_linres；≥ +0.014 可迁移 / |Δ| < 0.014 不可迁移 / ≤ −0.014 负迁移",
+    "delta_improvement": -0.0026,
+    "bpc_baseline": 1.5298,
+    "bpc_linres": 1.5324,
+    "linres_tf4": 0.4246,
+    "baseline_tf4": 0.4276,
+    "baseline_prob0_ece": 0.0047,
+    "linres_prob0_ece": 0.0067,
+    "slope_last25pct_baseline": -0.00153,
+    "slope_last25pct_linres": 0.00038,
+    "slope_diff_linres_minus_baseline": 0.00191,
+    "verdict": "不可迁移（只在 depth-ar 形态内有效）"
+  },
+  "wall_total_min": 0.05
+}

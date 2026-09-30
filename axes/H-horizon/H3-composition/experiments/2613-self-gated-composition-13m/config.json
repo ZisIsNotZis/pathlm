@@ -1,0 +1,33 @@
+{
+  "trunk": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true
+  },
+  "trunk_reuse": {
+    "path": "../../../H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "note": "2610 的冻结主干（13.5M dense，12k 步，bpc 1.4836，t+1 acc 0.6979）；只训头"
+  },
+  "head_train": {
+    "steps": 2000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seeds": [0, 1],
+    "arms": ["direct", "composed", "gated", "direct_eq"],
+    "note": "t+2 单目标 CE；direct_eq = §15 等参数对照（不是判据线的一部分）"
+  },
+  "convergence_check": {
+    "steps": 4000,
+    "seeds": [0],
+    "note": "§16：同一窗口同一算法的斜率 + 2× 步数点"
+  },
+  "eval": {
+    "n_batches": 24,
+    "batch_size": 16,
+    "seed": 7
+  }
+}

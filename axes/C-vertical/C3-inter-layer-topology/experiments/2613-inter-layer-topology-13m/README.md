@@ -139,3 +139,5 @@ d=256 / L=8 / h=8 / seq=256 / mlp_mult=4 / dropout=0 / norm_cap=1 / bs=32 / lr=1
 下的 `README.md`(本文件) / `run.py` / `smoke.py` / `mutate.py` / `rederive_liveness.py` /
 `config.json` / `results.json` / `mutation_report.json` / `train_log.jsonl`（四臂） /
 `analysis.md` / `stability.md` / `MODEL.md`。
+
+> 主 Agent 补注（复核 P2#1）：§0 为契约摘要，**判据线逐字保留**；原文见 `.scratch/30-batch3/issues/01-batch3.md` 契约 E。

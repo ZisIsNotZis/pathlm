@@ -2,7 +2,7 @@
 
 # INDEX · 设计空间状态灯
 
-共 **51** 个格子 ｜ ✅ judged 26 ｜ ◐ partial 10 ｜ 🏭 reference 7 ｜ ⬜ stub 8
+共 **51** 个格子 ｜ ✅ judged 28 ｜ ◐ partial 9 ｜ 🏭 reference 7 ｜ ⬜ stub 7
 
 > 全部内容由 `tools/build_wiki.py` 从 `catalog.yaml` 生成；**不要手改本文件**。
 
@@ -31,7 +31,7 @@
 |---|---|---|
 | [`C1-layers-per-token`](axes/C-vertical/C1-layers-per-token/README.md) · 每个 token 跑几层 | ✅ judged | 逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。 |
 | [`C2-layer-selection-order`](axes/C-vertical/C2-layer-selection-order/README.md) · 选哪些层与执行顺序 | ✅ judged | 元素税定律的原始出处：破坏型元素贵，保留型近免费。 |
-| [`C3-inter-layer-topology`](axes/C-vertical/C3-inter-layer-topology/README.md) · 层间拓扑（残差之外的连接） | ⬜ stub | — |
+| [`C3-inter-layer-topology`](axes/C-vertical/C3-inter-layer-topology/README.md) · 层间拓扑（残差之外的连接） | ✅ judged | 首探无优势：**并行子层明确有害**（+0.0458，等参数对照 +0.0402 复现），**层间学习加权和中性**（−0.0008）。 |
 | [`C4-weight-sharing`](axes/C-vertical/C4-weight-sharing/README.md) · 权重共享 | ⬜ stub | — |
 | [`C5-refinement-operator`](axes/C-vertical/C5-refinement-operator/README.md) · 精化算子 | ✅ judged | 携带门是形态税的承载者之一，也是「任意深度可读」的结构来源。 |
 | [`C6-depth-supervision`](axes/C-vertical/C6-depth-supervision/README.md) · 训练期深度分布与监督密度 | ✅ judged | 出口资产只能由深度维监督造出来——这是本项目最有迁移价值的一条结论。 |
@@ -44,7 +44,7 @@
 |---|---|---|
 | [`H1-outputs-per-pass`](axes/H-horizon/H1-outputs-per-pass/README.md) · 每步输出位置数 | ✅ judged | 全项目税效比最好的机制；但墙钟收益是 13M/launch-bound 现象。 |
 | [`H2-training-fill`](axes/H-horizon/H2-training-fill/README.md) · 训练时未来位置的内容填充 | ✅ judged | 保留式填充（self-fill）胜出；PAD 与错误 token 都更贵；软提交有 OOD 污染。 |
-| [`H3-composition`](axes/H-horizon/H3-composition/README.md) · 多位置预测的组合方式 | ◐ partial | 组合的结构问题从未被测过：已测的是「条件链 deploy 输给直接头」，归因是草稿质量瓶颈而非结构。 |
+| [`H3-composition`](axes/H-horizon/H3-composition/README.md) · 多位置预测的组合方式 | ✅ judged | 自门控组合**被实测否决为主张**：门控混合 0.4738 仅比直跳 0.4672 高 +0.0020（<0.014 噪声带），且等参数无门对照 0.4785 更高 ⇒ 增益归容量不归门控；门不是… |
 | [`H4-head-trunk-relation`](axes/H-horizon/H4-head-trunk-relation/README.md) · 头与主干的关系 | ✅ judged | 挂头零税坐实（Δbpc = 0.0000）。按修正后的诚实口径（vs 1-step AR 两次前向，只替换紧邻位置）**判中性**：对手 54.89%（≥ 算术下界 0.4822 ✓ 对账过），跳… |
 | [`H5-verification`](axes/H-horizon/H5-verification/README.md) · 验证机制 | ✅ judged | 批量验证可用且逐位一致；定稿不变量（全深度重打分）是本形态的正确性保障。 |
 

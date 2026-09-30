@@ -1,0 +1,172 @@
+{
+  "experiment": "2613-readout-reparam-dense-13m",
+  "device": "cuda",
+  "visible_total_gb": 23.54,
+  "vocab_size": 206,
+  "params": {
+    "baseline": 6962688,
+    "linres": 7093760,
+    "gated": 7093760,
+    "linres_minus_baseline": 131072,
+    "expected_2d2": 131072,
+    "linres_equals_gated": true
+  },
+  "state_dict_extra_keys_linres": [
+    "readout_p.weight",
+    "readout_q.weight"
+  ],
+  "state_dict_extra_keys_gated": [
+    "readout_w1.weight",
+    "readout_w2.weight"
+  ],
+  "common_params_bitwise_equal": true,
+  "readout_p_all_zero_at_init": true,
+  "readout_q_nonzero_at_init": true,
+  "identity_start_logits_bitwise_equal": true,
+  "twenty_steps_baseline": {
+    "steps": 20,
+    "sec_per_step": 0.0501,
+    "wall_s": 1.0,
+    "loss_first": 5.3131,
+    "loss_last": 3.6945,
+    "torch_peak_alloc_gb": 0.894,
+    "torch_peak_reserved_gb": 1.008
+  },
+  "twenty_steps_linres": {
+    "steps": 20,
+    "sec_per_step": 0.0338,
+    "wall_s": 0.68,
+    "loss_first": 5.3131,
+    "loss_last": 3.3977,
+    "torch_peak_alloc_gb": 1.043,
+    "torch_peak_reserved_gb": 1.213
+  },
+  "linres_activity_after_20": {
+    "p_fro": 1.0903,
+    "q_fro": 5.2542,
+    "p_nonzero": 65536,
+    "p_at_init_fro": 0.0
+  },
+  "escaped_saddle": true,
+  "smoke_battery_linres": {
+    "depth_curve": [
+      {
+        "depth": 0,
+        "bpc": 7.6202,
+        "acc": 0.0543
+      },
+      {
+        "depth": 1,
+        "bpc": 7.044,
+        "acc": 0.1195
+      },
+      {
+        "depth": 2,
+        "bpc": 6.2683,
+        "acc": 0.1183
+      },
+      {
+        "depth": 3,
+        "bpc": 5.9062,
+        "acc": 0.1109
+      },
+      {
+        "depth": 4,
+        "bpc": 5.621,
+        "acc": 0.1225
+      },
+      {
+        "depth": 5,
+        "bpc": 5.4883,
+        "acc": 0.1328
+      },
+      {
+        "depth": 6,
+        "bpc": 5.2659,
+        "acc": 0.1293
+      },
+      {
+        "depth": 7,
+        "bpc": 5.0833,
+        "acc": 0.1261
+      },
+      {
+        "depth": 8,
+        "bpc": 5.0069,
+        "acc": 0.1377
+      }
+    ],
+    "tf_acceptance": [
+      {
+        "depth": 0,
+        "accept": 0.0589
+      },
+      {
+        "depth": 1,
+        "accept": 0.1694
+      },
+      {
+        "depth": 2,
+        "accept": 0.2789
+      },
+      {
+        "depth": 3,
+        "accept": 0.3214
+      },
+      {
+        "depth": 4,
+        "accept": 0.4805
+      },
+      {
+        "depth": 5,
+        "accept": 0.6453
+      },
+      {
+        "depth": 6,
+        "accept": 0.693
+      },
+      {
+        "depth": 7,
+        "accept": 0.7571
+      }
+    ],
+    "tf_note": "dense 形态的中间深度读出无直接监督，tf@k 是 depth-k 残差态 tied 读出与最终读出的 argmax 一致率 proxy（非训练出口资产）",
+    "calibration": {
+      "prob0_ece": 0.1152,
+      "exit4_ece": 0.0159,
+      "ece_by_depth": [
+        0.0473,
+        0.0916,
+        0.05,
+        0.0278,
+        0.0159,
+        0.037,
+        0.0697,
+        0.1002,
+        0.1152
+      ],
+      "n_bins": 15
+    },
+    "transform_rel_mag_by_depth": [
+      0.1437,
+      0.0748,
+      0.1924,
+      0.2128,
+      0.1963,
+      0.1935,
+      0.1775,
+      0.155,
+      0.1288
+    ],
+    "intervention": {
+      "p_fro": 1.0903,
+      "q_fro": 5.2542,
+      "w_absmax": 0.0977,
+      "p_spec_norm": 0.659,
+      "q_spec_norm": 1.0045,
+      "params_added": 131072,
+      "readout": "linear-resid",
+      "nonzero_frac": 1.0
+    }
+  }
+}

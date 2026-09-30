@@ -9,6 +9,7 @@
 | 实验 | 来源 |
 |---|---|
 | [`2512-overnight-causal-chain`](2512-overnight-causal-chain/README.md) | 目录内 README |
+| [`2613-self-gated-composition-13m`](2613-self-gated-composition-13m/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 

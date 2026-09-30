@@ -188,3 +188,155 @@ def test_ar1_is_live_to_fed_token():
         o1 = ar1_second_step_readout(trunk, x, a1)
         o2 = ar1_second_step_readout(trunk, x, a1b)
     assert not torch.allclose(o1, o2), "改变 fed token 输出必须变化（否则 AR-1 通路是死的）"
+
+
+# --------------------------------- 契约 30-G：自门控多跳组合（H3）可失败单测
+#
+# 钉住四件：① direct/composed 共用同一个 T 且参数量逐位相同；② composed 就是
+# T∘T；③ gated 的混合公式与逐通道 sigmoid；④ 门的单边零起步（g≡0.5、fc2=0、
+# fc1 随机）与首步逃逸（变异：两侧全零 ⇒ 永远停在 0 = 鞍点）。
+
+import numpy as np
+
+from train_jumphead import (COMPOSE_MODES, CompositionHead, evaluate_composition,
+                            init_composition_head, tied_logits)
+
+
+def _composition_heads(d: int = 16) -> dict:
+    heads = {m: CompositionHead(d, m) for m in COMPOSE_MODES}
+    for h in heads.values():
+        init_composition_head(h)
+    return heads
+
+
+def test_composed_is_same_T_applied_twice_and_params_match_direct():
+    """composed = 同一个 T 作用两次（T∘T），参数量与 direct 逐位相同。"""
+    d = 16
+    direct, composed = CompositionHead(d, "direct"), CompositionHead(d, "composed")
+    init_composition_head(direct)
+    init_composition_head(composed)
+    composed.T.load_state_dict(direct.T.state_dict())        # 同一个 T
+    n = lambda m: sum(p.numel() for p in m.parameters())
+    assert n(direct) == n(composed), "composed 必须是同一个 T 作用两次，不是两个变换"
+    torch.manual_seed(3)
+    h = torch.randn(2, 4, d)
+    E = torch.randn(9, d)
+    with torch.no_grad():
+        z1, z2 = composed.branches(h)
+        assert torch.allclose(z1, direct.T(h))
+        assert torch.allclose(z2, direct.T(direct.T(h))), "composed 必须是 T(T(h))"
+        z, g = direct.mixture(h)
+        assert g is None and torch.allclose(z, direct.T(h)), "direct 只作用一次"
+        assert not torch.allclose(direct(h, E), composed(h, E)), "两臂读出必须不同"
+
+
+def test_gated_mix_formula_is_per_channel_sigmoid_of_G():
+    """gated: h_mix = g⊙T(T(h)) + (1−g)⊙T(h)，g = sigmoid(G(h)) 逐通道 ∈ (0,1)。"""
+    d = 16
+    head = CompositionHead(d, "gated")
+    init_composition_head(head)
+    torch.manual_seed(5)
+    with torch.no_grad():                     # 打破单边零，验证非平凡 g 下公式仍成立
+        head.G.fc2.weight.normal_(std=0.5)
+        head.G.fc2.bias.normal_(std=0.5)
+    h = torch.randn(2, 5, d)
+    with torch.no_grad():
+        z, g = head.mixture(h)
+        z1, z2 = head.branches(h)
+        g_exp = torch.sigmoid(head.G(h))
+    assert torch.allclose(g, g_exp)
+    assert torch.allclose(z, g_exp * z2 + (1.0 - g_exp) * z1)
+    assert float(g_exp.min()) > 0.0 and float(g_exp.max()) < 1.0
+    assert not torch.allclose(g, torch.full_like(g, 0.5))
+
+
+def _abs_sum(p: torch.Tensor) -> float:
+    """权重绝对值之和（detach，避免 float(Tensor) 的告警）。"""
+    return float(p.detach().abs().sum())
+
+
+def _one_step(head: CompositionHead, h: torch.Tensor, y: torch.Tensor,
+              E: torch.Tensor, lr: float = 1e-2) -> float:
+    opt = torch.optim.AdamW(head.parameters(), lr=lr)
+    loss = F.cross_entropy(head(h, E).reshape(-1, E.shape[0]), y.reshape(-1))
+    opt.zero_grad(set_to_none=True)
+    loss.backward()
+    opt.step()
+    return float(loss.detach())
+
+
+def test_gate_single_sided_zero_starts_at_half_then_escapes():
+    """§10 单边零：起步 G≡0 ⇒ g≡0.5（两臂 50/50）、fc2=0、fc1 随机；首步必须逃逸。
+
+    变异（输入侧也置零）⇒ 梯度恒为 0、fc2 永远停在 0——这正是要避免的鞍点。
+    """
+    d = 16
+    torch.manual_seed(7)
+    head = CompositionHead(d, "gated")
+    init_composition_head(head)
+    h, y, E = torch.randn(4, 6, d), torch.randint(0, 7, (4, 6)), torch.randn(7, d)
+    with torch.no_grad():
+        g = torch.sigmoid(head.G(h))
+        assert torch.allclose(g, torch.full_like(g, 0.5)), "单边零起步必须 g≡0.5"
+        z, _ = head.mixture(h)
+        z1, z2 = head.branches(h)
+        assert torch.allclose(z, 0.5 * (z1 + z2)), "起步 = 两臂 50/50 混合"
+    assert _abs_sum(head.G.fc2.weight) == 0.0, "输出侧必须置零（单边零）"
+    assert _abs_sum(head.G.fc1.weight) > 0.0, "输入侧必须随机（不是全零初始化）"
+    _one_step(head, h, y, E)
+    assert _abs_sum(head.G.fc2.weight) > 0.0, "输出侧必须在首步逃逸（否则是鞍点）"
+
+    bad = CompositionHead(d, "gated")
+    init_composition_head(bad)
+    with torch.no_grad():
+        bad.G.fc1.weight.zero_(); bad.G.fc1.bias.zero_()
+        bad.G.fc2.weight.zero_(); bad.G.fc2.bias.zero_()
+    _one_step(bad, h, y, E)
+    assert _abs_sum(bad.G.fc2.weight) == 0.0, \
+        "两侧全零在乘性结构上是鞍点（梯度恒 0，永不逃逸）"
+
+
+def test_gate_perturbation_changes_readout():
+    """活性：扰动门参数必须改变读出（门通路不是死的）。"""
+    d = 16
+    torch.manual_seed(9)
+    head = CompositionHead(d, "gated")
+    init_composition_head(head)
+    h, E = torch.randn(2, 4, d), torch.randn(9, d)
+    with torch.no_grad():
+        o0 = head(h, E)
+        head.G.fc2.weight.normal_(std=1.0)
+        o1 = head(h, E)
+    assert not torch.allclose(o0, o1), "门参数变化必须改变输出（否则门是死通路）"
+
+
+def test_eq_control_matches_gated_params_bitwise():
+    """§15：direct_eq（去掉门与组合）与 gated 参数量逐位相同；direct 更少。"""
+    d = 256
+    heads = _composition_heads(d)
+    n = {m: sum(p.numel() for p in h.parameters()) for m, h in heads.items()}
+    assert n["direct"] == n["composed"] == 4 * d * d + 3 * d
+    assert n["gated"] == n["direct_eq"] == 6 * d * d + 5 * d
+    assert n["gated"] - n["direct"] == 2 * d * d + 2 * d, "门是 gated 唯一多出的参数"
+    h, E = torch.randn(2, 3, d), torch.randn(9, d)
+    with torch.no_grad():
+        outs = {m: hh(h, E) for m, hh in heads.items()}
+    assert not torch.allclose(outs["direct"], outs["direct_eq"])
+
+
+def test_composition_eval_shared_positions_and_g_report():
+    """评测管线（CPU 小模型）：所有臂吃同一位置集，gated 另报 g 分布与分支命中。"""
+    trunk = tiny_trunk()
+    trunk.eval()
+    heads = _composition_heads(trunk.cfg.d_model)
+    rng = np.random.default_rng(0)
+    eval_arr = rng.integers(0, trunk.vocab_size, size=4096).astype(np.int64)
+    ecfg = {"seed": 7, "n_batches": 2, "batch_size": 2}
+    out = evaluate_composition(trunk, heads, eval_arr, ecfg, device="cpu")
+    assert out["n_positions"] == 2 * 2 * (trunk.cfg.seq_len - 2)
+    assert set(out["arms"]) == set(COMPOSE_MODES)
+    for m in COMPOSE_MODES:
+        assert 0.0 <= out["arms"][m]["t2_hit"] <= 1.0
+        assert out["arms"][m]["t2_hit"] + out["arms"][m]["accept_vs_ar1"] >= 0.0
+    assert "gated_g" in out and len(out["gated_g"]["bins"]) == 10
+    assert out["shared"]["oracle_t2_hit"] >= out["shared"]["ar1_deploy_t2_hit"] - 0.5

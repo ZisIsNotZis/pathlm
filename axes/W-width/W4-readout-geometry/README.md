@@ -10,7 +10,7 @@ tax: "**读出重参数化 Δ clean bpc −0.0812**（gated，12k）/**−0.0888
 benefit: "tf@4 0.9694 → **0.9680**（≥0.95 保持）、tf@6 0.9938 → 0.9933；ECE 0.0066 → **0.0051**；null 能量占比 0.2703 → **0.1952**（读出面看到更多状态，−7.5pp）；全深度逐深度支配 A 臂；参数量仅 +2·d² = **131072**（可 scale，非 vocab×hidden）"
 verdict: "读出几何**可以**解耦（prob0/提交/传输不受损，同空间前提不冲突），但**增量归因于「读出重参数化 + 额外 2d² 参数」，不是非线性本身**：等参数纯线性对照 Δ=−0.0888 与 gated 的 −0.0812 **不可排序**（差 0.0076 < 0.014）；且增益随训练缩小（12k −0.0812 → 24k −0.0463，缩 43%，两臂仍未收敛）⇒ 更像**收敛加速/容量效应**而非最终质量提升。**不采纳为质量机制**；保留为「读出重参数化」候选，待更长训练与更大尺寸确认。"
 deps: ["W1-active-width", "A9-old-info-retention", "H4-head-trunk-relation"]
-evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/25-tax-attribution/evidence @2e86924", "axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/analysis.md @cba2f39", "axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/analysis.md @2f25fec", "axes/W-width/W4-readout-geometry/experiments/2612-gated-readout-24k-13m/analysis.md @2f25fec"]
+evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/25-tax-attribution/evidence @2e86924", "axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/analysis.md @cba2f39", "axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/analysis.md @2f25fec", "axes/W-width/W4-readout-geometry/experiments/2612-gated-readout-24k-13m/analysis.md @2f25fec", "axes/W-width/W4-readout-geometry/experiments/2613-readout-reparam-dense-13m/analysis.md @15eeac0"]
 ---
 
 <!-- AUTO:begin -->
@@ -51,9 +51,10 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/25-tax-attributio
 2. vocab×hidden 的 MLP 读出**不可 scale**（真词表 100k+ 是瓶颈）→ 只作对照臂，不采纳
 3. **增益来源不是非线性**：等参数纯线性对照（h' = h + P·(Q h)，2d² 参数）Δ = −0.0888 与 gated 的 −0.0812 不可排序 ⇒ 非线性无额外贡献，增益来自读出重参数化/容量（SCHEMA §15 归因规则）。
 4. **增益随训练缩减**：Δ 12k −0.0812 → 24k −0.0463（缩 43%）；两臂 24k 仍未收敛（末 25% 窗斜率均 ≈ −0.011/1k）⇒ 快照口径，疑为收敛加速而非最终质量。
-5. **单 seed、单配置（13M / 8L）**：量级与规模外推未做（按 methodology §10 需多档次小实验拟合）
-6. 宽度约束是硬的：d=256 / V=205 时 null 空间仅 62 维、功能性读取 26 条；d=128 < V 时结构性为 0（无余量）
-7. 结构性切分（只读前 r 维）→ 能量迁出读出子空间（W1）
+5. **不可迁移到普通 dense 模型**：同一读出重参数化在 stock dense 上 Δ = −0.0055（seed0）/ −0.0026（seed1），两 seed 同号且都远小于 0.014 ⇒ 只在本形态有效（差距 16×）。机制证据：dense 上读出变换相对幅度仅 0.6–1.2%（本形态 164–170%），Q 的 fro 从 5.13 被训练收缩到 0.86 → **模型主动不用这块自由度** ⇒ 该增益是**补本形态的读出缺陷**，不是通用改进（SCHEMA §15）。
+6. **单 seed、单配置（13M / 8L）**：量级与规模外推未做（按 methodology §10 需多档次小实验拟合）
+7. 宽度约束是硬的：d=256 / V=205 时 null 空间仅 62 维、功能性读取 26 条；d=128 < V 时结构性为 0（无余量）
+8. 结构性切分（只读前 r 维）→ 能量迁出读出子空间（W1）
 
 ## 6. 判据与判决实验设计
 
@@ -76,6 +77,7 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/25-tax-attributio
 3. axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/analysis.md @cba2f39
 4. axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/analysis.md @2f25fec
 5. axes/W-width/W4-readout-geometry/experiments/2612-gated-readout-24k-13m/analysis.md @2f25fec
+6. axes/W-width/W4-readout-geometry/experiments/2613-readout-reparam-dense-13m/analysis.md @15eeac0
 
 ## 备注
 
