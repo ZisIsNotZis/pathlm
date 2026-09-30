@@ -1,0 +1,401 @@
+{
+  "contract": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/README.md",
+  "config": {
+    "trunk": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true
+    },
+    "trunk_train": {
+      "steps": 12000,
+      "batch_size": 32,
+      "lr": 0.001,
+      "seed": 0
+    },
+    "head_train": {
+      "steps": 2000,
+      "batch_size": 32,
+      "lr": 0.001,
+      "seeds": [
+        0,
+        1
+      ],
+      "arms": [
+        "t1",
+        "t2"
+      ]
+    },
+    "eval": {
+      "n_batches": 24,
+      "batch_size": 16,
+      "seed": 7
+    }
+  },
+  "trunk": {
+    "params": 13536768,
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "steps": 12000,
+    "batch_size": 32,
+    "seq_len": 256,
+    "tokens": 98304000,
+    "wall_minutes": 11.4,
+    "peak_mem_mib": 1630.2,
+    "train_stats": {
+      "gnorm_max": 9.87,
+      "gnorm_mean": 0.52,
+      "grad_skips": 0
+    },
+    "bpc": 1.4836,
+    "t1_acc": 0.6979
+  },
+  "zero_tax": {
+    "bpc_before_head": 1.4836,
+    "bpc_after_head": 1.4836,
+    "delta_bpc": 0.0,
+    "frozen_assertion_ok": true
+  },
+  "heads": {
+    "0": {
+      "path": "head_s0.pt",
+      "sha256": "0a90537dc93d34aba6fd72f4d3cded6248d5ef6a3be5e1b01358d7682daf077f",
+      "size_bytes": 2106893
+    },
+    "1": {
+      "path": "head_s1.pt",
+      "sha256": "aa07b532813c2c258e1ae4d5fefa763c13ab7832aab78de2a434aa5400d44174",
+      "size_bytes": 2106893
+    }
+  },
+  "arms": {
+    "0": {
+      "head_train": {
+        "loss_mean": 3.2669,
+        "steps": 2000,
+        "seed": 0,
+        "frozen": true
+      },
+      "wall_head_minutes": 0.8,
+      "n_positions": 97536,
+      "trunk_t1_hit": 0.6934,
+      "trunk_t2_naive_hit": 0.0684,
+      "head_t1_hit": 0.6953,
+      "jump_t2_hit": 0.4684,
+      "two_forward_deploy_t2_hit": 0.3128,
+      "two_forward_oracle_t2_hit": 0.6953,
+      "conditional_accept_given_trunk_t1": 0.5912,
+      "jump_t2_ece": 0.0185,
+      "jump_t2_conf_bins": [
+        {
+          "bin": 0,
+          "lo": 0.0,
+          "hi": 0.1,
+          "n": 1510,
+          "mean_conf": 0.085,
+          "hit": 0.0728
+        },
+        {
+          "bin": 1,
+          "lo": 0.1,
+          "hi": 0.2,
+          "n": 19508,
+          "mean_conf": 0.1574,
+          "hit": 0.1447
+        },
+        {
+          "bin": 2,
+          "lo": 0.2,
+          "hi": 0.3,
+          "n": 19585,
+          "mean_conf": 0.2467,
+          "hit": 0.2407
+        },
+        {
+          "bin": 3,
+          "lo": 0.3,
+          "hi": 0.4,
+          "n": 12587,
+          "mean_conf": 0.3468,
+          "hit": 0.3563
+        },
+        {
+          "bin": 4,
+          "lo": 0.4,
+          "hi": 0.5,
+          "n": 8739,
+          "mean_conf": 0.4475,
+          "hit": 0.4711
+        },
+        {
+          "bin": 5,
+          "lo": 0.5,
+          "hi": 0.6,
+          "n": 6429,
+          "mean_conf": 0.548,
+          "hit": 0.585
+        },
+        {
+          "bin": 6,
+          "lo": 0.6,
+          "hi": 0.7,
+          "n": 5237,
+          "mean_conf": 0.649,
+          "hit": 0.6949
+        },
+        {
+          "bin": 7,
+          "lo": 0.7,
+          "hi": 0.8,
+          "n": 5109,
+          "mean_conf": 0.7501,
+          "hit": 0.805
+        },
+        {
+          "bin": 8,
+          "lo": 0.8,
+          "hi": 0.9,
+          "n": 5634,
+          "mean_conf": 0.8521,
+          "hit": 0.882
+        },
+        {
+          "bin": 9,
+          "lo": 0.9,
+          "hi": 1.0,
+          "n": 13198,
+          "mean_conf": 0.966,
+          "hit": 0.9817
+        }
+      ],
+      "corr_jump_hit__trunk_t1_hit": 0.3699
+    },
+    "1": {
+      "head_train": {
+        "loss_mean": 3.271,
+        "steps": 2000,
+        "seed": 1,
+        "frozen": true
+      },
+      "wall_head_minutes": 0.77,
+      "n_positions": 97536,
+      "trunk_t1_hit": 0.6934,
+      "trunk_t2_naive_hit": 0.0684,
+      "head_t1_hit": 0.695,
+      "jump_t2_hit": 0.4649,
+      "two_forward_deploy_t2_hit": 0.3128,
+      "two_forward_oracle_t2_hit": 0.6953,
+      "conditional_accept_given_trunk_t1": 0.5877,
+      "jump_t2_ece": 0.0221,
+      "jump_t2_conf_bins": [
+        {
+          "bin": 0,
+          "lo": 0.0,
+          "hi": 0.1,
+          "n": 1656,
+          "mean_conf": 0.0855,
+          "hit": 0.0731
+        },
+        {
+          "bin": 1,
+          "lo": 0.1,
+          "hi": 0.2,
+          "n": 20066,
+          "mean_conf": 0.1577,
+          "hit": 0.1409
+        },
+        {
+          "bin": 2,
+          "lo": 0.2,
+          "hi": 0.3,
+          "n": 19591,
+          "mean_conf": 0.2463,
+          "hit": 0.2371
+        },
+        {
+          "bin": 3,
+          "lo": 0.3,
+          "hi": 0.4,
+          "n": 12422,
+          "mean_conf": 0.3464,
+          "hit": 0.3605
+        },
+        {
+          "bin": 4,
+          "lo": 0.4,
+          "hi": 0.5,
+          "n": 8574,
+          "mean_conf": 0.4476,
+          "hit": 0.4675
+        },
+        {
+          "bin": 5,
+          "lo": 0.5,
+          "hi": 0.6,
+          "n": 6327,
+          "mean_conf": 0.5475,
+          "hit": 0.5881
+        },
+        {
+          "bin": 6,
+          "lo": 0.6,
+          "hi": 0.7,
+          "n": 5293,
+          "mean_conf": 0.6485,
+          "hit": 0.7081
+        },
+        {
+          "bin": 7,
+          "lo": 0.7,
+          "hi": 0.8,
+          "n": 4982,
+          "mean_conf": 0.7504,
+          "hit": 0.8041
+        },
+        {
+          "bin": 8,
+          "lo": 0.8,
+          "hi": 0.9,
+          "n": 5599,
+          "mean_conf": 0.8517,
+          "hit": 0.8939
+        },
+        {
+          "bin": 9,
+          "lo": 0.9,
+          "hi": 1.0,
+          "n": 13026,
+          "mean_conf": 0.9657,
+          "hit": 0.9816
+        }
+      ],
+      "corr_jump_hit__trunk_t1_hit": 0.37
+    }
+  },
+  "arms_mean": {
+    "trunk_t1_hit": 0.6934,
+    "trunk_t2_naive_hit": 0.0684,
+    "head_t1_hit": 0.6951,
+    "jump_t2_hit": 0.4667,
+    "two_forward_deploy_t2_hit": 0.3128,
+    "two_forward_oracle_t2_hit": 0.6953,
+    "conditional_accept_given_trunk_t1": 0.5895,
+    "jump_t2_ece": 0.0203
+  },
+  "criteria": {
+    "denominator_trunk_t1_hit": 0.6934,
+    "threshold_0.81x": 0.5617,
+    "numerator_jump_t2_hit": 0.4667,
+    "ratio_vs_denominator": 0.6731,
+    "zero_tax_ok": true,
+    "verdict": "失败：冻结主干上跳跃头无头寸"
+  },
+  "joint_arm": {
+    "wall_minutes": 1.41,
+    "train": {
+      "loss_mean": 3.0595,
+      "steps": 1500,
+      "seed": 0,
+      "frozen": false
+    },
+    "n_positions": 97536,
+    "trunk_t1_hit": 0.6235,
+    "trunk_t2_naive_hit": 0.1262,
+    "head_t1_hit": 0.6894,
+    "jump_t2_hit": 0.5287,
+    "two_forward_deploy_t2_hit": 0.2112,
+    "two_forward_oracle_t2_hit": 0.6253,
+    "conditional_accept_given_trunk_t1": 0.6674,
+    "jump_t2_ece": 0.0042,
+    "jump_t2_conf_bins": [
+      {
+        "bin": 0,
+        "lo": 0.0,
+        "hi": 0.1,
+        "n": 1370,
+        "mean_conf": 0.0852,
+        "hit": 0.0847
+      },
+      {
+        "bin": 1,
+        "lo": 0.1,
+        "hi": 0.2,
+        "n": 16758,
+        "mean_conf": 0.1566,
+        "hit": 0.1554
+      },
+      {
+        "bin": 2,
+        "lo": 0.2,
+        "hi": 0.3,
+        "n": 15674,
+        "mean_conf": 0.2464,
+        "hit": 0.2439
+      },
+      {
+        "bin": 3,
+        "lo": 0.3,
+        "hi": 0.4,
+        "n": 10709,
+        "mean_conf": 0.3473,
+        "hit": 0.3486
+      },
+      {
+        "bin": 4,
+        "lo": 0.4,
+        "hi": 0.5,
+        "n": 7798,
+        "mean_conf": 0.448,
+        "hit": 0.4424
+      },
+      {
+        "bin": 5,
+        "lo": 0.5,
+        "hi": 0.6,
+        "n": 6256,
+        "mean_conf": 0.5482,
+        "hit": 0.5478
+      },
+      {
+        "bin": 6,
+        "lo": 0.6,
+        "hi": 0.7,
+        "n": 5429,
+        "mean_conf": 0.6496,
+        "hit": 0.6684
+      },
+      {
+        "bin": 7,
+        "lo": 0.7,
+        "hi": 0.8,
+        "n": 5492,
+        "mean_conf": 0.7501,
+        "hit": 0.7597
+      },
+      {
+        "bin": 8,
+        "lo": 0.8,
+        "hi": 0.9,
+        "n": 6551,
+        "mean_conf": 0.8534,
+        "hit": 0.8602
+      },
+      {
+        "bin": 9,
+        "lo": 0.9,
+        "hi": 1.0,
+        "n": 21499,
+        "mean_conf": 0.9746,
+        "hit": 0.9757
+      }
+    ],
+    "corr_jump_hit__trunk_t1_hit": 0.3575,
+    "trunk_bpc": 1.8473
+  },
+  "cost": {
+    "trunk_min": 11.4,
+    "peak_mem_mib": 1630.2
+  }
+}
