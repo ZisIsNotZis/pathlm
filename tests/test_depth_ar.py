@@ -12,14 +12,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
                              ParallelBlock, TOPOLOGIES, topology_liveness,
                              commit_input, generate, token_input, workspace_probe,
                              tf_acceptance, readout_workspace_energy,
                              spec_cost_model, TopKBlock, causal_topk_keep_mask,
                              sparse_attn_telemetry, attn_sparse_liveness,
-                             attn_sparse_probe)
+                             attn_sparse_probe, LinearAttnBlock, linear_attn_phi,
+                             linear_attn_chunked, linear_attn_reference,
+                             attn_linear_liveness, attn_linear_probe,
+                             attention_mass_stats, DEFAULT_LINEAR_CHUNK,
+                             GQABlock, kv_head_liveness)
 from pathlm.model import Block
 
 
@@ -1620,3 +1625,644 @@ def test_train_window_switch_guards():
         tiny_model(dense=True, train_window=4, attn_sparse_k=3)
     # 合法组合可建
     assert tiny_model(dense=True, train_window=4, train_anchors=2) is not None
+
+
+# ---------------------- 训练期可见窗口 = 192（ticket 33 契约 Q，真实尺度 T=256）
+#
+# 契约 Q 的干预就是一个**参数取值**（window 192 而不是 32），所以这里把「192 这个取值
+# 真的生效」钉在真实尺度上：① 可见对的闭式计数（把 window 夹到 32 就会被抓红）；
+# ② 活性量（窗口长度必须如实报 192）；③ 功能判据——模型前向的掩码 == 评测端
+# masked_logits 的掩码（训练/评测掩码一致），且 192 的可见集**与 32 的可见集不同**
+# （防止实现把 window 悄悄夹小，或在 forward 里漏掉锚点）。
+
+
+def test_window192_keep_mask_counts_and_boundary_at_real_scale():
+    """T=256 / window=192 / anchors=8 的可见对的**闭式计数**与边界。
+
+    独立推导（不读实现）：
+      i < 192  ：所有 j ≤ i 可见 ⇒ Σ(i+1) = 192·193/2 = 18528
+      i ≥ 192  ：窗口给 192 个（j ∈ [i−191, i]），锚点再补出 min(8, i−191) 个
+                 ⇒ Σ_{i=192..255} (192 + min(8, i−191)) = 12772
+      合计 31300 / 32896 = 0.951483
+    同时钉住「被删掉的位置」正好是 8..63（窗口外且不在锚区的位置）。
+    """
+    from pathlm.depth_ar import window_anchor_keep_mask
+    from tools.evalkit.retention import mask_stats
+    T, window, anchors = 256, 192, 8
+    keep = window_anchor_keep_mask(T, window, anchors)
+    want = (sum(i + 1 for i in range(window))
+            + sum(window + min(anchors, i - window + 1)
+                  for i in range(window, T)))
+    assert want == 31300
+    assert int(keep.sum()) == want
+    # 边界：距离 191 可见、192 不可见（非锚点）；锚区 0..7 恒可见
+    assert bool(keep[255, 255 - 191]) and not bool(keep[255, 255 - 192])
+    assert bool(keep[255, :anchors].all())
+    assert not bool(keep[255, 63]) and bool(keep[255, 64])
+    # 因果性与对角
+    assert not bool(torch.triu(keep, diagonal=1).any())
+    assert bool(keep.diag().all())
+    st = mask_stats(keep)
+    assert st["n_dropped_pairs"] == 32896 - 31300 == 1596
+    assert st["n_dropped_keys"] == 56
+    assert round(st["dropped_frac"], 8) == 0.04851654
+    assert st["diagonal_kept"] is True
+
+
+def test_window192_liveness_reports_the_window_length():
+    """活性量必须**如实报出窗口长度与可见份额**（SCHEMA §10/§17.4）：
+    192 的可见份颏 0.951483（不是 32 的 0.287573）；window ≥ T 时才报死。"""
+    from pathlm.depth_ar import window_mask_liveness
+    live = window_mask_liveness(256, 192, 8)
+    assert live["train_window"] == 192 and live["train_anchors"] == 8
+    assert live["params_added"] == 0
+    assert live["n_visible_pairs"] == 31300
+    assert live["causal_pairs"] == 32896
+    assert live["visible_frac"] == 0.951483
+    assert live["dropped_frac"] == 0.048517
+    assert live["alive"] is True
+    assert window_mask_liveness(256, 32, 8)["visible_frac"] == 0.287573
+    assert window_mask_liveness(256, 256, 0)["alive"] is False
+
+
+def test_window192_forward_matches_eval_mask_and_differs_from_32():
+    """功能判据（真实尺度 T=256）：① 模型前向的可见集 == 评测端用**同一参数**
+    构造的掩码（训练/评测一致，含锚点）；② 它与 window=32 的可见集**不同**
+    ——把 window 夹成 32、或在 forward 里漏掉锚点，都会被这条抓红。"""
+    from pathlm.depth_ar import window_anchor_keep_mask
+    from tools.evalkit.retention import masked_logits
+    T = 256
+    torch.manual_seed(7)
+    m = DepthARModel(DepthARConfig(d_model=16, n_layers=1, n_heads=2, seq_len=T,
+                                   dense=True, train_window=192,
+                                   train_anchors=8), vocab_size=64)
+    x = torch.randint(0, 64, (2, T))
+    fwd = m(x)[1]["depth_logits"][-1]
+    evl192 = masked_logits(m, x, window_anchor_keep_mask(T, 192, 8))
+    assert torch.equal(fwd, evl192)
+    evl32 = masked_logits(m, x, window_anchor_keep_mask(T, 32, 8))
+    assert not torch.equal(evl192, evl32)
+    # 锚点真的在最前面：换成「锚点取在窗口末端」的错版掩码，输出必须变化
+    idx = torch.arange(T)
+    tail_anchors = ((idx.unsqueeze(1) <= idx.unsqueeze(0))
+                    & (((idx.unsqueeze(1) - idx.unsqueeze(0)) < 192)
+                       | (idx.unsqueeze(0) >= T - 8)))
+    assert not torch.equal(evl192, masked_logits(m, x, tail_anchors))
+
+
+# ---------------------- 线性注意力（ticket 33 契约 R，A6 混合算子续） ----------------------
+#
+# 契约 R 的干预是「把注意力算子换成归一化线性核」，所以这里把四件事钉死：
+# ① 关闭开关逐位还原 v1；② 训练的 O(T) 实装与「显式打分参考实现」数值一致
+# （同一 φ、同一归一化）；③ 实现真的是 O(T)（FLOP 计数随 T 线性、且不物化 [T,T]
+# 张量）——这是「不能只是换个名字的全注意力」的直接证据；④ 干预活性（φ 恒正、
+# 分母恒正、同权重换算子有偏差）。变异验证见实验目录 mutate.py。
+
+
+def test_linear_default_off_matches_v1_bitwise():
+    """attn_linear 缺省 = False 时必须与密度全注意力臂**逐位**一致（v1 还原）：
+    块类是 stock `Block`、参数逐位相同、前向状态逐位相同、aux 里没有线性活性块。"""
+    m_default = tiny_model(dense=True)
+    m_off = tiny_model(dense=True, attn_linear=False)
+    assert type(m_default.blocks[0]).__name__ == "Block"
+    assert sum(p.numel() for p in m_default.parameters()) == \
+        sum(p.numel() for p in m_off.parameters())
+    x = torch.randint(0, 10, (2, 12))
+    assert torch.equal(m_default(x)[1]["states"][-1], m_off(x)[1]["states"][-1])
+    assert "attn_linear" not in m_off(x)[1]
+
+
+def test_linear_phi_formula_is_elu_plus_one():
+    """特征映射必须**逐点等于 elu(x)+1**（不是 relu+1、不是 exp、不是恒等）：
+    φ(0)=1、φ(-1)=elu(-1)+1=e^{-1}=0.3679…、负半轴非负且在小值处下溢为恰好 0
+    （fp32：φ(-20)=0.0），但**永不为负**。换成 relu+1 会在 x<0 处给出 1.0（下面
+    的断言抓红），换成 φ=elu（去掉 +1）会在负半轴给出负值。"""
+    x = torch.linspace(-20, 20, 81)
+    want = torch.nn.functional.elu(x) + 1.0
+    assert torch.equal(linear_attn_phi(x), want)
+    assert float(linear_attn_phi(torch.tensor(0.0))) == 1.0
+    # elu(-1) = e^{-1} − 1 = −0.63212… ⇒ φ(−1) = e^{-1} = 0.36788…（relu+1 会给出 1.0）
+    assert float(linear_attn_phi(torch.tensor(-1.0))) == pytest.approx(
+        0.36787944, abs=1e-6)
+    assert float(linear_attn_phi(torch.tensor(-15.0))) > 0.0        # e^-15 ≈ 3.06e-7
+    assert float(linear_attn_phi(torch.tensor(-20.0))) == 0.0        # fp32 下溢（非负）
+    assert float(linear_attn_phi(x).min()) >= 0.0
+    assert bool((linear_attn_phi(x) >= 0).all())
+    # relu+1 / elu（无 +1）两种错版的特征映射都会在这两条上分叉
+    assert float(linear_attn_phi(torch.tensor(-1.0))) != pytest.approx(1.0)
+    assert float(linear_attn_phi(torch.tensor(-2.0))) < 1.0
+
+
+def test_linear_chunked_matches_explicit_reference_and_chunk_invariance():
+    """训练的 O(T) 分块实装必须与「显式 [T,T] 核分数」的参考实现数值一致
+    （同一 φ、同一归一化；差异仅浮点累加顺序），且**分块大小只是实现细节**：
+    换 chunk 不改变语义。这条是 mutate.py 里 relu/不去归一化/非因果三处破坏的
+    共同抓手。"""
+    torch.manual_seed(11)
+    for (B, H, T, dh) in ((2, 3, 24, 8), (1, 1, 12, 4)):
+        q, k, v = (torch.randn(B, H, T, dh) for _ in range(3))
+        qf, kf = linear_attn_phi(q), linear_attn_phi(k)
+        ref = linear_attn_reference(qf, kf, v)
+        for C in (T, T // 2, T // 4, 4):
+            out, tele = linear_attn_chunked(qf, kf, v, C)
+            assert float((out - ref).abs().max()) < 1e-5 * float(ref.abs().max())
+            assert tele["phi_min"] > 0 and tele["den_min"] > 0
+        # 分块大小不变语义（同一 chunk 序列的两种切法给出同一结果）
+        a = linear_attn_chunked(qf, kf, v, 6)[0]
+        b = linear_attn_chunked(qf, kf, v, 12)[0]
+        assert float((a - b).abs().max()) < 1e-5 * float(a.abs().max())
+    # 不整除 ⇒ 显式报错（不是静默改语义）
+    with pytest.raises(ValueError):
+        linear_attn_chunked(torch.ones(1, 1, 10, 2), torch.ones(1, 1, 10, 2),
+                            torch.ones(1, 1, 10, 2), 3)
+
+
+def test_linear_attn_causal_only_no_future_leak():
+    """因果性：改动位置 t 的输入 token，位置 < t 的**所有**状态必须逐位不变。
+    非因果实装（把块内 `tril` 去掉、或状态用 inclusive cumsum）会被这条抓红。"""
+    torch.manual_seed(5)
+    cfg = DepthARConfig(d_model=16, n_layers=2, n_heads=2, seq_len=24,
+                        dense=True, attn_linear=True, linear_chunk=8)
+    m = DepthARModel(cfg, vocab_size=10)
+    x = torch.randint(0, 10, (2, 24))
+    x2 = x.clone()
+    t = 17
+    x2[0, t] = (x2[0, t] + 1) % 10
+    with torch.no_grad():
+        s1 = m(x)[1]["states"][-1]
+        s2 = m(x2)[1]["states"][-1]
+    assert torch.equal(s1[0, :t], s2[0, :t])          # 未来泄漏 ⇒ 这里红
+    assert not torch.equal(s1[0, t], s2[0, t])        # t 及之后确实受影响
+    assert torch.equal(s1[1], s2[1])                  # 另一行不受影响
+
+
+def test_linear_attn_is_linear_in_T_not_quadratic():
+    """**实现真的是 O(T)**（契约 R 实现要点，不能是换个名字的全注意力）：
+
+    ① FLOP 计数（`FlopCounterMode`，解析量、可复现）：T 放大 8 倍时，本实装注意力
+       子层的 FLOPs 近似 ×8（线性），而同权重下显式全注意力（QKᵀ + softmax + PV）
+       近似 ×64（平方）；
+    ② 形状证据（`TorchDispatchMode` 逐个算子抄输出张量尺寸）：本实装全程**不物化
+       任何 T×T 张量**（最大中间张量 ≤ B·H·(T/C)·C²），显式全注意力会物化 T×T。
+    """
+    from torch.utils.flop_counter import FlopCounterMode
+    from torch.utils._python_dispatch import TorchDispatchMode
+
+    d, H, B, C = 128, 4, 2, 32
+    dh = d // H
+
+    def op_flops(kind: str, T: int) -> int:
+        torch.manual_seed(0)
+        q, k, v = (torch.randn(B, H, T, dh) for _ in range(3))
+        qf, kf = linear_attn_phi(q), linear_attn_phi(k)
+        counter = FlopCounterMode(display=False)
+        with counter, torch.no_grad():
+            if kind == "linear":
+                linear_attn_chunked(qf, kf, v, C)
+            else:                                    # 显式全注意力（同一权重形状）
+                s = (q @ k.transpose(-2, -1) / dh ** 0.5).tril()
+                _ = s.softmax(-1) @ v
+        return counter.get_total_flops()
+
+    lin = {T: op_flops("linear", T) for T in (64, 512)}
+    full = {T: op_flops("full", T) for T in (64, 512)}
+    lin_ratio = lin[512] / lin[64]
+    full_ratio = full[512] / full[64]
+    assert lin_ratio < 12.0, f"线性实装 FLOPs 随 T 的斜率不是线性：×8 T ⇒ ×{lin_ratio}"
+    assert full_ratio > 50.0, f"对照的显式全注意力不是平方：×8 T ⇒ ×{full_ratio}"
+    assert lin[512] < full[512] / 4.0
+
+    class _SizeTracker(TorchDispatchMode):
+        def __init__(self):
+            self.max_numel = 0
+
+        def __torch_dispatch__(self, func, types, args=(), kwargs=None):
+            out = func(*args, **(kwargs or {}))
+
+            def rec(o):
+                if isinstance(o, torch.Tensor):
+                    self.max_numel = max(self.max_numel, o.numel())
+                elif isinstance(o, (list, tuple)):
+                    for z in o:
+                        rec(z)
+            rec(out)
+            return out
+
+    T = 512
+    torch.manual_seed(0)
+    q, k, v = (torch.randn(1, 1, T, dh) for _ in range(3))
+    qf, kf = linear_attn_phi(q), linear_attn_phi(k)
+    tr = _SizeTracker()
+    with tr, torch.no_grad():
+        linear_attn_chunked(qf, kf, v, C)
+    assert tr.max_numel <= (T // C) * C * C, (
+        f"线性实装的最大中间张量 numel={tr.max_numel} 超过分块上界 "
+        f"{(T // C) * C * C}（可能物化了 [T,T]）")
+    assert tr.max_numel < T * T
+    tr_full = _SizeTracker()
+    with tr_full, torch.no_grad():
+        s = (q @ k.transpose(-2, -1)).tril()
+        _ = s.softmax(-1) @ v
+    assert tr_full.max_numel >= T * T, "对照的显式全注意力应当物化 T×T 张量"
+
+
+def test_linear_masked_reference_equals_unmasked_identity_causal():
+    """**仪器自检**：评测期仪器（`retention.masked_bpc` / `masked_logits`）在
+    线性臂上走的是显式打分的参考路径——传入**精确因果掩码**时必须与训练路径
+    （O(T) 分块、无掩码）给出同一结果（否则「依赖曲线」量的就不是这个模型）。
+    同时在块级验证：掩码把被删键真的从分子分母中一起去掉（去掉一个键 ⇒ 输出变化）。"""
+    torch.manual_seed(3)
+    m = DepthARModel(DepthARConfig(d_model=16, n_layers=1, n_heads=2, seq_len=24,
+                                   dense=True, attn_linear=True, linear_chunk=8),
+                     vocab_size=10)
+    x = torch.randint(0, 10, (2, 24))
+    with torch.no_grad():
+        h = m._input_states(x)
+        blk = m.blocks[0]
+        out_train, _ = blk(h)
+        T = 24
+        ident = torch.tril(torch.ones(T, T, dtype=torch.bool))
+        out_mask, tele = blk(h, attn_mask=ident.view(1, 1, T, T))
+        assert tele is None                       # 仪器路径不出活性量（不是训练路径）
+        assert torch.allclose(out_train, out_mask, atol=1e-5)
+        drop_one = ident.clone()
+        drop_one[20, 3] = False                   # 只删 (query=20, key=3) 这一对
+        out_drop, _ = blk(h, attn_mask=drop_one.view(1, 1, T, T))
+        assert not torch.allclose(out_mask, out_drop, atol=1e-6)
+
+
+def test_linear_params_and_init_identical_to_full_attention_block():
+    """单因素 + 等参数（SCHEMA §15 自动满足）：同 seed 下线性注意力臂与全注意力
+    臂的参数量、state_dict 键集与**每一个参数**逐位相同（唯一差异 = 算子）。"""
+    torch.manual_seed(0)
+    lin = linear_attn_block()
+    torch.manual_seed(0)
+    ful = Block(type("C", (), {"d_model": 16, "n_heads": 2, "mlp_mult": 4,
+                               "dropout": 0.0})())
+    assert type(lin).__name__ == "LinearAttnBlock"
+    assert sum(p.numel() for p in lin.parameters()) == \
+        sum(p.numel() for p in ful.parameters())
+    sd_l, sd_f = lin.state_dict(), ful.state_dict()
+    assert set(sd_l) == set(sd_f)
+    assert all(torch.equal(v, sd_f[k]) for k, v in sd_l.items())
+
+
+def linear_attn_block(seq_len: int = 12, chunk: int = DEFAULT_LINEAR_CHUNK):
+    """构造一个单块线性注意力块（测试用；与 Block 同参）。"""
+    return LinearAttnBlock(type("C", (), {"d_model": 16, "n_heads": 2,
+                                          "mlp_mult": 4, "dropout": 0.0,
+                                          "seq_len": seq_len})(), chunk)
+
+
+def test_linear_switch_changes_computation_and_liveness():
+    """开关必须真的改变计算（不是死开关）：同一权重、同一输入下，把该层算子换成
+    全因果 softmax 注意力的相对偏差 > 0；同时训练路径的 telemetry 必须给出
+    φ_min > 0、den_min > 0（SCHEMA §10 的活性量）。"""
+    torch.manual_seed(1)
+    blk = linear_attn_block()
+    x = torch.randn(2, 12, 16)
+    out_lin, tele = blk(x)
+    out_full, _ = Block.forward(blk, x)
+    rel = float((out_lin - out_full).norm().detach() / out_full.norm().detach())
+    assert rel > 0, "线性算子没有改变前向（死开关）"
+    assert tele["phi_min"] > 0 and tele["den_min"] > 0
+    assert 0.0 <= tele["inter_mass_frac"] <= 1.0
+    assert tele["state_norm"] > 0
+    # 预测量口径：块类有 telemetry_kind，模型按它归类（TopKBlock 仍是 attn_sparse）
+    assert LinearAttnBlock.telemetry_kind == "attn_linear"
+    assert TopKBlock.telemetry_kind == "attn_sparse"
+
+
+def test_linear_guards_require_dense_sequential_and_exclusive_flags():
+    """单因素护栏：线性注意力只在 dense + sequential 下开放，与内容 top-k / 训练期
+    窗口互斥；非法 chunk 显式报错；stock 路径守卫（dist_pen/kv_from/gate_vec）。"""
+    with pytest.raises(ValueError):
+        tiny_model(attn_linear=True)                          # dense=False
+    with pytest.raises(ValueError):
+        tiny_model(dense=True, attn_linear=True, topology="parallel")
+    with pytest.raises(ValueError):
+        tiny_model(dense=True, attn_linear=True, attn_sparse_k=3)
+    with pytest.raises(ValueError):
+        tiny_model(dense=True, attn_linear=True, train_window=4)
+    with pytest.raises(ValueError):
+        tiny_model(dense=True, attn_linear=True, linear_chunk=0)
+    ok = tiny_model(dense=True, attn_linear=True)
+    assert type(ok.blocks[0]).__name__ == "LinearAttnBlock"
+    with pytest.raises(ValueError):
+        linear_attn_block()(torch.randn(2, 12, 16), dist_pen=0.5)
+    with pytest.raises(ValueError):
+        linear_attn_block()(torch.randn(2, 12, 16), kv_from=torch.randn(2, 12, 16))
+    with pytest.raises(ValueError):
+        linear_attn_block()(torch.randn(2, 12, 16), gate_vec=torch.rand(2, 12, 16))
+    with pytest.raises(ValueError):
+        linear_attn_block()(torch.randn(2, 12, 16),
+                            attn_mask=torch.ones(2, 2, 12, 12, 12, dtype=torch.bool))
+
+
+def test_linear_gradients_reach_every_key_and_value():
+    """反向可达性：数值健康、梯度有限，且**每个位置**的 v、以及每个位置的
+    φ(k_j) 都拿到非零梯度——线性注意力不做键的剔除（被剔除的键应恰好为 0，
+    这条断言是「没有静默丢键」的梯度层证据）。"""
+    torch.manual_seed(2)
+    B, H, T, dh = 2, 2, 16, 8
+    q, k = torch.randn(B, H, T, dh), torch.randn(B, H, T, dh)
+    v = torch.randn(B, H, T, dh, requires_grad=True)
+    qf, kf = linear_attn_phi(q), linear_attn_phi(k)
+    kf = kf.clone().requires_grad_(True)
+    out, _ = linear_attn_chunked(qf, kf, v, 8)
+    out.sum().backward()
+    assert torch.isfinite(out).all()
+    v_grad = v.grad.abs().sum(-1).sum(-1)                # [B,H,T]
+    assert bool((v_grad > 0).all()), "有位置的 v 拿不到梯度（键被静默剔除）"
+    k_grad = kf.grad.abs().sum(-1).sum(-1)
+    assert bool((k_grad > 0).all()), "有位置的 φ(k) 拿不到梯度"
+    assert torch.isfinite(kf.grad).all() and torch.isfinite(v.grad).all()
+
+
+def test_linear_liveness_contract_and_probe_on_real_batches():
+    """活性块契约（SCHEMA §10）：开关关闭 ⇒ enabled=False 的空块且 alive=False；
+    打开 ⇒ params_added=0、φ/分母实测为正、alive=True，且 `attn_linear_probe` 在
+    真实数据流上逐层给出「同权重换算子」的相对偏差（最小值 > 0）与核质量分布。"""
+    import numpy as np
+    arr = (np.arange(5000) % 7).astype(np.uint8)
+    off = tiny_model(dense=True)
+    assert attn_linear_liveness(off)["enabled"] is False
+    assert attn_linear_probe(off, arr, n_batches=1, batch_size=2)["alive"] is False
+    m = tiny_model(dense=True, attn_linear=True)
+    x = torch.randint(0, 10, (2, 12))
+    _, aux = m(x, exit_depths=None)
+    live = attn_linear_liveness(m, aux["attn_linear"])
+    assert live["params_added"] == 0 and live["parametrized"] is False
+    assert live["block_python_class"] == "LinearAttnBlock"
+    assert live["phi_min"] > 0 and live["den_min"] > 0
+    assert live["alive"] is True
+    n_before = sum(p.numel() for p in m.parameters())
+    probe = attn_linear_probe(m, arr, n_batches=2, batch_size=2)
+    assert probe["alive"] and probe["rel_dev_vs_full_min"] > 0
+    assert len(probe["per_layer"]) == m.cfg.n_layers
+    assert all(r["n_batches"] == 2 for r in probe["per_layer"])
+    assert probe["n_layers_sampled"] == 2 * m.cfg.n_layers
+    km = probe["kernel_mass"]
+    assert set(km) == {"linear", "full"}
+    for kind in km:
+        assert 0.0 < km[kind]["mass_mean_dist"] < m.cfg.seq_len
+        assert km[kind]["mass_frac_within_32"] <= km[kind]["mass_frac_within_128"]
+    assert sum(p.numel() for p in m.parameters()) == n_before
+
+
+def test_attention_mass_stats_reads_both_operators_on_same_weights():
+    """核质量分布仪器：同一组权重下 `kind="linear"` 必须是**线性核**（φ(q)·φ(k)
+    归一化）而 `kind="full"` 必须是 softmax——两者的权重矩阵可由手算复现，
+    且 kind 非法时显式报错。这条防「仪器把两种算子写成同一个分布」。"""
+    torch.manual_seed(4)
+    m = DepthARModel(DepthARConfig(d_model=16, n_layers=1, n_heads=2, seq_len=12,
+                                   dense=True, attn_linear=True), vocab_size=10)
+    x = torch.randint(0, 10, (2, 12))
+    with torch.no_grad():
+        h = m._input_states(x)
+        blk = m.blocks[0]
+        q, k, _ = blk.qkv(blk.ln1(h)).chunk(3, dim=-1)
+        shape = lambda t: t.view(2, 12, 2, 8).transpose(1, 2)
+        qs, ks = shape(q), shape(k)
+        causal = torch.tril(torch.ones(12, 12, dtype=torch.bool))
+        w_lin = (linear_attn_phi(qs) @ linear_attn_phi(ks).transpose(-2, -1))
+        w_lin = w_lin.masked_fill(~causal, 0.0)
+        w_lin = w_lin / w_lin.sum(-1, keepdim=True)
+        w_ful = (qs @ ks.transpose(-2, -1) / 8 ** 0.5).masked_fill(
+            ~causal, float("-inf")).softmax(-1)
+        dist = (torch.arange(12).unsqueeze(1) - torch.arange(12).unsqueeze(0)
+                ).clamp_min(0).float()
+        want_lin = float((w_lin.float() * dist).sum(-1).mean())
+        want_ful = float((w_ful * dist).sum(-1).mean())
+        got_lin = attention_mass_stats(m, x, kind="linear")
+        got_ful = attention_mass_stats(m, x, kind="full")
+    assert got_lin["mass_mean_dist"] == pytest.approx(want_lin, abs=1e-4)
+    assert got_ful["mass_mean_dist"] == pytest.approx(want_ful, abs=1e-4)
+    assert got_lin["n_layers"] == 1
+    assert abs(got_lin["mass_mean_dist"] - got_ful["mass_mean_dist"]) < 0.5
+    with pytest.raises(ValueError):
+        attention_mass_stats(m, x, kind="kernel")
+
+
+# ---------------- KV 头共享（ticket 33 契约 S，W3 参照线）：GQA / MQA ----------------
+#
+# 契约 S 的干预 = 注意力里 K/V 的**头数**（query 头数不变），所以这里钉死四件事：
+# ① 缺省（n_kv_heads=None 或 == n_heads）逐位还原 v1（块类、参数、前向状态）；
+# ② 真正的形状证据：qkv 投影输出宽度 = d + 2·n_kv_heads·dh、进 SDPA 的 K/V 张量
+#    形状 = [B, n_kv_heads, T, dh]（不是改标签）、且解析 KV 内存按 n_kv_heads 等比下降
+#    （2 头 −75%、1 头 −87.5%）；③ enable_gqa 内核语义 == 手工 repeat_interleave 展开
+#    （逐位）⇒「每组 query 头共享同一组 K/V」是内核行为而不是文档承诺；
+# ④ 梯度真的到达变窄的 K/V 投影（不是死路径）。变异验证见实验目录 mutate.py。
+
+
+def gqa_model(n_kv_heads, **kw):
+    """契约 S 的测试位点：d=32 / 8 头 / dh=4，dense + sequential（单因素）。"""
+    torch.manual_seed(0)
+    cfg = DepthARConfig(d_model=32, n_layers=3, n_heads=8, seq_len=12,
+                        dense=True, n_kv_heads=n_kv_heads, **kw)
+    return DepthARModel(cfg, vocab_size=10)
+
+
+def test_kv_heads_default_off_matches_v1_bitwise():
+    """n_kv_heads 缺省 / = n_heads（MHA）时必须与 v1 **逐位**一致：块类仍是 stock
+    `Block`、参数量逐位相同、前向状态逐位相同、qkv 输出宽度仍是 3d。"""
+    m_default = tiny_model(dense=True)
+    m_none = tiny_model(dense=True, n_kv_heads=None)
+    m_mha = tiny_model(dense=True, n_kv_heads=2)          # n_heads=2 ⇒ MHA
+    assert type(m_default.blocks[0]).__name__ == "Block"
+    assert type(m_none.blocks[0]).__name__ == "Block"
+    assert type(m_mha.blocks[0]).__name__ == "Block"
+    assert sum(p.numel() for p in m_default.parameters()) == \
+        sum(p.numel() for p in m_none.parameters()) == \
+        sum(p.numel() for p in m_mha.parameters())
+    x = torch.randint(0, 10, (2, 12))
+    ref = m_default(x)[1]["states"][-1]
+    assert torch.equal(ref, m_none(x)[1]["states"][-1])
+    assert torch.equal(ref, m_mha(x)[1]["states"][-1])
+    assert tuple(m_mha.blocks[0].qkv.weight.shape) == (3 * 16, 16)
+
+
+def test_kv_heads_guards_require_dense_sequential_and_divisibility():
+    """单因素护栏：GQA/MQA 只在 dense + sequential 下开放、与内容 top-k / 线性注意力
+    / 训练窗口互斥；n_kv_heads 必须整除 n_heads；stock 路径守卫（dist_pen/kv_from/
+    gate_vec）；增量解码路径显式拒绝（契约 S 不主张解码侧收益）。"""
+    with pytest.raises(ValueError):
+        tiny_model(dense=False, n_kv_heads=1)              # dense=False
+    with pytest.raises(ValueError):
+        gqa_model(2, topology="parallel")
+    with pytest.raises(ValueError):
+        gqa_model(2, train_window=4)
+    with pytest.raises(ValueError):
+        gqa_model(2, attn_linear=True)
+    with pytest.raises(ValueError):
+        gqa_model(2, attn_sparse_k=3)
+    for bad in (0, 3, 16):                                 # 0 / 不整除 8 / > n_heads
+        with pytest.raises(ValueError):
+            gqa_model(bad)
+    ok = gqa_model(2)
+    assert type(ok.blocks[0]).__name__ == "GQABlock"
+    with pytest.raises(ValueError):
+        ok.blocks[0](torch.randn(2, 12, 32), dist_pen=0.5)
+    with pytest.raises(ValueError):
+        ok.blocks[0](torch.randn(2, 12, 32), kv_from=torch.randn(2, 12, 32))
+    with pytest.raises(ValueError):
+        ok.blocks[0](torch.randn(2, 12, 32), gate_vec=torch.rand(2, 12, 32))
+    with pytest.raises(ValueError):
+        ok.blocks[0](torch.randn(2, 12, 32),
+                     attn_mask=torch.ones(2, 2, 12, 12, 12, dtype=torch.bool))
+    from pathlm.depth_ar import DepthARDecoder
+    with pytest.raises(ValueError):
+        DepthARDecoder(ok)
+
+
+def test_kv_heads_actual_tensor_shapes_and_analytic_memory():
+    """形状类干预的活性证据 = **实际张量形状**（不是标签）：qkv 输出宽度真的变窄
+    （d + 2·n_kv_heads·dh）、进 SDPA 的 K/V 张量头数真的等于 n_kv_heads、解析 KV
+    内存按同一比例下降（GQA −75% / MQA −87.5%），且各 KV 头的 K 投影行不全同
+    （否则就是「广播一个头」式假实现）。"""
+    x = torch.randint(0, 10, (2, 12))
+    seen = {}
+    for nkv, red in ((2, 0.75), (1, 0.875)):
+        m = gqa_model(nkv)
+        live = kv_head_liveness(m, x)
+        seen[nkv] = live
+        d, nh, dh = 32, 8, 4
+        assert live["enabled"] is True and live["mha"] is False
+        assert live["n_kv_heads"] == nkv and live["head_dim"] == dh
+        assert live["group_size"] == nh // nkv
+        assert live["qkv_out_width"] == d + 2 * nkv * dh        # 不是 3d
+        assert live["qkv_out_width_mha_equivalent"] == 3 * d
+        assert live["k_batch_shape"] == [2, nkv, 12, dh]        # 实际进 SDPA 的形状
+        for row in live["per_layer"]:
+            assert row["k_shape"][1] == nkv and row["v_shape"][1] == nkv
+            assert row["q_shape"][1] == nh                      # query 头数不变
+            assert row["kv_bytes_per_position_fp16"] == 2 * nkv * dh * 2
+            assert row["k_rows_nonzero_frac"] == 1.0
+            if nkv > 1:
+                assert row["kv_head_pair_max_abs_weight_diff"] > 0
+                assert len(row["k_proj_per_kv_head_row_norm"]) == nkv
+        assert live["kv_reduction_frac"] == pytest.approx(red)
+        assert live["kv_elems_per_position"] == 3 * 2 * nkv * dh
+        assert live["kv_bytes_per_position_fp16"] == live["kv_elems_per_position"] * 2
+        assert live["mha_kv_bytes_per_position_fp16"] == \
+            live["kv_bytes_per_position_fp16"] / (1 - red)
+        # 剪枝类：负（含 qkv 偏置的半边差 ⇒ 系数是 (d+1) 不是 d）
+        assert live["params_added"] == -2 * (d - nkv * dh) * (d + 1) * 3
+        assert live["alive"] is True
+    # MHA 臂：同一函数必须报「无共享」（reduction 0、形状 = [B, n_heads, T, dh]）
+    mha = kv_head_liveness(tiny_model(dense=True), x)
+    assert mha["mha"] is True and mha["enabled"] is False
+    assert mha["kv_reduction_frac"] == 0.0 and mha["params_added"] == 0
+    assert mha["k_batch_shape"] == [2, 2, 12, 8]
+    assert mha["params_added_note"] != seen[1]["params_added_note"]
+
+
+def test_kv_heads_enable_gqa_kernel_equals_repeat_interleave():
+    """内核语义 = 标准 GQA：`enable_gqa=True` 的输出必须与手工把 K/V 按
+    `repeat_interleave(group)` 展开到 n_heads 后的输出**逐位**一致（同权重、同输入）。
+    这条同时钉住「哪几个 query 头共享哪一组 K/V」的组划分，以及「没有物化复制」的
+    等价性；变异（比如把 K/V 张量整形错位）会把它抓红。"""
+    m = gqa_model(2)
+    blk = m.blocks[0]
+    blk.eval()
+    x = torch.randn(2, 12, 32)
+    with torch.no_grad():
+        got, tele = blk(x)
+        d, nh, nkv, dh = 32, 8, 2, 4
+        B, T = 2, 12
+        qkv = blk.qkv(blk.ln1(x))
+        q, kv = qkv[..., :d], qkv[..., d:]
+        k, v = kv[..., :nkv * dh], kv[..., nkv * dh:]
+        shape = lambda t, h: t.view(B, T, h, dh).transpose(1, 2)
+        rep = nh // nkv
+        a = F.scaled_dot_product_attention(
+            shape(q, nh), shape(k, nkv).repeat_interleave(rep, dim=1),
+            shape(v, nkv).repeat_interleave(rep, dim=1), is_causal=True)
+        want = x + blk.proj(a.transpose(1, 2).reshape(B, T, d))
+        want = want + blk.mlp(blk.ln2(want))
+    assert torch.equal(got, want)
+    assert tele is None
+    assert blk.kv_telemetry["k_shape"] == (B, nkv, T, dh)
+    assert blk.kv_telemetry["expanded_to_n_heads"] is False
+    # 掩码路径（评测期仪器）也必须与同一参考的掩码版本一致
+    keep = torch.tril(torch.ones(T, T, dtype=torch.bool)).view(1, 1, T, T)
+    with torch.no_grad():
+        got_m, _ = blk(x, attn_mask=keep.expand(B, nh, T, T))
+        a_m = F.scaled_dot_product_attention(
+            shape(q, nh), shape(k, nkv).repeat_interleave(rep, dim=1),
+            shape(v, nkv).repeat_interleave(rep, dim=1),
+            attn_mask=keep.expand(B, nh, T, T))
+        want_m = x + blk.proj(a_m.transpose(1, 2).reshape(B, T, d))
+        want_m = want_m + blk.mlp(blk.ln2(want_m))
+    assert torch.equal(got_m, want_m)
+
+
+def test_kv_heads_switch_changes_computation_and_grouping():
+    """干预真的改了计算（不是改标签）：同 seed 下 MHA 与 GQA 的前向状态必然不同
+    （KV 投影宽度不同 ⇒ 参数不同）；且 GQA 里同组 query 头读到的 K/V **恰好相同**、
+    不同组不同（组划分的直接张量证据）。"""
+    torch.manual_seed(0)
+    mha = gqa_model(None)
+    gqa = gqa_model(2)
+    x = torch.randint(0, 10, (2, 12))
+    assert not torch.equal(mha(x)[1]["states"][-1], gqa(x)[1]["states"][-1])
+    blk = gqa.blocks[0]
+    with torch.no_grad():
+        qkv = blk.qkv(blk.ln1(x.float())) if False else None
+    with torch.no_grad():
+        h = torch.randn(2, 12, 32)
+        qkv = blk.qkv(blk.ln1(h))
+        kv = qkv[..., 32:]
+        k, v = kv[..., :8], kv[..., 8:]
+        ks = k.view(2, 12, 2, 4).transpose(1, 2).repeat_interleave(4, dim=1)
+        # 组划分：query 头 0..3 与 4..7 各自共享同一组 K/V
+        assert torch.equal(ks[:, 0], ks[:, 3])
+        assert not torch.equal(ks[:, 0], ks[:, 4])
+        assert torch.equal(k.view(2, 12, 2, 4).transpose(1, 2)[:, 0],
+                           ks[:, 0])
+
+
+def test_kv_heads_gradients_reach_narrow_kv_projections():
+    """反向可达性：损失对变窄的 K/V 投影行（qkv 权重的 [d, d+2·kv_dim) 行）梯度
+    非零且有限 —— 变窄的 K/V 不是死路径（活性量的梯度侧证据）。"""
+    for nkv in (2, 1):
+        m = gqa_model(nkv)
+        x = torch.randint(0, 10, (2, 12))
+        loss, _ = m(x, exit_depths=None)
+        loss.backward()
+        d, dh, kv_dim = 32, 4, nkv * 4
+        for blk in m.blocks:
+            g = blk.qkv.weight.grad
+            assert g is not None and torch.isfinite(g).all()
+            kv_rows = g[d:d + 2 * kv_dim]
+            assert bool((kv_rows.abs().sum(-1) > 0).all()), \
+                "变窄的 K/V 投影有行拿不到梯度（死路径）"
+            assert float(kv_rows.abs().max()) > 0
+
+
+def test_train_cli_kv_heads_plumbed_to_config():
+    """CLI 通道（可失败）：`--n-kv-heads` 必须真的进 `DepthARConfig` 并建出 GQABlock，
+    否则就是「开关是死的」。变异验证 S8（把 `build_depthar_config` 里的
+    `n_kv_heads=args.n_kv_heads` 改成 `None`）靠这条抓红。"""
+    import argparse
+    import subprocess
+    import train_depth_ar as T
+
+    base = dict(d=32, layers=2, heads=2, seq_len=12, mlp_mult=4, dense=True,
+                gate_bias_init=-2.0, topology="sequential", fill_kv=True,
+                proj_fill=False, readout_dims=None, readout_gated=False,
+                readout_linear_resid=False, attn_sparse_k=0, attn_linear=False,
+                linear_chunk=64, train_window=0, train_anchors=0)
+    cfg = T.build_depthar_config(argparse.Namespace(**base, n_kv_heads=1))
+    assert cfg.n_kv_heads == 1
+    torch.manual_seed(0)
+    m = DepthARModel(cfg, vocab_size=10)
+    assert type(m.blocks[0]).__name__ == "GQABlock"
+    assert tuple(m.blocks[0].qkv.weight.shape)[0] == 32 + 2 * 1 * 16
+    cfg_off = T.build_depthar_config(argparse.Namespace(**base, n_kv_heads=None))
+    assert cfg_off.n_kv_heads is None
+    assert type(DepthARModel(cfg_off, 10).blocks[0]).__name__ == "Block"
+    # CLI 表面：argparse 必须真的认这个选项（在子进程里读 --help，不跑训练）
+    r = subprocess.run([sys.executable, "train_depth_ar.py", "--help"], cwd=ROOT,
+                       capture_output=True, text=True, timeout=300)
+    assert r.returncode == 0 and "--n-kv-heads" in r.stdout, r.stdout[-500:]

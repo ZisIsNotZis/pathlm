@@ -29,6 +29,12 @@ from .model import Block, cap_norm
 
 LN2 = 0.6931471805599453  # nats → bits
 
+#: 线性注意力的归一化分母下限（φ = elu+1 ≥ 0 且对角恒贡献 ⇒ 分母恒 > 0）。
+LINEAR_ATTN_EPS = 1e-6
+#: 线性注意力训练实装的分块大小（chunk）缺省。它是**实现细节**（单测钉住：改
+#: chunk 只改浮点累加顺序，不改语义），不是第二个干预档。
+DEFAULT_LINEAR_CHUNK = 64
+
 
 @dataclass
 class DepthARConfig:
@@ -104,6 +110,27 @@ class DepthARConfig:
     # 下开放（退出/填充/并行接线下的窗口语义未定义，单因素）。
     train_window: int = 0
     train_anchors: int = 0
+    # 线性注意力（ticket 33 契约 R，A6 混合算子续）。唯一变量 = 注意力算子：
+    #   False（缺省）= stock 全因果 softmax 注意力（SDPA 融合核），逐位还原 v1；
+    #   True = 归一化线性核注意力 out_i = Σ_{j≤i} (φ(q_i)·φ(k_j)) v_j / Σ φ(q_i)·φ(k_j)，
+    #          φ = elu+1（`linear_attn_phi`）。用**累积状态**实现 ⇒ 每层时间/显存
+    #          对 T 线性（不物化 [T,T] 分数矩阵，也不需要全量 KV）。
+    # 不新增任何参数（块与 Block 逐位同构，单测钉住）⇒ SCHEMA §15 的等参数要求
+    # 自动满足。只在 dense=True + topology="sequential" 下开放（单因素），且与
+    # attn_sparse_k / train_window 互斥（一次只改一个因素）。
+    attn_linear: bool = False
+    # 线性注意力训练实装的分块大小（实现细节；见 DEFAULT_LINEAR_CHUNK 注释）
+    linear_chunk: int = DEFAULT_LINEAR_CHUNK
+    # KV 头共享（ticket 33 契约 S，W3 参照线）：注意力里 K/V 的**头数**（不是头
+    # 维度）。缺省 None = MHA，即 n_kv_heads == n_heads，走 stock `Block` 路径、
+    # 逐位还原 v1；< n_heads 时走 `GQABlock`：K/V 投影只产生 n_kv_heads 个头
+    # （GQA；n_kv_heads = 1 即 MQA），由 SDPA 的 `enable_gqa` 按组广播给 query 头，
+    # 因此 KV cache 的每位置元素数从 2·d 降到 2·n_kv_heads·(d/n_heads)
+    # （n_kv_heads = 2 时 −75%、= 1 时 −87.5%）。头维度恒 = d/n_heads（与 query
+    # 头同维，否则点积无定义）⇒ 必须整除 n_heads。只在 dense=True +
+    # topology="sequential" 下开放（退出/填充/并行接线下的 KV 语义未定义，
+    # 单因素）。n_kv_heads == n_heads 等价于缺省（同样走 `Block`）。
+    n_kv_heads: int | None = None
 
 
 TOPOLOGIES = ("sequential", "parallel", "parallel-dual-ln", "dense")
@@ -221,6 +248,8 @@ def sparse_attn_telemetry(keep: torch.Tensor, k: int) -> dict:
 class TopKBlock(Block):
     """内容 top-k 稀疏注意力块（ticket 31 契约 J）。
 
+
+
     与 `Block` 的唯一差别 = 注意力算子：先算**完整**分数矩阵
     `scores = q·kᵀ/√dh`，在因果掩码内保留每个查询分数最高的 k 个键、其余置
     −inf 后 softmax（数学语义 = 只用被选键做混合的稀疏注意力；选择按内容）。
@@ -233,6 +262,10 @@ class TopKBlock(Block):
     - 只支持 stock 路径（无 mask/dist_pen/kv_from/gate_vec）——稀疏注意力只在
       dense=True（无退出/无填充）形态下开放。
     """
+
+    #: 该块的 aux 遥测归类（`DepthARModel.forward` 依此把活性量放进
+    #: `aux["attn_sparse"]`）；线性注意力块同名字段用 "attn_linear"。
+    telemetry_kind = "attn_sparse"
 
     def __init__(self, cfg: ModelConfig, topk: int):
         if topk < 1:
@@ -273,6 +306,562 @@ class TopKBlock(Block):
         x = x + self.proj(a)
         x = x + self.mlp(self.ln2(x))
         return x, tele
+
+
+# ---------- KV 头共享（ticket 33 契约 S，W3 参照线） ----------
+
+
+class GQABlock(nn.Module):
+    """KV 头共享注意力块（ticket 33 契约 S，W3 参照线）：GQA / MQA。
+
+    与 stock `Block` 的唯一差别 = K/V 的**头数**（query 头数不变）：n_kv_heads 个
+    K/V 头，每组 `n_heads / n_kv_heads` 个 query 头共享同一组 K/V（n_kv_heads=1
+    即 MQA）。n_kv_heads == n_heads（MHA）由 `Block` 承担，本类不参与 ⇒ 缺省路径
+    逐位还原 v1（单测钉住）。
+
+    - 投影输出宽度 = `d + 2·n_kv_heads·dh`（不是 3d）⇒ **KV cache 的每位置元素数
+      真的从 2·d 降到 2·n_kv_heads·dh**，这是机制本身，不是标签；
+    - 注意力用 `scaled_dot_product_attention(..., enable_gqa=True)`：K/V 以
+      `[B, n_kv_heads, T, dh]` 进内核、由内核按组广播（**不物化**复制到 n_heads；
+      实测与手工 `repeat_interleave` 展开逐位一致，单测钉住），该形状就是部署侧
+      KV cache 的形状（`kv_telemetry` 逐次前向记录，作活性证据）；
+    - 子模块创建顺序与 `Block` 一致（ln1 → qkv → proj → mlp）；
+    - 只支持 stock 路径（无 dist_pen/kv_from/gate_vec）——KV 头共享只在 dense=True
+      （无退出/无填充）形态下开放；评测期可见性掩码 `attn_mask` 支持。
+    """
+
+    def __init__(self, cfg: ModelConfig, n_kv_heads: int):
+        super().__init__()
+        d, nh = cfg.d_model, cfg.n_heads
+        if not 0 < n_kv_heads < nh or nh % n_kv_heads:
+            raise ValueError(
+                f"n_kv_heads 必须满足 0 < n_kv_heads < n_heads 且整除 n_heads，"
+                f"收到 n_kv_heads={n_kv_heads} / n_heads={nh}（n_kv_heads == "
+                "n_heads 是 MHA，走 stock Block，不用本块）")
+        self.n_heads = nh
+        self.n_kv_heads = int(n_kv_heads)
+        self.head_dim = d // nh
+        self.kv_dim = self.n_kv_heads * self.head_dim
+        self.ln1 = nn.LayerNorm(d)
+        self.ln2 = nn.LayerNorm(d)
+        # K/V 半边只有 kv_dim 宽（唯一的结构差异；q 半边恒 d）
+        self.qkv = nn.Linear(d, d + 2 * self.kv_dim)
+        self.proj = nn.Linear(d, d)
+        self.mlp = nn.Sequential(
+            nn.Linear(d, cfg.mlp_mult * d), nn.GELU(),
+            nn.Linear(cfg.mlp_mult * d, d), nn.Dropout(cfg.dropout),
+        )
+        #: 每次前向记录实际进 SDPA 的 K/V 张量形状（活性证据，不进 state_dict）
+        self.kv_telemetry: dict | None = None
+
+    def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
+                dist_pen: float = 0.0, kv_from: torch.Tensor | None = None,
+                gate_vec: torch.Tensor | None = None
+                ) -> tuple[torch.Tensor, None]:
+        for name, given in (("dist_pen", dist_pen > 0),
+                            ("kv_from", kv_from is not None),
+                            ("gate_vec", gate_vec is not None)):
+            if given:
+                raise ValueError(
+                    f"GQABlock 只支持 stock 注意力路径，收到 {name}：KV 头共享只在"
+                    "dense=True（无退出/无填充）形态下开放")
+        if attn_mask is not None and attn_mask.dim() not in (2, 4):
+            raise ValueError("attn_mask 必须是 [T,T] 或 [B,H,T,T]（评测期可见性掩码）")
+        B, T, d = x.shape
+        qkv = self.qkv(self.ln1(x))
+        q, kv = qkv[..., :d], qkv[..., d:]
+        k, v = kv[..., :self.kv_dim], kv[..., self.kv_dim:]
+
+        def shape(t: torch.Tensor, nh: int) -> torch.Tensor:
+            return t.view(B, T, nh, self.head_dim).transpose(1, 2)
+
+        qs, ks, vs = shape(q, self.n_heads), shape(k, self.n_kv_heads), shape(v, self.n_kv_heads)
+        a = F.scaled_dot_product_attention(qs, ks, vs, attn_mask=attn_mask,
+                                           is_causal=attn_mask is None,
+                                           enable_gqa=True)
+        self.kv_telemetry = {
+            "q_shape": tuple(qs.shape), "k_shape": tuple(ks.shape),
+            "v_shape": tuple(vs.shape), "qkv_out_width": int(qkv.shape[-1]),
+            "n_kv_heads": self.n_kv_heads, "head_dim": self.head_dim,
+            "enable_gqa": True, "expanded_to_n_heads": False,
+            "attn_mask": attn_mask is not None,
+        }
+        a = a.transpose(1, 2).reshape(B, T, d)
+        x = x + self.proj(a)
+        x = x + self.mlp(self.ln2(x))
+        return x, None
+
+
+@torch.no_grad()
+def kv_head_liveness(model: "DepthARModel", tokens: torch.Tensor) -> dict:
+    """KV 头共享的活性块（SCHEMA §10 强制项，契约 S）：报**实际张量形状**。
+
+    形状类干预（改 KV 头数）不能只改标签，因此本函数在**一次真实前向**里抓：
+    ① 每层 `qkv` 投影的**实际输出宽度**（MHA = 3d；GQA/MQA = d + 2·n_kv_heads·dh，
+    由 forward hook 抓，与配置无关）；② GQA/MQA 层真正送进 SDPA 的 K/V 张量形状
+    `[B, n_kv_heads, T, dh]`（块自己在 forward 里记录）。两者与 `cfg` 期望不符时
+    直接抛 `AssertionError`——活性证据是张量本身，不是标签。
+
+    解析 KV 内存：每位置元素数 = `n_layers · 2 · n_kv_heads · head_dim`，字节数按
+    fp16（部署默认 KV 精度）与 fp32 两个口径给出；`kv_reduction_frac` 是相对 MHA
+    （2·d/层/位置）的下降比。**这是解析内存**，不是实测显存（见实验 analysis.md）。
+    """
+    cfg = model.cfg
+    d, nh = cfg.d_model, cfg.n_heads
+    dh = d // nh
+    nkv = cfg.n_kv_heads if cfg.n_kv_heads is not None else nh
+    widths: dict[int, tuple] = {}
+    handles = [blk.qkv.register_forward_hook(
+        (lambda k: lambda mod, inp, out: widths.__setitem__(k, tuple(out.shape)))(k))
+        for k, blk in enumerate(model.blocks)]
+    was_training = model.training
+    model.eval()
+    try:
+        model(tokens)
+    finally:
+        for h in handles:
+            h.remove()
+        model.train(was_training)
+    assert len(widths) == cfg.n_layers, "有层的前向没被 hook 到（活性证据不完整）"
+    layers = []
+    for k, blk in enumerate(model.blocks):
+        w_shape = tuple(blk.qkv.weight.shape)
+        qkv_w = widths[k][-1]
+        assert w_shape[0] == qkv_w, (
+            f"层 {k}: qkv 权重输出宽度 {w_shape[0]} != 前向实际输出宽度 {qkv_w}")
+        if cfg.n_kv_heads is not None and cfg.n_kv_heads < nh:
+            tele = blk.kv_telemetry
+            assert tele is not None, f"层 {k}: GQA 块没有落 K/V 张量形状（活性证据缺失）"
+            k_shape, v_shape = tele["k_shape"], tele["v_shape"]
+            q_shape = tele["q_shape"]
+        else:
+            # stock Block：K/V 半边 = u 的 1/3 宽，reshape 后头数 = 半边宽 / dh
+            kv_width = qkv_w // 3
+            assert qkv_w == 3 * d and kv_width % dh == 0, \
+                f"层 {k}: 非 MHA 布局（qkv 输出宽 {qkv_w}）却走 MHA 分支"
+            k_shape = (tokens.shape[0], kv_width // dh, tokens.shape[1], dh)
+            v_shape = k_shape
+            q_shape = k_shape
+        assert k_shape[1] == nkv and v_shape[1] == nkv, (
+            f"层 {k}: 实际 K/V 头数 {k_shape[1]}/{v_shape[1]} != 配置的 {nkv}"
+            "（只改标签没改张量）")
+        assert k_shape == v_shape and k_shape[0] == tokens.shape[0] \
+            and k_shape[2] == tokens.shape[1] and k_shape[3] == dh, \
+            f"层 {k}: K/V 张量形状异常 {k_shape} / {v_shape}"
+        kv_elems = 2 * nkv * dh
+        w = blk.qkv.weight.detach().float()
+        kv_dim = nkv * dh
+        k_rows = w[:d + kv_dim][d:] if cfg.n_kv_heads is not None and cfg.n_kv_heads < nh \
+            else w[d:2 * d]
+        # 每个 KV 头自己的 K 投影行：两个头若逐位相同（或退化成广播），就是「只改标签」
+        v_rows = w[d + kv_dim:d + 2 * kv_dim] if cfg.n_kv_heads is not None \
+            and cfg.n_kv_heads < nh else w[2 * d:3 * d]
+        k_heads_w = [k_rows[i * dh:(i + 1) * dh] for i in range(nkv)]
+        head_norms = [round(float(hh.norm()), 6) for hh in k_heads_w]
+        pair_diff = max((float((k_heads_w[i] - k_heads_w[j]).abs().max())
+                         for i in range(nkv) for j in range(i + 1, nkv)),
+                        default=None)
+        layers.append({
+            "layer": k, "class": type(blk).__name__,
+            "qkv_weight_shape": w_shape, "qkv_out_width": qkv_w,
+            "k_shape": list(k_shape), "v_shape": list(v_shape),
+            "q_shape": list(q_shape),
+            "n_kv_heads": nkv, "head_dim": dh, "q_heads": nh,
+            "kv_elems_per_position": kv_elems,
+            "kv_bytes_per_position_fp16": kv_elems * 2,
+            "kv_bytes_per_position_fp32": kv_elems * 4,
+            "k_proj_per_kv_head_row_norm": head_norms,
+            "kv_head_pair_max_abs_weight_diff": (round(pair_diff, 6)
+                                                 if pair_diff is not None else None),
+            "k_rows_nonzero_frac": round(float((k_rows != 0).float().mean()), 6),
+            "kv_rows_fro": round(float(torch.cat([k_rows, v_rows]).norm()), 6),
+        })
+    per_layer_elems = 2 * nkv * dh
+    total_elems = cfg.n_layers * per_layer_elems
+    mha_total_elems = cfg.n_layers * 2 * d
+    kv_part = [p for name, p in model.named_parameters()
+               if name.endswith(".qkv.weight")]
+    kv_nonzero = sum(int((p.detach() != 0).sum()) for p in kv_part)
+    kv_numel = sum(p.numel() for p in kv_part)
+    return {
+        "enabled": bool(cfg.n_kv_heads is not None and cfg.n_kv_heads < nh),
+        "mha": bool(cfg.n_kv_heads is None or cfg.n_kv_heads == nh),
+        "n_heads": nh, "n_kv_heads": nkv, "head_dim": dh,
+        "group_size": nh // nkv,
+        "block_python_class": type(model.blocks[0]).__name__,
+        "qkv_out_width": widths[0][-1],
+        "qkv_out_width_mha_equivalent": 3 * d,
+        "k_batch_shape": layers[0]["k_shape"],
+        "params_per_layer_kv_elems": per_layer_elems,
+        "params_added": -2 * (d - nkv * dh) * (d + 1) * cfg.n_layers,
+        "params_added_note": ("KV 头共享**减少**参数（K/V 投影半边变窄），故为负；"
+                              "= −2·(d − n_kv_heads·dh)·(d+1)·n_layers（含 qkv 偏置的"
+                              "半边差）⇒ 容量差异，见 analysis.md 混杂声明（SCHEMA §15 "
+                              "的剪枝类情形）"
+                              if nkv < nh else
+                              "MHA（n_kv_heads == n_heads）：无共享，参数与 v1 逐位相同"),
+        "kv_qkv_weight_nonzero_frac": round(kv_nonzero / max(kv_numel, 1), 6),
+        "kv_qkv_weight_fro": round(float(sum(float(p.detach().float().norm())
+                                             for p in kv_part)), 6),
+        "kv_elems_per_position_per_layer": per_layer_elems,
+        "kv_elems_per_position": total_elems,
+        "kv_bytes_per_position_fp16": total_elems * 2,
+        "kv_bytes_per_position_fp32": total_elems * 4,
+        "kv_reduction_frac": round(1 - nkv / nh, 6),
+        "mha_kv_bytes_per_position_fp16": mha_total_elems * 2,
+        "k_proj_per_kv_head_row_norm": layers[0]["k_proj_per_kv_head_row_norm"],
+        "kv_head_pair_max_abs_weight_diff": (
+            min(r["kv_head_pair_max_abs_weight_diff"] for r in layers)
+            if nkv > 1 else None),
+        "kv_rows_fro_mean": round(
+            sum(r["kv_rows_fro"] for r in layers) / cfg.n_layers, 6),
+        "per_layer": layers,
+        "alive": bool(kv_nonzero > 0 and layers[0]["k_shape"][1] == nkv
+                       and (nkv == 1 or all(
+                           r["kv_head_pair_max_abs_weight_diff"]
+                           for r in layers))),
+        "alive_note": ("活性证据 = 前向实际 K/V 张量形状 [B, n_kv_heads, T, dh]"
+                       "（不是标签）+ qkv 投影权重非零 + 各 KV 头的 K 投影行不全同"
+                       if cfg.n_kv_heads is not None and cfg.n_kv_heads < nh else
+                       "MHA（n_kv_heads == n_heads）：无共享，KV 形状 = [B, n_heads, T, dh]"),
+    }
+
+
+# ---------- 线性注意力（ticket 33 契约 R，A6 混合算子续） ----------
+
+
+def linear_attn_phi(x: torch.Tensor) -> torch.Tensor:
+    """线性注意力的特征映射 φ(x) = **elu(x) + 1**（Katharopoulos et al. 2020 的
+    「elu+1」，单测钉住公式本身）。两条性质都是机制的一部分：
+
+    - **非负**：核分数 `φ(q)·φ(k) ≥ 0` ⇒ 注意力权重可解释为归一化的非负平均，
+      不会出现负权重相互抵消（φ = elu 会给出负值）；
+    - **恒有兜底**：数学上 φ > 0；fp32 下 `x ≲ −16` 时 `elu(x)` 舍入为 −1 ⇒
+      φ 恰好下溢为 0（实测 φ(−20) = 0.0），因此分母必须 clamp（见
+      `LINEAR_ATTN_EPS`）——对角项恒在，clamp 后分母恒 > 0，不会出 NaN。
+    """
+    return F.elu(x) + 1.0
+
+
+def linear_attn_reference(qf: torch.Tensor, kf: torch.Tensor, v: torch.Tensor,
+                          keep: torch.Tensor | None = None) -> torch.Tensor:
+    """线性注意力的**参考实现**（显式 `[B,H,T,T]` 核分数，O(T²) 时间/显存）。
+
+    把线性注意力写成「softmax 换成归一化线性核」的等价形式：
+    `out_i = Σ_{j∈allow} (φ(q_i)·φ(k_j)) v_j / Σ_{j∈allow} (φ(q_i)·φ(k_j))`。
+    因为打分是显式的，它**可以接受任意的可见性掩码**（`[T,T]` 或 `[B,H,T,T]`
+    bool，语义 = 被删位置的 φ(k) 从分子分母中一起去掉，与全注意力掩码同一件仪器
+    的可见性语义）——这是「评测期依赖曲线」能在同一个算子上跑的前提（契约 R 判据 ③）。
+
+    只用于测试与评测期仪器；训练的 O(T) 实装见 `linear_attn_chunked`，两者的
+    数值一致性由单测钉住（同一 φ、同一归一化，差异仅浮点累加顺序）。
+    """
+    T = qf.shape[-2]
+    scores = qf @ kf.transpose(-2, -1)                       # [B,H,T,T]，非负
+    if keep is None:
+        keep = torch.tril(torch.ones(T, T, dtype=torch.bool,
+                                     device=scores.device))
+    scores = scores.masked_fill(~keep.to(torch.bool), 0.0)
+    den = scores.sum(-1, keepdim=True)
+    return (scores @ v) / den.clamp_min(LINEAR_ATTN_EPS)
+
+
+def linear_attn_chunked(qf: torch.Tensor, kf: torch.Tensor, v: torch.Tensor,
+                        chunk: int = DEFAULT_LINEAR_CHUNK
+                        ) -> tuple[torch.Tensor, dict]:
+    """线性注意力的 **O(T) 训练实装**（契约 R 的「必须证明真的是 O(T)」）。
+
+    分块形式（chunk = C）：块**间**用累积状态、块**内**用显式因果打分。
+
+        out_i = [ φ(q_i)ᵀ·S_{n(i)} + Σ_{j∈块 n(i), j≤i} (φ(k_j)·φ(q_i))·v_j ]
+              / [ φ(q_i)·z_{n(i)} + Σ_{j∈块 n(i), j≤i} φ(k_j)·φ(q_i) ]
+
+    其中 `S_n = Σ_{m<n} Σ_{j∈块 m} φ(k_j) v_jᵀ`、`z_n = Σ_{m<n} Σ_{j∈块 m} φ(k_j)`
+    只依赖块号，用一次 exclusive `cumsum` 得到。因此：
+
+    - **时间**：每 token 每 head 的 MAC 数 = `dh²`（状态×查询）+ `C·dh`（块内打分
+      与混合），**两者都与 T 无关** ⇒ 每层 O(T)（对照：全注意力每 token 每 head
+      = `2·T·dh`，即 O(T²)）；
+    - **显存**：状态 `[B,H,T/C,dh,dh]` + 块内分数 `[B,H,T/C,C,C]` ⇒ O(T)
+      （对照：全注意力的分数矩阵 O(T²)）；**全程不物化任何 `[T,T]` 张量**。
+
+    返回 `(out, telemetry)`；`telemetry` 是训练日志每 200 步落盘的活性量
+    （SCHEMA §10）：`phi_min/phi_max`（φ 的实测量程，机制前提）、`den_min`
+    （归一化分母最小值）、`inter_mass_frac`（输出范数中来自**块间状态** =
+    更远过去的份额）、`state_norm`（状态矩阵范数）。
+
+    **活性量以 0 维张量返回**（不在前向里 `.item()`/`float()`）：调用方按张量
+    累加、每 200 步落盘时再转 Python 浮点；每步 8 层 × 6 次设备同步在共享卡上
+    会拖垮训练（本实验第一次跑 linear 臂时实测卡在 step ~1000）。
+    """
+    B, H, T, dh = qf.shape
+    C = min(int(chunk), T)
+    if C < 1 or T % C:
+        raise ValueError(f"chunk={chunk} 必须整除 seq_len={T}（本实装的分块要求）")
+    n = T // C
+    qc = qf.reshape(B, H, n, C, dh)
+    kc = kf.reshape(B, H, n, C, dh)
+    vc = v.reshape(B, H, n, C, dh)
+    S_chunk = torch.einsum("bhncd,bhnce->bhnde", kc, vc)     # [B,H,n,dh,dh]
+    z_chunk = kc.sum(3)                                      # [B,H,n,dh]
+    # exclusive prefix（不含本块）：用「cumsum 后右移一位、首位补 0」而不是
+    # `cumsum - S_chunk`——后者的相减会把**本块自己的状态**以舍入误差的形式带回
+    # 前一块的输出（实测 1 ulp 的未来泄漏），破坏严格因果；右移形式无此问题，
+    # 单测 `test_linear_attn_causal_only_no_future_leak` 钉住逐位因果。
+    zero_s = torch.zeros_like(S_chunk[:, :, :1])
+    zero_z = torch.zeros_like(z_chunk[:, :, :1])
+    S_prev = torch.cat([zero_s, S_chunk.cumsum(2)[:, :, :-1]], dim=2)
+    z_prev = torch.cat([zero_z, z_chunk.cumsum(2)[:, :, :-1]], dim=2)
+    num_inter = torch.einsum("bhncd,bhnde->bhnce", qc, S_prev)   # 块间（远过去）
+    den_inter = torch.einsum("bhncd,bhnd->bhnc", qc, z_prev)
+    intra = torch.einsum("bhnid,bhnjd->bhnij", qc, kc).tril()   # 块内因果核分数
+    num_intra = torch.einsum("bhnij,bhnjd->bhnid", intra, vc)
+    den = den_inter + intra.sum(-1)
+    den_clamped = den.clamp_min(LINEAR_ATTN_EPS)
+    out = (num_inter + num_intra) / den_clamped.unsqueeze(-1)
+    ni = num_inter.float().norm(dim=-1)
+    nj = num_intra.float().norm(dim=-1)
+    tele = {
+        # 活性量以 **0 维张量** 形式返回（不在前向里做 `.item()`/`float()`）：
+        # 每步做 8 层 × 6 次设备同步在共享卡上会变成同步风暴（本实验第一次
+        # 跑 linear 臂时实测卡在 step ~1000、CPU 满载 / GPU 无进展），训练循环
+        # 改为按张量累加、只在每 200 步落盘时转成 Python 浮点（见 train_depth_ar.py）。
+        "phi_min": qf.detach().min().minimum(kf.detach().min()),
+        "phi_max": qf.detach().max().maximum(kf.detach().max()),
+        "den_min": den_clamped.detach().min(),
+        "inter_mass_frac": (ni / (ni + nj + LINEAR_ATTN_EPS)).detach().mean(),
+        "state_norm": S_chunk.detach().float().norm(dim=(-2, -1)).mean(),
+    }
+    return out.reshape(B, H, T, dh), tele
+
+
+class LinearAttnBlock(Block):
+    """线性注意力块（ticket 33 契约 R，A6 混合算子续）。
+
+    与 `Block` 的唯一差别 = 注意力算子：把全因果 softmax 注意力换成**归一化线性
+    核**注意力 `out_i = Σ_{j≤i} (φ(q_i)·φ(k_j)) v_j / Σ_{j≤i} φ(q_i)·φ(k_j)`，
+    φ = elu+1。用累积状态实现 ⇒ 每层时间/显存对 T **线性**：不需要 `[T,T]` 分数
+    矩阵，也不需要保留全量 KV（流式推理只需每层每头一个 `dh×dh` 状态 + `dh` 归一化
+    向量）。训练实装 = 分块并行形式（`linear_attn_chunked`）。
+
+    - 子模块创建顺序与 `Block` 完全一致（ln1 → ln2 → qkv → proj → mlp）⇒ 同 seed
+      下参数与全注意力臂**逐位相同**、参数量增量 0（单测钉住：单因素，且 SCHEMA §15
+      的等参数要求自动满足）；
+    - `attn_mask` 只在**评测期仪器路径**出现（`tools/evalkit/retention.py` 的
+      `masked_bpc` / `needle_recall`）：语义 = 把被删位置的 φ(k) 从分子分母中一起
+      去掉（与全注意力掩码同一件仪器的可见性语义），走 `linear_attn_reference`；
+      `attn_mask=None`（训练路径）= 因果线性注意力，走 O(T) 分块实装；
+    - 只支持 stock 路径（无 dist_pen/kv_from/gate_vec）——线性注意力只在 dense=True
+      （无退出/无填充）形态下开放。
+    """
+
+    telemetry_kind = "attn_linear"
+
+    def __init__(self, cfg: ModelConfig, chunk: int = DEFAULT_LINEAR_CHUNK):
+        super().__init__(cfg)
+        self.chunk = int(chunk)
+
+    def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
+                dist_pen: float = 0.0, kv_from: torch.Tensor | None = None,
+                gate_vec: torch.Tensor | None = None
+                ) -> tuple[torch.Tensor, dict | None]:
+        for name, given in (("dist_pen", dist_pen > 0),
+                            ("kv_from", kv_from is not None),
+                            ("gate_vec", gate_vec is not None)):
+            if given:
+                raise ValueError(
+                    f"LinearAttnBlock 只支持 stock 注意力路径，收到 {name}："
+                    "线性注意力只在 dense=True（无退出/无填充）形态下开放")
+        if attn_mask is not None and attn_mask.dim() not in (2, 4):
+            raise ValueError("attn_mask 必须是 [T,T] 或 [B,H,T,T]（评测期仪器掩码）")
+        B, T, d = x.shape
+        q, k, v = self.qkv(self.ln1(x)).chunk(3, dim=-1)
+        shape = lambda t: t.view(B, T, self.n_heads,
+                                 d // self.n_heads).transpose(1, 2)
+        qf, kf = linear_attn_phi(shape(q)), linear_attn_phi(shape(k))
+        vs = shape(v)
+        if attn_mask is None:
+            a, tele = linear_attn_chunked(qf, kf, vs, self.chunk)
+        else:
+            a, tele = linear_attn_reference(qf, kf, vs, keep=attn_mask), None
+        a = a.transpose(1, 2).reshape(B, T, d)
+        x = x + self.proj(a)
+        x = x + self.mlp(self.ln2(x))
+        return x, tele
+
+
+def attn_linear_liveness(model: "DepthARModel",
+                         layer_stats: list[dict] | None = None,
+                         prob: dict | None = None) -> dict:
+    """线性注意力的活性块（SCHEMA §10 强制项，契约 R）。
+
+    `params_added` 恒 0：该干预**不新增任何参数**（`LinearAttnBlock` 与 `Block`
+    逐位同构，单测与实测参数量逐位对照钉住），所以「干预活着」必须由**算子自身
+    的运行统计**证明：
+
+    - `phi_min/phi_max/den_min/inter_mass_frac/state_norm`：一次真实 forward 的
+      逐层 telemetry（`layer_stats`）聚合。φ 恒 > 0 与 den > 0 是机制前提；
+      `inter_mass_frac` = 输出范数中来自块间状态（= 更远过去）的份额，它为 0
+      则说明模型根本没读状态（「活的干预」的最直接证据）；
+    - `rel_dev_vs_full_*`（`prob` 由 `attn_linear_probe` 提供）：同一权重、同一
+      输入下把该层算子换回全因果 softmax 注意力的相对偏差 —— **> 0 才证明这不是
+      「换个名字的全注意力」**（契约 R 实现要点）。
+    """
+    cfg = model.cfg
+    out = {"attn_linear": bool(cfg.attn_linear), "enabled": bool(cfg.attn_linear),
+           "params_added": 0, "parametrized": False,
+           "linear_chunk": int(cfg.linear_chunk),
+           "block_python_class": type(model.blocks[0]).__name__}
+    if not cfg.attn_linear:
+        out.update({"phi_min": None, "phi_max": None, "den_min": None,
+                    "inter_mass_frac": None, "state_norm": None,
+                    "rel_dev_vs_full_min": None, "alive": False,
+                    "alive_note": "开关关闭（attn_linear=False）：无异于基线"})
+        return out
+    if layer_stats:
+        import statistics as _st
+        out.update({
+            "phi_min": round(float(min(s["phi_min"] for s in layer_stats)), 8),
+            "phi_max": round(float(max(s["phi_max"] for s in layer_stats)), 6),
+            "den_min": round(float(min(s["den_min"] for s in layer_stats)), 8),
+            "inter_mass_frac": round(float(_st.mean(
+                [float(s["inter_mass_frac"]) for s in layer_stats])), 6),
+            "state_norm": round(float(_st.mean(
+                [float(s["state_norm"]) for s in layer_stats])), 6),
+            "n_layers_sampled": len(layer_stats)})
+    else:
+        out.update({"phi_min": None, "den_min": None, "inter_mass_frac": None,
+                    "state_norm": None,
+                    "alive_note": "未提供 layer_stats（无真实前向的活性样本）"})
+    if prob:
+        out["rel_dev_vs_full_min"] = prob["rel_dev_vs_full_min"]
+        out["rel_dev_vs_full_mean"] = prob["rel_dev_vs_full_mean"]
+        out["per_layer"] = prob["per_layer"]
+    out["alive"] = bool(out.get("phi_min") is not None
+                        and out["phi_min"] > 0 and out["den_min"] > 0
+                        and (prob is None or prob["alive"]))
+    out["alive_note"] = (
+        "φ = elu+1 实测 > 0、归一化分母 > 0（无 NaN 通道），且同权重把算子换回全"
+        "注意力时输出有偏差（rel_dev > 0）⇒ 干预活着，不是换个名字的全注意力")
+    return out
+
+
+@torch.no_grad()
+def attn_linear_probe(model: "DepthARModel", eval_arr, n_batches: int = 2,
+                      batch_size: int = 8, seed: int = 13,
+                      device: str = "cpu") -> dict:
+    """线性注意力在**真实前向**上的活性汇总（训练入口与实验电池共用同一口径）。
+
+    两个反事实，都在**同一权重、同一输入**下做：
+
+    1. `rel_dev_vs_full`：把某层的算子换回全因果 softmax 注意力（`Block.forward`
+       用同一个块的 ln1/qkv/proj/mlp 权重 = 同权重换算子），相对偏差 > 0 ⇒ 算子
+       真的改了计算；
+    2. `kernel_mass`：**同一组权重**下两种算子把注意力质量放在多远处
+       （`attention_mass_stats`），用于回答契约 R 判据 ③「线性注意力是否天然更依赖
+       近处」的**机制侧**证据（与评测期抑制曲线独立）。
+
+    开关关闭时返回 enabled=False 的空块，不产生额外前向。
+    """
+    if not model.cfg.attn_linear:
+        return attn_linear_liveness(model)
+    from .data import batch
+    generator = torch.Generator().manual_seed(seed)
+    model.eval()
+    stats, devs, per_layer = [], [], []
+    mass = {"linear": [], "full": []}
+    L = len(model.blocks)
+    devs_by_layer: list[list[float]] = [[] for _ in range(L)]
+    for _ in range(n_batches):
+        x, _ = batch(eval_arr, batch_size, model.cfg.seq_len, generator)
+        x = x.to(device)
+        _, aux = model(x, exit_depths=None)
+        stats.extend(aux["attn_linear"])
+        m_lin = attention_mass_stats(model, x, kind="linear")
+        m_full = attention_mass_stats(model, x, kind="full")
+        mass["linear"].append(m_lin)
+        mass["full"].append(m_full)
+        for i, blk in enumerate(model.blocks):
+            h_in = aux["states"][i]
+            out_lin, tele = blk(h_in)                 # 训练路径（O(T) 分块）
+            out_full, _ = Block.forward(blk, h_in)    # 同权重换算子（全注意力）
+            assert tele is not None
+            dev = float((out_lin - out_full).norm() / out_full.norm())
+            devs.append(dev)
+            devs_by_layer[i].append(dev)
+    per_layer = [{"layer": i + 1,
+                  "rel_dev_vs_full": round(sum(d) / len(d), 6),
+                  "n_batches": len(d)}
+                 for i, d in enumerate(devs_by_layer)]
+    live = attn_linear_liveness(model, stats, prob={
+        "per_layer": per_layer,
+        "rel_dev_vs_full_min": round(min(devs), 6),
+        "rel_dev_vs_full_mean": round(sum(devs) / len(devs), 6),
+        "alive": bool(min(devs) > 0)})
+    live["kernel_mass"] = {
+        kind: {key: round(sum(r[key] for r in rows) / len(rows), 4)
+               for key in ("mass_mean_dist",) + tuple(
+                   f"mass_frac_within_{W}" for W in (32, 64, 128))}
+        for kind, rows in mass.items()}
+    live["kernel_mass_note"] = (
+        "同一组权重、同一输入下两种算子的注意力质量分布（O(T²) 显式打分，评测期"
+        "仪器）：mass_mean_dist = 质量加权平均查询-键距离；mass_frac_within_* = "
+        "质量落在最近 32/64/128 个位置内的比例。用它看线性核把质量放在多远处")
+    return live
+
+
+@torch.no_grad()
+def attention_mass_stats(model: "DepthARModel", tokens: torch.Tensor,
+                         kind: str = "linear",
+                         windows: tuple[int, ...] = (32, 64, 128)) -> dict:
+    """**评测期仪器**：把一次前向的注意力质量分布按距离汇总（逐层 + 全层平均）。
+
+    - `kind="linear"`：线性核权重 `φ(q)·φ(k)`（因果、逐查询归一化）——本臂训练时
+      真正用的分布；
+    - `kind="full"`：`softmax(q·kᵀ/√dh)`（全因果注意力）——基线臂的分布。
+
+    两者都只用**该模型自己的权重**（同一 `LinearAttnBlock` 的 ln1/qkv），因此
+    「线性算子是否更依赖近处」可以直接读出来。返回质量加权平均距离与落在最近
+    `windows` 个位置内的质量比例。
+    """
+    if kind not in ("linear", "full"):
+        raise ValueError(f"kind must be 'linear' or 'full', got {kind!r}")
+    B, T = tokens.shape
+    d = model.cfg.d_model
+    _, aux = model(tokens, exit_depths=None)
+    dist = (torch.arange(T, device=tokens.device).unsqueeze(1)
+            - torch.arange(T, device=tokens.device).unsqueeze(0)).clamp_min(0)
+    causal = torch.tril(torch.ones(T, T, dtype=torch.bool,
+                                   device=tokens.device))
+    per_layer = []
+    for i, blk in enumerate(model.blocks):
+        h = aux["states"][i]                     # 该层**真实**输入（同一前向）
+        dh = d // blk.n_heads
+        q, k, _v = blk.qkv(blk.ln1(h)).chunk(3, dim=-1)
+        shape = lambda t: t.view(B, T, blk.n_heads, dh).transpose(1, 2)
+        qs, ks = shape(q), shape(k)
+        if kind == "linear":
+            s = linear_attn_phi(qs) @ linear_attn_phi(ks).transpose(-2, -1)
+        else:
+            s = qs @ ks.transpose(-2, -1) / dh ** 0.5
+        s = s.masked_fill(~causal, 0.0 if kind == "linear" else float("-inf"))
+        if kind == "linear":
+            w = s / s.sum(-1, keepdim=True)
+        else:
+            w = s.softmax(-1)
+        w = w.float()
+        row = {"mass_mean_dist": float((w * dist).sum(-1).mean())}
+        for W in windows:
+            row[f"mass_frac_within_{W}"] = float(
+                (w * (dist < W)).sum(-1).mean())
+        per_layer.append(row)
+    keys = list(per_layer[0])
+    out = {kk: round(sum(r[kk] for r in per_layer) / len(per_layer), 4)
+           for kk in keys}
+    out.update({"kind": kind, "n_layers": len(per_layer),
+                "per_layer": [{kk: round(v, 4) for kk, v in r.items()}
+                              for r in per_layer]})
+    return out
 
 
 def window_anchor_keep_mask(T: int, window: int, anchors: int = 0,
@@ -521,8 +1110,56 @@ class DepthARModel(nn.Module):
                 "attn_sparse_k 与 train_window 互斥（单因素：一次只改一个因素）——"
                 f"收到 train_window={cfg.train_window} 且 attn_sparse_k="
                 f"{cfg.attn_sparse_k}")
+        if cfg.attn_linear and cfg.linear_chunk < 1:
+            raise ValueError(f"linear_chunk must be >= 1, got {cfg.linear_chunk}")
+        if cfg.attn_linear and not cfg.dense:
+            raise ValueError(
+                "线性注意力只在 dense=True（stock decoder-only 形态）下验证"
+                f"（单因素）——收到 attn_linear=True 且 dense=False")
+        if cfg.attn_linear and cfg.topology != "sequential":
+            raise ValueError(
+                "attn_linear 与层间拓扑互斥（单因素：一次只改一个因素）——"
+                f"收到 topology={cfg.topology!r}")
+        if cfg.attn_linear and cfg.attn_sparse_k > 0:
+            raise ValueError(
+                "attn_linear 与 attn_sparse_k 互斥（单因素：一次只改一个注意力"
+                f"算子）——收到 attn_sparse_k={cfg.attn_sparse_k}")
+        if cfg.attn_linear and cfg.train_window > 0:
+            raise ValueError(
+                "attn_linear 与 train_window 互斥（单因素：一次只改一个因素）——"
+                f"收到 train_window={cfg.train_window}")
+        if cfg.n_kv_heads is not None:
+            if not 0 < cfg.n_kv_heads <= cfg.n_heads or cfg.n_heads % cfg.n_kv_heads:
+                raise ValueError(
+                    "n_kv_heads 必须满足 0 < n_kv_heads <= n_heads 且整除 n_heads，"
+                    f"收到 n_kv_heads={cfg.n_kv_heads} / n_heads={cfg.n_heads}")
+            if cfg.n_kv_heads < cfg.n_heads:
+                if not cfg.dense:
+                    raise ValueError(
+                        "KV 头共享（GQA/MQA）只在 dense=True（stock decoder-only "
+                        "形态）下验证（单因素）——收到 n_kv_heads="
+                        f"{cfg.n_kv_heads} 且 dense=False")
+                if cfg.topology != "sequential":
+                    raise ValueError(
+                        "n_kv_heads 与层间拓扑互斥（单因素：一次只改一个因素）——"
+                        f"收到 topology={cfg.topology!r}")
+                for other, on in (("attn_sparse_k", cfg.attn_sparse_k > 0),
+                                  ("attn_linear", cfg.attn_linear),
+                                  ("train_window", cfg.train_window > 0)):
+                    if on:
+                        raise ValueError(
+                            f"n_kv_heads 与 {other} 互斥（单因素：一次只改一个"
+                            "因素）")
         if cfg.attn_sparse_k > 0:
             self.blocks = nn.ModuleList(TopKBlock(mcfg, cfg.attn_sparse_k)
+                                        for _ in range(cfg.n_layers))
+        elif cfg.attn_linear:
+            self.blocks = nn.ModuleList(LinearAttnBlock(mcfg, cfg.linear_chunk)
+                                        for _ in range(cfg.n_layers))
+        elif cfg.n_kv_heads is not None and cfg.n_kv_heads < cfg.n_heads:
+            # KV 头共享（契约 S）：n_kv_heads == n_heads 时走下面的 stock Block，
+            # 因此「缺省 / MHA」与 v1 逐位一致
+            self.blocks = nn.ModuleList(GQABlock(mcfg, cfg.n_kv_heads)
                                         for _ in range(cfg.n_layers))
         elif cfg.topology == "parallel":
             self.blocks = nn.ModuleList(ParallelBlock(mcfg, share_ln=True)
@@ -653,6 +1290,7 @@ class DepthARModel(nn.Module):
         states = [h]
         gate_means: list[torch.Tensor] = []
         attn_sparse_layers: list[dict] = []
+        attn_linear_layers: list[dict] = []
         if not self.cfg.dense:
             if self.cfg.proj_fill and not self.cfg.fill_kv:
                 raise ValueError("proj_fill requires fill_kv=True")
@@ -698,8 +1336,12 @@ class DepthARModel(nn.Module):
             for blk in self.blocks:
                 h, tele = blk(h, attn_mask=win_mask)
                 states.append(h)
-                if tele is not None:      # TopKBlock 的活性量（每层一份）
-                    attn_sparse_layers.append(tele)
+                if tele is not None:      # 块自带遥测：按块声明的类别归类
+                    kind = getattr(blk, "telemetry_kind", None)
+                    if kind == "attn_sparse":
+                        attn_sparse_layers.append(tele)
+                    elif kind == "attn_linear":
+                        attn_linear_layers.append(tele)
 
         targets = tokens if targets is None else targets
         sg = bool(shallow_stopgrad)
@@ -729,6 +1371,8 @@ class DepthARModel(nn.Module):
                "gate_mean": gate_means, "exit_depths": exit_depths}
         if attn_sparse_layers:
             aux["attn_sparse"] = attn_sparse_layers
+        if attn_linear_layers:
+            aux["attn_linear"] = attn_linear_layers
         return loss, aux
 
     def _layer_mix_input(self, states: list[torch.Tensor], k: int) -> torch.Tensor:
@@ -1014,6 +1658,12 @@ class DepthARDecoder:
     """
 
     def __init__(self, model: DepthARModel):
+        if model.cfg.n_kv_heads is not None \
+                and model.cfg.n_kv_heads < model.cfg.n_heads:
+            raise ValueError(
+                "增量解码（KV cache）路径未定义 KV 头共享：GQA/MQA 只在 dense=True"
+                "（无退出/无填充）形态下开放，而解码器只用于非 dense 的变深度路径"
+                "（单因素 scope）。本契约不主张解码侧收益，故不实现。")
         self.model = model
         L = model.cfg.n_layers
         self.K: list[torch.Tensor | None] = [None] * L   # [1,H,C,dh] per layer

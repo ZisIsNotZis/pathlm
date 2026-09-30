@@ -1,0 +1,2996 @@
+{
+  "experiment": "2616-gqa-mqa-13m",
+  "contract": ".scratch/33-batch6/issues/01-batch6.md §「契约 S」 + 开头统一纪律段",
+  "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。",
+  "config": {
+    "experiment": "2616-gqa-mqa-13m",
+    "contract": ".scratch/33-batch6/issues/01-batch6.md §「契约 S」 + 开头统一纪律段",
+    "contract_copy": "README.md（同目录）",
+    "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。",
+    "intervention": {
+      "factor": "KV 头数（唯一变量；query 头数、头维度、其余所有字段都不变）",
+      "arms": {
+        "mha": "n_kv_heads = 8 = n_heads（基线；走 stock `Block`，与 v1 逐位一致）",
+        "gqa": "n_kv_heads = 2（每组 4 个 query 头共享一组 K/V）",
+        "mqa": "n_kv_heads = 1（全部 8 个 query 头共享一组 K/V）"
+      },
+      "implementation": "pathlm.depth_ar.GQABlock：qkv 投影输出宽度 = d + 2·n_kv_heads·dh（不是 3d），K/V 张量以 [B, n_kv_heads, T, dh] 进 SDPA（enable_gqa=True，不物化复制）；缺省 None/== n_heads 走 stock Block ⇒ 逐位还原 v1",
+      "rerun_arm": "gqa（预登记：中间干预档；见 README §4「重跑臂选择规则」，执行前写定）"
+    },
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dropout": 0.0,
+      "norm_cap": 1.0,
+      "dense": true,
+      "topology": "sequential",
+      "fill_kv": true,
+      "proj_fill": false,
+      "readout_dims": null,
+      "readout_gated": false,
+      "readout_linear_resid": false,
+      "attn_sparse_k": 0,
+      "attn_linear": false,
+      "train_window": 0,
+      "train_anchors": 0
+    },
+    "train": {
+      "steps": 12000,
+      "batch_size": 32,
+      "seq_len": 256,
+      "lr": 0.001,
+      "seed": 0,
+      "exit_mode": "uniform",
+      "aux_weight": 1.0,
+      "final_weight": 1.0,
+      "shallow_stopgrad": false,
+      "dense_aux": false,
+      "exit_anneal": false,
+      "optimizer": "AdamW(lr=1e-3, weight_decay=0.01) + LambdaLR(warmup 200 步, 余弦)",
+      "train_tokens_per_arm": 98304000
+    },
+    "arms_commands": {
+      "mha": "python3 train_depth_ar.py mha-12k-s0 --d 256 --layers 12 --heads 8 --mlp-mult 6 --dense --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --eval-batches 24 --out-root <expdir>/runs",
+      "gqa": "python3 train_depth_ar.py gqa-12k-s0 --d 256 --layers 12 --heads 8 --mlp-mult 6 --dense --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --eval-batches 24 --n-kv-heads 2 --out-root <expdir>/runs",
+      "mqa": "python3 train_depth_ar.py mqa-12k-s0 --d 256 --layers 12 --heads 8 --mlp-mult 6 --dense --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --eval-batches 24 --n-kv-heads 1 --out-root <expdir>/runs",
+      "gqa_rep": "python3 train_depth_ar.py gqa-12k-s0-rep --d 256 --layers 12 --heads 8 --mlp-mult 6 --dense --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --eval-batches 24 --n-kv-heads 2 --out-root <expdir>/runs"
+    },
+    "arms_commands_note": "四行都是实际执行的命令（<expdir> = 本实验目录）；每臂的完整 argv 另存在 runs/<arm>/cmd.txt",
+    "data": {
+      "name": "enwik8_full",
+      "path": "data/enwik8_full.npz",
+      "split": "前 90M train / 末 10M eval（本实验只用 eval 尾段做评测）",
+      "vocab_size": 206,
+      "n_real_tokens": 205,
+      "mask_token": 205
+    },
+    "eval": {
+      "method": "pathlm.depth_ar.depth_curve（clean bpc = 最终深度读出的因果移位 CE，token 平均）",
+      "second_path": "tools/evalkit/retention.masked_bpc(keep_mask=None)（独立评测路径，用于逐位对账）",
+      "n_batches": 24,
+      "batch_size": 16,
+      "window_seed": 2,
+      "device": "cuda",
+      "note": "与 2610/2614/2615/2616-Q 同一窗口序（window_seed=2 + 24×16）⇒ clean bpc 与历史 dense 基线同口径可比"
+    },
+    "criterion": {
+      "verbatim_contract": [
+        "给出三臂 clean bpc 与**解析** KV 内存下降（GQA −75%、MQA −87.5%）；",
+        "若 |Δbpc| < 0.014 ⇒ 记「近无损」并写入参照线（与 int8 KV 的近无损 −50% 对照）；",
+        "若越界 ⇒ 记其代价。必须附三臂同方法斜率与重跑散度。活性证据必须是**实际 KV 张量形状**。"
+      ],
+      "sign_convention": "SCHEMA §17.3：Δ_schema = bpc_对照 − bpc_实验（正 = 实验臂更好）；damage = bpc_实验 − bpc_对照（正 = 更差）。本实验「对照」= mha。",
+      "near_lossless_if_abs_delta_below": 0.014,
+      "variance_band_bpc": 0.014,
+      "analytic_kv_reduction": {
+        "gqa": 0.75,
+        "mqa": 0.875
+      },
+      "int8_kv_reference": {
+        "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m",
+        "bpc_damage": 0.00015,
+        "kv_bytes_per_position_fp16": 12288,
+        "kv_bytes_per_position_int8": 6144,
+        "kv_reduction_frac": 0.5,
+        "verdict": "int8 KV 近无损、省一半内存（参照线）"
+      }
+    },
+    "reproducibility": {
+      "rerun_arm": "gqa",
+      "threshold_bpc": 0.005,
+      "training_nondeterminism_note": "同 seed 同配置的训练不保证逐位复现（CUDA 归约顺序）⇒ 重跑给出 run-to-run 散度"
+    },
+    "cost": {
+      "gpu_wall_budget_min": 35,
+      "gpu_wall_budget_source": "契约 S「成本：3 臂 × ≈7 min + 重跑 1 臂 ≈7 min ⇒ ≈35 min」",
+      "budget_cut_rule": "预算不够时砍：重跑臂 → 评测批数，不砍判据线（SCHEMA §8/§17.7）",
+      "smoke": "20 步冒烟（每臂）+ 200 步步时/显存探针，实测后再定全跑预算（SCHEMA §17.8/§17.5）"
+    },
+    "memory_reporting": {
+      "analytic": "KV cache 每位置元素数/字节数由**实际张量形状**（n_kv_heads × head_dim × 2 × n_layers）算出",
+      "measured": "训练/评测期 torch.cuda 峰值 + 子进程显存采样（nvidia-smi --query-compute-apps）；评测实现把 K/V 交给 SDPA 内核按组广播、分数矩阵仍是 T×T ⇒ 实测峰值不按 KV 比例下降，两者必须分开报"
+    }
+  },
+  "arms": {
+    "mha": {
+      "role": "基线（8 个 KV 头 = MHA）",
+      "checkpoint": {
+        "run": "mha-12k-s0-smoke",
+        "sha256": "2e46720ddd4ef368573109ff6ccf908286aa407539c1f9e72eaaf32dd90d52da",
+        "sha256_verified": false,
+        "size_bytes": 54193675,
+        "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/smoke/runs/mha-12k-s0-smoke/model.pt"
+      },
+      "bpc_clean": 4.6509,
+      "next_token_acc": 0.2047,
+      "depth_curve": [
+        {
+          "depth": 0,
+          "bpc": 7.6184,
+          "acc": 0.0551
+        },
+        {
+          "depth": 1,
+          "bpc": 7.4492,
+          "acc": 0.0551
+        },
+        {
+          "depth": 2,
+          "bpc": 7.1178,
+          "acc": 0.1027
+        },
+        {
+          "depth": 3,
+          "bpc": 6.677,
+          "acc": 0.1814
+        },
+        {
+          "depth": 4,
+          "bpc": 6.2484,
+          "acc": 0.2164
+        },
+        {
+          "depth": 5,
+          "bpc": 5.8598,
+          "acc": 0.2145
+        },
+        {
+          "depth": 6,
+          "bpc": 5.599,
+          "acc": 0.2032
+        },
+        {
+          "depth": 7,
+          "bpc": 5.2549,
+          "acc": 0.2007
+        },
+        {
+          "depth": 8,
+          "bpc": 5.0576,
+          "acc": 0.2037
+        },
+        {
+          "depth": 9,
+          "bpc": 4.8438,
+          "acc": 0.2069
+        },
+        {
+          "depth": 10,
+          "bpc": 4.7248,
+          "acc": 0.2078
+        },
+        {
+          "depth": 11,
+          "bpc": 4.6666,
+          "acc": 0.2096
+        },
+        {
+          "depth": 12,
+          "bpc": 4.6509,
+          "acc": 0.2047
+        }
+      ],
+      "bpc_second_path_masked_bpc": 4.650932,
+      "bpc_paths_bitwise_equal": true,
+      "kv_liveness": {
+        "enabled": false,
+        "mha": true,
+        "n_heads": 8,
+        "n_kv_heads": 8,
+        "head_dim": 32,
+        "group_size": 1,
+        "block_python_class": "Block",
+        "qkv_out_width": 768,
+        "qkv_out_width_mha_equivalent": 768,
+        "k_batch_shape": [
+          8,
+          8,
+          256,
+          32
+        ],
+        "params_per_layer_kv_elems": 512,
+        "params_added": 0,
+        "params_added_note": "MHA（n_kv_heads == n_heads）：无共享，参数与 v1 逐位相同",
+        "kv_qkv_weight_nonzero_frac": 1.0,
+        "kv_qkv_weight_fro": 106.319701,
+        "kv_elems_per_position_per_layer": 512,
+        "kv_elems_per_position": 6144,
+        "kv_bytes_per_position_fp16": 12288,
+        "kv_bytes_per_position_fp32": 24576,
+        "kv_reduction_frac": 0.0,
+        "mha_kv_bytes_per_position_fp16": 12288,
+        "k_proj_per_kv_head_row_norm": [
+          1.794695,
+          1.798088,
+          1.787174,
+          1.802655,
+          1.807138,
+          1.812892,
+          1.822371,
+          1.81892
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.123627,
+        "kv_rows_fro_mean": 7.233107,
+        "per_layer": [
+          {
+            "layer": 0,
+            "class": "Block",
+            "qkv_weight_shape": [
+              768,
+              256
+            ],
+            "qkv_out_width": 768,
+            "k_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 8,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 512,
+            "kv_bytes_per_position_fp16": 1024,
+            "kv_bytes_per_position_fp32": 2048,
+            "k_proj_per_kv_head_row_norm": [
+              1.794695,
+              1.798088,
+              1.787174,
+              1.802655,
+              1.807138,
+              1.812892,
+              1.822371,
+              1.81892
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.12957,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 7.236633
+          },
+          {
+            "layer": 1,
+            "class": "Block",
+            "qkv_weight_shape": [
+              768,
+              256
+            ],
+            "qkv_out_width": 768,
+            "k_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 8,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 512,
+            "kv_bytes_per_position_fp16": 1024,
+            "kv_bytes_per_position_fp32": 2048,
+            "k_proj_per_kv_head_row_norm": [
+              1.80321,
+              1.810196,
+              1.819781,
+              1.820585,
+              1.83314,
+              1.805151,
+              1.81081,
+              1.79789
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.134871,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 7.244101
+          },
+          {
+            "layer": 2,
+            "class": "Block",
+            "qkv_weight_shape": [
+              768,
+              256
+            ],
+            "qkv_out_width": 768,
+            "k_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 8,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 512,
+            "kv_bytes_per_position_fp16": 1024,
+            "kv_bytes_per_position_fp32": 2048,
+            "k_proj_per_kv_head_row_norm": [
+              1.816106,
+              1.811501,
+              1.80828,
+              1.781811,
+              1.807567,
+              1.780039,
+              1.847592,
+              1.817791
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.123627,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 7.247197
+          },
+          {
+            "layer": 3,
+            "class": "Block",
+            "qkv_weight_shape": [
+              768,
+              256
+            ],
+            "qkv_out_width": 768,
+            "k_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 8,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 512,
+            "kv_bytes_per_position_fp16": 1024,
+            "kv_bytes_per_position_fp32": 2048,
+            "k_proj_per_kv_head_row_norm": [
+              1.792701,
+              1.811321,
+              1.791252,
+              1.807552,
+              1.807667,
+              1.797094,
+              1.811012,
+              1.770106
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.130099,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 7.216238
+          },
+          {
+            "layer": 4,
+            "class": "Block",
+            "qkv_weight_shape": [
+              768,
+              256
+            ],
+            "qkv_out_width": 768,
+            "k_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 8,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 512,
+            "kv_bytes_per_position_fp16": 1024,
+            "kv_bytes_per_position_fp32": 2048,
+            "k_proj_per_kv_head_row_norm": [
+              1.823567,
+              1.807843,
+              1.798827,
+              1.796671,
+              1.804093,
+              1.805539,
+              1.817856,
+              1.816475
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.140856,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 7.223541
+          },
+          {
+            "layer": 5,
+            "class": "Block",
+            "qkv_weight_shape": [
+              768,
+              256
+            ],
+            "qkv_out_width": 768,
+            "k_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 8,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 512,
+            "kv_bytes_per_position_fp16": 1024,
+            "kv_bytes_per_position_fp32": 2048,
+            "k_proj_per_kv_head_row_norm": [
+              1.791833,
+              1.804699,
+              1.804802,
+              1.778794,
+              1.809526,
+              1.803544,
+              1.8004,
+              1.81347
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.124152,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 7.215305
+          },
+          {
+            "layer": 6,
+            "class": "Block",
+            "qkv_weight_shape": [
+              768,
+              256
+            ],
+            "qkv_out_width": 768,
+            "k_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 8,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 512,
+            "kv_bytes_per_position_fp16": 1024,
+            "kv_bytes_per_position_fp32": 2048,
+            "k_proj_per_kv_head_row_norm": [
+              1.823478,
+              1.828228,
+              1.83728,
+              1.809961,
+              1.792787,
+              1.753296,
+              1.802623,
+              1.809304
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.127259,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 7.233067
+          },
+          {
+            "layer": 7,
+            "class": "Block",
+            "qkv_weight_shape": [
+              768,
+              256
+            ],
+            "qkv_out_width": 768,
+            "k_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 8,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 512,
+            "kv_bytes_per_position_fp16": 1024,
+            "kv_bytes_per_position_fp32": 2048,
+            "k_proj_per_kv_head_row_norm": [
+              1.834454,
+              1.778529,
+              1.80294,
+              1.817114,
+              1.827792,
+              1.811048,
+              1.798782,
+              1.801323
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.127724,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 7.246831
+          },
+          {
+            "layer": 8,
+            "class": "Block",
+            "qkv_weight_shape": [
+              768,
+              256
+            ],
+            "qkv_out_width": 768,
+            "k_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 8,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 512,
+            "kv_bytes_per_position_fp16": 1024,
+            "kv_bytes_per_position_fp32": 2048,
+            "k_proj_per_kv_head_row_norm": [
+              1.813521,
+              1.797781,
+              1.810915,
+              1.811727,
+              1.81803,
+              1.800099,
+              1.798927,
+              1.832225
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.144261,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 7.229543
+          },
+          {
+            "layer": 9,
+            "class": "Block",
+            "qkv_weight_shape": [
+              768,
+              256
+            ],
+            "qkv_out_width": 768,
+            "k_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 8,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 512,
+            "kv_bytes_per_position_fp16": 1024,
+            "kv_bytes_per_position_fp32": 2048,
+            "k_proj_per_kv_head_row_norm": [
+              1.807656,
+              1.812611,
+              1.809268,
+              1.795224,
+              1.795072,
+              1.801754,
+              1.790018,
+              1.815368
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.129613,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 7.216791
+          },
+          {
+            "layer": 10,
+            "class": "Block",
+            "qkv_weight_shape": [
+              768,
+              256
+            ],
+            "qkv_out_width": 768,
+            "k_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 8,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 512,
+            "kv_bytes_per_position_fp16": 1024,
+            "kv_bytes_per_position_fp32": 2048,
+            "k_proj_per_kv_head_row_norm": [
+              1.808377,
+              1.817288,
+              1.83312,
+              1.813495,
+              1.808766,
+              1.798815,
+              1.796351,
+              1.804162
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.148925,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 7.249633
+          },
+          {
+            "layer": 11,
+            "class": "Block",
+            "qkv_weight_shape": [
+              768,
+              256
+            ],
+            "qkv_out_width": 768,
+            "k_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 8,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 512,
+            "kv_bytes_per_position_fp16": 1024,
+            "kv_bytes_per_position_fp32": 2048,
+            "k_proj_per_kv_head_row_norm": [
+              1.812636,
+              1.820724,
+              1.803514,
+              1.816607,
+              1.832586,
+              1.784301,
+              1.811358,
+              1.817433
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.131018,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 7.238405
+          }
+        ],
+        "alive": true,
+        "alive_note": "MHA（n_kv_heads == n_heads）：无共享，KV 形状 = [B, n_heads, T, dh]",
+        "params_added_measured": 0
+      },
+      "params": 13536768,
+      "train_wall_minutes": 0.03,
+      "train_log": {
+        "n_lines": 2,
+        "last_step": 19,
+        "loss_first": 5.4226,
+        "loss_last": 3.1317,
+        "gnorm_max": 9.87,
+        "grad_skips": 0,
+        "slope_last_25pct": null,
+        "slope_last_50pct": null,
+        "slope_last_1000": null,
+        "kv_heads_activity_lines": 0,
+        "kv_heads_activity_first": null,
+        "kv_heads_rows_fro_trace": []
+      },
+      "eval_wall_seconds": 0.46,
+      "eval_peak_mem_mib": 168.6
+    },
+    "gqa": {
+      "role": "干预：2 个 KV 头",
+      "checkpoint": {
+        "run": "gqa-12k-s0-smoke",
+        "sha256": "a16cf0c1df110ca6f0bf4485f4358db94f639c68c96cfd025262e01746daa6d4",
+        "sha256_verified": false,
+        "size_bytes": 49456651,
+        "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/smoke/runs/gqa-12k-s0-smoke/model.pt"
+      },
+      "bpc_clean": 4.6235,
+      "next_token_acc": 0.2137,
+      "depth_curve": [
+        {
+          "depth": 0,
+          "bpc": 7.6184,
+          "acc": 0.0551
+        },
+        {
+          "depth": 1,
+          "bpc": 7.4788,
+          "acc": 0.0554
+        },
+        {
+          "depth": 2,
+          "bpc": 7.1682,
+          "acc": 0.0975
+        },
+        {
+          "depth": 3,
+          "bpc": 6.8295,
+          "acc": 0.1522
+        },
+        {
+          "depth": 4,
+          "bpc": 6.4093,
+          "acc": 0.1733
+        },
+        {
+          "depth": 5,
+          "bpc": 5.9654,
+          "acc": 0.1882
+        },
+        {
+          "depth": 6,
+          "bpc": 5.5756,
+          "acc": 0.1953
+        },
+        {
+          "depth": 7,
+          "bpc": 5.2277,
+          "acc": 0.1912
+        },
+        {
+          "depth": 8,
+          "bpc": 4.9716,
+          "acc": 0.202
+        },
+        {
+          "depth": 9,
+          "bpc": 4.7785,
+          "acc": 0.2007
+        },
+        {
+          "depth": 10,
+          "bpc": 4.6466,
+          "acc": 0.2127
+        },
+        {
+          "depth": 11,
+          "bpc": 4.5974,
+          "acc": 0.2162
+        },
+        {
+          "depth": 12,
+          "bpc": 4.6235,
+          "acc": 0.2137
+        }
+      ],
+      "bpc_second_path_masked_bpc": 4.62354,
+      "bpc_paths_bitwise_equal": true,
+      "kv_liveness": {
+        "enabled": true,
+        "mha": false,
+        "n_heads": 8,
+        "n_kv_heads": 2,
+        "head_dim": 32,
+        "group_size": 4,
+        "block_python_class": "GQABlock",
+        "qkv_out_width": 384,
+        "qkv_out_width_mha_equivalent": 768,
+        "k_batch_shape": [
+          8,
+          2,
+          256,
+          32
+        ],
+        "params_per_layer_kv_elems": 128,
+        "params_added": -1184256,
+        "params_added_note": "KV 头共享**减少**参数（K/V 投影半边变窄），故为负；= −2·(d − n_kv_heads·dh)·(d+1)·n_layers（含 qkv 偏置的半边差）⇒ 容量差异，见 analysis.md 混杂声明（SCHEMA §15 的剪枝类情形）",
+        "kv_qkv_weight_nonzero_frac": 1.0,
+        "kv_qkv_weight_fro": 75.223361,
+        "kv_elems_per_position_per_layer": 128,
+        "kv_elems_per_position": 1536,
+        "kv_bytes_per_position_fp16": 3072,
+        "kv_bytes_per_position_fp32": 6144,
+        "kv_reduction_frac": 0.75,
+        "mha_kv_bytes_per_position_fp16": 12288,
+        "k_proj_per_kv_head_row_norm": [
+          1.814612,
+          1.792432
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.096649,
+        "kv_rows_fro_mean": 3.619626,
+        "per_layer": [
+          {
+            "layer": 0,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.814612,
+              1.792432
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.107804,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.623356
+          },
+          {
+            "layer": 1,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.793243,
+              1.823283
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.109613,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.621635
+          },
+          {
+            "layer": 2,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.815709,
+              1.811374
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.103496,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.639245
+          },
+          {
+            "layer": 3,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.797798,
+              1.80232
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.096649,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.609961
+          },
+          {
+            "layer": 4,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.794339,
+              1.795088
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.110758,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.590866
+          },
+          {
+            "layer": 5,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.826187,
+              1.804746
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.108081,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.624061
+          },
+          {
+            "layer": 6,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.808686,
+              1.839031
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.099607,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.626899
+          },
+          {
+            "layer": 7,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.810268,
+              1.815238
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.117852,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.615486
+          },
+          {
+            "layer": 8,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.800375,
+              1.81659
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.114781,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.623589
+          },
+          {
+            "layer": 9,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.830056,
+              1.816276
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.106367,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.62279
+          },
+          {
+            "layer": 10,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.816955,
+              1.80084
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.117578,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.618413
+          },
+          {
+            "layer": 11,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.815573,
+              1.832731
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.111464,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.619211
+          }
+        ],
+        "alive": true,
+        "alive_note": "活性证据 = 前向实际 K/V 张量形状 [B, n_kv_heads, T, dh]（不是标签）+ qkv 投影权重非零 + 各 KV 头的 K 投影行不全同",
+        "params_added_measured": -1184256
+      },
+      "params": 12352512,
+      "train_wall_minutes": 0.03,
+      "train_log": {
+        "n_lines": 2,
+        "last_step": 19,
+        "loss_first": 5.4463,
+        "loss_last": 3.1416,
+        "gnorm_max": 10.3,
+        "grad_skips": 0,
+        "slope_last_25pct": null,
+        "slope_last_50pct": null,
+        "slope_last_1000": null,
+        "kv_heads_activity_lines": 2,
+        "kv_heads_activity_first": {
+          "n_heads": 8,
+          "n_kv_heads": 2,
+          "head_dim": 32,
+          "qkv_out_width": 384,
+          "kv_elems_per_position": 128,
+          "kv_reduction_frac_vs_mha": 0.75,
+          "k_proj_per_kv_head_row_norm": [
+            1.8152,
+            1.8325
+          ],
+          "kv_rows_fro_mean": 3.619
+        },
+        "kv_heads_rows_fro_trace": [
+          3.619,
+          3.6196
+        ]
+      },
+      "eval_wall_seconds": 0.07,
+      "eval_peak_mem_mib": 164.0
+    },
+    "mqa": {
+      "role": "干预：1 个 KV 头",
+      "checkpoint": {
+        "run": "mqa-12k-s0-smoke",
+        "sha256": "b118f88995f8fe6d603718e14afb44ea3e56833e64faeecccdd52a157667a9b1",
+        "sha256_verified": false,
+        "size_bytes": 48667147,
+        "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/smoke/runs/mqa-12k-s0-smoke/model.pt"
+      },
+      "bpc_clean": 4.5895,
+      "next_token_acc": 0.2032,
+      "depth_curve": [
+        {
+          "depth": 0,
+          "bpc": 7.6184,
+          "acc": 0.0551
+        },
+        {
+          "depth": 1,
+          "bpc": 7.4661,
+          "acc": 0.0551
+        },
+        {
+          "depth": 2,
+          "bpc": 7.1719,
+          "acc": 0.0953
+        },
+        {
+          "depth": 3,
+          "bpc": 6.8196,
+          "acc": 0.1549
+        },
+        {
+          "depth": 4,
+          "bpc": 6.4364,
+          "acc": 0.1902
+        },
+        {
+          "depth": 5,
+          "bpc": 6.0665,
+          "acc": 0.1961
+        },
+        {
+          "depth": 6,
+          "bpc": 5.6611,
+          "acc": 0.2005
+        },
+        {
+          "depth": 7,
+          "bpc": 5.3837,
+          "acc": 0.1941
+        },
+        {
+          "depth": 8,
+          "bpc": 5.1198,
+          "acc": 0.2039
+        },
+        {
+          "depth": 9,
+          "bpc": 4.9032,
+          "acc": 0.2113
+        },
+        {
+          "depth": 10,
+          "bpc": 4.7111,
+          "acc": 0.2071
+        },
+        {
+          "depth": 11,
+          "bpc": 4.6234,
+          "acc": 0.2061
+        },
+        {
+          "depth": 12,
+          "bpc": 4.5895,
+          "acc": 0.2032
+        }
+      ],
+      "bpc_second_path_masked_bpc": 4.589474,
+      "bpc_paths_bitwise_equal": true,
+      "kv_liveness": {
+        "enabled": true,
+        "mha": false,
+        "n_heads": 8,
+        "n_kv_heads": 1,
+        "head_dim": 32,
+        "group_size": 8,
+        "block_python_class": "GQABlock",
+        "qkv_out_width": 320,
+        "qkv_out_width_mha_equivalent": 768,
+        "k_batch_shape": [
+          8,
+          1,
+          256,
+          32
+        ],
+        "params_per_layer_kv_elems": 64,
+        "params_added": -1381632,
+        "params_added_note": "KV 头共享**减少**参数（K/V 投影半边变窄），故为负；= −2·(d − n_kv_heads·dh)·(d+1)·n_layers（含 qkv 偏置的半边差）⇒ 容量差异，见 analysis.md 混杂声明（SCHEMA §15 的剪枝类情形）",
+        "kv_qkv_weight_nonzero_frac": 1.0,
+        "kv_qkv_weight_fro": 68.715256,
+        "kv_elems_per_position_per_layer": 64,
+        "kv_elems_per_position": 768,
+        "kv_bytes_per_position_fp16": 1536,
+        "kv_bytes_per_position_fp32": 3072,
+        "kv_reduction_frac": 0.875,
+        "mha_kv_bytes_per_position_fp16": 12288,
+        "k_proj_per_kv_head_row_norm": [
+          1.81006
+        ],
+        "kv_head_pair_max_abs_weight_diff": null,
+        "kv_rows_fro_mean": 2.557057,
+        "per_layer": [
+          {
+            "layer": 0,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              320,
+              256
+            ],
+            "qkv_out_width": 320,
+            "k_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 1,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 64,
+            "kv_bytes_per_position_fp16": 128,
+            "kv_bytes_per_position_fp32": 256,
+            "k_proj_per_kv_head_row_norm": [
+              1.81006
+            ],
+            "kv_head_pair_max_abs_weight_diff": null,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 2.557176
+          },
+          {
+            "layer": 1,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              320,
+              256
+            ],
+            "qkv_out_width": 320,
+            "k_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 1,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 64,
+            "kv_bytes_per_position_fp16": 128,
+            "kv_bytes_per_position_fp32": 256,
+            "k_proj_per_kv_head_row_norm": [
+              1.797216
+            ],
+            "kv_head_pair_max_abs_weight_diff": null,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 2.558672
+          },
+          {
+            "layer": 2,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              320,
+              256
+            ],
+            "qkv_out_width": 320,
+            "k_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 1,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 64,
+            "kv_bytes_per_position_fp16": 128,
+            "kv_bytes_per_position_fp32": 256,
+            "k_proj_per_kv_head_row_norm": [
+              1.807941
+            ],
+            "kv_head_pair_max_abs_weight_diff": null,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 2.57044
+          },
+          {
+            "layer": 3,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              320,
+              256
+            ],
+            "qkv_out_width": 320,
+            "k_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 1,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 64,
+            "kv_bytes_per_position_fp16": 128,
+            "kv_bytes_per_position_fp32": 256,
+            "k_proj_per_kv_head_row_norm": [
+              1.78859
+            ],
+            "kv_head_pair_max_abs_weight_diff": null,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 2.533598
+          },
+          {
+            "layer": 4,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              320,
+              256
+            ],
+            "qkv_out_width": 320,
+            "k_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 1,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 64,
+            "kv_bytes_per_position_fp16": 128,
+            "kv_bytes_per_position_fp32": 256,
+            "k_proj_per_kv_head_row_norm": [
+              1.811277
+            ],
+            "kv_head_pair_max_abs_weight_diff": null,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 2.552659
+          },
+          {
+            "layer": 5,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              320,
+              256
+            ],
+            "qkv_out_width": 320,
+            "k_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 1,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 64,
+            "kv_bytes_per_position_fp16": 128,
+            "kv_bytes_per_position_fp32": 256,
+            "k_proj_per_kv_head_row_norm": [
+              1.798414
+            ],
+            "kv_head_pair_max_abs_weight_diff": null,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 2.557745
+          },
+          {
+            "layer": 6,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              320,
+              256
+            ],
+            "qkv_out_width": 320,
+            "k_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 1,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 64,
+            "kv_bytes_per_position_fp16": 128,
+            "kv_bytes_per_position_fp32": 256,
+            "k_proj_per_kv_head_row_norm": [
+              1.786672
+            ],
+            "kv_head_pair_max_abs_weight_diff": null,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 2.552204
+          },
+          {
+            "layer": 7,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              320,
+              256
+            ],
+            "qkv_out_width": 320,
+            "k_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 1,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 64,
+            "kv_bytes_per_position_fp16": 128,
+            "kv_bytes_per_position_fp32": 256,
+            "k_proj_per_kv_head_row_norm": [
+              1.80001
+            ],
+            "kv_head_pair_max_abs_weight_diff": null,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 2.548358
+          },
+          {
+            "layer": 8,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              320,
+              256
+            ],
+            "qkv_out_width": 320,
+            "k_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 1,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 64,
+            "kv_bytes_per_position_fp16": 128,
+            "kv_bytes_per_position_fp32": 256,
+            "k_proj_per_kv_head_row_norm": [
+              1.802814
+            ],
+            "kv_head_pair_max_abs_weight_diff": null,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 2.536704
+          },
+          {
+            "layer": 9,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              320,
+              256
+            ],
+            "qkv_out_width": 320,
+            "k_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 1,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 64,
+            "kv_bytes_per_position_fp16": 128,
+            "kv_bytes_per_position_fp32": 256,
+            "k_proj_per_kv_head_row_norm": [
+              1.805331
+            ],
+            "kv_head_pair_max_abs_weight_diff": null,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 2.576632
+          },
+          {
+            "layer": 10,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              320,
+              256
+            ],
+            "qkv_out_width": 320,
+            "k_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 1,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 64,
+            "kv_bytes_per_position_fp16": 128,
+            "kv_bytes_per_position_fp32": 256,
+            "k_proj_per_kv_head_row_norm": [
+              1.822699
+            ],
+            "kv_head_pair_max_abs_weight_diff": null,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 2.564386
+          },
+          {
+            "layer": 11,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              320,
+              256
+            ],
+            "qkv_out_width": 320,
+            "k_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              1,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 1,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 64,
+            "kv_bytes_per_position_fp16": 128,
+            "kv_bytes_per_position_fp32": 256,
+            "k_proj_per_kv_head_row_norm": [
+              1.813863
+            ],
+            "kv_head_pair_max_abs_weight_diff": null,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 2.576111
+          }
+        ],
+        "alive": true,
+        "alive_note": "活性证据 = 前向实际 K/V 张量形状 [B, n_kv_heads, T, dh]（不是标签）+ qkv 投影权重非零 + 各 KV 头的 K 投影行不全同",
+        "params_added_measured": -1381632
+      },
+      "params": 12155136,
+      "train_wall_minutes": 0.03,
+      "train_log": {
+        "n_lines": 2,
+        "last_step": 19,
+        "loss_first": 5.4865,
+        "loss_last": 3.1276,
+        "gnorm_max": 11.34,
+        "grad_skips": 0,
+        "slope_last_25pct": null,
+        "slope_last_50pct": null,
+        "slope_last_1000": null,
+        "kv_heads_activity_lines": 2,
+        "kv_heads_activity_first": {
+          "n_heads": 8,
+          "n_kv_heads": 1,
+          "head_dim": 32,
+          "qkv_out_width": 320,
+          "kv_elems_per_position": 64,
+          "kv_reduction_frac_vs_mha": 0.875,
+          "k_proj_per_kv_head_row_norm": [
+            1.8138
+          ],
+          "kv_rows_fro_mean": 2.5568
+        },
+        "kv_heads_rows_fro_trace": [
+          2.5568,
+          2.5571
+        ]
+      },
+      "eval_wall_seconds": 0.05,
+      "eval_peak_mem_mib": 160.6
+    },
+    "gqa_rep": {
+      "role": "重跑散度臂（同 seed 同配方重训 gqa）",
+      "checkpoint": {
+        "run": "gqa-12k-s0-rep-smoke",
+        "sha256": "87f4f60bf70ca9a3375d0a8cf3e862419dcda583f425ac942d4f9e7be5456795",
+        "sha256_verified": false,
+        "size_bytes": 49456651,
+        "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/smoke/runs/gqa-12k-s0-rep-smoke/model.pt"
+      },
+      "bpc_clean": 4.6235,
+      "next_token_acc": 0.214,
+      "depth_curve": [
+        {
+          "depth": 0,
+          "bpc": 7.6184,
+          "acc": 0.0551
+        },
+        {
+          "depth": 1,
+          "bpc": 7.4788,
+          "acc": 0.0554
+        },
+        {
+          "depth": 2,
+          "bpc": 7.1682,
+          "acc": 0.0975
+        },
+        {
+          "depth": 3,
+          "bpc": 6.8296,
+          "acc": 0.1522
+        },
+        {
+          "depth": 4,
+          "bpc": 6.4095,
+          "acc": 0.1733
+        },
+        {
+          "depth": 5,
+          "bpc": 5.9655,
+          "acc": 0.1882
+        },
+        {
+          "depth": 6,
+          "bpc": 5.5759,
+          "acc": 0.1953
+        },
+        {
+          "depth": 7,
+          "bpc": 5.2279,
+          "acc": 0.1912
+        },
+        {
+          "depth": 8,
+          "bpc": 4.9717,
+          "acc": 0.2017
+        },
+        {
+          "depth": 9,
+          "bpc": 4.7786,
+          "acc": 0.2007
+        },
+        {
+          "depth": 10,
+          "bpc": 4.6467,
+          "acc": 0.213
+        },
+        {
+          "depth": 11,
+          "bpc": 4.5974,
+          "acc": 0.2164
+        },
+        {
+          "depth": 12,
+          "bpc": 4.6235,
+          "acc": 0.214
+        }
+      ],
+      "bpc_second_path_masked_bpc": 4.623511,
+      "bpc_paths_bitwise_equal": true,
+      "kv_liveness": {
+        "enabled": true,
+        "mha": false,
+        "n_heads": 8,
+        "n_kv_heads": 2,
+        "head_dim": 32,
+        "group_size": 4,
+        "block_python_class": "GQABlock",
+        "qkv_out_width": 384,
+        "qkv_out_width_mha_equivalent": 768,
+        "k_batch_shape": [
+          8,
+          2,
+          256,
+          32
+        ],
+        "params_per_layer_kv_elems": 128,
+        "params_added": -1184256,
+        "params_added_note": "KV 头共享**减少**参数（K/V 投影半边变窄），故为负；= −2·(d − n_kv_heads·dh)·(d+1)·n_layers（含 qkv 偏置的半边差）⇒ 容量差异，见 analysis.md 混杂声明（SCHEMA §15 的剪枝类情形）",
+        "kv_qkv_weight_nonzero_frac": 1.0,
+        "kv_qkv_weight_fro": 75.223366,
+        "kv_elems_per_position_per_layer": 128,
+        "kv_elems_per_position": 1536,
+        "kv_bytes_per_position_fp16": 3072,
+        "kv_bytes_per_position_fp32": 6144,
+        "kv_reduction_frac": 0.75,
+        "mha_kv_bytes_per_position_fp16": 12288,
+        "k_proj_per_kv_head_row_norm": [
+          1.814612,
+          1.792433
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.096652,
+        "kv_rows_fro_mean": 3.619626,
+        "per_layer": [
+          {
+            "layer": 0,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.814612,
+              1.792433
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.107804,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.623357
+          },
+          {
+            "layer": 1,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.793242,
+              1.823282
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.109615,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.621634
+          },
+          {
+            "layer": 2,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.815708,
+              1.811373
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.103497,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.639244
+          },
+          {
+            "layer": 3,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.797796,
+              1.802321
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.096652,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.609961
+          },
+          {
+            "layer": 4,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.79434,
+              1.795088
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.110758,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.590867
+          },
+          {
+            "layer": 5,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.826186,
+              1.804746
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.108082,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.624061
+          },
+          {
+            "layer": 6,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.808686,
+              1.83903
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.099607,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.626898
+          },
+          {
+            "layer": 7,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.810268,
+              1.815238
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.117852,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.615487
+          },
+          {
+            "layer": 8,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.800376,
+              1.816593
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.114778,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.623592
+          },
+          {
+            "layer": 9,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.830056,
+              1.816277
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.106366,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.62279
+          },
+          {
+            "layer": 10,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.816957,
+              1.800838
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.117569,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.618413
+          },
+          {
+            "layer": 11,
+            "class": "GQABlock",
+            "qkv_weight_shape": [
+              384,
+              256
+            ],
+            "qkv_out_width": 384,
+            "k_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "v_shape": [
+              8,
+              2,
+              256,
+              32
+            ],
+            "q_shape": [
+              8,
+              8,
+              256,
+              32
+            ],
+            "n_kv_heads": 2,
+            "head_dim": 32,
+            "q_heads": 8,
+            "kv_elems_per_position": 128,
+            "kv_bytes_per_position_fp16": 256,
+            "kv_bytes_per_position_fp32": 512,
+            "k_proj_per_kv_head_row_norm": [
+              1.815572,
+              1.832731
+            ],
+            "kv_head_pair_max_abs_weight_diff": 0.111459,
+            "k_rows_nonzero_frac": 1.0,
+            "kv_rows_fro": 3.61921
+          }
+        ],
+        "alive": true,
+        "alive_note": "活性证据 = 前向实际 K/V 张量形状 [B, n_kv_heads, T, dh]（不是标签）+ qkv 投影权重非零 + 各 KV 头的 K 投影行不全同",
+        "params_added_measured": -1184256
+      },
+      "params": 12352512,
+      "train_wall_minutes": 0.03,
+      "train_log": {
+        "n_lines": 2,
+        "last_step": 19,
+        "loss_first": 5.4463,
+        "loss_last": 3.1417,
+        "gnorm_max": 10.3,
+        "grad_skips": 0,
+        "slope_last_25pct": null,
+        "slope_last_50pct": null,
+        "slope_last_1000": null,
+        "kv_heads_activity_lines": 2,
+        "kv_heads_activity_first": {
+          "n_heads": 8,
+          "n_kv_heads": 2,
+          "head_dim": 32,
+          "qkv_out_width": 384,
+          "kv_elems_per_position": 128,
+          "kv_reduction_frac_vs_mha": 0.75,
+          "k_proj_per_kv_head_row_norm": [
+            1.8152,
+            1.8325
+          ],
+          "kv_rows_fro_mean": 3.619
+        },
+        "kv_heads_rows_fro_trace": [
+          3.619,
+          3.6196
+        ]
+      },
+      "eval_wall_seconds": 0.07,
+      "eval_peak_mem_mib": 164.0
+    }
+  },
+  "criteria": {
+    "verbatim_contract": [
+      "给出三臂 clean bpc 与**解析** KV 内存下降（GQA −75%、MQA −87.5%）；",
+      "若 |Δbpc| < 0.014 ⇒ 记「近无损」并写入参照线（与 int8 KV 的近无损 −50% 对照）；",
+      "若越界 ⇒ 记其代价。必须附三臂同方法斜率与重跑散度。活性证据必须是**实际 KV 张量形状**。"
+    ],
+    "sign_convention": "SCHEMA §17.3：Δ_schema = bpc_对照 − bpc_实验（正 = 实验臂更好）；damage = bpc_实验 − bpc_对照（正 = 更差）。本实验「对照」= mha。",
+    "variance_band_bpc": 0.014,
+    "control_arm": "mha",
+    "per_arm": {
+      "gqa": {
+        "bpc_arm": 4.6235,
+        "bpc_mha": 4.6509,
+        "delta_schema": 0.0274,
+        "damage_bpc": -0.0274,
+        "abs_delta": 0.0274,
+        "kv_reduction_frac_analytic": 0.75,
+        "kv_bytes_per_position_fp16": 3072,
+        "kv_bytes_vs_int8_reference": 0.5,
+        "same_method_slope_last_25pct": {
+          "mha": null,
+          "arm": null
+        },
+        "slope_gap_arm_minus_mha": 0,
+        "last_logged_loss": {
+          "mha": 3.1317,
+          "arm": 3.1416
+        },
+        "activity_evidence": {
+          "k_tensor_shape": [
+            8,
+            2,
+            256,
+            32
+          ],
+          "q_tensor_shape": [
+            8,
+            8,
+            256,
+            32
+          ],
+          "qkv_out_width": 384,
+          "k_proj_per_kv_head_row_norm": [
+            1.814612,
+            1.792432
+          ],
+          "kv_head_pair_max_abs_weight_diff": 0.096649,
+          "alive": true
+        },
+        "verdict": "越界且**方向为改善**（Δ = +0.0274 ≥ 0.014）：不是代价，而是快照口径下的小幅增益 —— 按 SCHEMA §16 只能记为「快照、疑为收敛加速」，需要等参数对照（§15）与更长训练点才能归因，本实验预算不含"
+      },
+      "mqa": {
+        "bpc_arm": 4.5895,
+        "bpc_mha": 4.6509,
+        "delta_schema": 0.0614,
+        "damage_bpc": -0.0614,
+        "abs_delta": 0.0614,
+        "kv_reduction_frac_analytic": 0.875,
+        "kv_bytes_per_position_fp16": 1536,
+        "kv_bytes_vs_int8_reference": 0.25,
+        "same_method_slope_last_25pct": {
+          "mha": null,
+          "arm": null
+        },
+        "slope_gap_arm_minus_mha": 0,
+        "last_logged_loss": {
+          "mha": 3.1317,
+          "arm": 3.1276
+        },
+        "activity_evidence": {
+          "k_tensor_shape": [
+            8,
+            1,
+            256,
+            32
+          ],
+          "q_tensor_shape": [
+            8,
+            8,
+            256,
+            32
+          ],
+          "qkv_out_width": 320,
+          "k_proj_per_kv_head_row_norm": [
+            1.81006
+          ],
+          "kv_head_pair_max_abs_weight_diff": null,
+          "alive": true
+        },
+        "verdict": "越界且**方向为改善**（Δ = +0.0614 ≥ 0.014）：不是代价，而是快照口径下的小幅增益 —— 按 SCHEMA §16 只能记为「快照、疑为收敛加速」，需要等参数对照（§15）与更长训练点才能归因，本实验预算不含"
+      },
+      "gqa_rep": {
+        "bpc_arm": 4.6235,
+        "bpc_mha": 4.6509,
+        "delta_schema": 0.0274,
+        "damage_bpc": -0.0274,
+        "abs_delta": 0.0274,
+        "kv_reduction_frac_analytic": 0.75,
+        "kv_bytes_per_position_fp16": 3072,
+        "kv_bytes_vs_int8_reference": 0.5,
+        "same_method_slope_last_25pct": {
+          "mha": null,
+          "arm": null
+        },
+        "slope_gap_arm_minus_mha": 0,
+        "last_logged_loss": {
+          "mha": 3.1317,
+          "arm": 3.1417
+        },
+        "activity_evidence": {
+          "k_tensor_shape": [
+            8,
+            2,
+            256,
+            32
+          ],
+          "q_tensor_shape": [
+            8,
+            8,
+            256,
+            32
+          ],
+          "qkv_out_width": 384,
+          "k_proj_per_kv_head_row_norm": [
+            1.814612,
+            1.792433
+          ],
+          "kv_head_pair_max_abs_weight_diff": 0.096652,
+          "alive": true
+        },
+        "verdict": "越界且**方向为改善**（Δ = +0.0274 ≥ 0.014）：不是代价，而是快照口径下的小幅增益 —— 按 SCHEMA §16 只能记为「快照、疑为收敛加速」，需要等参数对照（§15）与更长训练点才能归因，本实验预算不含"
+      }
+    },
+    "reference_line_int8_kv": {
+      "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m",
+      "bpc_damage": 0.00015,
+      "kv_bytes_per_position_fp16": 12288,
+      "kv_bytes_per_position_int8": 6144,
+      "kv_reduction_frac": 0.5,
+      "verdict": "int8 KV 近无损、省一半内存（参照线）"
+    }
+  },
+  "rerun_divergence": {
+    "rule": "预登记（README §4）：重跑臂 = `gqa`（三个干预档里的中间档；同 seed 同配方重训一次，给出 run-to-run 散度）",
+    "rerun_arm": "gqa",
+    "run1_bpc": 4.6235,
+    "run2_bpc": 4.6235,
+    "abs_diff_bpc": 0.0,
+    "run1_delta_schema": 0.0274,
+    "run2_delta_schema": 0.0274,
+    "delta_abs_diff": 0.0,
+    "slope_last_25pct": {
+      "run1": null,
+      "run2": null
+    },
+    "same_verdict": false,
+    "threshold_bpc": 0.005,
+    "pass": true
+  },
+  "reconciliation": {
+    "arithmetic": {
+      "kv_bytes_per_position_fp16": {
+        "mha": {
+          "formula": "n_layers·2·n_kv_heads·head_dim·2B = 12·2·8·32·2",
+          "expected": 12288,
+          "measured": 12288,
+          "match": true
+        },
+        "gqa": {
+          "formula": "n_layers·2·n_kv_heads·head_dim·2B = 12·2·2·32·2",
+          "expected": 3072,
+          "measured": 3072,
+          "match": true
+        },
+        "mqa": {
+          "formula": "n_layers·2·n_kv_heads·head_dim·2B = 12·2·1·32·2",
+          "expected": 1536,
+          "measured": 1536,
+          "match": true
+        },
+        "gqa_rep": {
+          "formula": "n_layers·2·n_kv_heads·head_dim·2B = 12·2·2·32·2",
+          "expected": 3072,
+          "measured": 3072,
+          "match": true
+        }
+      },
+      "params": {
+        "mha": {
+          "formula": "mha_params − 2·(d − n_kv_heads·dh)·(d+1)·n_layers（qkv 含偏置）",
+          "expected_delta_vs_mha": 0,
+          "measured_delta_vs_mha": 0,
+          "match": true
+        },
+        "gqa": {
+          "formula": "mha_params − 2·(d − n_kv_heads·dh)·(d+1)·n_layers（qkv 含偏置）",
+          "expected_delta_vs_mha": -1184256,
+          "measured_delta_vs_mha": -1184256,
+          "match": true
+        },
+        "mqa": {
+          "formula": "mha_params − 2·(d − n_kv_heads·dh)·(d+1)·n_layers（qkv 含偏置）",
+          "expected_delta_vs_mha": -1381632,
+          "measured_delta_vs_mha": -1381632,
+          "match": true
+        },
+        "gqa_rep": {
+          "formula": "mha_params − 2·(d − n_kv_heads·dh)·(d+1)·n_layers（qkv 含偏置）",
+          "expected_delta_vs_mha": -1184256,
+          "measured_delta_vs_mha": -1184256,
+          "match": true
+        }
+      },
+      "bpc": {
+        "mha": {
+          "bpc_range_check": true,
+          "bpc": 4.6509,
+          "cross_path_match": true
+        },
+        "gqa": {
+          "bpc_range_check": true,
+          "bpc": 4.6235,
+          "cross_path_match": true
+        },
+        "mqa": {
+          "bpc_range_check": true,
+          "bpc": 4.5895,
+          "cross_path_match": true
+        },
+        "gqa_rep": {
+          "bpc_range_check": true,
+          "bpc": 4.6235,
+          "cross_path_match": true
+        }
+      },
+      "pass": true,
+      "note": "算术对账：① KV 解析字节数按实际张量形状手算一遍；② 参数量差与剪枝公式 −2·(d−n_kv_heads·dh)·(d+1)·n_layers 逐位对齐；③ bpc 落在物理区间内且两条独立评测路径给出同一个数（4 位小数）"
+    },
+    "task": {
+      "same_task": "同一 char 级 enwik8 AR 任务、同一数据切分（前 90M/末 10M）、同一评测窗口序（seed=2 + 24×16）、同一位置集（全序列逐位置）、同一目标定义（tokens 自移位）",
+      "same_battery": "四臂同一 run.py 评测电池（同 n_batches/batch_size/seed/代码）",
+      "no_truth_leak": "读出只依赖模型自身状态；无「假上下文 + 真目标」式对照（SCHEMA §13）",
+      "deploy_correspondence": "部署对应 = 解码期 KV cache：GQA/MQA 的 cache 张量形状就是 [B, n_kv_heads, T, head_dim]，字节数按该形状算（本实验用 enable_gqa 内核按组广播，不物化复制）",
+      "visibility_pairs_unchanged": "KV 头共享不改变**可见性对数**（每个 query 头仍可见全部因果键，注意力对数 = n_heads·T(T+1)/2，四臂相同）——与窗口/逐出类干预不同；这正是SCHEMA §17.12 要求的两套口径之一（另一套 = KV 存储量，见算术对账）",
+      "pass": true
+    },
+    "caliber": {
+      "matched_step_snapshot": true,
+      "steps": 12000,
+      "train_tokens_per_arm": 98304000,
+      "seed": 0,
+      "n_seed": 1,
+      "note": "四臂同为 matched-step 快照口径（12k 步、98.3M tokens、未收敛）；bpc = clean bpc（每字符比特数，越低越好）= 最终深度读出的因果移位 CE token 平均；非渐近、非墙钟、非 FLOPs",
+      "memory_caliber": "**解析** KV 内存（部署关心的量，按实际张量形状算）与**实测**显存分开报：本评测把 K/V 交给 SDPA 内核按组广播、注意力分数仍是 T×T，且训练/评测峰值由激活主导 ⇒ 实测峰值不按 KV 比例下降，不作为收益主张",
+      "same_method_slope": "四臂斜率用同一窗口（末 25% = 步 9000..11999）与同一最小二乘算法（SCHEMA §16）",
+      "pass": true
+    },
+    "all_pass": true
+  },
+  "code": {
+    "run_py_sha256": "c9afc5b63e908cad537abf7026d3a3e8b3ba5691146b0f072bb97055871cb65d",
+    "depth_ar_py_sha256": "9e4ca15d3e1282b3a5826e1f7f3be2828cd598d032c309d9072cc5a853d05cef",
+    "train_depth_ar_py_sha256": "4b28cddd99115195b8bcd000c01829d9db17f96ac0ea4c99e3ce607f56e76a3a",
+    "tests_depth_ar_sha256": "f2569c91a08b4175c2c8d3a57fa03d526d6ae097ea8b6955c878df40eca6b67c",
+    "retention_py_sha256": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502"
+  },
+  "cost": {
+    "train_wall_minutes_by_arm": {
+      "mha": 0.03,
+      "gqa": 0.03,
+      "mqa": 0.03,
+      "gqa_rep": 0.03
+    },
+    "eval_wall_seconds_by_arm": {
+      "mha": 0.46,
+      "gqa": 0.07,
+      "mqa": 0.05,
+      "gqa_rep": 0.07
+    },
+    "eval_peak_mem_mib_by_arm": {
+      "mha": 168.6,
+      "gqa": 164.0,
+      "mqa": 160.6,
+      "gqa_rep": 164.0
+    },
+    "device": "NVIDIA GeForce RTX 4090",
+    "contract_budget_min": 35,
+    "budget_note": "契约的成本数字 = 3 臂 × ≈7 min + 重跑 1 臂；实测步时由本实验 200 步探针给出（SCHEMA §17.8），全跑墙钟见上表"
+  },
+  "eval_protocol": {
+    "n_batches": 2,
+    "batch_size": 8,
+    "window_seed": 2,
+    "device": "cuda",
+    "smoke": true
+  }
+}

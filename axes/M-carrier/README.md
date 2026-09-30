@@ -25,7 +25,7 @@ M1 载体类型 · M2 载体压缩 · M3 跨步假设
 |---|---|---|---|
 | [`M1-carrier-type`](M1-carrier-type/README.md) | ◐ partial | 只有 KV 载体；其余零经验，但载体是「能否丢/重算」的决定因素。 | —（KV 为基底） |
 | [`M2-carrier-compression`](M2-carrier-compression/README.md) | ◐ partial | 驱逐已测（价格见 A3）；量化/摘要/低秩零经验。 | 驱逐 +0.058~0.121（13M） |
-| [`M3-cross-step-assumption`](M3-cross-step-assumption/README.md) | ◐ partial | 每 token 独立 + 「不重 prefill」已实现；段级递归零经验。 | — |
+| [`M3-cross-step-assumption`](M3-cross-step-assumption/README.md) | ✅ judged | 有界内存的价签已测两档：**窗口 192 的训练税 −0.0028（近零）**、窗口 32 为 +0.0866；但 192 档**本就没有头寸**（未重训限制到 192 只 +… | 窗口 192 训练税 **−0.002813**（1.483569 → 1.… |
 
 <!-- AUTO:end -->
 

@@ -2,7 +2,7 @@
 
 # INDEX · 设计空间状态灯
 
-共 **51** 个格子 ｜ ✅ judged 30 ｜ ◐ partial 9 ｜ 🏭 reference 7 ｜ ⬜ stub 5
+共 **51** 个格子 ｜ ✅ judged 32 ｜ ◐ partial 7 ｜ 🏭 reference 7 ｜ ⬜ stub 5
 
 > 全部内容由 `tools/build_wiki.py` 从 `catalog.yaml` 生成；**不要手改本文件**。
 
@@ -56,7 +56,7 @@
 |---|---|---|
 | [`W1-active-width`](axes/W-width/W1-active-width/README.md) · 激活宽度 | ✅ judged | 减宽 = 减容量，不买灵活性；结构化约束会把状态能量赶出被约束子空间。 |
 | [`W2-expertization`](axes/W-width/W2-expertization/README.md) · 专家化（MoE） | ⬜ stub | — |
-| [`W3-kv-head-sharing`](axes/W-width/W3-kv-head-sharing/README.md) · KV 头共享 | ◐ partial | 本地只有 MHA；其余为零经验，但这是长上下文线的免费基线（必须先打败它）。 |
+| [`W3-kv-head-sharing`](axes/W-width/W3-kv-head-sharing/README.md) · KV 头共享 | ✅ judged | 参考线已补齐**：GQA（KV −75%）实测 damage **+0.0143**、同 seed 重跑 +0.0139（**跨在门槛两侧**，散度仅 0.0004 ⇒ 依预登记规则该臂判读作废、… |
 | [`W4-readout-geometry`](axes/W-width/W4-readout-geometry/README.md) · 读出几何 | ✅ judged | 读出几何**可以**解耦（prob0/提交/传输不受损，同空间前提不冲突），但**增量归因于「读出重参数化 + 额外 2d² 参数」，不是非线性本身**：等参数纯线性对照 Δ=−0.0888 与 … |
 | [`W5-capacity-vs-compute`](axes/W-width/W5-capacity-vs-compute/README.md) · 容量-计算分离 | ✅ judged | 减容量不买灵活性；买灵活性必须走保容量减计算。 |
 
@@ -79,7 +79,7 @@
 |---|---|---|
 | [`M1-carrier-type`](axes/M-carrier/M1-carrier-type/README.md) · 状态载体类型 | ◐ partial | 只有 KV 载体；其余零经验，但载体是「能否丢/重算」的决定因素。 |
 | [`M2-carrier-compression`](axes/M-carrier/M2-carrier-compression/README.md) · 载体压缩 | ◐ partial | 驱逐已测（价格见 A3）；量化/摘要/低秩零经验。 |
-| [`M3-cross-step-assumption`](axes/M-carrier/M3-cross-step-assumption/README.md) · 跨步假设 | ◐ partial | 每 token 独立 + 「不重 prefill」已实现；段级递归零经验。 |
+| [`M3-cross-step-assumption`](axes/M-carrier/M3-cross-step-assumption/README.md) · 跨步假设 | ✅ judged | 有界内存的价签已测两档：**窗口 192 的训练税 −0.0028（近零）**、窗口 32 为 +0.0866；但 192 档**本就没有头寸**（未重训限制到 192 只 +0.0029），真正… |
 
 ## G · 策略与调度（5 格）
 

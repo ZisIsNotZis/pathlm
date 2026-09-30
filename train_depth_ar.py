@@ -17,7 +17,8 @@ from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
                              generation_quality, readout_workspace_energy,
                              spec_cost_model, topology_liveness,
                              attn_sparse_probe, window_mask_liveness,
-                             window_mask_probe)
+                             window_mask_probe, attn_linear_probe,
+                             kv_head_liveness)
 from pathlm.data import load_enwik8_full, batch
 
 
@@ -87,6 +88,43 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                                 generator=torch.Generator().manual_seed(1234))
         win_probe = window_mask_probe(model, x_probe.cuda())
         win_live = {**win_live, **win_probe}
+    # KV 头共享（ticket 33 契约 S）的活性量：形状是**静态**的（不随步变化），每个
+    # 200 步日志行都写同一份；同时把「各 KV 头的 K 投影行范数 / KV 行 Frobenius
+    # 范数」做成**动态**量随日志落盘（证明变窄的 K/V 投影真的在学，不是死路径）。
+    # 开关关闭时为 None，不增加任何计算、不消耗随机数（逐位还原 v1）。
+    gqa_active = (model.cfg.n_kv_heads is not None
+                  and model.cfg.n_kv_heads < model.cfg.n_heads)
+
+    def kv_live() -> dict | None:
+        if not gqa_active:
+            return None
+        blocks = model.blocks
+        rows = []
+        for blk in blocks:
+            w = blk.qkv.weight.detach().float()
+            d = model.cfg.d_model
+            kv_dim = model.cfg.n_kv_heads * (d // model.cfg.n_heads)
+            rows.append(w[d:d + 2 * kv_dim])
+        return {
+            "n_heads": model.cfg.n_heads,
+            "n_kv_heads": model.cfg.n_kv_heads,
+            "head_dim": model.cfg.d_model // model.cfg.n_heads,
+            "qkv_out_width": int(blocks[0].qkv.weight.shape[0]),
+            "kv_elems_per_position": 2 * model.cfg.n_kv_heads
+            * (model.cfg.d_model // model.cfg.n_heads),
+            "kv_reduction_frac_vs_mha": round(
+                1 - model.cfg.n_kv_heads / model.cfg.n_heads, 6),
+            "k_proj_per_kv_head_row_norm": [
+                round(float(blk.qkv.weight.detach().float()[
+                    model.cfg.d_model + i * (model.cfg.d_model
+                                             // model.cfg.n_heads):
+                    model.cfg.d_model + (i + 1) * (model.cfg.d_model
+                                                   // model.cfg.n_heads)].norm()),
+                      4)
+                for i in range(model.cfg.n_kv_heads)],
+            "kv_rows_fro_mean": round(
+                float(sum(float(r.norm()) for r in rows) / len(rows)), 4),
+        }
     opt = torch.optim.AdamW(model.parameters(), lr=tcfg["lr"], weight_decay=0.01)
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min((s + 1) / 200, 0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * s / steps))))
@@ -100,7 +138,30 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                    "sel_in_lastk_frac")
     sparse_acc = {kk: 0.0 for kk in sparse_keys}
     n_sparse_layers = 0
+    # 线性注意力的活性量（SCHEMA §10/§17.4，契约 R）：每步**按张量**累加、每 200 步
+    # 随同一行训练日志落盘（φ/分母取累计最小/最大，其余为累计均值）。
+    # 不在每步做 `.item()`：8 层 × 6 次设备同步在共享卡上会变成同步风暴。
+    lin_min = None
+    lin_max = None
+    lin_sum = {"inter_mass_frac": None, "state_norm": None}
+    n_lin_layers = 0
+
+    def lin_log() -> dict | None:
+        """把累计张量活性量转成日志用的 Python 浮点（每 200 步调一次）。"""
+        if not n_lin_layers or lin_min is None:
+            return None
+        return {
+            "phi_min": round(float(lin_min["phi_min"]), 8),
+            "phi_max": round(float(lin_max["phi_max"]), 6),
+            "den_min": round(float(lin_min["den_min"]), 8),
+            "inter_mass_frac": round(float(lin_sum["inter_mass_frac"])
+                                     / n_lin_layers, 6),
+            "state_norm": round(float(lin_sum["state_norm"])
+                                / n_lin_layers, 6),
+            "n_layer_samples": n_lin_layers,
+        }
     n_logged = 0
+    n_log_writes = 0
     gnorm_sum = 0.0
     gnorm_max = 0.0
     n_grad_skip = 0
@@ -147,6 +208,26 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
             for kk in sparse_keys:
                 sparse_acc[kk] += float(s[kk])
             n_sparse_layers += 1
+        for s in aux.get("attn_linear", ()):
+            if lin_min is None:
+                lin_min = {k: s[k].detach() for k in ("phi_min", "den_min")}
+                lin_max = {"phi_max": s["phi_max"].detach()}
+            else:
+                lin_min["phi_min"] = torch.minimum(lin_min["phi_min"],
+                                                   s["phi_min"].detach())
+                lin_min["den_min"] = torch.minimum(lin_min["den_min"],
+                                                   s["den_min"].detach())
+                lin_max["phi_max"] = torch.maximum(lin_max["phi_max"],
+                                                   s["phi_max"].detach())
+            lin_sum["inter_mass_frac"] = (s["inter_mass_frac"].detach()
+                                           if lin_sum["inter_mass_frac"] is None
+                                           else lin_sum["inter_mass_frac"]
+                                           + s["inter_mass_frac"].detach())
+            lin_sum["state_norm"] = (s["state_norm"].detach()
+                                     if lin_sum["state_norm"] is None
+                                     else lin_sum["state_norm"]
+                                     + s["state_norm"].detach())
+            n_lin_layers += 1
         n_logged += 1
         if step % 200 == 0 or step == steps - 1:
             with open(log_path, "a") as f:
@@ -160,9 +241,12 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                     "attn_sparse": ({kk: round(v / n_sparse_layers, 6)
                                     for kk, v in sparse_acc.items()}
                                    if n_sparse_layers else None),
+                    "attn_linear": lin_log(),
                     "window_mask": win_live,
+                    "kv_heads": kv_live(),
                     "lr": round(float(sched.get_last_lr()[0]), 6),
                     "min": round((time.time() - t0) / 60, 2)}) + "\n")
+            n_log_writes += 1
             with open(gate_log_path, "a") as f:
                 f.write(json.dumps({"step": step,
                                     "gate_mean": [round(float(g), 4)
@@ -176,8 +260,55 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                                   for kk, v in sparse_acc.items()}
                                  if n_sparse_layers else None),
             "attn_sparse_layer_samples": n_sparse_layers,
+            "attn_linear_mean": (lambda d: ({k: v for k, v in d.items()
+                                             if k != "n_layer_samples"}
+                                            if d else None))(lin_log()),
+            "attn_linear_layer_samples": n_lin_layers,
             "window_mask": win_live,
-            "window_mask_probe": win_probe}
+            "window_mask_probe": win_probe,
+            "kv_heads": kv_live(),
+            "kv_heads_n_logged_lines": n_log_writes if gqa_active else 0}
+
+
+def build_depthar_config(args) -> DepthARConfig:
+    """CLI 参数 → `DepthARConfig`（单测钉住「CLI 开关不是死的」）。
+
+    把这一段从 `main()` 里抽出来只为可测：`--n-kv-heads`（ticket 33 契约 S）这类
+    新增通道必须有一条可失败单测证明它真的到了模型配置（否则「开关是死的」）。
+    """
+    return DepthARConfig(d_model=args.d, n_layers=args.layers, n_heads=args.heads,
+                         seq_len=args.seq_len, mlp_mult=args.mlp_mult,
+                         dense=args.dense,
+                         gate_bias_init=args.gate_bias_init,
+                         topology=args.topology,
+                         fill_kv=args.fill_kv, proj_fill=args.proj_fill,
+                         readout_dims=args.readout_dims,
+                         readout_gated=args.readout_gated,
+                         readout_linear_resid=args.readout_linear_resid,
+                         attn_sparse_k=args.attn_sparse_k,
+                         attn_linear=args.attn_linear,
+                         linear_chunk=args.linear_chunk,
+                         train_window=args.train_window,
+                         train_anchors=args.train_anchors,
+                         n_kv_heads=args.n_kv_heads)
+
+
+def _kv_head_liveness(model: DepthARModel, vocab_size: int,
+                      seq_len: int) -> dict:
+    """KV 头共享的活性块（SCHEMA §10）：在**一次真实前向**上抓实际 K/V 张量形状。
+
+    探针输入用固定 seed 的随机 token（形状类活性量与输入分布无关），与训练数据流
+    无关、不消耗训练随机数（在训练结束后、落盘结果前调用）。
+    """
+    g = torch.Generator().manual_seed(1234)
+    x = torch.randint(0, vocab_size, (2, min(seq_len, 64)), generator=g)
+    x = x.cuda() if torch.cuda.is_available() else x
+    was_training = model.training
+    out = kv_head_liveness(model, x)
+    model.train(was_training)
+    out["probe_tokens_shape"] = list(x.shape)
+    out["probe_seed"] = 1234
+    return out
 
 
 def main():
@@ -228,6 +359,14 @@ def main():
                          "在因果掩码内只保留内容相似度最高的 k 个键（按内容"
                          "选择，其余置 -inf）。0 = 关闭（缺省，逐位还原 v1）；"
                          "需配合 --dense 且 topology=sequential（单因素）")
+    ap.add_argument("--attn-linear", dest="attn_linear", action="store_true",
+                    help="线性注意力（ticket 33 契约 R）：注意力算子换成归一化线性核"
+                         " out_i = Σ_{j≤i}(φ(q_i)·φ(k_j))v_j / Σ φ(q_i)·φ(k_j)，φ=elu+1；"
+                         "用累积状态实现 ⇒ 每层时间/显存对 T 线性。缺省关闭（逐位还原 v1）；"
+                         "需配合 --dense 且 topology=sequential（单因素）")
+    ap.add_argument("--linear-chunk", type=int, default=64,
+                    help="线性注意力分块大小（实现细节，不是第二个干预档；需整除"
+                         " --seq-len）")
     ap.add_argument("--train-window", type=int, default=0,
                     help="训练期可见窗口（ticket 32 契约 O）：每个查询只看最近"
                          " N 个位置；0 = 关闭（缺省，逐位还原 v1 的全因果路径）。"
@@ -235,6 +374,13 @@ def main():
     ap.add_argument("--train-anchors", type=int, default=0,
                     help="窗口训练时额外恒可见的最前面 N 个锚点位置（需 "
                          "--train-window > 0）")
+    ap.add_argument("--n-kv-heads", type=int, default=None,
+                    help="KV 头共享（ticket 33 契约 S，W3）：注意力 K/V 的**头数**"
+                         "（不是头维度）。缺省 None = MHA（= --heads，stock Block"
+                         " 路径，逐位还原 v1）；< --heads 时 K/V 投影只产生这么多个"
+                         "头（= 2 即 GQA，= 1 即 MQA），由 SDPA enable_gqa 按组广播。"
+                         "需配合 --dense 且 topology=sequential（单因素），必须整除"
+                         " --heads")
     ap.add_argument("--no-fill-kv", dest="fill_kv", action="store_false",
                     help="no-fill ragged 语义（ticket 23e）：早退位置在未跑层"
                          "的 KV 中缺席（原引擎 per-layer cache 语义）；缺省 = "
@@ -273,25 +419,25 @@ def main():
 
     run_dir = os.path.join(args.out_root, args.run_name)
     os.makedirs(run_dir, exist_ok=True)
+    # 诊断开关（默认关闭）：共享卡上出现「无进展但 CPU 满载」时，用它定期把**全线程
+    # Python 栈**打进 stderr（子进程的 stdout.log），定位卡在哪一步。
+    dump_secs = int(os.environ.get("PATHLM_DUMP_STACKS", "0"))
+    if dump_secs > 0:
+        import faulthandler
+        faulthandler.enable()
+        faulthandler.dump_traceback_later(dump_secs, repeat=True)
+        print(f"[diag] 每 {dump_secs}s 打一次全线程 Python 栈（PATHLM_DUMP_STACKS）",
+              flush=True)
     torch.manual_seed(args.seed)
     train_arr, eval_arr, vocab_size = load_enwik8_full(".tmp/enwik8", "data/enwik8_full.npz")
-    cfg = DepthARConfig(d_model=args.d, n_layers=args.layers, n_heads=args.heads,
-                        seq_len=args.seq_len, mlp_mult=args.mlp_mult,
-                        dense=args.dense,
-                        gate_bias_init=args.gate_bias_init,
-                        topology=args.topology,
-                        fill_kv=args.fill_kv, proj_fill=args.proj_fill,
-                        readout_dims=args.readout_dims,
-                        readout_gated=args.readout_gated,
-                        readout_linear_resid=args.readout_linear_resid,
-                        attn_sparse_k=args.attn_sparse_k,
-                        train_window=args.train_window,
-                        train_anchors=args.train_anchors)
+    cfg = build_depthar_config(args)
     model = DepthARModel(cfg, vocab_size).cuda()
     n_params = sum(p.numel() for p in model.parameters())
     print(f"{args.run_name}: {n_params/1e6:.2f}M params, vocab {vocab_size}, "
           f"topology {args.topology}, attn_sparse_k {args.attn_sparse_k}, "
+          f"attn_linear {args.attn_linear} (chunk {args.linear_chunk}), "
           f"train_window {args.train_window}/+{args.train_anchors}, "
+          f"n_kv_heads {args.n_kv_heads}, "
           f"steps {args.steps} x bs{args.batch_size} x seq{args.seq_len} "
           f"= {args.steps*args.batch_size*args.seq_len/1e6:.1f}M tokens", flush=True)
 
@@ -317,8 +463,13 @@ def main():
         "run": args.run_name, "config": asdict(cfg), "train": tcfg,
         "topology": args.topology,
         "attn_sparse_k": args.attn_sparse_k,
+        "attn_linear": args.attn_linear,
+        "linear_chunk": args.linear_chunk,
         "train_window": args.train_window,
         "train_anchors": args.train_anchors,
+        "n_kv_heads": args.n_kv_heads,
+        "kv_head_liveness": _kv_head_liveness(model, vocab_size,
+                                               seq_len=args.seq_len),
         "topology_liveness": topology_liveness(model),
         "exit_mode": args.exit_mode,
         "fill_kv": args.fill_kv, "proj_fill": args.proj_fill,
@@ -368,6 +519,10 @@ def main():
                               "proxy（截断资产口径，非训练出口资产）")
         # 内容 top-k 稀疏的活性块（SCHEMA §10）：真实前向的保留键数 + 选择统计
         results["attn_sparse_liveness"] = attn_sparse_probe(
+            model, eval_arr, device="cuda")
+        # 线性注意力的活性块（SCHEMA §10，契约 R）：φ/分母实测量程 + 同权重换算子的
+        # 反事实偏差（rel_dev > 0 ⇒ 不是换个名字的全注意力）+ 核质量分布
+        results["attn_linear_liveness"] = attn_linear_probe(
             model, eval_arr, device="cuda")
     with open(os.path.join(run_dir, "results.json"), "w") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)

@@ -1,0 +1,146 @@
+{
+  "targets": {
+    "pathlm/depth_ar.py": {
+      "sha256_before": "9e4ca15d3e1282b3a5826e1f7f3be2828cd598d032c309d9072cc5a853d05cef",
+      "sha256_after": "9e4ca15d3e1282b3a5826e1f7f3be2828cd598d032c309d9072cc5a853d05cef",
+      "restored_bitwise": true
+    },
+    "train_depth_ar.py": {
+      "sha256_before": "b189eb13256d647f687e9190dc456f8d203444534689a37d6fa973822d3eb9c5",
+      "sha256_after": "b189eb13256d647f687e9190dc456f8d203444534689a37d6fa973822d3eb9c5",
+      "restored_bitwise": true
+    }
+  },
+  "mutations": [
+    {
+      "id": "S1",
+      "desc": "只改标签：qkv 投影仍输出 3d（KV 头数没真的进张量宽度）",
+      "target": "pathlm/depth_ar.py",
+      "expected_tests": [
+        "test_kv_heads_actual_tensor_shapes_and_analytic_memory",
+        "test_kv_heads_enable_gqa_kernel_equals_repeat_interleave",
+        "test_kv_heads_default_off_matches_v1_bitwise"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "tests_actually_red": [
+        "test_kv_heads_actual_tensor_shapes_and_analytic_memory",
+        "test_kv_heads_enable_gqa_kernel_equals_repeat_interleave"
+      ],
+      "pytest_summary": "2 failed, 1 passed, 96 deselected in 2.56s"
+    },
+    {
+      "id": "S2",
+      "desc": "KV 头分区错位：按组广播改成「重复首个 KV 头」（= MQA 语义，形状合法但头没用上）",
+      "target": "pathlm/depth_ar.py",
+      "expected_tests": [
+        "test_kv_heads_enable_gqa_kernel_equals_repeat_interleave"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "tests_actually_red": [
+        "test_kv_heads_enable_gqa_kernel_equals_repeat_interleave"
+      ],
+      "pytest_summary": "1 failed, 98 deselected in 1.92s"
+    },
+    {
+      "id": "S3",
+      "desc": "头维度算错：kv_dim 用 n_heads·dh 而不是 n_kv_heads·dh（张量宽度与标签不符）",
+      "target": "pathlm/depth_ar.py",
+      "expected_tests": [
+        "test_kv_heads_guards_require_dense_sequential_and_divisibility",
+        "test_kv_heads_actual_tensor_shapes_and_analytic_memory"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "tests_actually_red": [
+        "test_kv_heads_actual_tensor_shapes_and_analytic_memory"
+      ],
+      "pytest_summary": "1 failed, 1 passed, 97 deselected in 2.37s"
+    },
+    {
+      "id": "S4",
+      "desc": "解析内存下降比被写死成 0（省内存的主张失去算术支撑）",
+      "target": "pathlm/depth_ar.py",
+      "expected_tests": [
+        "test_kv_heads_actual_tensor_shapes_and_analytic_memory"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "tests_actually_red": [
+        "test_kv_heads_actual_tensor_shapes_and_analytic_memory"
+      ],
+      "pytest_summary": "1 failed, 98 deselected in 2.12s"
+    },
+    {
+      "id": "S5",
+      "desc": "活性证据造假：k_batch_shape 直接按配置写 [B, n_heads, T, dh]（只看标签）",
+      "target": "pathlm/depth_ar.py",
+      "expected_tests": [
+        "test_kv_heads_actual_tensor_shapes_and_analytic_memory"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "tests_actually_red": [
+        "test_kv_heads_actual_tensor_shapes_and_analytic_memory"
+      ],
+      "pytest_summary": "1 failed, 98 deselected in 2.04s"
+    },
+    {
+      "id": "S6",
+      "desc": "拆掉 dense 守卫（非 dense 形态也放行 GQA ⇒ 退出/填充语义未定义）",
+      "target": "pathlm/depth_ar.py",
+      "expected_tests": [
+        "test_kv_heads_guards_require_dense_sequential_and_divisibility"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "tests_actually_red": [
+        "test_kv_heads_guards_require_dense_sequential_and_divisibility"
+      ],
+      "pytest_summary": "1 failed, 98 deselected in 1.98s"
+    },
+    {
+      "id": "S7",
+      "desc": "块选择条件失效：n_kv_heads < n_heads 时仍建 stock Block（开关是死的）",
+      "target": "pathlm/depth_ar.py",
+      "expected_tests": [
+        "test_kv_heads_guards_require_dense_sequential_and_divisibility",
+        "test_kv_heads_actual_tensor_shapes_and_analytic_memory",
+        "test_kv_heads_default_off_matches_v1_bitwise"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "tests_actually_red": [
+        "test_kv_heads_actual_tensor_shapes_and_analytic_memory",
+        "test_kv_heads_guards_require_dense_sequential_and_divisibility"
+      ],
+      "pytest_summary": "2 failed, 1 passed, 96 deselected in 2.05s"
+    },
+    {
+      "id": "S8",
+      "desc": "训练器没把 --n-kv-heads 传给配置（CLI 开关是死的）",
+      "target": "train_depth_ar.py",
+      "expected_tests": [
+        "test_train_cli_kv_heads_plumbed_to_config"
+      ],
+      "expect_red": true,
+      "caught_red": true,
+      "outcome_ok": true,
+      "tests_actually_red": [
+        "test_train_cli_kv_heads_plumbed_to_config"
+      ],
+      "pytest_summary": "1 failed, 98 deselected in 2.02s"
+    }
+  ],
+  "all_restored_bitwise": true,
+  "all_expected_outcomes": true,
+  "all_caught": true
+}

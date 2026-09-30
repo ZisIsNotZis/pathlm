@@ -9,6 +9,7 @@
 | 实验 | 来源 |
 |---|---|
 | [`2614-topk-sparse-attn-13m`](2614-topk-sparse-attn-13m/README.md) | 目录内 README |
+| [`2616-linear-attention-13m`](2616-linear-attention-13m/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 

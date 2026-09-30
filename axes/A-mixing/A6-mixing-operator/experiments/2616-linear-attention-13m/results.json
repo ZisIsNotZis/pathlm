@@ -1,0 +1,1020 @@
+{
+  "experiment": "2616-linear-attention-13m",
+  "config": {
+    "experiment": "2616-linear-attention-13m",
+    "ticket": "33-batch6 契约 R",
+    "seed": 0,
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "optimizer": "AdamW(wd=0.01) + warmup 200 步 + cosine 到 0.1×",
+    "data": "data/enwik8_full.npz",
+    "data_split": "first 90M train / last 10M eval, vocab from full file",
+    "vocab_size": 206,
+    "train_tokens": 98304000,
+    "base": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 4,
+      "dropout": 0.0,
+      "norm_cap": 1.0,
+      "dense": true,
+      "topology": "sequential",
+      "exit_mode": "uniform",
+      "loss": "仅最终深度 CE（stock AR）",
+      "readout": "tied h·Eᵀ，无 final LayerNorm（共享底座偏离 1）",
+      "linear_chunk": 64,
+      "linear_chunk_note": "分块大小 = 实现细节（单测钉住换 chunk 不改语义），不是第二个干预档"
+    },
+    "arms": [
+      {
+        "arm": "full",
+        "attn_linear": false,
+        "role": "基线：全因果 softmax 注意力（stock Block + SDPA）",
+        "run": "runs/full-12k-s0"
+      }
+    ],
+    "rerun_arms": [],
+    "rerun_note": "重跑散度：新机制（linear）的可复现性未验证过，重跑它",
+    "variable": "attn_linear（唯一不等字段；其余逐字段一致，见 field_by_field）",
+    "delta_convention": "两个符号都报：delta_bpc_schema = bpc_full − bpc_linear（SCHEMA §17.3：正 = 线性更好）；delta_bpc_contract = bpc_linear − bpc_full（契约 R 句面读法：正 = 线性更差）",
+    "history_reference": {
+      "full_arm_bpc_2614": 1.5304,
+      "full_arm_rerun_bpc_2614": 1.5279,
+      "rerun_divergence_2614": 0.0025,
+      "note": "ticket 31-J 同配置 dense 基线（复用只作量级参考）"
+    }
+  },
+  "arms": {
+    "full": {
+      "role": "基线：全因果 softmax 注意力（stock Block + SDPA）",
+      "attn_linear": false,
+      "source": "runs/full-12k-s0",
+      "params": 6962688,
+      "train_tokens": 98304000,
+      "bpc_from_train_process": 1.5268,
+      "wall_min": 5.75,
+      "peak_child_mem_gb": null,
+      "seconds_per_step": null,
+      "gnorm_monitor": {
+        "gnorm_max": 7.86,
+        "gnorm_mean": 0.557,
+        "grad_skips": 0,
+        "attn_sparse_mean": null,
+        "attn_sparse_layer_samples": 0,
+        "attn_linear_mean": null,
+        "attn_linear_layer_samples": 0,
+        "window_mask": null,
+        "window_mask_probe": null
+      },
+      "intervention": {
+        "attn_linear": false,
+        "enabled": false,
+        "params_added": 0,
+        "parametrized": false,
+        "linear_chunk": 64,
+        "block_python_class": "Block",
+        "phi_min": null,
+        "phi_max": null,
+        "den_min": null,
+        "inter_mass_frac": null,
+        "state_norm": null,
+        "rel_dev_vs_full_min": null,
+        "alive": false,
+        "alive_note": "开关关闭（attn_linear=False）：无异于基线"
+      },
+      "depth_curve": [
+        {
+          "depth": 0,
+          "bpc": 7.4062,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "bpc": 4.7999,
+          "acc": 0.1496
+        },
+        {
+          "depth": 2,
+          "bpc": 4.2986,
+          "acc": 0.2124
+        },
+        {
+          "depth": 3,
+          "bpc": 3.7904,
+          "acc": 0.2925
+        },
+        {
+          "depth": 4,
+          "bpc": 3.1499,
+          "acc": 0.402
+        },
+        {
+          "depth": 5,
+          "bpc": 2.582,
+          "acc": 0.5077
+        },
+        {
+          "depth": 6,
+          "bpc": 2.1647,
+          "acc": 0.577
+        },
+        {
+          "depth": 7,
+          "bpc": 1.7145,
+          "acc": 0.6599
+        },
+        {
+          "depth": 8,
+          "bpc": 1.5268,
+          "acc": 0.6891
+        }
+      ],
+      "clean_bpc": 1.5268,
+      "next_token_acc": 0.6891,
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.055
+        },
+        {
+          "depth": 1,
+          "accept": 0.1654
+        },
+        {
+          "depth": 2,
+          "accept": 0.2449
+        },
+        {
+          "depth": 3,
+          "accept": 0.3341
+        },
+        {
+          "depth": 4,
+          "accept": 0.4559
+        },
+        {
+          "depth": 5,
+          "accept": 0.5791
+        },
+        {
+          "depth": 6,
+          "accept": 0.678
+        },
+        {
+          "depth": 7,
+          "accept": 0.8174
+        }
+      ],
+      "tf@4": 0.4559,
+      "attn_linear_liveness": {
+        "attn_linear": false,
+        "enabled": false,
+        "params_added": 0,
+        "parametrized": false,
+        "linear_chunk": 64,
+        "block_python_class": "Block",
+        "phi_min": null,
+        "phi_max": null,
+        "den_min": null,
+        "inter_mass_frac": null,
+        "state_norm": null,
+        "rel_dev_vs_full_min": null,
+        "alive": false,
+        "alive_note": "开关关闭（attn_linear=False）：无异于基线"
+      },
+      "eval_wall_min": 0.01
+    }
+  },
+  "cost": {
+    "theory": {
+      "flops_full_T256": {
+        "kind": "full",
+        "T": 256,
+        "per_token_per_layer_macs": {
+          "attn": 131072,
+          "other": 786432,
+          "total": 917504,
+          "attn_linear_streaming": null
+        },
+        "attn_share_of_layer_macs": 0.1429
+      },
+      "flops_linear_T256": {
+        "kind": "linear",
+        "T": 256,
+        "per_token_per_layer_macs": {
+          "attn": 49664,
+          "other": 786432,
+          "total": 836096,
+          "attn_linear_streaming": 16896
+        },
+        "attn_share_of_layer_macs": 0.0594
+      },
+      "crossover_T_training_impl": {
+        "streaming": false,
+        "dh": 32,
+        "chunk": 64,
+        "T_star": 96
+      },
+      "crossover_T_streaming": {
+        "streaming": true,
+        "dh": 32,
+        "chunk": 64,
+        "T_star": 32
+      },
+      "kv_memory": {
+        "256": {
+          "T": 256,
+          "d": 256,
+          "n_heads": 8,
+          "dh": 32,
+          "full_kv_cache_elements": 131072,
+          "full_kv_cache_bytes_bf16": 262144,
+          "linear_state_elements_constant": 8448,
+          "linear_state_bytes_fp32": 33792,
+          "linear_kv_reduction_frac": 0.9355,
+          "linear_kv_reduction_formula": "1 − (dh + 1) / (2T)：T 越大越接近 100%",
+          "training_impl_intermediate_elements": 163840,
+          "training_impl_note": "本训练实装物化块级状态与块内分数（O(T) 但常数更大）；真实显存以实测为准"
+        },
+        "512": {
+          "T": 512,
+          "d": 256,
+          "n_heads": 8,
+          "dh": 32,
+          "full_kv_cache_elements": 262144,
+          "full_kv_cache_bytes_bf16": 524288,
+          "linear_state_elements_constant": 8448,
+          "linear_state_bytes_fp32": 33792,
+          "linear_kv_reduction_frac": 0.9678,
+          "linear_kv_reduction_formula": "1 − (dh + 1) / (2T)：T 越大越接近 100%",
+          "training_impl_intermediate_elements": 327680,
+          "training_impl_note": "本训练实装物化块级状态与块内分数（O(T) 但常数更大）；真实显存以实测为准"
+        },
+        "1024": {
+          "T": 1024,
+          "d": 256,
+          "n_heads": 8,
+          "dh": 32,
+          "full_kv_cache_elements": 524288,
+          "full_kv_cache_bytes_bf16": 1048576,
+          "linear_state_elements_constant": 8448,
+          "linear_state_bytes_fp32": 33792,
+          "linear_kv_reduction_frac": 0.9839,
+          "linear_kv_reduction_formula": "1 − (dh + 1) / (2T)：T 越大越接近 100%",
+          "training_impl_intermediate_elements": 655360,
+          "training_impl_note": "本训练实装物化块级状态与块内分数（O(T) 但常数更大）；真实显存以实测为准"
+        },
+        "2048": {
+          "T": 2048,
+          "d": 256,
+          "n_heads": 8,
+          "dh": 32,
+          "full_kv_cache_elements": 1048576,
+          "full_kv_cache_bytes_bf16": 2097152,
+          "linear_state_elements_constant": 8448,
+          "linear_state_bytes_fp32": 33792,
+          "linear_kv_reduction_frac": 0.9919,
+          "linear_kv_reduction_formula": "1 − (dh + 1) / (2T)：T 越大越接近 100%",
+          "training_impl_intermediate_elements": 1310720,
+          "training_impl_note": "本训练实装物化块级状态与块内分数（O(T) 但常数更大）；真实显存以实测为准"
+        }
+      },
+      "kv_memory_note": "解析量（单层、序列长 T）：全注意力 KV 随 T 线性增长，线性注意力只需常数状态；实测显存另报"
+    },
+    "measured": {
+      "model_step_by_T": [
+        {
+          "median_ms": 23.175,
+          "min_ms": 22.311,
+          "n_iters": 5,
+          "peak_mem_gib": 0.809,
+          "T": 256,
+          "batch_size": 32,
+          "attn_linear": false,
+          "arm": "full"
+        },
+        {
+          "median_ms": 59.842,
+          "min_ms": 55.139,
+          "n_iters": 5,
+          "peak_mem_gib": 1.139,
+          "T": 256,
+          "batch_size": 32,
+          "attn_linear": true,
+          "arm": "linear"
+        },
+        {
+          "median_ms": 26.693,
+          "min_ms": 23.664,
+          "n_iters": 5,
+          "peak_mem_gib": 1.48,
+          "T": 512,
+          "batch_size": 32,
+          "attn_linear": false,
+          "arm": "full"
+        },
+        {
+          "median_ms": 62.79,
+          "min_ms": 57.206,
+          "n_iters": 5,
+          "peak_mem_gib": 2.142,
+          "T": 512,
+          "batch_size": 32,
+          "attn_linear": true,
+          "arm": "linear"
+        },
+        {
+          "median_ms": 36.62,
+          "min_ms": 34.405,
+          "n_iters": 5,
+          "peak_mem_gib": 2.859,
+          "T": 1024,
+          "batch_size": 32,
+          "attn_linear": false,
+          "arm": "full"
+        },
+        {
+          "median_ms": 63.581,
+          "min_ms": 58.692,
+          "n_iters": 5,
+          "peak_mem_gib": 4.181,
+          "T": 1024,
+          "batch_size": 32,
+          "attn_linear": true,
+          "arm": "linear"
+        },
+        {
+          "median_ms": 88.837,
+          "min_ms": 88.679,
+          "n_iters": 5,
+          "peak_mem_gib": 5.585,
+          "T": 2048,
+          "batch_size": 32,
+          "attn_linear": false,
+          "arm": "full"
+        },
+        {
+          "median_ms": 135.745,
+          "min_ms": 134.996,
+          "n_iters": 5,
+          "peak_mem_gib": 8.23,
+          "T": 2048,
+          "batch_size": 32,
+          "attn_linear": true,
+          "arm": "linear"
+        }
+      ],
+      "attn_island_by_T": [
+        {
+          "median_ms": 2.075,
+          "min_ms": 1.895,
+          "n_iters": 5,
+          "kind": "full",
+          "T": 256,
+          "batch_size": 32,
+          "peak_mem_gib": 1.139
+        },
+        {
+          "median_ms": 7.439,
+          "min_ms": 6.385,
+          "n_iters": 5,
+          "kind": "linear_chunked",
+          "T": 256,
+          "batch_size": 32,
+          "peak_mem_gib": 1.139
+        },
+        {
+          "median_ms": 5.998,
+          "min_ms": 3.54,
+          "n_iters": 5,
+          "kind": "full",
+          "T": 512,
+          "batch_size": 32,
+          "peak_mem_gib": 2.142
+        },
+        {
+          "median_ms": 7.322,
+          "min_ms": 7.071,
+          "n_iters": 5,
+          "kind": "linear_chunked",
+          "T": 512,
+          "batch_size": 32,
+          "peak_mem_gib": 2.142
+        },
+        {
+          "median_ms": 11.617,
+          "min_ms": 8.865,
+          "n_iters": 5,
+          "kind": "full",
+          "T": 1024,
+          "batch_size": 32,
+          "peak_mem_gib": 4.181
+        },
+        {
+          "median_ms": 11.159,
+          "min_ms": 10.882,
+          "n_iters": 5,
+          "kind": "linear_chunked",
+          "T": 1024,
+          "batch_size": 32,
+          "peak_mem_gib": 4.181
+        },
+        {
+          "median_ms": 30.556,
+          "min_ms": 27.55,
+          "n_iters": 5,
+          "kind": "full",
+          "T": 2048,
+          "batch_size": 32,
+          "peak_mem_gib": 8.23
+        },
+        {
+          "median_ms": 20.695,
+          "min_ms": 19.845,
+          "n_iters": 5,
+          "kind": "linear_chunked",
+          "T": 2048,
+          "batch_size": 32,
+          "peak_mem_gib": 8.23
+        }
+      ],
+      "ratio_by_T": [
+        {
+          "T": 256,
+          "step_ms_full": 23.175,
+          "step_ms_linear": 59.842,
+          "linear_over_full": 2.5822,
+          "peak_gib_full": 0.809,
+          "peak_gib_linear": 1.139,
+          "linear_over_full_peak": 1.4079
+        },
+        {
+          "T": 512,
+          "step_ms_full": 26.693,
+          "step_ms_linear": 62.79,
+          "linear_over_full": 2.3523,
+          "peak_gib_full": 1.48,
+          "peak_gib_linear": 2.142,
+          "linear_over_full_peak": 1.4473
+        },
+        {
+          "T": 1024,
+          "step_ms_full": 36.62,
+          "step_ms_linear": 63.581,
+          "linear_over_full": 1.7362,
+          "peak_gib_full": 2.859,
+          "peak_gib_linear": 4.181,
+          "linear_over_full_peak": 1.4624
+        },
+        {
+          "T": 2048,
+          "step_ms_full": 88.837,
+          "step_ms_linear": 135.745,
+          "linear_over_full": 1.528,
+          "peak_gib_full": 5.585,
+          "peak_gib_linear": 8.23,
+          "linear_over_full_peak": 1.4736
+        }
+      ],
+      "measured_crossover_note": "实测交叉点 = linear_over_full < 1 的最小 T（本批实测见 results.json）；若在所测 T 范围内始终 > 1，则如实记「本实装在本卡本批内未回本」",
+      "note": "整模型步时/显存 = 训练实装（分块线性注意力）；孤岛另报显式打分参考实现，用于把「算法本征」与「本实装开销」分开"
+    }
+  },
+  "field_by_field": {
+    "rows": [
+      {
+        "field": "d_model",
+        "expected": 256,
+        "arms": {
+          "full": 256
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "n_layers",
+        "expected": 8,
+        "arms": {
+          "full": 8
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "n_heads",
+        "expected": 8,
+        "arms": {
+          "full": 8
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "seq_len",
+        "expected": 256,
+        "arms": {
+          "full": 256
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "mlp_mult",
+        "expected": 4,
+        "arms": {
+          "full": 4
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "dropout",
+        "expected": 0.0,
+        "arms": {
+          "full": 0.0
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "norm_cap",
+        "expected": 1.0,
+        "arms": {
+          "full": 1.0
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "dense",
+        "expected": true,
+        "arms": {
+          "full": true
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "topology",
+        "expected": "sequential",
+        "arms": {
+          "full": "sequential"
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "fill_kv",
+        "expected": true,
+        "arms": {
+          "full": true
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "proj_fill",
+        "expected": false,
+        "arms": {
+          "full": false
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "readout_dims",
+        "expected": null,
+        "arms": {
+          "full": null
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "readout_gated",
+        "expected": false,
+        "arms": {
+          "full": false
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "readout_linear_resid",
+        "expected": false,
+        "arms": {
+          "full": false
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "exit_mode",
+        "expected": "uniform",
+        "arms": {
+          "full": "uniform"
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "aux_weight",
+        "expected": 1.0,
+        "arms": {
+          "full": 1.0
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "final_weight",
+        "expected": 1.0,
+        "arms": {
+          "full": 1.0
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "shallow_stopgrad",
+        "expected": false,
+        "arms": {
+          "full": false
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "dense_aux",
+        "expected": false,
+        "arms": {
+          "full": false
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "steps",
+        "expected": 12000,
+        "arms": {
+          "full": 12000
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "batch_size",
+        "expected": 32,
+        "arms": {
+          "full": 32
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "lr",
+        "expected": 0.001,
+        "arms": {
+          "full": 0.001
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "seed",
+        "expected": 0,
+        "arms": {
+          "full": 0
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "train_tokens",
+        "expected": 98304000,
+        "arms": {
+          "full": 98304000
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "vocab_size",
+        "expected": 206,
+        "arms": {
+          "full": 206
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "linear_chunk",
+        "expected": 64,
+        "arms": {
+          "full": 64
+        },
+        "all_equal": true,
+        "matches_expected": true
+      },
+      {
+        "field": "attn_linear",
+        "expected": "唯一不等字段（干预本身）",
+        "arms": {
+          "full": false
+        },
+        "is_variable": true,
+        "all_equal": true
+      }
+    ],
+    "shared_fields": {
+      "data_split": "first 90M train / last 10M eval, vocab over full file",
+      "data": "data/enwik8_full.npz",
+      "optimizer": "AdamW(wd=0.01) + warmup 200 步 + cosine 到 0.1×",
+      "note": "共享字段（两臂与所有 run 相同，不构成变量；见 config.json）"
+    },
+    "variable_fields": [
+      "attn_linear"
+    ],
+    "field_by_field_all_equal_except_attn_linear": false,
+    "note": "唯一不等字段 = attn_linear（干预本身）；linear_chunk 在 config 里逐字段相等（两臂都写 64，只有 linear 臂用它），实现层由单测证明它只是实现细节",
+    "note_arms_subset": "本次只跑了 ['full']：逐字段表的 all_equal 只在两臂齐全时才有意义，这里只报各字段的实测值"
+  },
+  "instrument_selfcheck": {
+    "full": {
+      "n_batches": 8,
+      "batch_size": 16,
+      "max_abs_logit_diff_released_vs_instrument": 0.0,
+      "bpc_released_path": 1.536356,
+      "bpc_instrument_identity_mask": 1.536356,
+      "bpc_abs_offset": 0.0,
+      "note": "全注意力臂两条路径逐位相同（max|Δlogit| 应为 0）；线性臂的差异只来自「O(T) 分块 vs 显式打分」的浮点累加顺序"
+    }
+  },
+  "dependency_curves": {
+    "full": {
+      "released_bpc_same_windows": 1.523264,
+      "n_batches": 24,
+      "batch_size": 16,
+      "distance_curve": [
+        {
+          "d": 1,
+          "bpc": 4.730966,
+          "delta_bpc": -3.207702,
+          "n_dropped_pairs": 255,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.0077517,
+          "n_dropped_keys": 255,
+          "diagonal_kept": true
+        },
+        {
+          "d": 2,
+          "bpc": 3.493823,
+          "delta_bpc": -1.970559,
+          "n_dropped_pairs": 254,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.0077213,
+          "n_dropped_keys": 254,
+          "diagonal_kept": true
+        },
+        {
+          "d": 4,
+          "bpc": 2.342306,
+          "delta_bpc": -0.819041,
+          "n_dropped_pairs": 252,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00766051,
+          "n_dropped_keys": 252,
+          "diagonal_kept": true
+        },
+        {
+          "d": 8,
+          "bpc": 1.647677,
+          "delta_bpc": -0.124412,
+          "n_dropped_pairs": 248,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00753891,
+          "n_dropped_keys": 248,
+          "diagonal_kept": true
+        },
+        {
+          "d": 16,
+          "bpc": 1.542203,
+          "delta_bpc": -0.018939,
+          "n_dropped_pairs": 240,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00729572,
+          "n_dropped_keys": 240,
+          "diagonal_kept": true
+        },
+        {
+          "d": 32,
+          "bpc": 1.52602,
+          "delta_bpc": -0.002756,
+          "n_dropped_pairs": 224,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00680934,
+          "n_dropped_keys": 224,
+          "diagonal_kept": true
+        },
+        {
+          "d": 64,
+          "bpc": 1.52399,
+          "delta_bpc": -0.000726,
+          "n_dropped_pairs": 192,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00583658,
+          "n_dropped_keys": 192,
+          "diagonal_kept": true
+        },
+        {
+          "d": 128,
+          "bpc": 1.523571,
+          "delta_bpc": -0.000306,
+          "n_dropped_pairs": 128,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00389105,
+          "n_dropped_keys": 128,
+          "diagonal_kept": true
+        },
+        {
+          "d": 192,
+          "bpc": 1.52341,
+          "delta_bpc": -0.000145,
+          "n_dropped_pairs": 64,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00194553,
+          "n_dropped_keys": 64,
+          "diagonal_kept": true
+        },
+        {
+          "d": 255,
+          "bpc": 1.523264,
+          "delta_bpc": 0.0,
+          "n_dropped_pairs": 1,
+          "causal_pairs": 32896,
+          "dropped_frac": 3.04e-05,
+          "n_dropped_keys": 1,
+          "diagonal_kept": true
+        }
+      ],
+      "recent_curve": [
+        {
+          "d": 32,
+          "bpc": 1.725648,
+          "delta_bpc": -0.202384,
+          "n_dropped_pairs": 25200,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.76605058,
+          "n_dropped_keys": 224,
+          "diagonal_kept": true
+        },
+        {
+          "d": 64,
+          "bpc": 1.604866,
+          "delta_bpc": -0.081602,
+          "n_dropped_pairs": 18528,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.56322957,
+          "n_dropped_keys": 192,
+          "diagonal_kept": true
+        },
+        {
+          "d": 128,
+          "bpc": 1.54523,
+          "delta_bpc": -0.021965,
+          "n_dropped_pairs": 8256,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.25097276,
+          "n_dropped_keys": 128,
+          "diagonal_kept": true
+        },
+        {
+          "d": 192,
+          "bpc": 1.528501,
+          "delta_bpc": -0.005237,
+          "n_dropped_pairs": 2080,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.06322957,
+          "n_dropped_keys": 64,
+          "diagonal_kept": true
+        },
+        {
+          "d": 256,
+          "bpc": 1.523264,
+          "delta_bpc": 0.0,
+          "n_dropped_pairs": 0,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.0,
+          "n_dropped_keys": 0,
+          "diagonal_kept": true
+        }
+      ],
+      "delta_convention": "Δ = bpc_released − bpc_masked（正 = 掩码造成的损伤小）",
+      "note": "单点距离曲线只描述形状，不得累加/外推；累计预算曲线是直接测的"
+    }
+  },
+  "needle_leg": {
+    "full": {
+      "n_batches": 8,
+      "batch_size": 16,
+      "seed": 3,
+      "anchors": 8,
+      "phrase_len": 6,
+      "configs": {
+        "full_visibility": {
+          "recall": 0.700195,
+          "n_needles": 1024,
+          "buckets": {
+            "window": {
+              "recall": 0.698448,
+              "n": 902
+            },
+            "anchor": {
+              "recall": 0.713115,
+              "n": 122
+            }
+          },
+          "mean_dist": 135.7,
+          "floor_no_plant": {
+            "recall": 0.460938,
+            "n_needles": 1024,
+            "note": "记忆不存在的地板（同一 generator 序列，plant=False）"
+          }
+        },
+        "recent_d64": {
+          "recall": 0.445312,
+          "n_needles": 1024,
+          "buckets": {
+            "window": {
+              "recall": 0.779661,
+              "n": 118
+            },
+            "beyond": {
+              "recall": 0.395408,
+              "n": 784
+            },
+            "anchor": {
+              "recall": 0.442623,
+              "n": 122
+            }
+          },
+          "mean_dist": 135.7
+        }
+      }
+    }
+  },
+  "convergence": {
+    "full": {
+      "window_frac": 0.25,
+      "n_points": 16,
+      "step_from": 9000,
+      "step_to": 11999,
+      "loss_from": 1.0439,
+      "loss_to": 1.0447,
+      "slope_nats_per_1k_steps": 0.00293,
+      "slope_nats_per_1k_steps_late_half": 0.02429,
+      "note": null
+    }
+  },
+  "stability": {
+    "full": {
+      "n_logged_samples": 61,
+      "step_first": 0,
+      "step_last": 11999,
+      "gnorm_logged_max": 7.1,
+      "gnorm_logged_median": 0.48,
+      "gnorm_spikes_gt3x_median": 2,
+      "all_finite": true,
+      "loss_first": 5.3131,
+      "loss_last": 1.0447,
+      "loss_max_step_increase": 0.1495,
+      "loss_jumps_gt_0.25": 0,
+      "gnorm_monitor_all_steps": {
+        "gnorm_max": 7.86,
+        "gnorm_mean": 0.557,
+        "grad_skips": 0,
+        "attn_sparse_mean": null,
+        "attn_sparse_layer_samples": 0,
+        "attn_linear_mean": null,
+        "attn_linear_layer_samples": 0,
+        "window_mask": null,
+        "window_mask_probe": null
+      }
+    }
+  },
+  "instrument_wall_min": {
+    "full": 0.06
+  },
+  "checkpoints": {
+    "full-12k-s0": {
+      "path": "axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m/runs/full-12k-s0/model.pt",
+      "sha256": "1af6beba3324389a87ef8616d18d1ade7ce32d6fa8e6a1a786f5af68e27f6054",
+      "size_bytes": 27882155,
+      "attn_linear": false
+    }
+  },
+  "wall_total_min": 0.24
+}

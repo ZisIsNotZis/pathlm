@@ -1,0 +1,86 @@
+{
+  "target": "pathlm/depth_ar.py",
+  "original_sha256": "cafb532edcb79cc34b149e38b7fb7dbeae25cd42579b95828c37c796bf947976",
+  "mutations": [
+    {
+      "name": "noncausal-intra",
+      "desc": "块内因果打分去掉 tril ⇒ 看到未来（非因果）",
+      "pytest_args": "-k 'linear_attn_causal or linear_chunked_matches'",
+      "returncode": 1,
+      "n_tests_collected_line": null,
+      "result": "red",
+      "failed_summary": "2 failed, 90 deselected in 2.19s",
+      "mutated_sha256": "cfcb31e76d23d82114730057cf0a4a79bda66819b3d8301094a160c7706cd483",
+      "restored_sha256": "cafb532edcb79cc34b149e38b7fb7dbeae25cd42579b95828c37c796bf947976",
+      "restored_byte_identical": true
+    },
+    {
+      "name": "inclusive-state",
+      "desc": "块间状态用 inclusive cumsum ⇒ 本块状态泄漏到本块输出",
+      "pytest_args": "-k 'linear_attn_causal or linear_chunked_matches'",
+      "returncode": 1,
+      "n_tests_collected_line": null,
+      "result": "red",
+      "failed_summary": "2 failed, 90 deselected in 1.97s",
+      "mutated_sha256": "f965323ca88f99c72eaafc2f1d417dd98702d313d7bc59845137713e870713c3",
+      "restored_sha256": "cafb532edcb79cc34b149e38b7fb7dbeae25cd42579b95828c37c796bf947976",
+      "restored_byte_identical": true
+    },
+    {
+      "name": "phi-no-plus-one",
+      "desc": "φ = elu（去掉 +1）⇒ 特征映射定义被改",
+      "pytest_args": "-k 'linear_phi_formula or linear_switch_changes'",
+      "returncode": 1,
+      "n_tests_collected_line": null,
+      "result": "red",
+      "failed_summary": "2 failed, 90 deselected in 1.91s",
+      "mutated_sha256": "f5e94371623a81cde9349aab8e5370cb111ee2d72aa2dea50c8f7e84b746e8db",
+      "restored_sha256": "cafb532edcb79cc34b149e38b7fb7dbeae25cd42579b95828c37c796bf947976",
+      "restored_byte_identical": true
+    },
+    {
+      "name": "full-attention-rename",
+      "desc": "线性块直接调 SDPA（换个名字的全注意力）",
+      "pytest_args": "-k 'linear_attn_is_linear_in_T or linear_chunked_matches or linear_switch_changes'",
+      "returncode": 1,
+      "n_tests_collected_line": null,
+      "result": "red",
+      "failed_summary": "1 failed, 2 passed, 89 deselected in 3.33s",
+      "mutated_sha256": "5de41b65514e9ebc86c82ea2e3ee962bc3f55839db2ea8b203e4d6696b442d78",
+      "restored_sha256": "cafb532edcb79cc34b149e38b7fb7dbeae25cd42579b95828c37c796bf947976",
+      "restored_byte_identical": true
+    },
+    {
+      "name": "no-normalize",
+      "desc": "去掉归一化分母（核分数不归一化）",
+      "pytest_args": "-k 'linear_chunked_matches or linear_masked_reference'",
+      "returncode": 1,
+      "n_tests_collected_line": null,
+      "result": "red",
+      "failed_summary": "2 failed, 90 deselected in 2.00s",
+      "mutated_sha256": "735b404bcb2fb5f375b371624e1466181928ed07988500993c53e5374493fd25",
+      "restored_sha256": "cafb532edcb79cc34b149e38b7fb7dbeae25cd42579b95828c37c796bf947976",
+      "restored_byte_identical": true
+    },
+    {
+      "name": "instrument-ignores-mask",
+      "desc": "仪器的掩码路径忽略掩码（依赖曲线不再量任何东西）",
+      "pytest_args": "-k 'linear_masked_reference'",
+      "returncode": 1,
+      "n_tests_collected_line": null,
+      "result": "red",
+      "failed_summary": "1 failed, 91 deselected in 1.78s",
+      "mutated_sha256": "7e1df4df8062281c82b0259058559c1b58543a2005d9387511c1754b97ba65be",
+      "restored_sha256": "cafb532edcb79cc34b149e38b7fb7dbeae25cd42579b95828c37c796bf947976",
+      "restored_byte_identical": true
+    }
+  ],
+  "baseline_after_restore_returncode": 0,
+  "baseline_after_restore_tail": [
+    "92 passed in 4.93s"
+  ],
+  "restored_byte_identical": true,
+  "all_mutations_caught": true,
+  "n_red": 6,
+  "final_sha256": "cafb532edcb79cc34b149e38b7fb7dbeae25cd42579b95828c37c796bf947976"
+}

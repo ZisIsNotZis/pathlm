@@ -1,0 +1,96 @@
+{
+  "purpose": "记录 linear 臂三次训练期卡死（进程停在 loss.backward() 内、CPU 满载、无进展）的原始证据与四次诊断二分。",
+  "symptom": {
+    "observations": [
+      "训练日志停在某一步后不再增长（文件 mtime 冻结）；",
+      "进程 utime 持续增长（top/ /proc/PID/stat 实测 ~98% 单核）；",
+      "nvidia-smi 该进程 used_memory 恒定（无新分配）；",
+      "faulthandler 栈：train_depth_ar.py::train → loss.backward() → torch/autograd/graph.py::_engine_run_backward（卡在反向内部，不是前向、不是评测、不是写盘）；",
+      "卡死前的活性量显示 attn_linear.den_min 已触到 clamp 下限 1e-6（归一化分母塌陷），gnorm 出现 5.1e3 尖峰（同配置 full 臂全程 0.4-0.8）。"
+    ]
+  },
+  "attempts": [
+    {
+      "id": "A",
+      "launcher": "run.py driver（父进程持 CUDA 上下文 + 每 20s 轮询 nvidia-smi）",
+      "config": "chunk=64, eps=1e-6, expandable_segments, 12k 步",
+      "stopped_at_step": 800,
+      "stack": null,
+      "note": "杀掉前 SIGABRT 只产生 core dump（faulthandler 未启用），没有 Python 栈"
+    },
+    {
+      "id": "B",
+      "launcher": "run.py driver（去掉每步 48 次设备同步后）",
+      "config": "chunk=64, eps=1e-6, expandable_segments, 12k 步",
+      "stopped_at_step": "400-600",
+      "stack": "loss.backward() 内（torch/autograd/graph.py::_engine_run_backward；见 faulthandler_stack_observed）",
+      "note": "每 200 步的训练日志只到 step 400；随后 2.5 min 无任何进展"
+    },
+    {
+      "id": "C",
+      "launcher": "直接 nohup 启动 train_depth_ar.py（无 driver 父进程）",
+      "config": "chunk=64, eps=1e-6, expandable_segments, 12k 步",
+      "stopped_at_step": 400,
+      "cpu_burn": "3:26 CPU / 3:31 elapsed",
+      "note": "⇒ 卡死与 driver 父进程无关，是训练本身（数值极端状态后）的运行时停摆"
+    }
+  ],
+  "bisect_runs_that_completed": [
+    {
+      "chunk": 64,
+      "eps": 1e-06,
+      "steps": 3000,
+      "wall_s": 213.3,
+      "ms_per_step": 71.1,
+      "crashed": false
+    },
+    {
+      "chunk": 64,
+      "eps": 1e-06,
+      "steps": 1200,
+      "wall_s": 90.92,
+      "ms_per_step": 75.8,
+      "crashed": false
+    },
+    {
+      "chunk": 64,
+      "eps": 1e-12,
+      "steps": 1200,
+      "wall_s": 86.39,
+      "ms_per_step": 72.0,
+      "crashed": false
+    },
+    {
+      "chunk": 256,
+      "eps": 1e-06,
+      "steps": 1200,
+      "wall_s": 91.29,
+      "ms_per_step": 76.1,
+      "crashed": false
+    },
+    {
+      "chunk": 64,
+      "eps": 1e-06,
+      "steps": 1500,
+      "wall_s": 108.25,
+      "ms_per_step": 72.2,
+      "crashed": false,
+      "env": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True"
+    }
+  ],
+  "interpretation": [
+    "卡死是**非确定性**的：同一份代码、同一 seed、同一 shape 的独立进程跑 1200-3000 步全部正常通过 step 400-1000 的危险区，而 3/4 次 12k 步运行在此区间停摆 ⇒ 不是「必然失败」，概率约 1/2 量级。",
+    "卡死与 clamp 阈值（1e-6 vs 1e-12）、分块大小（32/64/256）、是否 expandable_segments **都不构成充分条件**——但它们都改变不了「分母塌陷后数值极端」这个状态。",
+    "不能排除共享卡（另有任务占 3.5-6.3 GB、GPU 利用率 77-80%）在运行时层面放大该状态。"
+  ],
+  "what_was_not_done_and_why": [
+    "没有把 elu+1 换成 cosformer/特征归一化来「救」它：那是另一个干预，需要新契约（本实验已按 README §3 明确记下）；",
+    "没有削减步数换一条「能跑完」的质量结果：那会变成不等预算比较。"
+  ],
+  "harness": "stall_diagnosis.py（本目录）：以任意 chunk/eps/步数跑同一训练配置，用于二分；脚本本身不落实验证据，只落本文件的数字。",
+  "faulthandler_stack_observed": {
+    "how": "PATHLM_DUMP_STACKS=150 打开 faulthandler.dump_traceback_later(150, repeat=True)，栈打到子进程 stderr（= runs/linear-12k-s0/stdout.log）",
+    "observed_text": "Timeout (0:02:30)!\nThread 0x… (most recent call first):\n  <no Python frame>\nThread 0x… (most recent call first):\n  File \"/home/z/.venv/lib/python3.12/site-packages/torch/autograd/graph.py\", line 1072 in _engine_run_backward\n  File \"/home/z/.venv/lib/python3.12/site-packages/torch/autograd/__init__.py\", line 395 in backward\n  File \"/home/z/.venv/lib/python3.12/site-packages/torch/_tensor.py\", line 623 in backward\n  File \"/home/z/vibe/pathlm/train_depth_ar.py\", line 152 in train",
+    "caveat": "该 stdout.log 随后被第三次尝试（同一 run 目录）覆盖 ⇒ 栈文本以本字段为准（执行者当时逐字观测）；重跑方式：PATHLM_DUMP_STACKS=150 python3 train_depth_ar.py linear-12k-s0 --d 256 --layers 8 --heads 8 --seq-len 256 --mlp-mult 4 --dense --attn-linear --steps 12000 --batch-size 32 --seed 0 --out-root <exp>/runs"
+  }
+}

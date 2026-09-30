@@ -266,3 +266,7 @@ python3 tools/check_schema.py           # 格式/完备/证据锚点
    实例（ticket 32-N）：三种优先级规则对齐了「删除位置数」，但没有对齐「掉掉的可见性对数」
    （N=8：2012 vs 1562 对）⇒ 字面优势是对齐口径造成的假象，重对齐后消失。规范：
    比较压缩/稀疏/丢弃类规则时，除了「删多少个」还要报「掉多少可见性对数」并给出两套口径。
+13. **`catalog.yaml` 的标量不得以 `*` 或 `**` 开头**（YAML 会当别名/锚点，直接解析失败）。
+   本项目已两次踩到（A10 的 verdict、W3 的 verdict 都以 `**` 开头）。规范：写 `catalog.yaml`
+   时凡值以 `*` 开头一律加引号，或不用 Markdown 强调；改完必须跑一次
+   `python3 -c "import yaml;yaml.safe_load(open('catalog.yaml'))"` 再提交。

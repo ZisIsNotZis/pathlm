@@ -1,0 +1,273 @@
+{
+  "run": "smoke-linear",
+  "config": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "gate_bias_init": -2.0,
+    "dense": true,
+    "fill_kv": true,
+    "proj_fill": false,
+    "readout_dims": null,
+    "readout_gated": false,
+    "readout_linear_resid": false,
+    "topology": "sequential",
+    "attn_sparse_k": 0,
+    "train_window": 0,
+    "train_anchors": 0,
+    "attn_linear": true,
+    "linear_chunk": 64
+  },
+  "train": {
+    "steps": 20,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0
+  },
+  "topology": "sequential",
+  "attn_sparse_k": 0,
+  "attn_linear": true,
+  "linear_chunk": 64,
+  "train_window": 0,
+  "train_anchors": 0,
+  "topology_liveness": {
+    "topology": "sequential",
+    "params_added": 0,
+    "parameterized": false,
+    "params_identical_to_sequential": true,
+    "start_bitwise_equals_sequential": true,
+    "w_fro": null,
+    "w_absmax": null,
+    "nonzero_frac": null,
+    "alive": false
+  },
+  "exit_mode": "uniform",
+  "fill_kv": true,
+  "proj_fill": false,
+  "aux_weight": 1.0,
+  "aux_anneal_to": null,
+  "final_weight": 1.0,
+  "readout_dims": null,
+  "readout_gated": false,
+  "readout_linear_resid": false,
+  "exit_anneal": false,
+  "exit_anneal_to": null,
+  "exit_anneal_frac": null,
+  "final_anneal_to": null,
+  "shallow_stopgrad": false,
+  "dense_aux": false,
+  "gnorm_monitor": {
+    "gnorm_max": 7.86,
+    "gnorm_mean": 3.797,
+    "grad_skips": 0,
+    "attn_sparse_mean": null,
+    "attn_sparse_layer_samples": 0,
+    "attn_linear_mean": {
+      "phi_min": 0.171875,
+      "phi_max": 2.984375,
+      "den_min": 26.0,
+      "inter_mass_frac": 0.585465,
+      "state_norm": 553.497607
+    },
+    "attn_linear_layer_samples": 160,
+    "window_mask": null,
+    "window_mask_probe": null
+  },
+  "params": 6962688,
+  "vocab_size": 206,
+  "train_tokens": 163840,
+  "wall_minutes": 0.06,
+  "avg_train_depth_ce": [
+    4.2216
+  ],
+  "avg_train_gate_mean": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "depth_curve": [
+    {
+      "depth": 0,
+      "bpc": 7.6179,
+      "acc": 0.0543
+    },
+    {
+      "depth": 1,
+      "bpc": 7.3693,
+      "acc": 0.0543
+    },
+    {
+      "depth": 2,
+      "bpc": 6.9482,
+      "acc": 0.0934
+    },
+    {
+      "depth": 3,
+      "bpc": 6.4265,
+      "acc": 0.1146
+    },
+    {
+      "depth": 4,
+      "bpc": 5.8749,
+      "acc": 0.1462
+    },
+    {
+      "depth": 5,
+      "bpc": 5.4528,
+      "acc": 0.162
+    },
+    {
+      "depth": 6,
+      "bpc": 5.1373,
+      "acc": 0.1952
+    },
+    {
+      "depth": 7,
+      "bpc": 4.9072,
+      "acc": 0.1852
+    },
+    {
+      "depth": 8,
+      "bpc": 4.8052,
+      "acc": 0.1824
+    }
+  ],
+  "bpc": 4.8052,
+  "next_token_acc": 0.1824,
+  "tf_acceptance": [
+    {
+      "depth": 0,
+      "accept": 0.1317
+    },
+    {
+      "depth": 1,
+      "accept": 0.1317
+    },
+    {
+      "depth": 2,
+      "accept": 0.1313
+    },
+    {
+      "depth": 3,
+      "accept": 0.1123
+    },
+    {
+      "depth": 4,
+      "accept": 0.2099
+    },
+    {
+      "depth": 5,
+      "accept": 0.2858
+    },
+    {
+      "depth": 6,
+      "accept": 0.538
+    },
+    {
+      "depth": 7,
+      "accept": 0.7725
+    }
+  ],
+  "tf_note": "dense 中间深度读出无直接监督：tf 系 depth-k 残差态 tied 读出与 depth-L 读出的 argmax 一致率 proxy（截断资产口径，非训练出口资产）",
+  "attn_sparse_liveness": {
+    "attn_sparse_k": 0,
+    "enabled": false,
+    "params_added": 0,
+    "parametrized": false,
+    "block_python_class": "LinearAttnBlock",
+    "kept_theory_mean": 0.0,
+    "kept_mean": null,
+    "kept_min": null,
+    "kept_max": null,
+    "kept_frac_of_T": null,
+    "sel_dist_mean": null,
+    "sel_in_lastk_frac": null,
+    "kept_count_matches_theory": null,
+    "alive": false,
+    "alive_note": "开关关闭（attn_sparse_k=0）：无异于基线"
+  },
+  "attn_linear_liveness": {
+    "attn_linear": true,
+    "enabled": true,
+    "params_added": 0,
+    "parametrized": false,
+    "linear_chunk": 64,
+    "block_python_class": "LinearAttnBlock",
+    "phi_min": 0.20782161,
+    "phi_max": 2.728283,
+    "den_min": 26.02620888,
+    "inter_mass_frac": 0.586811,
+    "state_norm": 653.998053,
+    "n_layers_sampled": 16,
+    "rel_dev_vs_full_min": 5.8e-05,
+    "rel_dev_vs_full_mean": 0.005019,
+    "per_layer": [
+      {
+        "layer": 1,
+        "rel_dev_vs_full": 0.031399,
+        "n_batches": 2
+      },
+      {
+        "layer": 2,
+        "rel_dev_vs_full": 0.005791,
+        "n_batches": 2
+      },
+      {
+        "layer": 3,
+        "rel_dev_vs_full": 0.001801,
+        "n_batches": 2
+      },
+      {
+        "layer": 4,
+        "rel_dev_vs_full": 0.000514,
+        "n_batches": 2
+      },
+      {
+        "layer": 5,
+        "rel_dev_vs_full": 0.000309,
+        "n_batches": 2
+      },
+      {
+        "layer": 6,
+        "rel_dev_vs_full": 0.000165,
+        "n_batches": 2
+      },
+      {
+        "layer": 7,
+        "rel_dev_vs_full": 0.000112,
+        "n_batches": 2
+      },
+      {
+        "layer": 8,
+        "rel_dev_vs_full": 5.9e-05,
+        "n_batches": 2
+      }
+    ],
+    "alive": true,
+    "alive_note": "φ = elu+1 实测 > 0、归一化分母 > 0（无 NaN 通道），且同权重把算子换回全注意力时输出有偏差（rel_dev > 0）⇒ 干预活着，不是换个名字的全注意力",
+    "kernel_mass": {
+      "linear": {
+        "mass_mean_dist": 63.7408,
+        "mass_frac_within_32": 0.3833,
+        "mass_frac_within_64": 0.5952,
+        "mass_frac_within_128": 0.8457
+      },
+      "full": {
+        "mass_mean_dist": 63.7384,
+        "mass_frac_within_32": 0.3833,
+        "mass_frac_within_64": 0.5952,
+        "mass_frac_within_128": 0.8457
+      }
+    },
+    "kernel_mass_note": "同一组权重、同一输入下两种算子的注意力质量分布（O(T²) 显式打分，评测期仪器）：mass_mean_dist = 质量加权平均查询-键距离；mass_frac_within_* = 质量落在最近 32/64/128 个位置内的比例。用它看线性核把质量放在多远处"
+  }
+}

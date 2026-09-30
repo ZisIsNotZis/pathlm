@@ -1,0 +1,109 @@
+{
+  "experiment": "2616-gqa-mqa-13m",
+  "contract": ".scratch/33-batch6/issues/01-batch6.md §「契约 S」 + 开头统一纪律段",
+  "contract_copy": "README.md（同目录）",
+  "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。",
+  "intervention": {
+    "factor": "KV 头数（唯一变量；query 头数、头维度、其余所有字段都不变）",
+    "arms": {
+      "mha": "n_kv_heads = 8 = n_heads（基线；走 stock `Block`，与 v1 逐位一致）",
+      "gqa": "n_kv_heads = 2（每组 4 个 query 头共享一组 K/V）",
+      "mqa": "n_kv_heads = 1（全部 8 个 query 头共享一组 K/V）"
+    },
+    "implementation": "pathlm.depth_ar.GQABlock：qkv 投影输出宽度 = d + 2·n_kv_heads·dh（不是 3d），K/V 张量以 [B, n_kv_heads, T, dh] 进 SDPA（enable_gqa=True，不物化复制）；缺省 None/== n_heads 走 stock Block ⇒ 逐位还原 v1",
+    "rerun_arm": "gqa（预登记：中间干预档；见 README §4「重跑臂选择规则」，执行前写定）"
+  },
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "dense": true,
+    "topology": "sequential",
+    "fill_kv": true,
+    "proj_fill": false,
+    "readout_dims": null,
+    "readout_gated": false,
+    "readout_linear_resid": false,
+    "attn_sparse_k": 0,
+    "attn_linear": false,
+    "train_window": 0,
+    "train_anchors": 0
+  },
+  "train": {
+    "steps": 12000,
+    "batch_size": 32,
+    "seq_len": 256,
+    "lr": 0.001,
+    "seed": 0,
+    "exit_mode": "uniform",
+    "aux_weight": 1.0,
+    "final_weight": 1.0,
+    "shallow_stopgrad": false,
+    "dense_aux": false,
+    "exit_anneal": false,
+    "optimizer": "AdamW(lr=1e-3, weight_decay=0.01) + LambdaLR(warmup 200 步, 余弦)",
+    "train_tokens_per_arm": 98304000
+  },
+  "arms_commands": {
+    "mha": "python3 train_depth_ar.py mha-12k-s0 --d 256 --layers 12 --heads 8 --mlp-mult 6 --dense --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --eval-batches 24 --out-root <expdir>/runs",
+    "gqa": "python3 train_depth_ar.py gqa-12k-s0 --d 256 --layers 12 --heads 8 --mlp-mult 6 --dense --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --eval-batches 24 --n-kv-heads 2 --out-root <expdir>/runs",
+    "mqa": "python3 train_depth_ar.py mqa-12k-s0 --d 256 --layers 12 --heads 8 --mlp-mult 6 --dense --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --eval-batches 24 --n-kv-heads 1 --out-root <expdir>/runs",
+    "gqa_rep": "python3 train_depth_ar.py gqa-12k-s0-rep --d 256 --layers 12 --heads 8 --mlp-mult 6 --dense --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --eval-batches 24 --n-kv-heads 2 --out-root <expdir>/runs"
+  },
+  "arms_commands_note": "四行都是实际执行的命令（<expdir> = 本实验目录）；每臂的完整 argv 另存在 runs/<arm>/cmd.txt",
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M train / 末 10M eval（本实验只用 eval 尾段做评测）",
+    "vocab_size": 206,
+    "n_real_tokens": 205,
+    "mask_token": 205
+  },
+  "eval": {
+    "method": "pathlm.depth_ar.depth_curve（clean bpc = 最终深度读出的因果移位 CE，token 平均）",
+    "second_path": "tools/evalkit/retention.masked_bpc(keep_mask=None)（独立评测路径，用于逐位对账）",
+    "n_batches": 24,
+    "batch_size": 16,
+    "window_seed": 2,
+    "device": "cuda",
+    "note": "与 2610/2614/2615/2616-Q 同一窗口序（window_seed=2 + 24×16）⇒ clean bpc 与历史 dense 基线同口径可比"
+  },
+  "criterion": {
+    "verbatim_contract": [
+      "给出三臂 clean bpc 与**解析** KV 内存下降（GQA −75%、MQA −87.5%）；",
+      "若 |Δbpc| < 0.014 ⇒ 记「近无损」并写入参照线（与 int8 KV 的近无损 −50% 对照）；",
+      "若越界 ⇒ 记其代价。必须附三臂同方法斜率与重跑散度。活性证据必须是**实际 KV 张量形状**。"
+    ],
+    "sign_convention": "SCHEMA §17.3：Δ_schema = bpc_对照 − bpc_实验（正 = 实验臂更好）；damage = bpc_实验 − bpc_对照（正 = 更差）。本实验「对照」= mha。",
+    "near_lossless_if_abs_delta_below": 0.014,
+    "variance_band_bpc": 0.014,
+    "analytic_kv_reduction": {"gqa": 0.75, "mqa": 0.875},
+    "int8_kv_reference": {
+      "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m",
+      "bpc_damage": 0.00015,
+      "kv_bytes_per_position_fp16": 12288,
+      "kv_bytes_per_position_int8": 6144,
+      "kv_reduction_frac": 0.5,
+      "verdict": "int8 KV 近无损、省一半内存（参照线）"
+    }
+  },
+  "reproducibility": {
+    "rerun_arm": "gqa",
+    "threshold_bpc": 0.005,
+    "training_nondeterminism_note": "同 seed 同配置的训练不保证逐位复现（CUDA 归约顺序）⇒ 重跑给出 run-to-run 散度"
+  },
+  "cost": {
+    "gpu_wall_budget_min": 35,
+    "gpu_wall_budget_source": "契约 S「成本：3 臂 × ≈7 min + 重跑 1 臂 ≈7 min ⇒ ≈35 min」",
+    "budget_cut_rule": "预算不够时砍：重跑臂 → 评测批数，不砍判据线（SCHEMA §8/§17.7）",
+    "smoke": "20 步冒烟（每臂）+ 200 步步时/显存探针，实测后再定全跑预算（SCHEMA §17.8/§17.5）"
+  },
+  "memory_reporting": {
+    "analytic": "KV cache 每位置元素数/字节数由**实际张量形状**（n_kv_heads × head_dim × 2 × n_layers）算出",
+    "measured": "训练/评测期 torch.cuda 峰值 + 子进程显存采样（nvidia-smi --query-compute-apps）；评测实现把 K/V 交给 SDPA 内核按组广播、分数矩阵仍是 T×T ⇒ 实测峰值不按 KV 比例下降，两者必须分开报"
+  }
+}
