@@ -1,0 +1,119 @@
+{
+  "target": "tools/evalkit/retention.py",
+  "sha256_before": "f1c6a8f377af2cec3bb0b4c8fc360745affb46a99f1c44ca1f14d28342e16978",
+  "mutations": [
+    {
+      "id": "M1",
+      "what": "recent_keep_mask 差一（保留距离 <= d，而不是 < d）",
+      "tests": {
+        "test_recent_keep_mask_keeps_only_last_d_keys": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.62s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M2",
+      "what": "needle_fate 半删当成没删（any 代替 all）",
+      "tests": {
+        "test_half_deleted_needle_counts_as_deleted_not_kept": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.69s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M3",
+      "what": "phrase_needle_batch 取消针位间距约束（针可以重叠 ⇒ 同一位置被放两次）",
+      "tests": {
+        "test_phrase_needle_layout_makes_the_plant_the_only_source": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.84s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M4",
+      "what": "phrase_needle_batch 只植入线索、不植入答案（副本里拿不到答案）",
+      "tests": {
+        "test_phrase_needle_layout_makes_the_plant_the_only_source": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.62s"
+        }
+      },
+      "all_expected_tests_caught": true
+    }
+  ],
+  "restored_sha256_equal": true,
+  "after_restore": {
+    "test_distance_mask_deletes_exactly_distance_d": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.55s"
+    },
+    "test_prefix_mask_deletes_oldest_n_keys_and_keeps_diagonal": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.59s"
+    },
+    "test_segment_mask_deletes_contiguous_block_only": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.60s"
+    },
+    "test_mask_stats_reports_dropped_pair_activity": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.58s"
+    },
+    "test_masked_logits_matches_manual_reference": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.72s"
+    },
+    "test_identity_causal_mask_bitwise_equals_release_forward": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.80s"
+    },
+    "test_deletion_is_live_changes_logits_and_raises_bpc": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.70s"
+    },
+    "test_recent_keep_mask_keeps_only_last_d_keys": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.60s"
+    },
+    "test_phrase_needle_layout_makes_the_plant_the_only_source": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.70s"
+    },
+    "test_needle_fate_partitions_each_needle_exactly_once": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.63s"
+    },
+    "test_half_deleted_needle_counts_as_deleted_not_kept": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.61s"
+    },
+    "test_needle_recall_counts_every_needle_once_and_tracks_the_buckets": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.60s"
+    }
+  },
+  "green_after_restore": true,
+  "sha256_after": "f1c6a8f377af2cec3bb0b4c8fc360745affb46a99f1c44ca1f14d28342e16978"
+}

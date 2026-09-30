@@ -95,6 +95,15 @@ class DepthARConfig:
     # 只在 dense=True（stock decoder-only：无门/无退出/无填充）下开放：退出/填充
     # 路径的稀疏注意力语义未定义，混在一起会破坏单因素归因。
     attn_sparse_k: int = 0
+    # 训练期可见窗口（ticket 32 契约 O，A9/A3 「信息能否往右压」的直接检验）。
+    # 唯一变量 = 训练时每个查询能看到多远的 key：
+    #   keep[i, j] = (j ≤ i) ∧ ((i − j) < train_window ∨ j < train_anchors)
+    # 评测用**同一个** `window_anchor_keep_mask` 构造掩码（训练/评测掩码一致，
+    # 契约 P 第 ③ 项）。train_window = 0（缺省）= 关闭 ⇒ 走 stock 因果 SDPA
+    # 路径，逐位还原 v1（单测钉住）。只在 dense=True + topology="sequential"
+    # 下开放（退出/填充/并行接线下的窗口语义未定义，单因素）。
+    train_window: int = 0
+    train_anchors: int = 0
 
 
 TOPOLOGIES = ("sequential", "parallel", "parallel-dual-ln", "dense")
@@ -266,6 +275,74 @@ class TopKBlock(Block):
         return x, tele
 
 
+def window_anchor_keep_mask(T: int, window: int, anchors: int = 0,
+                            device="cpu") -> torch.Tensor:
+    """训练/评测**共用**的「可见窗口」掩码 `[T, T]`（ticket 32 契约 O）。
+
+    `keep[i, j] = (j ≤ i) ∧ ((i − j) < window ∨ j < anchors)`，对角恒开
+    （否则某行被全掩 ⇒ softmax 全 −inf ⇒ NaN，同 `_ragged_mask` 的约定）。
+    语义：每个查询只看最近 `window` 个位置，外加最前面的 `anchors` 个锚点位置
+    （锚通道恒可见）。
+
+    - `anchors = 0` 时与 `tools/evalkit/retention.recent_keep_mask(T, window)`
+      **逐位相同**（同一件仪器的语义，单测钉住）；
+    - `window ≥ T` 且 `anchors = 0` 时 = 精确因果掩码（等价于不传掩码的 stock
+      SDPA 路径；2614 实测「身份掩码 vs 释放版」逐位相等，单测钉住）。
+    """
+    if window <= 0:
+        raise ValueError(f"window must be > 0, got {window}")
+    if anchors < 0:
+        raise ValueError(f"anchors must be >= 0, got {anchors}")
+    i, j = torch.meshgrid(torch.arange(T, device=device),
+                          torch.arange(T, device=device), indexing="ij")
+    keep = (j <= i) & (((i - j) < window) | (j < anchors))
+    return keep | torch.eye(T, dtype=torch.bool, device=device)
+
+
+def window_mask_liveness(T: int, window: int, anchors: int = 0) -> dict:
+    """训练期可见窗口的活性量（SCHEMA §10）：被放行的因果 (query, key) 对数与占比。
+
+    `params_added` 恒 0（掩码不引入参数）⇒「干预活着」只能由**掩码本身**证明：
+    `alive = visible_frac < 1`（有 key 被真的挡掉）。训练日志每 200 步写同一份
+    （掩码是静态的，逐行可核）。
+    """
+    keep = window_anchor_keep_mask(T, window, anchors)
+    n_keep = int(keep.sum().item())
+    n_causal = T * (T + 1) // 2
+    return {"train_window": int(window), "train_anchors": int(anchors),
+            "params_added": 0,
+            "n_visible_pairs": n_keep, "causal_pairs": n_causal,
+            "visible_frac": round(n_keep / n_causal, 6),
+            "dropped_frac": round(1.0 - n_keep / n_causal, 6),
+            "alive": n_keep < n_causal}
+
+
+@torch.no_grad()
+def window_mask_probe(model: "DepthARModel", tokens: torch.Tensor) -> dict:
+    """训练期可见窗口的一次性功能探针（SCHEMA §10）：**同一批输入**在
+    「掩码开 / 掩码关」两次前向的最后一层 logits 最大绝对差。
+
+    `> 0` ⇔ 这个开关真的改了前向，不是死掩码。调用方负责传 `train_window > 0`
+    的模型；本函数在两支之间借用 `cfg.train_window`（finally 还原）⇒ 权重、
+    dropout 状态、随机数流均不变。
+    """
+    saved = model.cfg.train_window
+    if saved <= 0:
+        raise ValueError("window_mask_probe 需要 train_window > 0 的模型")
+    was_training = model.training
+    model.eval()
+    try:
+        on = model(tokens)[1]["depth_logits"][-1].float()
+        model.cfg.train_window = 0
+        off = model(tokens)[1]["depth_logits"][-1].float()
+    finally:
+        model.cfg.train_window = saved
+        model.train(was_training)
+    diff = (on - off).abs().max()
+    return {"max_abs_logit_diff_masked_vs_open": round(float(diff), 6),
+            "alive": bool(diff > 0)}
+
+
 def topology_liveness(model: "DepthARModel") -> dict:
     """层间拓扑干预的活性量（SCHEMA §10 强制项）。
 
@@ -425,6 +502,25 @@ class DepthARModel(nn.Module):
             raise ValueError(
                 "attn_sparse_k 与层间拓扑互斥（单因素：一次只改一个因素）——"
                 f"收到 topology={cfg.topology!r}")
+        if cfg.train_window < 0 or cfg.train_anchors < 0:
+            raise ValueError("train_window / train_anchors must be >= 0, got "
+                             f"{cfg.train_window} / {cfg.train_anchors}")
+        if cfg.train_anchors > 0 and cfg.train_window == 0:
+            raise ValueError("train_anchors 只在 train_window > 0 时有意义：掩码"
+                             "关闭时锚点通道本就全可见（单因素）")
+        if cfg.train_window > 0 and not cfg.dense:
+            raise ValueError(
+                "训练期可见窗口只在 dense=True（stock decoder-only 形态）下验证"
+                f"（单因素）——收到 train_window={cfg.train_window} 且 dense=False")
+        if cfg.train_window > 0 and cfg.topology != "sequential":
+            raise ValueError(
+                "train_window 与层间拓扑互斥（单因素：一次只改一个因素）——"
+                f"收到 topology={cfg.topology!r}")
+        if cfg.attn_sparse_k > 0 and cfg.train_window > 0:
+            raise ValueError(
+                "attn_sparse_k 与 train_window 互斥（单因素：一次只改一个因素）——"
+                f"收到 train_window={cfg.train_window} 且 attn_sparse_k="
+                f"{cfg.attn_sparse_k}")
         if cfg.attn_sparse_k > 0:
             self.blocks = nn.ModuleList(TopKBlock(mcfg, cfg.attn_sparse_k)
                                         for _ in range(cfg.n_layers))
@@ -597,8 +693,10 @@ class DepthARModel(nn.Module):
                 h, _ = blk(self._layer_mix_input(states, k))
                 states.append(h)
         else:  # dense 对照：无门、无退出，普通残差堆叠（sequential/parallel/top-k）
+            win_mask = (self._window_mask(B, T, tokens.device)
+                        if self.cfg.train_window > 0 else None)
             for blk in self.blocks:
-                h, tele = blk(h)
+                h, tele = blk(h, attn_mask=win_mask)
                 states.append(h)
                 if tele is not None:      # TopKBlock 的活性量（每层一份）
                     attn_sparse_layers.append(tele)
@@ -653,6 +751,15 @@ class DepthARModel(nn.Module):
                              targets.reshape(-1), reduction="none")
         m = mask.reshape(-1).float()
         return (ce * m).sum() / m.sum().clamp_min(1.0)
+
+    def _window_mask(self, B: int, T: int, device) -> torch.Tensor:
+        """训练期可见窗口掩码 → SDPA 用的 `[B, H, T, T]` bool（CUDA SDPA 的
+        bool 掩码不广播 head 维，与 `_ragged_mask` / `retention.masked_logits`
+        同款 expand）。掩码由 `window_anchor_keep_mask` 构造 ⇒ 评测侧用同一
+        函数即与训练侧逐位一致（单测钉住）。"""
+        keep = window_anchor_keep_mask(T, self.cfg.train_window,
+                                       self.cfg.train_anchors, device)
+        return keep.view(1, 1, T, T).expand(B, self.cfg.n_heads, T, T)
 
     def _ragged_mask(self, exit_depths: torch.Tensor, k: int) -> torch.Tensor:
         """层 k 的 no-fill 注意力掩码 [B,1,T,T]（bool，True=允许）：

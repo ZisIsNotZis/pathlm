@@ -8,7 +8,7 @@ judge: "KV 消融保留曲线（真删位置 j 的 KV 测损伤）——不是�
 cost: "13M 单臂 ~15–25 min"
 tax: "+0.121（原 X2 口径）/ +0.058（needle v2 重设计后——改善是测量不是机制）"
 benefit: "ring-buffer 解码免重 prefill；锚点通道 needle 76.8%（+距离惩罚后 93.3%）"
-verdict: "丢前缀在 bpc 上很便宜，但检索当场归零；锚点通道是真产物。"
+verdict: "丢前缀的代价**由距离与预算共同决定、并不便宜**（见 ERRATA：只保留最近 32 个 = +0.212 bpc）；锚点通道是真产物（76.8→93.3%）；检索腿显示「低损伤 ≠ 保住了」。"
 deps: ["A4-soft-distance-penalty", "M2-carrier-compression", "G1-selector"]
 evidence: [".scratch/07-x1-x3/evidence @7b47555", ".scratch/05-m1-followup/evidence @480d50b", ".scratch/13-four-experiments/evidence @9abc181"]
 ---
@@ -19,7 +19,7 @@ evidence: [".scratch/07-x1-x3/evidence @7b47555", ".scratch/05-m1-followup/evide
 
 > 轴：**A 序列混合机制** ｜ 状态：**✅ judged**
 
-> **判读**：丢前缀在 bpc 上很便宜，但检索当场归零；锚点通道是真产物。
+> **判读**：丢前缀的代价**由距离与预算共同决定、并不便宜**（见 ERRATA：只保留最近 32 个 = +0.212 bpc）；锚点通道是真产物（76.8→93.3%）；检索腿显示「低损伤 ≠ 保住了」。
 
 ## 1. 命题
 
@@ -42,7 +42,7 @@ evidence: [".scratch/07-x1-x3/evidence @7b47555", ".scratch/05-m1-followup/evide
 
 - **税**：+0.121（原 X2 口径）/ +0.058（needle v2 重设计后——改善是测量不是机制）
 - **收益**：ring-buffer 解码免重 prefill；锚点通道 needle 76.8%（+距离惩罚后 93.3%）
-- **判读**：丢前缀在 bpc 上很便宜，但检索当场归零；锚点通道是真产物。
+- **判读**：丢前缀的代价**由距离与预算共同决定、并不便宜**（见 ERRATA：只保留最近 32 个 = +0.212 bpc）；锚点通道是真产物（76.8→93.3%）；检索腿显示「低损伤 ≠ 保住了」。
 
 ## 5. 失败路径与原因
 

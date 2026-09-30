@@ -1,0 +1,239 @@
+{
+  "run": "bench32",
+  "config": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "gate_bias_init": -2.0,
+    "dense": true,
+    "fill_kv": true,
+    "proj_fill": false,
+    "readout_dims": null,
+    "readout_gated": false,
+    "readout_linear_resid": false,
+    "topology": "sequential",
+    "attn_sparse_k": 0,
+    "train_window": 32,
+    "train_anchors": 8
+  },
+  "train": {
+    "steps": 1000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0
+  },
+  "topology": "sequential",
+  "attn_sparse_k": 0,
+  "train_window": 32,
+  "train_anchors": 8,
+  "topology_liveness": {
+    "topology": "sequential",
+    "params_added": 0,
+    "parameterized": false,
+    "params_identical_to_sequential": true,
+    "start_bitwise_equals_sequential": true,
+    "w_fro": null,
+    "w_absmax": null,
+    "nonzero_frac": null,
+    "alive": false
+  },
+  "exit_mode": "uniform",
+  "fill_kv": true,
+  "proj_fill": false,
+  "aux_weight": 1.0,
+  "aux_anneal_to": null,
+  "final_weight": 1.0,
+  "readout_dims": null,
+  "readout_gated": false,
+  "readout_linear_resid": false,
+  "exit_anneal": false,
+  "exit_anneal_to": null,
+  "exit_anneal_frac": null,
+  "final_anneal_to": null,
+  "shallow_stopgrad": false,
+  "dense_aux": false,
+  "gnorm_monitor": {
+    "gnorm_max": 9.69,
+    "gnorm_mean": 1.326,
+    "grad_skips": 0,
+    "attn_sparse_mean": null,
+    "attn_sparse_layer_samples": 0,
+    "window_mask": {
+      "train_window": 32,
+      "train_anchors": 8,
+      "params_added": 0,
+      "n_visible_pairs": 9460,
+      "causal_pairs": 32896,
+      "visible_frac": 0.287573,
+      "dropped_frac": 0.712427,
+      "alive": true,
+      "max_abs_logit_diff_masked_vs_open": 1.011293
+    },
+    "window_mask_probe": {
+      "max_abs_logit_diff_masked_vs_open": 1.011293,
+      "alive": true
+    }
+  },
+  "params": 13536768,
+  "vocab_size": 206,
+  "train_tokens": 8192000,
+  "wall_minutes": 0.65,
+  "avg_train_depth_ce": [
+    2.1524
+  ],
+  "avg_train_gate_mean": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "depth_curve": [
+    {
+      "depth": 0,
+      "bpc": 7.5409,
+      "acc": 0.0551
+    },
+    {
+      "depth": 1,
+      "bpc": 5.948,
+      "acc": 0.1275
+    },
+    {
+      "depth": 2,
+      "bpc": 5.4665,
+      "acc": 0.1934
+    },
+    {
+      "depth": 3,
+      "bpc": 5.124,
+      "acc": 0.2738
+    },
+    {
+      "depth": 4,
+      "bpc": 4.6745,
+      "acc": 0.3194
+    },
+    {
+      "depth": 5,
+      "bpc": 4.1835,
+      "acc": 0.3642
+    },
+    {
+      "depth": 6,
+      "bpc": 3.7597,
+      "acc": 0.399
+    },
+    {
+      "depth": 7,
+      "bpc": 3.4063,
+      "acc": 0.4304
+    },
+    {
+      "depth": 8,
+      "bpc": 3.1616,
+      "acc": 0.4498
+    },
+    {
+      "depth": 9,
+      "bpc": 2.9218,
+      "acc": 0.4718
+    },
+    {
+      "depth": 10,
+      "bpc": 2.7037,
+      "acc": 0.4907
+    },
+    {
+      "depth": 11,
+      "bpc": 2.51,
+      "acc": 0.5076
+    },
+    {
+      "depth": 12,
+      "bpc": 2.3956,
+      "acc": 0.5248
+    }
+  ],
+  "bpc": 2.3956,
+  "next_token_acc": 0.5248,
+  "tf_acceptance": [
+    {
+      "depth": 0,
+      "accept": 0.0708
+    },
+    {
+      "depth": 1,
+      "accept": 0.1635
+    },
+    {
+      "depth": 2,
+      "accept": 0.2549
+    },
+    {
+      "depth": 3,
+      "accept": 0.3441
+    },
+    {
+      "depth": 4,
+      "accept": 0.4172
+    },
+    {
+      "depth": 5,
+      "accept": 0.4958
+    },
+    {
+      "depth": 6,
+      "accept": 0.5525
+    },
+    {
+      "depth": 7,
+      "accept": 0.6074
+    },
+    {
+      "depth": 8,
+      "accept": 0.6387
+    },
+    {
+      "depth": 9,
+      "accept": 0.6738
+    },
+    {
+      "depth": 10,
+      "accept": 0.7517
+    },
+    {
+      "depth": 11,
+      "accept": 0.8571
+    }
+  ],
+  "tf_note": "dense 中间深度读出无直接监督：tf 系 depth-k 残差态 tied 读出与 depth-L 读出的 argmax 一致率 proxy（截断资产口径，非训练出口资产）",
+  "attn_sparse_liveness": {
+    "attn_sparse_k": 0,
+    "enabled": false,
+    "params_added": 0,
+    "parametrized": false,
+    "block_python_class": "Block",
+    "kept_theory_mean": 0.0,
+    "kept_mean": null,
+    "kept_min": null,
+    "kept_max": null,
+    "kept_frac_of_T": null,
+    "sel_dist_mean": null,
+    "sel_in_lastk_frac": null,
+    "kept_count_matches_theory": null,
+    "alive": false,
+    "alive_note": "开关关闭（attn_sparse_k=0）：无异于基线"
+  }
+}

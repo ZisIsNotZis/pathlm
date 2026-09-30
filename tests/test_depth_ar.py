@@ -1476,3 +1476,147 @@ def test_topk_gradients_flow_and_non_selected_values_get_none():
     grad_v = shape(v.grad)[0, 0]                       # [T, dh]
     got = keep[0, 0].float().sum(0).clamp(0, 1)        # 每个键是否被任何查询选中
     assert bool((grad_v.abs().sum(-1)[got == 0] == 0).all())
+
+
+# ------------------------------------------------ 训练期可见窗口（ticket 32 契约 O）
+
+
+def test_window_anchor_keep_mask_semantics():
+    """掩码语义逐位钉死：keep[i,j] = (j≤i) ∧ ((i−j)<window ∨ j<anchors)，对角恒开。
+
+    - 非锚点位置：距离 < window 可见、≥ window 不可见；
+    - 锚点位置（j < anchors）：任意 query 可见（锚通道）；
+    - 永远不含未来（j > i）；
+    - 非法参数（window ≤ 0 / anchors < 0）显式报错。
+    """
+    from pathlm.depth_ar import window_anchor_keep_mask
+    T, window, anchors = 16, 4, 2
+    keep = window_anchor_keep_mask(T, window, anchors)
+    for i in range(T):
+        for j in range(T):
+            want = (j <= i) and ((i - j) < window or j < anchors)
+            assert bool(keep[i, j]) == want, (i, j)
+        assert bool(keep[i, i])                      # 对角恒开（NaN 防线）
+    # 锚点列在窗口外仍全开；非锚点列在窗口外全关
+    assert bool(keep[15, :anchors].all())
+    assert not bool(keep[15, anchors:15 - window + 1].any())
+    assert bool(keep[15, 15 - window + 1:16].all())
+    for bad in ((0, 0), (-3, 0)):
+        with pytest.raises(ValueError):
+            window_anchor_keep_mask(T, bad[0], bad[1])
+    with pytest.raises(ValueError):
+        window_anchor_keep_mask(T, 4, -1)
+
+
+def test_window_anchor_keep_mask_matches_instrument_recent_mask():
+    """anchors=0 时必须与保留曲线仪器的 `recent_keep_mask(T, d)` **逐位相同**
+    （训练/评测共用同一件仪器语义；契约 P 第 ③ 项的接口层证据）。"""
+    from pathlm.depth_ar import window_anchor_keep_mask
+    from tools.evalkit.retention import recent_keep_mask
+    for T, d in ((256, 32), (16, 1), (16, 16), (13, 4)):
+        assert torch.equal(window_anchor_keep_mask(T, d, 0),
+                           recent_keep_mask(T, d)), (T, d)
+
+
+def test_window_anchor_keep_mask_full_window_is_exact_causal():
+    """window ≥ T 且 anchors=0 ⇒ 精确因果掩码（= 不传掩码的 stock 路径）。"""
+    from pathlm.depth_ar import window_anchor_keep_mask
+    for T in (8, 12, 256):
+        assert torch.equal(window_anchor_keep_mask(T, T, 0),
+                           torch.tril(torch.ones(T, T, dtype=torch.bool)))
+        assert torch.equal(window_anchor_keep_mask(T, T + 99, 0),
+                           torch.tril(torch.ones(T, T, dtype=torch.bool)))
+
+
+def test_train_window_default_off_matches_v1_bitwise():
+    """缺省（train_window=0）必须与「显式全窗口」逐位一致，且都等于无掩码的
+    裸堆叠路径（v1 还原）。"""
+    m_off = tiny_model(dense=True)
+    m_full = tiny_model(dense=True, train_window=12)      # = seq_len ⇒ 恒等因果
+    x = torch.randint(0, 10, (2, 12))
+    l_off, aux_off = m_off(x)
+    l_full, aux_full = m_full(x)
+    assert torch.equal(aux_off["states"][-1], aux_full["states"][-1])
+    assert torch.equal(l_off, l_full)
+    h = aux_off["states"][0]
+    for blk in m_off.blocks:
+        h, _ = blk(h)
+    assert torch.equal(aux_off["states"][-1], h)
+
+
+def test_train_window_restricts_attention_to_recent_positions():
+    """功能判据（不是接口判据）：window=1、anchors=0 ⇒ 每个位置只看自己。
+    改动更早位置的 token **不得**改变该位置之后的 logits；但改动自身位置必须
+    改变 —— 前半句若红即「掩码没被真的应用」，后半句若红即「前向被掩死」。"""
+    m = tiny_model(dense=True, train_window=1)
+    torch.manual_seed(7)
+    x1 = torch.randint(0, 10, (1, 12))
+    x2 = x1.clone()
+    x2[0, 5] = (int(x1[0, 5]) + 1) % 10
+    lg1 = m(x1)[1]["depth_logits"][-1]
+    lg2 = m(x2)[1]["depth_logits"][-1]
+    assert torch.equal(lg1[0, 6:], lg2[0, 6:])      # 更早 token 传不到右边
+    assert not torch.equal(lg1[0, 5], lg2[0, 5])    # 自身位置确实受影响
+    # 反向对照：窗口足够大时，更早的 token 一定传得到（证明上面的相等不是
+    # 由「输入根本没进前向」造成的假绿）
+    m_open = tiny_model(dense=True)
+    lg3 = m_open(x1)[1]["depth_logits"][-1]
+    lg4 = m_open(x2)[1]["depth_logits"][-1]
+    assert not torch.equal(lg3[0, 6:], lg4[0, 6:])
+
+
+def test_train_window_forward_matches_eval_mask_path():
+    """训练侧掩码（forward 内建）与评测侧掩码（仪器 `masked_logits` 显式传掩码）
+    必须**逐位一致** —— 否则量的是别的模型（契约 P 第 ③ 项）。"""
+    from pathlm.depth_ar import window_anchor_keep_mask
+    from tools.evalkit.retention import masked_logits
+    m = tiny_model(dense=True, train_window=4, train_anchors=2)
+    x = torch.randint(0, 10, (2, 12))
+    train_side = m(x)[1]["depth_logits"][-1]
+    eval_side = masked_logits(m, x, window_anchor_keep_mask(12, 4, 2))
+    assert torch.equal(train_side, eval_side)
+
+
+def test_window_mask_liveness_and_probe():
+    """活性量（SCHEMA §10）：掩码不引入参数（params_added=0）；可见占比 = 闭式
+    计数；window ≥ T 时 alive=False；`window_mask_probe` 在掩码开/关两次前向间
+    给出非零最大 logit 差（开关不是死的），且不改变模型状态/参数。"""
+    from pathlm.depth_ar import (window_mask_liveness, window_mask_probe,
+                                 window_anchor_keep_mask)
+    T, window, anchors = 256, 32, 8
+    live = window_mask_liveness(T, window, anchors)
+    expected = sum(min(i + 1, window) + min(i + 1, anchors)
+                   - max(0, min(i + 1, anchors) - max(0, i - window + 1))
+                   for i in range(T))
+    assert live["n_visible_pairs"] == int(window_anchor_keep_mask(
+        T, window, anchors).sum())
+    assert live["n_visible_pairs"] == expected
+    assert live["causal_pairs"] == T * (T + 1) // 2
+    assert live["params_added"] == 0 and live["alive"]
+    assert abs(live["visible_frac"] + live["dropped_frac"] - 1.0) < 1e-6
+    assert window_mask_liveness(T, T, 0)["alive"] is False
+
+    m = tiny_model(dense=True, train_window=4, train_anchors=2)
+    before = [p.detach().clone() for p in m.parameters()]
+    x = torch.randint(0, 10, (2, 12))
+    probe = window_mask_probe(m, x)
+    assert probe["alive"] and probe["max_abs_logit_diff_masked_vs_open"] > 0
+    assert m.cfg.train_window == 4                      # 借用后必须还原
+    assert all(torch.equal(a, b) for a, b in zip(before, m.parameters()))
+    with pytest.raises(ValueError):
+        window_mask_probe(tiny_model(dense=True), x)     # 掩码关闭时无意义
+
+
+def test_train_window_switch_guards():
+    """单因素护栏：窗口训练只在 dense + sequential 下开放；anchors 需 window>0；
+    与内容 top-k 稀疏互斥。"""
+    with pytest.raises(ValueError):
+        tiny_model(train_window=4)                       # dense=False
+    with pytest.raises(ValueError):
+        tiny_model(dense=True, train_window=4, topology="parallel")
+    with pytest.raises(ValueError):
+        tiny_model(dense=True, train_anchors=2)          # anchors 无 window
+    with pytest.raises(ValueError):
+        tiny_model(dense=True, train_window=4, attn_sparse_k=3)
+    # 合法组合可建
+    assert tiny_model(dense=True, train_window=4, train_anchors=2) is not None

@@ -1,0 +1,206 @@
+{
+  "target": "tools/evalkit/retention.py",
+  "sha256_before": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502",
+  "mutations": [
+    {
+      "id": "M1",
+      "what": "attention_stats 用全 1 因果掩码（统计量看到未来）",
+      "tests": {
+        "test_attention_stats_match_manual_reference": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.66s"
+        },
+        "test_attention_stats_are_causal_and_normalized": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.69s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M2",
+      "what": "注意力质量不排除对角线（自己读自己算被读过）",
+      "tests": {
+        "test_attention_stats_match_manual_reference": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.65s"
+        },
+        "test_attention_stats_are_causal_and_normalized": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.58s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M3",
+      "what": "注意力质量按头求和而不是逐头平均",
+      "tests": {
+        "test_attention_stats_match_manual_reference": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.72s"
+        },
+        "test_attention_stats_are_causal_and_normalized": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.67s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M4",
+      "what": "优先级排序方向翻反（删被读得最多的位置）",
+      "tests": {
+        "test_priority_rules_delete_by_their_own_key": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.76s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M5",
+      "what": "drop_mask_keep 丢掉对角线（被删 query 整行全掩码）",
+      "tests": {
+        "test_drop_mask_keep_matches_the_prefix_baseline_and_never_empties_a_row": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.65s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M6",
+      "what": "drop_mask_keep 把删除集套在查询轴（删 query 而不是删 key）",
+      "tests": {
+        "test_drop_mask_keep_matches_the_prefix_baseline_and_never_empties_a_row": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.71s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M7",
+      "what": "_rank 取排序尾部（distance 变成删最近的 N 个）",
+      "tests": {
+        "test_priority_rules_spend_the_same_budget_and_are_deterministic": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.69s"
+        },
+        "test_priority_rules_delete_by_their_own_key": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.60s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M8",
+      "what": "_rank 忽略候选池（「只压正文窗口」的诊断臂失效）",
+      "tests": {
+        "test_priority_candidates_keep_the_budget_and_only_shrink_the_pool": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.72s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M9",
+      "what": "drop_mask_overlap 把交集算成并集",
+      "tests": {
+        "test_deleted_set_overlap_reports_intersection_and_jaccard": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.66s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M10",
+      "what": "drop_mask_stats 把「离得近」当被删代价（T−1−j → j）",
+      "tests": {
+        "test_drop_mask_stats_matches_mask_stats_on_a_shared_drop_set": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.70s"
+        }
+      },
+      "all_expected_tests_caught": true
+    }
+  ],
+  "restored_sha256_equal": true,
+  "after_restore": {
+    "test_attention_stats_match_manual_reference": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.96s"
+    },
+    "test_attention_stats_are_causal_and_normalized": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.82s"
+    },
+    "test_priority_rules_spend_the_same_budget_and_are_deterministic": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.70s"
+    },
+    "test_priority_rules_delete_by_their_own_key": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.74s"
+    },
+    "test_drop_mask_keep_matches_the_prefix_baseline_and_never_empties_a_row": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.80s"
+    },
+    "test_deleted_set_overlap_reports_intersection_and_jaccard": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.71s"
+    },
+    "test_priority_rules_move_the_outcome_liveness": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.71s"
+    },
+    "test_attention_stats_summary_reports_the_distribution": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.80s"
+    },
+    "test_per_sample_masks_reach_their_own_window_in_bpc_and_needles": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.79s"
+    },
+    "test_priority_candidates_keep_the_budget_and_only_shrink_the_pool": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.73s"
+    },
+    "test_drop_mask_stats_matches_mask_stats_on_a_shared_drop_set": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.71s"
+    }
+  },
+  "green_after_restore": true,
+  "sha256_after": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502"
+}

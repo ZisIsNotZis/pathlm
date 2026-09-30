@@ -1,0 +1,108 @@
+{
+  "contract": ".scratch/32-batch5/issues/01-batch5.md#契约N",
+  "experiment": "axes/A-mixing/A10-compression-trigger/experiments/2615-priority-shootout-13m",
+  "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "role": "被测量模型（复用，只读）：13.5M dense decoder-only 主干，12k 步，clean bpc 1.483569（本实验同窗口序复算）"
+  },
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true
+  },
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M 训练 / 末 10M 评测（本实验只用评测尾段）",
+    "vocab_size": 206,
+    "n_real_tokens": 205,
+    "mask_token": 205,
+    "download_or_generate": "python3 -c \"from pathlm.data import load_enwik8_full as L; L('.tmp/enwik8','data/enwik8_full.npz')\"（未在本实验重跑；缓存已在库外 data/）"
+  },
+  "eval": {
+    "n_batches": 24,
+    "batch_size": 16,
+    "window_seed": 2,
+    "device": "cuda",
+    "note": "依赖腿与契约 M / 2614 同一窗口序（window_seed=2 + 24×16）⇒ 基线与它们逐位可比（run.py 断言）"
+  },
+  "needle": {
+    "construction": "phrase_needle_batch（needle v3：真实文本短语针，契约 M 产出；v2 随机字节对在本 checkpoint 上基线 1.5%）",
+    "n_needles": 8,
+    "phrase_len": 6,
+    "anchors": 8,
+    "anchor_frac": 0.25,
+    "n_batches": 32,
+    "batch_size": 16,
+    "seed": 3,
+    "note": "与契约 M 逐字段一致（同 seed ⇒ 同一批针），用于两条腿同位置集"
+  },
+  "arms": {
+    "primary": 9,
+    "baseline": 1,
+    "sensitivity": 14,
+    "diagnostic_pair_curve": 56,
+    "diagnostic_context_restricted": 12,
+    "total_configs": 92,
+    "reruns": 3,
+    "arm_evaluations_dependency_leg": 80,
+    "arm_evaluations_needle_leg": 36,
+    "note": "臂数 = 判据臂 3 规则 × 3 档（9）+ 基线（1）+ 敏感性（lru k∈{32,128,256} × 3 档 = 9、lastused × 3 档 = 3、content(key_norm) × 2 档 = 2）+ 诊断臂（预算换成被删对数：7 条规则曲线 × 8 个 N = 56、正文限制 4 条规则 × 3 档 = 12）；每条臂在两条腿上各评一遍（纯推理，无训练步）"
+  },
+  "pair_budget": {
+    "rules": [["distance", null], ["lru", 32], ["lru", 64], ["lru", 128], ["lru", 256], ["content", null], ["lastused", null]],
+    "n_grid": [1, 2, 4, 8, 16, 32, 48, 64],
+    "note": "诊断（不改判据）：契约的预算 = 位置个数；这里另扫一条 (被删因果对数, 损伤) 曲线，按对数插值出同预算下 distance 的损伤"
+  },
+  "context_restricted": {
+    "rules": [["distance", null], ["lru", 64], ["content", null], ["lru", 256]],
+    "candidates": "[0, q0)（q0 = T − K×(L+1) = 200；针的线索块不参与压缩）",
+    "note": "诊断：召回损失是否来自删掉了 harness 的线索块（部署里那是 query 而不是被压缩的 KV）"
+  },
+  "priority": {
+    "primary_rules": ["distance", "lru", "content"],
+    "primary_k": 64,
+    "n_drop": [8, 32, 64],
+    "recent_ks": [32, 64, 128, 256],
+    "lru_k_sensitivity": [32, 128, 256],
+    "lastused_sensitivity": true,
+    "content_keynorm_n_drop": [8, 64],
+    "note": "契约 N 指定三条规则与 N∈{8,32,64}；契约未定义 lru 的 k ⇒ 预登记主臂 k=64（窗口的 1/4），k∈{32,128,256} 作敏感性（k=256 ⇒ mass_recent[256]≡mass_total，即契约括注「该位置收到的注意力权重之和」的字面读法）；lastused 与 content(key_norm) 为敏感性臂，不参与判据"
+  },
+  "diagnostics": {
+    "query_min_long": 128,
+    "query_min_needle": 200,
+    "note": "qmin128 = 历史长上下文口径；qmin200 = 针的答案行所在行的配对口径（同一位置集）"
+  },
+  "criteria": {
+    "recall_gain_pp": 0.1,
+    "damage_gain_bpc": 0.014,
+    "note": "逐字取自契约 N 的判据线；判据线在运行前写死，不得事后调整"
+  },
+  "variance_band_bpc": 0.014,
+  "reproducibility": {
+    "rerun": true,
+    "n_configs": 3,
+    "threshold": 0.005,
+    "note": "重跑三个档（distance/lru/content 各一）比对 damage_bpc"
+  },
+  "noise_floor": {
+    "window_seeds": [3, 4, 5, 6],
+    "needle_seeds": [3, 13, 23],
+    "dependency_configs": ["distance:N=32", "lru:k=64:N=32", "content:N=32"],
+    "needle_configs": ["distance:N=32", "lru:k=64:N=32", "content:N=32"],
+    "needle_batches_per_seed": 4,
+    "note": "与契约 M 同一套噪声底方法（跨窗口 seed / 跨针 seed）"
+  },
+  "smoke": {
+    "n_batches": 2,
+    "needle_batches": 2,
+    "n_drop": [8, 64],
+    "note": "冒烟只测步时与显存，不落外推时间字段（SCHEMA §17.5）"
+  }
+}

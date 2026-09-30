@@ -16,7 +16,8 @@ from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
                              depth_curve, tf_acceptance, workspace_probe,
                              generation_quality, readout_workspace_energy,
                              spec_cost_model, topology_liveness,
-                             attn_sparse_probe)
+                             attn_sparse_probe, window_mask_liveness,
+                             window_mask_probe)
 from pathlm.data import load_enwik8_full, batch
 
 
@@ -73,6 +74,19 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
     seq = model.cfg.seq_len
     L = model.cfg.n_layers
     n_ce = 1 if (model.cfg.dense and not dense_aux) else L + 1
+    # 训练期可见窗口（ticket 32 契约 O）的活性量：掩码是静态的（不随步变化），
+    # 每个 200 步日志行都写同一份；另做一个一次性功能探针（掩码开/关两次前向的
+    # 最大 logit 差 > 0）证明这个开关不是死的。掩码关闭时两者都是 None，
+    # 不增加任何计算、不消耗随机数（逐位还原 v1）。
+    win_live = (window_mask_liveness(seq, model.cfg.train_window,
+                                     model.cfg.train_anchors)
+                if model.cfg.train_window > 0 else None)
+    win_probe = None
+    if win_live is not None:
+        x_probe = torch.randint(0, model.vocab_size, (2, seq),
+                                generator=torch.Generator().manual_seed(1234))
+        win_probe = window_mask_probe(model, x_probe.cuda())
+        win_live = {**win_live, **win_probe}
     opt = torch.optim.AdamW(model.parameters(), lr=tcfg["lr"], weight_decay=0.01)
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min((s + 1) / 200, 0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * s / steps))))
@@ -146,6 +160,7 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                     "attn_sparse": ({kk: round(v / n_sparse_layers, 6)
                                     for kk, v in sparse_acc.items()}
                                    if n_sparse_layers else None),
+                    "window_mask": win_live,
                     "lr": round(float(sched.get_last_lr()[0]), 6),
                     "min": round((time.time() - t0) / 60, 2)}) + "\n")
             with open(gate_log_path, "a") as f:
@@ -160,7 +175,9 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
             "attn_sparse_mean": ({kk: round(v / n_sparse_layers, 6)
                                   for kk, v in sparse_acc.items()}
                                  if n_sparse_layers else None),
-            "attn_sparse_layer_samples": n_sparse_layers}
+            "attn_sparse_layer_samples": n_sparse_layers,
+            "window_mask": win_live,
+            "window_mask_probe": win_probe}
 
 
 def main():
@@ -211,6 +228,13 @@ def main():
                          "在因果掩码内只保留内容相似度最高的 k 个键（按内容"
                          "选择，其余置 -inf）。0 = 关闭（缺省，逐位还原 v1）；"
                          "需配合 --dense 且 topology=sequential（单因素）")
+    ap.add_argument("--train-window", type=int, default=0,
+                    help="训练期可见窗口（ticket 32 契约 O）：每个查询只看最近"
+                         " N 个位置；0 = 关闭（缺省，逐位还原 v1 的全因果路径）。"
+                         "需配合 --dense 且 topology=sequential（单因素）")
+    ap.add_argument("--train-anchors", type=int, default=0,
+                    help="窗口训练时额外恒可见的最前面 N 个锚点位置（需 "
+                         "--train-window > 0）")
     ap.add_argument("--no-fill-kv", dest="fill_kv", action="store_false",
                     help="no-fill ragged 语义（ticket 23e）：早退位置在未跑层"
                          "的 KV 中缺席（原引擎 per-layer cache 语义）；缺省 = "
@@ -260,11 +284,14 @@ def main():
                         readout_dims=args.readout_dims,
                         readout_gated=args.readout_gated,
                         readout_linear_resid=args.readout_linear_resid,
-                        attn_sparse_k=args.attn_sparse_k)
+                        attn_sparse_k=args.attn_sparse_k,
+                        train_window=args.train_window,
+                        train_anchors=args.train_anchors)
     model = DepthARModel(cfg, vocab_size).cuda()
     n_params = sum(p.numel() for p in model.parameters())
     print(f"{args.run_name}: {n_params/1e6:.2f}M params, vocab {vocab_size}, "
           f"topology {args.topology}, attn_sparse_k {args.attn_sparse_k}, "
+          f"train_window {args.train_window}/+{args.train_anchors}, "
           f"steps {args.steps} x bs{args.batch_size} x seq{args.seq_len} "
           f"= {args.steps*args.batch_size*args.seq_len/1e6:.1f}M tokens", flush=True)
 
@@ -290,6 +317,8 @@ def main():
         "run": args.run_name, "config": asdict(cfg), "train": tcfg,
         "topology": args.topology,
         "attn_sparse_k": args.attn_sparse_k,
+        "train_window": args.train_window,
+        "train_anchors": args.train_anchors,
         "topology_liveness": topology_liveness(model),
         "exit_mode": args.exit_mode,
         "fill_kv": args.fill_kv, "proj_fill": args.proj_fill,

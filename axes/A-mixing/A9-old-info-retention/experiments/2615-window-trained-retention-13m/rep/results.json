@@ -1,0 +1,1634 @@
+{
+  "contract": "axes/A-mixing/A9-old-info-retention/experiments/2615-window-trained-retention-13m/README.md",
+  "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。",
+  "checkpoints": {
+    "full": {
+      "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+      "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+      "size_bytes": 54193675,
+      "sha256_verified": true
+    },
+    "window32": {
+      "path": "train/window32_rep/model.pt",
+      "sha256": "4890194e9b71e9b411827ceb4b55710a3cbfae52afe4c31eb23aa788ad124800",
+      "size_bytes": 54193675,
+      "sha256_verified": true
+    }
+  },
+  "config": {
+    "contract": "axes/A-mixing/A9-old-info-retention/experiments/2615-window-trained-retention-13m/README.md",
+    "contract_source": ".scratch/32-batch5/issues/01-batch5.md §「契约 O」",
+    "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。",
+    "intervention": {
+      "factor": "训练期可见窗口（唯一变量）",
+      "arms": {
+        "full": "全可见（不重训：复用 2610 的 trunk.pt，配置等值性逐字段对照见 README §5）",
+        "window32": "训练时只允许看最近 32 个位置 + 8 个锚点（本实验训练；评测用同一掩码）"
+      },
+      "mask": "keep[i,j] = (j<=i) & ((i-j) < train_window | j < train_anchors)；对角恒开。实现 = pathlm.depth_ar.window_anchor_keep_mask（训练与评测共用同一函数）"
+    },
+    "baseline_checkpoint": {
+      "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+      "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+      "size_bytes": 54193675,
+      "role": "full 臂（复用，只读）：13.5M dense decoder-only 主干，12k 步，clean bpc 1.4836"
+    },
+    "trained_checkpoint": {
+      "path": "train/window32_rep/model.pt",
+      "sha256": "4890194e9b71e9b411827ceb4b55710a3cbfae52afe4c31eb23aa788ad124800",
+      "role": "window32 臂的**同配置重跑**（复现性/训练噪声探针；主臂仍是 train/window32/model.pt）",
+      "train_dir": "train/window32_rep",
+      "command": "python3 train_depth_ar.py window32 --d 256 --layers 12 --heads 8 --mlp-mult 6 --dense --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --train-window 32 --train-anchors 8 --eval-batches 24 --out-root <expdir>/train",
+      "size_bytes": 54193675,
+      "train_wall_minutes": 8.27
+    },
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true,
+      "train_window": 32,
+      "train_anchors": 8
+    },
+    "data": {
+      "name": "enwik8_full",
+      "path": "data/enwik8_full.npz",
+      "split": "前 90M train / 末 10M eval（本实验只用 eval 尾段做评测）",
+      "vocab_size": 206,
+      "n_real_tokens": 205,
+      "mask_token": 205
+    },
+    "train_window32": {
+      "steps": 12000,
+      "batch_size": 32,
+      "lr": 0.001,
+      "seed": 0,
+      "exit_mode": "uniform",
+      "aux_weight": 1.0,
+      "final_weight": 1.0,
+      "shallow_stopgrad": false,
+      "dense_aux": false,
+      "exit_anneal": false,
+      "train_window": 32,
+      "train_anchors": 8
+    },
+    "train_full_reused_2610": {
+      "steps": 12000,
+      "batch_size": 32,
+      "lr": 0.001,
+      "seed": 0,
+      "exit_mode": "uniform",
+      "aux_weight": 1.0,
+      "final_weight": 1.0,
+      "shallow_stopgrad": false,
+      "dense_aux": false,
+      "exit_anneal": false,
+      "train_window": 0,
+      "train_anchors": 0,
+      "source": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/{config.json,trunk_train_log.jsonl}"
+    },
+    "eval": {
+      "n_batches": 24,
+      "batch_size": 16,
+      "window_seed": 2,
+      "device": "cuda",
+      "note": "与 2614（契约 I 的保留曲线基线）同一窗口序：window_seed=2 + 24×16"
+    },
+    "curves": {
+      "distance": {
+        "d": [
+          1,
+          2,
+          4,
+          8,
+          16,
+          32,
+          64,
+          128,
+          255
+        ]
+      },
+      "prefix": {
+        "n_dropped": [
+          8,
+          16,
+          32,
+          64,
+          128,
+          192,
+          255
+        ]
+      },
+      "recent": {
+        "d": [
+          16,
+          32,
+          64,
+          128,
+          192,
+          255
+        ]
+      },
+      "prefix_diagnostics": {
+        "query_min": 128
+      }
+    },
+    "needle": {
+      "construction": "phrase_needle_batch（needle v3，真实文本短语针，契约 M 产出的检索腿仪器；不得破坏既有行为）",
+      "n_needles": 8,
+      "phrase_len": 6,
+      "anchors": 8,
+      "anchor_frac": 0.25,
+      "n_batches": 32,
+      "batch_size": 16,
+      "seed": 3,
+      "noise_seeds": [
+        13,
+        23
+      ],
+      "distance_bands": [
+        [
+          0,
+          32
+        ],
+        [
+          32,
+          64
+        ],
+        [
+          64,
+          128
+        ],
+        [
+          128,
+          256
+        ]
+      ],
+      "note": "seed=3 + 32×16 与契约 M（2615-retention-retrieval-leg-13m）同一构造序列 ⇒ full 臂 release 口径可与 M 的基线逐位对账"
+    },
+    "reproducibility": {
+      "rerun": true,
+      "configs": [
+        "distance:8",
+        "distance:32",
+        "prefix:64",
+        "recent:32",
+        "native",
+        "release"
+      ],
+      "threshold": 0.005
+    },
+    "noise_floor": {
+      "window_seeds": [
+        3,
+        4,
+        5
+      ],
+      "configs": [
+        "distance:8",
+        "prefix:64",
+        "recent:32"
+      ]
+    },
+    "variance_band_bpc": 0.014,
+    "criterion_2_damage_gap_pp_threshold_bpc": 0.014,
+    "criterion_3_recall_gap_pp": 0.1,
+    "criterion_3_recall_drop_pp": 0.3
+  },
+  "instrument": {
+    "full": {
+      "bpc_release_path": 1.483569,
+      "bpc_identity_mask": 1.483569,
+      "bitwise_equal": true
+    },
+    "window32": {
+      "bpc_release_path": 1.641257,
+      "bpc_identity_mask": 1.641257,
+      "bitwise_equal": true
+    },
+    "train_mask_equals_eval_mask": true,
+    "train_vs_eval_mask_max_abs_diff": 0.0,
+    "native_mask_stats": {
+      "n_dropped_pairs": 23436,
+      "causal_pairs": 32896,
+      "dropped_frac": 0.71242704,
+      "n_dropped_keys": 216,
+      "diagonal_kept": true
+    }
+  },
+  "intervention": {
+    "what": "训练期可见窗口（唯一变量）：训练时每个查询只看最近 32 个位置 + 8 个锚点",
+    "params_added": 0,
+    "weights_changed_by_switch": false,
+    "alive": true,
+    "activity": "掩码活性量（可见因果对占比）每 200 步写在训练日志同一行：train/window32/train_log.jsonl::window_mask（见 train_stats）",
+    "train_stats": {
+      "gnorm_max": 9.69,
+      "gnorm_mean": 0.548,
+      "grad_skips": 0,
+      "attn_sparse_mean": null,
+      "attn_sparse_layer_samples": 0,
+      "window_mask": {
+        "train_window": 32,
+        "train_anchors": 8,
+        "params_added": 0,
+        "n_visible_pairs": 9460,
+        "causal_pairs": 32896,
+        "visible_frac": 0.287573,
+        "dropped_frac": 0.712427,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 1.011293
+      },
+      "window_mask_probe": {
+        "max_abs_logit_diff_masked_vs_open": 1.011293,
+        "alive": true
+      }
+    }
+  },
+  "curves": {
+    "full": {
+      "release_bpc": 1.483569,
+      "distance": [
+        {
+          "bpc": 4.728587,
+          "delta_bpc": -3.245018,
+          "damage_bpc": 3.245018,
+          "d": 1,
+          "n_dropped_pairs": 255,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.0077517,
+          "n_dropped_keys": 255,
+          "diagonal_kept": true
+        },
+        {
+          "bpc": 3.492334,
+          "delta_bpc": -2.008765,
+          "damage_bpc": 2.008765,
+          "d": 2,
+          "n_dropped_pairs": 254,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.0077213,
+          "n_dropped_keys": 254,
+          "diagonal_kept": true
+        },
+        {
+          "bpc": 2.236457,
+          "delta_bpc": -0.752888,
+          "damage_bpc": 0.752888,
+          "d": 4,
+          "n_dropped_pairs": 252,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00766051,
+          "n_dropped_keys": 252,
+          "diagonal_kept": true
+        },
+        {
+          "bpc": 1.573446,
+          "delta_bpc": -0.089877,
+          "damage_bpc": 0.089877,
+          "d": 8,
+          "n_dropped_pairs": 248,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00753891,
+          "n_dropped_keys": 248,
+          "diagonal_kept": true
+        },
+        {
+          "bpc": 1.500084,
+          "delta_bpc": -0.016515,
+          "damage_bpc": 0.016515,
+          "d": 16,
+          "n_dropped_pairs": 240,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00729572,
+          "n_dropped_keys": 240,
+          "diagonal_kept": true
+        },
+        {
+          "bpc": 1.48727,
+          "delta_bpc": -0.003701,
+          "damage_bpc": 0.003701,
+          "d": 32,
+          "n_dropped_pairs": 224,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00680934,
+          "n_dropped_keys": 224,
+          "diagonal_kept": true
+        },
+        {
+          "bpc": 1.484501,
+          "delta_bpc": -0.000932,
+          "damage_bpc": 0.000932,
+          "d": 64,
+          "n_dropped_pairs": 192,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00583658,
+          "n_dropped_keys": 192,
+          "diagonal_kept": true
+        },
+        {
+          "bpc": 1.484052,
+          "delta_bpc": -0.000483,
+          "damage_bpc": 0.000483,
+          "d": 128,
+          "n_dropped_pairs": 128,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00389105,
+          "n_dropped_keys": 128,
+          "diagonal_kept": true
+        },
+        {
+          "bpc": 1.483569,
+          "delta_bpc": 0.0,
+          "damage_bpc": 0.0,
+          "d": 255,
+          "n_dropped_pairs": 1,
+          "causal_pairs": 32896,
+          "dropped_frac": 3.04e-05,
+          "n_dropped_keys": 1,
+          "diagonal_kept": true
+        }
+      ],
+      "prefix": [
+        {
+          "bpc": 1.680097,
+          "delta_bpc": -0.196528,
+          "damage_bpc": 0.196528,
+          "n_dropped": 8,
+          "n_dropped_pairs": 2012,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.06116245,
+          "n_dropped_keys": 8,
+          "diagonal_kept": true,
+          "damage_qmin128": 0.008523
+        },
+        {
+          "bpc": 1.828444,
+          "delta_bpc": -0.344876,
+          "damage_bpc": 0.344876,
+          "n_dropped": 16,
+          "n_dropped_pairs": 3960,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.12037938,
+          "n_dropped_keys": 16,
+          "diagonal_kept": true,
+          "damage_qmin128": 0.013484
+        },
+        {
+          "bpc": 2.124549,
+          "delta_bpc": -0.64098,
+          "damage_bpc": 0.64098,
+          "n_dropped": 32,
+          "n_dropped_pairs": 7664,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.23297665,
+          "n_dropped_keys": 32,
+          "diagonal_kept": true,
+          "damage_qmin128": 0.025585
+        },
+        {
+          "bpc": 2.731588,
+          "delta_bpc": -1.248019,
+          "damage_bpc": 1.248019,
+          "n_dropped": 64,
+          "n_dropped_pairs": 14304,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.4348249,
+          "n_dropped_keys": 64,
+          "diagonal_kept": true,
+          "damage_qmin128": 0.066791
+        },
+        {
+          "bpc": 3.91305,
+          "delta_bpc": -2.429482,
+          "damage_bpc": 2.429482,
+          "n_dropped": 128,
+          "n_dropped_pairs": 24512,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.74513619,
+          "n_dropped_keys": 128,
+          "diagonal_kept": true,
+          "damage_qmin128": 0.473906
+        },
+        {
+          "bpc": 5.046411,
+          "delta_bpc": -3.562842,
+          "damage_bpc": 3.562842,
+          "n_dropped": 192,
+          "n_dropped_pairs": 30624,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.93093385,
+          "n_dropped_keys": 192,
+          "diagonal_kept": true,
+          "damage_qmin128": 2.74955
+        },
+        {
+          "bpc": 5.928295,
+          "delta_bpc": -4.444726,
+          "damage_bpc": 4.444726,
+          "n_dropped": 255,
+          "n_dropped_pairs": 32640,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.9922179,
+          "n_dropped_keys": 255,
+          "diagonal_kept": true,
+          "damage_qmin128": 4.520263
+        }
+      ],
+      "prefix_diagnostics": {
+        "query_min": 128,
+        "rows": [
+          {
+            "n_dropped": 8,
+            "damage_qmin128": 0.008523
+          },
+          {
+            "n_dropped": 16,
+            "damage_qmin128": 0.013484
+          },
+          {
+            "n_dropped": 32,
+            "damage_qmin128": 0.025585
+          },
+          {
+            "n_dropped": 64,
+            "damage_qmin128": 0.066791
+          },
+          {
+            "n_dropped": 128,
+            "damage_qmin128": 0.473906
+          },
+          {
+            "n_dropped": 192,
+            "damage_qmin128": 2.74955
+          },
+          {
+            "n_dropped": 255,
+            "damage_qmin128": 4.520263
+          }
+        ],
+        "note": "damage_qmin128 = 只统计长上下文 query（行 i ≥ 128）的配对损伤 ——「丢最远 N 个位置」的诚实口径（前缀内的 query 被删后只剩对角是冷启动伪影，2614 同款分解）"
+      },
+      "recent": [
+        {
+          "bpc": 2.085526,
+          "delta_bpc": -0.601958,
+          "damage_bpc": 0.601958,
+          "d": 16,
+          "n_dropped_pairs": 28920,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.87913424,
+          "n_dropped_keys": 240,
+          "diagonal_kept": true
+        },
+        {
+          "bpc": 1.695384,
+          "delta_bpc": -0.211815,
+          "damage_bpc": 0.211815,
+          "d": 32,
+          "n_dropped_pairs": 25200,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.76605058,
+          "n_dropped_keys": 224,
+          "diagonal_kept": true
+        },
+        {
+          "bpc": 1.564077,
+          "delta_bpc": -0.080508,
+          "damage_bpc": 0.080508,
+          "d": 64,
+          "n_dropped_pairs": 18528,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.56322957,
+          "n_dropped_keys": 192,
+          "diagonal_kept": true
+        },
+        {
+          "bpc": 1.503634,
+          "delta_bpc": -0.020065,
+          "damage_bpc": 0.020065,
+          "d": 128,
+          "n_dropped_pairs": 8256,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.25097276,
+          "n_dropped_keys": 128,
+          "diagonal_kept": true
+        },
+        {
+          "bpc": 1.487744,
+          "delta_bpc": -0.004175,
+          "damage_bpc": 0.004175,
+          "d": 192,
+          "n_dropped_pairs": 2080,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.06322957,
+          "n_dropped_keys": 64,
+          "diagonal_kept": true
+        },
+        {
+          "bpc": 1.483569,
+          "delta_bpc": 0.0,
+          "damage_bpc": 0.0,
+          "d": 255,
+          "n_dropped_pairs": 1,
+          "causal_pairs": 32896,
+          "dropped_frac": 3.04e-05,
+          "n_dropped_keys": 1,
+          "diagonal_kept": true
+        }
+      ]
+    },
+    "window32": {
+      "release_bpc": 1.641257,
+      "distance": [
+        {
+          "bpc": 4.821466,
+          "delta_bpc": -3.180209,
+          "damage_bpc": 3.180209,
+          "d": 1,
+          "n_dropped_pairs": 255,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.0077517,
+          "n_dropped_keys": 255,
+          "diagonal_kept": true,
+          "bpc_on_native": 4.710151,
+          "damage_vs_native_bpc": 3.144513
+        },
+        {
+          "bpc": 3.603702,
+          "delta_bpc": -1.962445,
+          "damage_bpc": 1.962445,
+          "d": 2,
+          "n_dropped_pairs": 254,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.0077213,
+          "n_dropped_keys": 254,
+          "diagonal_kept": true,
+          "bpc_on_native": 3.525635,
+          "damage_vs_native_bpc": 1.959997
+        },
+        {
+          "bpc": 2.389013,
+          "delta_bpc": -0.747756,
+          "damage_bpc": 0.747756,
+          "d": 4,
+          "n_dropped_pairs": 252,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00766051,
+          "n_dropped_keys": 252,
+          "diagonal_kept": true,
+          "bpc_on_native": 2.227417,
+          "damage_vs_native_bpc": 0.66178
+        },
+        {
+          "bpc": 1.738335,
+          "delta_bpc": -0.097078,
+          "damage_bpc": 0.097078,
+          "d": 8,
+          "n_dropped_pairs": 248,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00753891,
+          "n_dropped_keys": 248,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.627683,
+          "damage_vs_native_bpc": 0.062045
+        },
+        {
+          "bpc": 1.651598,
+          "delta_bpc": -0.010341,
+          "damage_bpc": 0.010341,
+          "d": 16,
+          "n_dropped_pairs": 240,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00729572,
+          "n_dropped_keys": 240,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.576522,
+          "damage_vs_native_bpc": 0.010884
+        },
+        {
+          "bpc": 1.639726,
+          "delta_bpc": 0.001531,
+          "damage_bpc": -0.001531,
+          "d": 32,
+          "n_dropped_pairs": 224,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00680934,
+          "n_dropped_keys": 224,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.565717,
+          "damage_vs_native_bpc": 8e-05
+        },
+        {
+          "bpc": 1.642851,
+          "delta_bpc": -0.001593,
+          "damage_bpc": 0.001593,
+          "d": 64,
+          "n_dropped_pairs": 192,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00583658,
+          "n_dropped_keys": 192,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.565815,
+          "damage_vs_native_bpc": 0.000177
+        },
+        {
+          "bpc": 1.640895,
+          "delta_bpc": 0.000362,
+          "damage_bpc": -0.000362,
+          "d": 128,
+          "n_dropped_pairs": 128,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.00389105,
+          "n_dropped_keys": 128,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.565717,
+          "damage_vs_native_bpc": 8e-05
+        },
+        {
+          "bpc": 1.641257,
+          "delta_bpc": 0.0,
+          "damage_bpc": 0.0,
+          "d": 255,
+          "n_dropped_pairs": 1,
+          "causal_pairs": 32896,
+          "dropped_frac": 3.04e-05,
+          "n_dropped_keys": 1,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.565637,
+          "damage_vs_native_bpc": 0.0
+        }
+      ],
+      "prefix": [
+        {
+          "bpc": 1.821875,
+          "delta_bpc": -0.180618,
+          "damage_bpc": 0.180618,
+          "n_dropped": 8,
+          "n_dropped_pairs": 2012,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.06116245,
+          "n_dropped_keys": 8,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.753344,
+          "damage_vs_native_bpc": 0.187707,
+          "damage_qmin128": -0.00381,
+          "damage_qmin128_on_native": 0.012103
+        },
+        {
+          "bpc": 1.961522,
+          "delta_bpc": -0.320265,
+          "damage_bpc": 0.320265,
+          "n_dropped": 16,
+          "n_dropped_pairs": 3960,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.12037938,
+          "n_dropped_keys": 16,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.893138,
+          "damage_vs_native_bpc": 0.3275,
+          "damage_qmin128": -0.010468,
+          "damage_qmin128_on_native": 0.01209
+        },
+        {
+          "bpc": 2.240806,
+          "delta_bpc": -0.599549,
+          "damage_bpc": 0.599549,
+          "n_dropped": 32,
+          "n_dropped_pairs": 7664,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.23297665,
+          "n_dropped_keys": 32,
+          "diagonal_kept": true,
+          "bpc_on_native": 2.176697,
+          "damage_vs_native_bpc": 0.61106,
+          "damage_qmin128": -0.02185,
+          "damage_qmin128_on_native": 0.012088
+        },
+        {
+          "bpc": 2.780831,
+          "delta_bpc": -1.139573,
+          "damage_bpc": 1.139573,
+          "n_dropped": 64,
+          "n_dropped_pairs": 14304,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.4348249,
+          "n_dropped_keys": 64,
+          "diagonal_kept": true,
+          "bpc_on_native": 2.732698,
+          "damage_vs_native_bpc": 1.16706,
+          "damage_qmin128": -0.040188,
+          "damage_qmin128_on_native": 0.0132
+        },
+        {
+          "bpc": 3.876672,
+          "delta_bpc": -2.235415,
+          "damage_bpc": 2.235415,
+          "n_dropped": 128,
+          "n_dropped_pairs": 24512,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.74513619,
+          "n_dropped_keys": 128,
+          "diagonal_kept": true,
+          "bpc_on_native": 3.855743,
+          "damage_vs_native_bpc": 2.290106,
+          "damage_qmin128": 0.153067,
+          "damage_qmin128_on_native": 0.241034
+        },
+        {
+          "bpc": 5.005888,
+          "delta_bpc": -3.364631,
+          "damage_bpc": 3.364631,
+          "n_dropped": 192,
+          "n_dropped_pairs": 30624,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.93093385,
+          "n_dropped_keys": 192,
+          "diagonal_kept": true,
+          "bpc_on_native": 4.999499,
+          "damage_vs_native_bpc": 3.433861,
+          "damage_qmin128": 2.42039,
+          "damage_qmin128_on_native": 2.53755
+        },
+        {
+          "bpc": 6.017209,
+          "delta_bpc": -4.375952,
+          "damage_bpc": 4.375952,
+          "n_dropped": 255,
+          "n_dropped_pairs": 32640,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.9922179,
+          "n_dropped_keys": 255,
+          "diagonal_kept": true,
+          "bpc_on_native": 6.017209,
+          "damage_vs_native_bpc": 4.451572,
+          "damage_qmin128": 4.450996,
+          "damage_qmin128_on_native": 4.580986
+        }
+      ],
+      "prefix_diagnostics": {
+        "query_min": 128,
+        "rows": [
+          {
+            "n_dropped": 8,
+            "damage_qmin128": -0.00381,
+            "damage_qmin128_on_native": 0.012103
+          },
+          {
+            "n_dropped": 16,
+            "damage_qmin128": -0.010468,
+            "damage_qmin128_on_native": 0.01209
+          },
+          {
+            "n_dropped": 32,
+            "damage_qmin128": -0.02185,
+            "damage_qmin128_on_native": 0.012088
+          },
+          {
+            "n_dropped": 64,
+            "damage_qmin128": -0.040188,
+            "damage_qmin128_on_native": 0.0132
+          },
+          {
+            "n_dropped": 128,
+            "damage_qmin128": 0.153067,
+            "damage_qmin128_on_native": 0.241034
+          },
+          {
+            "n_dropped": 192,
+            "damage_qmin128": 2.42039,
+            "damage_qmin128_on_native": 2.53755
+          },
+          {
+            "n_dropped": 255,
+            "damage_qmin128": 4.450996,
+            "damage_qmin128_on_native": 4.580986
+          }
+        ],
+        "note": "damage_qmin128 = 只统计长上下文 query（行 i ≥ 128）的配对损伤 ——「丢最远 N 个位置」的诚实口径（前缀内的 query 被删后只剩对角是冷启动伪影，2614 同款分解）"
+      },
+      "recent": [
+        {
+          "bpc": 1.697703,
+          "delta_bpc": -0.056446,
+          "damage_bpc": 0.056446,
+          "d": 16,
+          "n_dropped_pairs": 28920,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.87913424,
+          "n_dropped_keys": 240,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.697703,
+          "damage_vs_native_bpc": 0.132065
+        },
+        {
+          "bpc": 1.577788,
+          "delta_bpc": 0.063469,
+          "damage_bpc": -0.063469,
+          "d": 32,
+          "n_dropped_pairs": 25200,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.76605058,
+          "n_dropped_keys": 224,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.577788,
+          "damage_vs_native_bpc": 0.012151
+        },
+        {
+          "bpc": 1.5575,
+          "delta_bpc": 0.083757,
+          "damage_bpc": -0.083757,
+          "d": 64,
+          "n_dropped_pairs": 18528,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.56322957,
+          "n_dropped_keys": 192,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.575003,
+          "damage_vs_native_bpc": 0.009366
+        },
+        {
+          "bpc": 1.573104,
+          "delta_bpc": 0.068153,
+          "damage_bpc": -0.068153,
+          "d": 128,
+          "n_dropped_pairs": 8256,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.25097276,
+          "n_dropped_keys": 128,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.571714,
+          "damage_vs_native_bpc": 0.006076
+        },
+        {
+          "bpc": 1.613807,
+          "delta_bpc": 0.027451,
+          "damage_bpc": -0.027451,
+          "d": 192,
+          "n_dropped_pairs": 2080,
+          "causal_pairs": 32896,
+          "dropped_frac": 0.06322957,
+          "n_dropped_keys": 64,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.568386,
+          "damage_vs_native_bpc": 0.002749
+        },
+        {
+          "bpc": 1.641257,
+          "delta_bpc": 0.0,
+          "damage_bpc": 0.0,
+          "d": 255,
+          "n_dropped_pairs": 1,
+          "causal_pairs": 32896,
+          "dropped_frac": 3.04e-05,
+          "n_dropped_keys": 1,
+          "diagonal_kept": true,
+          "bpc_on_native": 1.565637,
+          "damage_vs_native_bpc": 0.0
+        }
+      ]
+    }
+  },
+  "reconciliation_vs_2614": {
+    "available": true,
+    "note": "冒烟模式（n_batches=2）不比 2614 的 24×16 记录；只记 full 臂实测值",
+    "release_bpc": {
+      "mine": 1.483569,
+      "recorded_2614": 1.483569
+    },
+    "distance": [
+      {
+        "d": 1,
+        "mine": 4.728587,
+        "recorded_2614": 4.7286,
+        "abs_diff": 0.0
+      },
+      {
+        "d": 2,
+        "mine": 3.492334,
+        "recorded_2614": 3.4923,
+        "abs_diff": 0.0
+      },
+      {
+        "d": 4,
+        "mine": 2.236457,
+        "recorded_2614": 2.2365,
+        "abs_diff": 0.0
+      },
+      {
+        "d": 8,
+        "mine": 1.573446,
+        "recorded_2614": 1.5734,
+        "abs_diff": 0.0
+      },
+      {
+        "d": 16,
+        "mine": 1.500084,
+        "recorded_2614": 1.5001,
+        "abs_diff": 0.0
+      },
+      {
+        "d": 32,
+        "mine": 1.48727,
+        "recorded_2614": 1.4873,
+        "abs_diff": 0.0
+      },
+      {
+        "d": 64,
+        "mine": 1.484501,
+        "recorded_2614": 1.4845,
+        "abs_diff": 0.0
+      },
+      {
+        "d": 128,
+        "mine": 1.484052,
+        "recorded_2614": 1.4841,
+        "abs_diff": 0.0
+      },
+      {
+        "d": 255,
+        "mine": 1.483569,
+        "recorded_2614": 1.4836,
+        "abs_diff": 0.0
+      }
+    ],
+    "prefix": [
+      {
+        "n_dropped": 8,
+        "mine": 1.680097,
+        "recorded_2614": 1.6801,
+        "abs_diff": 0.0
+      },
+      {
+        "n_dropped": 16,
+        "mine": 1.828444,
+        "recorded_2614": 1.8284,
+        "abs_diff": 0.0
+      },
+      {
+        "n_dropped": 32,
+        "mine": 2.124549,
+        "recorded_2614": 2.1245,
+        "abs_diff": 0.0
+      },
+      {
+        "n_dropped": 64,
+        "mine": 2.731588,
+        "recorded_2614": 2.7316,
+        "abs_diff": 0.0
+      },
+      {
+        "n_dropped": 128,
+        "mine": 3.91305,
+        "recorded_2614": 3.9131,
+        "abs_diff": 0.0
+      },
+      {
+        "n_dropped": 192,
+        "mine": 5.046411,
+        "recorded_2614": 5.0464,
+        "abs_diff": 0.0
+      },
+      {
+        "n_dropped": 255,
+        "mine": 5.928295,
+        "recorded_2614": 5.9283,
+        "abs_diff": 0.0
+      }
+    ],
+    "max_abs_diff_bpc": 0.0,
+    "pass": true
+  },
+  "needle": {
+    "conditions": {
+      "full|release|planted": {
+        "recall": 0.686768,
+        "n": 4096,
+        "buckets": {
+          "window": {
+            "recall": 0.694537,
+            "n": 3588
+          },
+          "anchor": {
+            "recall": 0.63189,
+            "n": 508
+          }
+        },
+        "beyond_by_distance_band": {},
+        "hard_subset": {
+          "n": 2322,
+          "recall": 0.465978,
+          "beyond": 0.0,
+          "n_beyond": 0
+        }
+      },
+      "full|release|control": {
+        "recall": 0.433105,
+        "n": 4096,
+        "buckets": {
+          "window": {
+            "recall": 0.43311,
+            "n": 3588
+          },
+          "anchor": {
+            "recall": 0.433071,
+            "n": 508
+          }
+        },
+        "beyond_by_distance_band": {}
+      },
+      "full|native|planted": {
+        "recall": 0.392578,
+        "n": 4096,
+        "buckets": {
+          "beyond": {
+            "recall": 0.37632,
+            "n": 3505
+          },
+          "anchor": {
+            "recall": 0.442913,
+            "n": 508
+          },
+          "window": {
+            "recall": 0.771084,
+            "n": 83
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.740741,
+            "n": 54
+          },
+          "[128,256)": {
+            "recall": 0.384438,
+            "n": 1735
+          },
+          "[32,64)": {
+            "recall": 0.357576,
+            "n": 495
+          },
+          "[64,128)": {
+            "recall": 0.356265,
+            "n": 1221
+          }
+        },
+        "hard_subset": {
+          "n": 2612,
+          "recall": 0.080398,
+          "beyond": 0.057041,
+          "n_beyond": 2244
+        }
+      },
+      "full|native|control": {
+        "recall": 0.362305,
+        "n": 4096,
+        "buckets": {
+          "beyond": {
+            "recall": 0.359772,
+            "n": 3505
+          },
+          "anchor": {
+            "recall": 0.366142,
+            "n": 508
+          },
+          "window": {
+            "recall": 0.445783,
+            "n": 83
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.333333,
+            "n": 54
+          },
+          "[128,256)": {
+            "recall": 0.367147,
+            "n": 1735
+          },
+          "[32,64)": {
+            "recall": 0.355556,
+            "n": 495
+          },
+          "[64,128)": {
+            "recall": 0.35217,
+            "n": 1221
+          }
+        }
+      },
+      "window32|release|planted": {
+        "recall": 0.529541,
+        "n": 4096,
+        "buckets": {
+          "window": {
+            "recall": 0.529543,
+            "n": 3588
+          },
+          "anchor": {
+            "recall": 0.529528,
+            "n": 508
+          }
+        },
+        "beyond_by_distance_band": {},
+        "hard_subset": {
+          "n": 2521,
+          "recall": 0.268544,
+          "beyond": 0.0,
+          "n_beyond": 0
+        }
+      },
+      "window32|release|control": {
+        "recall": 0.384521,
+        "n": 4096,
+        "buckets": {
+          "window": {
+            "recall": 0.383779,
+            "n": 3588
+          },
+          "anchor": {
+            "recall": 0.389764,
+            "n": 508
+          }
+        },
+        "beyond_by_distance_band": {}
+      },
+      "window32|native|planted": {
+        "recall": 0.440918,
+        "n": 4096,
+        "buckets": {
+          "beyond": {
+            "recall": 0.427389,
+            "n": 3505
+          },
+          "anchor": {
+            "recall": 0.48622,
+            "n": 508
+          },
+          "window": {
+            "recall": 0.73494,
+            "n": 83
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.62963,
+            "n": 54
+          },
+          "[128,256)": {
+            "recall": 0.430548,
+            "n": 1735
+          },
+          "[32,64)": {
+            "recall": 0.422222,
+            "n": 495
+          },
+          "[64,128)": {
+            "recall": 0.416052,
+            "n": 1221
+          }
+        },
+        "hard_subset": {
+          "n": 2328,
+          "recall": 0.060997,
+          "beyond": 0.03566,
+          "n_beyond": 1991
+        }
+      },
+      "window32|native|control": {
+        "recall": 0.431641,
+        "n": 4096,
+        "buckets": {
+          "beyond": {
+            "recall": 0.431954,
+            "n": 3505
+          },
+          "anchor": {
+            "recall": 0.429134,
+            "n": 508
+          },
+          "window": {
+            "recall": 0.433735,
+            "n": 83
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.462963,
+            "n": 54
+          },
+          "[128,256)": {
+            "recall": 0.443228,
+            "n": 1735
+          },
+          "[32,64)": {
+            "recall": 0.40202,
+            "n": 495
+          },
+          "[64,128)": {
+            "recall": 0.426699,
+            "n": 1221
+          }
+        }
+      }
+    },
+    "n_needles_total": 4096,
+    "seed": 3,
+    "construction_check": {
+      "full_release_planted_recall": 0.686768,
+      "recorded_M_2615": {
+        "recall": 0.686768,
+        "window": 0.694537,
+        "anchor": 0.63189,
+        "control_recall": 0.433105,
+        "n": 4096
+      },
+      "matches_M_2615": true,
+      "note": "契约 M 已把该构造的「无针地板」钉在 0.433（plant=False）；本实验用同一构造序列（seed 3 + 32×16）⇒ full 臂 release 口径必须逐位复现M 的基线，否则构造不可判读（SCHEMA §17.10）"
+    }
+  },
+  "criteria": {
+    "band_bpc": 0.014,
+    "delta_sign": "Δ = bpc_对照(full) − bpc_实验(window32)（正 = window32 更好）",
+    "criterion_1_quality": {
+      "bpc_full_native_operating_point": 1.483569,
+      "bpc_window32_native_operating_point": 1.565637,
+      "delta_bpc_native": -0.082069,
+      "bpc_window32_release_path": 1.641257,
+      "delta_bpc_release": -0.157688,
+      "threshold_bpc": 0.014,
+      "verdict": "window32 质量显著更差（税 0.0821 bpc）",
+      "historical_X2_tax": "契约记 X2 曾测 +0.058~0.121（税）"
+    },
+    "criterion_2_dependence_shift": {
+      "band": {
+        "d": [
+          8,
+          16,
+          32
+        ],
+        "damage_full": {
+          "8": 0.089877,
+          "16": 0.016515,
+          "32": 0.003701
+        },
+        "damage_window32": {
+          "8": 0.097078,
+          "16": 0.010341,
+          "32": -0.001531
+        },
+        "gap": {
+          "8": -0.007201,
+          "16": 0.006174,
+          "32": 0.005232
+        },
+        "mean_gap": 0.001402
+      },
+      "far": {
+        "d": [
+          64,
+          128,
+          255
+        ],
+        "damage_full": {
+          "64": 0.000932,
+          "128": 0.000483,
+          "255": 0.0
+        },
+        "damage_window32": {
+          "64": 0.001593,
+          "128": -0.000362,
+          "255": 0.0
+        },
+        "gap": {
+          "64": -0.000661,
+          "128": 0.000845,
+          "255": 0.0
+        }
+      },
+      "operational_rule": "d ∈ [8,32] 上 damage_full − damage_window32 的**均值** ≥ 0.014 = 方差界 ⇒ 记「依赖右移/局部化成立」（逐 d 明细一并报）",
+      "met": false,
+      "note": "括号里的读法按契约字面执行：window32 在该区间的伤害要**显著小于** full。若不成立，也如实报（判据线未改）",
+      "secondary_native_reference": {
+        "d": [
+          8,
+          16,
+          32
+        ],
+        "damage_full_vs_its_release": {
+          "8": 0.089877,
+          "16": 0.016515,
+          "32": 0.003701
+        },
+        "damage_window32_vs_its_native": {
+          "8": 0.062045,
+          "16": 0.010884,
+          "32": 8e-05
+        },
+        "gap": {
+          "8": 0.027832,
+          "16": 0.005631,
+          "32": 0.003621
+        },
+        "mean_gap": 0.012361,
+        "met": false,
+        "note": "window32 的 release 口径基线本身是 OOD（全可见时 1.6413，反而比 native 1.5656 差 0.0756）——因为它在训练中从未见过距离 ≥32 的 key；所以「依赖」的工作点口径是 native。两条口径都报，判据用主口径（release）"
+      }
+    },
+    "criterion_3_retention": {
+      "question": "window32 能不能答出「原本位于窗口外」的针（信息被搬到近处）？",
+      "window32_native_beyond_recall": {
+        "recall": 0.427389,
+        "n": 3505
+      },
+      "window32_native_beyond_control": {
+        "recall": 0.431954,
+        "n": 3505
+      },
+      "window32_native_beyond_gap_vs_floor": -0.004565,
+      "full_native_beyond_recall": {
+        "recall": 0.37632,
+        "n": 3505
+      },
+      "gap_window32_minus_full": 0.051069,
+      "window32_release_beyond_recall": null,
+      "threshold_gap_pp": 0.1,
+      "verdict": "丢了（不是搬了）：窗口外针的召回与同掩码无针地板无显著差（-0.004565 < 0.10）",
+      "full_model_same_mask_note": "full 臂在同一窗掩码下的 beyond 召回是「全可见训练的模型被强行套窗」的对照物；它不是 window32 的证据，只是同一任务同输入分布下的参照"
+    }
+  },
+  "reproducibility": {
+    "threshold": 0.005,
+    "per_config": [
+      {
+        "arm": "full",
+        "config": "distance:8",
+        "run1": 1.573446,
+        "run2": 1.573446,
+        "abs_diff": 2.43e-07
+      },
+      {
+        "arm": "window32",
+        "config": "distance:8",
+        "run1": 1.738335,
+        "run2": 1.738335,
+        "abs_diff": 3.42e-07
+      },
+      {
+        "arm": "full",
+        "config": "distance:32",
+        "run1": 1.48727,
+        "run2": 1.48727,
+        "abs_diff": 1.46e-07
+      },
+      {
+        "arm": "window32",
+        "config": "distance:32",
+        "run1": 1.639726,
+        "run2": 1.639726,
+        "abs_diff": 2.29e-07
+      },
+      {
+        "arm": "full",
+        "config": "prefix:64",
+        "run1": 2.731588,
+        "run2": 2.731588,
+        "abs_diff": 2.59e-07
+      },
+      {
+        "arm": "window32",
+        "config": "prefix:64",
+        "run1": 2.780831,
+        "run2": 2.780831,
+        "abs_diff": 4.78e-07
+      },
+      {
+        "arm": "full",
+        "config": "recent:32",
+        "run1": 1.695384,
+        "run2": 1.695384,
+        "abs_diff": 2.54e-07
+      },
+      {
+        "arm": "window32",
+        "config": "recent:32",
+        "run1": 1.577788,
+        "run2": 1.577788,
+        "abs_diff": 2.63e-07
+      },
+      {
+        "arm": "window32",
+        "config": "native:None",
+        "run1": 1.565637,
+        "run2": 1.565637,
+        "abs_diff": 0.0
+      }
+    ],
+    "max_abs_diff": 4.78e-07,
+    "pass": true
+  },
+  "noise_floor": {
+    "window_seeds": [
+      3,
+      4,
+      5
+    ],
+    "configs": [
+      {
+        "id": "distance:8",
+        "per_arm_seed": [
+          {
+            "arm": "full",
+            "seed": 3,
+            "damage_bpc": 0.092589
+          },
+          {
+            "arm": "window32",
+            "seed": 3,
+            "damage_bpc": 0.096799
+          },
+          {
+            "arm": "full",
+            "seed": 4,
+            "damage_bpc": 0.085559
+          },
+          {
+            "arm": "window32",
+            "seed": 4,
+            "damage_bpc": 0.091045
+          },
+          {
+            "arm": "full",
+            "seed": 5,
+            "damage_bpc": 0.087994
+          },
+          {
+            "arm": "window32",
+            "seed": 5,
+            "damage_bpc": 0.099722
+          }
+        ]
+      },
+      {
+        "id": "prefix:64",
+        "per_arm_seed": [
+          {
+            "arm": "full",
+            "seed": 3,
+            "damage_bpc": 1.244563
+          },
+          {
+            "arm": "window32",
+            "seed": 3,
+            "damage_bpc": 1.136187
+          },
+          {
+            "arm": "full",
+            "seed": 4,
+            "damage_bpc": 1.242946
+          },
+          {
+            "arm": "window32",
+            "seed": 4,
+            "damage_bpc": 1.134277
+          },
+          {
+            "arm": "full",
+            "seed": 5,
+            "damage_bpc": 1.247646
+          },
+          {
+            "arm": "window32",
+            "seed": 5,
+            "damage_bpc": 1.133333
+          }
+        ]
+      },
+      {
+        "id": "recent:32",
+        "per_arm_seed": [
+          {
+            "arm": "full",
+            "seed": 3,
+            "damage_bpc": 0.207735
+          },
+          {
+            "arm": "window32",
+            "seed": 3,
+            "damage_bpc": -0.061891
+          },
+          {
+            "arm": "full",
+            "seed": 4,
+            "damage_bpc": 0.212343
+          },
+          {
+            "arm": "window32",
+            "seed": 4,
+            "damage_bpc": -0.056976
+          },
+          {
+            "arm": "full",
+            "seed": 5,
+            "damage_bpc": 0.228602
+          },
+          {
+            "arm": "window32",
+            "seed": 5,
+            "damage_bpc": -0.050621
+          }
+        ]
+      }
+    ],
+    "spread_by_arm": {
+      "full": {
+        "distance:8": {
+          "min": 0.085559,
+          "max": 0.092589,
+          "spread_bpc": 0.00703
+        },
+        "prefix:64": {
+          "min": 1.242946,
+          "max": 1.247646,
+          "spread_bpc": 0.0047
+        },
+        "recent:32": {
+          "min": 0.207735,
+          "max": 0.228602,
+          "spread_bpc": 0.020867
+        }
+      },
+      "window32": {
+        "distance:8": {
+          "min": 0.091045,
+          "max": 0.099722,
+          "spread_bpc": 0.008677
+        },
+        "prefix:64": {
+          "min": 1.133333,
+          "max": 1.136187,
+          "spread_bpc": 0.002854
+        },
+        "recent:32": {
+          "min": -0.061891,
+          "max": -0.050621,
+          "spread_bpc": 0.01127
+        }
+      }
+    },
+    "note": "同一配置内、跨 3 个评测窗口 seed 的 damage 散布（逐臂、逐配置）——这是评测侧的噪声底；训练侧另见 convergence_reconciliation"
+  },
+  "convergence_reconciliation": {
+    "method": "最小二乘斜率，原始符号（nats/step，负 = 还在下降）；同一窗口 [lo,hi] 对两臂各算一次，无「一臂 25% 窗、另一臂 50% 窗」的混用",
+    "logs": {
+      "full": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk_train_log.jsonl",
+      "window32": "axes/A-mixing/A9-old-info-retention/experiments/2615-window-trained-retention-13m/train/window32_rep/train_log.jsonl"
+    },
+    "n_points": {
+      "full": 61,
+      "window32": 61
+    },
+    "slope_full_range": {
+      "full": -9.7588e-05,
+      "window32": -9.5521e-05
+    },
+    "slope_last_25pct": {
+      "full": 1.177e-06,
+      "window32": 6.76e-07
+    },
+    "last_logged_loss": {
+      "full": 1.011,
+      "window32": 1.0486,
+      "note": "两臂同一步序、同一数据流（同一 seed），nats 口径"
+    },
+    "twice_longer_point": {
+      "ran": false,
+      "note": "契约 O 固定两臂 12k 步；2×（24k）点需要再训约 8 min/臂 ⇒ 未跑。本实验的主结论是**同快照内的损伤曲线/召回对比**，跨臂的 Δbpc 只作快照口径（SCHEMA §16 的警示照登，见 analysis.md）"
+    },
+    "training_nondeterminism_probe": {
+      "what": "同 seed 同配置下窗口开关关闭时的两次 400 步重跑（本实验实测）",
+      "run1_loss_step200": 2.5886,
+      "run2_loss_step200": 2.5841,
+      "run1_loss_step399": 2.2625,
+      "run2_loss_step399": 2.2517,
+      "abs_diff_step200_nats": 0.0045,
+      "abs_diff_step399_nats": 0.0108,
+      "note": "固定 seed 训练在本引擎/共享卡上**不可逐位复现**（项目级已知事实，见 .scratch/11-retry-matrix-validity 的 D4）；本探针给出本配置下的run-to-run 量级 ⇒ 跨臂 Δbpc 的解释必须留出该余量"
+    }
+  },
+  "code": {
+    "run_py_sha256": "e9491b5a4c82e6db60fd1c7a44db5b135d94910fb3b219eb27d02fe1b31bd7d5",
+    "retention_py_sha256": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502",
+    "depth_ar_py_sha256": "6c7454581af30291688cf825c39f01ce2175c0e447ef5e83b772f2d063ddfea5",
+    "train_depth_ar_py_sha256": "11298e6b22678c3c6d9b41600a539b2daf62f90003a32980e0b52a960e208613",
+    "tests_depth_ar_sha256": "e9b692bb5ac85c7519bd21d543a118db74c50f80326d3eebbb6ded0f757b720c",
+    "tests_retention_sha256": "d549f498ef10f2af408ecb5ab9a128482f41624bae271aedc823c21cf9391fd3"
+  },
+  "cost": {
+    "wall_minutes": 0.463,
+    "wall_seconds": 27.81,
+    "peak_mem_mib": 194.7,
+    "n_evals": 396,
+    "device": "NVIDIA GeForce RTX 4090"
+  }
+}
