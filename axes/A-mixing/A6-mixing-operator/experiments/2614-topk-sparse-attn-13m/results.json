@@ -1,0 +1,1509 @@
+{
+  "experiment": "2614-topk-sparse-attn-13m",
+  "config": {
+    "experiment": "2614-topk-sparse-attn-13m",
+    "ticket": "31-batch4 契约 J",
+    "seed": 0,
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "optimizer": "AdamW(wd=0.01) + warmup 200 步 + cosine 到 0.1×",
+    "data": "data/enwik8_full.npz",
+    "data_split": "first 90M train / last 10M eval, vocab from full file",
+    "vocab_size": 206,
+    "train_tokens": 98304000,
+    "base": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 4,
+      "dropout": 0.0,
+      "norm_cap": 1.0,
+      "dense": true,
+      "topology": "sequential",
+      "exit_mode": "uniform",
+      "loss": "仅最终深度 CE（stock AR）",
+      "readout": "tied h·Eᵀ，无 final LayerNorm（共享底座偏离 1）"
+    },
+    "arms": [
+      {
+        "arm": "full",
+        "attn_sparse_k": 0,
+        "role": "基线：全因果 softmax 注意力（stock Block + SDPA）",
+        "run": "runs/full-12k-s0"
+      },
+      {
+        "arm": "topk32",
+        "attn_sparse_k": 32,
+        "role": "内容 top-k（k=32）：因果内按 q·kᵀ 保留最大 32 个键",
+        "run": "runs/topk32-12k-s0"
+      },
+      {
+        "arm": "topk64",
+        "attn_sparse_k": 64,
+        "role": "内容 top-k（k=64）：同算子、另一档 k",
+        "run": "runs/topk64-12k-s0"
+      }
+    ],
+    "rerun_arms": [
+      "full"
+    ],
+    "rerun_note": "重跑散度（契约 J 要求）：主 Agent 裁决「3 主臂 + 只重跑基线 full 臂」（Δ 的噪声由基线与实验臂共同决定，基线是被比较的参照，重跑它同时能跨批校验可比性）；评测批次保持 20 不砍。",
+    "variable": "attn_sparse_k（唯一不等字段；其余逐字段一致，见 field_by_field）",
+    "delta_convention": "Δ = bpc_full − bpc_topk（正 = 改善；SCHEMA §17.3）"
+  },
+  "arms": {
+    "full": {
+      "role": "基线：全因果 softmax 注意力（stock Block + SDPA）",
+      "attn_sparse_k": 0,
+      "source": "runs/full-12k-s0",
+      "params": 6962688,
+      "train_tokens": 98304000,
+      "bpc_from_train_process": 1.5304,
+      "wall_min": 6.34,
+      "peak_child_mem_gb": 1.47,
+      "seconds_per_step": 0.03172,
+      "gnorm_monitor": {
+        "gnorm_max": 7.86,
+        "gnorm_mean": 0.548,
+        "grad_skips": 0,
+        "attn_sparse_mean": null,
+        "attn_sparse_layer_samples": 0
+      },
+      "intervention": {
+        "attn_sparse_k": 0,
+        "enabled": false,
+        "params_added": 0,
+        "parametrized": false,
+        "block_python_class": "Block",
+        "kept_theory_mean": 0.0,
+        "kept_mean": null,
+        "kept_min": null,
+        "kept_max": null,
+        "kept_frac_of_T": null,
+        "sel_dist_mean": null,
+        "sel_in_lastk_frac": null,
+        "kept_count_matches_theory": null,
+        "alive": false,
+        "alive_note": "开关关闭（attn_sparse_k=0）：无异于基线"
+      },
+      "depth_curve": [
+        {
+          "depth": 0,
+          "bpc": 7.4065,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "bpc": 4.8816,
+          "acc": 0.1452
+        },
+        {
+          "depth": 2,
+          "bpc": 4.4061,
+          "acc": 0.1974
+        },
+        {
+          "depth": 3,
+          "bpc": 3.852,
+          "acc": 0.2857
+        },
+        {
+          "depth": 4,
+          "bpc": 3.1999,
+          "acc": 0.3981
+        },
+        {
+          "depth": 5,
+          "bpc": 2.6493,
+          "acc": 0.498
+        },
+        {
+          "depth": 6,
+          "bpc": 2.1993,
+          "acc": 0.5702
+        },
+        {
+          "depth": 7,
+          "bpc": 1.7352,
+          "acc": 0.6574
+        },
+        {
+          "depth": 8,
+          "bpc": 1.5304,
+          "acc": 0.6892
+        }
+      ],
+      "clean_bpc": 1.5304,
+      "next_token_acc": 0.6892,
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.0557
+        },
+        {
+          "depth": 1,
+          "accept": 0.159
+        },
+        {
+          "depth": 2,
+          "accept": 0.2205
+        },
+        {
+          "depth": 3,
+          "accept": 0.3135
+        },
+        {
+          "depth": 4,
+          "accept": 0.4497
+        },
+        {
+          "depth": 5,
+          "accept": 0.569
+        },
+        {
+          "depth": 6,
+          "accept": 0.6663
+        },
+        {
+          "depth": 7,
+          "accept": 0.8072
+        }
+      ],
+      "tf@4": 0.4497,
+      "attn_sparse_liveness": {
+        "attn_sparse_k": 0,
+        "enabled": false,
+        "params_added": 0,
+        "parametrized": false,
+        "block_python_class": "Block",
+        "kept_theory_mean": 0.0,
+        "kept_mean": null,
+        "kept_min": null,
+        "kept_max": null,
+        "kept_frac_of_T": null,
+        "sel_dist_mean": null,
+        "sel_in_lastk_frac": null,
+        "kept_count_matches_theory": null,
+        "alive": false,
+        "alive_note": "开关关闭（attn_sparse_k=0）：无异于基线"
+      },
+      "operator_liveness": null,
+      "eval_wall_min": 0.01
+    },
+    "topk32": {
+      "role": "内容 top-k（k=32）：因果内按 q·kᵀ 保留最大 32 个键",
+      "attn_sparse_k": 32,
+      "source": "runs/topk32-12k-s0",
+      "params": 6962688,
+      "train_tokens": 98304000,
+      "bpc_from_train_process": 1.547,
+      "wall_min": 10.35,
+      "peak_child_mem_gb": 2.55,
+      "seconds_per_step": 0.05175,
+      "gnorm_monitor": {
+        "gnorm_max": 7.39,
+        "gnorm_mean": 0.523,
+        "grad_skips": 0,
+        "attn_sparse_mean": {
+          "kept_mean": 30.0625,
+          "kept_frac_of_T": 0.117432,
+          "sel_dist_mean": 24.812174,
+          "sel_in_lastk_frac": 0.772075
+        },
+        "attn_sparse_layer_samples": 96000
+      },
+      "intervention": {
+        "attn_sparse_k": 32,
+        "enabled": true,
+        "params_added": 0,
+        "parametrized": false,
+        "block_python_class": "TopKBlock",
+        "kept_theory_mean": 30.0625,
+        "kept_mean": 30.0625,
+        "kept_min": 1.0,
+        "kept_max": 32.0,
+        "kept_frac_of_T": 0.117432,
+        "sel_dist_mean": 23.0656,
+        "sel_in_lastk_frac": 0.7967,
+        "n_layers_sampled": 16,
+        "kept_count_matches_theory": true,
+        "alive": true,
+        "alive_note": "保留键数 == 理论 mean_i min(k,i+1) ⇒ 掩码按 k 生效；sel_in_lastk_frac ≪ 1 = 选择偏离「最近 k 个键」的位置基线（按内容）"
+      },
+      "depth_curve": [
+        {
+          "depth": 0,
+          "bpc": 7.4175,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "bpc": 5.544,
+          "acc": 0.1214
+        },
+        {
+          "depth": 2,
+          "bpc": 5.1268,
+          "acc": 0.1345
+        },
+        {
+          "depth": 3,
+          "bpc": 4.4148,
+          "acc": 0.2027
+        },
+        {
+          "depth": 4,
+          "bpc": 3.7954,
+          "acc": 0.2934
+        },
+        {
+          "depth": 5,
+          "bpc": 3.1945,
+          "acc": 0.3971
+        },
+        {
+          "depth": 6,
+          "bpc": 2.5495,
+          "acc": 0.5038
+        },
+        {
+          "depth": 7,
+          "bpc": 2.0145,
+          "acc": 0.5992
+        },
+        {
+          "depth": 8,
+          "bpc": 1.547,
+          "acc": 0.6858
+        }
+      ],
+      "clean_bpc": 1.547,
+      "next_token_acc": 0.6858,
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.0559
+        },
+        {
+          "depth": 1,
+          "accept": 0.1304
+        },
+        {
+          "depth": 2,
+          "accept": 0.1454
+        },
+        {
+          "depth": 3,
+          "accept": 0.227
+        },
+        {
+          "depth": 4,
+          "accept": 0.3299
+        },
+        {
+          "depth": 5,
+          "accept": 0.453
+        },
+        {
+          "depth": 6,
+          "accept": 0.5793
+        },
+        {
+          "depth": 7,
+          "accept": 0.7183
+        }
+      ],
+      "tf@4": 0.3299,
+      "attn_sparse_liveness": {
+        "attn_sparse_k": 32,
+        "enabled": true,
+        "params_added": 0,
+        "parametrized": false,
+        "block_python_class": "TopKBlock",
+        "kept_theory_mean": 30.0625,
+        "kept_mean": 30.0625,
+        "kept_min": 1.0,
+        "kept_max": 32.0,
+        "kept_frac_of_T": 0.117432,
+        "sel_dist_mean": 23.0656,
+        "sel_in_lastk_frac": 0.7967,
+        "n_layers_sampled": 16,
+        "kept_count_matches_theory": true,
+        "alive": true,
+        "alive_note": "保留键数 == 理论 mean_i min(k,i+1) ⇒ 掩码按 k 生效；sel_in_lastk_frac ≪ 1 = 选择偏离「最近 k 个键」的位置基线（按内容）"
+      },
+      "operator_liveness": {
+        "k": 32,
+        "eval_batch_size": 8,
+        "eval_seed": 21,
+        "per_layer": [
+          {
+            "layer": 1,
+            "rel_dev_vs_full": 0.224097,
+            "kept_mean": 30.0625,
+            "sel_dist_mean": 24.4316,
+            "sel_in_lastk_frac": 0.7811
+          },
+          {
+            "layer": 2,
+            "rel_dev_vs_full": 0.184262,
+            "kept_mean": 30.0625,
+            "sel_dist_mean": 15.3364,
+            "sel_in_lastk_frac": 0.9615
+          },
+          {
+            "layer": 3,
+            "rel_dev_vs_full": 0.000191,
+            "kept_mean": 30.0625,
+            "sel_dist_mean": 15.4803,
+            "sel_in_lastk_frac": 0.9487
+          },
+          {
+            "layer": 4,
+            "rel_dev_vs_full": 0.000616,
+            "kept_mean": 30.0625,
+            "sel_dist_mean": 16.2999,
+            "sel_in_lastk_frac": 0.9056
+          },
+          {
+            "layer": 5,
+            "rel_dev_vs_full": 0.002742,
+            "kept_mean": 30.0625,
+            "sel_dist_mean": 18.3491,
+            "sel_in_lastk_frac": 0.8371
+          },
+          {
+            "layer": 6,
+            "rel_dev_vs_full": 0.006095,
+            "kept_mean": 30.0625,
+            "sel_dist_mean": 23.22,
+            "sel_in_lastk_frac": 0.7563
+          },
+          {
+            "layer": 7,
+            "rel_dev_vs_full": 0.012902,
+            "kept_mean": 30.0625,
+            "sel_dist_mean": 28.781,
+            "sel_in_lastk_frac": 0.6625
+          },
+          {
+            "layer": 8,
+            "rel_dev_vs_full": 0.009844,
+            "kept_mean": 30.0625,
+            "sel_dist_mean": 41.2168,
+            "sel_in_lastk_frac": 0.5454
+          }
+        ],
+        "rel_dev_vs_full_mean": 0.055094,
+        "rel_dev_vs_full_min": 0.000191,
+        "alive": true
+      },
+      "eval_wall_min": 0.01
+    },
+    "topk64": {
+      "role": "内容 top-k（k=64）：同算子、另一档 k",
+      "attn_sparse_k": 64,
+      "source": "runs/topk64-12k-s0",
+      "params": 6962688,
+      "train_tokens": 98304000,
+      "bpc_from_train_process": 1.5399,
+      "wall_min": 10.35,
+      "peak_child_mem_gb": 2.57,
+      "seconds_per_step": 0.05175,
+      "gnorm_monitor": {
+        "gnorm_max": 7.68,
+        "gnorm_mean": 0.524,
+        "grad_skips": 0,
+        "attn_sparse_mean": {
+          "kept_mean": 56.125,
+          "kept_frac_of_T": 0.219238,
+          "sel_dist_mean": 37.953451,
+          "sel_in_lastk_frac": 0.857843
+        },
+        "attn_sparse_layer_samples": 96000
+      },
+      "intervention": {
+        "attn_sparse_k": 64,
+        "enabled": true,
+        "params_added": 0,
+        "parametrized": false,
+        "block_python_class": "TopKBlock",
+        "kept_theory_mean": 56.125,
+        "kept_mean": 56.125,
+        "kept_min": 1.0,
+        "kept_max": 64.0,
+        "kept_frac_of_T": 0.219238,
+        "sel_dist_mean": 36.6782,
+        "sel_in_lastk_frac": 0.8745,
+        "n_layers_sampled": 16,
+        "kept_count_matches_theory": true,
+        "alive": true,
+        "alive_note": "保留键数 == 理论 mean_i min(k,i+1) ⇒ 掩码按 k 生效；sel_in_lastk_frac ≪ 1 = 选择偏离「最近 k 个键」的位置基线（按内容）"
+      },
+      "depth_curve": [
+        {
+          "depth": 0,
+          "bpc": 7.4164,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "bpc": 5.1046,
+          "acc": 0.1387
+        },
+        {
+          "depth": 2,
+          "bpc": 4.6252,
+          "acc": 0.1845
+        },
+        {
+          "depth": 3,
+          "bpc": 4.1169,
+          "acc": 0.2533
+        },
+        {
+          "depth": 4,
+          "bpc": 3.5815,
+          "acc": 0.3343
+        },
+        {
+          "depth": 5,
+          "bpc": 2.9372,
+          "acc": 0.4436
+        },
+        {
+          "depth": 6,
+          "bpc": 2.3974,
+          "acc": 0.5384
+        },
+        {
+          "depth": 7,
+          "bpc": 1.9495,
+          "acc": 0.6084
+        },
+        {
+          "depth": 8,
+          "bpc": 1.5399,
+          "acc": 0.6864
+        }
+      ],
+      "clean_bpc": 1.5399,
+      "next_token_acc": 0.6864,
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.0557
+        },
+        {
+          "depth": 1,
+          "accept": 0.1514
+        },
+        {
+          "depth": 2,
+          "accept": 0.2094
+        },
+        {
+          "depth": 3,
+          "accept": 0.2855
+        },
+        {
+          "depth": 4,
+          "accept": 0.3798
+        },
+        {
+          "depth": 5,
+          "accept": 0.5079
+        },
+        {
+          "depth": 6,
+          "accept": 0.6218
+        },
+        {
+          "depth": 7,
+          "accept": 0.7335
+        }
+      ],
+      "tf@4": 0.3798,
+      "attn_sparse_liveness": {
+        "attn_sparse_k": 64,
+        "enabled": true,
+        "params_added": 0,
+        "parametrized": false,
+        "block_python_class": "TopKBlock",
+        "kept_theory_mean": 56.125,
+        "kept_mean": 56.125,
+        "kept_min": 1.0,
+        "kept_max": 64.0,
+        "kept_frac_of_T": 0.219238,
+        "sel_dist_mean": 36.6782,
+        "sel_in_lastk_frac": 0.8745,
+        "n_layers_sampled": 16,
+        "kept_count_matches_theory": true,
+        "alive": true,
+        "alive_note": "保留键数 == 理论 mean_i min(k,i+1) ⇒ 掩码按 k 生效；sel_in_lastk_frac ≪ 1 = 选择偏离「最近 k 个键」的位置基线（按内容）"
+      },
+      "operator_liveness": {
+        "k": 64,
+        "eval_batch_size": 8,
+        "eval_seed": 21,
+        "per_layer": [
+          {
+            "layer": 1,
+            "rel_dev_vs_full": 0.278854,
+            "kept_mean": 56.125,
+            "sel_dist_mean": 37.9458,
+            "sel_in_lastk_frac": 0.8765
+          },
+          {
+            "layer": 2,
+            "rel_dev_vs_full": 0.000146,
+            "kept_mean": 56.125,
+            "sel_dist_mean": 30.1154,
+            "sel_in_lastk_frac": 0.9797
+          },
+          {
+            "layer": 3,
+            "rel_dev_vs_full": 4.4e-05,
+            "kept_mean": 56.125,
+            "sel_dist_mean": 30.5481,
+            "sel_in_lastk_frac": 0.9601
+          },
+          {
+            "layer": 4,
+            "rel_dev_vs_full": 0.001282,
+            "kept_mean": 56.125,
+            "sel_dist_mean": 31.3186,
+            "sel_in_lastk_frac": 0.9362
+          },
+          {
+            "layer": 5,
+            "rel_dev_vs_full": 0.000898,
+            "kept_mean": 56.125,
+            "sel_dist_mean": 32.3043,
+            "sel_in_lastk_frac": 0.9087
+          },
+          {
+            "layer": 6,
+            "rel_dev_vs_full": 0.004114,
+            "kept_mean": 56.125,
+            "sel_dist_mean": 36.4872,
+            "sel_in_lastk_frac": 0.8538
+          },
+          {
+            "layer": 7,
+            "rel_dev_vs_full": 0.002922,
+            "kept_mean": 56.125,
+            "sel_dist_mean": 37.6052,
+            "sel_in_lastk_frac": 0.8262
+          },
+          {
+            "layer": 8,
+            "rel_dev_vs_full": 0.005011,
+            "kept_mean": 56.125,
+            "sel_dist_mean": 55.5963,
+            "sel_in_lastk_frac": 0.6624
+          }
+        ],
+        "rel_dev_vs_full_mean": 0.036659,
+        "rel_dev_vs_full_min": 4.4e-05,
+        "alive": true
+      },
+      "eval_wall_min": 0.01
+    }
+  },
+  "cost": {
+    "theory": {
+      "k=32": {
+        "per_token_per_layer_flops": {
+          "attn_full": 262144,
+          "attn_topk": 147456,
+          "other": 1572864,
+          "total_full": 1835008,
+          "total_topk": 1720320
+        },
+        "attn_flops_reduction_frac": 0.4375,
+        "attn_reduction_formula": "(T − k) / (2T)：QKᵀ 全矩阵因内容选择不可省",
+        "attn_share_of_layer_flops_full": 0.1429,
+        "total_flops_reduction_frac": 0.0625,
+        "naive_key_count_reduction_frac": 0.875,
+        "kv_cache_bytes_reduction_frac": 0.0,
+        "kv_cache_note": "内容选择需要**全部** K/V 才能算分数 ⇒ KV 缓存/显存不能减少（位置窗口式稀疏才会减到 k/T）；这是与「位置稀疏」的本质区别，不是实现缺陷"
+      },
+      "k=64": {
+        "per_token_per_layer_flops": {
+          "attn_full": 262144,
+          "attn_topk": 163840,
+          "other": 1572864,
+          "total_full": 1835008,
+          "total_topk": 1736704
+        },
+        "attn_flops_reduction_frac": 0.375,
+        "attn_reduction_formula": "(T − k) / (2T)：QKᵀ 全矩阵因内容选择不可省",
+        "attn_share_of_layer_flops_full": 0.1429,
+        "total_flops_reduction_frac": 0.0536,
+        "naive_key_count_reduction_frac": 0.75,
+        "kv_cache_bytes_reduction_frac": 0.0,
+        "kv_cache_note": "内容选择需要**全部** K/V 才能算分数 ⇒ KV 缓存/显存不能减少（位置窗口式稀疏才会减到 k/T）；这是与「位置稀疏」的本质区别，不是实现缺陷"
+      }
+    },
+    "theory_scaling_vs_T": [
+      {
+        "T": 256,
+        "k": 32,
+        "attn_share_of_layer": 0.1429,
+        "attn_reduction_frac": 0.4375,
+        "total_layer_reduction_frac": 0.0625
+      },
+      {
+        "T": 256,
+        "k": 64,
+        "attn_share_of_layer": 0.1429,
+        "attn_reduction_frac": 0.375,
+        "total_layer_reduction_frac": 0.0536
+      },
+      {
+        "T": 512,
+        "k": 32,
+        "attn_share_of_layer": 0.25,
+        "attn_reduction_frac": 0.4688,
+        "total_layer_reduction_frac": 0.1172
+      },
+      {
+        "T": 512,
+        "k": 64,
+        "attn_share_of_layer": 0.25,
+        "attn_reduction_frac": 0.4375,
+        "total_layer_reduction_frac": 0.1094
+      },
+      {
+        "T": 1024,
+        "k": 32,
+        "attn_share_of_layer": 0.4,
+        "attn_reduction_frac": 0.4844,
+        "total_layer_reduction_frac": 0.1938
+      },
+      {
+        "T": 1024,
+        "k": 64,
+        "attn_share_of_layer": 0.4,
+        "attn_reduction_frac": 0.4688,
+        "total_layer_reduction_frac": 0.1875
+      },
+      {
+        "T": 2048,
+        "k": 32,
+        "attn_share_of_layer": 0.5714,
+        "attn_reduction_frac": 0.4922,
+        "total_layer_reduction_frac": 0.2812
+      },
+      {
+        "T": 2048,
+        "k": 64,
+        "attn_share_of_layer": 0.5714,
+        "attn_reduction_frac": 0.4844,
+        "total_layer_reduction_frac": 0.2768
+      },
+      {
+        "T": 4096,
+        "k": 32,
+        "attn_share_of_layer": 0.7273,
+        "attn_reduction_frac": 0.4961,
+        "total_layer_reduction_frac": 0.3608
+      },
+      {
+        "T": 4096,
+        "k": 64,
+        "attn_share_of_layer": 0.7273,
+        "attn_reduction_frac": 0.4922,
+        "total_layer_reduction_frac": 0.358
+      },
+      {
+        "T": 8192,
+        "k": 32,
+        "attn_share_of_layer": 0.8421,
+        "attn_reduction_frac": 0.498,
+        "total_layer_reduction_frac": 0.4194
+      },
+      {
+        "T": 8192,
+        "k": 64,
+        "attn_share_of_layer": 0.8421,
+        "attn_reduction_frac": 0.4961,
+        "total_layer_reduction_frac": 0.4178
+      }
+    ],
+    "measured_model_step": {
+      "k=0": {
+        "median_ms": 24.34,
+        "min_ms": 20.766,
+        "n_iters": 8,
+        "peak_mem_gib": 0.807,
+        "step_time_ratio_vs_full": 1.0,
+        "peak_mem_ratio_vs_full": 1.0
+      },
+      "k=32": {
+        "median_ms": 54.015,
+        "min_ms": 46.593,
+        "n_iters": 8,
+        "peak_mem_gib": 1.739,
+        "step_time_ratio_vs_full": 2.2192,
+        "peak_mem_ratio_vs_full": 2.1549
+      },
+      "k=64": {
+        "median_ms": 54.76,
+        "min_ms": 54.019,
+        "n_iters": 8,
+        "peak_mem_gib": 1.739,
+        "step_time_ratio_vs_full": 2.2498,
+        "peak_mem_ratio_vs_full": 2.1549
+      }
+    },
+    "measured_attn_island": [
+      {
+        "median_ms": 3.696,
+        "min_ms": 3.001,
+        "n_iters": 8,
+        "mode": "full",
+        "k": 0,
+        "batch_size": 32,
+        "seq_len": 256,
+        "d_model": 256,
+        "peak_mem_gib": 1.739,
+        "island_time_ratio_vs_full": 1.0,
+        "shape_note": "B=32（= 训练 batch）"
+      },
+      {
+        "median_ms": 8.301,
+        "min_ms": 4.337,
+        "n_iters": 8,
+        "mode": "topk_dense",
+        "k": 32,
+        "batch_size": 32,
+        "seq_len": 256,
+        "d_model": 256,
+        "peak_mem_gib": 1.739,
+        "island_time_ratio_vs_full": 2.2459,
+        "shape_note": "B=32（= 训练 batch）"
+      },
+      {
+        "median_ms": 8.427,
+        "min_ms": 5.933,
+        "n_iters": 8,
+        "mode": "topk_dense",
+        "k": 64,
+        "batch_size": 32,
+        "seq_len": 256,
+        "d_model": 256,
+        "peak_mem_gib": 1.739,
+        "island_time_ratio_vs_full": 2.28,
+        "shape_note": "B=32（= 训练 batch）"
+      },
+      {
+        "median_ms": 7.037,
+        "min_ms": 3.866,
+        "n_iters": 8,
+        "mode": "topk_sdpa",
+        "k": 32,
+        "batch_size": 32,
+        "seq_len": 256,
+        "d_model": 256,
+        "peak_mem_gib": 1.739,
+        "island_time_ratio_vs_full": 1.904,
+        "shape_note": "B=32（= 训练 batch）"
+      },
+      {
+        "median_ms": 7.474,
+        "min_ms": 3.751,
+        "n_iters": 8,
+        "mode": "topk_sdpa",
+        "k": 64,
+        "batch_size": 32,
+        "seq_len": 256,
+        "d_model": 256,
+        "peak_mem_gib": 1.739,
+        "island_time_ratio_vs_full": 2.0222,
+        "shape_note": "B=32（= 训练 batch）"
+      },
+      {
+        "median_ms": 6.01,
+        "min_ms": 5.396,
+        "n_iters": 8,
+        "mode": "topk_gather",
+        "k": 32,
+        "batch_size": 8,
+        "seq_len": 256,
+        "d_model": 256,
+        "peak_mem_gib": 1.739,
+        "island_time_ratio_vs_full": 1.6261,
+        "shape_note": "B=8（参考实现用小 batch，否则 gather 的 idx/KV 张量过大）"
+      },
+      {
+        "median_ms": 7.857,
+        "min_ms": 7.182,
+        "n_iters": 8,
+        "mode": "topk_gather",
+        "k": 64,
+        "batch_size": 8,
+        "seq_len": 256,
+        "d_model": 256,
+        "peak_mem_gib": 1.739,
+        "island_time_ratio_vs_full": 2.1258,
+        "shape_note": "B=8（参考实现用小 batch，否则 gather 的 idx/KV 张量过大）"
+      }
+    ],
+    "measured_note": "整模型步时/显存 = 训练实装（显式 softmax 的 top-k）；注意力孤岛另报三种实装，用于把「算法本征代价」与「离开 SDPA 融合核的实现代价」分开"
+  },
+  "reruns": {
+    "full": {
+      "status": "done",
+      "source": "runs/full-12k-s0-r2",
+      "clean_bpc": 1.5279,
+      "next_token_acc": 0.6885,
+      "wall_min": 6.01,
+      "peak_child_mem_gb": 1.47,
+      "seconds_per_step": 0.03004,
+      "bpc_abs_diff_vs_primary": 0.0025,
+      "attn_sparse_liveness": {
+        "attn_sparse_k": 0,
+        "enabled": false,
+        "params_added": 0,
+        "parametrized": false,
+        "block_python_class": "Block",
+        "kept_theory_mean": 0.0,
+        "kept_mean": null,
+        "kept_min": null,
+        "kept_max": null,
+        "kept_frac_of_T": null,
+        "sel_dist_mean": null,
+        "sel_in_lastk_frac": null,
+        "kept_count_matches_theory": null,
+        "alive": false,
+        "alive_note": "开关关闭（attn_sparse_k=0）：无异于基线"
+      }
+    }
+  },
+  "field_by_field": [
+    {
+      "field": "d_model",
+      "expected": 256,
+      "arms": {
+        "full": 256,
+        "topk32": 256,
+        "topk64": 256
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "n_layers",
+      "expected": 8,
+      "arms": {
+        "full": 8,
+        "topk32": 8,
+        "topk64": 8
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "n_heads",
+      "expected": 8,
+      "arms": {
+        "full": 8,
+        "topk32": 8,
+        "topk64": 8
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "seq_len",
+      "expected": 256,
+      "arms": {
+        "full": 256,
+        "topk32": 256,
+        "topk64": 256
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "mlp_mult",
+      "expected": 4,
+      "arms": {
+        "full": 4,
+        "topk32": 4,
+        "topk64": 4
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "dropout",
+      "expected": 0.0,
+      "arms": {
+        "full": 0.0,
+        "topk32": 0.0,
+        "topk64": 0.0
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "norm_cap",
+      "expected": 1.0,
+      "arms": {
+        "full": 1.0,
+        "topk32": 1.0,
+        "topk64": 1.0
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "dense",
+      "expected": true,
+      "arms": {
+        "full": true,
+        "topk32": true,
+        "topk64": true
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "topology",
+      "expected": "sequential",
+      "arms": {
+        "full": "sequential",
+        "topk32": "sequential",
+        "topk64": "sequential"
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "fill_kv",
+      "expected": true,
+      "arms": {
+        "full": true,
+        "topk32": true,
+        "topk64": true
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "proj_fill",
+      "expected": false,
+      "arms": {
+        "full": false,
+        "topk32": false,
+        "topk64": false
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "readout_dims",
+      "expected": null,
+      "arms": {
+        "full": null,
+        "topk32": null,
+        "topk64": null
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "readout_gated",
+      "expected": false,
+      "arms": {
+        "full": false,
+        "topk32": false,
+        "topk64": false
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "readout_linear_resid",
+      "expected": false,
+      "arms": {
+        "full": false,
+        "topk32": false,
+        "topk64": false
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "exit_mode",
+      "expected": "uniform",
+      "arms": {
+        "full": "uniform",
+        "topk32": "uniform",
+        "topk64": "uniform"
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "aux_weight",
+      "expected": 1.0,
+      "arms": {
+        "full": 1.0,
+        "topk32": 1.0,
+        "topk64": 1.0
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "final_weight",
+      "expected": 1.0,
+      "arms": {
+        "full": 1.0,
+        "topk32": 1.0,
+        "topk64": 1.0
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "shallow_stopgrad",
+      "expected": false,
+      "arms": {
+        "full": false,
+        "topk32": false,
+        "topk64": false
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "dense_aux",
+      "expected": false,
+      "arms": {
+        "full": false,
+        "topk32": false,
+        "topk64": false
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "steps",
+      "expected": 12000,
+      "arms": {
+        "full": 12000,
+        "topk32": 12000,
+        "topk64": 12000
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "batch_size",
+      "expected": 32,
+      "arms": {
+        "full": 32,
+        "topk32": 32,
+        "topk64": 32
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "lr",
+      "expected": 0.001,
+      "arms": {
+        "full": 0.001,
+        "topk32": 0.001,
+        "topk64": 0.001
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "seed",
+      "expected": 0,
+      "arms": {
+        "full": 0,
+        "topk32": 0,
+        "topk64": 0
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "train_tokens",
+      "expected": 98304000,
+      "arms": {
+        "full": 98304000,
+        "topk32": 98304000,
+        "topk64": 98304000
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "vocab_size",
+      "expected": 206,
+      "arms": {
+        "full": 206,
+        "topk32": 206,
+        "topk64": 206
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "data_split",
+      "expected": "first 90M/ last 10M, vocab over full file",
+      "arms": {
+        "full": "first 90M/ last 10M, vocab over full file",
+        "topk32": "first 90M/ last 10M, vocab over full file",
+        "topk64": "first 90M/ last 10M, vocab over full file"
+      },
+      "equal_full": true,
+      "equal_topk32": true,
+      "equal_topk64": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "attn_sparse_k（唯一变量）",
+      "arms": {
+        "full": 0,
+        "topk32": 32,
+        "topk64": 64
+      },
+      "note": "唯一不等字段；该开关不新增参数（TopKBlock 与 Block 参数量逐位相等，单测钉住），因此本实验天然通过「等参数对照」（SCHEMA §15）"
+    }
+  ],
+  "field_by_field_all_equal_except_attn_sparse_k": true,
+  "reconciliation": {
+    "arithmetic": {
+      "delta_definition": "Δ = bpc_full − bpc_topk（正 = 改善；SCHEMA §17.3）",
+      "bpc_by_arm": {
+        "full": 1.5304,
+        "topk32": 1.547,
+        "topk64": 1.5399
+      },
+      "delta_bpc": {
+        "topk32": -0.0166,
+        "topk64": -0.0095
+      },
+      "variance_bound": 0.014,
+      "judge_threshold_eq_variance_bound": true,
+      "params": {
+        "full": 6962688,
+        "topk32": 6962688,
+        "topk64": 6962688
+      },
+      "params_all_equal": true,
+      "kept_keys_identity": {
+        "formula": "mean_i min(k, i+1) = (k(k+1)/2 + (T−k)·k) / T",
+        "theory": {
+          "k=32": 30.0625,
+          "k=64": 56.125
+        },
+        "measured": {
+          "full": null,
+          "topk32": 30.0625,
+          "topk64": 56.125
+        },
+        "note": "实测保留键数必须逐位等于理论式（活性量对账；不等 ⇒ 掩码没按 k 生效）"
+      },
+      "cost_arithmetic": {
+        "attn_reduction_formula": "(T − k)/(2T)（QKᵀ 全矩阵不可省）",
+        "theory_vs_measured_gap_note": "理论 FLOPs 下降 ≠ 实测墙钟下降：本实装离开 SDPA 融合核并物化 [B,H,T,T] 中间量 ⇒ 实测更慢，如实并列报出（见 cost 块）"
+      }
+    },
+    "task": {
+      "same_task": "三臂同一 enwik8 char 级 AR 任务、同一 eval 切分（末 10M）、同一位置集（全序列逐位置 × depth-8 读出）、同一目标定义（tokens 自移位）",
+      "same_battery": "三臂同一 run.py::run_battery（同 n_batches=20 / 同 eval seed / 同 batch_size）",
+      "deploy_correspondence": "三臂都是 stock decoder-only 前向；对照只改注意力算子，输入分布完全相同（同一数据流），无额外输入、无真值泄漏"
+    },
+    "caliber": {
+      "matched_step_snapshot": true,
+      "steps": 12000,
+      "seed": 0,
+      "n_seed": 1,
+      "train_tokens": 98304000,
+      "note": "三臂同为 12000 步 / 98.3M token / seed 0 的 matched-step 快照口径（非渐近、非墙钟、非 FLOPs）"
+    },
+    "convergence": {
+      "method": "末 25% 窗（同一窗口比例、同一最小二乘算法）loss 斜率，三臂同方法",
+      "tail_slope_by_arm": {
+        "full": {
+          "window_frac": 0.25,
+          "n_points": 16,
+          "step_from": 9000,
+          "step_to": 11999,
+          "loss_from": 1.0501,
+          "loss_to": 1.0421,
+          "slope_nats_per_1k_steps": 0.00251,
+          "slope_nats_per_1k_steps_late_half": 0.02214,
+          "note": null
+        },
+        "topk32": {
+          "window_frac": 0.25,
+          "n_points": 16,
+          "step_from": 9000,
+          "step_to": 11999,
+          "loss_from": 1.0537,
+          "loss_to": 1.052,
+          "slope_nats_per_1k_steps": 0.00369,
+          "slope_nats_per_1k_steps_late_half": 0.02168,
+          "note": null
+        },
+        "topk64": {
+          "window_frac": 0.25,
+          "n_points": 16,
+          "step_from": 9000,
+          "step_to": 11999,
+          "loss_from": 1.0463,
+          "loss_to": 1.0513,
+          "slope_nats_per_1k_steps": 0.00308,
+          "slope_nats_per_1k_steps_late_half": 0.02076,
+          "note": null
+        }
+      },
+      "slope_spread_nats_per_1k": 0.00118,
+      "rerun_divergence": {
+        "full": {
+          "status": "done",
+          "source": "runs/full-12k-s0-r2",
+          "clean_bpc": 1.5279,
+          "next_token_acc": 0.6885,
+          "wall_min": 6.01,
+          "peak_child_mem_gb": 1.47,
+          "seconds_per_step": 0.03004,
+          "bpc_abs_diff_vs_primary": 0.0025,
+          "attn_sparse_liveness": {
+            "attn_sparse_k": 0,
+            "enabled": false,
+            "params_added": 0,
+            "parametrized": false,
+            "block_python_class": "Block",
+            "kept_theory_mean": 0.0,
+            "kept_mean": null,
+            "kept_min": null,
+            "kept_max": null,
+            "kept_frac_of_T": null,
+            "sel_dist_mean": null,
+            "sel_in_lastk_frac": null,
+            "kept_count_matches_theory": null,
+            "alive": false,
+            "alive_note": "开关关闭（attn_sparse_k=0）：无异于基线"
+          }
+        }
+      },
+      "note": "斜率相近 ⇒ Δ 是水平差（质量）；斜率悬殊 ⇒ 收敛速度差，只能作快照结论。2× 更长训练点未做（契约 J 未列入预算，见 analysis §7）"
+    }
+  },
+  "verdict": {
+    "criterion": "主判据：|Δ| < 0.014 ⇒ 与全注意力同质量；Δ ≥ +0.014 ⇒ 更好；Δ ≤ −0.014 ⇒ 稀疏有害（记录 k 与幅度）。Δ = bpc_full − bpc_topk（正 = 改善）",
+    "delta_bpc": {
+      "topk32": -0.0166,
+      "topk64": -0.0095
+    },
+    "clean_bpc_by_arm": {
+      "full": 1.5304,
+      "topk32": 1.547,
+      "topk64": 1.5399
+    },
+    "better_arms": [],
+    "neutral_arms": [
+      "topk64"
+    ],
+    "worse_arms": [
+      "topk32"
+    ],
+    "ruling": "稀疏选择在该规模有害：{'topk32': -0.0166}（Δ ≤ −0.014，记录 k 与劣化幅度）",
+    "cost_measured": {
+      "model_step_time_ratio_vs_full": {
+        "k=0": 1.0,
+        "k=32": 2.2192,
+        "k=64": 2.2498
+      },
+      "model_step_peak_mem_ratio_vs_full": {
+        "k=0": 1.0,
+        "k=32": 2.1549,
+        "k=64": 2.1549
+      },
+      "attn_island_time_ratio_vs_full": {
+        "full_k0": 1.0,
+        "topk_dense_k32": 2.2459,
+        "topk_dense_k64": 2.28,
+        "topk_sdpa_k32": 1.904,
+        "topk_sdpa_k64": 2.0222,
+        "topk_gather_k32": 1.6261,
+        "topk_gather_k64": 2.1258
+      },
+      "theory_by_k": {
+        "k=32": {
+          "naive_key_count_reduction": 0.875,
+          "attn_flops_reduction": 0.4375,
+          "total_flops_reduction": 0.0625,
+          "kv_cache_reduction": 0.0
+        },
+        "k=64": {
+          "naive_key_count_reduction": 0.75,
+          "attn_flops_reduction": 0.375,
+          "total_flops_reduction": 0.0536,
+          "kv_cache_reduction": 0.0
+        }
+      }
+    }
+  },
+  "stability": {
+    "full": {
+      "n_logged_samples": 61,
+      "step_first": 0,
+      "step_last": 11999,
+      "gnorm_logged_max": 7.1,
+      "gnorm_logged_median": 0.46,
+      "gnorm_spikes_gt3x_median": 2,
+      "gnorm_spikes_gt5x_median": 1,
+      "all_finite": true,
+      "loss_first": 5.3131,
+      "loss_last": 1.0421,
+      "loss_max_step_increase": 0.1618,
+      "loss_jumps_gt_0.25": 0,
+      "gnorm_monitor_all_steps": {
+        "gnorm_max": 7.86,
+        "gnorm_mean": 0.548,
+        "grad_skips": 0,
+        "attn_sparse_mean": null,
+        "attn_sparse_layer_samples": 0
+      }
+    },
+    "topk32": {
+      "n_logged_samples": 61,
+      "step_first": 0,
+      "step_last": 11999,
+      "gnorm_logged_max": 6.66,
+      "gnorm_logged_median": 0.45,
+      "gnorm_spikes_gt3x_median": 1,
+      "gnorm_spikes_gt5x_median": 1,
+      "all_finite": true,
+      "loss_first": 5.3143,
+      "loss_last": 1.052,
+      "loss_max_step_increase": 0.1628,
+      "loss_jumps_gt_0.25": 0,
+      "gnorm_monitor_all_steps": {
+        "gnorm_max": 7.39,
+        "gnorm_mean": 0.523,
+        "grad_skips": 0,
+        "attn_sparse_mean": {
+          "kept_mean": 30.0625,
+          "kept_frac_of_T": 0.117432,
+          "sel_dist_mean": 24.812174,
+          "sel_in_lastk_frac": 0.772075
+        },
+        "attn_sparse_layer_samples": 96000
+      }
+    },
+    "topk64": {
+      "n_logged_samples": 61,
+      "step_first": 0,
+      "step_last": 11999,
+      "gnorm_logged_max": 6.92,
+      "gnorm_logged_median": 0.45,
+      "gnorm_spikes_gt3x_median": 1,
+      "gnorm_spikes_gt5x_median": 1,
+      "all_finite": true,
+      "loss_first": 5.3131,
+      "loss_last": 1.0513,
+      "loss_max_step_increase": 0.1454,
+      "loss_jumps_gt_0.25": 0,
+      "gnorm_monitor_all_steps": {
+        "gnorm_max": 7.68,
+        "gnorm_mean": 0.524,
+        "grad_skips": 0,
+        "attn_sparse_mean": {
+          "kept_mean": 56.125,
+          "kept_frac_of_T": 0.219238,
+          "sel_dist_mean": 37.953451,
+          "sel_in_lastk_frac": 0.857843
+        },
+        "attn_sparse_layer_samples": 96000
+      }
+    },
+    "full-r2": {
+      "n_logged_samples": 61,
+      "step_first": 0,
+      "step_last": 11999,
+      "gnorm_logged_max": 7.1,
+      "gnorm_logged_median": 0.47,
+      "gnorm_spikes_gt3x_median": 2,
+      "gnorm_spikes_gt5x_median": 1,
+      "all_finite": true,
+      "loss_first": 5.3131,
+      "loss_last": 1.0448,
+      "loss_max_step_increase": 0.1499,
+      "loss_jumps_gt_0.25": 0,
+      "gnorm_monitor_all_steps": null
+    }
+  },
+  "wall_total_min": 33.21,
+  "gpu_peak_by_arm_gb": {
+    "full": 1.47,
+    "topk32": 2.55,
+    "topk64": 2.57
+  }
+}

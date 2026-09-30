@@ -1,0 +1,49 @@
+{
+  "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "role": "被测量模型（复用契约 I 的同一 checkpoint，只读）：13.5M dense decoder-only 主干，12k 步，clean bpc 1.4836"
+  },
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true
+  },
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M 训练 / 末 10M 评测（本实验只用评测尾段）",
+    "vocab_size": 206
+  },
+  "eval": {
+    "n_batches": 24,
+    "batch_size": 16,
+    "window_seed": 2,
+    "device": "cuda",
+    "note": "window_seed=2 + 24×16 与 2610 的 depth_curve 基线同序（锚 bpc 1.4836）"
+  },
+  "kv_quant": {
+    "baseline_mode": "fp16",
+    "modes": ["fp32", "fp16", "int8", "int4"],
+    "scheme": "symmetric per-(head, head_dim) channel; amax over batch+token; fp32 reference is bitwise identity (implementation-equality self check)",
+    "seed": 0
+  },
+  "memory": {
+    "seq_lens": [256, 4096, 131072],
+    "scale_dtype_bytes": 2
+  },
+  "reproducibility": {
+    "rerun": true,
+    "rerun_modes": ["fp16", "int8", "int4"],
+    "max_abs_delta_diff_threshold": 0.005
+  },
+  "noise_floor": {
+    "window_seeds": [3, 4, 5, 6, 7, 8],
+    "modes": ["fp16", "int8", "int4"]
+  },
+  "variance_band_bpc": 0.014
+}

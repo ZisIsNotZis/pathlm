@@ -1,0 +1,53 @@
+{
+  "experiment": "2614-topk-sparse-attn-13m",
+  "ticket": "31-batch4 契约 J",
+  "seed": 0,
+  "steps": 12000,
+  "batch_size": 32,
+  "lr": 0.001,
+  "optimizer": "AdamW(wd=0.01) + warmup 200 步 + cosine 到 0.1×",
+  "data": "data/enwik8_full.npz",
+  "data_split": "first 90M train / last 10M eval, vocab from full file",
+  "vocab_size": 206,
+  "train_tokens": 98304000,
+  "base": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "dense": true,
+    "topology": "sequential",
+    "exit_mode": "uniform",
+    "loss": "仅最终深度 CE（stock AR）",
+    "readout": "tied h·Eᵀ，无 final LayerNorm（共享底座偏离 1）"
+  },
+  "arms": [
+    {
+      "arm": "full",
+      "attn_sparse_k": 0,
+      "role": "基线：全因果 softmax 注意力（stock Block + SDPA）",
+      "run": "runs/full-12k-s0"
+    },
+    {
+      "arm": "topk32",
+      "attn_sparse_k": 32,
+      "role": "内容 top-k（k=32）：因果内按 q·kᵀ 保留最大 32 个键",
+      "run": "runs/topk32-12k-s0"
+    },
+    {
+      "arm": "topk64",
+      "attn_sparse_k": 64,
+      "role": "内容 top-k（k=64）：同算子、另一档 k",
+      "run": "runs/topk64-12k-s0"
+    }
+  ],
+  "rerun_arms": [
+    "full"
+  ],
+  "rerun_note": "重跑散度（契约 J 要求）：主 Agent 裁决「3 主臂 + 只重跑基线 full 臂」（Δ 的噪声由基线与实验臂共同决定，基线是被比较的参照，重跑它同时能跨批校验可比性）；评测批次保持 20 不砍。",
+  "variable": "attn_sparse_k（唯一不等字段；其余逐字段一致，见 field_by_field）",
+  "delta_convention": "Δ = bpc_full − bpc_topk（正 = 改善；SCHEMA §17.3）"
+}

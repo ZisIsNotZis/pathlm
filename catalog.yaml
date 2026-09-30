@@ -313,13 +313,24 @@ grids:
       - MLP-Mixer（token 维全连接混合）
       - 傅里叶 / 全局变换（FNet 族）
     judge: bpc + 长上下文吞吐 + 内存（三段：质量 / 算力 / 内存）
-    cost: 13M 单臂 ~25–60 min
-    status: stub
+    cost: 13M 单臂 ~25–60 min（内容 top-k 实测步时是全注意力的 2.2×，预算须按实测估）
+    status: judged
+    verdict: 内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）——稀疏的收益要到长上下文才可能出现。
+    local:
+      tax: "k=32 Δ = **−0.0166**（越 0.014 界，配对 20/20 批同向，t=−7.7）；k=64 Δ = **−0.0095**（带内但配对可检出，16/20，t=−4.1）；基线 full 1.5304（同配置历史 1.5287 / 重跑 1.5279）；剂量单调（k 越小越差）"
+      benefit: "理论：保留键数 −87.5%/−75%、注意力 FLOPs −43.75%/−37.5%（QKᵀ 因内容选择不可省）、整模型每 token FLOPs −6.25%/−5.36%、**KV 缓存 −0%**（结构性）"
+      failure:
+        - "**成本实测量反方向**：整模型一步 24.34 → 54.02/54.76 ms（**2.22×/2.25× 慢**），进程峰值显存 1.47 → 2.55/2.57 GB（1.7×）；孤岛参考实现（真稀疏 gather）仍 1.63×/2.13× ⇒ 「T=256 净开销」是结论而非实现 bug"
+        - "**质量也越界**：k=32 的 Δ 达 −0.0166（>0.014），k=64 仅落在噪声带内（−0.0095）；两臂 loss 斜率同方法可比（0.0025/0.0037/0.0031，极差 0.0012）⇒ 水平差不是收敛差"
+        - "交叉点只有公式外推（注意力占比 14.3%@256 → 72.7%@4096），**长 T 端未实测**；2× 训练点未做 ⇒ 限快照口径"
+      evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/analysis.md @ticket31"]
     industry: |
       长上下文吞吐上稀疏/线性/SSM 明显占优；短上下文质量上偏差不一，
       混合架构（注意力 + SSM 层交替，Jamba/Zamba 式）成为主流折中。
-    local: {}
-    notes: 本地零经验。这是「少算力读更长」的正路，也是本目录最大的一片空白。
+      **本地实测为其补上「T=256 时净亏」的下界**：稀疏算子必须先跨过注意力占比的交叉点。
+    notes: |
+      首探只测了「内容选择式 top-k」；未测位置式/块级稀疏、线性注意力、SSM、池化算子，
+      也未测长 T（≥2048）质量是否回本。下一步的自然入口是「把 T 拉长到注意力真正成为瓶颈」。
 
   # ==================== A7
   - id: A7-addressing
@@ -372,6 +383,7 @@ grids:
       benefit: "锚豁免使 needle 76.8→93.3%（+距离惩罚）"
       failure:
         - "损坏 × 精确复制目标冲突（三路豁免全败）——「保住信息」与「容错修复」是互相抢容量的两个目标"
+        - "依赖曲线实测（ticket 31-I）：距离 d≥32 的 KV 全丢代价 ≤0.004 bpc；长历史查询丢最远 8 个只 +0.0085 ⇒ **代价由距离决定、几乎与内容无关**；但低损伤 ≠ 信息保留（需检索腿，见 M2）"
       evidence: [".scratch/07-x1-x3/evidence @7b47555", ".scratch/13-four-experiments/evidence @9abc181"]
     deps: [M1-carrier-type, M2-carrier-compression, A10-compression-trigger]
     notes: |
@@ -916,7 +928,9 @@ grids:
       benefit: "ring-buffer 解码免重 prefill（内存有界）"
       failure:
         - "驱逐 × 复制目标冲突（三路豁免全败，见 A3）"
-      evidence: [".scratch/07-x1-x3/evidence @7b47555"]
+        - "**保留曲线天平已建成**（ticket 31-I，`tools/evalkit/retention.py`）：三条曲线严格单调、同 seed 重跑最大差 4.94e-07；量出「依赖」随距离快速衰减（d=1 +3.245 / d=8 +0.090 / d=16 +0.017 / d≥32 ≤+0.004），长历史查询丢最远 8 个只 +0.0085（N=16 +0.0135），连续段删除 L=4 平均 +0.114 ⇒ **代价由距离决定、几乎与内容无关；安全丢弃半径 d*≈32**"
+        - "**该仪器只量「依赖」不量「保留」**（SCHEMA §17 第 10 条）：低损伤也可能是模型本来就不用它——X3「假保留」的另一面。检索腿已排进 ticket 32 契约 M"
+      evidence: [".scratch/07-x1-x3/evidence @7b47555", "axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/analysis.md @c39dc88"]
     deps: [A3-window-anchor, W3-kv-head-sharing]
 
   # ==================== M3
@@ -1044,8 +1058,15 @@ grids:
     cost: 纯推理，分钟级
     status: reference
     industry: 工业界标准做法；「Pro 当 Flash 用」的最强基线。任何 L1/L2 线必须打败它或与之复合。
-    local: {}
-    notes: 本地只有 bf16/fp32 头的精度结论（P1），未做量化。
+    local:
+      tax: "**int8 KV：Δbpc +0.00015（近无损）**，每位置 12288 → 6144 字节（−50%）；**int4 KV：+0.0457**（3.3× 噪声带），3072 字节（−75%）；fp16 基线 1.483571"
+      benefit: "参照线数字：**任何「省内存/丢信息」的主张，至少要打败 int8 KV 的近无损 −50%**；int4 的代价 +0.0457 是另一条可比的价签"
+      failure:
+        - "内存数字是**解析** KV 占用（部署口径）；评测期实现立即反量化，故 GPU 实测峰值不随档下降——已在 analysis 标注，未当作「实测内存下降」上报"
+      evidence: ["axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/analysis.md @ticket31"]
+    notes: |
+      本地现在有了 KV 量化的价签（int8 近无损 / int4 +0.046）。权重与激活量化仍未测；
+      量化与「丢 KV」两条路线可直接比较（丢最远 16–32 个位置 ≈ 免费，见 M2 的保留曲线）。
 
   - id: R2-distillation
     axis: R
@@ -1088,7 +1109,7 @@ grids:
       benefit: "锚点通道 93.3%；ring-buffer 免重 prefill"
       failure:
         - "关键判据线：「就用个窗口」的 bpc 代价几乎为零 → 压缩/摘要线必须证明「保留」而非「省钱」"
-      evidence: [".scratch/07-x1-x3/evidence @7b47555"]
+      evidence: [".scratch/07-x1-x3/evidence @7b47555", "axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/analysis.md @c39dc88"]
 
   - id: R5-bestofn-verifier
     axis: R

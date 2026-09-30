@@ -15,7 +15,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
                              depth_curve, tf_acceptance, workspace_probe,
                              generation_quality, readout_workspace_energy,
-                             spec_cost_model, topology_liveness)
+                             spec_cost_model, topology_liveness,
+                             attn_sparse_probe)
 from pathlm.data import load_enwik8_full, batch
 
 
@@ -79,6 +80,12 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
     t0 = time.time()
     depth_ce_acc = [0.0] * n_ce
     gate_acc = [0.0] * L
+    # 内容 top-k 稀疏注意力的活性量（SCHEMA §10/§17.4）：每步累加、每 200 步
+    # 随同一行训练日志落盘（cumulative mean，与 gate_mean 同口径）。
+    sparse_keys = ("kept_mean", "kept_frac_of_T", "sel_dist_mean",
+                   "sel_in_lastk_frac")
+    sparse_acc = {kk: 0.0 for kk in sparse_keys}
+    n_sparse_layers = 0
     n_logged = 0
     gnorm_sum = 0.0
     gnorm_max = 0.0
@@ -122,6 +129,10 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
             depth_ce_acc[k] += float(aux["depth_ce"][k].detach())
         for k in range(len(aux["gate_mean"])):
             gate_acc[k] += float(aux["gate_mean"][k])
+        for s in aux.get("attn_sparse", ()):
+            for kk in sparse_keys:
+                sparse_acc[kk] += float(s[kk])
+            n_sparse_layers += 1
         n_logged += 1
         if step % 200 == 0 or step == steps - 1:
             with open(log_path, "a") as f:
@@ -132,6 +143,9 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                     "gnorm": round(float(gnorm), 2),
                     "aux_w": round(w, 4),
                     "final_w": round(fw, 4),
+                    "attn_sparse": ({kk: round(v / n_sparse_layers, 6)
+                                    for kk, v in sparse_acc.items()}
+                                   if n_sparse_layers else None),
                     "lr": round(float(sched.get_last_lr()[0]), 6),
                     "min": round((time.time() - t0) / 60, 2)}) + "\n")
             with open(gate_log_path, "a") as f:
@@ -142,7 +156,11 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
         [g / max(n_logged, 1) for g in gate_acc], {
             "gnorm_max": round(gnorm_max, 2),
             "gnorm_mean": round(gnorm_sum / max(steps, 1), 3),
-            "grad_skips": n_grad_skip}
+            "grad_skips": n_grad_skip,
+            "attn_sparse_mean": ({kk: round(v / n_sparse_layers, 6)
+                                  for kk, v in sparse_acc.items()}
+                                 if n_sparse_layers else None),
+            "attn_sparse_layer_samples": n_sparse_layers}
 
 
 def main():
@@ -188,6 +206,11 @@ def main():
     ap.add_argument("--dense-aux", action="store_true",
                     help="dense 臂开启全深度并行监督（L+1 个 CE，梯度穿 trunk；"
                          "ticket 23c，H1；需配合 --dense）")
+    ap.add_argument("--attn-sparse-k", type=int, default=0,
+                    help="内容 top-k 稀疏注意力（ticket 31 契约 J）：每个查询"
+                         "在因果掩码内只保留内容相似度最高的 k 个键（按内容"
+                         "选择，其余置 -inf）。0 = 关闭（缺省，逐位还原 v1）；"
+                         "需配合 --dense 且 topology=sequential（单因素）")
     ap.add_argument("--no-fill-kv", dest="fill_kv", action="store_false",
                     help="no-fill ragged 语义（ticket 23e）：早退位置在未跑层"
                          "的 KV 中缺席（原引擎 per-layer cache 语义）；缺省 = "
@@ -236,11 +259,12 @@ def main():
                         fill_kv=args.fill_kv, proj_fill=args.proj_fill,
                         readout_dims=args.readout_dims,
                         readout_gated=args.readout_gated,
-                        readout_linear_resid=args.readout_linear_resid)
+                        readout_linear_resid=args.readout_linear_resid,
+                        attn_sparse_k=args.attn_sparse_k)
     model = DepthARModel(cfg, vocab_size).cuda()
     n_params = sum(p.numel() for p in model.parameters())
     print(f"{args.run_name}: {n_params/1e6:.2f}M params, vocab {vocab_size}, "
-          f"topology {args.topology}, "
+          f"topology {args.topology}, attn_sparse_k {args.attn_sparse_k}, "
           f"steps {args.steps} x bs{args.batch_size} x seq{args.seq_len} "
           f"= {args.steps*args.batch_size*args.seq_len/1e6:.1f}M tokens", flush=True)
 
@@ -265,6 +289,7 @@ def main():
     results = {
         "run": args.run_name, "config": asdict(cfg), "train": tcfg,
         "topology": args.topology,
+        "attn_sparse_k": args.attn_sparse_k,
         "topology_liveness": topology_liveness(model),
         "exit_mode": args.exit_mode,
         "fill_kv": args.fill_kv, "proj_fill": args.proj_fill,
@@ -312,6 +337,9 @@ def main():
         results["tf_note"] = ("dense 中间深度读出无直接监督：tf 系 depth-k "
                               "残差态 tied 读出与 depth-L 读出的 argmax 一致率 "
                               "proxy（截断资产口径，非训练出口资产）")
+        # 内容 top-k 稀疏的活性块（SCHEMA §10）：真实前向的保留键数 + 选择统计
+        results["attn_sparse_liveness"] = attn_sparse_probe(
+            model, eval_arr, device="cuda")
     with open(os.path.join(run_dir, "results.json"), "w") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
     print(json.dumps({k: v for k, v in results.items()

@@ -10,7 +10,7 @@ tax: "窗口部分：+0.058~0.121 bpc（13M）；检索/量化部分零经验"
 benefit: "锚点通道 93.3%；ring-buffer 免重 prefill"
 verdict: "—"
 deps: []
-evidence: [".scratch/07-x1-x3/evidence @7b47555"]
+evidence: [".scratch/07-x1-x3/evidence @7b47555", "axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/analysis.md @c39dc88"]
 ---
 
 <!-- AUTO:begin -->
@@ -59,6 +59,7 @@ evidence: [".scratch/07-x1-x3/evidence @7b47555"]
 ## 9. 复现手段
 
 1. .scratch/07-x1-x3/evidence @7b47555
+2. axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/analysis.md @c39dc88
 
 <!-- AUTO:end -->
 

@@ -1,0 +1,71 @@
+{
+  "target": "tools/evalkit/kv_quant.py",
+  "sha256_before": "1630f4519fa765627e9e52ceab14483aee34d90581031753d76a388564cb7da5",
+  "mutations": [
+    {
+      "id": "M1",
+      "what": "qmax 差一（2^(bits-1) 而非 2^(bits-1)-1）",
+      "tests": {
+        "test_int_roundtrip_error_within_half_scale[int8-127]": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.76s"
+        },
+        "test_int_roundtrip_error_within_half_scale[int4-7]": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.75s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M2",
+      "what": "per-channel scale 退化成 per-tensor（沿 head 轴也取 amax）",
+      "tests": {
+        "test_per_channel_scale_is_per_head_channel": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.83s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M3",
+      "what": "fp16 档不真降精度（不 cast）",
+      "tests": {
+        "test_fp16_relative_bound_and_actually_changes_values": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.72s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M4",
+      "what": "只取整不反量化（q 直接当 x̂）",
+      "tests": {
+        "test_int_roundtrip_error_within_half_scale[int8-127]": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.81s"
+        },
+        "test_int_roundtrip_error_within_half_scale[int4-7]": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.91s"
+        }
+      },
+      "all_expected_tests_caught": true
+    }
+  ],
+  "restored_sha256_equal": true,
+  "after_restore": {
+    "returncode": 0,
+    "tail": "12 passed in 1.68s"
+  },
+  "green_after_restore": true,
+  "sha256_after": "1630f4519fa765627e9e52ceab14483aee34d90581031753d76a388564cb7da5"
+}

@@ -1,0 +1,376 @@
+{
+  "contract": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/README.md",
+  "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+  },
+  "config": {
+    "checkpoint": {
+      "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+      "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+      "size_bytes": 54193675,
+      "role": "被测量模型（复用契约 I 的同一 checkpoint，只读）：13.5M dense decoder-only 主干，12k 步，clean bpc 1.4836"
+    },
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true
+    },
+    "data": {
+      "name": "enwik8_full",
+      "path": "data/enwik8_full.npz",
+      "split": "前 90M 训练 / 末 10M 评测（本实验只用评测尾段）",
+      "vocab_size": 206
+    },
+    "eval": {
+      "n_batches": 2,
+      "batch_size": 16,
+      "window_seed": 2,
+      "device": "cuda",
+      "note": "window_seed=2 + 24×16 与 2610 的 depth_curve 基线同序（锚 bpc 1.4836）"
+    },
+    "kv_quant": {
+      "baseline_mode": "fp16",
+      "modes": [
+        "fp32",
+        "fp16",
+        "int8",
+        "int4"
+      ],
+      "scheme": "symmetric per-(head, head_dim) channel; amax over batch+token; fp32 reference is bitwise identity (implementation-equality self check)",
+      "seed": 0
+    },
+    "memory": {
+      "seq_lens": [
+        256,
+        4096,
+        131072
+      ],
+      "scale_dtype_bytes": 2
+    },
+    "reproducibility": {
+      "rerun": false,
+      "rerun_modes": [
+        "fp16",
+        "int8",
+        "int4"
+      ],
+      "max_abs_delta_diff_threshold": 0.005
+    },
+    "noise_floor": {
+      "window_seeds": [
+        3,
+        4
+      ],
+      "modes": [
+        "fp16",
+        "int8",
+        "int4"
+      ]
+    },
+    "variance_band_bpc": 0.014
+  },
+  "instrument": {
+    "bpc_release_path": 1.470954,
+    "bpc_fp32_mode": 1.470954,
+    "abs_diff_release_vs_fp32": 0.0,
+    "bitwise_equal": true,
+    "release_anchor_bpc_2610": 1.4836,
+    "abs_diff_vs_anchor": 0.012646
+  },
+  "intervention": {
+    "what": "评测期 KV cache 量化：K/V 存成 fp16/int8/int4 再读回（注意力前往返）",
+    "params_added": 0,
+    "weights_changed": false,
+    "trained": false,
+    "alive": true,
+    "activity_note": "活性量 = 每档的 n_values / mean_abs_err / rel_err / changed_frac（逐 batch 落盘 kv_quant_log.jsonl）——证明量化真的改了数值。恒等档 fp32 的 changed_frac = 0",
+    "activity_by_mode": {
+      "fp32": {
+        "n_values": 0,
+        "mean_abs_err": 0.0,
+        "max_abs_err": 0.0,
+        "rel_err": 0.0,
+        "changed_frac": 0.0,
+        "clipped_frac": 0.0
+      },
+      "fp16": {
+        "n_values": 50331648,
+        "mean_abs_err": 0.000210867,
+        "max_abs_err": 0.007099152,
+        "rel_err": 0.000176161,
+        "changed_frac": 0.999849359,
+        "clipped_frac": 0.0
+      },
+      "int8": {
+        "n_values": 50331648,
+        "mean_abs_err": 0.008186157,
+        "max_abs_err": 0.065704346,
+        "rel_err": 0.00683886,
+        "changed_frac": 0.999761899,
+        "clipped_frac": 4.4564e-05,
+        "scale_min": 0.002511706668883562,
+        "scale_max": 0.13142149150371552
+      },
+      "int4": {
+        "n_values": 50331648,
+        "mean_abs_err": 0.148513023,
+        "max_abs_err": 1.190567493,
+        "rel_err": 0.123887497,
+        "changed_frac": 0.999883791,
+        "clipped_frac": 0.0,
+        "scale_min": 0.045569535344839096,
+        "scale_max": 2.381821632385254
+      }
+    }
+  },
+  "modes": {
+    "fp32": {
+      "bpc": 1.470954,
+      "activity": {
+        "n_values": 0,
+        "mean_abs_err": 0.0,
+        "max_abs_err": 0.0,
+        "rel_err": 0.0,
+        "changed_frac": 0.0,
+        "clipped_frac": 0.0
+      }
+    },
+    "fp16": {
+      "bpc": 1.47096,
+      "activity": {
+        "n_values": 50331648,
+        "mean_abs_err": 0.000210867,
+        "max_abs_err": 0.007099152,
+        "rel_err": 0.000176161,
+        "changed_frac": 0.999849359,
+        "clipped_frac": 0.0
+      }
+    },
+    "int8": {
+      "bpc": 1.47089,
+      "activity": {
+        "n_values": 50331648,
+        "mean_abs_err": 0.008186157,
+        "max_abs_err": 0.065704346,
+        "rel_err": 0.00683886,
+        "changed_frac": 0.999761899,
+        "clipped_frac": 4.4564e-05,
+        "scale_min": 0.002511706668883562,
+        "scale_max": 0.13142149150371552
+      }
+    },
+    "int4": {
+      "bpc": 1.514999,
+      "activity": {
+        "n_values": 50331648,
+        "mean_abs_err": 0.148513023,
+        "max_abs_err": 1.190567493,
+        "rel_err": 0.123887497,
+        "changed_frac": 0.999883791,
+        "clipped_frac": 0.0,
+        "scale_min": 0.045569535344839096,
+        "scale_max": 2.381821632385254
+      }
+    }
+  },
+  "quant_rows": [
+    {
+      "mode": "fp16",
+      "bpc": 1.47096,
+      "delta_bpc": 0.0,
+      "damage_bpc": 0.0,
+      "abs_delta_bpc": 0.0,
+      "activity": {
+        "n_values": 50331648,
+        "mean_abs_err": 0.000210867,
+        "max_abs_err": 0.007099152,
+        "rel_err": 0.000176161,
+        "changed_frac": 0.999849359,
+        "clipped_frac": 0.0
+      },
+      "per_position_bytes": 12288.0,
+      "reduction_vs_fp16_frac": 0.0
+    },
+    {
+      "mode": "int8",
+      "bpc": 1.47089,
+      "delta_bpc": 7e-05,
+      "damage_bpc": -7e-05,
+      "abs_delta_bpc": 7e-05,
+      "activity": {
+        "n_values": 50331648,
+        "mean_abs_err": 0.008186157,
+        "max_abs_err": 0.065704346,
+        "rel_err": 0.00683886,
+        "changed_frac": 0.999761899,
+        "clipped_frac": 4.4564e-05,
+        "scale_min": 0.002511706668883562,
+        "scale_max": 0.13142149150371552
+      },
+      "per_position_bytes": 6144.0,
+      "reduction_vs_fp16_frac": 0.5
+    },
+    {
+      "mode": "int4",
+      "bpc": 1.514999,
+      "delta_bpc": -0.044039,
+      "damage_bpc": 0.044039,
+      "abs_delta_bpc": 0.044039,
+      "activity": {
+        "n_values": 50331648,
+        "mean_abs_err": 0.148513023,
+        "max_abs_err": 1.190567493,
+        "rel_err": 0.123887497,
+        "changed_frac": 0.999883791,
+        "clipped_frac": 0.0,
+        "scale_min": 0.045569535344839096,
+        "scale_max": 2.381821632385254
+      },
+      "per_position_bytes": 3072.0,
+      "reduction_vs_fp16_frac": 0.75
+    }
+  ],
+  "memory": {
+    "fp16": {
+      "mode": "fp16",
+      "dtype_bytes_per_value": 2.0,
+      "n_layers": 12,
+      "n_heads": 8,
+      "head_dim": 32,
+      "values_per_position": 6144,
+      "per_position_bytes": 12288.0,
+      "scale_bytes_total": 0,
+      "total_bytes_by_seq_len": {
+        "256": 3145728.0,
+        "4096": 50331648.0,
+        "131072": 1610612736.0
+      }
+    },
+    "int8": {
+      "mode": "int8",
+      "dtype_bytes_per_value": 1.0,
+      "n_layers": 12,
+      "n_heads": 8,
+      "head_dim": 32,
+      "values_per_position": 6144,
+      "per_position_bytes": 6144.0,
+      "scale_bytes_total": 12288,
+      "total_bytes_by_seq_len": {
+        "256": 1585152.0,
+        "4096": 25178112.0,
+        "131072": 805318656.0
+      }
+    },
+    "int4": {
+      "mode": "int4",
+      "dtype_bytes_per_value": 0.5,
+      "n_layers": 12,
+      "n_heads": 8,
+      "head_dim": 32,
+      "values_per_position": 6144,
+      "per_position_bytes": 3072.0,
+      "scale_bytes_total": 12288,
+      "total_bytes_by_seq_len": {
+        "256": 798720.0,
+        "4096": 12595200.0,
+        "131072": 402665472.0
+      }
+    }
+  },
+  "memory_reduction_vs_fp16": {
+    "int8": {
+      "mode": "int8",
+      "base_mode": "fp16",
+      "per_position_bytes": 6144.0,
+      "base_per_position_bytes": 12288.0,
+      "reduction_frac": 0.5,
+      "ratio": 2.0
+    },
+    "int4": {
+      "mode": "int4",
+      "base_mode": "fp16",
+      "per_position_bytes": 3072.0,
+      "base_per_position_bytes": 12288.0,
+      "reduction_frac": 0.75,
+      "ratio": 4.0
+    }
+  },
+  "reproducibility": {
+    "threshold": 0.005,
+    "rerun": false,
+    "per_config": []
+  },
+  "noise_floor": {
+    "window_seeds": [
+      3,
+      4
+    ],
+    "modes": {
+      "fp16": {
+        "n": 2,
+        "mean_damage_bpc": 0.0,
+        "std_damage_bpc": 0.0,
+        "damage_bpc": [
+          0.0,
+          0.0
+        ]
+      },
+      "int8": {
+        "n": 2,
+        "mean_damage_bpc": 0.000217,
+        "std_damage_bpc": 1.9e-05,
+        "damage_bpc": [
+          0.000204,
+          0.000231
+        ]
+      },
+      "int4": {
+        "n": 2,
+        "mean_damage_bpc": 0.047469,
+        "std_damage_bpc": 0.002459,
+        "damage_bpc": [
+          0.049208,
+          0.04573
+        ]
+      }
+    },
+    "max_std_damage_bpc": 0.002459,
+    "median_std_damage_bpc": 1.9e-05
+  },
+  "criteria": {
+    "band_bpc": 0.014,
+    "delta_sign": "Δ = bpc_对照(fp16) − bpc_实验(mode)（正=改善，SCHEMA §17.3）；damage = −Δ",
+    "int8_delta_bpc": 7e-05,
+    "int8_abs_delta_bpc": 7e-05,
+    "int8_memory_reduction_frac": 0.5,
+    "int8_near_lossless": true,
+    "int8_verdict": "近无损（|Δbpc| < 0.014）⇒ 写入参照线，后续所有压缩主张必须与之比较",
+    "int4_delta_bpc": -0.044039,
+    "int4_damage_bpc": 0.044039,
+    "int4_memory_reduction_frac": 0.75,
+    "int4_damage_ge_band": true,
+    "int4_verdict": "代价 = +0.0440 bpc（劣化 ≥ 0.014）",
+    "fp16_vs_fp32_delta_bpc": -6e-06,
+    "noise_tol_bpc_2sigma": 0.004918
+  },
+  "code": {
+    "run_py_sha256": "e3e4bbded4ca5764a27554e152bbc501cc0474a1c62b26aa28cc19db53212b2e",
+    "kv_quant_py_sha256": "1630f4519fa765627e9e52ceab14483aee34d90581031753d76a388564cb7da5",
+    "tests_sha256": "672fbdf24bbe8408268fc094235124c7f6cb15b16401b41d3bf145971dcdb517"
+  },
+  "cost": {
+    "wall_minutes": 0.034,
+    "wall_seconds": 2.06,
+    "peak_mem_mib": 184.4,
+    "base_mem_mib": 52.1,
+    "net_peak_mem_mib": 132.3,
+    "n_evals": 18,
+    "device": "NVIDIA GeForce RTX 4090"
+  }
+}

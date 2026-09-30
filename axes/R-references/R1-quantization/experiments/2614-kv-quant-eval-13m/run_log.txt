@@ -1,0 +1,146 @@
+[自检] 释放版 1.483569 / fp32 档 1.483569 (逐位 =); 锚 1.4836
+{
+  "contract": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/README.md",
+  "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+  },
+  "instrument": {
+    "bpc_release_path": 1.483569,
+    "bpc_fp32_mode": 1.483569,
+    "abs_diff_release_vs_fp32": 0.0,
+    "bitwise_equal": true,
+    "release_anchor_bpc_2610": 1.4836,
+    "abs_diff_vs_anchor": 3.1e-05
+  },
+  "intervention": {
+    "what": "评测期 KV cache 量化：K/V 存成 fp16/int8/int4 再读回（注意力前往返）",
+    "params_added": 0,
+    "weights_changed": false,
+    "trained": false,
+    "alive": true,
+    "activity_note": "活性量 = 每档的 n_values / mean_abs_err / rel_err / changed_frac（逐 batch 落盘 kv_quant_log.jsonl）——证明量化真的改了数值。恒等档 fp32 的 changed_frac = 0",
+    "activity_by_mode": {
+      "fp32": {
+        "n_values": 0,
+        "mean_abs_err": 0.0,
+        "max_abs_err": 0.0,
+        "rel_err": 0.0,
+        "changed_frac": 0.0,
+        "clipped_frac": 0.0
+      },
+      "fp16": {
+        "n_values": 603979776,
+        "mean_abs_err": 0.000210544,
+        "max_abs_err": 0.0078125,
+        "rel_err": 0.000176165,
+        "changed_frac": 0.999850056,
+        "clipped_frac": 0.0
+      },
+      "int8": {
+        "n_values": 603979776,
+        "mean_abs_err": 0.008180554,
+        "max_abs_err": 0.066712379,
+        "rel_err": 0.00684482,
+        "changed_frac": 0.99976158,
+        "clipped_frac": 4.5324e-05,
+        "scale_min": 0.002152803586795926,
+        "scale_max": 0.1334458887577057
+      },
+      "int4": {
+        "n_values": 603979776,
+        "mean_abs_err": 0.148573085,
+        "max_abs_err": 1.220644951,
+        "rel_err": 0.124193802,
+        "changed_frac": 0.999882417,
+        "clipped_frac": 0.0,
+        "scale_min": 0.03905801102519035,
+        "scale_max": 2.4414474964141846
+      }
+    }
+  },
+  "modes": {
+    "fp32": {
+      "bpc": 1.483569,
+      "activity": {
+        "n_values": 0,
+        "mean_abs_err": 0.0,
+        "max_abs_err": 0.0,
+        "rel_err": 0.0,
+        "changed_frac": 0.0,
+        "clipped_frac": 0.0
+      }
+    },
+    "fp16": {
+      "bpc": 1.483571,
+      "activity": {
+        "n_values": 603979776,
+        "mean_abs_err": 0.000210544,
+        "max_abs_err": 0.0078125,
+        "rel_err": 0.000176165,
+        "changed_frac": 0.999850056,
+        "clipped_frac": 0.0
+      }
+    },
+    "int8": {
+      "bpc": 1.483721,
+      "activity": {
+        "n_values": 603979776,
+        "mean_abs_err": 0.008180554,
+        "max_abs_err": 0.066712379,
+        "rel_err": 0.00684482,
+        "changed_frac": 0.99976158,
+        "clipped_frac": 4.5324e-05,
+        "scale_min": 0.002152803586795926,
+        "scale_max": 0.1334458887577057
+      }
+    },
+    "int4": {
+      "bpc": 1.529232,
+      "activity": {
+        "n_values": 603979776,
+        "mean_abs_err": 0.148573085,
+        "max_abs_err": 1.220644951,
+        "rel_err": 0.124193802,
+        "changed_frac": 0.999882417,
+        "clipped_frac": 0.0,
+        "scale_min": 0.03905801102519035,
+        "scale_max": 2.4414474964141846
+      }
+    }
+  },
+  "quant_rows": [
+    {
+      "mode": "fp16",
+      "bpc": 1.483571,
+      "delta_bpc": 0.0,
+      "damage_bpc": 0.0,
+      "abs_delta_bpc": 0.0,
+      "activity": {
+        "n_values": 603979776,
+        "mean_abs_err": 0.000210544,
+        "max_abs_err": 0.0078125,
+        "rel_err": 0.000176165,
+        "changed_frac": 0.999850056,
+        "clipped_frac": 0.0
+      },
+      "per_position_bytes": 12288.0,
+      "reduction_vs_fp16_frac": 0.0
+    },
+    {
+      "mode": "int8",
+      "bpc": 1.483721,
+      "delta_bpc": -0.00015,
+      "damage_bpc": 0.00015,
+      "abs_delta_bpc": 0.00015,
+      "activity": {
+        "n_values": 603979776,
+        "mean_abs_err": 0.008180554,
+        "max_abs_err": 0.066712379,
+        "rel_err": 0.00684482,
+        "changed_fr
+
+落盘：/home/z/vibe/pathlm/axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json
+墙钟 0.89 min，峰值显存 184 MiB (net 132)，45 次评测

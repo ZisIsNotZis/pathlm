@@ -88,6 +88,13 @@ class DepthARConfig:
     #                     L(L+1)/2 标量，初始化为「只取 j=k−1」（= 顺序残差）。
     #                     该点非鞍点（α 非全零 + h_j 非零），无需单边零技巧。
     topology: str = "sequential"
+    # 内容 top-k 稀疏注意力（ticket 31 契约 J，A6 混合算子首探）。0 = 关闭
+    # （缺省，逐位还原 v1：stock 因果 SDPA）。k > 0 = 每个查询在**因果掩码内**
+    # 只保留内容相似度（q·kᵀ）最大的 k 个键，其余置 −inf 后 softmax —— 选择
+    # **按内容、不按位置**（位置选择 = 最近的 k 个键，只作为对照基线报重合度）。
+    # 只在 dense=True（stock decoder-only：无门/无退出/无填充）下开放：退出/填充
+    # 路径的稀疏注意力语义未定义，混在一起会破坏单因素归因。
+    attn_sparse_k: int = 0
 
 
 TOPOLOGIES = ("sequential", "parallel", "parallel-dual-ln", "dense")
@@ -155,6 +162,110 @@ class ParallelBlock(nn.Module):
         return x + self.proj(a) + self.mlp(h2), None
 
 
+def causal_topk_keep_mask(scores: torch.Tensor, k: int,
+                          causal: torch.Tensor | None = None) -> torch.Tensor:
+    """内容 top-k 的因果保留掩码 [.., T, T]（bool，True = 进入 softmax）。
+
+    - `causal` 缺省 = 现算下三角（`causal[i, j] = j ≤ i`）；
+    - 每行在**因果允许的键**里保留分数最大的 k 个（`torch.topk` 语义，同分按
+      索引定序）；行 i 的允许键数为 i+1，故 i+1 < k 时保留全部 i+1 个
+      （`& causal` 合取把 topk 在 −inf 上的任意选择剔除，保证掩码恒为「因果 ∩
+      top-k」，不会放出非因果键）。
+    - k ≥ T 时返回恒等因果掩码（选择无信息量，调用方应直接走 stock SDPA 路径）。
+    """
+    T = scores.shape[-1]
+    if causal is None:
+        causal = torch.tril(torch.ones(T, T, dtype=torch.bool,
+                                       device=scores.device))
+    if k >= T:
+        return causal
+    allowed = scores.masked_fill(~causal, float("-inf"))
+    idx = allowed.topk(k, dim=-1).indices
+    keep = torch.zeros_like(allowed, dtype=torch.bool).scatter_(-1, idx, True)
+    return keep & causal
+
+
+def sparse_attn_telemetry(keep: torch.Tensor, k: int) -> dict:
+    """top-k 注意力的活性量（SCHEMA §10）：保留键数与「被选键是不是就是最近
+    的 k 个键（位置选择）」的重合度。返回 0 维张量（调用方决定何时 `.item()`）。
+
+    - `kept_mean/min/max`：每个查询实际保留的因果键数；
+    - `sel_dist_mean`：被选键的平均距离 i − j；
+    - `sel_in_lastk_frac`：被选键中落在「最近 k 个位置」窗口内的比例——它是
+      **位置选择基线**的重合度；≪ 1 说明选择确实按内容、不像位置窗口。
+    """
+    T = keep.shape[-1]
+    idx = torch.arange(T, device=keep.device)
+    dist = (idx.unsqueeze(1) - idx.unsqueeze(0))          # [T,T]，因果区 ≥ 0
+    kept = keep.sum(-1).float()                            # [.., T]
+    total = kept.sum().clamp_min(1.0)
+    return {
+        "kept_mean": kept.mean(),
+        "kept_min": kept.min(),
+        "kept_max": kept.max(),
+        "kept_frac_of_T": kept.mean() / T,
+        "sel_dist_mean": (keep * dist).sum().float() / total,
+        "sel_in_lastk_frac": (keep & (dist < k)).sum().float() / total,
+    }
+
+
+class TopKBlock(Block):
+    """内容 top-k 稀疏注意力块（ticket 31 契约 J）。
+
+    与 `Block` 的唯一差别 = 注意力算子：先算**完整**分数矩阵
+    `scores = q·kᵀ/√dh`，在因果掩码内保留每个查询分数最高的 k 个键、其余置
+    −inf 后 softmax（数学语义 = 只用被选键做混合的稀疏注意力；选择按内容）。
+
+    - 子模块创建顺序与 `Block` 完全一致（ln1 → ln2 → qkv → proj → mlp），因此
+      同 seed 下参数与全注意力臂**逐位相同**、参数量增量为 0（单因素：唯一变量
+      是算子）；因果掩码是 `persistent=False` 的 buffer，不进 state_dict；
+    - `topk >= T` 时因果允许键数恒 ≤ T ⇒ 选择退化为恒等 ⇒ 直接走 stock SDPA
+      路径，与 `Block` 逐位一致（单测钉住）；
+    - 只支持 stock 路径（无 mask/dist_pen/kv_from/gate_vec）——稀疏注意力只在
+      dense=True（无退出/无填充）形态下开放。
+    """
+
+    def __init__(self, cfg: ModelConfig, topk: int):
+        if topk < 1:
+            raise ValueError(f"topk must be >= 1, got {topk}")
+        super().__init__(cfg)
+        self.topk = int(topk)
+        self.register_buffer(
+            "causal", torch.tril(torch.ones(cfg.seq_len, cfg.seq_len,
+                                            dtype=torch.bool)),
+            persistent=False)
+
+    def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
+                dist_pen: float = 0.0, kv_from: torch.Tensor | None = None,
+                gate_vec: torch.Tensor | None = None
+                ) -> tuple[torch.Tensor, dict | None]:
+        for name, given in (("attn_mask", attn_mask is not None),
+                            ("dist_pen", dist_pen > 0),
+                            ("kv_from", kv_from is not None),
+                            ("gate_vec", gate_vec is not None)):
+            if given:
+                raise ValueError(
+                    f"TopKBlock 只支持 stock 注意力路径，收到 {name}：内容 "
+                    "top-k 稀疏只在 dense=True（无退出/无填充）形态下开放")
+        B, T, d = x.shape
+        q, k, v = self.qkv(self.ln1(x)).chunk(3, dim=-1)
+        shape = lambda t: t.view(B, T, self.n_heads, d // self.n_heads).transpose(1, 2)
+        qs, ks, vs = shape(q), shape(k), shape(v)
+        if self.topk >= T:
+            a = F.scaled_dot_product_attention(qs, ks, vs, is_causal=True)
+            tele = None
+        else:
+            scores = qs @ ks.transpose(-2, -1) / (d // self.n_heads) ** 0.5
+            keep = causal_topk_keep_mask(scores, self.topk, self.causal[:T, :T])
+            w = scores.masked_fill(~keep, float("-inf")).softmax(-1)
+            a = w @ vs
+            tele = sparse_attn_telemetry(keep, self.topk)
+        a = a.transpose(1, 2).reshape(B, T, d)
+        x = x + self.proj(a)
+        x = x + self.mlp(self.ln2(x))
+        return x, tele
+
+
 def topology_liveness(model: "DepthARModel") -> dict:
     """层间拓扑干预的活性量（SCHEMA §10 强制项）。
 
@@ -199,6 +310,78 @@ def topology_liveness(model: "DepthARModel") -> dict:
     return out
 
 
+def attn_sparse_liveness(model: "DepthARModel",
+                         layer_stats: list[dict] | None = None) -> dict:
+    """内容 top-k 稀疏注意力的活性块（SCHEMA §10 强制项，契约 J）。
+
+    `params_added` 恒 0：该干预不新增任何参数（单测与实测参数量逐位对照钉住），
+    所以「活性」必须来自选择本身，而不是参数账。`layer_stats` = 一次真实 forward
+    的 `aux["attn_sparse"]`（每层一个 `sparse_attn_telemetry` 字典）时，汇总：
+
+    - `kept_mean` vs `kept_theory_mean`：实测保留键数是否等于理论
+      mean_i min(k, i+1)（= k 真的生效，且掩码恰是「因果 ∩ top-k」）；
+    - `kept_count_matches_theory`：上述相等性的布尔量；
+    - `sel_in_lastk_frac`：被选键与「最近 k 个键（位置选择基线）」的重合度；
+    - `alive` = 保留键数与理论一致（掩码真的在按 k 生效）。
+    """
+    k = model.cfg.attn_sparse_k
+    T = model.cfg.seq_len
+    theory = sum(min(k, i + 1) for i in range(T)) / T if k > 0 else 0.0
+    out = {"attn_sparse_k": k, "enabled": k > 0, "params_added": 0,
+           "parametrized": False,
+           "block_python_class": type(model.blocks[0]).__name__,
+           "kept_theory_mean": round(theory, 6)}
+    if k <= 0:
+        out.update({"kept_mean": None, "kept_min": None, "kept_max": None,
+                    "kept_frac_of_T": None, "sel_dist_mean": None,
+                    "sel_in_lastk_frac": None,
+                    "kept_count_matches_theory": None, "alive": False,
+                    "alive_note": "开关关闭（attn_sparse_k=0）：无异于基线"})
+        return out
+    if not layer_stats:
+        out.update({"kept_mean": None, "kept_count_matches_theory": None,
+                    "alive": None,
+                    "alive_note": "未提供 layer_stats（无真实前向的活性样本）"})
+        return out
+    mean = lambda key: float(torch.stack([s[key] for s in layer_stats]).mean())
+    out.update({
+        "kept_mean": round(mean("kept_mean"), 6),
+        "kept_min": round(float(torch.stack([s["kept_min"]
+                                             for s in layer_stats]).min()), 6),
+        "kept_max": round(float(torch.stack([s["kept_max"]
+                                             for s in layer_stats]).max()), 6),
+        "kept_frac_of_T": round(mean("kept_frac_of_T"), 6),
+        "sel_dist_mean": round(mean("sel_dist_mean"), 4),
+        "sel_in_lastk_frac": round(mean("sel_in_lastk_frac"), 4),
+        "n_layers_sampled": len(layer_stats),
+    })
+    out["kept_count_matches_theory"] = abs(out["kept_mean"] - theory) < 1e-6
+    out["alive"] = bool(out["kept_count_matches_theory"])
+    out["alive_note"] = (
+        "保留键数 == 理论 mean_i min(k,i+1) ⇒ 掩码按 k 生效；"
+        "sel_in_lastk_frac ≪ 1 = 选择偏离「最近 k 个键」的位置基线（按内容）")
+    return out
+
+
+@torch.no_grad()
+def attn_sparse_probe(model: "DepthARModel", eval_arr, n_batches: int = 2,
+                      batch_size: int = 8, seed: int = 13,
+                      device: str = "cpu") -> dict:
+    """真实前向的 top-k 活性汇总（训练入口与实验电池共用同一口径）。开关关闭时
+    返回 enabled=False 的空块，不产生额外前向。"""
+    if model.cfg.attn_sparse_k <= 0:
+        return attn_sparse_liveness(model)
+    from .data import batch
+    generator = torch.Generator().manual_seed(seed)
+    model.eval()
+    stats = []
+    for _ in range(n_batches):
+        x, _ = batch(eval_arr, batch_size, model.cfg.seq_len, generator)
+        _, aux = model(x.to(device), exit_depths=None)
+        stats.extend(aux["attn_sparse"])
+    return attn_sparse_liveness(model, stats)
+
+
 class DepthARModel(nn.Module):
     """深度自适应 AR。forward(tokens, exit_depths) → (loss, aux)。
 
@@ -231,7 +414,21 @@ class DepthARModel(nn.Module):
             raise ValueError(
                 "层间拓扑干预只在 dense=True（stock decoder-only 形态）下验证"
                 f"（单因素）——收到 topology={cfg.topology!r} 且 dense=False")
-        if cfg.topology == "parallel":
+        if cfg.attn_sparse_k < 0:
+            raise ValueError(f"attn_sparse_k must be >= 0, got {cfg.attn_sparse_k}")
+        if cfg.attn_sparse_k > 0 and not cfg.dense:
+            raise ValueError(
+                "内容 top-k 稀疏注意力只在 dense=True（stock decoder-only 形态）下"
+                f"验证（单因素）——收到 attn_sparse_k={cfg.attn_sparse_k} 且 "
+                "dense=False")
+        if cfg.attn_sparse_k > 0 and cfg.topology != "sequential":
+            raise ValueError(
+                "attn_sparse_k 与层间拓扑互斥（单因素：一次只改一个因素）——"
+                f"收到 topology={cfg.topology!r}")
+        if cfg.attn_sparse_k > 0:
+            self.blocks = nn.ModuleList(TopKBlock(mcfg, cfg.attn_sparse_k)
+                                        for _ in range(cfg.n_layers))
+        elif cfg.topology == "parallel":
             self.blocks = nn.ModuleList(ParallelBlock(mcfg, share_ln=True)
                                         for _ in range(cfg.n_layers))
         elif cfg.topology == "parallel-dual-ln":
@@ -359,6 +556,7 @@ class DepthARModel(nn.Module):
         h = self._input_states(tokens)
         states = [h]
         gate_means: list[torch.Tensor] = []
+        attn_sparse_layers: list[dict] = []
         if not self.cfg.dense:
             if self.cfg.proj_fill and not self.cfg.fill_kv:
                 raise ValueError("proj_fill requires fill_kv=True")
@@ -398,10 +596,12 @@ class DepthARModel(nn.Module):
             for k, blk in enumerate(self.blocks, start=1):
                 h, _ = blk(self._layer_mix_input(states, k))
                 states.append(h)
-        else:  # dense 对照：无门、无退出，普通残差堆叠（sequential/parallel）
+        else:  # dense 对照：无门、无退出，普通残差堆叠（sequential/parallel/top-k）
             for blk in self.blocks:
-                h, _ = blk(h)
+                h, tele = blk(h)
                 states.append(h)
+                if tele is not None:      # TopKBlock 的活性量（每层一份）
+                    attn_sparse_layers.append(tele)
 
         targets = tokens if targets is None else targets
         sg = bool(shallow_stopgrad)
@@ -429,6 +629,8 @@ class DepthARModel(nn.Module):
         loss = loss / (w * (len(readouts) - 1) + final_weight)
         aux = {"states": states, "depth_logits": depth_logits, "depth_ce": depth_ce,
                "gate_mean": gate_means, "exit_depths": exit_depths}
+        if attn_sparse_layers:
+            aux["attn_sparse"] = attn_sparse_layers
         return loss, aux
 
     def _layer_mix_input(self, states: list[torch.Tensor], k: int) -> torch.Tensor:

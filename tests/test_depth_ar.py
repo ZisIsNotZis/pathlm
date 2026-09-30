@@ -17,7 +17,9 @@ from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
                              ParallelBlock, TOPOLOGIES, topology_liveness,
                              commit_input, generate, token_input, workspace_probe,
                              tf_acceptance, readout_workspace_energy,
-                             spec_cost_model)
+                             spec_cost_model, TopKBlock, causal_topk_keep_mask,
+                             sparse_attn_telemetry, attn_sparse_liveness,
+                             attn_sparse_probe)
 from pathlm.model import Block
 
 
@@ -1186,3 +1188,291 @@ def test_topology_liveness_params_added_matches_param_delta():
         "start_bitwise_equals_sequential"]
     assert topology_liveness(ms["dense"])["start_bitwise_equals_sequential"]
     assert not topology_liveness(ms["dense"])["params_identical_to_sequential"]
+
+
+# ---------------- 契约 J：内容 top-k 稀疏注意力（ticket 31） ----------------
+
+def _ref_topk_keep(scores: torch.Tensor, k: int) -> torch.Tensor:
+    """参考实现（逐行排序，无并列分数）：因果内分数最大的 k 个键。"""
+    T = scores.shape[-1]
+    keep = torch.zeros(T, T, dtype=torch.bool)
+    for i in range(T):
+        order = sorted(range(i + 1), key=lambda j: (-float(scores[i, j]), j))
+        for j in order[:k]:
+            keep[i, j] = True
+    return keep
+
+
+def test_topk_default_off_matches_v1_bitwise():
+    """attn_sparse_k 缺省 = 0 时必须与 dense 全注意力臂**逐位**一致（v1 还原）。"""
+    m_default = tiny_model(dense=True)
+    m_off = tiny_model(dense=True, attn_sparse_k=0)
+    assert type(m_default.blocks[0]).__name__ == "Block"
+    assert sum(p.numel() for p in m_default.parameters()) == \
+        sum(p.numel() for p in m_off.parameters())
+    x = torch.randint(0, 10, (2, 12))
+    assert torch.equal(m_default(x)[1]["states"][-1], m_off(x)[1]["states"][-1])
+    assert "attn_sparse" not in m_off(x)[1]
+
+
+def test_topk_mask_keeps_exactly_min_k_causal_keys():
+    """掩码 = 因果 ∩「分数最大的 k 个」：每行保留数恒为 min(k, i+1)、不放出非因果键、
+    且与逐行排序的参考实现逐位一致（分数无并列 ⇒ 与 topk 的定序约定无关）。"""
+    torch.manual_seed(5)
+    for k in (1, 3, 8):
+        scores = torch.randn(2, 2, 10, 10)
+        causal = torch.tril(torch.ones(10, 10, dtype=torch.bool))
+        keep = causal_topk_keep_mask(scores, k, causal)
+        assert not bool((keep & ~causal.unsqueeze(0).unsqueeze(0)).any()), "非因果键被放出"
+        counts = keep.sum(-1)
+        for i in range(10):
+            assert int(counts[0, 0, i]) == min(k, i + 1), (k, i, int(counts[0, 0, i]))
+        for b in range(2):
+            for h in range(2):
+                assert torch.equal(keep[b, h], _ref_topk_keep(scores[b, h], k))
+    # k ≥ T：恒等因果掩码（选择无信息量）
+    assert torch.equal(causal_topk_keep_mask(scores, 10, causal), causal)
+    assert torch.equal(causal_topk_keep_mask(scores, 99, causal), causal)
+
+
+def test_topk_mask_selection_is_by_content_not_position():
+    """选择必须**按内容**：构造「最远的第 0 键分数最高」的分数矩阵，top-2 必须选中
+    第 0 键而不是「最近的键」——位置窗口（最近 k 个）会给出 {i−1, i}，二者不同。"""
+    T, k = 8, 2
+    scores = torch.zeros(1, 1, T, T)
+    for i in range(T):
+        for j in range(i + 1):
+            scores[0, 0, i, j] = -(i - j)          # 默认：越近越好
+        scores[0, 0, i, 0] = 100.0                 # 最远的第 0 键最高分
+    keep = causal_topk_keep_mask(scores, k)
+    assert bool(keep[0, 0, 7, 0])                  # 远键被选中（按内容）
+    assert bool(keep[0, 0, 7, 7])
+    assert not bool(keep[0, 0, 7, 6])              # 最近的非自身键被丢弃（非位置窗口）
+    for i in range(1, T):
+        assert sorted(keep[0, 0, i].nonzero().flatten().tolist()) == [0, i]
+    tele = sparse_attn_telemetry(keep, k)
+    # 位置基线（最近 k 个键）的重合度：T=8、k=2 时只有 2 个键命中 ⇒ 远小于 1
+    assert float(tele["sel_in_lastk_frac"]) < 0.9
+    assert 1.0 < float(tele["sel_dist_mean"]) < T
+
+
+def test_topk_softmax_weights_live_only_on_kept_keys():
+    """稀疏 softmax 的权重必须严格只在被选键上：未选键权重恰好 0、行和恰为 1、
+    与「只在被选分数上做 softmax」的手算一致；允许键 ≤ k 的行退化为全注意力。"""
+    torch.manual_seed(6)
+    T, k = 9, 3
+    scores = torch.randn(1, 1, T, T, dtype=torch.float64)
+    keep = causal_topk_keep_mask(scores, k)
+    w = scores.masked_fill(~keep, float("-inf")).softmax(-1)
+    assert float(w[~keep].abs().max()) == 0.0
+    assert torch.allclose(w.sum(-1), torch.ones(T, dtype=torch.float64),
+                          atol=1e-12, rtol=0)
+    causal = torch.tril(torch.ones(T, T, dtype=torch.bool))
+    full = scores.masked_fill(~causal, float("-inf")).softmax(-1)
+    for i in range(T):
+        if i + 1 <= k:                              # 允许键数 ≤ k ⇒ 选择是恒等
+            assert torch.equal(w[0, 0, i], full[0, 0, i])
+        else:
+            assert not torch.allclose(w[0, 0, i], full[0, 0, i])
+            man = scores[0, 0, i][keep[0, 0, i]].softmax(-1)
+            assert torch.allclose(w[0, 0, i][keep[0, 0, i]], man, atol=0, rtol=0)
+    # 被掩掉的键在反向时拿不到梯度（masked_fill(-inf) 的权重恰为 0）
+    assert float((w * (~keep)).sum()) == 0.0
+
+
+def test_topk_block_formula_matches_manual_sparse_attention():
+    """TopKBlock 公式逐位钉死：scores→因果 top-k 掩码→稀疏 softmax→w@v→proj→mlp；
+    前 k 行（允许键数 ≤ k）必须与同权重全注意力逐位相同；并钉住它只接受 stock 路径。"""
+    from pathlm.model import ModelConfig
+    torch.manual_seed(3)
+    cfg = ModelConfig(d_model=16, n_layers=2, n_heads=2, mlp_mult=4, seq_len=8)
+    k = 3
+    blk = TopKBlock(cfg, k)
+    x = torch.randn(2, 8, 16)
+    out, tele = blk(x)
+    assert set(tele) == {"kept_mean", "kept_min", "kept_max", "kept_frac_of_T",
+                         "sel_dist_mean", "sel_in_lastk_frac"}
+    B, T, d = x.shape
+    q, kk, v = blk.qkv(blk.ln1(x)).chunk(3, dim=-1)
+    shape = lambda t: t.view(B, T, blk.n_heads, d // blk.n_heads).transpose(1, 2)
+    scores = shape(q) @ shape(kk).transpose(-2, -1) / (d // blk.n_heads) ** 0.5
+    keep = causal_topk_keep_mask(scores, k, blk.causal)
+    w = scores.masked_fill(~keep, float("-inf")).softmax(-1)
+    a = (w @ shape(v)).transpose(1, 2).reshape(B, T, d)
+    expect = x + blk.proj(a)
+    expect = expect + blk.mlp(blk.ln2(expect))
+    assert torch.allclose(out, expect, atol=0, rtol=0)
+    # 同上权重、只改成全注意力（topk ≥ T）作对照
+    blk.topk = T
+    out_full, tele_full = blk(x)
+    blk.topk = k
+    assert tele_full is None
+    assert not torch.allclose(out, out_full, atol=1e-7)     # 算子在起作用
+    assert torch.allclose(out[:, :k], out_full[:, :k], atol=1e-6)  # 允许键 ≤ k 的行
+    for kw in ({"kv_from": x}, {"gate_vec": torch.ones_like(x)}, {"dist_pen": 0.1},
+               {"attn_mask": torch.ones(1, 1, 8, 8, dtype=torch.bool)}):
+        with pytest.raises(ValueError):
+            blk(x, **kw)
+
+
+def test_topk_block_k_ge_T_bitwise_equals_block():
+    """k ≥ T ⇒ 选择退化为恒等 ⇒ 必须与 stock `Block` **逐位**一致（同一份权重）。"""
+    from pathlm.model import ModelConfig
+    torch.manual_seed(4)
+    cfg = ModelConfig(d_model=16, n_layers=2, n_heads=2, mlp_mult=4, seq_len=8)
+    blk = Block(cfg)
+    top = TopKBlock(cfg, 8)
+    top.load_state_dict(blk.state_dict(), strict=True)
+    x = torch.randn(2, 8, 16)
+    out_b, dist_b = blk(x)
+    out_t, tele_t = top(x)
+    assert dist_b is None and tele_t is None
+    assert torch.equal(out_b, out_t)
+    # 更大的 k（> T）同样退化
+    top.topk = 64
+    assert torch.equal(blk(x)[0], top(x)[0])
+
+
+def test_topk_params_identical_to_full_attention_block():
+    """单因素 + SCHEMA §15 记账：top-k 臂相对全注意力臂**参数量增量 = 0**，同 seed
+    下全部参数逐位相同（子模块创建顺序一致）；因果掩码是 non-persistent buffer，
+    不进 state_dict（否则「参数量相等」会被 buffer 掩盖）。"""
+    torch.manual_seed(9)
+    from pathlm.model import ModelConfig
+    cfg = ModelConfig(d_model=16, n_layers=2, n_heads=2, mlp_mult=4, seq_len=8)
+    blk = Block(cfg)
+    torch.manual_seed(9)
+    top = TopKBlock(cfg, 3)
+    assert set(blk.state_dict()) == set(top.state_dict())
+    for key, val in blk.state_dict().items():
+        assert torch.equal(val, top.state_dict()[key]), key
+    assert "causal" not in top.state_dict()
+    assert sum(p.numel() for p in top.parameters()) == \
+        sum(p.numel() for p in blk.parameters())
+    full_model = tiny_model(dense=True)
+    top_model = tiny_model(dense=True, attn_sparse_k=4)
+    assert type(top_model.blocks[0]).__name__ == "TopKBlock"
+    assert sum(p.numel() for p in top_model.parameters()) == \
+        sum(p.numel() for p in full_model.parameters())
+    for key, val in full_model.state_dict().items():
+        assert torch.equal(val, top_model.state_dict()[key]), key
+
+
+def test_topk_guard_requires_dense_sequential_and_valid_k():
+    """单因素守卫：top-k 只在 dense=True + sequential 拓扑下开放（退出/填充与
+    层间拓扑都改了另一个因素）；非法 k 直接报错；`attn_sparse_k=0` 等价于关闭。"""
+    with pytest.raises(ValueError):                    # 非 dense
+        tiny_model(attn_sparse_k=4)
+    with pytest.raises(ValueError):                    # 与层间拓扑混用
+        tiny_model(dense=True, topology="parallel", attn_sparse_k=4)
+    with pytest.raises(ValueError):                    # 非法 k
+        tiny_model(dense=True, attn_sparse_k=-1)
+    from pathlm.model import ModelConfig
+    with pytest.raises(ValueError):
+        TopKBlock(ModelConfig(d_model=16, n_heads=2, seq_len=8), 0)
+    live = attn_sparse_liveness(tiny_model(dense=True))
+    assert live["enabled"] is False and live["alive"] is False
+    assert live["params_added"] == 0
+
+
+def test_topk_switch_changes_computation_and_k_is_effective():
+    """SCHEMA §10 活性：开关打开必须改变前向（不是死开关），且每层活性量显示
+    「实际保留键数 == 理论 min(k, i+1)」——k 真的生效；k=1 时每行只剩自身（因果
+    内分数最大者恒为对角）⇒ 与全注意力的偏差应显著更大。"""
+    full = tiny_model(dense=True)
+    sp = tiny_model(dense=True, attn_sparse_k=4)
+    x = torch.randint(0, 10, (2, 12))
+    _, aux_sp = sp(x, exit_depths=None)
+    _, aux_full = full(x, exit_depths=None)
+    assert len(aux_sp["attn_sparse"]) == 3
+    rel = float(((aux_sp["states"][-1] - aux_full["states"][-1]).norm()
+                 / aux_full["states"][-1].norm()).detach())
+    assert rel > 0
+    T, k = 12, 4
+    theory = sum(min(k, i + 1) for i in range(T)) / T
+    live = attn_sparse_liveness(sp, aux_sp["attn_sparse"])
+    assert live["alive"] and live["kept_count_matches_theory"]
+    assert live["kept_mean"] == pytest.approx(theory, abs=1e-6)
+    assert live["params_added"] == 0
+    assert live["attn_sparse_k"] == 4
+    # k = T：与全注意力臂逐位一致（选择退化为恒等）
+    sp_all = tiny_model(dense=True, attn_sparse_k=12)
+    assert torch.equal(sp_all(x, exit_depths=None)[1]["states"][-1],
+                       aux_full["states"][-1])
+    # k = 1：每行只留对角 ⇒ 输出 = v 的自投影，与全注意力偏差更大
+    sp1 = tiny_model(dense=True, attn_sparse_k=1)
+    _, aux1 = sp1(x, exit_depths=None)
+    rel1 = float(((aux1["states"][-1] - aux_full["states"][-1]).norm()
+                  / aux_full["states"][-1].norm()).detach())
+    assert rel1 > rel
+    assert attn_sparse_liveness(sp1, aux1["attn_sparse"])["kept_mean"] == 1.0
+
+
+def test_topk_sel_in_lastk_frac_measures_positional_overlap():
+    """「内容选择 vs 最近 k 个键（位置基线）」的重合度是可解释量：分数 = −距离
+    （对角最大）时 k=1 的 top-1 恰是对角 ⇒ 重合度 = 1、距离均值 = 0；随机分数下
+    k=4/T=12 的重合度应 < 1 且被选键距离 > 0（选择不是位置窗口）。"""
+    T, k = 12, 4
+    dist_scores = -torch.cdist(torch.arange(T, dtype=torch.float64).view(-1, 1),
+                               torch.arange(T, dtype=torch.float64).view(-1, 1)).view(1, 1, T, T)
+    keep1 = causal_topk_keep_mask(dist_scores, 1)
+    t1 = sparse_attn_telemetry(keep1, 1)
+    assert float(t1["sel_in_lastk_frac"]) == 1.0          # 对角（距离 0）被选中
+    assert float(t1["sel_dist_mean"]) == 0.0
+    assert float(t1["kept_mean"]) == 1.0
+    torch.manual_seed(8)
+    scores = torch.randn(1, 1, T, T)
+    keep = causal_topk_keep_mask(scores, k)
+    tele = sparse_attn_telemetry(keep, k)
+    assert 0.0 < float(tele["sel_in_lastk_frac"]) < 1.0
+    assert 0.0 < float(tele["sel_dist_mean"]) <= T
+    assert float(tele["kept_mean"]) == sum(min(k, i + 1) for i in range(T)) / T
+
+
+def test_topk_probe_and_liveness_contract_on_real_batches():
+    """`attn_sparse_probe`（训练入口与实验电池共用的活性汇总）在真实数据流上：
+    开关关闭 ⇒ enabled=False 的空块；开关打开 ⇒ alive、保留键数符合理论、
+    参数量增量为 0（探针自身不引入参数）。"""
+    import numpy as np
+    arr = (np.arange(4000) % 7).astype(np.uint8)
+    full = tiny_model(dense=True)
+    assert attn_sparse_probe(full, arr, n_batches=1, batch_size=2)["enabled"] is False
+    sp = tiny_model(dense=True, attn_sparse_k=4)
+    probe = attn_sparse_probe(sp, arr, n_batches=2, batch_size=2)
+    assert probe["enabled"] and probe["alive"]
+    assert probe["n_layers_sampled"] == 2 * 3          # n_batches × n_layers
+    theory = sum(min(4, i + 1) for i in range(12)) / 12
+    assert probe["kept_mean"] == pytest.approx(theory, abs=1e-6)
+    n_before = sum(p.numel() for p in sp.parameters())
+    attn_sparse_probe(sp, arr, n_batches=1, batch_size=2)
+    assert sum(p.numel() for p in sp.parameters()) == n_before
+
+
+def test_topk_gradients_flow_and_non_selected_values_get_none():
+    """反向可达且数值健康：qkv/proj 梯度非零、有限；全层输出有限；**未被选中的
+    键的 v 拿到的梯度恰为 0**（w=0 ⇒ ∂L/∂v_j = 0）——这是「稀疏混合真的跳过了
+    未选键」的梯度层证据。"""
+    sp = tiny_model(dense=True, attn_sparse_k=4)
+    x = torch.randint(0, 10, (2, 12))
+    loss, aux = sp(x, exit_depths=None)
+    assert torch.isfinite(loss)
+    assert torch.isfinite(aux["states"][-1]).all()
+    loss.backward()
+    for name in ("qkv", "proj"):
+        g = getattr(sp.blocks[0], name).weight.grad
+        assert g is not None and torch.isfinite(g).all() and \
+            bool(g.abs().sum() > 0), name
+    # 手工复核：同一 mask 下未被选键的 v 梯度为 0
+    blk = TopKBlock(type("C", (), {"d_model": 16, "n_heads": 2, "mlp_mult": 4,
+                                   "dropout": 0.0, "seq_len": 12})(), 4)
+    xx = torch.randn(1, 12, 16)
+    q, k, v = blk.qkv(blk.ln1(xx)).chunk(3, dim=-1)
+    v = v.detach().requires_grad_(True)
+    shape = lambda t: t.view(1, 12, 2, 8).transpose(1, 2)
+    scores = shape(q.detach()) @ shape(k.detach()).transpose(-2, -1) / 8 ** 0.5
+    keep = causal_topk_keep_mask(scores, 4)
+    w = scores.masked_fill(~keep, float("-inf")).softmax(-1)
+    (w @ shape(v)).sum().backward()
+    grad_v = shape(v.grad)[0, 0]                       # [T, dh]
+    got = keep[0, 0].float().sum(0).clamp(0, 1)        # 每个键是否被任何查询选中
+    assert bool((grad_v.abs().sum(-1)[got == 0] == 0).all())

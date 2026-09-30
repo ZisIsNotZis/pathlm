@@ -1,0 +1,186 @@
+{
+  "run": "smoke-k64",
+  "config": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "gate_bias_init": -2.0,
+    "dense": true,
+    "fill_kv": true,
+    "proj_fill": false,
+    "readout_dims": null,
+    "readout_gated": false,
+    "readout_linear_resid": false,
+    "topology": "sequential",
+    "attn_sparse_k": 64
+  },
+  "train": {
+    "steps": 20,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0
+  },
+  "topology": "sequential",
+  "attn_sparse_k": 64,
+  "topology_liveness": {
+    "topology": "sequential",
+    "params_added": 0,
+    "parameterized": false,
+    "params_identical_to_sequential": true,
+    "start_bitwise_equals_sequential": true,
+    "w_fro": null,
+    "w_absmax": null,
+    "nonzero_frac": null,
+    "alive": false
+  },
+  "exit_mode": "uniform",
+  "fill_kv": true,
+  "proj_fill": false,
+  "aux_weight": 1.0,
+  "aux_anneal_to": null,
+  "final_weight": 1.0,
+  "readout_dims": null,
+  "readout_gated": false,
+  "readout_linear_resid": false,
+  "exit_anneal": false,
+  "exit_anneal_to": null,
+  "exit_anneal_frac": null,
+  "final_anneal_to": null,
+  "shallow_stopgrad": false,
+  "dense_aux": false,
+  "gnorm_monitor": {
+    "gnorm_max": 7.68,
+    "gnorm_mean": 3.74,
+    "grad_skips": 0,
+    "attn_sparse_mean": {
+      "kept_mean": 56.125,
+      "kept_frac_of_T": 0.219238,
+      "sel_dist_mean": 71.362678,
+      "sel_in_lastk_frac": 0.538543
+    },
+    "attn_sparse_layer_samples": 160
+  },
+  "params": 6962688,
+  "vocab_size": 206,
+  "train_tokens": 163840,
+  "wall_minutes": 0.04,
+  "avg_train_depth_ce": [
+    4.2131
+  ],
+  "avg_train_gate_mean": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "depth_curve": [
+    {
+      "depth": 0,
+      "bpc": 7.6178,
+      "acc": 0.0543
+    },
+    {
+      "depth": 1,
+      "bpc": 7.3578,
+      "acc": 0.0548
+    },
+    {
+      "depth": 2,
+      "bpc": 6.9304,
+      "acc": 0.1028
+    },
+    {
+      "depth": 3,
+      "bpc": 6.4022,
+      "acc": 0.1239
+    },
+    {
+      "depth": 4,
+      "bpc": 5.8482,
+      "acc": 0.1539
+    },
+    {
+      "depth": 5,
+      "bpc": 5.4237,
+      "acc": 0.1723
+    },
+    {
+      "depth": 6,
+      "bpc": 5.1042,
+      "acc": 0.1975
+    },
+    {
+      "depth": 7,
+      "bpc": 4.8754,
+      "acc": 0.1908
+    },
+    {
+      "depth": 8,
+      "bpc": 4.7746,
+      "acc": 0.1915
+    }
+  ],
+  "bpc": 4.7746,
+  "next_token_acc": 0.1915,
+  "tf_acceptance": [
+    {
+      "depth": 0,
+      "accept": 0.083
+    },
+    {
+      "depth": 1,
+      "accept": 0.0831
+    },
+    {
+      "depth": 2,
+      "accept": 0.1031
+    },
+    {
+      "depth": 3,
+      "accept": 0.1354
+    },
+    {
+      "depth": 4,
+      "accept": 0.2461
+    },
+    {
+      "depth": 5,
+      "accept": 0.3288
+    },
+    {
+      "depth": 6,
+      "accept": 0.596
+    },
+    {
+      "depth": 7,
+      "accept": 0.827
+    }
+  ],
+  "tf_note": "dense 中间深度读出无直接监督：tf 系 depth-k 残差态 tied 读出与 depth-L 读出的 argmax 一致率 proxy（截断资产口径，非训练出口资产）",
+  "attn_sparse_liveness": {
+    "attn_sparse_k": 64,
+    "enabled": true,
+    "params_added": 0,
+    "parametrized": false,
+    "block_python_class": "TopKBlock",
+    "kept_theory_mean": 56.125,
+    "kept_mean": 56.125,
+    "kept_min": 1.0,
+    "kept_max": 64.0,
+    "kept_frac_of_T": 0.219238,
+    "sel_dist_mean": 71.4145,
+    "sel_in_lastk_frac": 0.5378,
+    "n_layers_sampled": 16,
+    "kept_count_matches_theory": true,
+    "alive": true,
+    "alive_note": "保留键数 == 理论 mean_i min(k,i+1) ⇒ 掩码按 k 生效；sel_in_lastk_frac ≪ 1 = 选择偏离「最近 k 个键」的位置基线（按内容）"
+  }
+}

@@ -2,7 +2,7 @@
 
 # INDEX · 设计空间状态灯
 
-共 **51** 个格子 ｜ ✅ judged 28 ｜ ◐ partial 9 ｜ 🏭 reference 7 ｜ ⬜ stub 7
+共 **51** 个格子 ｜ ✅ judged 29 ｜ ◐ partial 9 ｜ 🏭 reference 7 ｜ ⬜ stub 6
 
 > 全部内容由 `tools/build_wiki.py` 从 `catalog.yaml` 生成；**不要手改本文件**。
 
@@ -17,7 +17,7 @@
 | [`A3-window-anchor`](axes/A-mixing/A3-window-anchor/README.md) · 窗口 / 锚点 / sink | ✅ judged | 丢前缀在 bpc 上很便宜，但检索当场归零；锚点通道是真产物。 |
 | [`A4-soft-distance-penalty`](axes/A-mixing/A4-soft-distance-penalty/README.md) · 软距离惩罚（ALiBi 式加性偏置） | ✅ judged | 唯一改善 clean bpc 的元素，但不创造保留——它改变使用率，不改变依赖是否为零。 |
 | [`A5-dilated-window`](axes/A-mixing/A5-dilated-window/README.md) · 膨胀 / 跨步窗 | ⬜ stub | — |
-| [`A6-mixing-operator`](axes/A-mixing/A6-mixing-operator/README.md) · 混合算子 | ⬜ stub | — |
+| [`A6-mixing-operator`](axes/A-mixing/A6-mixing-operator/README.md) · 混合算子 | ✅ judged | 内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）——稀疏的收益要到长上下… |
 | [`A7-addressing`](axes/A-mixing/A7-addressing/README.md) · 寻址方式 | ⬜ stub | — |
 | [`A8-positional-semantics`](axes/A-mixing/A8-positional-semantics/README.md) · 位置语义 | ◐ partial | 绝对位置嵌入是硬上界（解码总长 ≤ seq_len），相对偏置族已侧证。 |
 | [`A9-old-info-retention`](axes/A-mixing/A9-old-info-retention/README.md) · 旧信息处理策略 | ◐ partial | 保留 / 硬丢 / 锚豁免已测；压缩、递归、外置三类零经验。 |

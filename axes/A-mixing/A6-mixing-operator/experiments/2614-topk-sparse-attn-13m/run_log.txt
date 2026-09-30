@@ -1,0 +1,70 @@
+[cost] model step ms: {'k=0': 24.34, 'k=32': 54.015, 'k=64': 54.76}
+[run] full-12k-s0: training started pid=2280756 steps=12000 k=0
+[run] full-12k-s0: done wall=6.34 min peak_child_mem=1.47GB bpc=1.5304
+[arm] full (k=0): clean_bpc=1.5304 acc=0.6892 alive=False wall=6.34 min eval=0.01 min
+[run] topk32-12k-s0: training started pid=2292632 steps=12000 k=32
+[run] topk32-12k-s0: done wall=10.35 min peak_child_mem=2.55GB bpc=1.547
+[arm] topk32 (k=32): clean_bpc=1.547 acc=0.6858 alive=True wall=10.35 min eval=0.01 min
+[run] topk64-12k-s0: training started pid=2322480 steps=12000 k=64
+[run] topk64-12k-s0: done wall=10.35 min peak_child_mem=2.57GB bpc=1.5399
+[arm] topk64 (k=64): clean_bpc=1.5399 acc=0.6864 alive=True wall=10.35 min eval=0.01 min
+[run] full-12k-s0-r2: training started pid=2356767 steps=12000 k=0
+[run] full-12k-s0-r2 {"step": 8000, "loss": 1.1042, "depth_ce": [1.1042], "gate_mean": [], "gnorm": 0.52, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "lr": 0.000325
+[run] full-12k-s0-r2: done wall=6.01 min peak_child_mem=1.47GB bpc=1.5279
+[rerun] full: clean_bpc=1.5279 (primary 1.5304)
+{
+  "criterion": "主判据：|Δ| < 0.014 ⇒ 与全注意力同质量；Δ ≥ +0.014 ⇒ 更好；Δ ≤ −0.014 ⇒ 稀疏有害（记录 k 与幅度）。Δ = bpc_full − bpc_topk（正 = 改善）",
+  "delta_bpc": {
+    "topk32": -0.0166,
+    "topk64": -0.0095
+  },
+  "clean_bpc_by_arm": {
+    "full": 1.5304,
+    "topk32": 1.547,
+    "topk64": 1.5399
+  },
+  "better_arms": [],
+  "neutral_arms": [
+    "topk64"
+  ],
+  "worse_arms": [
+    "topk32"
+  ],
+  "ruling": "稀疏选择在该规模有害：{'topk32': -0.0166}（Δ ≤ −0.014，记录 k 与劣化幅度）",
+  "cost_measured": {
+    "model_step_time_ratio_vs_full": {
+      "k=0": 1.0,
+      "k=32": 2.2192,
+      "k=64": 2.2498
+    },
+    "model_step_peak_mem_ratio_vs_full": {
+      "k=0": 1.0,
+      "k=32": 2.1549,
+      "k=64": 2.1549
+    },
+    "attn_island_time_ratio_vs_full": {
+      "full_k0": 1.0,
+      "topk_dense_k32": 2.2459,
+      "topk_dense_k64": 2.28,
+      "topk_sdpa_k32": 1.904,
+      "topk_sdpa_k64": 2.0222,
+      "topk_gather_k32": 1.6261,
+      "topk_gather_k64": 2.1258
+    },
+    "theory_by_k": {
+      "k=32": {
+        "naive_key_count_reduction": 0.875,
+        "attn_flops_reduction": 0.4375,
+        "total_flops_reduction": 0.0625,
+        "kv_cache_reduction": 0.0
+      },
+      "k=64": {
+        "naive_key_count_reduction": 0.75,
+        "attn_flops_reduction": 0.375,
+        "total_flops_reduction": 0.0536,
+        "kv_cache_reduction": 0.0
+      }
+    }
+  }
+}
+[done] total wall 33.21 min
