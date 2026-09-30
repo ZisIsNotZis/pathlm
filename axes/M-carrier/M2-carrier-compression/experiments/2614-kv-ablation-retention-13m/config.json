@@ -1,0 +1,46 @@
+{
+  "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "role": "被测量模型（复用，只读）：13.5M dense decoder-only 主干，12k 步，clean bpc 1.4836"
+  },
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true
+  },
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M 训练 / 末 10M 评测（本实验只用评测尾段）",
+    "vocab_size": 206
+  },
+  "eval": {
+    "n_batches": 24,
+    "batch_size": 16,
+    "window_seed": 2,
+    "device": "cuda",
+    "note": "window_seed=2 + 24×16 与 2610 的 depth_curve 基线同序（锚 bpc 1.4836）"
+  },
+  "curves": {
+    "distance": {"d": [1, 2, 4, 8, 16, 32, 64, 128, 255]},
+    "prefix": {"n_dropped": [8, 16, 32, 64, 128, 192, 255]},
+    "segment": {"lengths": [4, 16, 64], "n_starts": 8, "start_seed": 11},
+    "prefix_diagnostics": {"query_min": 128}
+  },
+  "reproducibility": {"rerun": true, "max_delta_diff_threshold": 0.005},
+  "noise_floor": {
+    "window_seeds": [3, 4, 5, 6, 7, 8],
+    "configs": [
+      {"id": "distance:8", "kind": "distance", "d": 8},
+      {"id": "prefix:64", "kind": "prefix", "n_dropped": 64},
+      {"id": "prefix:192", "kind": "prefix", "n_dropped": 192},
+      {"id": "segment:L16@40", "kind": "segment", "start": 40, "length": 16}
+    ]
+  },
+  "variance_band_bpc": 0.014
+}

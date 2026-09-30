@@ -1,0 +1,94 @@
+{
+  "target": "tools/evalkit/retention.py",
+  "sha256_before": "ec2478b661e548a34eba78cd2858e91ade1a9bc5e03c871e76fb9bfddd79dca3",
+  "mutations": [
+    {
+      "id": "M1",
+      "what": "distance_keep_mask 距离差一（删距离 d+1）",
+      "tests": {
+        "test_distance_mask_deletes_exactly_distance_d": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.74s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M2",
+      "what": "prefix_keep_mask 删最新的 N 个（应为最远的 N 个）",
+      "tests": {
+        "test_prefix_mask_deletes_oldest_n_keys_and_keeps_diagonal": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.76s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M3",
+      "what": "segment_keep_mask 忽略随机起点（永远删 [0, L)）",
+      "tests": {
+        "test_segment_mask_deletes_contiguous_block_only": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.71s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M4",
+      "what": "去掉对角线保留（前缀删除时 query 自身也被删）",
+      "tests": {
+        "test_prefix_mask_deletes_oldest_n_keys_and_keeps_diagonal": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.63s"
+        }
+      },
+      "all_expected_tests_caught": true
+    }
+  ],
+  "restored_sha256_equal": true,
+  "after_restore": {
+    "test_distance_mask_deletes_exactly_distance_d": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.60s"
+    },
+    "test_prefix_mask_deletes_oldest_n_keys_and_keeps_diagonal": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.57s"
+    },
+    "test_segment_mask_deletes_contiguous_block_only": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.56s"
+    },
+    "test_mask_stats_reports_dropped_pair_activity": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.60s"
+    },
+    "test_masked_logits_matches_manual_reference": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.60s"
+    },
+    "test_identity_causal_mask_bitwise_equals_release_forward": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.64s"
+    },
+    "test_deletion_is_live_changes_logits_and_raises_bpc": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.53s"
+    }
+  },
+  "green_after_restore": true,
+  "sha256_after": "ec2478b661e548a34eba78cd2858e91ade1a9bc5e03c871e76fb9bfddd79dca3"
+}
