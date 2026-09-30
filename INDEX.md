@@ -2,7 +2,7 @@
 
 # INDEX · 设计空间状态灯
 
-共 **51** 个格子 ｜ ✅ judged 25 ｜ ◐ partial 11 ｜ 🏭 reference 7 ｜ ⬜ stub 8
+共 **51** 个格子 ｜ ✅ judged 26 ｜ ◐ partial 10 ｜ 🏭 reference 7 ｜ ⬜ stub 8
 
 > 全部内容由 `tools/build_wiki.py` 从 `catalog.yaml` 生成；**不要手改本文件**。
 
@@ -45,7 +45,7 @@
 | [`H1-outputs-per-pass`](axes/H-horizon/H1-outputs-per-pass/README.md) · 每步输出位置数 | ✅ judged | 全项目税效比最好的机制；但墙钟收益是 13M/launch-bound 现象。 |
 | [`H2-training-fill`](axes/H-horizon/H2-training-fill/README.md) · 训练时未来位置的内容填充 | ✅ judged | 保留式填充（self-fill）胜出；PAD 与错误 token 都更贵；软提交有 OOD 污染。 |
 | [`H3-composition`](axes/H-horizon/H3-composition/README.md) · 多位置预测的组合方式 | ◐ partial | 组合的结构问题从未被测过：已测的是「条件链 deploy 输给直接头」，归因是草稿质量瓶颈而非结构。 |
-| [`H4-head-trunk-relation`](axes/H-horizon/H4-head-trunk-relation/README.md) · 头与主干的关系 | ✅ judged | 挂头是免费旁路——这是「主干不动的判断头可以免费」的实测出处。 |
+| [`H4-head-trunk-relation`](axes/H-horizon/H4-head-trunk-relation/README.md) · 头与主干的关系 | ✅ judged | 挂头是免费旁路（probe 头 @100M 零税；冻结主干跳跃头 13M 零税 Δ=0.0000）。但**冻结主干上的跳跃头无质量头寸**：t+2 命中 0.4667 < 阈值 0.5617（= … |
 | [`H5-verification`](axes/H-horizon/H5-verification/README.md) · 验证机制 | ✅ judged | 批量验证可用且逐位一致；定稿不变量（全深度重打分）是本形态的正确性保障。 |
 
 ## W · 宽度（5 格）
@@ -57,7 +57,7 @@
 | [`W1-active-width`](axes/W-width/W1-active-width/README.md) · 激活宽度 | ✅ judged | 减宽 = 减容量，不买灵活性；结构化约束会把状态能量赶出被约束子空间。 |
 | [`W2-expertization`](axes/W-width/W2-expertization/README.md) · 专家化（MoE） | ⬜ stub | — |
 | [`W3-kv-head-sharing`](axes/W-width/W3-kv-head-sharing/README.md) · KV 头共享 | ◐ partial | 本地只有 MHA；其余为零经验，但这是长上下文线的免费基线（必须先打败它）。 |
-| [`W4-readout-geometry`](axes/W-width/W4-readout-geometry/README.md) · 读出几何 | ◐ partial | tied 线性是「同空间」前提的地基；它同时是宽度约束的来源（d − 有效读出秩）。 |
+| [`W4-readout-geometry`](axes/W-width/W4-readout-geometry/README.md) · 读出几何 | ✅ judged | tied 线性是「同空间」前提的地基，也是宽度约束的来源（d − 有效读出秩）；**gated 残差读出（单边零初始化）在 13M 收回 24.6% 形态税**（Δ−0.0812 = 5.8× 方… |
 | [`W5-capacity-vs-compute`](axes/W-width/W5-capacity-vs-compute/README.md) · 容量-计算分离 | ✅ judged | 减容量不买灵活性；买灵活性必须走保容量减计算。 |
 
 ## F · 迭代（4 格）

@@ -631,17 +631,22 @@ grids:
     judge: 税（挂头是否扰动主干）+ 头自身质量 + 校准
     cost: 13M 单臂 ~5–25 min；冻结主干可复用已有 checkpoint → 单臂 ~5 min
     status: judged
-    verdict: 挂头是免费旁路——这是「主干不动的判断头可以免费」的实测出处。
+    verdict: 挂头是免费旁路（probe 头 @100M 零税；冻结主干跳跃头 13M 零税 Δ=0.0000）。但**冻结主干上的跳跃头无质量头寸**：t+2 命中 0.4667 < 阈值 0.5617（= 0.81 × 直接 t+1），仅在**部署口径**（对手 = 真实 2 次前向 rollout 0.3128）以半成本反超。
     local:
-      tax: "probe 式头 @100M ≈0（1.5928 vs 1.5871）；停梯度使浅层读出贵（13M depth6 +0.93）"
-      benefit: "保 retry（−0.0098）且门控更强（−0.029 @100M）；MTP 头是 d×d 变换、无 vocab 参数（~free 的基础设施）"
+      tax: "probe 式头 @100M ≈0（1.5928 vs 1.5871）；停梯度使浅层读出贵（13M depth6 +0.93）；冻结主干挂跳跃头 13M：Δbpc = **0.0000**（1.4836→1.4836，冻结断言通过）"
+      benefit: "保 retry（−0.0098）且门控更强（−0.029 @100M）；MTP 头是 d×d 变换、无 vocab 参数（~free 的基础设施）；宽头 ECE 0.0064 ≤0.01 且 10 桶严格单调（0.073→0.982）可作分配信号"
       failure:
         - "probe 式头改善 retry 但浅层读出质量贵 → 「保 retry」与「exit 质量」是同一梯度的两面（与 C6 同一条定律）"
-      evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scale/evidence @9fe4cf1"]
-    deps: [C1-layers-per-token, W4-readout-geometry]
+        - "**冻结主干上跳跃头质量不可达**：t+2 0.4667（宽头 0.5081）< 0.81×0.6934；决策树排除 off-by-one（shift 单测 + oracle 恒等式）/ 冻结失败（Δbpc=0 且 grad is None）/ 头映射（直接 t+1 0.6951 ≈ 主干 0.6934）/ 步数与容量（宽头仅 +4.1pp）→ 归因**设计无效**：冻结表征只被 t+1 目标塑形，t+2 映射不可达（回环时代 joint 的 55.97% 是表征可用性差异）"
+        - "**判据设计教训（双口径）**：预登记口径用 oracle 两跳（喂真 t+1，= 单跳质量 0.6953）作分母，比真实对手严格得多；真实等 FLOPs 对手（自己预测的 t+1 再前向）= **0.3128**，跳跃头半成本反超 +15.4pp。两结论并存，以预登记为准"
+        - "对照 3（联合臂）口径缺陷：lr 3e-4 把主干改坏（bpc 1.48→1.85），非干净对照，仅记录"
+      evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scale/evidence @9fe4cf1", "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/analysis.md @1181cd4"]
+    deps: [C1-layers-per-token, W4-readout-geometry, H3-composition]
     notes: |
       最便宜的真空白：拿一个冻结的 stock 小模型只训跳跃头，
       可一次排 3–5 个变体，且完全不需要训练主干。
+      13M 首验（ticket 28）：零税坐实，但**质量头寸不存在**——若再判，应**预登记 deploy rollout
+      为对手**（oracle 作上界附报），并考虑 H3 的联合/自门控组合路线（表征可用性才是瓶颈）。
 
   # ==================== H5
   - id: H5-verification
@@ -729,15 +734,18 @@ grids:
       - 低秩读出
     judge: clean bpc（税）+ workspace 探针（null 能量占比 / functional_dirs）+ 校准（ECE）+ 传输与提交机制是否仍可用
     cost: 13M 单臂 ~15–25 min
-    status: partial
-    verdict: tied 线性是「同空间」前提的地基；它同时是宽度约束的来源（d − 有效读出秩）。
+    status: judged
+    verdict: tied 线性是「同空间」前提的地基，也是宽度约束的来源（d − 有效读出秩）；**gated 残差读出（单边零初始化）在 13M 收回 24.6% 形态税**（Δ−0.0812 = 5.8× 方差界）且保住出口资产与校准 ⇒ 「读出几何解耦」成立且与同空间前提不冲突。
     local:
-      tax: "tied 线性 = 基底；切分式紧凑读出 = 负结果（见 W1）"
-      benefit: "同空间几何使 skip=恒等无需 remap、软提交 Σp·E 有凸包安全、prob0 可从同一读出取"
+      tax: "**gated 残差读出 Δ clean bpc −0.0812**（1.8582 → 1.7770；13M / 8L / 12k 步 / 同 seed / 同 token 预算，读出几何为唯一变量）；同引擎 dense 分母（1.5287）下形态税 +0.3295 → **+0.2483**（收回 24.6%）；tied 线性 = 基底；切分式紧凑读出 = 负结果（见 W1）"
+      benefit: "tf@4 0.9694 → **0.9680**（≥0.95 保持）、tf@6 0.9938 → 0.9933；ECE 0.0066 → **0.0051**；null 能量占比 0.2703 → **0.1952**（读出面看到更多状态，−7.5pp）；全深度逐深度支配 A 臂；参数量仅 +2·d² = **131072**（可 scale，非 vocab×hidden）"
       failure:
+        - "**零初始化是鞍点**（首轮 12k 干预恒为 0、fro=0，实测 Δ 仅为重跑噪声）：g(h)=h+silu(W1h)⊙(W2h) 在 W1=W2=0 处 ∂L/∂W1 = ∂L/∂W2 = 0；正确做法 = **单边零**（W1~N(0,0.02)/W2=0：严格恒等起步且 ∂L/∂W2 = silu(W1h)⊗h ≠ 0，200 步即逃逸）"
+        - "vocab×hidden 的 MLP 读出**不可 scale**（真词表 100k+ 是瓶颈）→ 只作对照臂，不采纳"
+        - "**单 seed、单配置（13M / 8L）**：量级与规模外推未做（按 methodology §10 需多档次小实验拟合）"
         - "宽度约束是硬的：d=256 / V=205 时 null 空间仅 62 维、功能性读取 26 条；d=128 < V 时结构性为 0（无余量）"
         - "结构性切分（只读前 r 维）→ 能量迁出读出子空间（W1）"
-      evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/25-tax-attribution/evidence @2e86924"]
+      evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/25-tax-attribution/evidence @2e86924", "axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/analysis.md @cba2f39"]
     metrics:
       - "解决什么：计算空间与读出可见空间的耦合（宽度约束的来源）"
       - "代价：Δ clean bpc（同尺寸同 token 预算）；读出参数量"
@@ -1152,10 +1160,12 @@ grids:
     verdict: 恒等初始化 adapter 在 13M matched-step 族内最优——「从基线出发学 remap」是对的。
     local:
       tax: "proj-fill 1.8356 < fill 1.8582 < nofill 1.9438（族内最优，全深度逐深度支配 fill）"
-      benefit: "恒等初始化不消耗随机数 → 同 seed 下与 fill 臂逐位一致（可严格对照）；carry 门 bias = σ(−2)≈0.12 起步（恒等近似 + 梯度可流）"
+      benefit: "恒等初始化不消耗随机数 → 同 seed 下与 fill 臂逐位一致（可严格对照）；carry 门 bias = σ(−2)≈0.12 起步（恒等近似 + 梯度可流）；**单边零**是通用的安全恒等起步写法（输出侧置零 + 输入侧随机）"
       failure:
         - "proj-fill 只在 13M matched-step 验证过，未上 100M"
-      evidence: [".scratch/23-depth-ar/evidence @6b27b5e", ".scratch/23-depth-ar/issues @1586745"]
+        - "**恒等初始化 ≠ 零初始化**：全零初始化在乘性结构上是**鞍点**（两端梯度同时为 0）→ 干预系统性失效而测试全绿（详见 W4 的 12k 死干预事件与 SCHEMA §10 干预活性判据）"
+        - "契约里写「建议零初始化或极小值」这类把初始化取值判断下放给执行者的措辞会埋坑：必须给定值或给定判据"
+      evidence: [".scratch/23-depth-ar/evidence @6b27b5e", ".scratch/23-depth-ar/issues @1586745", "axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/zero-init-saddle/ @cba2f39"]
 
   - id: P4-normalization
     axis: P
