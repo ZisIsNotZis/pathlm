@@ -1,0 +1,498 @@
+# 旧项目（PathLM）实验 → 格子 的映射表（回填源）
+#
+# 每个条目渲染到 <primary grid>/experiments/<name>/README.md。
+# 原始证据留在 .scratch/（见 .scratch/README.md）与 archive/legacy-docs/。
+# 数字口径警告见 archive/README.md（旧口径 = 1.1-epoch 上界，除非另注）。
+
+experiments:
+  # ---------------- 回环时代：引擎与首轮 --------
+  - name: 2502-engine-m0-probe
+    ticket: 02-engine-m0
+    date: "2026-09-14"
+    primary: A2-full-attention
+    also: [F2-return-channel, G4-calibration, G5-parallel-lines]
+    engine: m0（d=64, 2L, ~1M 参数）
+    claim: "微型探针四判据：prob0 校准 / 集成增益 / consistency loss / 直接传输 retry"
+    intervention: "微型模型 + 四组判据"
+    results:
+      - "prob0 校准 PASS：ECE 0.004–0.011"
+      - "集成 ≥ 最佳单路径 PASS：+0.0008…+0.0015（3 runs/2 seeds，边际）"
+      - "consistency loss 收紧估计 PASS：cosine 0.9525→0.9882"
+      - "直接传输 retry FAIL：结构性 no-op"
+    failure:
+      - "retry 在无状态变换的通道上是固定点——全项目第一条铁律的出处"
+      - "集成增益 +0.0008~+0.0015 已预示「共享主干 voter 太相关」（定律 2）"
+    evidence: [".scratch/02-engine-m0/evidence/REPORT.md @27418ae"]
+    budget: "~2.5 min/run"
+
+  - name: 2503-engine-m1-extensions
+    ticket: 03-engine-m1
+    date: "2026-09-14"
+    primary: M1-carrier-type
+    also: [P4-normalization, A8-positional-semantics, F2-return-channel, H5-verification]
+    engine: m1（d=256, 12L, 13.08M）
+    claim: "引擎扩展：transports / dense-exit / 驱逐 / token retry / KV 增量解码 / 评测电池"
+    intervention: "实现并单测各机制"
+    results:
+      - "27 测试绿；smoke B0 60 步 bpc 4.15（随机 7.68），端到端 OK"
+      - "per-layer KV + 位置列表支持变深度增量解码与驱逐"
+    failure:
+      - "冒烟抓出缓存 bug：逐位置早退使 per-layer cache 长度失步 → 修为 per-layer 位置列表（P0 类，持续单测）"
+      - "needle v1 构造信号饥饿（每 batch 仅 1 个监督 token）→ 全桶 0.0 假失败"
+    evidence: [".scratch/03-engine-m1/issues/01-engine-m1-extensions.md @e38349f"]
+    budget: "—"
+
+  - name: 2504-m1-first-runs
+    ticket: 04-m1-runs
+    date: "2026-09-14"
+    primary: A2-full-attention
+    also: [P6-data-construction, F1-iteration-object, C6-depth-supervision, A3-window-anchor, H1-outputs-per-pass]
+    engine: m1（13M）
+    claim: "首个 run 矩阵：B0 锚点 + 损坏修复 + retry + 早退 + token retry + needle"
+    intervention: "7 个 run（B0/I1/C1/C3/R1/L2/X2）"
+    results:
+      - "B0 = 1.5074 bpc（外部锚成立）"
+      - "I1 损坏修复 52.8%；C1 retry +2.1pp，r1→r3 单调；早退 L2 深度 6 平台 + 1.4× 解码"
+      - "R1 token retry −4.6pp，ECE 0.001→0.015"
+      - "X2 needle 全桶 0.0（v1 构造问题）"
+    failure:
+      - "token retry 未门控：argmax re-embed 量化掉不确定性，污染下游注意力"
+      - "needle v1 信号饥饿（假失败，见 P6）"
+    evidence: [".scratch/04-m1-runs/evidence @e38349f"]
+    budget: "30–60 min/run"
+
+  - name: 2505-m1-followups
+    ticket: 05-m1-followup
+    date: "2026-09-14"
+    primary: A3-window-anchor
+    also: [F2-return-channel, F1-iteration-object, P6-data-construction]
+    engine: m1（13M）
+    claim: "mixture 重入 + 曲线饱和 + needle v2 重设计"
+    intervention: "C4（mixture）/ C5（token retry + mixture）/ X2v2（needle v2）"
+    results:
+      - "C4 PASS-equal：mixture 提高深度鲁棒性，r1→r4 单调"
+      - "C5 PASS-with-caveat：token 灾难消除（−1.3pp vs R1 的 −4.6pp）"
+      - "X2v2 PASS：窗口内 84.9% / 锚 76.8% / beyond 0.4%"
+      - "retry 曲线 ~r3 饱和"
+    failure:
+      - "needle 修好测量后才可判机制（先修测量再判机制）"
+      - "token retry 残余 −1.3pp 需 prob0 门控（未做）"
+    evidence: [".scratch/05-m1-followup/evidence @480d50b"]
+    budget: "30–60 min/run"
+
+  - name: 2506-m2-element-tax-law
+    ticket: 06-m2-sweep
+    date: "2026-09-14"
+    primary: C2-layer-selection-order
+    also: [P6-data-construction]
+    engine: m1（13M）
+    claim: "元素税定律：破坏 identity/order 的贵，保留/标记 identity 的近免费"
+    intervention: "shuffle / skip / redo / wrong-token / mask / noise 各自的税"
+    results:
+      - "shuffle +0.545；skip +0.175；wrong +0.127；mask +0.059；redo +0.044；noise ±0.000"
+      - "shuffle 硬边界：locality 0.5 训练、eval ≤0.5 可容忍、全随机 3.84"
+    failure:
+      - "p_skip 训练/eval 不一致（locality 边界）→ 训练分布之外的评估不可信"
+    evidence: [".scratch/06-m2-sweep/evidence @a03a579"]
+    budget: "~25 min/run"
+
+  - name: 2507-x1-x3-distance-penalty
+    ticket: 07-x1-x3
+    date: "2026-09-14"
+    primary: A4-soft-distance-penalty
+    also: [A3-window-anchor]
+    engine: m1（13M）
+    claim: "距离惩罚是否与驱逐冗余"
+    intervention: "X1 = dist_pen 0.1；X3 = X1 + eviction"
+    results:
+      - "X1 1.5006（Δ−0.0068，唯一负税元素）"
+      - "X3 1.5117（+0.0043）；needle 窗口内 90.7 / 锚 93.3 / beyond 90.3"
+      - "per-head 距离 26–43（无 head 纯 local，但全部被推向 local）"
+    failure:
+      - "beyond 90.3% 是 local-LM 强度，不是抗驱逐召回（假保留陷阱）"
+    evidence: [".scratch/07-x1-x3/evidence @7b47555"]
+    budget: "~25 min/run"
+
+  - name: 2508-tts-probes
+    ticket: 08-tts-probe
+    date: "2026-09-15"
+    primary: G5-parallel-lines
+    also: [C2-layer-selection-order, C6-depth-supervision]
+    engine: m1（13M）
+    claim: "组合增益是否 ∝ 路径多样性；有什么能打败 B0"
+    intervention: "K 路径集成（不同 skip/depth/round 组合）"
+    results:
+      - "组合增益 ∝ 路径多样性（L1 −0.047）"
+      - "确定性路径 checkpoint 集成恰得 0"
+      - "深度/轮次集成退化（辅助输出是 fallback 不是 voter）"
+    failure:
+      - "没有任何组合打赢 B0 → 项目卖点从「质量」改为「可控性」"
+    evidence: [".scratch/08-tts-probe/evidence @aa97bcf"]
+    budget: "纯推理"
+
+  - name: 2509-m3-composition-law
+    ticket: 09-m3-interactions
+    date: "2026-09-15"
+    primary: C2-layer-selection-order
+    also: [G5-parallel-lines, P1-precision, F4-training-signal]
+    engine: m1（13M）
+    claim: "组合律 + 多样性压力"
+    intervention: "IX1（retry×corruption）/ 含 shuffle 组合 / DIVL1（capped −JS）"
+    results:
+      - "IX1 次可加 +0.087 < 0.277 之和（唯一已证组合增益）"
+      - "含 shuffle 组合全部 2.2+ bpc，与修复拮抗（repair 51%→38%）"
+      - "DIVL1 同时改善 baseline 与集成斜率（−0.062 > −0.047，上限 +0.023），税 +0.023"
+    failure:
+      - "bf16 autocast 下 negative/reward 项两次发散 → 必须 float32 + pre-step grad-norm gate"
+    evidence: [".scratch/09-m3-interactions/evidence @39b1838"]
+    budget: "~25 min/run"
+
+  - name: 2510-gap-sweep-b2-c1m
+    ticket: 10-gap-sweep
+    date: "2026-09-15"
+    primary: H1-outputs-per-pass
+    also: [F1-iteration-object]
+    engine: m1（13M）
+    claim: "补 B2（n_mtp=2）与 C1M/C2M 的缺口"
+    intervention: "B2 / C1M / C2M + eval-only 消融"
+    results:
+      - "B2 1.5481（Δ+0.041）"
+      - "C1M 1.7010 / C2M 1.7089（含 D2 混杂：漏 n_mtp，税虚高，ticket 11 修正）"
+      - "eval-only：redo eval +0.009、skip eval 回收 +0.058"
+    failure:
+      - "config 混杂（D2）：对照与实验臂的 n_mtp 不一致 → 税虚高"
+    evidence: [".scratch/10-gap-sweep/evidence @57d64a7"]
+    budget: "~25 min/run"
+
+  - name: 2511-retry-matrix-withdrawal
+    ticket: 11-retry-matrix-validity
+    date: "2026-09-15"
+    primary: F2-return-channel
+    also: [F1-iteration-object]
+    engine: m1（13M）
+    claim: "retry 矩阵的排序是否成立（四缺陷审计）"
+    intervention: "重跑 6 个 latent cell + 缺陷审计 D1–D6"
+    results:
+      - "6 个 cell 跨度 0.011 bpc < 单格种子散布 0.0138 → 全部排序撤回"
+      - "税本身可靠：C 族 1.6535–1.6856 vs B0 1.5074 = +0.146…+0.178"
+      - "所有已发布税是 1.1-epoch 上界（+0.364@1k → +0.122@24k）"
+    failure:
+      - "撤回全部排序结论（含「soft×mixture 最好」）"
+      - "D1 重入 gauge：direct/linear mixture 测到的是 ~30× rescale 而非 latent mean"
+    evidence: [".scratch/11-retry-matrix-validity/VERDICTS.md @d6a9898"]
+    budget: "~25 min/run"
+
+  - name: 2512-overnight-causal-chain
+    ticket: 12-overnight
+    date: "2026-09-15"
+    primary: H3-composition
+    also: [F2-return-channel, A3-window-anchor, G2-currency]
+    engine: m1（13M，2 seeds）
+    claim: "条件链是否可部署；D1 gauge 因果确认；needle×corruption 拮抗"
+    intervention: "DeepSeek 式 concat+proj 条件链 / gauge 修复 / anchor 豁免"
+    results:
+      - "oracle 链 0.682 ≈ node-1 0.693；deploy 0.547 < direct 0.560（草稿质量瓶颈，~31% 草稿错误）"
+      - "gauge 修复后 mixture r2 单调 2.71→1.936（pre-fix 发散至 95.2）"
+      - "needle×损坏拮抗：85%→0.5%"
+    failure:
+      - "条件链机制成立但无部署收益（草稿质量瓶颈）→ 不采纳"
+      - "naive verify-next-round k=1 零吞吐收益"
+    evidence: [".scratch/12-overnight/evidence @216a00a"]
+    budget: "夜间批"
+
+  - name: 2513-four-experiments
+    ticket: 13-four-experiments
+    date: "2026-09-15"
+    primary: H5-verification
+    also: [F2-return-channel, A3-window-anchor, H1-outputs-per-pass, F4-training-signal]
+    engine: m1（13M）
+    claim: "四实验：逐位置门控 / anchor 豁免 / n_mtp=3 + Medusa / findings 重构"
+    intervention: "①逐位置 latent 门控 ②三路 anchor 豁免 ③n_mtp=3 + 批量验证"
+    results:
+      - "③ POSITIVE：1.68–1.90× 实测 tok/s，税仅 +0.0166（全项目唯一税小收益大）"
+      - "② 三路豁免全败：anchor 召回 0.764→0.016/0.033/0.035（任务级豁免还把 bpc 1.680→1.997）"
+      - "① FALSIFIED：direct 重入是固定点；状态掩码不省算力"
+    failure:
+      - "容错训练与精确复制目标冲突 → 用户裁决「无需模式信号」（目标恒为正确 token）"
+      - "两次 review 抓出：flaky gate test（未 seed）、needle_acc 评测泄漏（corrupt_mask 未清零）"
+    evidence: [".scratch/13-four-experiments/evidence @9abc181"]
+    budget: "~25 min/run"
+
+  - name: 2514-allocator-selectivity
+    ticket: 14-allocator
+    date: "2026-09-16"
+    primary: F3-stopping
+    also: [G1-selector, C6-depth-supervision]
+    engine: 3 checkpoint 交叉验证
+    claim: "愿景核心命题：低置信位置的每 FLOP 收益是否更高"
+    intervention: "按 prob0 只对最低 15% 位置开第二轮 vs 均匀"
+    results:
+      - "INT2：门控 +0.0211 vs 均匀 −0.0193"
+      - "C1M：门控 +0.1284 vs 均匀 +0.0570（2.2 倍）"
+      - "收益集中在中低置信带（+0.04~+0.06），高置信带 ≈0/负"
+    failure:
+      - "dense-exit 监督摧毁重试精炼（ALLOC 各桶全负）→ 「整形 vs 自适应」定律的第一次露头"
+    evidence: [".scratch/14-allocator/evidence @9954425"]
+    budget: "纯推理"
+
+  - name: 2515-slider-rung3
+    ticket: 15-slider-rung3
+    date: "2026-09-16"
+    primary: G1-selector
+    also: [G2-currency, F3-stopping, G4-calibration]
+    engine: m1（13M，INT2_r3 底座）
+    claim: "分配器端到端：校准 → 双货币成本模型 → 求解器 → 验证解码 → 在线代理"
+    intervention: "Slider 全链"
+    results:
+      - "fire 曲线 split gap ≤0.004；a2 成本预测误差 ≤±13%"
+      - "严格占优点复现：k=1 τ=0.98 = 0.635 fwd/tok @2.0502 vs plain 1.0 @2.0545"
+      - "TF 窗口在线代理 ECE 0.0011–0.0079；单轮 mixture == overwrite"
+    failure:
+      - "自由生成段 prob0 劣化检测反向（当时判「吸引子混淆」，后被 ticket 22 证伪为 n=1 假象）"
+      - "a2 部署口径与 TF 口径差 −13~−20%（必须双报）"
+    evidence: [".scratch/15-slider-rung3/evidence @257b6ec"]
+    budget: "纯推理"
+
+  - name: 2516-rung4-scale-100m
+    ticket: 16-rung4-scale
+    date: "2026-09-17"
+    primary: A2-full-attention
+    also: [F3-stopping, G4-calibration, F1-iteration-object]
+    engine: 100M × 2 seeds
+    claim: "回环族的税与能力溢价在 100M 是否成立"
+    intervention: "100M × B0/C1 × 2 seeds"
+    results:
+      - "税 @100M = +0.126（13M +0.147 → 29M +0.174 → 100M +0.126，首次不随规模增长）"
+      - "能力溢价：B0 损坏崩至 3.551、C1 修复 2.015→1.949、E2E 差距 ≥1.54 bpc"
+      - "prob0 校准存活（ECE ≤0.0091）"
+    failure:
+      - "batch 32→8 混杂（显存限制）"
+      - "门控重试质量杠杆在此规模开始衰减"
+    evidence: [".scratch/16-rung4-scale/evidence @c520d65"]
+    budget: "~1–2 h/run"
+
+  - name: 2517-slider-at-scale
+    ticket: 17-slider-at-scale
+    date: "2026-09-17"
+    primary: G1-selector
+    also: [H1-outputs-per-pass]
+    engine: INT_100M_s0（104.3M）
+    claim: "分配器在 100M 是否自洽；门控杠杆是否存活"
+    intervention: "Slider 全链 @100M"
+    results:
+      - "全链自洽：成本预测 clean +0.7% / corrupt ≤11.1%；spec 严格占优复现 0.566 fwd/tok"
+      - "堆叠溢价 +0.256（13M +0.309 收窄）"
+    failure:
+      - "门控重试质量杠杆在 100M 消失（τ 轴平坦 ±0.002）→ 第一个「机制价值随规模自衰减」信号"
+      - "自由生成段劣化检测恢复正向（13M 反向系 n=1 假象）"
+    evidence: [".scratch/17-slider-at-scale/evidence @25704b8"]
+    budget: "纯推理 + 训练"
+
+  - name: 2518-exit-retry-law
+    ticket: 18-exit-probe
+    date: "2026-09-18"
+    primary: C6-depth-supervision
+    also: [H4-head-trunk-relation, F1-iteration-object]
+    engine: m1（13M）
+    claim: "exit 与 retry 能否两全"
+    intervention: "probe 式头（trunk stop-grad）vs dense 0.2 整形"
+    results:
+      - "probe 式头保 retry（−0.0098）但浅层读出贵（depth6 +0.93）"
+      - "dense 0.2 整形 exit 轴好（depth6 +0.199）但杀 retry（+0.0146）且 clean/corrupt 双升（1.6097/1.9740）"
+    failure:
+      - "两全证伪：整形与自适应是同一梯度的两面"
+    evidence: [".scratch/18-exit-probe/evidence @83bf1ac"]
+    budget: "~25 min/run"
+
+  - name: 2519-asymptotic-tax
+    ticket: 19-asym-100m
+    date: "2026-09-18"
+    primary: A2-full-attention
+    also: [F3-stopping]
+    engine: 100M，4.4 epoch，2 seeds
+    claim: "渐近口径下税是否收缩"
+    intervention: "4.4-epoch 训练 + 双 seed"
+    results:
+      - "税 +0.126 → +0.082（曲线单调降，收缩 35%）"
+      - "等训练口径 13M +0.122 → 100M +0.082——税真正随规模下降"
+      - "能力溢价随训练扩大（corrupt gap 1.54→1.89）；B0_asym 1.341 ≈ 13M 渐近 1.346（data-limited）"
+    failure:
+      - "快照口径的「不随规模收缩」全是 1.1-epoch 上界 → 口径必须标注"
+    evidence: [".scratch/19-asym-100m/evidence @8401b5e"]
+    budget: "4.4 epoch × 100M"
+
+  - name: 2520-spec-at-scale
+    ticket: 20-spec-scale
+    date: "2026-09-18"
+    primary: H1-outputs-per-pass
+    also: [H5-verification, G2-currency]
+    engine: 100M
+    claim: "spec 的收益在 100M 是否保持"
+    intervention: "接受级联测量 + 墙钟"
+    results:
+      - "接受级联稳定：a₂ 0.80、a₃|a₂ 0.767↑、2.4 tok/fwd 不变"
+      - "前向 compute-bound（宽度-3 成本 3.4–5.3× vs 13M 1.28×）"
+    failure:
+      - "墙钟收益消失（k=2 仅 1.15–1.29×、k=1 转负）→ 只剩 FLOPs 口径"
+      - "fp 平局翻转首现（top-2 gap 0.008，1/400 token）→「逐位相等」是 13M 规模性质"
+    evidence: [".scratch/20-spec-scale/evidence @a864bcf"]
+    budget: "纯推理"
+
+  - name: 2521-exit-scale-confirm
+    ticket: 21-exit-at-scale
+    date: "2026-09-18"
+    primary: H4-head-trunk-relation
+    also: [C6-depth-supervision]
+    engine: 100M
+    claim: "probe vs dense 双 profile 在 100M 是否更锐利"
+    intervention: "两 profile @100M"
+    results:
+      - "probe profile 零税（1.5928 vs 1.5871）且门控更强（−0.029）"
+      - "dense 0.2 只剩 clean 优势与 exit 轴，corrupt 崩溃（+1.73）"
+    failure:
+      - "剂量响应随规模恶化 → 13M 的温和剂量在 100M 变灾难"
+    evidence: [".scratch/21-exit-at-scale/evidence @9fe4cf1"]
+    budget: "~35 min/run"
+
+  - name: 2522-gen-quality-signals
+    ticket: 22-gen-quality
+    date: "2026-09-18"
+    primary: G3-signal
+    also: [G4-calibration]
+    engine: INT2_r3（纯推理）
+    claim: "自由生成段的质量信号（prob0 失效后的替代）"
+    intervention: "路径分歧度 js + distinct-2 + 人工标注"
+    results:
+      - "js 真实但不完备（AUC 0.66–0.69 > prob0 0.58–0.62；生成段 real 0.0114 < corrupt 0.0250 < random 0.0390）"
+      - "distinct-2 区分塌缩窗 AUC 0.9815，与 js 正交（rank_corr 0.14）"
+      - "「13M prob0 生成段反向」n=6 未复现（n=1 假象）"
+    failure:
+      - "prob0 在生成段压天花板（分不开 real/random）"
+      - "js 在吸引子塌缩窗双向失灵（假阴 0.000 与假阳 0.373 并存）"
+      - "greedy 全局重复偏置 → 参考水平必须相对化"
+    evidence: [".scratch/22-gen-quality/evidence @c6c356f"]
+    budget: "纯推理"
+
+  # ---------------- 深度自适应 AR 时代 --------
+  - name: 2523-depth-ar-first
+    ticket: 23-depth-ar
+    date: "2026-09-28"
+    primary: C1-layers-per-token
+    also: [C5-refinement-operator, C6-depth-supervision, W4-readout-geometry, H2-training-fill]
+    engine: depth-ar（d=128/256, L=4/8）
+    claim: "深度自适应 AR 四性质是否成立（精化 / workspace / 出口 / 门）"
+    intervention: "新形态首验"
+    results:
+      - "精化单调成立（B: 6.250→2.4161）；出口半栈 TF 接受率 0.9667；门浅开深微开"
+      - "workspace 成立：d=256 null 62 维 / 26 条功能性读取；d=128 结构性 0"
+      - "形态税 +0.6786（判据 |税|<0.05 证伪）"
+    failure:
+      - "首验归因（监督稀释 +0.512 / 填充 +0.167）后被 23b–23e 四轮修正（w 降权全败、填充反转）"
+      - "soft 提交 OOD 污染 context（rescore 6.9 vs hard 1.2）"
+    evidence: [".scratch/23-depth-ar/evidence @1586745"]
+    budget: "GPU 11.4 min"
+
+  - name: 2523b-shallow-weight-sweep
+    ticket: 23b
+    date: "2026-09-28"
+    primary: P5-loss-weighting
+    also: [C6-depth-supervision]
+    engine: depth-ar（13M 级）
+    claim: "浅层 aux 降权能否把税归零"
+    intervention: "w ∈ {1, 0.1, 0.02, 1→0.1 退火}"
+    results:
+      - "全败且单调反向：depth-L 2.45→2.57→2.73（w 越低越差）"
+      - "退火臂 2.4444 保底座但税仍 +0.71"
+    failure:
+      - "「浅层监督稀释主因」改判：浅层全深度监督是表示正则，不是稀释"
+    evidence: [".scratch/23-depth-ar/evidence @b8c9f86"]
+    budget: "10.8 min"
+
+  - name: 2523c-three-ablations
+    ticket: 23c
+    date: "2026-09-28"
+    primary: C5-refinement-operator
+    also: [C6-depth-supervision, H2-training-fill]
+    engine: depth-ar（13M 级）
+    claim: "税源的因果分解（欠拟合 / aux / 门×退出×填充）"
+    intervention: "H1 dense+aux-only / H2 3.33× 训练 / H3 浅头 stop-grad"
+    results:
+      - "欠拟合是主因：3.33× 训练把税 +0.713 → +0.121"
+      - "aux 在门控臂穿 trunk 的梯度是净收益；stop-grad 恶化至 2.7129"
+      - "门×退出×填充堆栈 +0.429（门本身 +0.228）"
+    failure:
+      - "浅头 stop-grad 化被排除（浅层门不再打开、tf@4 0.973→0.791）"
+    evidence: [".scratch/23-depth-ar/evidence @88aa341"]
+    budget: "15.2 min"
+
+  - name: 2523d-residual-tax-decomposition
+    ticket: 23d
+    date: "2026-09-28"
+    primary: C1-layers-per-token
+    also: [C5-refinement-operator]
+    engine: depth-ar（12k matched）
+    claim: "残税 +0.121 的成分"
+    intervention: "dense-B-12k / H1-12k 两个对照臂"
+    results:
+      - "+0.121 = {dense 欠拟合 −0.209 + aux 残余 +0.108 + 门/填充固有 +0.222}（恒等闭合）"
+      - "matched-step 真税 @12k = +0.3295（较 3.6k 收缩 54%）"
+      - "100M 4.4-epoch 外推 ≈ +0.21（区间 +0.15–0.23）"
+    failure:
+      - "「残税主要是堆栈固有」证伪：dense 锚点自身欠拟合掩盖近 2/3"
+    evidence: [".scratch/23-depth-ar/evidence @5d5a983"]
+    budget: "13.7 min"
+
+  - name: 2523e-fill-variants
+    ticket: 23e
+    date: "2026-09-28"
+    primary: H2-training-fill
+    also: [P3-param-insertion-init]
+    engine: depth-ar（12k matched）
+    claim: "KV 填充策略对决：fill vs ragged nofill vs proj-fill"
+    intervention: "三分支同配置唯一变量 = 填充策略"
+    results:
+      - "fill 1.8582 胜 ragged nofill 1.9438（+0.0856 ≫ ±0.03 平局带）"
+      - "proj-fill（逐层恒等初始化 adapter）1.8356 = 族内最优，全深度逐深度支配 fill"
+    failure:
+      - "首验「填充是负分量」反转：欠拟合伪影 + 对照混淆（nofill 臂同时无随机退出）"
+      - "GPU 冒烟抓出 CUDA SDPA head 维不广播"
+    evidence: [".scratch/23-depth-ar/evidence @6b27b5e"]
+    budget: "~29 min 三臂"
+
+  - name: 2524-depth-ar-100m
+    ticket: 24/24b
+    date: "2026-09-28"
+    primary: C6-depth-supervision
+    also: [C1-layers-per-token, W4-readout-geometry, G5-parallel-lines]
+    engine: depth-ar @100M（98.3M tokens = 1.09 ep）
+    claim: "形态税随规模如何变化（快照口径）+ 干净归属"
+    intervention: "24：主 run；24b：等权臂 + 同引擎 dense 两臂拆混杂"
+    results:
+      - "税 +0.4563（clean 1.9175 − B0_100M 1.4612）→ 24b 拆解：形态 +0.44（96%）+ 引擎 +0.02（4%）+ 配方 ≈0"
+      - "同引擎形态税 +0.4362；13M matched +0.31 → 100M +0.44（斜率为正）"
+      - "出口资产变厚：tf@4 0.9726 / tf@6 0.9946；exit-4 3.1× 墙钟；门全层收小"
+      - "副发现：出口资产是全深度监督产物（纯 dense trunk tf@4 0.12 vs 形态 0.97）"
+    failure:
+      - "票 24 判读混杂（跨引擎对照 + final 2× 配方）→ 必须 24b 拆混杂才可归因"
+      - "soft OOD 污染跨规模复现（d12 soft 8.42 vs hard 0.79）"
+    evidence: [".scratch/24-depth-ar-100m/evidence @7cdcdaa"]
+    budget: "24: 32 min；24b: 51 min 两臂"
+
+  - name: 2525-tax-attribution
+    ticket: 25
+    date: "2026-09-29"
+    primary: W1-active-width
+    also: [C1-layers-per-token, W4-readout-geometry, P5-loss-weighting, G2-currency]
+    engine: depth-ar @100M（三臂）
+    claim: "税能否被两个干预收回（结构切分 / 时长）"
+    intervention: "B 臂结构切分 readout 360 / C 臂 48k + 冷却退火 / dense-48k 对照"
+    results:
+      - "B 臂否证且反向：clean 2.1475、恢复 −50.4%（能量迁出读出空间：切片能量 0.85→0.026→≈0）"
+      - "C 臂名义 +16.4%，同引擎 48k 锚拆解后形态税零收缩（+0.4372 ≈ +0.4362）"
+      - "C 对 A 改善 0.0746 与 dense 侧训练收益 0.0756 逐位镜像"
+      - "C 等效验证吞吐 122.8 vs A 112.9 tok/s（+9%）= 当前最优配方"
+    failure:
+      - "「等智商免费加速」正式证伪：税不可被收，只能被交易"
+      - "同引擎 dense 对照健康（dense-48k 1.4057 < B0 1.4612），排除「对照本身不健康」"
+    evidence: [".scratch/25-tax-attribution/evidence @2e86924"]
+    budget: "GPU ~185 min（三臂）"

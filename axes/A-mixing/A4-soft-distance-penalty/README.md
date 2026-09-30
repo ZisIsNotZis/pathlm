@@ -1,0 +1,78 @@
+---
+id: A4-soft-distance-penalty
+axis: A
+grid_dir: A-mixing/A4-soft-distance-penalty
+title: "软距离惩罚（ALiBi 式加性偏置）"
+status: judged
+judge: "clean bpc（税）+ per-head 平均注意距离遥测（某些 head 必须保持长程）"
+cost: "13M 单臂 ~25 min"
+tax: "−0.0068（1.5006 vs B0 1.5074，唯一负税元素）"
+benefit: "锚点通道 76.8% → 93.3%；与驱逐组合共 +0.0043"
+verdict: "唯一改善 clean bpc 的元素，但不创造保留——它改变使用率，不改变依赖是否为零。"
+deps: ["A3-window-anchor", "A9-old-info-retention"]
+evidence: [".scratch/07-x1-x3/evidence/attn_dist_telemetry.json @7b47555"]
+---
+
+<!-- AUTO:begin -->
+
+# A4-soft-distance-penalty · 软距离惩罚（ALiBi 式加性偏置）
+
+> 轴：**A 序列混合机制** ｜ 状态：**✅ judged**
+
+> **判读**：唯一改善 clean bpc 的元素，但不创造保留——它改变使用率，不改变依赖是否为零。
+
+## 1. 命题
+
+用可微的距离先验替代硬窗口，让长程依赖「变贵」而非「不可能」。
+
+## 2. 选项枚举（本格全部可能取值）
+
+1. `固定加性偏置 −w·log(1+d)（本项目实现，w = 0.1）`
+2. `可学习距离偏置（每 head 一个参数化函数）`
+3. `相对位置编码（ALiBi / T5 bias 族）`
+4. `距离衰减乘子（热度式）`
+
+## 3. 状态（我们做了什么 / 行业做了什么）
+
+**本地已测**：锚点通道 76.8% → 93.3%；与驱逐组合共 +0.0043
+
+**行业口径**：见 `docs/playbook.md` 与参照线 `R-references/`。
+
+## 4. 结论与数字
+
+- **税**：−0.0068（1.5006 vs B0 1.5074，唯一负税元素）
+- **收益**：锚点通道 76.8% → 93.3%；与驱逐组合共 +0.0043
+- **判读**：唯一改善 clean bpc 的元素，但不创造保留——它改变使用率，不改变依赖是否为零。
+
+## 5. 失败路径与原因
+
+1. 假保留陷阱：X3 的 beyond-window 命中 90.3%（对照 X2v2 0.4%）不是抗驱逐召回，而是被惩罚训成强 local LM 后用局部统计补全——bpc 改善与长程检索退化可以同时发生（enwik8 局部统计极强）
+2. 全 head 被一起推向局部（per-head 距离 26–43，均值 ~33，无 head 保持长程分工）→ 想「专门写右」需要分工，全局 bias 长不出分工
+3. 注意力偏置只改「从哪读」，不改「写到哪」——信息仍留在原位置的残差里，没有搬运通道
+
+## 6. 判据与判决实验设计
+
+- **判据**：clean bpc（税）+ per-head 平均注意距离遥测（某些 head 必须保持长程）
+
+## 7. 成本估计
+
+- 13M 单臂 ~25 min
+
+## 8. 依赖与耦合声明（只记录，不做组合实验）
+
+1. `A3-window-anchor`
+2. `A9-old-info-retention`
+
+## 9. 复现手段
+
+1. .scratch/07-x1-x3/evidence/attn_dist_telemetry.json @7b47555
+
+## 备注
+
+本格是全项目最重要的方法学教训：局部先验会让模型「不需要」信息，
+这与「保住了」在指标上无法区分。任何保留声明必须用 KV 消融判据。
+
+<!-- AUTO:end -->
+
+<!-- MANUAL:begin -->
+<!-- MANUAL:end -->

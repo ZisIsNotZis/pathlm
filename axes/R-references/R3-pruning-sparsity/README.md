@@ -1,0 +1,66 @@
+---
+id: R3-pruning-sparsity
+axis: R
+grid_dir: R-references/R3-pruning-sparsity
+title: "剪枝 / 结构化稀疏"
+status: reference
+judge: "同 FLOPs 质量"
+cost: "13M 单臂 ~25 min"
+tax: "本地侧证：结构化约束（只读前 360 维）→ 恶化 −50.4%（W1）"
+benefit: "—"
+verdict: "—"
+deps: []
+evidence: [".scratch/25-tax-attribution/evidence @2e86924"]
+---
+
+<!-- AUTO:begin -->
+
+# R3-pruning-sparsity · 剪枝 / 结构化稀疏
+
+> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference**
+
+## 1. 命题
+
+删参数/删结构换速度。
+
+## 2. 选项枚举（本格全部可能取值）
+
+1. `非结构化剪枝`
+2. `结构化剪枝（层/头/通道）`
+3. `稀疏激活训练`
+
+## 3. 状态（我们做了什么 / 行业做了什么）
+
+**本地已测**：—
+
+**行业口径**：结构化剪枝已成熟但收益依赖任务；与 W5「容量-计算」分类直接相关。
+
+## 4. 结论与数字
+
+- **税**：本地侧证：结构化约束（只读前 360 维）→ 恶化 −50.4%（W1）
+- **收益**：—
+
+## 5. 失败路径与原因
+
+1. 减结构 = 减容量，模型会绕开被约束的子空间
+
+## 6. 判据与判决实验设计
+
+- **判据**：同 FLOPs 质量
+
+## 7. 成本估计
+
+- 13M 单臂 ~25 min
+
+## 8. 依赖与耦合声明（只记录，不做组合实验）
+
+（无已知依赖）
+
+## 9. 复现手段
+
+1. .scratch/25-tax-attribution/evidence @2e86924
+
+<!-- AUTO:end -->
+
+<!-- MANUAL:begin -->
+<!-- MANUAL:end -->
