@@ -45,7 +45,7 @@
 | [`H1-outputs-per-pass`](axes/H-horizon/H1-outputs-per-pass/README.md) · 每步输出位置数 | ✅ judged | 全项目税效比最好的机制；但墙钟收益是 13M/launch-bound 现象。 |
 | [`H2-training-fill`](axes/H-horizon/H2-training-fill/README.md) · 训练时未来位置的内容填充 | ✅ judged | 保留式填充（self-fill）胜出；PAD 与错误 token 都更贵；软提交有 OOD 污染。 |
 | [`H3-composition`](axes/H-horizon/H3-composition/README.md) · 多位置预测的组合方式 | ◐ partial | 组合的结构问题从未被测过：已测的是「条件链 deploy 输给直接头」，归因是草稿质量瓶颈而非结构。 |
-| [`H4-head-trunk-relation`](axes/H-horizon/H4-head-trunk-relation/README.md) · 头与主干的关系 | ✅ judged | 挂头是免费旁路（probe 头 @100M 零税；冻结主干跳跃头 13M 零税 Δ=0.0000）。但**冻结主干上的跳跃头无质量头寸**：t+2 命中 0.4667 < 阈值 0.5617（= … |
+| [`H4-head-trunk-relation`](axes/H-horizon/H4-head-trunk-relation/README.md) · 头与主干的关系 | ✅ judged | 挂头是免费旁路（零税坐实：Δbpc = 0.0000）。冻结主干上跳跃头 t+2 命中 0.4667 < 预登记阈值 0.5617（= 0.81 × oracle 两次前向）→ 按当时判据判失败；… |
 | [`H5-verification`](axes/H-horizon/H5-verification/README.md) · 验证机制 | ✅ judged | 批量验证可用且逐位一致；定稿不变量（全深度重打分）是本形态的正确性保障。 |
 
 ## W · 宽度（5 格）

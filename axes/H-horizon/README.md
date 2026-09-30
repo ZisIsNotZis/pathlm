@@ -31,7 +31,7 @@ H4 头与主干关系 · H5 验证机制
 | [`H1-outputs-per-pass`](H1-outputs-per-pass/README.md) | ✅ judged | 全项目税效比最好的机制；但墙钟收益是 13M/launch-bound 现象。 | n_mtp 1→2 +0.041（B2 1.5481）；2→3 +0.016… |
 | [`H2-training-fill`](H2-training-fill/README.md) | ✅ judged | 保留式填充（self-fill）胜出；PAD 与错误 token 都更贵；软提交有 OOD 污染。 | mask/wrong-token 替换 +0.059 / +0.127；em… |
 | [`H3-composition`](H3-composition/README.md) | ◐ partial | 组合的结构问题从未被测过：已测的是「条件链 deploy 输给直接头」，归因是草稿质量瓶颈而非结构。 | （组合机制本身的税未单独测；MTP 头的税见 H1） |
-| [`H4-head-trunk-relation`](H4-head-trunk-relation/README.md) | ✅ judged | 挂头是免费旁路（probe 头 @100M 零税；冻结主干跳跃头 13M 零税 Δ=0.0000）。但**冻结主干上的跳跃头无质量头寸**：t+2 命中 0.4667 < 阈值… | probe 式头 @100M ≈0（1.5928 vs 1.5871）；停梯… |
+| [`H4-head-trunk-relation`](H4-head-trunk-relation/README.md) | ✅ judged | 挂头是免费旁路（零税坐实：Δbpc = 0.0000）。冻结主干上跳跃头 t+2 命中 0.4667 < 预登记阈值 0.5617（= 0.81 × oracle 两次前向）→… | probe 式头 @100M ≈0（1.5928 vs 1.5871）；停梯… |
 | [`H5-verification`](H5-verification/README.md) | ✅ judged | 批量验证可用且逐位一致；定稿不变量（全深度重打分）是本形态的正确性保障。 | 验证本身不额外加税（复用同一次前向） |
 
 <!-- AUTO:end -->
