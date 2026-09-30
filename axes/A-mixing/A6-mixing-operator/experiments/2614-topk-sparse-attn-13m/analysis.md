@@ -196,8 +196,8 @@
 
 ### 5.1 活性量（每 200 步落盘，训练日志同行）
 
-`<arm>-train_log.jsonl` 的每一行都带 `attn_sparse`（关闭时显式为 `null`），共 61 行 × 8 层
-= 96,000 个层样本（`attn_sparse_layer_samples = 96000`）：
+`<arm>-train_log.jsonl` 的每一行都带 `attn_sparse`（关闭时显式为 `null`），日志每 200 步落一行（共 61 行），活性量的层样本总数为 12,000 步 × 8 层
+= 96,000（非 61 × 8）（`attn_sparse_layer_samples = 96000`）：
 
 | 量 | top-k k=32 | top-k k=64 | 说明 |
 |---|---|---|---|
