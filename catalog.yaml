@@ -547,6 +547,14 @@ grids:
         - "fp 平局翻转首现（top-2 gap 0.008，1/400 token）→ 逐位相等不能作为跨规模的正确性判据"
         - "node-k 概率朴素复合是数学错误（CE 3.96 vs 1.58，见 H3）"
       evidence: [".scratch/10-gap-sweep/evidence/B2 @57d64a7", ".scratch/13-four-experiments/evidence/mtp3 @9abc181", ".scratch/20-spec-scale/evidence @a864bcf"]
+    metrics:
+      - "解决什么：草稿从哪来（视界轴的成本问题）"
+      - "代价：Δ clean bpc（同尺寸同 token 预算）"
+      - "有效性：vs 冻结主干直接头 / vs 同尺寸 dense"
+      - "收益（用法 1）：spec 草稿——等效验证吞吐（FLOPs 口径）与墙钟 tok/s"
+      - "收益（用法 2）：逐 token 算力分配信号——门控后每 FLOP 边际收益"
+      - "可控性：头置信度的 ECE（能否用置信决定是否验证）"
+      - "副产品：多位置的互验能力（位置 i 与 i+1 互相校验）"
     deps: [H3-composition, H5-verification, C1-layers-per-token]
 
   # ==================== H2
@@ -599,6 +607,14 @@ grids:
         - "可部署条件链 0.547 < direct 0.560，~31% 草稿错误、接受 0.75≈0.77；k=1 naive verify-next-round 零吞吐收益 → 瓶颈是草稿质量，不是组合结构"
         - "consistency loss 中性（IX4 1.6589 ≈ C1 1.6549）→「让组合被训练出来」的既有手段实测无效"
       evidence: [".scratch/12-overnight/evidence @216a00a", ".scratch/04-m1-runs/evidence @e38349f"]
+    metrics:
+      - "解决什么：多跳组合是否有结构优势（用户新设计）"
+      - "代价：Δ clean bpc（同尺寸同 token 预算）；附加头参数量"
+      - "有效性：等 FLOPs 判决——1 次前向 + 跳跃头预测 t+2 vs 2 次前向"
+      - "收益（用法 1）：质量——同算力下的 argmax 命中率（已有锚：56% vs 69%）"
+      - "收益（用法 2）：草稿——条件接受率（已有锚：65.8% / 给定 t+1 正确 77.3%）"
+      - "可控性：组合深度选择的置信校准（ECE）"
+      - "副产品：组合深度的可解释分布（模型偏好一跳还是两跳）"
     deps: [H1-outputs-per-pass, F4-training-signal, G1-selector]
     notes: |
       空白格（用户新设计）。等 FLOPs 的判决实验：1 次前向 + 跳跃头预测 t+2
@@ -722,6 +738,14 @@ grids:
         - "宽度约束是硬的：d=256 / V=205 时 null 空间仅 62 维、功能性读取 26 条；d=128 < V 时结构性为 0（无余量）"
         - "结构性切分（只读前 r 维）→ 能量迁出读出子空间（W1）"
       evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/25-tax-attribution/evidence @2e86924"]
+    metrics:
+      - "解决什么：计算空间与读出可见空间的耦合（宽度约束的来源）"
+      - "代价：Δ clean bpc（同尺寸同 token 预算）；读出参数量"
+      - "有效性：vs tied 线性读出（同尺寸对照）"
+      - "收益（用法 1）：质量——税收回多少"
+      - "收益（用法 2）：workspace 自由度——null 能量占比 / functional_dirs"
+      - "可控性：prob0 校准是否仍可用（ECE）；软提交是否仍凸包安全"
+      - "副产品：出口资产（tf@k）是否保持"
     deps: [W1-active-width, A9-old-info-retention, H4-head-trunk-relation]
     notes: |
       用户新想法所在格：读出不必线性映射到 unembedding 空间；SwiGLU/SiLU +
