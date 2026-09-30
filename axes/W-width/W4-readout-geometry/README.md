@@ -10,7 +10,7 @@ tax: "**读出重参数化 Δ clean bpc −0.0812**（gated，12k）/**−0.0888
 benefit: "tf@4 0.9694 → **0.9680**（≥0.95 保持）、tf@6 0.9938 → 0.9933；ECE 0.0066 → **0.0051**；null 能量占比 0.2703 → **0.1952**（读出面看到更多状态，−7.5pp）；全深度逐深度支配 A 臂；参数量仅 +2·d² = **131072**（可 scale，非 vocab×hidden）"
 verdict: "读出几何**可以**解耦（prob0/提交/传输不受损，同空间前提不冲突），但**增量归因于「读出重参数化 + 额外 2d² 参数」，不是非线性本身**：等参数纯线性对照 Δ=−0.0888 与 gated 的 −0.0812 **不可排序**（差 0.0076 < 0.014）；且增益随训练缩小（12k −0.0812 → 24k −0.0463，缩 43%，两臂仍未收敛）⇒ 更像**收敛加速/容量效应**而非最终质量提升。**不采纳为质量机制**；保留为「读出重参数化」候选，待更长训练与更大尺寸确认。"
 deps: ["W1-active-width", "A9-old-info-retention", "H4-head-trunk-relation"]
-evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/25-tax-attribution/evidence @2e86924", "axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/analysis.md @cba2f39", "axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/analysis.md @ticket29", "axes/W-width/W4-readout-geometry/experiments/2612-gated-readout-24k-13m/analysis.md @ticket29"]
+evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/25-tax-attribution/evidence @2e86924", "axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/analysis.md @cba2f39", "axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/analysis.md @2f25fec", "axes/W-width/W4-readout-geometry/experiments/2612-gated-readout-24k-13m/analysis.md @2f25fec"]
 ---
 
 <!-- AUTO:begin -->
@@ -74,8 +74,8 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/25-tax-attributio
 1. .scratch/23-depth-ar/evidence @1586745
 2. .scratch/25-tax-attribution/evidence @2e86924
 3. axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/analysis.md @cba2f39
-4. axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/analysis.md @ticket29
-5. axes/W-width/W4-readout-geometry/experiments/2612-gated-readout-24k-13m/analysis.md @ticket29
+4. axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/analysis.md @2f25fec
+5. axes/W-width/W4-readout-geometry/experiments/2612-gated-readout-24k-13m/analysis.md @2f25fec
 
 ## 备注
 

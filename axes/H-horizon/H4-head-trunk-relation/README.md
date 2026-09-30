@@ -10,7 +10,7 @@ tax: "probe 式头 @100M ≈0（1.5928 vs 1.5871）；停梯度使浅层读出�
 benefit: "保 retry（−0.0098）且门控更强（−0.029 @100M）；MTP 头是 d×d 变换、无 vocab 参数（~free 的基础设施）；宽头 ECE 0.0064 ≤0.01 且 10 桶严格单调（0.073→0.982）可作分配信号"
 verdict: "挂头零税坐实（Δbpc = 0.0000）。按修正后的诚实口径（vs 1-step AR 两次前向，只替换紧邻位置）**判中性**：对手 54.89%（≥ 算术下界 0.4822 ✓ 对账过），跳跃头 46.67% = 对手的 **85%**（预登记成功线 90% 未过，落 [0.80,0.90) 中性带）；**草稿接受率仅 0.5998**（< 0.90 未过）。等效加速 **1.95×** 真实，但质量缺口使其不足以单独替代两次前向。"
 deps: ["C1-layers-per-token", "W4-readout-geometry", "H3-composition"]
-evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scale/evidence @9fe4cf1", "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/analysis.md @1181cd4", "axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/analysis.md @ticket29"]
+evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scale/evidence @9fe4cf1", "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/analysis.md @1181cd4", "axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/analysis.md @2f25fec"]
 ---
 
 <!-- AUTO:begin -->
@@ -72,7 +72,7 @@ evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scal
 1. .scratch/18-exit-probe/evidence @83bf1ac
 2. .scratch/21-exit-at-scale/evidence @9fe4cf1
 3. axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/analysis.md @1181cd4
-4. axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/analysis.md @ticket29
+4. axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/analysis.md @2f25fec
 
 ## 备注
 
