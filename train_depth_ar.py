@@ -190,6 +190,11 @@ def main():
                     help="结构切分（ticket 25 B 臂）：unembed/出口头只读前 r 个"
                          "通道（tied 表列切片 E[:, :r]），trunk/embedding 全维度；"
                          "缺省 = 全维度读出")
+    ap.add_argument("--readout-gated", action="store_true",
+                    help="gated 残差读出（W4 主臂）：读出前加非线性状态变换 "
+                         "h + SiLU(W1 h) ⊙ (W2 h)，再走 tied 线性读出（init "
+                         "W1~N(0,0.02)/W2=0 ⇒ 严格恒等起步、非鞍点）；缺省 = "
+                         "tied 线性（v1 逐位还原）")
     ap.add_argument("--exit-anneal", action="store_true",
                     help="C 臂冷却退火（ticket 25）：浅层 aux 权重均匀到 "
                          "(1−frac) 处、末 frac 线性降到 --exit-anneal-to；"
@@ -214,7 +219,8 @@ def main():
                         dense=args.dense,
                         gate_bias_init=args.gate_bias_init,
                         fill_kv=args.fill_kv, proj_fill=args.proj_fill,
-                        readout_dims=args.readout_dims)
+                        readout_dims=args.readout_dims,
+                        readout_gated=args.readout_gated)
     model = DepthARModel(cfg, vocab_size).cuda()
     n_params = sum(p.numel() for p in model.parameters())
     print(f"{args.run_name}: {n_params/1e6:.2f}M params, vocab {vocab_size}, "
@@ -246,6 +252,7 @@ def main():
         "aux_weight": args.aux_weight, "aux_anneal_to": args.aux_anneal_to,
         "final_weight": args.final_weight,
         "readout_dims": args.readout_dims,
+        "readout_gated": args.readout_gated,
         "exit_anneal": args.exit_anneal,
         "exit_anneal_to": args.exit_anneal_to if args.exit_anneal else None,
         "exit_anneal_frac": args.exit_anneal_frac if args.exit_anneal else None,

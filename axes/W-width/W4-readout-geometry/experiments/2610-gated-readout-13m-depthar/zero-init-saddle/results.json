@@ -1,0 +1,730 @@
+{
+  "experiment": "2610-gated-readout-13m-depthar",
+  "config": {
+    "experiment": "2610-gated-readout-13m-depthar",
+    "seed": 0,
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "exit_mode": "uniform",
+    "data": "data/enwik8_full.npz",
+    "data_split": "first 90M train / last 10M eval, vocab from full file",
+    "vocab_size": 206,
+    "A_arm": {
+      "readout": "tied linear h·Eᵀ",
+      "readout_gated": false,
+      "source": ".scratch/23-depth-ar/evidence/23c-H2-w0-12k"
+    },
+    "main_arm": {
+      "readout": "h + SiLU(W1 h)·(W2 h) then ·Eᵀ",
+      "readout_gated": true,
+      "readout_w1_w2_init": "zero (identity start)",
+      "params_extra": 131072
+    },
+    "base": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 4,
+      "dense": false,
+      "fill_kv": true,
+      "proj_fill": false,
+      "gate_bias_init": -2.0,
+      "aux_weight": 1.0,
+      "final_weight": 1.0,
+      "shallow_stopgrad": false,
+      "dense_aux": false
+    }
+  },
+  "A_arm_equivalence": [
+    {
+      "field": "d_model",
+      "hist_A": 256,
+      "this_A": 256,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "n_layers",
+      "hist_A": 8,
+      "this_A": 8,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "n_heads",
+      "hist_A": 8,
+      "this_A": 8,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "seq_len",
+      "hist_A": 256,
+      "this_A": 256,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "mlp_mult",
+      "hist_A": 4,
+      "this_A": 4,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "dropout",
+      "hist_A": 0.0,
+      "this_A": 0.0,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "norm_cap",
+      "hist_A": 1.0,
+      "this_A": 1.0,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "gate_bias_init",
+      "hist_A": -2.0,
+      "this_A": -2.0,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "dense",
+      "hist_A": false,
+      "this_A": false,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "exit_mode",
+      "hist_A": "uniform",
+      "this_A": "uniform",
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "aux_weight",
+      "hist_A": 1.0,
+      "this_A": 1.0,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "aux_anneal_to",
+      "hist_A": null,
+      "this_A": null,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "final_weight",
+      "hist_A": 1.0,
+      "this_A": 1.0,
+      "equal": true,
+      "source": "23c 无 final_weight 字段；等权 v1 = ticket24 final_weight 1.0"
+    },
+    {
+      "field": "shallow_stopgrad",
+      "hist_A": false,
+      "this_A": false,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "dense_aux",
+      "hist_A": false,
+      "this_A": false,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "steps",
+      "hist_A": 12000,
+      "this_A": 12000,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "batch_size",
+      "hist_A": 32,
+      "this_A": 32,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "lr",
+      "hist_A": 0.001,
+      "this_A": 0.001,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "seed",
+      "hist_A": 0,
+      "this_A": 0,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "train_tokens",
+      "hist_A": 98304000,
+      "this_A": 98304000,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "vocab_size",
+      "hist_A": 206,
+      "this_A": 206,
+      "equal": true,
+      "source": "results.json"
+    },
+    {
+      "field": "fill_kv",
+      "hist_A": true,
+      "this_A": true,
+      "equal": true,
+      "source": "开关 23e 才加；23c-H2 是 v1 混合填充语义（23e-decomposition：W0-12k = 门+退出+混合填充）"
+    },
+    {
+      "field": "proj_fill",
+      "hist_A": false,
+      "this_A": false,
+      "equal": true,
+      "source": "未引入（23e 才加）；v1 缺省 False"
+    },
+    {
+      "field": "readout_dims",
+      "hist_A": null,
+      "this_A": null,
+      "equal": true,
+      "source": "未引入（ticket 25 才加）"
+    },
+    {
+      "field": "readout_gated",
+      "hist_A": false,
+      "this_A": false,
+      "equal": true,
+      "source": "本实验新增；A 臂 = 关（tied 线性）"
+    }
+  ],
+  "A_arm_equivalence_all_equal": true,
+  "A_arm": {
+    "source": ".scratch/23-depth-ar/evidence/23c-H2-w0-12k",
+    "hist_clean_bpc": 1.8582,
+    "hist_tf4": 0.9694,
+    "depth_curve": [
+      {
+        "depth": 0,
+        "bpc": 5.4191,
+        "acc": 0.0535
+      },
+      {
+        "depth": 1,
+        "bpc": 2.3819,
+        "acc": 0.54
+      },
+      {
+        "depth": 2,
+        "bpc": 1.9988,
+        "acc": 0.6036
+      },
+      {
+        "depth": 3,
+        "bpc": 1.8863,
+        "acc": 0.623
+      },
+      {
+        "depth": 4,
+        "bpc": 1.8628,
+        "acc": 0.6266
+      },
+      {
+        "depth": 5,
+        "bpc": 1.8593,
+        "acc": 0.627
+      },
+      {
+        "depth": 6,
+        "bpc": 1.8585,
+        "acc": 0.6272
+      },
+      {
+        "depth": 7,
+        "bpc": 1.8584,
+        "acc": 0.6271
+      },
+      {
+        "depth": 8,
+        "bpc": 1.8582,
+        "acc": 0.6271
+      }
+    ],
+    "tf_acceptance": [
+      {
+        "depth": 0,
+        "accept": 0.057
+      },
+      {
+        "depth": 1,
+        "accept": 0.7187
+      },
+      {
+        "depth": 2,
+        "accept": 0.8597
+      },
+      {
+        "depth": 3,
+        "accept": 0.9348
+      },
+      {
+        "depth": 4,
+        "accept": 0.9694
+      },
+      {
+        "depth": 5,
+        "accept": 0.9871
+      },
+      {
+        "depth": 6,
+        "accept": 0.9938
+      },
+      {
+        "depth": 7,
+        "accept": 0.998
+      }
+    ],
+    "spec_cost_model": [
+      {
+        "draft_depth": 4,
+        "tf_accept": 0.9694,
+        "draft_cost_frac": 0.5,
+        "expected_tokens_per_cycle": 1.9694,
+        "cost_per_cycle": 1.5,
+        "equivalent_validation_speedup": 1.3129
+      },
+      {
+        "draft_depth": 6,
+        "tf_accept": 0.9938,
+        "draft_cost_frac": 0.75,
+        "expected_tokens_per_cycle": 1.9938,
+        "cost_per_cycle": 1.75,
+        "equivalent_validation_speedup": 1.1393
+      }
+    ],
+    "workspace": {
+      "vocab_size": 206,
+      "d_model": 256,
+      "readout_dims": null,
+      "readout_rank": 162,
+      "null_dim": 94,
+      "null_energy_frac_by_depth": [
+        0.0383,
+        0.2487,
+        0.2641,
+        0.2701,
+        0.271,
+        0.2704,
+        0.2704,
+        0.2703,
+        0.2703
+      ],
+      "perturb_eps_frac": 0.05,
+      "delta": 0.01,
+      "functional_dirs": 537,
+      "median_dlogit_over_dirs": 0.012032,
+      "max_dlogit_over_dirs": 0.026718,
+      "control_same_row_max_dlogit": 4.578e-05
+    },
+    "readout_workspace_energy": {
+      "readout_dims": 256,
+      "d_model": 256,
+      "readout_energy_frac_by_depth": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "workspace_energy_frac_by_depth": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "generation": [
+      {
+        "depth": 0,
+        "commit": "soft",
+        "legal": true,
+        "distinct2": 0.0472,
+        "rescore_bpc": 25.4544,
+        "exit_top1_prob_tf": 0.0508
+      },
+      {
+        "depth": 0,
+        "commit": "hard",
+        "legal": true,
+        "distinct2": 0.0079,
+        "rescore_bpc": 2.5519,
+        "exit_top1_prob_tf": 0.0508
+      },
+      {
+        "depth": 0,
+        "commit": "latent",
+        "legal": true,
+        "distinct2": 0.0236,
+        "rescore_bpc": 0.4068,
+        "exit_top1_prob_tf": 0.0508
+      },
+      {
+        "depth": 4,
+        "commit": "soft",
+        "legal": true,
+        "distinct2": 0.2598,
+        "rescore_bpc": 6.0824,
+        "exit_top1_prob_tf": 0.4839
+      },
+      {
+        "depth": 4,
+        "commit": "hard",
+        "legal": true,
+        "distinct2": 0.2047,
+        "rescore_bpc": 0.4645,
+        "exit_top1_prob_tf": 0.4839
+      },
+      {
+        "depth": 4,
+        "commit": "latent",
+        "legal": true,
+        "distinct2": 0.063,
+        "rescore_bpc": 0.9081,
+        "exit_top1_prob_tf": 0.4839
+      },
+      {
+        "depth": 8,
+        "commit": "soft",
+        "legal": true,
+        "distinct2": 0.2835,
+        "rescore_bpc": 6.1014,
+        "exit_top1_prob_tf": 0.4794
+      },
+      {
+        "depth": 8,
+        "commit": "hard",
+        "legal": true,
+        "distinct2": 0.2047,
+        "rescore_bpc": 0.4645,
+        "exit_top1_prob_tf": 0.4794
+      },
+      {
+        "depth": 8,
+        "commit": "latent",
+        "legal": true,
+        "distinct2": 0.0709,
+        "rescore_bpc": 3.1674,
+        "exit_top1_prob_tf": 0.4794
+      }
+    ],
+    "calibration": {
+      "prob0_ece": 0.0066,
+      "exit4_ece": 0.0053,
+      "ece_by_depth": [
+        0.018,
+        0.0281,
+        0.0118,
+        0.0042,
+        0.0053,
+        0.0068,
+        0.0066,
+        0.0068,
+        0.0066
+      ],
+      "n_bins": 15
+    },
+    "eval_wall_min": 0.54
+  },
+  "main_arm": {
+    "source": "runs/gated-12k-s0",
+    "depth_curve": [
+      {
+        "depth": 0,
+        "bpc": 5.4455,
+        "acc": 0.0535
+      },
+      {
+        "depth": 1,
+        "bpc": 2.3946,
+        "acc": 0.5368
+      },
+      {
+        "depth": 2,
+        "bpc": 1.9845,
+        "acc": 0.6085
+      },
+      {
+        "depth": 3,
+        "bpc": 1.8762,
+        "acc": 0.6263
+      },
+      {
+        "depth": 4,
+        "bpc": 1.8504,
+        "acc": 0.6299
+      },
+      {
+        "depth": 5,
+        "bpc": 1.8443,
+        "acc": 0.6302
+      },
+      {
+        "depth": 6,
+        "bpc": 1.8432,
+        "acc": 0.6305
+      },
+      {
+        "depth": 7,
+        "bpc": 1.8429,
+        "acc": 0.6303
+      },
+      {
+        "depth": 8,
+        "bpc": 1.8428,
+        "acc": 0.6304
+      }
+    ],
+    "tf_acceptance": [
+      {
+        "depth": 0,
+        "accept": 0.056
+      },
+      {
+        "depth": 1,
+        "accept": 0.7139
+      },
+      {
+        "depth": 2,
+        "accept": 0.8597
+      },
+      {
+        "depth": 3,
+        "accept": 0.9281
+      },
+      {
+        "depth": 4,
+        "accept": 0.9671
+      },
+      {
+        "depth": 5,
+        "accept": 0.9864
+      },
+      {
+        "depth": 6,
+        "accept": 0.9934
+      },
+      {
+        "depth": 7,
+        "accept": 0.9975
+      }
+    ],
+    "spec_cost_model": [
+      {
+        "draft_depth": 4,
+        "tf_accept": 0.9671,
+        "draft_cost_frac": 0.5,
+        "expected_tokens_per_cycle": 1.9671,
+        "cost_per_cycle": 1.5,
+        "equivalent_validation_speedup": 1.3114
+      },
+      {
+        "draft_depth": 6,
+        "tf_accept": 0.9934,
+        "draft_cost_frac": 0.75,
+        "expected_tokens_per_cycle": 1.9934,
+        "cost_per_cycle": 1.75,
+        "equivalent_validation_speedup": 1.1391
+      }
+    ],
+    "workspace": {
+      "vocab_size": 206,
+      "d_model": 256,
+      "readout_dims": null,
+      "readout_rank": 163,
+      "null_dim": 93,
+      "null_energy_frac_by_depth": [
+        0.0338,
+        0.2514,
+        0.2714,
+        0.2722,
+        0.2741,
+        0.2739,
+        0.2738,
+        0.2737,
+        0.2737
+      ],
+      "perturb_eps_frac": 0.05,
+      "delta": 0.01,
+      "functional_dirs": 607,
+      "median_dlogit_over_dirs": 0.012462,
+      "max_dlogit_over_dirs": 0.027451,
+      "control_same_row_max_dlogit": 4.578e-05
+    },
+    "readout_workspace_energy": {
+      "readout_dims": 256,
+      "d_model": 256,
+      "readout_energy_frac_by_depth": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "workspace_energy_frac_by_depth": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    },
+    "generation": [
+      {
+        "depth": 0,
+        "commit": "soft",
+        "legal": true,
+        "distinct2": 0.0394,
+        "rescore_bpc": 18.7137,
+        "exit_top1_prob_tf": 0.0489
+      },
+      {
+        "depth": 0,
+        "commit": "hard",
+        "legal": true,
+        "distinct2": 0.0079,
+        "rescore_bpc": 2.2498,
+        "exit_top1_prob_tf": 0.0489
+      },
+      {
+        "depth": 0,
+        "commit": "latent",
+        "legal": true,
+        "distinct2": 0.0236,
+        "rescore_bpc": 0.3588,
+        "exit_top1_prob_tf": 0.0489
+      },
+      {
+        "depth": 4,
+        "commit": "soft",
+        "legal": true,
+        "distinct2": 0.4173,
+        "rescore_bpc": 6.7581,
+        "exit_top1_prob_tf": 0.4993
+      },
+      {
+        "depth": 4,
+        "commit": "hard",
+        "legal": true,
+        "distinct2": 0.2756,
+        "rescore_bpc": 0.6051,
+        "exit_top1_prob_tf": 0.4993
+      },
+      {
+        "depth": 4,
+        "commit": "latent",
+        "legal": true,
+        "distinct2": 0.0236,
+        "rescore_bpc": 16.3615,
+        "exit_top1_prob_tf": 0.4993
+      },
+      {
+        "depth": 8,
+        "commit": "soft",
+        "legal": true,
+        "distinct2": 0.3858,
+        "rescore_bpc": 5.972,
+        "exit_top1_prob_tf": 0.5034
+      },
+      {
+        "depth": 8,
+        "commit": "hard",
+        "legal": true,
+        "distinct2": 0.1732,
+        "rescore_bpc": 0.5272,
+        "exit_top1_prob_tf": 0.5034
+      },
+      {
+        "depth": 8,
+        "commit": "latent",
+        "legal": true,
+        "distinct2": 0.063,
+        "rescore_bpc": 4.998,
+        "exit_top1_prob_tf": 0.5034
+      }
+    ],
+    "calibration": {
+      "prob0_ece": 0.0057,
+      "exit4_ece": 0.0053,
+      "ece_by_depth": [
+        0.0092,
+        0.0285,
+        0.0106,
+        0.0045,
+        0.0053,
+        0.0058,
+        0.006,
+        0.006,
+        0.0057
+      ],
+      "n_bins": 15
+    },
+    "wall_min": 12.69,
+    "peak_child_mem_gb": 2.14,
+    "eval_wall_min": 0.47,
+    "gnorm_monitor": {
+      "gnorm_max": 6.29,
+      "gnorm_mean": 1.92,
+      "grad_skips": 0
+    },
+    "params": 7093760
+  },
+  "verdict": {
+    "criterion": "Δclean_bpc ≤ −0.05 且 tf@4 ≥ 0.95 且 ECE 不劣化 >0.003",
+    "A_clean_bpc": 1.8582,
+    "main_clean_bpc": 1.8428,
+    "delta_clean_bpc": -0.0154,
+    "A_tf4": 0.9694,
+    "main_tf4": 0.9671,
+    "A_prob0_ece": 0.0066,
+    "main_prob0_ece": 0.0057,
+    "delta_ece": -0.0009,
+    "dense_bpc_ref_13m": 1.5287,
+    "A_tax_vs_dense": 0.3295,
+    "main_tax_vs_dense": 0.3141,
+    "ruling": "弱正向（未过 −0.05，记录方向性证据，不采纳）"
+  },
+  "wall_total_min": 13.71
+}

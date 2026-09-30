@@ -57,6 +57,16 @@ class DepthARConfig:
     # trunk 与 embedding 端保持全维度——workspace 维（r..d）经残差参与全层
     # 计算但不进 logits。None = 全维度读出（v1 复现点，逐位一致）。
     readout_dims: int | None = None
+    # gated 残差读出（W4 主臂）：读出前加一个非线性状态变换
+    # h → h + SiLU(W1 h) ⊙ (W2 h)（W1/W2 无偏置），再走 tied 线性读出
+    # h·Eᵀ。tied 表仍是唯一读出基（prob0 / Σp·E 凸包 / latent 投影语义不变）；
+    # 参数量 2·d² 可忽略且可 scale（非 vocab×hidden MLP 读出）。缺省 False = v1
+    # 逐位还原。
+    # init：W1 ~ N(0, 0.02)、**W2 = 0** —— 起步 transform = SiLU(W1 h)⊙0 = 0
+    # ⇒ 严格恒等起步（单测钉住）。**不能用 W1=W2=0**：该点两端梯度
+    # ∂L/∂W2 ∝ SiLU(W1h)⊗h = SiLU(0)⊗h = 0、∂L/∂W1 ∝ diag(W2h)·SiLU'(W1h)·(h⊗I) = 0
+    # 同时为零 ⇒ 永不可学的鞍点（已实测：零初始 12k 步后 |W1|=|W2|=0）。
+    readout_gated: bool = False
 
 
 def sample_exit_depths(B: int, T: int, n_layers: int, generator: torch.Generator,
@@ -112,6 +122,14 @@ class DepthARModel(nn.Module):
                 nn.init.zeros_(a.bias)
                 with torch.no_grad():
                     a.weight.copy_(torch.eye(d))
+        # gated 残差读出（W4 主臂）：W1 ~ N(0, 0.02)、W2 = 0（不消耗"其它参数"的
+        # 随机数——建在参数 init 循环之后），起步 transform = 0 ⇒ 严格 == tied
+        # 线性（恒等起步，单测钉住），且 ∂L/∂W2 ≠ 0（非鞍点，可学）。
+        if cfg.readout_gated:
+            self.readout_w1 = nn.Linear(d, d, bias=False)
+            self.readout_w2 = nn.Linear(d, d, bias=False)
+            nn.init.normal_(self.readout_w1.weight, std=0.02)
+            nn.init.zeros_(self.readout_w2.weight)
 
     # ---------- 读出 ----------
 
@@ -120,13 +138,21 @@ class DepthARModel(nn.Module):
 
         readout_dims（ticket 25 B 臂）：只读前 r 个通道，tied 表取列切片
         E[:, :r]（unembed 与全部出口头同一切片，机制一致）；workspace 维
-        不进 logits。缺省（None）与 r=d 走原表达式，逐位还原 v1。"""
+        不进 logits。缺省（None）与 r=d 走原表达式，逐位还原 v1。
+
+        readout_gated（W4 主臂）：先做非线性状态变换
+        h → h + SiLU(W1 h) ⊙ (W2 h)，再走 tied 读出。变换在**全维度 h** 上
+        做（workspace 维经 W1/W2 进入读出），之后才按 readout_dims 切片。
+        缺省（False）与上述全维度/切片路径都逐位还原 v1。"""
         with torch.autocast("cuda", enabled=False):
+            hf = h.float()
+            if self.cfg.readout_gated:
+                hf = hf + F.silu(self.readout_w1(hf)) * self.readout_w2(hf)
             r = self.cfg.readout_dims
             if r is None or r == self.cfg.d_model:
-                return h.float() @ self.embed.weight.float().T
+                return hf @ self.embed.weight.float().T
             U = self.embed.weight.float()[:, :r]
-            return h[..., :r].float() @ U.T
+            return hf[..., :r] @ U.T
 
     def _input_states(self, tokens: torch.Tensor) -> torch.Tensor:
         T = tokens.shape[1]

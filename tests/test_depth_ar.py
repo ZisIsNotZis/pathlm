@@ -8,6 +8,7 @@ carry 门恒等起步、提交方式、增量解码与并行 forward 的逐位�
 import os, sys
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -709,3 +710,127 @@ def test_spec_cost_model_formula():
                - (1 + 0.9946) / (1 + 6 / 12)) < 1e-3
     assert out[0]["tf_accept"] == 0.9726
     assert out[0]["cost_per_cycle"] == 1.3333
+
+
+# ---------- W4 主臂：gated 残差读出（readout_gated） ----------
+
+
+def test_readout_gated_off_matches_v1_bitwise():
+    """① --readout-gated 关闭逐位还原 A 臂：logits 与 v1 表达式
+    h.float() @ Eᵀ torch.equal（全深度与随机退出深度两条路径都钉）。"""
+    m = tiny_model()
+    torch.manual_seed(21)
+    x = torch.randint(0, 10, (2, 12))
+    _, aux = m(x, exit_depths=None)
+    for s, lg in zip(aux["states"], aux["depth_logits"]):
+        assert torch.equal(lg, s.float() @ m.embed.weight.float().T)
+    depths = sample_exit_depths(2, 12, m.cfg.n_layers,
+                                torch.Generator().manual_seed(22))
+    _, aux_d = m(x, exit_depths=depths)
+    for s, lg in zip(aux_d["states"], aux_d["depth_logits"]):
+        assert torch.equal(lg, s.float() @ m.embed.weight.float().T)
+
+
+def test_readout_gated_zero_weights_identity_limit():
+    """② W1=W2=0 时 gated 读出严格等于 tied 线性 h·Eᵀ（恒等极限，逐位）：
+    起步 == 基线 A，不引入任何初始税。"""
+    m = tiny_model()                     # A 臂
+    g = tiny_model(readout_gated=True)
+    # 复制 A 臂权重（g 多出 readout_w1/w2，保持其零初始化）
+    missing = g.load_state_dict(m.state_dict(), strict=False)
+    assert set(missing.missing_keys) == {"readout_w1.weight",
+                                         "readout_w2.weight"}
+    assert not missing.unexpected_keys
+    torch.manual_seed(23)
+    x = torch.randint(0, 10, (2, 12))
+    for model in (m, g):
+        _, aux = model(x, exit_depths=None)
+        for s, lg in zip(aux["states"], aux["depth_logits"]):
+            assert torch.equal(lg, s.float() @ model.embed.weight.float().T)
+    # A 臂与 gated（零权重）逐深度 logits 逐位一致
+    _, a1 = m(x, exit_depths=None)
+    _, a2 = g(x, exit_depths=None)
+    for l1, l2 in zip(a1["depth_logits"], a2["depth_logits"]):
+        assert torch.equal(l1, l2)
+
+
+def test_readout_gated_formula_and_switch_guard():
+    """③ 主臂读数公式 = (h + SiLU(W1 h) ⊙ (W2 h))·Eᵀ；且两处变异必抓红：
+    (a) 忽略开关（永远返回 tied）——W1/W2 非零时 logits 必须偏离 tied；
+    (b) 去掉非线性（silu→identity / 门不生效）——两处非零仍退化恒等或
+    与公式不符（此处以精确公式对照）。"""
+    g = tiny_model(readout_gated=True)
+    torch.manual_seed(24)
+    with torch.no_grad():
+        nn.init.normal_(g.readout_w1.weight, std=0.3)
+        nn.init.normal_(g.readout_w2.weight, std=0.3)
+    h = torch.randn(2, 12, 16)
+    hf = h.float()
+    expected = (hf + F.silu(g.readout_w1(hf)) * g.readout_w2(hf)) \
+        @ g.embed.weight.float().T
+    got = g.readout(h)
+    assert torch.allclose(got, expected, atol=0)
+    # (a) 开关必须生效：非零 W1/W2 下读出必须偏离 tied
+    assert not torch.allclose(got, hf @ g.embed.weight.float().T, atol=1e-6)
+    # (b) 单侧为零仍退化恒等（门 ⊙ 值，任一为 0 则该分支不贡献）
+    with torch.no_grad():
+        g.readout_w2.weight.zero_()
+    assert torch.equal(g.readout(h), hf @ g.embed.weight.float().T)
+    with torch.no_grad():
+        nn.init.normal_(g.readout_w2.weight, std=0.3)
+        g.readout_w1.weight.zero_()
+    assert torch.equal(g.readout(h), hf @ g.embed.weight.float().T)
+
+
+def test_readout_gated_reaches_workspace_dims():
+    """gated 变换在全维度 h 上做：readout_dims=r 时，workspace 维 h[r:] 经
+    W1/W2 仍能改变 logits（结构性切分下的耦合被解开）；tied 线性（W=0）
+    下 workspace 维对 logits 零影响（对照）。"""
+    g = tiny_model(readout_gated=True, readout_dims=8)
+    torch.manual_seed(25)
+    with torch.no_grad():
+        nn.init.normal_(g.readout_w1.weight, std=0.3)
+        nn.init.normal_(g.readout_w2.weight, std=0.3)
+    h = torch.randn(1, 4, 16)
+    perturb = h.clone()
+    perturb[..., 8:] += 0.5 * h[..., 8:].norm(dim=-1, keepdim=True)
+    assert not torch.allclose(g.readout(h), g.readout(perturb), atol=1e-6)
+    with torch.no_grad():                # W=0 对照：workspace 维不可见
+        g.readout_w1.weight.zero_()
+        g.readout_w2.weight.zero_()
+    assert torch.equal(g.readout(h), g.readout(perturb))
+
+
+def test_readout_gated_init_does_not_disturb_other_params():
+    """init 规范（写死）：W1 ~ N(0,0.02)、W2 = 0。W1/W2 建在参数 init 循环
+    之后 ⇒ 同 seed 下 gated 臂与 A 臂**其余全部参数逐位一致**（单因素：只加
+    读出几何）。W2 必须全零（恒等起步），W1 必须非零（非零初始，避免鞍点）。"""
+    a = tiny_model()
+    g = tiny_model(readout_gated=True)
+    sa, sg = a.state_dict(), g.state_dict()
+    assert set(sg) - set(sa) == {"readout_w1.weight", "readout_w2.weight"}
+    for k in sa:
+        assert torch.equal(sa[k], sg[k]), k
+    assert torch.count_nonzero(sg["readout_w2.weight"]) == 0
+    assert torch.count_nonzero(sg["readout_w1.weight"]) > 0
+
+
+def test_readout_gated_init_escapes_saddle():
+    """干预活性门（P3 强制项）：零初始 W1=W2=0 是鞍点——实测 200 步
+    |W1|=|W2|=0（永不可学）。本 init（W1~N(0,0.02)、W2=0）必须：(a) 起步
+    严格恒等（readout == tied，逐位）；(b) 一步 backward 后 readout_w2.weight
+    的梯度非零（∂L/∂W2 = SiLU(W1h)⊗h ≠ 0）⇒ 可逃逸鞍点。"""
+    g = tiny_model(readout_gated=True)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, g.cfg.n_layers,
+                                torch.Generator().manual_seed(29))
+    # (a) 起步恒等极限（W1 随机、W2=0 ⇒ transform = SiLU(W1h)⊙0 = 0）
+    _, aux = g(x, exit_depths=depths)
+    for s, lg in zip(aux["states"], aux["depth_logits"]):
+        assert torch.equal(lg, s.float() @ g.embed.weight.float().T)
+    # (b) 非鞍点：W2 梯度非零；W1 在原点方向仍为零梯（靠 W2 破零）
+    loss, _ = g(x, exit_depths=depths)
+    loss.backward()
+    g2 = g.readout_w2.weight.grad
+    assert g2 is not None and torch.count_nonzero(g2) > 0
+    assert torch.count_nonzero(g.readout_w1.weight.grad) == 0

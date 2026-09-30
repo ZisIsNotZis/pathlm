@@ -21,6 +21,10 @@ latent 传输所依赖的 tied 几何。
 ```
 基线 A ：logits = h @ Eᵀ
 本实验 ：logits = (h + SiLU(W1 h) ⊙ (W2 h)) @ Eᵀ          ← 主臂 gated-residual
+       （init：W1 ~ N(0, 0.02)、**W2 = 0** ⇒ 起步 transform = 0，严格恒等起步；
+        旧契约「零初始化或极小值」的**「零」选项已删除**，标注为陷阱——
+        W1=W2=0 两端梯度同时为 0 ⇒ 永不可学的鞍点：∂L/∂W2 ∝ SiLU(W1h)⊗h = 0、
+        ∂L/∂W1 ∝ diag(W2h)·SiLU'(W1h)·(h⊗I) = 0，实测 12k 步后 |W1|=|W2|=0）
        （可选对照臂 logits = h @ Eᵀ + MLP(h) @ W3ᵀ，vocab×hidden，仅作规模陷阱对照）
 ```
 
@@ -78,7 +82,7 @@ latent 传输所依赖的 tied 几何。
 | 峰值显存 | ≤6GB net（当前共享卡已占 10GB/24GB） |
 | 预计墙钟 | 冒烟 5 min；全跑 25 min（共享卡 ×2 折扣 ≈ 50 min） |
 | 可中断性 | 是（每 500 步落 log；中断后可按 checkpoint 续） |
-| 冒烟计划 | 20 步 + 全电池（含梯队：gated 读出的恒等极限必须能还原 A 臂：W1=W2=0 ⇒ logits == h@Eᵀ） |
+| 冒烟计划 | 20 步 + 全电池（含梯队：gated 读出的恒等起步必须能还原 A 臂：W2=0 ⇒ transform=0 ⇒ logits == h@Eᵀ；且 W1≠0 保证 ∂L/∂W2≠0 非鞍点） |
 
 ## 7. 数据与脚本清单
 
@@ -86,7 +90,7 @@ latent 传输所依赖的 tied 几何。
 |---|---|
 | 数据集 | char 级 enwik8（`data/enwik8_full.npz`，200MB，本地已有；下游自行切分 12MB 级子集） |
 | 入口脚本 | `train_depth_ar.py`（新增 `--readout-gated` 开关）+ `pathlm/depth_ar.py` |
-| 可失败单测 | ① `--readout-gated` 关闭时逐位还原 A 臂；② W1=W2=0 时 gated 读出 == tied 线性；③ 变异验证：把非线性去掉（退化成恒等）必须抓红 |
+| 可失败单测 | ① `--readout-gated` 关闭时逐位还原 A 臂；② W1=W2=0 时 gated 读出 == tied 线性（恒等极限）；③ gated 起步恒等（W2=0 且 W1 随机）；④ 干预活性门：一步 backward 后 ∂L/∂W2 ≠ 0（非鞍点）；⑤ 变异验证：去掉非线性 / 忽略开关 / 退回零初始鞍点 都必须抓红 |
 | 落盘 | `results.json` / `train_log.jsonl` / workspace 探针 json / `analysis.md` / `MODEL.md`（权重哈希） |
 
 ## 8. 失败决策树
