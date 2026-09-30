@@ -14,6 +14,7 @@ import torch.nn.functional as F
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
+                             ParallelBlock, TOPOLOGIES, topology_liveness,
                              commit_input, generate, token_input, workspace_probe,
                              tf_acceptance, readout_workspace_energy,
                              spec_cost_model)
@@ -958,3 +959,230 @@ def test_readout_gated_and_linear_resid_mutually_exclusive():
     """单因素纪律：两种读出几何干预不得同时开启（否则混淆参数量/非线性）。"""
     with pytest.raises(ValueError):
         tiny_model(readout_gated=True, readout_linear_resid=True)
+
+
+# ---------------- 层间拓扑（ticket 30 契约 E）----------------
+
+
+def _manual_attn_delta(blk, ln, x):
+    """手写注意力子层输出增量 proj(a(ln x))（因果 SDPA 路径），用于公式钉死。"""
+    B, T, d = x.shape
+    q, k, v = blk.qkv(ln(x)).chunk(3, dim=-1)
+    shape = lambda t: t.view(B, T, blk.n_heads, d // blk.n_heads).transpose(1, 2)
+    a = F.scaled_dot_product_attention(shape(q), shape(k), shape(v), is_causal=True)
+    return blk.proj(a.transpose(1, 2).reshape(B, T, d))
+
+
+def test_topology_default_off_matches_v1_bitwise():
+    """缺省拓扑（不传 topology）必须与显式 sequential 逐位一致（v1 还原）。"""
+    m_default = tiny_model(dense=True)
+    m_seq = tiny_model(dense=True, topology="sequential")
+    assert sum(p.numel() for p in m_default.parameters()) == \
+        sum(p.numel() for p in m_seq.parameters())
+    x = torch.randint(0, 10, (2, 12))
+    assert torch.equal(m_default(x)[1]["states"][-1], m_seq(x)[1]["states"][-1])
+    assert torch.equal(m_default(x)[0], m_seq(x)[0])
+
+
+def test_parallel_block_formula_and_stock_path_guard():
+    """并行子层公式逐位钉死：h' = h + attn(ln_a h) + mlp(ln_b h)，两个子层读
+    同一块输入 h（不是链式）；并钉住它不接受退出/填充路径的参数。"""
+    from pathlm.model import ModelConfig
+    torch.manual_seed(3)
+    cfg = ModelConfig(d_model=16, n_layers=2, n_heads=2, mlp_mult=4, seq_len=12)
+    x = torch.randn(2, 6, 16)
+    for share_ln in (True, False):
+        b = ParallelBlock(cfg, share_ln=share_ln)
+        out, dist = b(x)
+        assert dist is None
+        ln_b = b.ln1 if share_ln else b.ln2
+        expect = x + _manual_attn_delta(b, b.ln1, x) + b.mlp(ln_b(x))
+        assert torch.allclose(out, expect, atol=0, rtol=0)
+        # mlp 分支读的是**块输入** x（链式实现读的是 h + attn(ln1 h)，会不同）
+        staged = b.mlp(ln_b(x + _manual_attn_delta(b, b.ln1, x)))
+        assert not torch.allclose(out, x + _manual_attn_delta(b, b.ln1, x) + staged)
+        for kw in ({"kv_from": x}, {"gate_vec": torch.ones_like(x)},
+                   {"dist_pen": 0.1}, {"attn_mask": torch.ones(1, 1, 6, 6,
+                                                                dtype=torch.bool)}):
+            with pytest.raises(ValueError):
+                b(x, **kw)
+
+
+def test_parallel_param_count_and_init_parity():
+    """单因素 + SCHEMA §15：parallel-dual-ln 与 sequential 参数量**逐位相等**、
+    且同 seed 下全部公共参数逐位相同（子模块创建顺序一致 ⇒ 随机数流对齐）；
+    parallel（共享 pre-LN）按定义少 L·2d 个 LN 参数。"""
+    seq = tiny_model(dense=True)
+    dual = tiny_model(dense=True, topology="parallel-dual-ln")
+    shared = tiny_model(dense=True, topology="parallel")
+    n = lambda m: sum(p.numel() for p in m.parameters())
+    d, L = 16, 3
+    assert set(TOPOLOGIES) == {"sequential", "parallel", "parallel-dual-ln",
+                              "dense"}
+    assert n(dual) == n(seq)
+    assert n(seq) - n(shared) == L * 2 * d
+    # 包装层命名差（blocks.k.block.* vs blocks.k.*）在对照时按同一逻辑名映射
+    def logical(sd):
+        out = {}
+        for k, v in sd.items():
+            parts = k.split(".")
+            if parts[0] == "blocks" and parts[2] == "block":
+                parts = parts[:2] + parts[3:]
+            out[".".join(parts)] = v
+        return out
+    sd_seq, sd_dual, sd_shared = logical(seq.state_dict()), \
+        logical(dual.state_dict()), logical(shared.state_dict())
+    assert set(sd_seq) - set(sd_dual) == set()      # dual 不丢任何公共参数
+    for k, v in sd_seq.items():
+        assert torch.equal(v, sd_dual[k]), k
+        if k in sd_shared:                          # 共享 LN 臂只有 ln1/ln2 之差
+            assert torch.equal(v, sd_shared[k]), k
+    assert set(sd_seq) - set(sd_shared) == {
+        f"blocks.{k}.ln2.{p}" for k in range(L) for p in ("weight", "bias")}
+
+
+def test_parallel_wiring_changes_computation():
+    """并行接线必须是**活**的（不是顺序残差的等价物）：把块内权重放大到
+    delta 与 h 同量级后（初始化尺度下 delta 很小，接线差异会被淹没），
+    同一输入下并行臂与 sequential 输出显著不同；共享 LN 与双 LN 变体也不相同。
+    另记初始化尺度下的接线差异（很小）作为参考量。"""
+    seq = tiny_model(dense=True)
+    dual = tiny_model(dense=True, topology="parallel-dual-ln")
+    shared = tiny_model(dense=True, topology="parallel")
+    x = torch.randint(0, 10, (2, 12))
+    rel = lambda u, v: float(((u - v).norm() / v.norm()).detach())
+    s0, a0, b0 = (m(x)[1]["states"][-1].detach() for m in (seq, dual, shared))
+    init_rel_dual, init_rel_shared = rel(a0, s0), rel(b0, s0)
+    assert init_rel_dual > 0 and init_rel_shared > 0     # 接线确实改变计算
+
+    def amplify(m, seed):
+        """同 seed 下三个臂得到**同一套**块权重（每臂各自重置生成器）。"""
+        rng = torch.Generator().manual_seed(seed)
+        for blk in m.blocks:
+            b = getattr(blk, "block", blk)
+            for mod in (b.qkv, b.proj, b.mlp[0], b.mlp[2]):
+                nn.init.normal_(mod.weight, std=0.3, generator=rng)
+
+    for m in (seq, dual, shared):
+        amplify(m, 11)
+    s, a, b = (m(x)[1]["states"][-1].detach() for m in (seq, dual, shared))
+    assert rel(a, s) > 0.05, (init_rel_dual, rel(a, s))
+    assert rel(b, s) > 0.05, (init_rel_shared, rel(b, s))
+    # 初始化时 ln1 == ln2（都是默认 ones/zeros）⇒ 双 LN 与共享 LN 变体此时重合；
+    # ln2 被扰动（训练后必然如此）后两者必须分道扬镳。
+    assert torch.allclose(a, b, atol=1e-7)
+
+    def perturb_ln2(m, seed):
+        rng = torch.Generator().manual_seed(seed)
+        for blk in m.blocks:
+            b_ = getattr(blk, "block", blk)
+            if hasattr(b_, "ln2"):
+                nn.init.normal_(b_.ln2.weight, std=0.3, generator=rng)
+                nn.init.normal_(b_.ln2.bias, std=0.1, generator=rng)
+
+    perturb_ln2(seq, 12)
+    perturb_ln2(dual, 12)
+    a2 = dual(x)[1]["states"][-1].detach()
+    assert rel(a2, b) > 0.05, rel(a2, b)
+    assert rel(a2, s0) > 0                                                 # 且仍非基线
+    assert not torch.equal(a2, seq(x)[1]["states"][-1].detach())
+
+
+def test_dense_identity_start_bitwise_equals_sequential():
+    """dense 拓扑的层权 identity 起步（只取当前层）必须与 sequential **逐位**
+    等价（严格恒等起步、零初始税）；参数量差 = L(L+1)/2 个标量（§15 记账）。"""
+    seq = tiny_model(dense=True)
+    den = tiny_model(dense=True, topology="dense")
+    L = seq.cfg.n_layers
+    assert sum(p.numel() for p in den.parameters()) - \
+        sum(p.numel() for p in seq.parameters()) == L * (L + 1) // 2
+    den.load_state_dict(seq.state_dict(), strict=False)
+    a = den.layer_mix.detach().clone()
+    for k in range(1, L + 1):
+        assert float(a[k * (k - 1) // 2 + k - 1]) == 1.0
+        assert float(a[k * (k - 1) // 2: k * (k + 1) // 2].sum()) == 1.0
+    x = torch.randint(0, 10, (2, 12))
+    _, aux_seq = seq(x)
+    _, aux_den = den(x)
+    assert torch.equal(aux_den["states"][-1], aux_seq["states"][-1])
+    assert torch.equal(aux_den["depth_logits"][-1], aux_seq["depth_logits"][-1])
+    # 层权被故意改动后必须偏离 sequential（证明该测试真的在测层权）
+    with torch.no_grad():
+        den.layer_mix[1] = 0.5
+    assert not torch.equal(den(x)[1]["states"][-1], aux_seq["states"][-1])
+
+
+def test_dense_layer_mix_formula():
+    """dense 拓扑的层输入 = Σ_j α_kj · h_j（含 depth-0 输入态），用同一套块权重
+    手算对照：α 设为 [0.3, 0.7] 时必须等于 blk1(0.3·h0 + 0.7·h1)。"""
+    torch.manual_seed(7)
+    seq = tiny_model(dense=True)
+    den = tiny_model(dense=True, topology="dense")
+    den.load_state_dict(seq.state_dict(), strict=False)
+    with torch.no_grad():
+        den.layer_mix[0] = 1.0          # 层 1 仍只取 h0
+        den.layer_mix[1], den.layer_mix[2] = 0.3, 0.7   # 层 2：0.3·h0 + 0.7·h1
+    x = torch.randint(0, 10, (2, 12))
+    with torch.no_grad():
+        _, aux_seq = seq(x, exit_depths=None)
+        _, aux_den = den(x, exit_depths=None)
+        h0 = aux_seq["states"][0]
+        h1 = seq.blocks[0](h0)[0]
+        manual = seq.blocks[1](0.3 * h0 + 0.7 * h1)[0]
+    assert torch.allclose(aux_den["states"][1], h1, atol=0, rtol=0)
+    assert torch.allclose(aux_den["states"][2], manual, atol=1e-6)
+    assert not torch.allclose(aux_den["states"][2], aux_seq["states"][2], atol=1e-6)
+
+
+def test_dense_layer_mix_activity_escapes_identity():
+    """干预活性（SCHEMA §10）：identity 起步点非鞍点——一步 backward 后
+    ∂L/∂α 非零，一步 optimizer 后 α 离开 identity（否则干预是死的）。"""
+    den = tiny_model(dense=True, topology="dense")
+    x = torch.randint(0, 10, (2, 12))
+    loss, _ = den(x, exit_depths=None)
+    loss.backward()
+    g = den.layer_mix.grad
+    assert g is not None and torch.count_nonzero(g) > 0
+    init = den.layer_mix.detach().clone()
+    opt = torch.optim.AdamW(den.parameters(), lr=1e-3)
+    opt.step()
+    assert (den.layer_mix.detach() - init).abs().max() > 0
+    live = topology_liveness(den)
+    assert live["alive"] and live["max_dev_from_identity_init"] > 0
+    assert live["params_added"] == den.cfg.n_layers * (den.cfg.n_layers + 1) // 2
+
+
+def test_topology_guard_requires_dense_and_known_value():
+    """单因素守卫：拓扑干预只在 dense=True 形态下开放（退出/填充语义下的并行
+    接线未定义）；未知拓扑值直接报错；_gated_step（探针/解码路径）拒绝非
+    sequential 拓扑，避免用错语义。"""
+    for topo in ("parallel", "parallel-dual-ln", "dense"):
+        with pytest.raises(ValueError):
+            tiny_model(topology=topo)
+    with pytest.raises(ValueError):
+        tiny_model(dense=True, topology="paralell")
+    m = tiny_model(dense=True, topology="dense")
+    with pytest.raises(ValueError):
+        m._gated_step(0, torch.zeros(1, 1, 16))
+
+
+def test_topology_liveness_params_added_matches_param_delta():
+    """活性块（SCHEMA §10）的 `params_added` 必须与**实测参数量增量**逐位一致，
+    否则「活性量」与「参数账」会在两个文件间自相矛盾（本实验踩过：把
+    per-block 的 −2d 当成 total 的 −L·2d）。"""
+    ms = {t: tiny_model(dense=True, topology=t) for t in TOPOLOGIES}
+    n = lambda m: sum(p.numel() for p in m.parameters())
+    base = n(ms["sequential"])
+    d, L = 16, 3
+    for t, m in ms.items():
+        live = topology_liveness(m)
+        assert live["params_added"] == n(m) - base, (t, live["params_added"],
+                                                     n(m) - base)
+    assert topology_liveness(ms["parallel"])["params_added"] == -L * 2 * d
+    assert topology_liveness(ms["dense"])["params_added"] == L * (L + 1) // 2
+    # 两个可逐位核对的布尔量：等参数与起步等价性（不得互相代替）
+    assert topology_liveness(ms["parallel-dual-ln"])["params_identical_to_sequential"]
+    assert not topology_liveness(ms["parallel-dual-ln"])[
+        "start_bitwise_equals_sequential"]
+    assert topology_liveness(ms["dense"])["start_bitwise_equals_sequential"]
+    assert not topology_liveness(ms["dense"])["params_identical_to_sequential"]

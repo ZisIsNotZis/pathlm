@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
                              depth_curve, tf_acceptance, workspace_probe,
                              generation_quality, readout_workspace_energy,
-                             spec_cost_model)
+                             spec_cost_model, topology_liveness)
 from pathlm.data import load_enwik8_full, batch
 
 
@@ -155,6 +155,15 @@ def main():
     ap.add_argument("--mlp-mult", type=int, default=4,
                     help="MLP 隐层倍数（ticket 24：100M 规格用 6）")
     ap.add_argument("--dense", action="store_true")
+    ap.add_argument("--topology", choices=("sequential", "parallel",
+                                          "parallel-dual-ln", "dense"),
+                    default="sequential",
+                    help="层间拓扑（ticket 30 契约 E）：sequential = 现有 Block（链式"
+                         "残差）；parallel = 并行子层（单个共享 pre-LN，PaLM 原式，"
+                         "参数 −2d）；parallel-dual-ln = 两子层各带 pre-LN、同读块"
+                         "输入（与 Block 逐位等参数）；dense = 层输入 = 对所有此前"
+                         "层输出的学习加权和（α 初始化为只取当前层）。后三者需"
+                         "配合 --dense（单因素）")
     ap.add_argument("--exit-mode", choices=("uniform", "full"), default="uniform",
                     help="uniform = 随机退出深度 dᵢ~U{0..L}（混合深度填充）；"
                          "full = 全部 dᵢ=L（无混合填充，仅保留全深度并行监督——"
@@ -223,6 +232,7 @@ def main():
                         seq_len=args.seq_len, mlp_mult=args.mlp_mult,
                         dense=args.dense,
                         gate_bias_init=args.gate_bias_init,
+                        topology=args.topology,
                         fill_kv=args.fill_kv, proj_fill=args.proj_fill,
                         readout_dims=args.readout_dims,
                         readout_gated=args.readout_gated,
@@ -230,6 +240,7 @@ def main():
     model = DepthARModel(cfg, vocab_size).cuda()
     n_params = sum(p.numel() for p in model.parameters())
     print(f"{args.run_name}: {n_params/1e6:.2f}M params, vocab {vocab_size}, "
+          f"topology {args.topology}, "
           f"steps {args.steps} x bs{args.batch_size} x seq{args.seq_len} "
           f"= {args.steps*args.batch_size*args.seq_len/1e6:.1f}M tokens", flush=True)
 
@@ -253,6 +264,8 @@ def main():
     model.eval()
     results = {
         "run": args.run_name, "config": asdict(cfg), "train": tcfg,
+        "topology": args.topology,
+        "topology_liveness": topology_liveness(model),
         "exit_mode": args.exit_mode,
         "fill_kv": args.fill_kv, "proj_fill": args.proj_fill,
         "aux_weight": args.aux_weight, "aux_anneal_to": args.aux_anneal_to,

@@ -1,0 +1,61 @@
+[hist] .scratch/23-depth-ar/evidence/23d-dense-B-12k remeasured bpc 1.5287 (hist 1.5287), tf@4 0.444
+[run] sequential-12k-s0: training started pid=1734325 steps=12000
+[run] sequential-12k-s0: done wall=6.51 min peak_child_mem=1.47GB clean_bpc=1.5254
+[arm] sequential: clean_bpc=1.5254 tf@4=0.456 params=6962688 wall=6.51 min eval=0.01 min
+[run] parallel-12k-s0: training started pid=1740349 steps=12000
+[run] parallel-12k-s0 {"step": 10000, "loss": 1.117, "depth_ce": [1.117], "gate_mean": [], "gnorm": 0.44, "aux_w": 1.0, "final_w": 1.0, "lr": 
+[run] parallel-12k-s0: done wall=6.01 min peak_child_mem=1.43GB clean_bpc=1.5712
+[arm] parallel: clean_bpc=1.5712 tf@4=0.3486 params=6958592 wall=6.01 min eval=0.01 min
+[run] parallel-dual-ln-12k-s0: training started pid=1746957 steps=12000
+[run] parallel-dual-ln-12k-s0 {"step": 2000, "loss": 1.3442, "depth_ce": [1.3442], "gate_mean": [], "gnorm": 0.54, "aux_w": 1.0, "final_w": 1.0, "lr":
+[run] parallel-dual-ln-12k-s0 {"step": 6000, "loss": 1.1775, "depth_ce": [1.1775], "gate_mean": [], "gnorm": 0.45, "aux_w": 1.0, "final_w": 1.0, "lr":
+[run] parallel-dual-ln-12k-s0 {"step": 8000, "loss": 1.1238, "depth_ce": [1.1238], "gate_mean": [], "gnorm": 0.47, "aux_w": 1.0, "final_w": 1.0, "lr":
+[run] parallel-dual-ln-12k-s0: done wall=6.51 min peak_child_mem=1.43GB clean_bpc=1.5656
+[arm] parallel-dual-ln: clean_bpc=1.5656 tf@4=0.3149 params=6962688 wall=6.51 min eval=0.02 min
+[run] dense-12k-s0: training started pid=1753933 steps=12000
+[run] dense-12k-s0 {"step": 2000, "loss": 1.3492, "depth_ce": [1.3492], "gate_mean": [], "gnorm": 0.63, "aux_w": 1.0, "final_w": 1.0, "lr":
+[run] dense-12k-s0: done wall=8.01 min peak_child_mem=1.53GB clean_bpc=1.5246
+[arm] dense: clean_bpc=1.5246 tf@4=0.4538 params=6962724 wall=8.01 min eval=0.01 min
+{
+  "criterion": "任一变体 Δ clean bpc vs sequential ≤ −0.014 ⇒ 成功；|Δ| < 0.014 ⇒ 中性；≥ +0.014 ⇒ 失败；并列 tf@4 ≥ 0.95",
+  "delta_bpc_vs_sequential": {
+    "sequential": 0.0,
+    "parallel": 0.0458,
+    "parallel-dual-ln": 0.0402,
+    "dense": -0.0008
+  },
+  "clean_bpc": {
+    "sequential": 1.5254,
+    "parallel": 1.5712,
+    "parallel-dual-ln": 1.5656,
+    "dense": 1.5246
+  },
+  "success_arms": [],
+  "fail_arms": [
+    "parallel",
+    "parallel-dual-ln"
+  ],
+  "ruling": "失败（任一臂更差 ≥+0.014）：{'parallel': 0.0458, 'parallel-dual-ln': 0.0402}",
+  "tf@4_by_arm": {
+    "sequential": 0.456,
+    "parallel": 0.3486,
+    "parallel-dual-ln": 0.3149,
+    "dense": 0.4538
+  },
+  "tf@4_judge_satisfied_by": [],
+  "tf@4_judge_note": "stock dense 形态（无浅层出口监督）下 tf@4 ≈ 0.44（历史 dense-B-12k 实测），并列判据 ≥0.95 在该形态上**不可达**——四臂同口径同不可达，不作为区分量；如实报，不改判据线",
+  "dense_bpc_ref_13m": 1.5287,
+  "tax_vs_dense_by_arm": {
+    "sequential": -0.0033,
+    "parallel": 0.0425,
+    "parallel-dual-ln": 0.0369,
+    "dense": -0.0041
+  },
+  "next_token_acc_by_arm": {
+    "sequential": 0.6893,
+    "parallel": 0.6815,
+    "parallel-dual-ln": 0.6824,
+    "dense": 0.6893
+  }
+}
+[done] total wall 27.12 min

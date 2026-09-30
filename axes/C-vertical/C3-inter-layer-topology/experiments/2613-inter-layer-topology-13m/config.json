@@ -1,0 +1,56 @@
+{
+  "experiment": "2613-inter-layer-topology-13m",
+  "ticket": "30-batch3 契约 E",
+  "seed": 0,
+  "steps": 12000,
+  "batch_size": 32,
+  "lr": 0.001,
+  "optimizer": "AdamW(wd=0.01) + warmup 200 步 + cosine 到 0.1×",
+  "data": "data/enwik8_full.npz",
+  "data_split": "first 90M train / last 10M eval, vocab from full file",
+  "vocab_size": 206,
+  "train_tokens": 98304000,
+  "base": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "dense": true,
+    "exit_mode": "uniform",
+    "loss": "仅最终深度 CE（stock AR）",
+    "readout": "tied h·Eᵀ，无 final LayerNorm（共享底座偏离 1）"
+  },
+  "arms": [
+    {
+      "topology": "sequential",
+      "role": "基线（现有 Block：链式残差）",
+      "params_expected_delta": 0,
+      "run": "runs/sequential-12k-s0"
+    },
+    {
+      "topology": "parallel",
+      "role": "并行子层（单个共享 pre-LN；参数 −L·2d）",
+      "params_expected_delta": -4096,
+      "run": "runs/parallel-12k-s0"
+    },
+    {
+      "topology": "parallel-dual-ln",
+      "role": "并行子层（两子层各带 pre-LN；与基线逐位等参数）",
+      "params_expected_delta": 0,
+      "run": "runs/parallel-dual-ln-12k-s0"
+    },
+    {
+      "topology": "dense",
+      "role": "层间学习加权和（DenseFormer 式；参数 +36）",
+      "params_expected_delta": 36,
+      "run": "runs/dense-12k-s0"
+    }
+  ],
+  "historical_cross_check": {
+    "path": ".scratch/23-depth-ar/evidence/23d-dense-B-12k",
+    "note": "历史同配置 dense-B-12k（sequential 接线，同 seed/同 12k/同 98.3M token）：本实验的 sequential 臂应复现其 1.5287；该 checkpoint 也用当前代码重测过（口径对齐）"
+  }
+}

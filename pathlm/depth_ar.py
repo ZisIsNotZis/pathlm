@@ -75,6 +75,22 @@ class DepthARConfig:
     # transform = P(Qh) = 0 严格恒等起步（单测钉住）；∂L/∂P = grad ⊗ (Qh) ≠ 0
     # ⇒ 非鞍点。**不能 P=Q=0**（同 gated 的零初始鞍点）。与 readout_gated 互斥。
     readout_linear_resid: bool = False
+    # 层间拓扑（ticket 30 契约 E，唯一变量 = 层与层之间的接法）。只在
+    # dense=True（stock decoder-only 形态：无门/无退出/仅最终 CE）下开放——
+    # 层间接法与退出/填充语义耦合时无法单因素归因。缺省 "sequential" 逐位还原 v1。
+    #   sequential        h = h + attn(ln1 h)；h = h + mlp(ln2 h)（现有 Block）
+    #   parallel          h = h + attn(ln h) + mlp(ln h)（**单个共享 pre-LN**，
+    #                     PaLM/GPT-J 原式；参数比 sequential 少 2d = 512）
+    #   parallel-dual-ln  两个子层各用自己的 pre-LN（ln1 给 attn、ln2 给 mlp），
+    #                     **都作用于同一块输入 h**——与 Block 参数量逐位相同的
+    #                     并行子层变体（SCHEMA §15 的等参数位点）
+    #   dense             DenseFormer 式：层 k 输入 = Σ_{j<k} α_kj·h_j，α 打包为
+    #                     L(L+1)/2 标量，初始化为「只取 j=k−1」（= 顺序残差）。
+    #                     该点非鞍点（α 非全零 + h_j 非零），无需单边零技巧。
+    topology: str = "sequential"
+
+
+TOPOLOGIES = ("sequential", "parallel", "parallel-dual-ln", "dense")
 
 
 def sample_exit_depths(B: int, T: int, n_layers: int, generator: torch.Generator,
@@ -82,6 +98,105 @@ def sample_exit_depths(B: int, T: int, n_layers: int, generator: torch.Generator
     """训练时均匀采样退出深度 d_i ∈ {0..L}（契约：均匀分布起步）。"""
     return torch.randint(0, n_layers + 1, (B, T), generator=generator,
                          device=device)
+
+
+class ParallelBlock(nn.Module):
+    """并行子层拓扑（契约 E 的 `parallel` 臂）：两个子层读**同一个块输入**，
+    `h' = h + attn(ln_a h) + mlp(ln_b h)`（区别于 Block 的链式
+    `h + mlp(ln2(h + attn(ln1 h)))`）。
+
+    - `share_ln=True`（契约公式原式 / PaLM-GPT-J）：`ln_a = ln_b = ln1`，单个
+      共享 pre-LN ⇒ 参数比 Block 少 2d（无 ln2）；
+    - `share_ln=False`（`parallel-dual-ln`）：保留 ln1/ln2 两个 pre-LN、都作用于
+      块输入 h ⇒ 参数集合与 Block **逐位相同**（SCHEMA §15 的等参数位点）。
+
+    子模块创建顺序与 Block 一致（ln1 → [ln2] → qkv → proj → mlp），因此两种变体
+    消耗的初始化随机数与 Block 相同——同 seed 下 embed/pos/gates 及 trunk 权重
+    与 sequential 臂逐位一致（单测钉住），臂间唯一差异 = 接线。
+    只支持 stock 路径（无 mask/dist_pen/kv_from/gate_vec）：层间拓扑只在
+    dense=True 形态下开放，退出/填充语义下的并行接线未定义。
+    """
+
+    def __init__(self, cfg: ModelConfig, share_ln: bool = True):
+        super().__init__()
+        d = cfg.d_model
+        self.n_heads = cfg.n_heads
+        self.share_ln = share_ln
+        self.ln1 = nn.LayerNorm(d)
+        if not share_ln:
+            self.ln2 = nn.LayerNorm(d)
+        self.qkv = nn.Linear(d, 3 * d)
+        self.proj = nn.Linear(d, d)
+        self.mlp = nn.Sequential(
+            nn.Linear(d, cfg.mlp_mult * d), nn.GELU(),
+            nn.Linear(cfg.mlp_mult * d, d), nn.Dropout(cfg.dropout),
+        )
+
+    def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
+                dist_pen: float = 0.0, kv_from: torch.Tensor | None = None,
+                gate_vec: torch.Tensor | None = None
+                ) -> tuple[torch.Tensor, None]:
+        for name, given in (("attn_mask", attn_mask is not None),
+                            ("dist_pen", dist_pen > 0),
+                            ("kv_from", kv_from is not None),
+                            ("gate_vec", gate_vec is not None)):
+            if given:
+                raise ValueError(
+                    f"ParallelBlock 只支持 stock 注意力路径，收到 {name}："
+                    "并行子层拓扑只在 dense=True（无退出/无填充）形态下开放")
+        B, T, d = x.shape
+        h1 = self.ln1(x)                       # attn 分支的 pre-LN
+        q, k, v = self.qkv(h1).chunk(3, dim=-1)
+        shape = lambda t: t.view(B, T, self.n_heads, d // self.n_heads).transpose(1, 2)
+        a = F.scaled_dot_product_attention(shape(q), shape(k), shape(v),
+                                           is_causal=True)
+        a = a.transpose(1, 2).reshape(B, T, d)
+        h2 = h1 if self.share_ln else self.ln2(x)   # mlp 分支：同一块输入 x
+        return x + self.proj(a) + self.mlp(h2), None
+
+
+def topology_liveness(model: "DepthARModel") -> dict:
+    """层间拓扑干预的活性量（SCHEMA §10 强制项）。
+
+    - `params_added`：相对 sequential 臂的参数增量（sequential 0 / parallel −L·2d /
+      parallel-dual-ln 0 / dense +L(L+1)/2），必须与实测参数量增量逐位一致
+      （单测 `test_topology_liveness_params_added_matches_param_delta`）；
+    - `params_identical_to_sequential` / `start_bitwise_equals_sequential`：参数账与
+      起步等价性（能逐位核对的两个布尔量）；
+    - dense 臂：层权 α 的 fro / absmax / 非零占比 / 与 identity 起步的最大偏离
+      （α 不动 = 干预死 = 该臂逐位等价基线）；
+    - parallel 臂：接线本身无专属参数，活性量 = 参数增量 + 逐层分支增量范数
+      （`branch_activity`，在 run.py 用评测数据实测）。
+    """
+    cfg = model.cfg
+    d, L = cfg.d_model, cfg.n_layers
+    delta = {"sequential": 0, "parallel": -L * 2 * d, "parallel-dual-ln": 0,
+             "dense": L * (L + 1) // 2}[cfg.topology]
+    out = {"topology": cfg.topology, "params_added": delta,
+           "parameterized": cfg.topology == "dense",
+           "params_identical_to_sequential":
+               cfg.topology in ("sequential", "parallel-dual-ln"),
+           "start_bitwise_equals_sequential": cfg.topology != "parallel"
+               and cfg.topology != "parallel-dual-ln"}
+    if cfg.topology == "dense":
+        a = model.layer_mix.detach().float()
+        init = torch.zeros_like(a)
+        for k in range(1, L + 1):
+            init[k * (k - 1) // 2 + k - 1] = 1.0
+        out.update({
+            "w_fro": round(float(a.norm()), 6),
+            "w_absmax": round(float(a.abs().max()), 6),
+            "nonzero_frac": round(float(torch.count_nonzero(a) / a.numel()), 6),
+            "max_dev_from_identity_init": round(float((a - init).abs().max()), 6),
+            "alpha_by_layer": [
+                [round(float(v), 6) for v in a[k * (k - 1) // 2: k * (k + 1) // 2]]
+                for k in range(1, L + 1)],
+        })
+        out["alive"] = out["max_dev_from_identity_init"] > 0
+    else:
+        out.update({"w_fro": None, "w_absmax": None, "nonzero_frac": None,
+                    "alive": cfg.topology != "sequential"})
+    return out
 
 
 class DepthARModel(nn.Module):
@@ -109,7 +224,32 @@ class DepthARModel(nn.Module):
                            n_heads=cfg.n_heads, seq_len=cfg.seq_len,
                            mlp_mult=cfg.mlp_mult, dropout=cfg.dropout,
                            norm_cap=cfg.norm_cap)
-        self.blocks = nn.ModuleList(Block(mcfg) for _ in range(cfg.n_layers))
+        if cfg.topology not in TOPOLOGIES:
+            raise ValueError(f"unknown topology {cfg.topology!r}; "
+                             f"expected one of {TOPOLOGIES}")
+        if cfg.topology != "sequential" and not cfg.dense:
+            raise ValueError(
+                "层间拓扑干预只在 dense=True（stock decoder-only 形态）下验证"
+                f"（单因素）——收到 topology={cfg.topology!r} 且 dense=False")
+        if cfg.topology == "parallel":
+            self.blocks = nn.ModuleList(ParallelBlock(mcfg, share_ln=True)
+                                        for _ in range(cfg.n_layers))
+        elif cfg.topology == "parallel-dual-ln":
+            self.blocks = nn.ModuleList(ParallelBlock(mcfg, share_ln=False)
+                                        for _ in range(cfg.n_layers))
+        else:
+            self.blocks = nn.ModuleList(Block(mcfg) for _ in range(cfg.n_layers))
+        # dense 拓扑（契约 E）：层间加权和的层权 α，打包 1-D（层 k 的源 j 索引
+        # k(k−1)/2 + j）。初始化为「只取当前层」（α_{k,k−1} = 1、其余 0）⇒ 层 k
+        # 输入 = h_{k−1}，起步与 sequential 臂逐位等价（单测钉住）。该点**非鞍点**：
+        # ∂L/∂α_kj = ⟨∂L/∂h_in, h_j⟩ 一般非零（α 非全零、h_j 非零），不需要 W4
+        # 那种单边零技巧。放在 trunk/gates 之后且不消耗随机数。
+        if cfg.topology == "dense":
+            self.layer_mix = nn.Parameter(
+                torch.zeros(cfg.n_layers * (cfg.n_layers + 1) // 2))
+            with torch.no_grad():
+                for k in range(1, cfg.n_layers + 1):
+                    self.layer_mix[k * (k - 1) // 2 + k - 1] = 1.0
         # 逐通道携带门：gates[k] 作用于 depth k → k+1 的精化 delta
         self.gates = nn.ModuleList(nn.Linear(d, d) for _ in range(cfg.n_layers))
         for g in self.gates:
@@ -253,7 +393,12 @@ class DepthARModel(nn.Module):
                 h = h_next
                 states.append(h)
                 gate_means.append(g.detach().float().mean())
-        else:  # dense 对照：无门、无退出，普通残差堆叠
+        elif self.cfg.topology == "dense":
+            # dense 拓扑：每层输入 = 对所有此前层输出的学习加权和（再进 Block）
+            for k, blk in enumerate(self.blocks, start=1):
+                h, _ = blk(self._layer_mix_input(states, k))
+                states.append(h)
+        else:  # dense 对照：无门、无退出，普通残差堆叠（sequential/parallel）
             for blk in self.blocks:
                 h, _ = blk(h)
                 states.append(h)
@@ -286,6 +431,18 @@ class DepthARModel(nn.Module):
                "gate_mean": gate_means, "exit_depths": exit_depths}
         return loss, aux
 
+    def _layer_mix_input(self, states: list[torch.Tensor], k: int) -> torch.Tensor:
+        """dense 拓扑：层 k 的输入 = Σ_{j<k} α_kj · h_j（`states[0..k−1]` = depth
+        0..k−1 的表征；α 索引 = k(k−1)/2 + j）。α 只在 bf16 autocast 下转成 h 的
+        数值类型（保持与 sequential 臂同一计算类型）。identity 起步时
+        α = [0,..,0,1] ⇒ 逐项累加后与 h_{k−1} 逐位相等（单测钉住）。"""
+        off = k * (k - 1) // 2
+        alpha = self.layer_mix[off:off + k].to(states[0].dtype)
+        out = alpha[0] * states[0]
+        for j in range(1, k):
+            out = out + alpha[j] * states[j]
+        return out
+
     @staticmethod
     def _masked_ce(logits: torch.Tensor, targets: torch.Tensor,
                    mask: torch.Tensor) -> torch.Tensor:
@@ -313,6 +470,10 @@ class DepthARModel(nn.Module):
     def _gated_step(self, k0: int, h: torch.Tensor) -> torch.Tensor:
         """层 k0（0-index）的带门精化：h + g ⊙ delta，KV 取 ln1(h)
         （全深度语义，kv_in == h）。探针/解码复用同一精化定义。"""
+        if self.cfg.topology != "sequential":
+            raise ValueError(
+                f"_gated_step 只定义在 sequential 拓扑上（收到 {self.cfg.topology!r}）："
+                "层间拓扑干预只在 dense=True（无退出/无填充）形态下开放")
         out, _ = self.blocks[k0](h)
         g = torch.sigmoid(self.gates[k0](h))
         return h + g * (out - h)

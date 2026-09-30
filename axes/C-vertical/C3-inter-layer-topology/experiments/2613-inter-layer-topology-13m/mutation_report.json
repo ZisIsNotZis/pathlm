@@ -1,0 +1,96 @@
+{
+  "target": "pathlm/depth_ar.py",
+  "sha256_before": "79d3cc59e1101bcd78937ddd300cb51f0796ac8ab59dadc44c204b700d3a5f07",
+  "mutations": [
+    {
+      "id": "M1",
+      "what": "forward 忽略 dense 拓扑开关（退回顺序残差接线）",
+      "tests": {
+        "test_dense_layer_mix_formula": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.78s"
+        },
+        "test_dense_layer_mix_activity_escapes_identity": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.72s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M2",
+      "what": "ParallelBlock 实现成链式子层（mlp 分支读 x+Δ_attn 而非块输入）",
+      "tests": {
+        "test_parallel_block_formula_and_stock_path_guard": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.75s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M3",
+      "what": "_layer_mix_input 忽略层权 α（直接返回上一层输出 = 干预死）",
+      "tests": {
+        "test_dense_layer_mix_formula": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.74s"
+        },
+        "test_dense_layer_mix_activity_escapes_identity": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.78s"
+        }
+      },
+      "all_expected_tests_caught": true
+    }
+  ],
+  "restored_sha256_equal": true,
+  "after_restore": {
+    "test_topology_default_off_matches_v1_bitwise": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.67s"
+    },
+    "test_parallel_block_formula_and_stock_path_guard": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.70s"
+    },
+    "test_parallel_param_count_and_init_parity": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.73s"
+    },
+    "test_parallel_wiring_changes_computation": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.70s"
+    },
+    "test_dense_identity_start_bitwise_equals_sequential": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.73s"
+    },
+    "test_dense_layer_mix_formula": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.69s"
+    },
+    "test_dense_layer_mix_activity_escapes_identity": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 3.18s"
+    },
+    "test_topology_guard_requires_dense_and_known_value": {
+      "returncode": 0,
+      "verdict": "passed（未抓到）",
+      "tail": "1 passed in 1.62s"
+    }
+  },
+  "green_after_restore": true
+}

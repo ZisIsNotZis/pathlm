@@ -1,0 +1,1760 @@
+{
+  "experiment": "2613-inter-layer-topology-13m",
+  "config": {
+    "experiment": "2613-inter-layer-topology-13m",
+    "ticket": "30-batch3 契约 E",
+    "seed": 0,
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "optimizer": "AdamW(wd=0.01) + warmup 200 步 + cosine 到 0.1×",
+    "data": "data/enwik8_full.npz",
+    "data_split": "first 90M train / last 10M eval, vocab from full file",
+    "vocab_size": 206,
+    "train_tokens": 98304000,
+    "base": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 4,
+      "dropout": 0.0,
+      "norm_cap": 1.0,
+      "dense": true,
+      "exit_mode": "uniform",
+      "loss": "仅最终深度 CE（stock AR）",
+      "readout": "tied h·Eᵀ，无 final LayerNorm（共享底座偏离 1）"
+    },
+    "arms": [
+      {
+        "topology": "sequential",
+        "role": "基线（现有 Block：链式残差）",
+        "params_expected_delta": 0,
+        "run": "runs/sequential-12k-s0"
+      },
+      {
+        "topology": "parallel",
+        "role": "并行子层（单个共享 pre-LN；参数 −L·2d）",
+        "params_expected_delta": -4096,
+        "run": "runs/parallel-12k-s0"
+      },
+      {
+        "topology": "parallel-dual-ln",
+        "role": "并行子层（两子层各带 pre-LN；与基线逐位等参数）",
+        "params_expected_delta": 0,
+        "run": "runs/parallel-dual-ln-12k-s0"
+      },
+      {
+        "topology": "dense",
+        "role": "层间学习加权和（DenseFormer 式；参数 +36）",
+        "params_expected_delta": 36,
+        "run": "runs/dense-12k-s0"
+      }
+    ],
+    "historical_cross_check": {
+      "path": ".scratch/23-depth-ar/evidence/23d-dense-B-12k",
+      "note": "历史同配置 dense-B-12k（sequential 接线，同 seed/同 12k/同 98.3M token）：本实验的 sequential 臂应复现其 1.5287；该 checkpoint 也用当前代码重测过（口径对齐）"
+    }
+  },
+  "arms": {
+    "sequential": {
+      "role": "基线（现有 Block：链式残差）",
+      "topology": "sequential",
+      "source": "runs/sequential-12k-s0",
+      "params": 6962688,
+      "train_tokens": 98304000,
+      "wall_min": 6.51,
+      "peak_child_mem_gb": 1.47,
+      "seconds_per_step": 0.0325,
+      "gnorm_monitor": {
+        "gnorm_max": 7.86,
+        "gnorm_mean": 0.543,
+        "grad_skips": 0
+      },
+      "intervention": {
+        "topology": "sequential",
+        "params_added": 0,
+        "parameterized": false,
+        "params_identical_to_sequential": true,
+        "start_bitwise_equals_sequential": true,
+        "w_fro": null,
+        "w_absmax": null,
+        "nonzero_frac": null,
+        "alive": false,
+        "branch_activity": [
+          {
+            "layer": 1,
+            "attn_delta_rel": 4.3373,
+            "mlp_delta_rel": 20.9989,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 2,
+            "attn_delta_rel": 0.3131,
+            "mlp_delta_rel": 0.2915,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 3,
+            "attn_delta_rel": 0.3459,
+            "mlp_delta_rel": 0.34,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 4,
+            "attn_delta_rel": 0.3128,
+            "mlp_delta_rel": 0.3242,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 5,
+            "attn_delta_rel": 0.2546,
+            "mlp_delta_rel": 0.2981,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 6,
+            "attn_delta_rel": 0.2594,
+            "mlp_delta_rel": 0.2807,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 7,
+            "attn_delta_rel": 0.2076,
+            "mlp_delta_rel": 0.2398,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 8,
+            "attn_delta_rel": 0.1481,
+            "mlp_delta_rel": 0.2105,
+            "wiring_rel_dev_vs_seq": null
+          }
+        ]
+      },
+      "depth_curve": [
+        {
+          "depth": 0,
+          "bpc": 7.4039,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "bpc": 4.8932,
+          "acc": 0.1425
+        },
+        {
+          "depth": 2,
+          "bpc": 4.3486,
+          "acc": 0.2025
+        },
+        {
+          "depth": 3,
+          "bpc": 3.8608,
+          "acc": 0.283
+        },
+        {
+          "depth": 4,
+          "bpc": 3.2023,
+          "acc": 0.4017
+        },
+        {
+          "depth": 5,
+          "bpc": 2.6281,
+          "acc": 0.4986
+        },
+        {
+          "depth": 6,
+          "bpc": 2.1895,
+          "acc": 0.5722
+        },
+        {
+          "depth": 7,
+          "bpc": 1.7381,
+          "acc": 0.6528
+        },
+        {
+          "depth": 8,
+          "bpc": 1.5254,
+          "acc": 0.6893
+        }
+      ],
+      "clean_bpc": 1.5254,
+      "next_token_acc": 0.6893,
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.0553
+        },
+        {
+          "depth": 1,
+          "accept": 0.156
+        },
+        {
+          "depth": 2,
+          "accept": 0.2241
+        },
+        {
+          "depth": 3,
+          "accept": 0.3152
+        },
+        {
+          "depth": 4,
+          "accept": 0.456
+        },
+        {
+          "depth": 5,
+          "accept": 0.5703
+        },
+        {
+          "depth": 6,
+          "accept": 0.6721
+        },
+        {
+          "depth": 7,
+          "accept": 0.8043
+        }
+      ],
+      "tf@4": 0.456,
+      "spec_cost_model": [
+        {
+          "draft_depth": 4,
+          "tf_accept": 0.456,
+          "draft_cost_frac": 0.5,
+          "expected_tokens_per_cycle": 1.456,
+          "cost_per_cycle": 1.5,
+          "equivalent_validation_speedup": 0.9707
+        },
+        {
+          "draft_depth": 6,
+          "tf_accept": 0.6721,
+          "draft_cost_frac": 0.75,
+          "expected_tokens_per_cycle": 1.6721,
+          "cost_per_cycle": 1.75,
+          "equivalent_validation_speedup": 0.9555
+        }
+      ],
+      "calibration": {
+        "prob0_ece": 0.0077,
+        "exit4_ece": 0.0201,
+        "ece_by_depth": [
+          0.0466,
+          0.0712,
+          0.0434,
+          0.0364,
+          0.0201,
+          0.0273,
+          0.0399,
+          0.0311,
+          0.0077
+        ],
+        "n_bins": 15
+      },
+      "branch_activity": [
+        {
+          "layer": 1,
+          "attn_delta_rel": 4.3373,
+          "mlp_delta_rel": 20.9989,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 2,
+          "attn_delta_rel": 0.3131,
+          "mlp_delta_rel": 0.2915,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 3,
+          "attn_delta_rel": 0.3459,
+          "mlp_delta_rel": 0.34,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 4,
+          "attn_delta_rel": 0.3128,
+          "mlp_delta_rel": 0.3242,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 5,
+          "attn_delta_rel": 0.2546,
+          "mlp_delta_rel": 0.2981,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 6,
+          "attn_delta_rel": 0.2594,
+          "mlp_delta_rel": 0.2807,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 7,
+          "attn_delta_rel": 0.2076,
+          "mlp_delta_rel": 0.2398,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 8,
+          "attn_delta_rel": 0.1481,
+          "mlp_delta_rel": 0.2105,
+          "wiring_rel_dev_vs_seq": null
+        }
+      ],
+      "eval_wall_min": 0.01
+    },
+    "parallel": {
+      "role": "并行子层（单个共享 pre-LN；参数 −L·2d）",
+      "topology": "parallel",
+      "source": "runs/parallel-12k-s0",
+      "params": 6958592,
+      "train_tokens": 98304000,
+      "wall_min": 6.01,
+      "peak_child_mem_gb": 1.43,
+      "seconds_per_step": 0.03,
+      "gnorm_monitor": {
+        "gnorm_max": 5.69,
+        "gnorm_mean": 0.534,
+        "grad_skips": 0
+      },
+      "intervention": {
+        "topology": "parallel",
+        "params_added": -4096,
+        "parameterized": false,
+        "params_identical_to_sequential": false,
+        "start_bitwise_equals_sequential": false,
+        "w_fro": null,
+        "w_absmax": null,
+        "nonzero_frac": null,
+        "alive": true,
+        "branch_activity": [
+          {
+            "layer": 1,
+            "attn_delta_rel": 36.238,
+            "mlp_delta_rel": 17.52,
+            "wiring_rel_dev_vs_seq": 0.3726
+          },
+          {
+            "layer": 2,
+            "attn_delta_rel": 0.2593,
+            "mlp_delta_rel": 0.0575,
+            "wiring_rel_dev_vs_seq": 0.0163
+          },
+          {
+            "layer": 3,
+            "attn_delta_rel": 0.254,
+            "mlp_delta_rel": 0.259,
+            "wiring_rel_dev_vs_seq": 0.0528
+          },
+          {
+            "layer": 4,
+            "attn_delta_rel": 0.308,
+            "mlp_delta_rel": 0.2741,
+            "wiring_rel_dev_vs_seq": 0.1098
+          },
+          {
+            "layer": 5,
+            "attn_delta_rel": 0.3024,
+            "mlp_delta_rel": 0.2805,
+            "wiring_rel_dev_vs_seq": 0.1345
+          },
+          {
+            "layer": 6,
+            "attn_delta_rel": 0.253,
+            "mlp_delta_rel": 0.2946,
+            "wiring_rel_dev_vs_seq": 0.1156
+          },
+          {
+            "layer": 7,
+            "attn_delta_rel": 0.2015,
+            "mlp_delta_rel": 0.2866,
+            "wiring_rel_dev_vs_seq": 0.0864
+          },
+          {
+            "layer": 8,
+            "attn_delta_rel": 0.1353,
+            "mlp_delta_rel": 0.2738,
+            "wiring_rel_dev_vs_seq": 0.0651
+          }
+        ]
+      },
+      "depth_curve": [
+        {
+          "depth": 0,
+          "bpc": 7.3264,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "bpc": 6.4216,
+          "acc": 0.0957
+        },
+        {
+          "depth": 2,
+          "bpc": 5.7071,
+          "acc": 0.1313
+        },
+        {
+          "depth": 3,
+          "bpc": 4.4716,
+          "acc": 0.2057
+        },
+        {
+          "depth": 4,
+          "bpc": 3.7432,
+          "acc": 0.3001
+        },
+        {
+          "depth": 5,
+          "bpc": 3.187,
+          "acc": 0.3937
+        },
+        {
+          "depth": 6,
+          "bpc": 2.6442,
+          "acc": 0.485
+        },
+        {
+          "depth": 7,
+          "bpc": 2.0497,
+          "acc": 0.5885
+        },
+        {
+          "depth": 8,
+          "bpc": 1.5712,
+          "acc": 0.6815
+        }
+      ],
+      "clean_bpc": 1.5712,
+      "next_token_acc": 0.6815,
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.0549
+        },
+        {
+          "depth": 1,
+          "accept": 0.1004
+        },
+        {
+          "depth": 2,
+          "accept": 0.1409
+        },
+        {
+          "depth": 3,
+          "accept": 0.2268
+        },
+        {
+          "depth": 4,
+          "accept": 0.3486
+        },
+        {
+          "depth": 5,
+          "accept": 0.465
+        },
+        {
+          "depth": 6,
+          "accept": 0.5674
+        },
+        {
+          "depth": 7,
+          "accept": 0.7113
+        }
+      ],
+      "tf@4": 0.3486,
+      "spec_cost_model": [
+        {
+          "draft_depth": 4,
+          "tf_accept": 0.3486,
+          "draft_cost_frac": 0.5,
+          "expected_tokens_per_cycle": 1.3486,
+          "cost_per_cycle": 1.5,
+          "equivalent_validation_speedup": 0.8991
+        },
+        {
+          "draft_depth": 6,
+          "tf_accept": 0.5674,
+          "draft_cost_frac": 0.75,
+          "expected_tokens_per_cycle": 1.5674,
+          "cost_per_cycle": 1.75,
+          "equivalent_validation_speedup": 0.8957
+        }
+      ],
+      "calibration": {
+        "prob0_ece": 0.0055,
+        "exit4_ece": 0.0533,
+        "ece_by_depth": [
+          0.0474,
+          0.2079,
+          0.186,
+          0.1202,
+          0.0533,
+          0.0284,
+          0.0312,
+          0.017,
+          0.0055
+        ],
+        "n_bins": 15
+      },
+      "branch_activity": [
+        {
+          "layer": 1,
+          "attn_delta_rel": 36.238,
+          "mlp_delta_rel": 17.52,
+          "wiring_rel_dev_vs_seq": 0.3726
+        },
+        {
+          "layer": 2,
+          "attn_delta_rel": 0.2593,
+          "mlp_delta_rel": 0.0575,
+          "wiring_rel_dev_vs_seq": 0.0163
+        },
+        {
+          "layer": 3,
+          "attn_delta_rel": 0.254,
+          "mlp_delta_rel": 0.259,
+          "wiring_rel_dev_vs_seq": 0.0528
+        },
+        {
+          "layer": 4,
+          "attn_delta_rel": 0.308,
+          "mlp_delta_rel": 0.2741,
+          "wiring_rel_dev_vs_seq": 0.1098
+        },
+        {
+          "layer": 5,
+          "attn_delta_rel": 0.3024,
+          "mlp_delta_rel": 0.2805,
+          "wiring_rel_dev_vs_seq": 0.1345
+        },
+        {
+          "layer": 6,
+          "attn_delta_rel": 0.253,
+          "mlp_delta_rel": 0.2946,
+          "wiring_rel_dev_vs_seq": 0.1156
+        },
+        {
+          "layer": 7,
+          "attn_delta_rel": 0.2015,
+          "mlp_delta_rel": 0.2866,
+          "wiring_rel_dev_vs_seq": 0.0864
+        },
+        {
+          "layer": 8,
+          "attn_delta_rel": 0.1353,
+          "mlp_delta_rel": 0.2738,
+          "wiring_rel_dev_vs_seq": 0.0651
+        }
+      ],
+      "eval_wall_min": 0.01
+    },
+    "parallel-dual-ln": {
+      "role": "并行子层（两子层各带 pre-LN；与基线逐位等参数）",
+      "topology": "parallel-dual-ln",
+      "source": "runs/parallel-dual-ln-12k-s0",
+      "params": 6962688,
+      "train_tokens": 98304000,
+      "wall_min": 6.51,
+      "peak_child_mem_gb": 1.43,
+      "seconds_per_step": 0.0325,
+      "gnorm_monitor": {
+        "gnorm_max": 5.69,
+        "gnorm_mean": 0.52,
+        "grad_skips": 0
+      },
+      "intervention": {
+        "topology": "parallel-dual-ln",
+        "params_added": 0,
+        "parameterized": false,
+        "params_identical_to_sequential": true,
+        "start_bitwise_equals_sequential": false,
+        "w_fro": null,
+        "w_absmax": null,
+        "nonzero_frac": null,
+        "alive": true,
+        "branch_activity": [
+          {
+            "layer": 1,
+            "attn_delta_rel": 36.381,
+            "mlp_delta_rel": 17.0745,
+            "wiring_rel_dev_vs_seq": 0.3657
+          },
+          {
+            "layer": 2,
+            "attn_delta_rel": 0.2684,
+            "mlp_delta_rel": 0.0554,
+            "wiring_rel_dev_vs_seq": 0.0149
+          },
+          {
+            "layer": 3,
+            "attn_delta_rel": 0.2552,
+            "mlp_delta_rel": 0.272,
+            "wiring_rel_dev_vs_seq": 0.053
+          },
+          {
+            "layer": 4,
+            "attn_delta_rel": 0.326,
+            "mlp_delta_rel": 0.2721,
+            "wiring_rel_dev_vs_seq": 0.1258
+          },
+          {
+            "layer": 5,
+            "attn_delta_rel": 0.2945,
+            "mlp_delta_rel": 0.2866,
+            "wiring_rel_dev_vs_seq": 0.1341
+          },
+          {
+            "layer": 6,
+            "attn_delta_rel": 0.2734,
+            "mlp_delta_rel": 0.2999,
+            "wiring_rel_dev_vs_seq": 0.1262
+          },
+          {
+            "layer": 7,
+            "attn_delta_rel": 0.2222,
+            "mlp_delta_rel": 0.3243,
+            "wiring_rel_dev_vs_seq": 0.1036
+          },
+          {
+            "layer": 8,
+            "attn_delta_rel": 0.123,
+            "mlp_delta_rel": 0.2748,
+            "wiring_rel_dev_vs_seq": 0.0569
+          }
+        ]
+      },
+      "depth_curve": [
+        {
+          "depth": 0,
+          "bpc": 7.309,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "bpc": 6.34,
+          "acc": 0.1038
+        },
+        {
+          "depth": 2,
+          "bpc": 5.6275,
+          "acc": 0.1467
+        },
+        {
+          "depth": 3,
+          "bpc": 4.4743,
+          "acc": 0.2085
+        },
+        {
+          "depth": 4,
+          "bpc": 3.8343,
+          "acc": 0.2751
+        },
+        {
+          "depth": 5,
+          "bpc": 3.2234,
+          "acc": 0.3819
+        },
+        {
+          "depth": 6,
+          "bpc": 2.6912,
+          "acc": 0.4815
+        },
+        {
+          "depth": 7,
+          "bpc": 1.9012,
+          "acc": 0.6216
+        },
+        {
+          "depth": 8,
+          "bpc": 1.5656,
+          "acc": 0.6824
+        }
+      ],
+      "clean_bpc": 1.5656,
+      "next_token_acc": 0.6824,
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.0557
+        },
+        {
+          "depth": 1,
+          "accept": 0.1119
+        },
+        {
+          "depth": 2,
+          "accept": 0.1589
+        },
+        {
+          "depth": 3,
+          "accept": 0.2264
+        },
+        {
+          "depth": 4,
+          "accept": 0.3149
+        },
+        {
+          "depth": 5,
+          "accept": 0.4445
+        },
+        {
+          "depth": 6,
+          "accept": 0.558
+        },
+        {
+          "depth": 7,
+          "accept": 0.7538
+        }
+      ],
+      "tf@4": 0.3149,
+      "spec_cost_model": [
+        {
+          "draft_depth": 4,
+          "tf_accept": 0.3149,
+          "draft_cost_frac": 0.5,
+          "expected_tokens_per_cycle": 1.3149,
+          "cost_per_cycle": 1.5,
+          "equivalent_validation_speedup": 0.8766
+        },
+        {
+          "draft_depth": 6,
+          "tf_accept": 0.558,
+          "draft_cost_frac": 0.75,
+          "expected_tokens_per_cycle": 1.558,
+          "cost_per_cycle": 1.75,
+          "equivalent_validation_speedup": 0.8903
+        }
+      ],
+      "calibration": {
+        "prob0_ece": 0.0066,
+        "exit4_ece": 0.0623,
+        "ece_by_depth": [
+          0.0475,
+          0.1582,
+          0.1279,
+          0.0943,
+          0.0623,
+          0.0149,
+          0.0143,
+          0.0111,
+          0.0066
+        ],
+        "n_bins": 15
+      },
+      "branch_activity": [
+        {
+          "layer": 1,
+          "attn_delta_rel": 36.381,
+          "mlp_delta_rel": 17.0745,
+          "wiring_rel_dev_vs_seq": 0.3657
+        },
+        {
+          "layer": 2,
+          "attn_delta_rel": 0.2684,
+          "mlp_delta_rel": 0.0554,
+          "wiring_rel_dev_vs_seq": 0.0149
+        },
+        {
+          "layer": 3,
+          "attn_delta_rel": 0.2552,
+          "mlp_delta_rel": 0.272,
+          "wiring_rel_dev_vs_seq": 0.053
+        },
+        {
+          "layer": 4,
+          "attn_delta_rel": 0.326,
+          "mlp_delta_rel": 0.2721,
+          "wiring_rel_dev_vs_seq": 0.1258
+        },
+        {
+          "layer": 5,
+          "attn_delta_rel": 0.2945,
+          "mlp_delta_rel": 0.2866,
+          "wiring_rel_dev_vs_seq": 0.1341
+        },
+        {
+          "layer": 6,
+          "attn_delta_rel": 0.2734,
+          "mlp_delta_rel": 0.2999,
+          "wiring_rel_dev_vs_seq": 0.1262
+        },
+        {
+          "layer": 7,
+          "attn_delta_rel": 0.2222,
+          "mlp_delta_rel": 0.3243,
+          "wiring_rel_dev_vs_seq": 0.1036
+        },
+        {
+          "layer": 8,
+          "attn_delta_rel": 0.123,
+          "mlp_delta_rel": 0.2748,
+          "wiring_rel_dev_vs_seq": 0.0569
+        }
+      ],
+      "eval_wall_min": 0.02
+    },
+    "dense": {
+      "role": "层间学习加权和（DenseFormer 式；参数 +36）",
+      "topology": "dense",
+      "source": "runs/dense-12k-s0",
+      "params": 6962724,
+      "train_tokens": 98304000,
+      "wall_min": 8.01,
+      "peak_child_mem_gb": 1.53,
+      "seconds_per_step": 0.04,
+      "gnorm_monitor": {
+        "gnorm_max": 7.86,
+        "gnorm_mean": 0.532,
+        "grad_skips": 0
+      },
+      "intervention": {
+        "topology": "dense",
+        "params_added": 36,
+        "parameterized": true,
+        "params_identical_to_sequential": false,
+        "start_bitwise_equals_sequential": true,
+        "w_fro": 3.304855,
+        "w_absmax": 2.361494,
+        "nonzero_frac": 1.0,
+        "max_dev_from_identity_init": 1.361494,
+        "alpha_by_layer": [
+          [
+            2.361494
+          ],
+          [
+            0.264585,
+            0.991857
+          ],
+          [
+            0.128824,
+            0.096571,
+            0.689874
+          ],
+          [
+            -0.099706,
+            0.113139,
+            -0.045446,
+            0.766492
+          ],
+          [
+            -0.158621,
+            0.065588,
+            0.034519,
+            -0.069985,
+            0.853901
+          ],
+          [
+            -0.228868,
+            0.038929,
+            0.034351,
+            0.017349,
+            -0.041931,
+            0.916397
+          ],
+          [
+            -0.270588,
+            0.066583,
+            0.093267,
+            0.088937,
+            0.042093,
+            -0.050606,
+            0.858946
+          ],
+          [
+            -0.16944,
+            0.006675,
+            -0.051521,
+            -0.070708,
+            -0.073012,
+            -0.089845,
+            -0.093226,
+            0.788013
+          ]
+        ],
+        "alive": true,
+        "branch_activity": [
+          {
+            "layer": 1,
+            "attn_delta_rel": 2.7583,
+            "mlp_delta_rel": 11.5589,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 2,
+            "attn_delta_rel": 0.3924,
+            "mlp_delta_rel": 0.3909,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 3,
+            "attn_delta_rel": 0.4601,
+            "mlp_delta_rel": 0.4575,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 4,
+            "attn_delta_rel": 0.3612,
+            "mlp_delta_rel": 0.4222,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 5,
+            "attn_delta_rel": 0.3042,
+            "mlp_delta_rel": 0.3867,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 6,
+            "attn_delta_rel": 0.2533,
+            "mlp_delta_rel": 0.3383,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 7,
+            "attn_delta_rel": 0.1621,
+            "mlp_delta_rel": 0.2638,
+            "wiring_rel_dev_vs_seq": null
+          },
+          {
+            "layer": 8,
+            "attn_delta_rel": 0.1479,
+            "mlp_delta_rel": 0.3836,
+            "wiring_rel_dev_vs_seq": null
+          }
+        ]
+      },
+      "depth_curve": [
+        {
+          "depth": 0,
+          "bpc": 7.3786,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "bpc": 5.1192,
+          "acc": 0.1769
+        },
+        {
+          "depth": 2,
+          "bpc": 4.8923,
+          "acc": 0.2265
+        },
+        {
+          "depth": 3,
+          "bpc": 4.3084,
+          "acc": 0.2895
+        },
+        {
+          "depth": 4,
+          "bpc": 3.5141,
+          "acc": 0.3958
+        },
+        {
+          "depth": 5,
+          "bpc": 2.834,
+          "acc": 0.5019
+        },
+        {
+          "depth": 6,
+          "bpc": 2.4466,
+          "acc": 0.5743
+        },
+        {
+          "depth": 7,
+          "bpc": 2.0173,
+          "acc": 0.6496
+        },
+        {
+          "depth": 8,
+          "bpc": 1.5246,
+          "acc": 0.6893
+        }
+      ],
+      "clean_bpc": 1.5246,
+      "next_token_acc": 0.6893,
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.0559
+        },
+        {
+          "depth": 1,
+          "accept": 0.1995
+        },
+        {
+          "depth": 2,
+          "accept": 0.2601
+        },
+        {
+          "depth": 3,
+          "accept": 0.335
+        },
+        {
+          "depth": 4,
+          "accept": 0.4538
+        },
+        {
+          "depth": 5,
+          "accept": 0.5832
+        },
+        {
+          "depth": 6,
+          "accept": 0.6844
+        },
+        {
+          "depth": 7,
+          "accept": 0.7965
+        }
+      ],
+      "tf@4": 0.4538,
+      "spec_cost_model": [
+        {
+          "draft_depth": 4,
+          "tf_accept": 0.4538,
+          "draft_cost_frac": 0.5,
+          "expected_tokens_per_cycle": 1.4538,
+          "cost_per_cycle": 1.5,
+          "equivalent_validation_speedup": 0.9692
+        },
+        {
+          "draft_depth": 6,
+          "tf_accept": 0.6844,
+          "draft_cost_frac": 0.75,
+          "expected_tokens_per_cycle": 1.6844,
+          "cost_per_cycle": 1.75,
+          "equivalent_validation_speedup": 0.9625
+        }
+      ],
+      "calibration": {
+        "prob0_ece": 0.0046,
+        "exit4_ece": 0.167,
+        "ece_by_depth": [
+          0.0449,
+          0.2462,
+          0.2821,
+          0.2187,
+          0.167,
+          0.1402,
+          0.1486,
+          0.1326,
+          0.0046
+        ],
+        "n_bins": 15
+      },
+      "branch_activity": [
+        {
+          "layer": 1,
+          "attn_delta_rel": 2.7583,
+          "mlp_delta_rel": 11.5589,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 2,
+          "attn_delta_rel": 0.3924,
+          "mlp_delta_rel": 0.3909,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 3,
+          "attn_delta_rel": 0.4601,
+          "mlp_delta_rel": 0.4575,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 4,
+          "attn_delta_rel": 0.3612,
+          "mlp_delta_rel": 0.4222,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 5,
+          "attn_delta_rel": 0.3042,
+          "mlp_delta_rel": 0.3867,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 6,
+          "attn_delta_rel": 0.2533,
+          "mlp_delta_rel": 0.3383,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 7,
+          "attn_delta_rel": 0.1621,
+          "mlp_delta_rel": 0.2638,
+          "wiring_rel_dev_vs_seq": null
+        },
+        {
+          "layer": 8,
+          "attn_delta_rel": 0.1479,
+          "mlp_delta_rel": 0.3836,
+          "wiring_rel_dev_vs_seq": null
+        }
+      ],
+      "eval_wall_min": 0.01
+    }
+  },
+  "historical_dense_B_12k": {
+    "source": ".scratch/23-depth-ar/evidence/23d-dense-B-12k",
+    "hist_bpc": 1.5287,
+    "remeasured_bpc": 1.5287,
+    "remeasured_acc": 0.6894,
+    "remeasured_tf@4": 0.444,
+    "note": "历史 dense-B-12k 无 tf 表（当时未测）；此处补测作为 tf@4 的形态参照（stock dense 无浅层出口监督）"
+  },
+  "field_by_field": [
+    {
+      "field": "d_model",
+      "expected": 256,
+      "arms": {
+        "sequential": 256,
+        "parallel": 256,
+        "parallel-dual-ln": 256,
+        "dense": 256
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "n_layers",
+      "expected": 8,
+      "arms": {
+        "sequential": 8,
+        "parallel": 8,
+        "parallel-dual-ln": 8,
+        "dense": 8
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "n_heads",
+      "expected": 8,
+      "arms": {
+        "sequential": 8,
+        "parallel": 8,
+        "parallel-dual-ln": 8,
+        "dense": 8
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "seq_len",
+      "expected": 256,
+      "arms": {
+        "sequential": 256,
+        "parallel": 256,
+        "parallel-dual-ln": 256,
+        "dense": 256
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "mlp_mult",
+      "expected": 4,
+      "arms": {
+        "sequential": 4,
+        "parallel": 4,
+        "parallel-dual-ln": 4,
+        "dense": 4
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "dropout",
+      "expected": 0.0,
+      "arms": {
+        "sequential": 0.0,
+        "parallel": 0.0,
+        "parallel-dual-ln": 0.0,
+        "dense": 0.0
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "norm_cap",
+      "expected": 1.0,
+      "arms": {
+        "sequential": 1.0,
+        "parallel": 1.0,
+        "parallel-dual-ln": 1.0,
+        "dense": 1.0
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "dense",
+      "expected": true,
+      "arms": {
+        "sequential": true,
+        "parallel": true,
+        "parallel-dual-ln": true,
+        "dense": true
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "fill_kv",
+      "expected": true,
+      "arms": {
+        "sequential": true,
+        "parallel": true,
+        "parallel-dual-ln": true,
+        "dense": true
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "proj_fill",
+      "expected": false,
+      "arms": {
+        "sequential": false,
+        "parallel": false,
+        "parallel-dual-ln": false,
+        "dense": false
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "readout_dims",
+      "expected": null,
+      "arms": {
+        "sequential": null,
+        "parallel": null,
+        "parallel-dual-ln": null,
+        "dense": null
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "readout_gated",
+      "expected": false,
+      "arms": {
+        "sequential": false,
+        "parallel": false,
+        "parallel-dual-ln": false,
+        "dense": false
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "readout_linear_resid",
+      "expected": false,
+      "arms": {
+        "sequential": false,
+        "parallel": false,
+        "parallel-dual-ln": false,
+        "dense": false
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "exit_mode",
+      "expected": "uniform",
+      "arms": {
+        "sequential": "uniform",
+        "parallel": "uniform",
+        "parallel-dual-ln": "uniform",
+        "dense": "uniform"
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "aux_weight",
+      "expected": 1.0,
+      "arms": {
+        "sequential": 1.0,
+        "parallel": 1.0,
+        "parallel-dual-ln": 1.0,
+        "dense": 1.0
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "final_weight",
+      "expected": 1.0,
+      "arms": {
+        "sequential": 1.0,
+        "parallel": 1.0,
+        "parallel-dual-ln": 1.0,
+        "dense": 1.0
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "shallow_stopgrad",
+      "expected": false,
+      "arms": {
+        "sequential": false,
+        "parallel": false,
+        "parallel-dual-ln": false,
+        "dense": false
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "dense_aux",
+      "expected": false,
+      "arms": {
+        "sequential": false,
+        "parallel": false,
+        "parallel-dual-ln": false,
+        "dense": false
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "steps",
+      "expected": 12000,
+      "arms": {
+        "sequential": 12000,
+        "parallel": 12000,
+        "parallel-dual-ln": 12000,
+        "dense": 12000
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "batch_size",
+      "expected": 32,
+      "arms": {
+        "sequential": 32,
+        "parallel": 32,
+        "parallel-dual-ln": 32,
+        "dense": 32
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "lr",
+      "expected": 0.001,
+      "arms": {
+        "sequential": 0.001,
+        "parallel": 0.001,
+        "parallel-dual-ln": 0.001,
+        "dense": 0.001
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "seed",
+      "expected": 0,
+      "arms": {
+        "sequential": 0,
+        "parallel": 0,
+        "parallel-dual-ln": 0,
+        "dense": 0
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "train_tokens",
+      "expected": 98304000,
+      "arms": {
+        "sequential": 98304000,
+        "parallel": 98304000,
+        "parallel-dual-ln": 98304000,
+        "dense": 98304000
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "vocab_size",
+      "expected": 206,
+      "arms": {
+        "sequential": 206,
+        "parallel": 206,
+        "parallel-dual-ln": 206,
+        "dense": 206
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "data_split",
+      "expected": "first 90M/ last 10M, vocab over full file",
+      "arms": {
+        "sequential": "first 90M/ last 10M, vocab over full file",
+        "parallel": "first 90M/ last 10M, vocab over full file",
+        "parallel-dual-ln": "first 90M/ last 10M, vocab over full file",
+        "dense": "first 90M/ last 10M, vocab over full file"
+      },
+      "equal_sequential": true,
+      "equal_parallel": true,
+      "equal_parallel-dual-ln": true,
+      "equal_dense": true,
+      "all_arms_equal": true
+    },
+    {
+      "field": "topology（唯一变量）",
+      "arms": {
+        "sequential": "sequential",
+        "parallel": "parallel",
+        "parallel-dual-ln": "parallel-dual-ln",
+        "dense": "dense"
+      },
+      "note": "唯一不等字段；参数量随之变化（见 params_* 与对账块）"
+    }
+  ],
+  "field_by_field_all_equal_except_topology": true,
+  "reconciliation": {
+    "arithmetic": {
+      "bpc_definition": "bpc_arm − bpc_sequential（同一条 depth_curve 的 depth-8 读数、同 20 个 eval batch、同 eval 切分）",
+      "delta_bpc": {
+        "sequential": 0.0,
+        "parallel": 0.0458,
+        "parallel-dual-ln": 0.0402,
+        "dense": -0.0008
+      },
+      "variance_bound": 0.014,
+      "judge_threshold_eq_variance_bound": true,
+      "params": {
+        "sequential": 6962688,
+        "parallel": 6958592,
+        "parallel-dual-ln": 6962688,
+        "dense": 6962724
+      },
+      "params_delta": {
+        "sequential": 0,
+        "parallel": -4096,
+        "parallel-dual-ln": 0,
+        "dense": 36
+      },
+      "params_delta_expected": {
+        "sequential": 0,
+        "parallel": -4096,
+        "parallel-dual-ln": 0,
+        "dense": 36
+      },
+      "params_delta_exact": true,
+      "dense_params_added_frac": 5.17e-06,
+      "bpc_bounds": "clean bpc 理论下界 0；实测四臂均在 (1.4, 1.7)"
+    },
+    "task": {
+      "same_task": "四臂同一 enwik8 char 级 AR 任务、同一 eval 切分（末 10M）、同一位置集（全序列逐位置 × depth-8 读出）、同一目标定义（tokens 自移位）",
+      "same_battery": "四臂同一 run.py::run_battery（同 n_batches=20 / 同 eval seed / 同 batch_size）",
+      "deploy_correspondence": "四臂都是 stock decoder-only 前向；对照只改层与层之间的接法，无额外输入、无真值泄漏（输入分布= 同一训练/评测数据流）"
+    },
+    "caliber": {
+      "matched_step_snapshot": true,
+      "steps": 12000,
+      "seed": 0,
+      "n_seed": 1,
+      "train_tokens": 98304000,
+      "note": "四臂同为 12000 步 / 98.3M token / seed 0 的 matched-step 快照口径（非渐近、非墙钟、非 FLOPs）"
+    },
+    "convergence": {
+      "method": "末 25% 窗（同一窗口比例、同一最小二乘算法）loss 斜率，四臂同方法",
+      "tail_slope_by_arm": {
+        "sequential": {
+          "window_frac": 0.25,
+          "n_points": 16,
+          "step_from": 9000,
+          "step_to": 11999,
+          "loss_from": 1.041,
+          "loss_to": 1.0392,
+          "slope_nats_per_1k_steps": 0.00251,
+          "slope_nats_per_1k_steps_late_half": 0.0177
+        },
+        "parallel": {
+          "window_frac": 0.25,
+          "n_points": 16,
+          "step_from": 9000,
+          "step_to": 11999,
+          "loss_from": 1.0746,
+          "loss_to": 1.0699,
+          "slope_nats_per_1k_steps": 0.0039,
+          "slope_nats_per_1k_steps_late_half": 0.01924
+        },
+        "parallel-dual-ln": {
+          "window_frac": 0.25,
+          "n_points": 16,
+          "step_from": 9000,
+          "step_to": 11999,
+          "loss_from": 1.0656,
+          "loss_to": 1.0647,
+          "slope_nats_per_1k_steps": 0.00452,
+          "slope_nats_per_1k_steps_late_half": 0.02498
+        },
+        "dense": {
+          "window_frac": 0.25,
+          "n_points": 16,
+          "step_from": 9000,
+          "step_to": 11999,
+          "loss_from": 1.0403,
+          "loss_to": 1.0401,
+          "slope_nats_per_1k_steps": 0.0045,
+          "slope_nats_per_1k_steps_late_half": 0.02151
+        }
+      },
+      "slope_spread_nats_per_1k": 0.00201,
+      "note": "斜率相近 ⇒ 差异是水平差（质量）而非收敛速度差；另附末段（窗内后半）斜率。更长训练点（2×）未做：契约 E 的收敛对账只要求同方法斜率，且预算不足以加 24k 双跑（见 analysis §7）。"
+    }
+  },
+  "verdict": {
+    "criterion": "任一变体 Δ clean bpc vs sequential ≤ −0.014 ⇒ 成功；|Δ| < 0.014 ⇒ 中性；≥ +0.014 ⇒ 失败；并列 tf@4 ≥ 0.95",
+    "delta_bpc_vs_sequential": {
+      "sequential": 0.0,
+      "parallel": 0.0458,
+      "parallel-dual-ln": 0.0402,
+      "dense": -0.0008
+    },
+    "clean_bpc": {
+      "sequential": 1.5254,
+      "parallel": 1.5712,
+      "parallel-dual-ln": 1.5656,
+      "dense": 1.5246
+    },
+    "success_arms": [],
+    "fail_arms": [
+      "parallel",
+      "parallel-dual-ln"
+    ],
+    "ruling": "失败（任一臂更差 ≥+0.014）：{'parallel': 0.0458, 'parallel-dual-ln': 0.0402}",
+    "tf@4_by_arm": {
+      "sequential": 0.456,
+      "parallel": 0.3486,
+      "parallel-dual-ln": 0.3149,
+      "dense": 0.4538
+    },
+    "tf@4_judge_satisfied_by": [],
+    "tf@4_judge_note": "stock dense 形态（无浅层出口监督）下 tf@4 ≈ 0.44（历史 dense-B-12k 实测），并列判据 ≥0.95 在该形态上**不可达**——四臂同口径同不可达，不作为区分量；如实报，不改判据线",
+    "dense_bpc_ref_13m": 1.5287,
+    "tax_vs_dense_by_arm": {
+      "sequential": -0.0033,
+      "parallel": 0.0425,
+      "parallel-dual-ln": 0.0369,
+      "dense": -0.0041
+    },
+    "next_token_acc_by_arm": {
+      "sequential": 0.6893,
+      "parallel": 0.6815,
+      "parallel-dual-ln": 0.6824,
+      "dense": 0.6893
+    }
+  },
+  "stability": {
+    "sequential": {
+      "n_logged_samples": 61,
+      "step_first": 0,
+      "step_last": 11999,
+      "gnorm_logged_max": 7.1,
+      "gnorm_logged_median": 0.46,
+      "gnorm_spikes_gt3x_median": 2,
+      "gnorm_spikes_gt5x_median": 1,
+      "all_finite": true,
+      "loss_first": 5.3131,
+      "loss_last": 1.0392,
+      "loss_max_step_increase": 0.1439,
+      "loss_jumps_gt_0.25": 0,
+      "gnorm_monitor_all_steps": {
+        "gnorm_max": 7.86,
+        "gnorm_mean": 0.543,
+        "grad_skips": 0
+      }
+    },
+    "parallel": {
+      "n_logged_samples": 61,
+      "step_first": 0,
+      "step_last": 11999,
+      "gnorm_logged_max": 5.21,
+      "gnorm_logged_median": 0.48,
+      "gnorm_spikes_gt3x_median": 1,
+      "gnorm_spikes_gt5x_median": 1,
+      "all_finite": true,
+      "loss_first": 5.3147,
+      "loss_last": 1.0699,
+      "loss_max_step_increase": 0.1622,
+      "loss_jumps_gt_0.25": 0,
+      "gnorm_monitor_all_steps": {
+        "gnorm_max": 5.69,
+        "gnorm_mean": 0.534,
+        "grad_skips": 0
+      }
+    },
+    "parallel-dual-ln": {
+      "n_logged_samples": 61,
+      "step_first": 0,
+      "step_last": 11999,
+      "gnorm_logged_max": 5.21,
+      "gnorm_logged_median": 0.46,
+      "gnorm_spikes_gt3x_median": 1,
+      "gnorm_spikes_gt5x_median": 1,
+      "all_finite": true,
+      "loss_first": 5.3147,
+      "loss_last": 1.0647,
+      "loss_max_step_increase": 0.1586,
+      "loss_jumps_gt_0.25": 0,
+      "gnorm_monitor_all_steps": {
+        "gnorm_max": 5.69,
+        "gnorm_mean": 0.52,
+        "grad_skips": 0
+      }
+    },
+    "dense": {
+      "n_logged_samples": 61,
+      "step_first": 0,
+      "step_last": 11999,
+      "gnorm_logged_max": 7.1,
+      "gnorm_logged_median": 0.43,
+      "gnorm_spikes_gt3x_median": 2,
+      "gnorm_spikes_gt5x_median": 1,
+      "all_finite": true,
+      "loss_first": 5.3131,
+      "loss_last": 1.0401,
+      "loss_max_step_increase": 0.1413,
+      "loss_jumps_gt_0.25": 0,
+      "gnorm_monitor_all_steps": {
+        "gnorm_max": 7.86,
+        "gnorm_mean": 0.532,
+        "grad_skips": 0
+      }
+    },
+    "ece_by_depth": {
+      "sequential": [
+        0.0466,
+        0.0712,
+        0.0434,
+        0.0364,
+        0.0201,
+        0.0273,
+        0.0399,
+        0.0311,
+        0.0077
+      ],
+      "parallel": [
+        0.0474,
+        0.2079,
+        0.186,
+        0.1202,
+        0.0533,
+        0.0284,
+        0.0312,
+        0.017,
+        0.0055
+      ],
+      "parallel-dual-ln": [
+        0.0475,
+        0.1582,
+        0.1279,
+        0.0943,
+        0.0623,
+        0.0149,
+        0.0143,
+        0.0111,
+        0.0066
+      ],
+      "dense": [
+        0.0449,
+        0.2462,
+        0.2821,
+        0.2187,
+        0.167,
+        0.1402,
+        0.1486,
+        0.1326,
+        0.0046
+      ]
+    },
+    "gnorm_note": "gnorm_monitor_all_steps 是 train_depth_ar 全程真值（每个优化器 step）；gnorm_logged_* 只是每 200 步采样点上可见的值。"
+  },
+  "wall_total_min": 27.12,
+  "gpu_peak_by_arm_gb": {
+    "sequential": 1.47,
+    "parallel": 1.43,
+    "parallel-dual-ln": 1.43,
+    "dense": 1.53
+  }
+}
