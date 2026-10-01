@@ -10,7 +10,7 @@ tax: "—"
 benefit: "无 final LayerNorm 使 logits = h·Eᵀ 语义成立（readout scale 由 U 学）"
 verdict: "pre-LN + 无 final norm 是「同空间」几何的前提，已固定使用。"
 deps: []
-evidence: [".scratch/03-engine-m1/issues @e38349f"]
+evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @ticket34", "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @ticket34"]
 ---
 
 <!-- AUTO:begin -->
@@ -70,6 +70,8 @@ LayerNorm 放在哪、是否有 final norm——决定残差流是否保持 embe
 ## 9. 复现手段
 
 1. .scratch/03-engine-m1/issues @e38349f
+2. axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @ticket34
+3. axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @ticket34
 
 <!-- AUTO:end -->
 

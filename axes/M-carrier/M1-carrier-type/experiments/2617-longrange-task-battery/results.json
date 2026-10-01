@@ -1,0 +1,1663 @@
+{
+  "contract": "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/README.md",
+  "smoke": false,
+  "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+  },
+  "config": {
+    "checkpoint": {
+      "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+      "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2"
+    },
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true
+    },
+    "data": {
+      "vocab_size": 206
+    },
+    "device": "cuda",
+    "seed": 0,
+    "tokens": {
+      "sym_vocab": 64,
+      "filler_token": 64,
+      "cue_token": 205,
+      "local_k": 8
+    },
+    "tasks": {
+      "assoc_recall": {
+        "n_pairs": [
+          4,
+          8,
+          16
+        ],
+        "batch_size": 32,
+        "n_batches": 4
+      },
+      "induction": {
+        "prefix_len": 192,
+        "copy_len": 32,
+        "src_starts": [
+          0,
+          48,
+          96,
+          144
+        ],
+        "batch_size": 32,
+        "n_batches": 4
+      },
+      "copy": {
+        "copy_len": 32,
+        "src_positions": [
+          0,
+          32,
+          64,
+          96,
+          128,
+          160,
+          191
+        ],
+        "batch_size": 32,
+        "n_batches": 4
+      },
+      "var_recall": {
+        "distances": [
+          16,
+          32,
+          64,
+          128,
+          192,
+          255
+        ],
+        "batch_size": 32,
+        "n_batches": 6
+      }
+    },
+    "retention_curve": {
+      "distances": [
+        16,
+        32,
+        64,
+        128,
+        192,
+        255
+      ],
+      "keep_ds": [
+        16,
+        32,
+        64,
+        128,
+        192,
+        255
+      ],
+      "batch_size": 32,
+      "n_batches": 4
+    },
+    "mutation": {
+      "distance": 64,
+      "batch_size": 32,
+      "n_batches": 4
+    }
+  },
+  "instrument": {
+    "max_abs_logit_diff": 0.0,
+    "bitwise_equal": true,
+    "note": "释放版 is_causal=True 路径 vs 显式精确因果掩码路径；两者应逐位相等（与 2614 仪器同款自检）。"
+  },
+  "intervention": {
+    "what": "评测期合成任务（无权重改动、无训练）：测模型在局部先验无法补全的长程任务上的 top-1 准确率。",
+    "params_added": 0,
+    "weights_changed": false,
+    "training_steps": 0,
+    "alive": true,
+    "note": "活性量 = 局部先验抗性（四任务均须 < max(3*chance, 0.02)）与掩码可见性自检；本实验无训练步，故无「每 200 步」训练活性日志。"
+  },
+  "tasks": {
+    "assoc_recall": {
+      "by_n_pairs": {
+        "4": {
+          "name": "assoc_recall",
+          "params": {
+            "task": "assoc_recall",
+            "seq_len": 256,
+            "n_pairs": 4,
+            "sym_vocab": 64,
+            "filler_token": 64,
+            "cue_token": 205,
+            "query_index": 0,
+            "layout": "[k0 v0 ... k{K-1} v{K-1}] filler cue query_key @ T-1"
+          },
+          "chance": {
+            "uniform_answer_set": 0.015625,
+            "n_answers": 64,
+            "uniform_model_vocab": 0.00485437,
+            "vocab_size": 206
+          },
+          "local_prior": {
+            "accuracy": 0.017578,
+            "n": 512,
+            "n_hits": 9,
+            "by_distance": {
+              "249": {
+                "accuracy": 0.023438,
+                "n": 128
+              },
+              "251": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "253": {
+                "accuracy": 0.015625,
+                "n": 128
+              },
+              "255": {
+                "accuracy": 0.023438,
+                "n": 128
+              }
+            },
+            "k": 8
+          },
+          "model": {
+            "accuracy": 0.003906,
+            "n": 512,
+            "n_hits": 2,
+            "by_distance": {
+              "249": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "251": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "253": {
+                "accuracy": 0.0,
+                "n": 128
+              },
+              "255": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          }
+        },
+        "8": {
+          "name": "assoc_recall",
+          "params": {
+            "task": "assoc_recall",
+            "seq_len": 256,
+            "n_pairs": 8,
+            "sym_vocab": 64,
+            "filler_token": 64,
+            "cue_token": 205,
+            "query_index": 0,
+            "layout": "[k0 v0 ... k{K-1} v{K-1}] filler cue query_key @ T-1"
+          },
+          "chance": {
+            "uniform_answer_set": 0.015625,
+            "n_answers": 64,
+            "uniform_model_vocab": 0.00485437,
+            "vocab_size": 206
+          },
+          "local_prior": {
+            "accuracy": 0.017578,
+            "n": 1024,
+            "n_hits": 18,
+            "by_distance": {
+              "241": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "243": {
+                "accuracy": 0.0,
+                "n": 128
+              },
+              "245": {
+                "accuracy": 0.039062,
+                "n": 128
+              },
+              "247": {
+                "accuracy": 0.015625,
+                "n": 128
+              },
+              "249": {
+                "accuracy": 0.015625,
+                "n": 128
+              },
+              "251": {
+                "accuracy": 0.023438,
+                "n": 128
+              },
+              "253": {
+                "accuracy": 0.015625,
+                "n": 128
+              },
+              "255": {
+                "accuracy": 0.023438,
+                "n": 128
+              }
+            },
+            "k": 8
+          },
+          "model": {
+            "accuracy": 0.007812,
+            "n": 1024,
+            "n_hits": 8,
+            "by_distance": {
+              "241": {
+                "accuracy": 0.015625,
+                "n": 128
+              },
+              "243": {
+                "accuracy": 0.015625,
+                "n": 128
+              },
+              "245": {
+                "accuracy": 0.0,
+                "n": 128
+              },
+              "247": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "249": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "251": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "253": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "255": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          }
+        },
+        "16": {
+          "name": "assoc_recall",
+          "params": {
+            "task": "assoc_recall",
+            "seq_len": 256,
+            "n_pairs": 16,
+            "sym_vocab": 64,
+            "filler_token": 64,
+            "cue_token": 205,
+            "query_index": 0,
+            "layout": "[k0 v0 ... k{K-1} v{K-1}] filler cue query_key @ T-1"
+          },
+          "chance": {
+            "uniform_answer_set": 0.015625,
+            "n_answers": 64,
+            "uniform_model_vocab": 0.00485437,
+            "vocab_size": 206
+          },
+          "local_prior": {
+            "accuracy": 0.020508,
+            "n": 2048,
+            "n_hits": 42,
+            "by_distance": {
+              "225": {
+                "accuracy": 0.023438,
+                "n": 128
+              },
+              "227": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "229": {
+                "accuracy": 0.015625,
+                "n": 128
+              },
+              "231": {
+                "accuracy": 0.03125,
+                "n": 128
+              },
+              "233": {
+                "accuracy": 0.046875,
+                "n": 128
+              },
+              "235": {
+                "accuracy": 0.0,
+                "n": 128
+              },
+              "237": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "239": {
+                "accuracy": 0.0625,
+                "n": 128
+              },
+              "241": {
+                "accuracy": 0.023438,
+                "n": 128
+              },
+              "243": {
+                "accuracy": 0.039062,
+                "n": 128
+              },
+              "245": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "247": {
+                "accuracy": 0.015625,
+                "n": 128
+              },
+              "249": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "251": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "253": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "255": {
+                "accuracy": 0.023438,
+                "n": 128
+              }
+            },
+            "k": 8
+          },
+          "model": {
+            "accuracy": 0.005859,
+            "n": 2048,
+            "n_hits": 12,
+            "by_distance": {
+              "225": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "227": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "229": {
+                "accuracy": 0.0,
+                "n": 128
+              },
+              "231": {
+                "accuracy": 0.0,
+                "n": 128
+              },
+              "233": {
+                "accuracy": 0.0,
+                "n": 128
+              },
+              "235": {
+                "accuracy": 0.0,
+                "n": 128
+              },
+              "237": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "239": {
+                "accuracy": 0.015625,
+                "n": 128
+              },
+              "241": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "243": {
+                "accuracy": 0.0,
+                "n": 128
+              },
+              "245": {
+                "accuracy": 0.0,
+                "n": 128
+              },
+              "247": {
+                "accuracy": 0.023438,
+                "n": 128
+              },
+              "249": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "251": {
+                "accuracy": 0.0,
+                "n": 128
+              },
+              "253": {
+                "accuracy": 0.007812,
+                "n": 128
+              },
+              "255": {
+                "accuracy": 0.007812,
+                "n": 128
+              }
+            }
+          }
+        }
+      },
+      "pooled": {
+        "name": "assoc_recall",
+        "params": {
+          "task": "assoc_recall",
+          "seq_len": 256,
+          "n_pairs": 4,
+          "sym_vocab": 64,
+          "filler_token": 64,
+          "cue_token": 205,
+          "query_index": 0,
+          "layout": "[k0 v0 ... k{K-1} v{K-1}] filler cue query_key @ T-1"
+        },
+        "chance": {
+          "uniform_answer_set": 0.015625,
+          "n_answers": 64,
+          "uniform_model_vocab": 0.00485437,
+          "vocab_size": 206
+        },
+        "local_prior": {
+          "accuracy": 0.019252,
+          "n": 3584,
+          "n_hits": 69,
+          "by_distance": {
+            "225": {
+              "accuracy": 0.023438,
+              "n": 128
+            },
+            "227": {
+              "accuracy": 0.007812,
+              "n": 128
+            },
+            "229": {
+              "accuracy": 0.015625,
+              "n": 128
+            },
+            "231": {
+              "accuracy": 0.03125,
+              "n": 128
+            },
+            "233": {
+              "accuracy": 0.046875,
+              "n": 128
+            },
+            "235": {
+              "accuracy": 0.0,
+              "n": 128
+            },
+            "237": {
+              "accuracy": 0.007812,
+              "n": 128
+            },
+            "239": {
+              "accuracy": 0.0625,
+              "n": 128
+            },
+            "241": {
+              "accuracy": 0.015625,
+              "n": 256
+            },
+            "243": {
+              "accuracy": 0.019531,
+              "n": 256
+            },
+            "245": {
+              "accuracy": 0.023438,
+              "n": 256
+            },
+            "247": {
+              "accuracy": 0.015625,
+              "n": 256
+            },
+            "249": {
+              "accuracy": 0.015625,
+              "n": 384
+            },
+            "251": {
+              "accuracy": 0.013021,
+              "n": 384
+            },
+            "253": {
+              "accuracy": 0.013021,
+              "n": 384
+            },
+            "255": {
+              "accuracy": 0.023438,
+              "n": 384
+            }
+          },
+          "k": 8
+        },
+        "model": {
+          "accuracy": 0.006138,
+          "n": 3584,
+          "n_hits": 22,
+          "by_distance": {
+            "225": {
+              "accuracy": 0.007812,
+              "n": 128
+            },
+            "227": {
+              "accuracy": 0.007812,
+              "n": 128
+            },
+            "229": {
+              "accuracy": 0.0,
+              "n": 128
+            },
+            "231": {
+              "accuracy": 0.0,
+              "n": 128
+            },
+            "233": {
+              "accuracy": 0.0,
+              "n": 128
+            },
+            "235": {
+              "accuracy": 0.0,
+              "n": 128
+            },
+            "237": {
+              "accuracy": 0.007812,
+              "n": 128
+            },
+            "239": {
+              "accuracy": 0.015625,
+              "n": 128
+            },
+            "241": {
+              "accuracy": 0.011719,
+              "n": 256
+            },
+            "243": {
+              "accuracy": 0.007812,
+              "n": 256
+            },
+            "245": {
+              "accuracy": 0.0,
+              "n": 256
+            },
+            "247": {
+              "accuracy": 0.015625,
+              "n": 256
+            },
+            "249": {
+              "accuracy": 0.007812,
+              "n": 384
+            },
+            "251": {
+              "accuracy": 0.005208,
+              "n": 384
+            },
+            "253": {
+              "accuracy": 0.005208,
+              "n": 384
+            },
+            "255": {
+              "accuracy": 0.002604,
+              "n": 384
+            }
+          }
+        }
+      }
+    },
+    "induction": {
+      "pooled": {
+        "name": "induction",
+        "params": {
+          "task": "induction",
+          "seq_len": 256,
+          "prefix_len": 192,
+          "copy_len": 32,
+          "sym_vocab": 64,
+          "filler_token": 64,
+          "cue_token": 205,
+          "src_start": 0,
+          "layout": "prefix + filler + [copied prefix segment] @ tail; src=a"
+        },
+        "chance": {
+          "uniform_answer_set": 0.015625,
+          "n_answers": 64,
+          "uniform_model_vocab": 0.00485437,
+          "vocab_size": 206
+        },
+        "local_prior": {
+          "accuracy": 0.009766,
+          "n": 512,
+          "n_hits": 5,
+          "by_distance": {
+            "80": {
+              "accuracy": 0.0,
+              "n": 128
+            },
+            "128": {
+              "accuracy": 0.007812,
+              "n": 128
+            },
+            "176": {
+              "accuracy": 0.007812,
+              "n": 128
+            },
+            "224": {
+              "accuracy": 0.023438,
+              "n": 128
+            }
+          },
+          "k": 8
+        },
+        "model": {
+          "accuracy": 0.058594,
+          "n": 512,
+          "n_hits": 30,
+          "by_distance": {
+            "80": {
+              "accuracy": 0.117188,
+              "n": 128
+            },
+            "128": {
+              "accuracy": 0.046875,
+              "n": 128
+            },
+            "176": {
+              "accuracy": 0.023438,
+              "n": 128
+            },
+            "224": {
+              "accuracy": 0.046875,
+              "n": 128
+            }
+          }
+        }
+      }
+    },
+    "copy": {
+      "pooled": {
+        "name": "copy",
+        "params": {
+          "task": "copy",
+          "seq_len": 256,
+          "copy_len": 32,
+          "src_pos": 0,
+          "sym_vocab": 64,
+          "filler_token": 64,
+          "cue_token": 205,
+          "layout": "S @ src_pos; filler; cue @ T-m-1; output block S @ tail"
+        },
+        "chance": {
+          "uniform_answer_set": 0.015625,
+          "n_answers": 64,
+          "uniform_model_vocab": 0.00485437,
+          "vocab_size": 206
+        },
+        "local_prior": {
+          "accuracy": 0.015904,
+          "n": 28672,
+          "n_hits": 456,
+          "by_distance": {
+            "32": {
+              "accuracy": 0.015381,
+              "n": 4096
+            },
+            "63": {
+              "accuracy": 0.016113,
+              "n": 4096
+            },
+            "95": {
+              "accuracy": 0.014893,
+              "n": 4096
+            },
+            "127": {
+              "accuracy": 0.012939,
+              "n": 4096
+            },
+            "159": {
+              "accuracy": 0.02002,
+              "n": 4096
+            },
+            "191": {
+              "accuracy": 0.016113,
+              "n": 4096
+            },
+            "223": {
+              "accuracy": 0.015869,
+              "n": 4096
+            }
+          },
+          "k": 8
+        },
+        "model": {
+          "accuracy": 0.133336,
+          "n": 28672,
+          "n_hits": 3823,
+          "by_distance": {
+            "32": {
+              "accuracy": 0.125,
+              "n": 4096
+            },
+            "63": {
+              "accuracy": 0.156494,
+              "n": 4096
+            },
+            "95": {
+              "accuracy": 0.136475,
+              "n": 4096
+            },
+            "127": {
+              "accuracy": 0.143066,
+              "n": 4096
+            },
+            "159": {
+              "accuracy": 0.123779,
+              "n": 4096
+            },
+            "191": {
+              "accuracy": 0.130859,
+              "n": 4096
+            },
+            "223": {
+              "accuracy": 0.117676,
+              "n": 4096
+            }
+          }
+        }
+      }
+    },
+    "var_recall": {
+      "pooled": {
+        "name": "var_recall",
+        "params": {
+          "task": "var_recall",
+          "seq_len": 256,
+          "distance": 16,
+          "src_pos": 239,
+          "sym_vocab": 64,
+          "filler_token": 64,
+          "cue_token": 205,
+          "layout": "key @ (T-1-d), value @ (T-d); filler; cue @ T-2; query key @ T-1"
+        },
+        "chance": {
+          "uniform_answer_set": 0.015625,
+          "n_answers": 64,
+          "uniform_model_vocab": 0.00485437,
+          "vocab_size": 206
+        },
+        "local_prior": {
+          "accuracy": 0.021701,
+          "n": 1152,
+          "n_hits": 25,
+          "by_distance": {
+            "16": {
+              "accuracy": 0.03125,
+              "n": 192
+            },
+            "32": {
+              "accuracy": 0.010417,
+              "n": 192
+            },
+            "64": {
+              "accuracy": 0.010417,
+              "n": 192
+            },
+            "128": {
+              "accuracy": 0.020833,
+              "n": 192
+            },
+            "192": {
+              "accuracy": 0.036458,
+              "n": 192
+            },
+            "255": {
+              "accuracy": 0.020833,
+              "n": 192
+            }
+          },
+          "k": 8
+        },
+        "model": {
+          "accuracy": 0.005208,
+          "n": 1152,
+          "n_hits": 6,
+          "by_distance": {
+            "16": {
+              "accuracy": 0.005208,
+              "n": 192
+            },
+            "32": {
+              "accuracy": 0.0,
+              "n": 192
+            },
+            "64": {
+              "accuracy": 0.005208,
+              "n": 192
+            },
+            "128": {
+              "accuracy": 0.005208,
+              "n": 192
+            },
+            "192": {
+              "accuracy": 0.005208,
+              "n": 192
+            },
+            "255": {
+              "accuracy": 0.010417,
+              "n": 192
+            }
+          }
+        }
+      }
+    }
+  },
+  "controls": {
+    "induction_source_destroyed": {
+      "accuracy": 0.015625,
+      "n": 512,
+      "n_hits": 8,
+      "by_distance": {
+        "80": {
+          "accuracy": 0.039062,
+          "n": 128
+        },
+        "128": {
+          "accuracy": 0.015625,
+          "n": 128
+        },
+        "176": {
+          "accuracy": 0.0,
+          "n": 128
+        },
+        "224": {
+          "accuracy": 0.007812,
+          "n": 128
+        }
+      }
+    },
+    "copy_source_destroyed": {
+      "accuracy": 0.012486,
+      "n": 28672,
+      "n_hits": 358,
+      "by_distance": {
+        "32": {
+          "accuracy": 0.013184,
+          "n": 4096
+        },
+        "63": {
+          "accuracy": 0.010986,
+          "n": 4096
+        },
+        "95": {
+          "accuracy": 0.015625,
+          "n": 4096
+        },
+        "127": {
+          "accuracy": 0.013184,
+          "n": 4096
+        },
+        "159": {
+          "accuracy": 0.012207,
+          "n": 4096
+        },
+        "191": {
+          "accuracy": 0.009766,
+          "n": 4096
+        },
+        "223": {
+          "accuracy": 0.012451,
+          "n": 4096
+        }
+      }
+    }
+  },
+  "retention_curve": {
+    "distance_fixed": [
+      16,
+      32,
+      64,
+      128,
+      192,
+      255
+    ],
+    "keep_ds": [
+      16,
+      32,
+      64,
+      128,
+      192,
+      255
+    ],
+    "note": "复用 retention.recent_keep_mask（只保留最近 d 个位置的可见性）；源 (key,value) 对在 d < distance 时不可见 ⇒ 若模型真靠长程记忆，召回会掉到 chance。",
+    "curve": {
+      "16": {
+        "full": {
+          "accuracy": 0.007812,
+          "n": 128,
+          "n_hits": 1,
+          "by_distance": {
+            "16": {
+              "accuracy": 0.007812,
+              "n": 128
+            }
+          }
+        },
+        "by_keep_d": {
+          "16": {
+            "accuracy": 0.039062,
+            "n": 128,
+            "n_hits": 5,
+            "by_distance": {
+              "16": {
+                "accuracy": 0.039062,
+                "n": 128
+              }
+            }
+          },
+          "32": {
+            "accuracy": 0.015625,
+            "n": 128,
+            "n_hits": 2,
+            "by_distance": {
+              "16": {
+                "accuracy": 0.015625,
+                "n": 128
+              }
+            }
+          },
+          "64": {
+            "accuracy": 0.007812,
+            "n": 128,
+            "n_hits": 1,
+            "by_distance": {
+              "16": {
+                "accuracy": 0.007812,
+                "n": 128
+              }
+            }
+          },
+          "128": {
+            "accuracy": 0.007812,
+            "n": 128,
+            "n_hits": 1,
+            "by_distance": {
+              "16": {
+                "accuracy": 0.007812,
+                "n": 128
+              }
+            }
+          },
+          "192": {
+            "accuracy": 0.007812,
+            "n": 128,
+            "n_hits": 1,
+            "by_distance": {
+              "16": {
+                "accuracy": 0.007812,
+                "n": 128
+              }
+            }
+          },
+          "255": {
+            "accuracy": 0.007812,
+            "n": 128,
+            "n_hits": 1,
+            "by_distance": {
+              "16": {
+                "accuracy": 0.007812,
+                "n": 128
+              }
+            }
+          }
+        }
+      },
+      "32": {
+        "full": {
+          "accuracy": 0.0,
+          "n": 128,
+          "n_hits": 0,
+          "by_distance": {
+            "32": {
+              "accuracy": 0.0,
+              "n": 128
+            }
+          }
+        },
+        "by_keep_d": {
+          "16": {
+            "accuracy": 0.0,
+            "n": 128,
+            "n_hits": 0,
+            "by_distance": {
+              "32": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          },
+          "32": {
+            "accuracy": 0.015625,
+            "n": 128,
+            "n_hits": 2,
+            "by_distance": {
+              "32": {
+                "accuracy": 0.015625,
+                "n": 128
+              }
+            }
+          },
+          "64": {
+            "accuracy": 0.007812,
+            "n": 128,
+            "n_hits": 1,
+            "by_distance": {
+              "32": {
+                "accuracy": 0.007812,
+                "n": 128
+              }
+            }
+          },
+          "128": {
+            "accuracy": 0.0,
+            "n": 128,
+            "n_hits": 0,
+            "by_distance": {
+              "32": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          },
+          "192": {
+            "accuracy": 0.0,
+            "n": 128,
+            "n_hits": 0,
+            "by_distance": {
+              "32": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          },
+          "255": {
+            "accuracy": 0.0,
+            "n": 128,
+            "n_hits": 0,
+            "by_distance": {
+              "32": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          }
+        }
+      },
+      "64": {
+        "full": {
+          "accuracy": 0.015625,
+          "n": 128,
+          "n_hits": 2,
+          "by_distance": {
+            "64": {
+              "accuracy": 0.015625,
+              "n": 128
+            }
+          }
+        },
+        "by_keep_d": {
+          "16": {
+            "accuracy": 0.007812,
+            "n": 128,
+            "n_hits": 1,
+            "by_distance": {
+              "64": {
+                "accuracy": 0.007812,
+                "n": 128
+              }
+            }
+          },
+          "32": {
+            "accuracy": 0.0,
+            "n": 128,
+            "n_hits": 0,
+            "by_distance": {
+              "64": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          },
+          "64": {
+            "accuracy": 0.015625,
+            "n": 128,
+            "n_hits": 2,
+            "by_distance": {
+              "64": {
+                "accuracy": 0.015625,
+                "n": 128
+              }
+            }
+          },
+          "128": {
+            "accuracy": 0.015625,
+            "n": 128,
+            "n_hits": 2,
+            "by_distance": {
+              "64": {
+                "accuracy": 0.015625,
+                "n": 128
+              }
+            }
+          },
+          "192": {
+            "accuracy": 0.015625,
+            "n": 128,
+            "n_hits": 2,
+            "by_distance": {
+              "64": {
+                "accuracy": 0.015625,
+                "n": 128
+              }
+            }
+          },
+          "255": {
+            "accuracy": 0.015625,
+            "n": 128,
+            "n_hits": 2,
+            "by_distance": {
+              "64": {
+                "accuracy": 0.015625,
+                "n": 128
+              }
+            }
+          }
+        }
+      },
+      "128": {
+        "full": {
+          "accuracy": 0.0,
+          "n": 128,
+          "n_hits": 0,
+          "by_distance": {
+            "128": {
+              "accuracy": 0.0,
+              "n": 128
+            }
+          }
+        },
+        "by_keep_d": {
+          "16": {
+            "accuracy": 0.0,
+            "n": 128,
+            "n_hits": 0,
+            "by_distance": {
+              "128": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          },
+          "32": {
+            "accuracy": 0.0,
+            "n": 128,
+            "n_hits": 0,
+            "by_distance": {
+              "128": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          },
+          "64": {
+            "accuracy": 0.0,
+            "n": 128,
+            "n_hits": 0,
+            "by_distance": {
+              "128": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          },
+          "128": {
+            "accuracy": 0.0,
+            "n": 128,
+            "n_hits": 0,
+            "by_distance": {
+              "128": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          },
+          "192": {
+            "accuracy": 0.0,
+            "n": 128,
+            "n_hits": 0,
+            "by_distance": {
+              "128": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          },
+          "255": {
+            "accuracy": 0.0,
+            "n": 128,
+            "n_hits": 0,
+            "by_distance": {
+              "128": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          }
+        }
+      },
+      "192": {
+        "full": {
+          "accuracy": 0.023438,
+          "n": 128,
+          "n_hits": 3,
+          "by_distance": {
+            "192": {
+              "accuracy": 0.023438,
+              "n": 128
+            }
+          }
+        },
+        "by_keep_d": {
+          "16": {
+            "accuracy": 0.023438,
+            "n": 128,
+            "n_hits": 3,
+            "by_distance": {
+              "192": {
+                "accuracy": 0.023438,
+                "n": 128
+              }
+            }
+          },
+          "32": {
+            "accuracy": 0.023438,
+            "n": 128,
+            "n_hits": 3,
+            "by_distance": {
+              "192": {
+                "accuracy": 0.023438,
+                "n": 128
+              }
+            }
+          },
+          "64": {
+            "accuracy": 0.023438,
+            "n": 128,
+            "n_hits": 3,
+            "by_distance": {
+              "192": {
+                "accuracy": 0.023438,
+                "n": 128
+              }
+            }
+          },
+          "128": {
+            "accuracy": 0.023438,
+            "n": 128,
+            "n_hits": 3,
+            "by_distance": {
+              "192": {
+                "accuracy": 0.023438,
+                "n": 128
+              }
+            }
+          },
+          "192": {
+            "accuracy": 0.023438,
+            "n": 128,
+            "n_hits": 3,
+            "by_distance": {
+              "192": {
+                "accuracy": 0.023438,
+                "n": 128
+              }
+            }
+          },
+          "255": {
+            "accuracy": 0.023438,
+            "n": 128,
+            "n_hits": 3,
+            "by_distance": {
+              "192": {
+                "accuracy": 0.023438,
+                "n": 128
+              }
+            }
+          }
+        }
+      },
+      "255": {
+        "full": {
+          "accuracy": 0.007812,
+          "n": 128,
+          "n_hits": 1,
+          "by_distance": {
+            "255": {
+              "accuracy": 0.007812,
+              "n": 128
+            }
+          }
+        },
+        "by_keep_d": {
+          "16": {
+            "accuracy": 0.0,
+            "n": 128,
+            "n_hits": 0,
+            "by_distance": {
+              "255": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          },
+          "32": {
+            "accuracy": 0.0,
+            "n": 128,
+            "n_hits": 0,
+            "by_distance": {
+              "255": {
+                "accuracy": 0.0,
+                "n": 128
+              }
+            }
+          },
+          "64": {
+            "accuracy": 0.007812,
+            "n": 128,
+            "n_hits": 1,
+            "by_distance": {
+              "255": {
+                "accuracy": 0.007812,
+                "n": 128
+              }
+            }
+          },
+          "128": {
+            "accuracy": 0.007812,
+            "n": 128,
+            "n_hits": 1,
+            "by_distance": {
+              "255": {
+                "accuracy": 0.007812,
+                "n": 128
+              }
+            }
+          },
+          "192": {
+            "accuracy": 0.007812,
+            "n": 128,
+            "n_hits": 1,
+            "by_distance": {
+              "255": {
+                "accuracy": 0.007812,
+                "n": 128
+              }
+            }
+          },
+          "255": {
+            "accuracy": 0.007812,
+            "n": 128,
+            "n_hits": 1,
+            "by_distance": {
+              "255": {
+                "accuracy": 0.007812,
+                "n": 128
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "mutation": {
+    "task": "var_recall",
+    "distance": 64,
+    "chance": 0.015625,
+    "accuracy_true_answers": 0.007812,
+    "accuracy_shuffled_answers": 0.015625,
+    "dropped_to_chance": true
+  },
+  "criteria": {
+    "a_local_prior_resistance": {
+      "assoc_recall": {
+        "task": "assoc_recall",
+        "chance": 0.015625,
+        "ceiling": 0.046875,
+        "local_prior_accuracy": 0.019252,
+        "passed": true,
+        "n": 3584,
+        "k": 8,
+        "by_distance": {
+          "225": {
+            "accuracy": 0.023438,
+            "n": 128
+          },
+          "227": {
+            "accuracy": 0.007812,
+            "n": 128
+          },
+          "229": {
+            "accuracy": 0.015625,
+            "n": 128
+          },
+          "231": {
+            "accuracy": 0.03125,
+            "n": 128
+          },
+          "233": {
+            "accuracy": 0.046875,
+            "n": 128
+          },
+          "235": {
+            "accuracy": 0.0,
+            "n": 128
+          },
+          "237": {
+            "accuracy": 0.007812,
+            "n": 128
+          },
+          "239": {
+            "accuracy": 0.0625,
+            "n": 128
+          },
+          "241": {
+            "accuracy": 0.015625,
+            "n": 256
+          },
+          "243": {
+            "accuracy": 0.019531,
+            "n": 256
+          },
+          "245": {
+            "accuracy": 0.023438,
+            "n": 256
+          },
+          "247": {
+            "accuracy": 0.015625,
+            "n": 256
+          },
+          "249": {
+            "accuracy": 0.015625,
+            "n": 384
+          },
+          "251": {
+            "accuracy": 0.013021,
+            "n": 384
+          },
+          "253": {
+            "accuracy": 0.013021,
+            "n": 384
+          },
+          "255": {
+            "accuracy": 0.023438,
+            "n": 384
+          }
+        }
+      },
+      "induction": {
+        "task": "induction",
+        "chance": 0.015625,
+        "ceiling": 0.046875,
+        "local_prior_accuracy": 0.009766,
+        "passed": true,
+        "n": 512,
+        "k": 8,
+        "by_distance": {
+          "80": {
+            "accuracy": 0.0,
+            "n": 128
+          },
+          "128": {
+            "accuracy": 0.007812,
+            "n": 128
+          },
+          "176": {
+            "accuracy": 0.007812,
+            "n": 128
+          },
+          "224": {
+            "accuracy": 0.023438,
+            "n": 128
+          }
+        }
+      },
+      "copy": {
+        "task": "copy",
+        "chance": 0.015625,
+        "ceiling": 0.046875,
+        "local_prior_accuracy": 0.015904,
+        "passed": true,
+        "n": 28672,
+        "k": 8,
+        "by_distance": {
+          "32": {
+            "accuracy": 0.015381,
+            "n": 4096
+          },
+          "63": {
+            "accuracy": 0.016113,
+            "n": 4096
+          },
+          "95": {
+            "accuracy": 0.014893,
+            "n": 4096
+          },
+          "127": {
+            "accuracy": 0.012939,
+            "n": 4096
+          },
+          "159": {
+            "accuracy": 0.02002,
+            "n": 4096
+          },
+          "191": {
+            "accuracy": 0.016113,
+            "n": 4096
+          },
+          "223": {
+            "accuracy": 0.015869,
+            "n": 4096
+          }
+        }
+      },
+      "var_recall": {
+        "task": "var_recall",
+        "chance": 0.015625,
+        "ceiling": 0.046875,
+        "local_prior_accuracy": 0.021701,
+        "passed": true,
+        "n": 1152,
+        "k": 8,
+        "by_distance": {
+          "16": {
+            "accuracy": 0.03125,
+            "n": 192
+          },
+          "32": {
+            "accuracy": 0.010417,
+            "n": 192
+          },
+          "64": {
+            "accuracy": 0.010417,
+            "n": 192
+          },
+          "128": {
+            "accuracy": 0.020833,
+            "n": 192
+          },
+          "192": {
+            "accuracy": 0.036458,
+            "n": 192
+          },
+          "255": {
+            "accuracy": 0.020833,
+            "n": 192
+          }
+        }
+      }
+    },
+    "a_all_pass": true,
+    "b_trunk_baseline_accuracies": {
+      "assoc_recall": 0.006138,
+      "induction": 0.058594,
+      "copy": 0.133336,
+      "var_recall": 0.005208
+    },
+    "b_trunk_var_recall_by_distance": {
+      "16": {
+        "accuracy": 0.005208,
+        "n": 192
+      },
+      "32": {
+        "accuracy": 0.0,
+        "n": 192
+      },
+      "64": {
+        "accuracy": 0.005208,
+        "n": 192
+      },
+      "128": {
+        "accuracy": 0.005208,
+        "n": 192
+      },
+      "192": {
+        "accuracy": 0.005208,
+        "n": 192
+      },
+      "255": {
+        "accuracy": 0.010417,
+        "n": 192
+      }
+    },
+    "c_retention_compatible": true,
+    "c_reused": "tools.evalkit.retention.recent_keep_mask"
+  },
+  "code": {
+    "run_py_sha256": "267299c20e59191ed23affcc278d9688a3ab912b9fc6ca7a5b73fcdfc69cadb6",
+    "longrange_tasks_py_sha256": "52ac71217538ea19e71151c37be82d96ebae9f80a2a96b85ca66e1ebbe927aed",
+    "tests_sha256": "64270e79836655942ac92c6b3804341cdd0c049c825b2002bdd28763aa840568",
+    "retention_py_sha256": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502"
+  },
+  "cost": {
+    "wall_minutes": 0.18,
+    "wall_seconds": 10.83,
+    "peak_mem_mib": 390.5,
+    "device": "cuda"
+  }
+}

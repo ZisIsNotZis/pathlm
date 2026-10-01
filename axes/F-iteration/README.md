@@ -29,7 +29,7 @@ F1 迭代对象 · F2 回传通道 · F3 停止条件 · F4 训练信号
 | [`F1-iteration-object`](F1-iteration-object/README.md) | ◐ partial | 前两项已收口；后四项零经验。 | latent retry C 族 1.6535–1.6856 vs B0 1… |
 | [`F2-return-channel`](F2-return-channel/README.md) | ✅ judged | 直接回传是固定点（结构性 no-op）；软回传有 OOD 污染；离散回传必须门控。 | 通道税在 F1 的 C 族内（+0.146…+0.178） |
 | [`F3-stopping`](F3-stopping/README.md) | ✅ judged | 选择性问题（愿景核心命题）获证；预算求解器端到端建成。 | 分配器本身不额外加税（单轮 mixture == overwrite，设计保证） |
-| [`F4-training-signal`](F4-training-signal/README.md) | ✅ judged | consistency loss 中性；重建/sufficiency 是唯一无人占位、且是压缩可恢复性的必要信号。 | consistency loss 中性（IX4 1.6589 ≈ C1 1.… |
+| [`F4-training-signal`](F4-training-signal/README.md) | ✅ judged | consistency loss 中性；**重建/sufficiency 损失是压缩可恢复性的关键信号，但业界已有成熟前例（非空白格）**——我们的增量只能是「13M + 局部… | consistency loss 中性（IX4 1.6589 ≈ C1 1.… |
 
 <!-- AUTO:end -->
 

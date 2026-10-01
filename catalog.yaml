@@ -420,6 +420,8 @@ grids:
         - "保留腿三规则最大差仅 **+1.71pp**（门槛 10pp）；且该门槛在本配置下用经验上界看也不可达（子桶已见删后召回升高）"
         - "被删集合重叠度 Jaccard(distance↔lru) = 0.034/0.270/0.472 ⇒ 三种规则**确实删得不一样**，却没换来收益"
         - "独立旁证「低损伤 ≠ 保住了」：`lru:k=256` bpc 伤害最低（+0.0885）但召回崩 4.5→22.8pp"
+        - "**方向修正（ticket 34-B/D）：用户的「LRU 式增量搬运」更严谨的对应物不是「驱逐调度」（本格已测负），而是「写入算子」——delta 规则 `S ← S + β(v − Sk)kᵀ` = 字面意义的「只搬上次没搬的」**（`记忆·未核` + 本地形式化）。本格结论只覆盖「驱逐调度」这一子形式，**不得**推广为「LRU 思想不可能」；delta 写入比 plain 多一次 matvec ⇒ 不得假装同 FLOPs（SCHEMA §15）"
+        - "**C 线情报（`记忆·未核`）**：跨层 KV 共享业界已有占位（CLA/YOCO/MLKV，均均匀模式）；**「层特异 KV 头数 / 不等共享」与「同一 KV 字节预算下的最优分配」未找到直接前例**（可能真空白，也可能检索不到）⇒ 要做先核证"
         - "未测：流式（只看过去）LRU、>13.5M/T=256 的规模；本实验统计量含整窗未来查询，**偏向** lru/content ⇒ 负结论偏强"
       evidence: ["axes/A-mixing/A10-compression-trigger/experiments/2615-priority-shootout-13m/analysis.md @ticket32"]
     notes: |
@@ -899,7 +901,7 @@ grids:
     judge: 目标量（组合一致性 / 重建质量）+ 税 + 是否反噬主任务
     cost: 13M 单臂 ~25 min
     status: judged
-    verdict: consistency loss 中性；重建/sufficiency 是唯一无人占位、且是压缩可恢复性的必要信号。
+    verdict: consistency loss 中性；**重建/sufficiency 损失是压缩可恢复性的关键信号，但业界已有成熟前例（非空白格）**——我们的增量只能是「13M + 局部先验抗性任务 + 单因素受控」。
     local:
       tax: "consistency loss 中性（IX4 1.6589 ≈ C1 1.6549）；BF16 下 reward 类损失两次发散 → 必须 float32 + pre-step grad-norm gate"
       benefit: "M0 微小模型上 consistency 收紧估计（cosine 0.9525→0.9882）"
@@ -909,8 +911,14 @@ grids:
       evidence: [".scratch/02-engine-m0/evidence/REPORT.md @27418ae", ".scratch/04-m1-runs/evidence @e38349f"]
     deps: [H3-composition, A9-old-info-retention, C6-depth-supervision]
     notes: |
-      空白格：sufficiency/重建 loss 是「右移压缩」能成立的唯一训练信号——
-      模型必须被惩罚「编造自己丢掉的内容」。
+      **修正（ticket 34-B 情报，2026-10-01）：这条路业界已有成熟前例，不是空白格。**
+      压缩/重建类训练信号：Compressive Transformer（2019 的 compression loss）、
+      AutoCompressors / ICAE / RECOMP / 500xCompressor 类重建或蒸馏目标；DMC 报告 KV 压缩
+      需配继续预训练。（均标 `记忆·未核`——本环境联网不可用，需查原文；
+      见 `axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md`。）
+      ⇒ 我们的增量只能是 **13M + 局部先验抗性任务（SCHEMA §19）+ 单因素受控 + 源对照臂**，
+      **不得**再声称「无人占位」。
+      （业界多数压缩工作不报「可重建性」⇒ 带检索腿的判据仍是我们的增量。）
 
   # ==================== M1
   - id: M1-carrier-type
@@ -921,13 +929,16 @@ grids:
     judge: 保留（needle 消融）+ 内存/步长 + 吞吐
     cost: 13M 单臂 ~25–40 min
     status: partial
-    verdict: 只有 KV 载体；其余零经验，但载体是「能否丢/重算」的决定因素。
+    verdict: 只有 KV 载体；**ticket 34 造出「不靠语言先验」的长程天平并给出关键诊断：我们 13M 主干的长程能力是「分任务型」的——关联回忆 0.0061、变距离回忆 0.005–0.010（≈或低于 chance）⇒ 检索类彻底缺席；复制 0.1333（距离 223 仍 0.118，毁源→0.0125）与 induction 0.0586（毁源→chance）⇒ 真实但弱。**载体是「能否丢/重算」的决定因素。
     local:
       tax: "—（KV 为基底）"
       benefit: "per-layer KV + 位置散点填充实现了「变深度 + 不重 prefill」（与并行 forward 逐位一致）"
       failure:
         - "早期缓存 bug：逐位置早退导致 per-layer cache 长度失步（已修为 per-layer 位置列表；持续单测）"
-      evidence: [".scratch/03-engine-m1/issues @e38349f"]
+        - "**长程检索能力缺席（ticket 34-A 仪器实测）**：关联回忆 0.0061、变距离回忆六档 0.005–0.010，均≈或低于 chance 且无距离依赖 ⇒ 此前所有「没搬」读数，至少相当部分来自**模型本来就没有该能力**，而非「机制搬不动」（SCHEMA §19）"
+        - "**仪器落地（`tools/evalkit/longrange_tasks.py`）**：四任务 + chance/局部先验基线 + 距离曲线 + `recall_under_visibility`（复用 retention 掩码）+ 毁源对照臂；自证：局部先验基线 0.0098–0.0217（chance 上限 0.0469）、毁源/打乱答案均掉回 chance、前向逐位一致"
+        - "不确定项：induction 每点 n=128 不支持斜率；assoc/var 低分含分布外成分（**不得**外推成「训练也学不会」）；copy 13% 的机制未定位"
+      evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @ticket34", "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @ticket34"]
     deps: [M2-carrier-compression, A9-old-info-retention, F1-iteration-object]
 
   # ==================== M2
@@ -1241,7 +1252,7 @@ grids:
       tax: "—"
       benefit: "无 final LayerNorm 使 logits = h·Eᵀ 语义成立（readout scale 由 U 学）"
       failure: []
-      evidence: [".scratch/03-engine-m1/issues @e38349f"]
+      evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @ticket34", "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @ticket34"]
 
   - id: P5-loss-weighting
     axis: P

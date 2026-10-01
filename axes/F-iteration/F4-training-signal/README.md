@@ -8,7 +8,7 @@ judge: "目标量（组合一致性 / 重建质量）+ 税 + 是否反噬主任�
 cost: "13M 单臂 ~25 min"
 tax: "consistency loss 中性（IX4 1.6589 ≈ C1 1.6549）；BF16 下 reward 类损失两次发散 → 必须 float32 + pre-step grad-norm gate"
 benefit: "M0 微小模型上 consistency 收紧估计（cosine 0.9525→0.9882）"
-verdict: "consistency loss 中性；重建/sufficiency 是唯一无人占位、且是压缩可恢复性的必要信号。"
+verdict: "consistency loss 中性；**重建/sufficiency 损失是压缩可恢复性的关键信号，但业界已有成熟前例（非空白格）**——我们的增量只能是「13M + 局部先验抗性任务 + 单因素受控」。"
 deps: ["H3-composition", "A9-old-info-retention", "C6-depth-supervision"]
 evidence: [".scratch/02-engine-m0/evidence/REPORT.md @27418ae", ".scratch/04-m1-runs/evidence @e38349f"]
 ---
@@ -19,7 +19,7 @@ evidence: [".scratch/02-engine-m0/evidence/REPORT.md @27418ae", ".scratch/04-m1-
 
 > 轴：**F 迭代** ｜ 状态：**✅ judged**
 
-> **判读**：consistency loss 中性；重建/sufficiency 是唯一无人占位、且是压缩可恢复性的必要信号。
+> **判读**：consistency loss 中性；**重建/sufficiency 损失是压缩可恢复性的关键信号，但业界已有成熟前例（非空白格）**——我们的增量只能是「13M + 局部先验抗性任务 + 单因素受控」。
 
 ## 1. 命题
 
@@ -42,7 +42,7 @@ evidence: [".scratch/02-engine-m0/evidence/REPORT.md @27418ae", ".scratch/04-m1-
 
 - **税**：consistency loss 中性（IX4 1.6589 ≈ C1 1.6549）；BF16 下 reward 类损失两次发散 → 必须 float32 + pre-step grad-norm gate
 - **收益**：M0 微小模型上 consistency 收紧估计（cosine 0.9525→0.9882）
-- **判读**：consistency loss 中性；重建/sufficiency 是唯一无人占位、且是压缩可恢复性的必要信号。
+- **判读**：consistency loss 中性；**重建/sufficiency 损失是压缩可恢复性的关键信号，但业界已有成熟前例（非空白格）**——我们的增量只能是「13M + 局部先验抗性任务 + 单因素受控」。
 
 ## 5. 失败路径与原因
 
@@ -70,8 +70,14 @@ evidence: [".scratch/02-engine-m0/evidence/REPORT.md @27418ae", ".scratch/04-m1-
 
 ## 备注
 
-空白格：sufficiency/重建 loss 是「右移压缩」能成立的唯一训练信号——
-模型必须被惩罚「编造自己丢掉的内容」。
+**修正（ticket 34-B 情报，2026-10-01）：这条路业界已有成熟前例，不是空白格。**
+压缩/重建类训练信号：Compressive Transformer（2019 的 compression loss）、
+AutoCompressors / ICAE / RECOMP / 500xCompressor 类重建或蒸馏目标；DMC 报告 KV 压缩
+需配继续预训练。（均标 `记忆·未核`——本环境联网不可用，需查原文；
+见 `axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md`。）
+⇒ 我们的增量只能是 **13M + 局部先验抗性任务（SCHEMA §19）+ 单因素受控 + 源对照臂**，
+**不得**再声称「无人占位」。
+（业界多数压缩工作不报「可重建性」⇒ 带检索腿的判据仍是我们的增量。）
 
 <!-- AUTO:end -->
 

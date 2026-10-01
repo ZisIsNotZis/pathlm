@@ -69,7 +69,7 @@
 | [`F1-iteration-object`](axes/F-iteration/F1-iteration-object/README.md) · 迭代对象 | ◐ partial | 前两项已收口；后四项零经验。 |
 | [`F2-return-channel`](axes/F-iteration/F2-return-channel/README.md) · 回传通道 | ✅ judged | 直接回传是固定点（结构性 no-op）；软回传有 OOD 污染；离散回传必须门控。 |
 | [`F3-stopping`](axes/F-iteration/F3-stopping/README.md) · 停止条件 | ✅ judged | 选择性问题（愿景核心命题）获证；预算求解器端到端建成。 |
-| [`F4-training-signal`](axes/F-iteration/F4-training-signal/README.md) · 迭代/重复的训练信号 | ✅ judged | consistency loss 中性；重建/sufficiency 是唯一无人占位、且是压缩可恢复性的必要信号。 |
+| [`F4-training-signal`](axes/F-iteration/F4-training-signal/README.md) · 迭代/重复的训练信号 | ✅ judged | consistency loss 中性；**重建/sufficiency 损失是压缩可恢复性的关键信号，但业界已有成熟前例（非空白格）**——我们的增量只能是「13M + 局部先验抗性任务 + 单… |
 
 ## M · 状态载体（3 格）
 
@@ -77,7 +77,7 @@
 
 | 格子 | 状态 | 判读 |
 |---|---|---|
-| [`M1-carrier-type`](axes/M-carrier/M1-carrier-type/README.md) · 状态载体类型 | ◐ partial | 只有 KV 载体；其余零经验，但载体是「能否丢/重算」的决定因素。 |
+| [`M1-carrier-type`](axes/M-carrier/M1-carrier-type/README.md) · 状态载体类型 | ◐ partial | 只有 KV 载体；**ticket 34 造出「不靠语言先验」的长程天平并给出关键诊断：我们 13M 主干的长程能力是「分任务型」的——关联回忆 0.0061、变距离回忆 0.005–0.010（… |
 | [`M2-carrier-compression`](axes/M-carrier/M2-carrier-compression/README.md) · 载体压缩 | ◐ partial | 驱逐已测（价格见 A3）；量化/摘要/低秩零经验。 |
 | [`M3-cross-step-assumption`](axes/M-carrier/M3-cross-step-assumption/README.md) · 跨步假设 | ✅ judged | 有界内存的价签已测两档：**窗口 192 的训练税 −0.0028（近零）**、窗口 32 为 +0.0866；但 192 档**本就没有头寸**（未重训限制到 192 只 +0.0029），真正… |
 
