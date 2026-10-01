@@ -34,6 +34,8 @@ LINEAR_ATTN_EPS = 1e-6
 #: 线性注意力训练实装的分块大小（chunk）缺省。它是**实现细节**（单测钉住：改
 #: chunk 只改浮点累加顺序，不改语义），不是第二个干预档。
 DEFAULT_LINEAR_CHUNK = 64
+#: 写入通道（契约 U）状态扫描的分块大小缺省（实现细节，同上）。
+DEFAULT_CARRY_CHUNK = 64
 
 
 @dataclass
@@ -131,6 +133,22 @@ class DepthARConfig:
     # topology="sequential" 下开放（退出/填充/并行接线下的 KV 语义未定义，
     # 单因素）。n_kv_heads == n_heads 等价于缺省（同样走 `Block`）。
     n_kv_heads: int | None = None
+    # 显式写入通道（ticket 35 契约 U，M1 「信息能否往右搬」的直接检验）。
+    # 唯一变量 = 写入规则（U1 vs U2）或「有无通道」（U0 vs U1）：
+    #   None（缺省）= 无通道，走 stock `Block`，逐位还原 v1；
+    #   "plain"     = 每层一个 dih×dih 记忆槽 S，逐位置**累加写** `S ← S + β v k̂ᵀ`；
+    #   "delta"     = 同形状/同张量的**残差写** `S ← S(I − βk̂k̂ᵀ) + βvk̂ᵀ`。
+    # U1/U2 共用同一组张量（写门 carry_w/carry_b + 读出增益 carry_scale）⇒
+    # **逐位等参数**（单测钉住），唯一差别只有 `_carry_chunk_plain` /
+    # `_carry_chunk_delta` 两个更新式。读出增益**单边零**初始化 ⇒ 起步严格恒等
+    # 于无通道基线且非鞍点（SCHEMA §10）。
+    # 通道与本仓的注意力窗口（train_window）**可以同时开**：窗口制造「必须搬」的
+    # 需求、通道提供搬的路径（这正是本契约的干预）。其余干预（attn_sparse_k /
+    # attn_linear / n_kv_heads）与之互斥（单因素：一次只改一个因素）。
+    carry_rule: str | None = None
+    # 状态扫描的分块大小（实现细节：只改浮点累加顺序，不改语义；默认 64 ⇒
+    # T=256 每层 4 个块）。与 `linear_chunk` 同款定位，不是第二个干预档。
+    carry_chunk: int = DEFAULT_CARRY_CHUNK
 
 
 TOPOLOGIES = ("sequential", "parallel", "parallel-dual-ln", "dense")
@@ -1048,6 +1066,495 @@ def attn_sparse_probe(model: "DepthARModel", eval_arr, n_batches: int = 2,
     return attn_sparse_liveness(model, stats)
 
 
+# ---------- 显式写入通道（ticket 35 契约 U：把信息往右搬的「通道」） ----------
+
+#: 写入规则（契约 U 的三档）：
+#: - `None`  = 无通道（U0 基线）；
+#: - `"plain"` = 逐位置**累加写** `S ← S + β v k̂ᵀ`（U1）；
+#: - `"delta"` = **残差写** `S ← S(I − β k̂ k̂ᵀ) + β v k̂ᵀ`（U2；等价于设计文档的
+#:   `S ← S + β(v − S k̂)k̂ᵀ`，即「只搬上次没搬的」）。
+#: 三档共用同一组张量与同一个 β 门 ⇒ U1/U2 **逐位等参数**，唯一变量 = 写入规则。
+CARRY_RULES = (None, "plain", "delta")
+
+def carry_norm_keys(k: torch.Tensor) -> torch.Tensor:
+    """写入键的 L2 归一化 `k̂ = k / ‖k‖`（契约 U 的公式里 `k̂`）。
+
+    这是**实现细节**（两臂同款）：delta 的遗忘因子是 `(I − β k̂k̂ᵀ)`，若用未归一化的
+    k，`β‖k‖² > 1` 时该因子会出现负特征值 ⇒ 状态自激发散。归一化后 `0 ≤ β ≤ 1`、
+    `k̂ᵀk̂ = 1` ⇒ 遗忘因子半正定、谱半径 ≤ 1。plain 臂同款归一化 ⇒ 两臂的差异
+    只剩「有无残差修正项」这一条。
+    """
+    return F.normalize(_carry_cast(k), dim=-1)
+
+
+def _carry_cast(t: torch.Tensor) -> torch.Tensor:
+    """把小矩阵上的计算升到 fp32（bf16/fp16 在三角求解与状态累加上不稳）；
+    fp64 输入保持 fp64 —— 单测用 fp64 把「分块 == 逐位置」钉到 1e-14，
+    把代数错与浮点错分开。"""
+    return t if t.dtype == torch.float64 else t.float()
+
+
+def carry_scan_sequential(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
+                          beta: torch.Tensor, rule: str = "delta"
+                          ) -> tuple[torch.Tensor, dict]:
+    """**逐位置参考实现**（O(T) 次 Python 迭代，只用于测试与可读性）。
+
+    `q,k,v`：`[B,H,T,dh]`；`beta`：`[B,H,T]`；状态 `S ∈ R^{dh×dh}`，读出 `y_t = S_t q_t`。
+    位置 t 的写入只用 `k_t, v_t`（来自 token t 自己）⇒ 读出只用 `S_{≤t}`，**严格因果**。
+
+    - `plain`：`S_t = S_{t−1} + β_t v_t k̂_tᵀ`（累加，无遗忘）；
+    - `delta`：`S_t = S_{t−1} + β_t (v_t − S_{t−1} k̂_t) k̂_tᵀ`（只写残差）。
+    """
+    if rule not in ("plain", "delta"):
+        raise ValueError(f"rule must be 'plain' or 'delta', got {rule!r}")
+    q, k, v, beta = (_carry_cast(t) for t in (q, k, v, beta))
+    B, H, T, dh = q.shape
+    S = torch.zeros(B, H, dh, dh, dtype=q.dtype, device=q.device)
+    ys = []
+    for t in range(T):
+        kt = carry_norm_keys(k[:, :, t])
+        vt = v[:, :, t]
+        bt = beta[:, :, t].unsqueeze(-1)                     # [B,H,1]
+        if rule == "plain":
+            S = S + bt.unsqueeze(-1) * (vt.unsqueeze(-1) @ kt.unsqueeze(-2))
+        else:
+            residual = vt - (S @ kt.unsqueeze(-1)).squeeze(-1)
+            S = S + bt.unsqueeze(-1) * (residual.unsqueeze(-1)
+                                        @ kt.unsqueeze(-2))
+        ys.append((S @ q[:, :, t].unsqueeze(-1)).squeeze(-1))
+    y = torch.stack(ys, dim=2)
+    return y, {"state_fro": S.float().norm(dim=(-2, -1)).mean(),
+               "beta_mean": beta.mean()}
+
+
+def _carry_chunk_plain(qc, kc, vc, bc, S):
+    """一个块的 plain 累加写的精确并行形式（块内一次算出，块间串行）：
+    `y_i = S_0 q_i + Σ_{j≤i, j∈块} β_j (k̂_j·q_i) v_j`，`S_out = S_0 + Σ_j β_j v_j k̂_jᵀ`。"""
+    B, H, C, dh = qc.shape
+    kh = carry_norm_keys(kc)
+    Gq = kh @ qc.transpose(-1, -2)                     # [j,i] = k̂_j·q_i
+    keep = torch.triu(torch.ones(C, C, dtype=torch.bool, device=qc.device))
+    Om = (Gq * bc.unsqueeze(-1)).masked_fill(~keep, 0.0)
+    y_intra = Om.transpose(-1, -2) @ vc
+    y_state = qc @ S.transpose(-1, -2)
+    S_out = S + (bc.unsqueeze(-1) * vc).transpose(-1, -2) @ kh
+    return S_out, y_state + y_intra
+
+
+def _carry_chunk_delta(qc, kc, vc, bc, S):
+    """一个块的 **delta 规则精确并行形式**（WY 表示，O(C³) 三角求解）。
+
+    推导（行约定：`y = S q`、`S ← S(I − βk̂k̂ᵀ) + βvk̂ᵀ`；块内 token 1..C）：
+
+    1. `M[i,j] = β_j k̂_i·k̂_j (j>i)`、`T = (I+M)^{-1}`（单位上三角）、`A = diag(β) T`；
+    2. 块内累加的等价写法：`S_out = S_0 + Σ_j (ũ_j − S_0 w_j) k̂_jᵀ`，
+       其中 `ũ = Aᵀ v`、`w = Aᵀ k̂`；
+    3. 逐位置读出：`y_i = S_0 s_i + Σ_{j≤i} Ω[j,i] v_j`，
+       `s_i = q_i − Σ_j (A·triu(K̂Qᵀ))[j,i] k̂_j`、
+       `Ω = diag(β)(K̂Qᵀ − (I−T)·triu(K̂Qᵀ))` 再按 `j ≤ i` 掩码。
+
+    三角结构保证**只用到 ≤ i 的 token**（`M` 严格上三角 ⇒ `T` 的第 (j,i) 元只依赖
+    `M[j..i, j..i]`），因此 `y_i` 只用 `S_{≤i}`（单测 `test_carry_channel_is_causal_only`
+    与变异验证 M1/M2 钉住）。数值一致性由 `test_carry_delta_chunked_matches_sequential`
+    对 `carry_scan_sequential` 逐位（fp64 1e-14 内）钉住。
+    """
+    B, H, C, dh = qc.shape
+    kh = carry_norm_keys(kc)
+    Gk = kh @ kh.transpose(-1, -2)
+    Gq = kh @ qc.transpose(-1, -2)
+    eye = torch.eye(C, dtype=qc.dtype, device=qc.device)
+    up = torch.triu(torch.ones(C, C, dtype=torch.bool, device=qc.device), 1)
+    keep = torch.triu(torch.ones(C, C, dtype=torch.bool, device=qc.device))
+    M = (Gk * bc.unsqueeze(-2)).masked_fill(~up, 0.0)
+    E = eye.expand(B, H, C, C)
+    Tv = torch.linalg.solve_triangular(E + M, E, upper=True, unitriangular=True)
+    A = Tv * bc.unsqueeze(-1)                          # A[i,j] = β_i T[i,j]
+    Gq_keep = Gq.masked_fill(~keep, 0.0)               # 只留 k̂_j·q_i（j ≤ i）
+    Om = ((Gq - (E - Tv) @ Gq_keep) * bc.unsqueeze(-1)).masked_fill(~keep, 0.0)
+    y_intra = Om.transpose(-1, -2) @ vc
+    Sq = qc - (A @ Gq_keep).transpose(-1, -2) @ kh
+    y_state = Sq @ S.transpose(-1, -2)
+    U_ = A.transpose(-1, -2) @ vc
+    W_ = A.transpose(-1, -2) @ kh
+    S_out = S + U_.transpose(-1, -2) @ kh - S @ (W_.transpose(-1, -2) @ kh)
+    return S_out, y_state + y_intra
+
+
+def carry_scan_chunked(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
+                       beta: torch.Tensor, rule: str = "delta",
+                       chunk: int = DEFAULT_CARRY_CHUNK
+                       ) -> tuple[torch.Tensor, dict]:
+    """训练/评测用的**分块实装**：块内并行、块间串行（T/chunk 次迭代）。
+
+    返回 `(y, tele)`；`tele` 是每 200 步落盘的活性量（SCHEMA §10），全部以
+    **0 维张量**返回（前向里不做 `.item()`：12 层 × 多次设备同步在共享卡上会
+    变成同步风暴，同 `linear_attn_chunked` 的教训）。
+    """
+    if rule not in ("plain", "delta"):
+        raise ValueError(f"rule must be 'plain' or 'delta', got {rule!r}")
+    q, k, v, beta = (_carry_cast(t) for t in (q, k, v, beta))
+    B, H, T, dh = q.shape
+    C = min(int(chunk), T)
+    if C < 1:
+        raise ValueError(f"chunk must be >= 1, got {chunk}")
+    S = torch.zeros(B, H, dh, dh, dtype=q.dtype, device=q.device)
+    ys, wr, fro = [], [], []
+    n_chunks = 0
+    for c0 in range(0, T, C):
+        c1 = min(c0 + C, T)
+        chunk_fn = (_carry_chunk_plain if rule == "plain" else _carry_chunk_delta)
+        S_in = S
+        S, yc = chunk_fn(q[:, :, c0:c1], k[:, :, c0:c1], v[:, :, c0:c1],
+                         beta[:, :, c0:c1], S_in)
+        ys.append(yc)
+        n_chunks += 1
+        # ‖ΔS‖/‖S‖ 只在**非首块**上有定义：第一块的 S_in = 0 ⇒ 比值无定义（会退化成
+        # clamp 的伪大数，实测把均值抬到 1e6 量级、完全不可解释）。因此这个活性量
+        # 是「块 2..n 的相对改动」的均值，并把参与块数一起落盘（口径显式）。
+        if c0 > 0:
+            dS = (S - S_in).float().norm(dim=(-2, -1))
+            s_norm = S_in.float().norm(dim=(-2, -1))
+            wr.append((dS / s_norm.clamp_min(1e-6)).mean())
+        fro.append(S.float().norm(dim=(-2, -1)).mean())
+    y = torch.cat(ys, dim=2)
+    tele = {
+        "state_fro": fro[-1],
+        "beta_mean": beta.mean(),
+        "write_rel": (torch.stack(wr).mean() if wr else fro[-1] * 0.0),
+        "write_rel_chunks": float(len(wr)), "n_chunks": float(n_chunks),
+        "read_norm": y.float().norm(dim=-1).mean(),
+    }
+    return y, tele
+
+
+def carry_scan(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
+               beta: torch.Tensor, rule: str = "delta",
+               chunk: int | None = DEFAULT_CARRY_CHUNK
+               ) -> tuple[torch.Tensor, dict]:
+    """通道状态扫描的统一入口：`chunk is None` ⇒ 逐位置参考实现（测试用）。"""
+    if chunk is None:
+        return carry_scan_sequential(q, k, v, beta, rule)
+    return carry_scan_chunked(q, k, v, beta, rule, chunk)
+
+
+class CarryChannel(nn.Module):
+    """**单共享记忆槽**（契约 U 的「极简形式」）：一个 `S ∈ R^{dh×dh}`/头的状态，
+    在**输入流**（`_input_states` 的 h₀）上按位置因果写入，读出交给每一层的注意力
+    输出使用。
+
+    为什么是「单共享」而不是「每层一个」（显式实现决策，见 `analysis.md` §实现决策）：
+    per-layer 12 个状态的实装实测 U1 207 ms/step、U2 396–425 ms/step（基线 42–51），
+    成本被算子在 CUDA 上的**派发/autograd 节点开销**主宰（实测：solve_triangular
+    0.04 ms、bmm 0.10 ms GPU 时间，但每个算子 CPU 派发 60–150 µs、每个 autograd 节点
+    ~180 µs；per-layer 每步 ≈1000 算子）⇒ 三臂总墙钟 ~2 小时，超预算 2.4×。
+    单共享槽把扫描从 12 次降到 **1 次**，并且正是 MQAR / 线性注意力家族的标准形态
+    （状态层 + 若干全注意力层的混合），便于与既有做法直接对照。
+
+    - 写入（每位置 t 一次，来自 h₀）：`k̂_t = normalize(W_k h₀_t)`、`v_t = W_v h₀_t`、
+      `β_t = σ(W_β h₀_t + b_β)`；两条规则的更新式见 `carry_scan_*`；
+    - 读出（**读出约定**）：位置 t 读到的是 **`S_t`（含 t 自己的写入）**，即
+      「读后写」（read-after-write），与因果 softmax 注意力把对角项计入同一约定；
+      单测 `test_carry_read_convention_includes_own_write` 钉住，变异验证 M3
+      （故意让位置 t 读到 t+1 的写入）必须抓红；
+    - 读出量与「槽注意力质量」的活性证据见 `carry_read_mass_stats`。
+    """
+
+    def __init__(self, cfg: DepthARConfig, rule: str,
+                 chunk: int = DEFAULT_CARRY_CHUNK):
+        super().__init__()
+        if rule not in ("plain", "delta"):
+            raise ValueError(f"carry rule must be 'plain' or 'delta', got {rule!r}")
+        d, nh = cfg.d_model, cfg.n_heads
+        self.rule = rule
+        self.chunk = int(chunk)
+        self.n_heads = nh
+        self.head_dim = d // nh
+        # 用**原始 Parameter**（torch.zeros）而不是 nn.Linear：构造时不消耗随机数，
+        # 参数在模型 init 循环之后统一抽签 ⇒ 同 seed 下 U0/U1/U2 的**主干参数逐位相同**
+        # （单测 `test_carry_channel_identity_start_matches_no_channel`）。
+        for name, shape in (("w_k", (d, d)), ("w_v", (d, d)), ("w_q", (d, d)),
+                            ("beta_w", (nh, d)), ("beta_b", (nh,)),
+                            ("gate_w", (d, d))):
+            self.register_parameter(name, nn.Parameter(torch.zeros(*shape)))
+
+    def write_read(self, h0: torch.Tensor, rule: str | None = None
+                   ) -> tuple[torch.Tensor, dict]:
+        """在 h₀ 上写状态并读出：返回 `(mem [B,T,d], tele)`。"""
+        B, T, d = h0.shape
+        rule = self.rule if rule is None else rule
+        hf = h0.float()
+        shape = lambda t: t.view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+        kk = shape(hf @ self.w_k.float().T)
+        vv = shape(hf @ self.w_v.float().T)
+        qq = shape(hf @ self.w_q.float().T)
+        beta = torch.sigmoid(
+            torch.einsum("btd,hd->bth", hf, self.beta_w.float())
+            + self.beta_b.float()).transpose(1, 2).contiguous()      # [B,H,T]
+        mem, tele = carry_scan(qq, kk, vv, beta, rule=rule, chunk=self.chunk)
+        return mem.transpose(1, 2).reshape(B, T, d).to(h0.dtype), tele
+
+    def gate(self, h0: torch.Tensor) -> torch.Tensor:
+        """写入流到残差的两侧：`gate_w` 给写入内容加一个（可学的）线性预热，
+        避免通道只能用「原始 h₀ 的线性像」当键/值。零初始化 ⇒ 起步恒等（不改变
+        原始 h₀ 语义；梯度非零 ⇒ 非鞍点）。"""
+        return h0 + h0 @ self.gate_w.float().T
+
+
+class CarryChannelBlock(Block):
+    """带**读出**的注意力块（契约 U）：与 stock `Block` 的唯一差别是在注意力输出
+    `a` 后加一路记忆读出 `γ ⊙ mem_t`（`γ` 是本层每个头的读出增益，**单边零初始化**）：
+
+        `a = SDPA(q,k,v; 窗口掩码)`（不变，窗口外仍然看不见）
+        `a ← a + γ ⊙ mem_t`（mem 来自**单共享记忆槽** `CarryChannel`，见上）
+        `x = x + proj(a)；x = x + mlp(ln2 x)`
+
+    这就是契约说的「槽作为额外的 KV 参与注意力」的最简形式：读出与注意力输出同门
+    进 `proj`。子模块创建顺序与 `Block` 完全一致，新增参数只有一个 `[n_heads]` 的
+    读出增益（原始 Parameter，构造时不消耗随机数）⇒ 主干参数逐位等于 U0 臂。
+    """
+
+    telemetry_kind = "carry_channel"
+
+    def __init__(self, cfg: ModelConfig):
+        super().__init__(cfg)
+        self.head_dim = cfg.d_model // cfg.n_heads
+        self.carry_scale = nn.Parameter(torch.zeros(cfg.n_heads))
+        self._carry_box: dict = {}
+
+    def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
+                dist_pen: float = 0.0,
+                kv_from: torch.Tensor | None = None,
+                gate_vec: torch.Tensor | None = None
+                ) -> tuple[torch.Tensor, dict]:
+        for name, given in (("dist_pen", dist_pen > 0),
+                            ("kv_from", kv_from is not None),
+                            ("gate_vec", gate_vec is not None)):
+            if given:
+                raise ValueError(
+                    f"CarryChannelBlock 只支持 stock 注意力路径，收到 {name}："
+                    "写入通道只在 dense=True + 顺序残差（无退出/无填充）形态下开放")
+        mem = self._carry_box.get("mem")
+        if mem is None:
+            raise RuntimeError(
+                "CarryChannelBlock 需要先经 `DepthARModel._input_states` 算好共享"
+                "记忆槽（它把读出放进模型的 `_carry_box`）—— 直接调用单块不支持")
+        B, T, d = x.shape
+        q, k, v = self.qkv(self.ln1(x)).chunk(3, dim=-1)
+        shape = lambda t: t.view(B, T, self.n_heads, d // self.n_heads).transpose(1, 2)
+        qs, ks, vs = shape(q), shape(k), shape(v)
+        a = F.scaled_dot_product_attention(qs, ks, vs, attn_mask=attn_mask,
+                                            is_causal=attn_mask is None)
+        scaled = (mem.view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
+                  * self.carry_scale.float().view(1, -1, 1, 1))
+        a = a + scaled.to(a.dtype)
+        tele = {"read_scale_absmean": self.carry_scale.detach().float().abs().mean(),
+                "read_share": (scaled.detach().float().norm()
+                               / a.detach().float().norm().clamp_min(1e-6)),
+                "mem_write_to_resid_ratio": (
+                    scaled.detach().float().norm() / x.detach().float().norm()
+                    .clamp_min(1e-6))}
+        a = a.transpose(1, 2).reshape(B, T, d)
+        x = x + self.proj(a)
+        x = x + self.mlp(self.ln2(x))
+        return x, tele
+
+
+def carry_liveness(model: "DepthARModel", scan_tele: dict | None = None,
+                   layer_stats: list[dict] | None = None,
+                   prob: dict | None = None) -> dict:
+    """写入通道的活性块（SCHEMA §10 强制项，契约 U）。
+
+    `params_added > 0`，所以「干预活着」要给三套证据：
+
+    - 参数侧：`read_scale_absmean`（单边零是否已逃逸）、`w_fro`（写投影范数）；
+    - 运行侧（每 200 步随训练日志落盘）：`state_fro`、`beta_mean`、`write_rel`
+      （`‖ΔS‖/‖S‖`）、`read_norm`、`read_share`（记忆读出占注意力输出量级的比例
+      —— 「通道真的被用」而不是摆设；U0 该值为 0）；
+    - 反事实（`carry_probe`）：`rel_dev_vs_channel_off`（同权重关掉通道的偏差）与
+      `rel_dev_vs_other_rule`（把写入规则换掉）都必须 > 0。
+    """
+    cfg = model.cfg
+    on = cfg.carry_rule is not None
+    out = {"carry_rule": cfg.carry_rule, "enabled": on,
+           "carry_chunk": int(cfg.carry_chunk),
+           "block_python_class": type(model.blocks[0]).__name__,
+           "shared_slots": on,
+           "params_added": (sum(p.numel() for p in model.carry.parameters())
+                            + sum(blk.carry_scale.numel()
+                                  for blk in model.blocks)) if on else 0}
+    keys = ("state_fro", "beta_mean", "write_rel", "read_norm")
+    read_keys = ("read_scale_absmean", "read_share", "mem_write_to_resid_ratio")
+    if not on:
+        out.update({k: None for k in keys})
+        out.update({k: None for k in read_keys})
+        out.update({"alive": False, "w_fro": None,
+                    "alive_note": "无通道（carry_rule=None，U0 基线）：读出量为 0"})
+        return out
+    out["w_fro"] = round(float(sum(float(p.detach().float().norm())
+                                   for p in model.carry.parameters())), 6)
+    if scan_tele:
+        out.update({k: round(float(scan_tele[k]), 6) for k in keys})
+        out["write_rel_chunks"] = int(scan_tele.get("write_rel_chunks", 0))
+        out["n_chunks"] = int(scan_tele.get("n_chunks", 0))
+    else:
+        out.update({k: None for k in keys})
+        out["write_rel_chunks"] = None
+    if layer_stats:
+        for k in read_keys:
+            out[k] = round(float(sum(float(s[k]) for s in layer_stats)
+                                  / len(layer_stats)), 6)
+        out["n_layers_sampled"] = len(layer_stats)
+    else:
+        out.update({k: None for k in read_keys if k != "read_scale_absmean"})
+        out["read_scale_absmean"] = round(float(
+            sum(float(blk.carry_scale.detach().float().abs().mean())
+                for blk in model.blocks) / len(model.blocks)), 6)
+    if prob:
+        out["rel_dev_vs_channel_off"] = prob["rel_dev_vs_channel_off"]
+        out["rel_dev_vs_other_rule"] = prob.get("rel_dev_vs_other_rule")
+    # `write_rel`（块 2..n 的相对改动）只在 T > chunk（≥2 块）时有定义；单块时
+    # 该量无定义（0），不参与「是否活着」的判定（口径随 write_rel_chunks 落盘）。
+    write_rel_ok = (out["write_rel_chunks"] == 0 or (out["write_rel"] or 0) > 0)
+    out["alive"] = bool(out["state_fro"] is not None and out["state_fro"] > 0
+                        and out["beta_mean"] is not None and out["beta_mean"] > 0
+                        and write_rel_ok
+                        and out["read_share"] is not None and out["read_share"] > 0
+                        and out["read_scale_absmean"] > 0
+                        and (prob is None or prob["rel_dev_vs_channel_off"] > 0))
+    out["alive_note"] = (
+        "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离"
+        "单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道"
+        "后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**")
+    return out
+
+
+@torch.no_grad()
+def carry_probe(model: "DepthARModel", tokens: torch.Tensor) -> dict:
+    """通道的**一次性功能探针**（SCHEMA §10）：同一权重、同一输入下的三个反事实。
+
+    1. `rel_dev_vs_channel_off`：把每层读出增益置零（= 无通道前向）后的相对偏差；
+    2. `rel_dev_vs_other_rule`：把**共享槽**的写入规则换成另一种（plain ↔ delta）
+       —— `> 0` ⇔ 两臂的差异来自写入规则本身（U1/U2 的唯一变量）。
+
+    借用属性（finally 还原）⇒ 权重、dropout 状态、随机数流均不变。
+    """
+    if model.cfg.carry_rule is None:
+        return {"enabled": False, "rel_dev_vs_channel_off": None,
+                "rel_dev_vs_other_rule": None, "alive": False}
+    rule = model.carry.rule
+    scales = [blk.carry_scale.detach().clone() for blk in model.blocks]
+    was_training = model.training
+    model.eval()
+    try:
+        base = model(tokens)[1]["depth_logits"][-1].float()
+        for blk in model.blocks:
+            blk.carry_scale.zero_()
+        off = model(tokens)[1]["depth_logits"][-1].float()
+        for blk, s in zip(model.blocks, scales):
+            blk.carry_scale.copy_(s)
+        other = "delta" if rule == "plain" else "plain"
+        model.carry.rule = other
+        swapped = model(tokens)[1]["depth_logits"][-1].float()
+    finally:
+        model.carry.rule = rule
+        for blk, s in zip(model.blocks, scales):
+            blk.carry_scale.copy_(s)
+        model.train(was_training)
+    return {"enabled": True,
+            "rel_dev_vs_channel_off": round(float(
+                (base - off).norm() / off.norm().clamp_min(1e-6)), 6),
+            "rel_dev_vs_other_rule": round(float(
+                (base - swapped).norm() / swapped.norm().clamp_min(1e-6)), 6),
+            "other_rule": other,
+            "alive": bool((base - off).norm() > 0)}
+
+
+def carry_far_read_norm_frac(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
+                             beta: torch.Tensor, window: int = 16,
+                             rule: str = "delta") -> float:
+    """**窗口外贡献份额**（精确量，两条规则通用）：位置 t 的读出分别用
+
+    - `S_t`（含全部写入）—— 真实读出；
+    - `S_{t−window}`（只含**窗口外**的写入）—— 假如通道只搬了窗口外信息
+
+    各读一次，取 `mean_t ‖S_{t−window} q_t‖ / ‖S_t q_t‖`。因为状态对写入是**仿射**的，
+    这个比值对 plain 与 delta 都精确（不是近似）：它就是「读出向量里由窗口外信息
+    贡献的份额」。用逐位置参考实现算（探针批量小，代价可忽略）。
+    """
+    q, k, v, beta = (_carry_cast(t) for t in (q, k, v, beta))
+    B, H, T, dh = q.shape
+    S = torch.zeros(B, H, dh, dh, dtype=q.dtype, device=q.device)
+    hist: list[torch.Tensor] = []
+    num, den, n = 0.0, 0.0, 0
+    for t in range(T):
+        kt = carry_norm_keys(k[:, :, t])
+        vt = v[:, :, t]
+        bt = beta[:, :, t].unsqueeze(-1)
+        if rule == "plain":
+            S = S + bt.unsqueeze(-1) * (vt.unsqueeze(-1) @ kt.unsqueeze(-2))
+        else:
+            resid = vt - (S @ kt.unsqueeze(-1)).squeeze(-1)
+            S = S + bt.unsqueeze(-1) * (resid.unsqueeze(-1) @ kt.unsqueeze(-2))
+        hist.append(S)
+        qt = q[:, :, t].unsqueeze(-1)
+        full = (S @ qt).squeeze(-1).norm()
+        if t - window >= 0:
+            far = (hist[t - window] @ qt).squeeze(-1).norm()
+            num += float(far)
+            den += float(full)
+            n += 1
+    return round(num / max(den, 1e-9), 6) if n else 0.0
+
+
+@torch.no_grad()
+def carry_read_mass_stats(model: "DepthARModel", tokens: torch.Tensor,
+                          window: int = 16) -> dict:
+    """**「通道真的被读」的活性证据**（契约 U 追加项）：三个口径明确的数。
+
+    1. `read_share_per_layer`：每层 `‖γ ⊙ mem_t‖ / ‖attn_out_t‖`（逐位置均值）
+       —— 「记忆读出占注意力输出量级的比例」。这是「通道被用而不是摆设」的直接
+       读数，也是训练日志每 200 步落盘的同一量；**U0 恒为 0**；
+    2. `slot_score_mass_per_query`：`mean_t Σ_j |β_j (k̂_j·q_t)|` —— 每查询从槽里
+       读到的**分数质量**（对照：softmax 注意力分支每查询质量恒为 1）。对 plain
+       规则它就是读出质量的精确分解；对 delta 只是同一组 `k̂/q/β` 的分数口径
+       （一起报，便于两臂对照，**不**当作 delta 的精确分解）；
+    3. `far_read_norm_frac`：`carry_far_read_norm_frac` 的精确「窗口外贡献份额」
+       —— 读出里有多少来自**窗口之外**（窗口外内容只能经通道到达）。
+    """
+    if model.cfg.carry_rule is None:
+        return {"enabled": False, "read_share_per_layer": None,
+                "slot_score_mass_per_query": None, "far_read_norm_frac": None}
+    B, T = tokens.shape
+    h0 = model._input_states(tokens)
+    carry = model.carry
+    hf = h0.float()
+    nh, dh = carry.n_heads, carry.head_dim
+    shape = lambda t: t.view(B, T, nh, dh).transpose(1, 2)
+    kk, vv = shape(hf @ carry.w_k.float().T), shape(hf @ carry.w_v.float().T)
+    qq = shape(hf @ carry.w_q.float().T)
+    beta = torch.sigmoid(torch.einsum("btd,hd->bth", hf, carry.beta_w.float())
+                         + carry.beta_b.float()).transpose(1, 2).contiguous()
+    with torch.no_grad():
+        scores = (torch.einsum("bhtd,bhjd->bhtj", qq.float(), carry_norm_keys(kk))
+                  * beta.unsqueeze(-1))
+        causal = torch.tril(torch.ones(T, T, dtype=torch.bool,
+                                       device=tokens.device))
+        scores = scores.masked_fill(~causal, 0.0)
+        mass = float(scores.abs().sum(-1).mean())
+    _, aux = model(tokens)
+    shares = [float(s["read_share"]) for s in aux["attn_carry"]]
+    return {"enabled": True, "window": int(window),
+            "read_share_per_layer": round(sum(shares) / len(shares), 6),
+            "read_share_by_layer": [round(v, 6) for v in shares],
+            "slot_score_mass_per_query": round(mass, 6),
+            "far_read_norm_frac": carry_far_read_norm_frac(
+                qq, kk, vv, beta, window=window, rule=carry.rule),
+            "notes": ("read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步"
+                      "落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| "
+                      "（对照 softmax 分支恒为 1）；far_read_norm_frac = 用 "
+                      "S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）")}
+
+
 class DepthARModel(nn.Module):
     """深度自适应 AR。forward(tokens, exit_depths) → (loss, aux)。
 
@@ -1128,6 +1635,28 @@ class DepthARModel(nn.Module):
             raise ValueError(
                 "attn_linear 与 train_window 互斥（单因素：一次只改一个因素）——"
                 f"收到 train_window={cfg.train_window}")
+        if cfg.carry_rule is not None:
+            if cfg.carry_rule not in CARRY_RULES:
+                raise ValueError(f"unknown carry_rule {cfg.carry_rule!r}; "
+                                 f"expected one of {CARRY_RULES}")
+            if cfg.carry_chunk < 1:
+                raise ValueError(f"carry_chunk must be >= 1, got {cfg.carry_chunk}")
+            if not cfg.dense:
+                raise ValueError(
+                    "写入通道只在 dense=True（stock decoder-only 形态）下验证"
+                    f"（单因素）——收到 carry_rule={cfg.carry_rule!r} 且 dense=False")
+            if cfg.topology != "sequential":
+                raise ValueError(
+                    "carry_rule 与层间拓扑互斥（单因素：一次只改一个因素）——"
+                    f"收到 topology={cfg.topology!r}")
+            for other, on in (("attn_sparse_k", cfg.attn_sparse_k > 0),
+                              ("attn_linear", cfg.attn_linear),
+                              ("n_kv_heads < n_heads",
+                               cfg.n_kv_heads is not None
+                               and cfg.n_kv_heads < cfg.n_heads)):
+                if on:
+                    raise ValueError(
+                        f"carry_rule 与 {other} 互斥（单因素：一次只改一个因素）")
         if cfg.n_kv_heads is not None:
             if not 0 < cfg.n_kv_heads <= cfg.n_heads or cfg.n_heads % cfg.n_kv_heads:
                 raise ValueError(
@@ -1161,6 +1690,15 @@ class DepthARModel(nn.Module):
             # 因此「缺省 / MHA」与 v1 逐位一致
             self.blocks = nn.ModuleList(GQABlock(mcfg, cfg.n_kv_heads)
                                         for _ in range(cfg.n_layers))
+        elif cfg.carry_rule is not None:
+            # 显式写入通道（契约 U）：与 stock `Block` 同构 + 每层一个读出增益
+            self.blocks = nn.ModuleList(CarryChannelBlock(mcfg)
+                                        for _ in range(cfg.n_layers))
+            # **单共享记忆槽**（见 `CarryChannel` 的文档：per-layer-12 实测出局）
+            self.carry = CarryChannel(cfg, cfg.carry_rule, cfg.carry_chunk)
+            self._carry_box: dict = {}
+            for blk in self.blocks:
+                blk._carry_box = self._carry_box
         elif cfg.topology == "parallel":
             self.blocks = nn.ModuleList(ParallelBlock(mcfg, share_ln=True)
                                         for _ in range(cfg.n_layers))
@@ -1221,6 +1759,21 @@ class DepthARModel(nn.Module):
             self.readout_q = nn.Linear(d, d, bias=False)
             nn.init.normal_(self.readout_q.weight, std=0.02)
             nn.init.zeros_(self.readout_p.weight)
+        # 写入通道的三个参数（契约 U）在建在参数 init 循环之后——不消耗其他参数的
+        # 随机数 ⇒ 同 seed 下 U1/U2 的**主干参数与 U0 臂逐位相同**（单测
+        # `test_carry_channel_identity_start_matches_no_channel`）。
+        # `carry_w ~ N(0, 0.02)`、`carry_b = 0`（β 起步≈ 0.5）、
+        # `carry_scale = 0`（**单边零**：读出侧置零 ⇒ 起步严格恒等于无通道基线，
+        # 而 ∂L/∂carry_scale = ⟨grad, mem⟩ ≠ 0 ⇒ 非鞍点、可逃逸，SCHEMA §10）。
+        if cfg.carry_rule is not None:
+            for name, param in self.carry.named_parameters():
+                if name == "gate_w":
+                    nn.init.zeros_(param)          # 写入流预热：零初始化 = 起步恒等
+                else:
+                    nn.init.normal_(param, std=0.02)
+            nn.init.zeros_(self.carry.beta_b)      # β 起步 ≈ 0.5（非退化、有梯度）
+            for blk in self.blocks:
+                nn.init.zeros_(blk.carry_scale)    # **单边零**：起步恒等于无通道基线
 
     # ---------- 读出 ----------
 
@@ -1253,9 +1806,22 @@ class DepthARModel(nn.Module):
             return hf[..., :r] @ U.T
 
     def _input_states(self, tokens: torch.Tensor) -> torch.Tensor:
+        """输入表征（残差流起点）。
+
+        写入通道（契约 U）挂在这里：**单共享记忆槽**的写入与读出都在输入流上算一次
+        （`CarryChannel.write_read`），结果放进 `self._carry_box` 供各层读出取用。
+        挂在这条路径上还保证了**评测仪器**（`retention.masked_logits` 逐块调用
+        `blk(h, attn_mask=...)` 的路径）也会经过同一个钩子 —— 否则评测侧会静默丢掉
+        通道（只算注意力）。开关关闭时不做任何事（逐位还原 v1）。
+        """
         T = tokens.shape[1]
         h = self.embed(tokens) + self.pos_embed.weight[:T]
-        return cap_norm(h, self.cfg.norm_cap)
+        h = cap_norm(h, self.cfg.norm_cap)
+        if self.cfg.carry_rule is not None:
+            mem, tele = self.carry.write_read(self.carry.gate(h))
+            self._carry_box["mem"] = mem
+            self._carry_tele = tele
+        return h
 
     # ---------- forward / loss ----------
 
@@ -1291,6 +1857,7 @@ class DepthARModel(nn.Module):
         gate_means: list[torch.Tensor] = []
         attn_sparse_layers: list[dict] = []
         attn_linear_layers: list[dict] = []
+        attn_carry_layers: list[dict] = []
         if not self.cfg.dense:
             if self.cfg.proj_fill and not self.cfg.fill_kv:
                 raise ValueError("proj_fill requires fill_kv=True")
@@ -1342,6 +1909,8 @@ class DepthARModel(nn.Module):
                         attn_sparse_layers.append(tele)
                     elif kind == "attn_linear":
                         attn_linear_layers.append(tele)
+                    elif kind == "carry_channel":
+                        attn_carry_layers.append(tele)
 
         targets = tokens if targets is None else targets
         sg = bool(shallow_stopgrad)
@@ -1373,6 +1942,8 @@ class DepthARModel(nn.Module):
             aux["attn_sparse"] = attn_sparse_layers
         if attn_linear_layers:
             aux["attn_linear"] = attn_linear_layers
+        if attn_carry_layers:
+            aux["attn_carry"] = attn_carry_layers
         return loss, aux
 
     def _layer_mix_input(self, states: list[torch.Tensor], k: int) -> torch.Tensor:

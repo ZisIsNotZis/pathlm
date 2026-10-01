@@ -1,0 +1,107 @@
+{
+  "targets": {
+    "pathlm/depth_ar.py": "72499b5bdbdaadd82b60a80a881e788c6ed572c65fed8ba5e56740518f9513be",
+    "train_depth_ar.py": "093c628c837bf38f7c66cb91bbd6dab8fa8a0558a8bbb0054e437a3e80a409aa",
+    "tools/evalkit/longrange_tasks.py": "4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b"
+  },
+  "mutations": [
+    {
+      "id": "M1",
+      "desc": "delta 块的因果掩码放宽一格（位置 t 读到 t+1 的写入 ⇒ 未来泄漏）",
+      "target": "pathlm/depth_ar.py",
+      "expected_tests": [
+        "test_carry_channel_is_causal_only",
+        "test_carry_chunked_matches_sequential"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "276922dda5d6d3146d48e427288537d3b62c39109d4f4565d4cfcf8babb01573",
+      "restored_bitwise": true,
+      "pytest_summary": "2 failed, 114 deselected in 2.77s"
+    },
+    {
+      "id": "M2",
+      "desc": "读出约定被改成「不含自写入」（S_{t−1} 而不是 S_t）",
+      "target": "pathlm/depth_ar.py",
+      "expected_tests": [
+        "test_carry_read_convention_includes_own_write"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "84f92291e97eedfa5b485a1873e63de75e61d647943cdd0c2a1947199ce2a354",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 115 deselected in 2.37s"
+    },
+    {
+      "id": "M3",
+      "desc": "delta 的写入式退化成 plain（两臂变成同一个臂）",
+      "target": "pathlm/depth_ar.py",
+      "expected_tests": [
+        "test_carry_plain_rule_does_not_forget_delta_does",
+        "test_carry_liveness_and_probe_report_alive"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "c3292d5e8344538e372e8254038d94116ee2d3446fb1cf327913f9aac0d2c774",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 1 passed, 114 deselected in 2.70s"
+    },
+    {
+      "id": "M4",
+      "desc": "单边零起步被破坏（读出增益随机初始化 ⇒ 起步不再恒等于 U0）",
+      "target": "pathlm/depth_ar.py",
+      "expected_tests": [
+        "test_carry_channel_identity_start_matches_no_channel",
+        "test_carry_block_zero_scale_equals_plain_block_bitwise"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "312c9e1d8b6a3203122c1ac50fbfd9087520a031b4239f8d73e820591b6ed7ff",
+      "restored_bitwise": true,
+      "pytest_summary": "2 failed, 114 deselected in 2.62s"
+    },
+    {
+      "id": "M5",
+      "desc": "读出没有被嫁接到注意力输出（通道成摆设）",
+      "target": "pathlm/depth_ar.py",
+      "expected_tests": [
+        "test_carry_block_zero_scale_equals_plain_block_bitwise",
+        "test_carry_liveness_and_probe_report_alive",
+        "test_carry_channel_carries_across_window_but_baseline_does_not"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "de338344cf3e1f2e01c0c45bf69ab645ea0e8a9124ce722bb18f0b7a3b75c459",
+      "restored_bitwise": true,
+      "pytest_summary": "3 failed, 113 deselected in 3.20s"
+    },
+    {
+      "id": "M6",
+      "desc": "CLI 开关没有接到 config（开关是死的）",
+      "target": "train_depth_ar.py",
+      "expected_tests": [
+        "test_carry_cli_plumbed_to_config"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "c8d4e20cd88928675655f7e5952464b44f6109fd18e60a64a2612ab2a595e7e8",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 115 deselected in 2.10s"
+    },
+    {
+      "id": "M7",
+      "desc": "训练任务构造的查询间隔 gap 变小（局部窗口里出现上一个答案 ⇒ 可抄）",
+      "target": "tools/evalkit/longrange_tasks.py",
+      "expected_tests": [
+        "test_mqar_training_task_layout_and_local_prior"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "80327669135285cea65711a557d7d4423fed0f245b634066fc63b9b1523960fa",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 115 deselected in 2.08s"
+    }
+  ],
+  "all_caught_red": true,
+  "all_restored_bitwise": true
+}

@@ -387,6 +387,7 @@ grids:
       failure:
         - "损坏 × 精确复制目标冲突（三路豁免全败）——「保住信息」与「容错修复」是互相抢容量的两个目标"
         - "依赖曲线实测（ticket 31-I）：单距离曲线在 d≥32 上贡献 ≤0.004；但**累计不免费**——只保留最近 32/64/128/192 个位置分别 +0.212/+0.081/+0.020/+0.004 bpc（主 Agent ERRATA：单点曲线不得累加外推）"
+        - "**但「显式通道」成立（ticket 35，见 M1）**：在关联回忆 + 窗口 16 的合成任务上，给模型一个**显式写入的记忆槽**并把写入规则换成 **delta（只搬增量）**，准确率从 0.0137（≈chance）升到 0.0950（6.08× chance），毁源后掉回 0.0081 ⇒ **信息确实被搬到了可检索处**。⇒ 本格的负结论只覆盖「靠掩码逼出搬运」，**不覆盖「给通道 + 给训练信号」**"
         - "**窗口训练的直接检验（ticket 32-O，用户最初设想的判决）：不成立。** 训成「只看最近 32 + 8 锚点」：质量 1.4836 → 1.5701（税 **+0.0866**，6× 判据线，落在历史 X2 带内）；**依赖右移未测出**（d∈[8,32] 伤害差 +0.0008 预定口径 / +0.0133 工作点口径，均 <0.014）；**「信息被搬到近处」被否证**——窗口外的针召回 0.4588 vs 同掩码无记忆地板 0.4545（+0.004，等于没有记忆），而窗口内 0.6506 vs 0.4458（+0.205）⇒ **是「丢了」不是「搬了」**（X3 假保留陷阱的正面实例）。负结果同配置重跑复现（税 0.0821 / 判据② +0.0014 / 窗口外 gap −0.0046）"
       evidence: [".scratch/07-x1-x3/evidence @7b47555", ".scratch/13-four-experiments/evidence @9abc181"]
     deps: [M1-carrier-type, M2-carrier-compression, A10-compression-trigger]
@@ -928,17 +929,20 @@ grids:
     options: [KV cache（本项目唯一）, 递归状态（SSM/RNN）, 显式记忆槽, 外部存储（检索）, 权重（fast-weight）, 无]
     judge: 保留（needle 消融）+ 内存/步长 + 吞吐
     cost: 13M 单臂 ~25–40 min
-    status: partial
-    verdict: 只有 KV 载体；**ticket 34 造出「不靠语言先验」的长程天平并给出关键诊断：我们 13M 主干的长程能力是「分任务型」的——关联回忆 0.0061、变距离回忆 0.005–0.010（≈或低于 chance）⇒ 检索类彻底缺席；复制 0.1333（距离 223 仍 0.118，毁源→0.0125）与 induction 0.0586（毁源→chance）⇒ 真实但弱。**载体是「能否丢/重算」的决定因素。
+    status: judged
+    verdict: "**载体类型首验（ticket 35）：显式写入通道成立**——在「关联回忆 + 窗口 16（key 100% 落在窗外）」的合成任务上，13M/12k 步：无通道 U0 = 0.0137（≈chance，前提校验过）→ **delta 写 U2 = 0.0950（6.08× chance，+8.13pp，CI 不重叠；毁源后掉到 0.0081 ⇒ 读数确来自被搬运的信息）**；plain 写 U1 双稳态（0.0007 / 0.0334）且比 U2 低 9.42pp ⇒ **「只搬增量」的 delta 写是稳定有效的那一支**。绝对水平仅 9.5%（13M/12k）⇒ 按 SCHEMA §19 不得外推为「业界做不到/做得到」。
+    同时 ticket 34 造出「不靠语言先验」的长程天平并给出关键诊断：13M 主干长程能力**分任务型**——关联回忆 0.0061、变距离回忆 0.005–0.010（≈或低于 chance）⇒ 检索类彻底缺席；复制 0.1333（距离 223 仍 0.118，毁源→0.0125）、induction 0.0586（毁源→chance）⇒ 真实但弱。"
     local:
-      tax: "—（KV 为基底）"
-      benefit: "per-layer KV + 位置散点填充实现了「变深度 + 不重 prefill」（与并行 forward 逐位一致）"
+      tax: "ticket 35 的通道为**旁路**（`+264,296` 参数，U1/U2 逐位相同；单共享槽在输入流上，每层用自己的 query 读）——为对齐 MQAR/线性注意力标准形态而选择（per-layer-12 实装实测 221/410 ms/step 出局，根因是算子派发/autograd 节点开销而非 FLOPs）；解析状态 8192 floats（与 T 无关）vs 实测峰值 2015/2170/2282 MB（分开报）"
+      benefit: "**delta 写（S ← S·(I−βkkᵀ)+βvkᵀ，「只搬上次没搬的」）在关联回忆上 6.08× chance、且毁源后崩到 chance** ⇒ 「信息被搬到可检索处」首次被直接证实；读取量证据：U2 读分享 →0.7078、U0 为 0；距离腿六档全部 > chance（最远 d=255 为 0.5947，曲线非单调、不外推）；per-layer KV + 位置散点填充仍支持「变深度 + 不重 prefill」（与并行 forward 逐位一致）"
       failure:
         - "早期缓存 bug：逐位置早退导致 per-layer cache 长度失步（已修为 per-layer 位置列表；持续单测）"
         - "**长程检索能力缺席（ticket 34-A 仪器实测）**：关联回忆 0.0061、变距离回忆六档 0.005–0.010，均≈或低于 chance 且无距离依赖 ⇒ 此前所有「没搬」读数，至少相当部分来自**模型本来就没有该能力**，而非「机制搬不动」（SCHEMA §19）"
         - "**仪器落地（`tools/evalkit/longrange_tasks.py`）**：四任务 + chance/局部先验基线 + 距离曲线 + `recall_under_visibility`（复用 retention 掩码）+ 毁源对照臂；自证：局部先验基线 0.0098–0.0217（chance 上限 0.0469）、毁源/打乱答案均掉回 chance、前向逐位一致"
         - "不确定项：induction 每点 n=128 不支持斜率；assoc/var 低分含分布外成分（**不得**外推成「训练也学不会」）；copy 13% 的机制未定位"
-      evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @ticket34", "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @ticket34"]
+        - "**ticket 35 的边界**：绝对水平仅 9.5%（13M/12k 步）⇒ 只能读作「在该任务/该尺度上成立」；**plain 写（U1）双稳态**（同配置同 seed 两次 0.0007 vs 0.0334，答案行 CE 4.184 vs 2.252，重跑散度 +3.271pp）⇒ 判据③只在「两支 plain 读数」上成立，**强表述（delta 优于 plain）不作为结论**；距离曲线受训练位置结构混杂；未做 ④ 训练信号（重建/充分性损失）与 ③ 容量压力（更小状态）"
+        - "**因果性护栏（本设计最致命的风险）已钉死**：分块 WY 形与顺序参考在 fp64 下 <1e-12 逐位一致（chunk ∈ {1,2,3,5,8,24}）、扰动 t≥10 时 t<10 输出 `torch.equal`、读后写约定有专测、变异 M1（释放块内 mask 造成未来泄漏）被抓住"
+      evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @ticket34", "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @ticket34", "axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m/analysis.md @ticket35"]
     deps: [M2-carrier-compression, A9-old-info-retention, F1-iteration-object]
 
   # ==================== M2
@@ -1252,7 +1256,7 @@ grids:
       tax: "—"
       benefit: "无 final LayerNorm 使 logits = h·Eᵀ 语义成立（readout scale 由 U 学）"
       failure: []
-      evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @ticket34", "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @ticket34"]
+      evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @ticket34", "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @ticket34", "axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m/analysis.md @ticket35"]
 
   - id: P5-loss-weighting
     axis: P

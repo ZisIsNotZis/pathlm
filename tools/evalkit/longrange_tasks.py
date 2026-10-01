@@ -494,3 +494,85 @@ def check_local_prior_resistance(task: TaskBatch, k: int = DEFAULT_LOCAL_K,
             "ceiling": round(ceiling, 6), "local_prior_accuracy": lp["accuracy"],
             "passed": lp["accuracy"] < ceiling, "n": lp["n"], "k": k,
             "by_distance": lp["by_distance"]}
+
+
+# ----------------------------------------------------------------- 训练侧任务（只增）
+
+
+def assoc_recall_multi_batch(batch_size: int, seq_len: int, n_pairs: int,
+                             n_queries: int, sym_vocab: int = 64,
+                             filler_token: int = 64, cue_token: int = 205,
+                             gap: int = 14,
+                             generator: torch.Generator | None = None) -> TaskBatch:
+    """**多查询**关联回忆（训练侧构造；ticket 35 契约 U 用的就是它）。
+
+    与判决用的单查询版 `assoc_recall_batch` **同一件任务**（同样的 (key,value) 表 +
+    同样的 `cue → 查询键 → 答案` 局部模式），只把末尾的「一个查询」换成「一队查询」：
+
+        布局：[k0 v0 … k{K-1} v{K-1}] filler… [cue q_1 a_1] filler… [cue q_2 a_2] …
+        自监督：每个位置的 target = 下一个 token（与 `train_depth_ar.py` 的标准因果
+        移位一致）⇒ **不需要额外的损失掩码**，`a_j` 那一行（输入 = `q_j`）就是判决行。
+
+    两处刻意的构造（都为了不把「训练信号」变成混杂）：
+
+    1. **多查询**：单查询版每行只有 **1 个**监督 token 真的依赖记忆（其余位置是 filler
+       或不可预测的随机符号），12k 步里通道拿到的梯度份额约 1/255 —— 方法学 §5 记录的
+       「信号饥饿」正是这种构造导致的**假失败**。多查询版把依赖记忆的监督行数从 1 提到
+       Q（缺省 8），而任务定义、chance、判决行模式都不变；
+    2. **查询之间夹 `gap` 个 filler（缺省 14）**：让 `q_j` 行的可见窗口正好是
+       `14 × filler + cue + q_j`（= 单查询版判决行 `T−1` 的**同一局部模式**），
+       窗口里**没有任何符号** ⇒ 局部先验（方法学 §5 的最强局部预测器）退化到 chance，
+       且「上一个答案」不会被复制（否则多查询会给出一个绕开记忆的免费通道）。
+
+    - keys 每行内互不相同（`randperm`）；values 随机可重复；**同一行内不同查询问不同的
+      pair**（`randperm` 取前 Q 个）——避免「同 key 二次提问」被局部窗口抄走；
+    - 查到的那对 (key,value) 的距离（查询键位置 − 该 pair 的 key 位置）≫ 任何局部窗口。
+
+    返回 `TaskBatch`：`rows` = 各查询键的位置（= 判决行的输入位置），`answers` = 对应
+    value，`dists` = 查询键位置 − 该 pair 的 key 位置。
+    """
+    T = int(seq_len)
+    K, Q = int(n_pairs), int(n_queries)
+    if K < 1 or Q < 1:
+        raise ValueError(f"n_pairs/n_queries 必须 >= 1，收到 {K}/{Q}")
+    if Q > K:
+        raise ValueError(f"n_queries={Q} > n_pairs={K}：同一行内查询必须问不同的 pair")
+    if sym_vocab < K:
+        raise ValueError(f"sym_vocab={sym_vocab} < n_pairs={K}：key 要互不相同")
+    if gap < 1:
+        raise ValueError(f"gap 必须 >= 1（查询之间的 filler 数），收到 {gap}")
+    block = 3 + int(gap)                       # 一个查询块占的位置数
+    if 2 * K + Q * block > T:
+        raise ValueError(f"2*n_pairs + n_queries*(3+gap)={2 * K + Q * block} > "
+                         f"seq_len={T}：放不下")
+    tok = torch.full((batch_size, T), filler_token, dtype=torch.long)
+    keys = torch.stack([torch.randperm(sym_vocab, generator=generator)[:K]
+                        for _ in range(batch_size)])                  # [B,K] 互不相同
+    values = torch.randint(0, sym_vocab, (batch_size, K), generator=generator)
+    tok[:, 0:2 * K:2] = keys
+    tok[:, 1:2 * K:2] = values
+    base = T - Q * block
+    pick = torch.stack([torch.randperm(K, generator=generator)[:Q]
+                        for _ in range(batch_size)])                  # [B,Q] 互不相同
+    ar = torch.arange(batch_size)
+    rows = torch.zeros(batch_size, Q, dtype=torch.long)
+    answers = torch.zeros(batch_size, Q, dtype=torch.long)
+    dists = torch.zeros(batch_size, Q, dtype=torch.long)
+    for j in range(Q):
+        rows[:, j] = base + j * block + 1                             # 查询键行
+        answers[:, j] = values[ar, pick[:, j]]
+        dists[:, j] = rows[:, j] - 2 * pick[:, j]
+        tok[:, base + j * block] = cue_token
+        tok[:, base + j * block + 1] = keys[ar, pick[:, j]]
+        tok[:, base + j * block + 2] = answers[:, j]
+    return TaskBatch(
+        name="assoc_recall_multi", tokens=tok, rows=rows, answers=answers,
+        dists=dists, n_answers=sym_vocab,
+        meta={"task": "assoc_recall_multi", "seq_len": T, "n_pairs": K,
+              "n_queries": Q, "gap": int(gap), "sym_vocab": sym_vocab,
+              "filler_token": filler_token, "cue_token": cue_token,
+              "query_base": base, "query_block": block,
+              "filler_span": [2 * K, base],
+              "layout": "[k0 v0 … k{K-1} v{K-1}] filler [cue q_j a_j gap×filler]×Q "
+                        "（target = 下一个 token，答案行 = q_j 行）"})
+

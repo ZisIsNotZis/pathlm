@@ -24,7 +24,13 @@ from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
                              linear_attn_chunked, linear_attn_reference,
                              attn_linear_liveness, attn_linear_probe,
                              attention_mass_stats, DEFAULT_LINEAR_CHUNK,
-                             GQABlock, kv_head_liveness)
+                             GQABlock, kv_head_liveness, CarryChannelBlock,
+                             CarryChannel, CARRY_RULES, DEFAULT_CARRY_CHUNK,
+                             carry_norm_keys, carry_scan_sequential,
+                             carry_scan_chunked, carry_scan,
+                             carry_liveness, carry_probe,
+                             carry_read_mass_stats, carry_far_read_norm_frac,
+                             window_anchor_keep_mask)
 from pathlm.model import Block
 
 
@@ -2252,7 +2258,8 @@ def test_train_cli_kv_heads_plumbed_to_config():
                 gate_bias_init=-2.0, topology="sequential", fill_kv=True,
                 proj_fill=False, readout_dims=None, readout_gated=False,
                 readout_linear_resid=False, attn_sparse_k=0, attn_linear=False,
-                linear_chunk=64, train_window=0, train_anchors=0)
+                linear_chunk=64, train_window=0, train_anchors=0,
+                carry_write="none", carry_chunk=64)
     cfg = T.build_depthar_config(argparse.Namespace(**base, n_kv_heads=1))
     assert cfg.n_kv_heads == 1
     torch.manual_seed(0)
@@ -2266,3 +2273,445 @@ def test_train_cli_kv_heads_plumbed_to_config():
     r = subprocess.run([sys.executable, "train_depth_ar.py", "--help"], cwd=ROOT,
                        capture_output=True, text=True, timeout=300)
     assert r.returncode == 0 and "--n-kv-heads" in r.stdout, r.stdout[-500:]
+
+
+# =====================================================================
+# 显式写入通道（ticket 35 契约 U）的可失败单测
+#
+# ① 数值正确性：分块并行实装 == 逐位置参考实现（两条写入规则、多个 chunk）；
+# ② 硬判据一「等参数」：U1/U2 的参数字典逐位相同、唯一变量 = 写入规则；
+# ③ 硬判据二「因果性」：位置 t 的读出只用 S_{≤t}（内核级 + 端到端级）；
+# ④ 单边零起步：γ=0 ⇒ 起步严格恒等于无通道基线（且主干参数逐位相同）；
+# ⑤ 活性：γ 逃逸后通道真的改前向、梯度真的到达写门；
+# ⑥ 窗口内的「搬」是通道干的：窗口看不见的 token 仍然改变读出。
+# 变异验证见实验目录 mutate.py（故意泄漏未来 / 写错更新式 / 把规则退化成 plain）。
+# =====================================================================
+
+
+def carry_model(rule, **kw):
+    """契约 U 的测试位点：d=32 / 4 头 / dh=8，dense + sequential（单因素）。"""
+    torch.manual_seed(0)
+    cfg = DepthARConfig(d_model=32, n_layers=3, n_heads=4, seq_len=12,
+                        dense=True, carry_rule=rule, **kw)
+    return DepthARModel(cfg, vocab_size=10)
+
+
+def _carry_qkv(model, tokens):
+    """(qs, ks, vs) —— 第一层在 ln1(x) 上的 q/k/v 分头视图 [B,H,T,dh]。"""
+    blk = model.blocks[0]
+    B, T, d = 2, tokens.shape[1], model.cfg.d_model
+    with torch.no_grad():
+        q, k, v = blk.qkv(blk.ln1(model._input_states(tokens))).chunk(3, dim=-1)
+    shape = lambda t: t.view(tokens.shape[0], T, blk.n_heads,
+                             d // blk.n_heads).transpose(1, 2)
+    return shape(q), shape(k), shape(v)
+
+
+def test_carry_update_rules_match_written_formulas():
+    """两条更新式必须与契约写下的式子逐项一致（单步、非零起步状态）：
+
+    plain：`S_1 = S_0 + β v k̂ᵀ`；delta：`S_1 = S_0(I − β k̂k̂ᵀ) + β v k̂ᵀ`
+    （矩阵写法 ≡ 设计文档的残差写法 `S + β(v − S k̂)k̂ᵀ`，两者必须等价），
+    读出 `y = S_1 q`；且零起步时两条规则的第一步**必须重合**（`S_1 = βvk̂ᵀ`）。
+    """
+    torch.manual_seed(0)
+    B, H, dh = 2, 3, 5
+    q = torch.randn(B, H, 1, dh)
+    k = torch.randn(B, H, 1, dh)
+    v = torch.randn(B, H, 1, dh)
+    beta = torch.rand(B, H, 1)
+    kh = carry_norm_keys(k[:, :, 0])
+    S0 = torch.randn(B, H, dh, dh)
+    bt = beta[:, :, 0].unsqueeze(-1).unsqueeze(-1)          # [B,H,1,1]
+    outer = v[:, :, 0].unsqueeze(-1) @ kh.unsqueeze(-2)     # [B,H,dv,dk]
+    S1p = S0 + bt * outer
+    eye = torch.eye(dh)
+    S1d = S0 @ (eye - bt * (kh.unsqueeze(-1) @ kh.unsqueeze(-2))) + bt * outer
+    resid = v[:, :, 0] - (S0 @ kh.unsqueeze(-1)).squeeze(-1)
+    S1r = S0 + bt * (resid.unsqueeze(-1) @ kh.unsqueeze(-2))
+    assert torch.allclose(S1d, S1r, atol=1e-12)
+    y_p = (S1p @ q[:, :, 0].unsqueeze(-1)).squeeze(-1)
+    y_d = (S1d @ q[:, :, 0].unsqueeze(-1)).squeeze(-1)
+    assert not torch.allclose(y_p, y_d)
+    # 零起步：两条规则的第一步重合，且 == β (k̂·q) v
+    y0p, _ = carry_scan_sequential(q, k, v, beta, "plain")
+    y0d, _ = carry_scan_sequential(q, k, v, beta, "delta")
+    want = bt.squeeze(-1) * (kh * q[:, :, 0]).sum(-1, keepdim=True) * v[:, :, 0]
+    assert y0p.shape == (B, H, 1, dh)
+    assert torch.allclose(y0p[:, :, 0], want, atol=1e-12)
+    assert torch.allclose(y0d[:, :, 0], want, atol=1e-12)
+
+
+def test_carry_chunked_matches_sequential():
+    """分块并行实装 == 逐位置参考实现（两条规则 × 多个 chunk 尺寸）。
+
+    这是「实现正确」的核心单测：delta 的并行形式（WY 表示 + 三角求解）不是靠
+    直觉写的，靠这条测试对逐位置定义钉死。
+    """
+    torch.set_default_dtype(torch.float64)
+    try:
+        torch.manual_seed(3)
+        B, H, T, dh = 2, 2, 24, 4
+        q = torch.randn(B, H, T, dh) * 0.7
+        k = torch.randn(B, H, T, dh)
+        v = torch.randn(B, H, T, dh)
+        beta = torch.rand(B, H, T)
+        for rule in ("plain", "delta"):
+            y_ref, _ = carry_scan_sequential(q, k, v, beta, rule)
+            for chunk in (1, 2, 3, 5, 8, 24):
+                y, tele = carry_scan_chunked(q, k, v, beta, rule, chunk)
+                assert float((y - y_ref).abs().max()) < 1e-12, (rule, chunk)
+                assert torch.isfinite(tele["state_fro"])
+                assert float(tele["beta_mean"]) == pytest.approx(
+                    float(beta.mean()), rel=1e-9)
+    finally:
+        torch.set_default_dtype(torch.float32)
+
+
+def test_carry_channel_is_causal_only():
+    """**硬判据：因果性**。把 t ≥ 10 的 q/k/v/β 换成另一组随机数，t ≤ 9 的读出
+    必须**逐位不变**（分块并行实装与逐位置参考实现都要过）。"""
+    torch.manual_seed(4)
+    B, H, T, dh = 2, 2, 16, 4
+    q, k, v = (torch.randn(B, H, T, dh) for _ in range(3))
+    beta = torch.rand(B, H, T)
+    q2, k2, v2 = q.clone(), k.clone(), v.clone()
+    for t in (q2, k2, v2):
+        t[:, :, 10:] = torch.randn(B, H, T - 10, dh)
+    b2 = beta.clone()
+    b2[:, :, 10:] = torch.rand(B, H, T - 10)
+    for rule in ("plain", "delta"):
+        for fn, kw in ((carry_scan_sequential, {}),
+                       (carry_scan_chunked, {"chunk": 4}),
+                       (carry_scan_chunked, {"chunk": 1})):
+            ya, _ = fn(q, k, v, beta, rule, **kw)
+            yb, _ = fn(q2, k2, v2, b2, rule, **kw)
+            assert torch.equal(ya[:, :, :10], yb[:, :, :10]), (rule, fn, kw)
+
+
+def test_carry_channel_causality_end_to_end():
+    """端到端因果：改动输入 token t0 之后的 token，t0 之前的 logits 必须逐位不变
+    （含窗口掩码与通道两条路径）。"""
+    m = carry_model("delta")
+    for blk in m.blocks:
+        blk.carry_scale.data.normal_(std=0.5)          # 让通道真的活着
+    m.eval()
+    x = torch.randint(0, 10, (2, 12))
+    y = x.clone()
+    y[:, 7:] = torch.randint(0, 10, (2, 5))
+    with torch.no_grad():
+        la = m(x)[1]["depth_logits"][-1]
+        lb = m(y)[1]["depth_logits"][-1]
+    assert torch.equal(la[:, :7], lb[:, :7])
+
+
+def test_carry_plain_and_delta_params_bitwise_equal():
+    """**硬判据：逐位等参数**。U1 与 U2 的参数名集合、形状、初始化取值逐位相同，
+    且唯一不同的配置字段是 `carry_rule`（SCHEMA §15：增益只能归因到写入规则）。"""
+    u1, u2 = carry_model("plain"), carry_model("delta")
+    p1, p2 = u1.state_dict(), u2.state_dict()
+    assert sorted(p1) == sorted(p2)
+    for k in p1:
+        assert p1[k].shape == p2[k].shape, k
+        assert torch.equal(p1[k], p2[k]), k
+    assert sum(p.numel() for p in u1.parameters()) == \
+        sum(p.numel() for p in u2.parameters())
+    assert u1.cfg.carry_rule == "plain" and u2.cfg.carry_rule == "delta"
+    d1 = {k: v for k, v in u1.cfg.__dict__.items() if k != "carry_rule"}
+    d2 = {k: v for k, v in u2.cfg.__dict__.items() if k != "carry_rule"}
+    assert d1 == d2
+    # 新增参数 = 单共享槽（w_k/w_v/w_q/beta_w/beta_b/gate_w）+ 每层一个读出增益
+    added = set(p1) - set(carry_model(None).state_dict())
+    assert len(added) == 6 + u1.cfg.n_layers          # 6 个槽参数 + L 个读出增益
+    d, nh, L = u1.cfg.d_model, u1.cfg.n_heads, u1.cfg.n_layers
+    assert sum(p1[k].numel() for k in added) == \
+        3 * d * d + nh * d + nh + d * d + L * nh
+
+
+def test_carry_read_convention_includes_own_write():
+    """**读出约定必须写清并钉住**（契约 U 追加项 ②）：位置 t 读到的是 `S_t`
+    （**含 t 自己的写入**，read-after-write，与因果 softmax 注意力把对角项计入同一
+    约定）。证据：单点序列上读出 == `β (k̂·q) v`（= 自写入贡献）；
+    变异验证 M3 会让位置 t 去读 t+1 的写入（必须被因果性单测抓红）。"""
+    torch.manual_seed(7)
+    B, H, dh = 1, 2, 4
+    q = torch.randn(B, H, 1, dh)
+    k = torch.randn(B, H, 1, dh)
+    v = torch.randn(B, H, 1, dh)
+    beta = torch.rand(B, H, 1)
+    kh = carry_norm_keys(k[:, :, 0])
+    want = (beta[:, :, 0].unsqueeze(-1) * (kh * q[:, :, 0]).sum(-1, keepdim=True)
+            * v[:, :, 0])
+    # **训练实装（分块并行）与逐位置参考实装都要过**——读出约定是训练路径的性质，
+    # 只测参考实装会让「去掉自写入」的变异漏网（变异验证 M2 的教训）。
+    impls = [("sequential", lambda qq, kk, vv, bb, r: carry_scan_sequential(qq, kk, vv, bb, r)),
+             ("chunked1", lambda qq, kk, vv, bb, r: carry_scan_chunked(qq, kk, vv, bb, r, 1)),
+             ("chunked4", lambda qq, kk, vv, bb, r: carry_scan_chunked(qq, kk, vv, bb, r, 4))]
+    for name, fn in impls:
+        for rule in ("plain", "delta"):
+            y, _ = fn(q, k, v, beta, rule)
+            assert torch.allclose(y[:, :, 0], want, atol=1e-6), (name, rule)
+        # 改掉 v_0（自写入）必须改变 y_0 —— 「读到自己的写入」而不是「读之前的状态」
+        v2 = v.clone()
+        v2[:, :, 0] += 1.0
+        for rule in ("plain", "delta"):
+            y1, _ = fn(q, k, v, beta, rule)
+            y2, _ = fn(q, k, v2, beta, rule)
+            assert not torch.allclose(y1[:, :, 0], y2[:, :, 0]), (name, rule)
+
+
+def test_carry_read_mass_and_far_share():
+    """契约 U 追加项 ③：通道活性要带**读取量**证据 —— 每层读出占注意力输出的
+    比例（`read_share`）、槽的分数质量、以及精确的「窗口外贡献份额」。U0 全为 0。"""
+    m = carry_model("delta", train_window=4)
+    for blk in m.blocks:
+        blk.carry_scale.data.normal_(std=1.0)
+    x = torch.randint(0, 10, (2, 12))
+    stats = carry_read_mass_stats(m, x, window=4)
+    assert stats["enabled"] and stats["read_share_per_layer"] > 0
+    assert stats["slot_score_mass_per_query"] > 0
+    assert 0 <= stats["far_read_norm_frac"] <= 1.5
+    off = carry_read_mass_stats(carry_model(None), x, window=4)
+    assert off["read_share_per_layer"] is None
+    # 精确的窗口外份额：只留窗口外写入时读出必然变小（窗口 > 0）
+    torch.manual_seed(8)
+    q = torch.randn(1, 2, 18, 4)
+    k = torch.randn(1, 2, 18, 4)
+    v = torch.randn(1, 2, 18, 4)
+    beta = torch.full((1, 2, 18), 0.5)
+    for rule in ("plain", "delta"):
+        f = carry_far_read_norm_frac(q, k, v, beta, window=4, rule=rule)
+        assert 0 < f < 1
+
+
+def test_carry_channel_identity_start_matches_no_channel():
+    """**单边零起步**（SCHEMA §10）：读出增益 γ=0 ⇒ 起步严格恒等于无通道基线，
+    且主干参数与 U0 臂**逐位相同**（新增参数在其余参数 init 之后才抽随机数）。
+
+    同时钉住「恒等起步不是零初始化」：槽的写投影/写门非零（∂L/∂γ ≠ 0 ⇒ 非鞍点）。
+    """
+    u0, u1, u2 = carry_model(None), carry_model("plain"), carry_model("delta")
+    p0 = u0.state_dict()
+    for m in (u1, u2):
+        p = m.state_dict()
+        assert set(p) - set(p0) == (
+            {"carry.w_k", "carry.w_v", "carry.w_q", "carry.beta_w",
+             "carry.beta_b", "carry.gate_w"}
+            | {f"blocks.{i}.carry_scale" for i in range(3)})
+        for k in p0:
+            assert torch.equal(p0[k], p[k]), k        # 主干逐位相同
+        for blk in m.blocks:
+            assert torch.equal(blk.carry_scale, torch.zeros_like(blk.carry_scale))
+        assert float(m.carry.w_k.detach().abs().sum()) > 0
+    x = torch.randint(0, 10, (2, 12))
+    with torch.no_grad():
+        l0 = u0(x)[1]["depth_logits"][-1]
+        for m in (u1, u2):
+            assert torch.equal(l0, m(x)[1]["depth_logits"][-1])
+            assert m._carry_box["mem"].abs().sum() > 0        # 槽是活的…
+            assert all(float(b.carry_scale.abs().sum()) == 0
+                       for b in m.blocks)                     # …但读出被单边零关掉
+
+
+def test_carry_block_zero_scale_equals_plain_block_bitwise():
+    """γ=0 时 `CarryChannelBlock.forward` 必须与同权重 `Block.forward` **逐位**一致
+    （含窗口掩码路径）⇒ 「通道关掉 = 基线」是逐位事实，不是近似。"""
+    m = carry_model("delta", train_window=4)
+    blk = m.blocks[0]
+    x = torch.randint(0, 10, (2, 12))
+    win = window_anchor_keep_mask(12, 4, 0)
+    with torch.no_grad():
+        h = m._input_states(x)
+        mask = win.view(1, 1, 12, 12).expand(2, m.cfg.n_heads, 12, 12)
+        got, tele = blk(h, attn_mask=mask)
+        want, _ = Block.forward(blk, h, attn_mask=mask)
+        assert torch.equal(got, want)
+        assert tele["read_scale_absmean"] == 0
+        blk.carry_scale.data.fill_(1.0)
+        got2, tele2 = blk(h, attn_mask=mask)
+        want2, _ = Block.forward(blk, h, attn_mask=mask)
+        assert not torch.equal(got2, want2)          # 开关打开 ⇒ 真的改了前向
+        assert float(tele2["read_share"]) > 0
+
+
+def test_carry_channel_write_path_gets_gradients():
+    """梯度可达性：损失对槽的写投影/写门与每层读出增益的梯度非零且有限
+    —— 不是死路径（活性量的梯度侧证据）。"""
+    m = carry_model("delta")
+    for blk in m.blocks:
+        blk.carry_scale.data.normal_(std=1.0)
+    x = torch.randint(0, 10, (2, 12))
+    loss, aux = m(x, exit_depths=None)
+    loss.backward()
+    for p in m.carry.parameters():
+        assert p.grad is not None and torch.isfinite(p.grad).all()
+        assert float(p.grad.abs().max()) > 0        # 写入路径也有梯度（不是死路径）
+    for blk in m.blocks:
+        assert float(blk.carry_scale.grad.abs().max()) > 0
+    assert aux["attn_carry"] and len(aux["attn_carry"]) == 3
+
+
+def test_carry_channel_carries_across_window_but_baseline_does_not():
+    """**契约 U 的机制核心**：训练窗口 4 个 token 时，位置 10 的读出在无通道臂上
+    与「位置 0 的 token」**无关**（窗口挡住了），而在有通道臂上**必须**随它变
+    ——「信息被搬过来」这件事只有在通道存在时才成立（判据 ① 的前提校验同源）。
+    """
+    for rule in ("plain", "delta"):
+        m = carry_model(rule, train_window=4)
+        for blk in m.blocks:
+            blk.carry_scale.data.normal_(std=1.0)
+        m.eval()
+        x = torch.randint(0, 10, (2, 12))
+        y = x.clone()
+        y[:, 0] = (x[:, 0] + 1) % 10
+        with torch.no_grad():
+            la = m(x)[1]["depth_logits"][-1]
+            lb = m(y)[1]["depth_logits"][-1]
+        assert not torch.equal(la[:, 10], lb[:, 10])
+    base = carry_model(None, train_window=4)
+    base.eval()
+    x = torch.randint(0, 10, (2, 12))
+    y = x.clone()
+    y[:, 0] = (x[:, 0] + 1) % 10
+    with torch.no_grad():
+        la = base(x)[1]["depth_logits"][-1]
+        lb = base(y)[1]["depth_logits"][-1]
+    assert torch.equal(la[:, 10], lb[:, 10])          # 窗口真的挡住了位置 0
+
+
+def test_carry_liveness_and_probe_report_alive():
+    """活性块与功能探针（SCHEMA §10）：状态/写门/写入量非零，且同权重关掉通道后
+    前向有偏差；把规则换掉也有偏差（两臂的唯一变量就是规则本身）。"""
+    # carry_chunk=4 ⇒ seq_len=12 有 3 个块，`‖ΔS‖/‖S‖`（块 2..n）有定义
+    m = carry_model("delta", carry_chunk=4)
+    for blk in m.blocks:
+        blk.carry_scale.data.normal_(std=1.0)
+    m.eval()
+    x = torch.randint(0, 10, (2, 12))
+    with torch.no_grad():
+        _, aux = m(x, exit_depths=None)
+    live = carry_liveness(m, m._carry_tele, aux["attn_carry"],
+                          prob=carry_probe(m, x))
+    assert live["write_rel_chunks"] == 2 and live["n_chunks"] == 3
+    assert live["enabled"] and live["alive"]
+    d, nh, L = 32, 4, 3
+    assert live["params_added"] == 3 * d * d + nh * d + nh + d * d + L * nh
+    assert live["state_fro"] > 0 and live["beta_mean"] > 0 and live["write_rel"] > 0
+    assert live["rel_dev_vs_channel_off"] > 0
+    assert live["rel_dev_vs_other_rule"] > 0
+    off = carry_liveness(carry_model(None))
+    assert off["alive"] is False and off["params_added"] == 0
+    assert off["read_share"] is None and off["state_fro"] is None
+
+
+def test_carry_plain_rule_does_not_forget_delta_does():
+    """两条规则的**语义差异**必须可观测（否则 U1 vs U2 是同一个臂）：
+
+    用同一把钥匙（`q = k̂`）连写两次，`v1 = e0`、`v2 = e1`、β 恒定。解析解：
+    plain 读出 `= β(v1 + v2)`（旧值原样叠加）；delta 读出 `= β(v1 + v2 − βv1)`
+    （把「状态已经能预测的部分」扣掉）⇒ delta 的读出更小、不重复占位。
+    """
+    torch.manual_seed(5)
+    B, H, dh = 1, 1, 4
+    kh = torch.zeros(B, H, dh)
+    kh[..., 0] = 1.0
+    k = kh.unsqueeze(2).repeat(1, 1, 2, 1)
+    v = torch.zeros(B, H, 2, dh)
+    v[..., 0, 0] = 1.0
+    v[..., 1, 1] = 1.0
+    beta = torch.full((B, H, 2), 0.9)
+    q_read = kh.unsqueeze(2).clone()                        # 读出用同一把钥匙
+    q_two = q_read.repeat(1, 1, 2, 1)
+    y_p, _ = carry_scan_sequential(q_two, k, v, beta, "plain")
+    y_d, _ = carry_scan_sequential(q_two, k, v, beta, "delta")
+    bt = 0.9
+    want_p = bt * (v[:, :, 0] + v[:, :, 1])
+    want_d = bt * (v[:, :, 0] + v[:, :, 1] - bt * v[:, :, 0])
+    assert torch.allclose(y_p[:, :, 1], want_p, atol=1e-12)
+    assert torch.allclose(y_d[:, :, 1], want_d, atol=1e-12)
+    assert float(y_d[:, :, 1].norm()) < float(y_p[:, :, 1].norm())
+
+
+def test_carry_cli_plumbed_to_config():
+    """CLI 通道（可失败）：`--carry-write` 必须真的进 `DepthARConfig` 并建出
+    `CarryChannelBlock`，否则就是「开关是死的」（变异验证 C6 靠这条抓红）。"""
+    import argparse
+    import train_depth_ar as T
+
+    base = dict(d=32, layers=2, heads=2, seq_len=12, mlp_mult=4, dense=True,
+                gate_bias_init=-2.0, topology="sequential", fill_kv=True,
+                proj_fill=False, readout_dims=None, readout_gated=False,
+                readout_linear_resid=False, attn_sparse_k=0, attn_linear=False,
+                linear_chunk=64, train_window=0, train_anchors=0,
+                n_kv_heads=None, carry_chunk=64)
+    cfg = T.build_depthar_config(argparse.Namespace(**base, carry_write="delta"))
+    assert cfg.carry_rule == "delta"
+    torch.manual_seed(0)
+    m = DepthARModel(cfg, vocab_size=10)
+    assert type(m.blocks[0]).__name__ == "CarryChannelBlock"
+    cfg_off = T.build_depthar_config(
+        argparse.Namespace(**base, carry_write="none"))
+    assert cfg_off.carry_rule is None
+    assert type(DepthARModel(cfg_off, 10).blocks[0]).__name__ == "Block"
+
+
+def test_carry_config_rejects_combinations():
+    """单因素：写入通道与其它干预互斥/依赖必须显式报错；与 `train_window`
+    **可以**同时开（窗口造需求、通道提供路径）。"""
+    bad = ({"attn_linear": True}, {"n_kv_heads": 2}, {"topology": "parallel"},
+           {"attn_sparse_k": 2})
+    for kw in bad:
+        with pytest.raises(ValueError):
+            carry_model("plain", **kw)
+    with pytest.raises(ValueError):                 # dense=False 不允许
+        torch.manual_seed(0)
+        DepthARModel(DepthARConfig(d_model=32, n_layers=2, n_heads=4, seq_len=12,
+                                   carry_rule="plain"), vocab_size=10)
+    with pytest.raises(ValueError):                 # 未知规则
+        torch.manual_seed(0)
+        DepthARModel(DepthARConfig(d_model=32, n_layers=2, n_heads=4, seq_len=12,
+                                   dense=True, carry_rule="luar"), vocab_size=10)
+    m = carry_model("plain", train_window=4)        # 组合合法：window + channel
+    assert m.cfg.train_window == 4 and m.cfg.carry_rule == "plain"
+    m(torch.randint(0, 10, (2, 12)))
+
+
+def test_carry_default_off_matches_v1_bitwise():
+    """`carry_rule=None`（缺省）逐位还原 v1：块类仍是 stock `Block`、参数量与
+    参数名与 v1 相同、前向与 `retention.masked_logits` 的 v1 参考路径逐位一致。"""
+    from tools.evalkit.retention import masked_logits
+    m = carry_model(None, train_window=4)
+    assert all(type(b).__name__ == "Block" for b in m.blocks)
+    x = torch.randint(0, 10, (2, 12))
+    keep = window_anchor_keep_mask(12, 4, 0)
+    m.eval()
+    with torch.no_grad():
+        got = m(x)[1]["depth_logits"][-1]
+        want = masked_logits(m, x, keep)
+    assert torch.equal(got, want)
+
+
+def test_mqar_training_task_layout_and_local_prior():
+    """训练侧合成任务（契约 U 的数据源）：自监督布局自洽（答案 = 位置 rows+1 的
+    token）、同行内查询问不同的 pair、判决行的可见窗口里**没有符号**（gap ≥ 14
+    ⇒ 与单查询版判决行同一局部模式）、局部先验退化到 chance。"""
+    from tools.evalkit.longrange_tasks import (assoc_recall_multi_batch,
+                                               check_local_prior_resistance,
+                                               local_prior_accuracy)
+    g = torch.Generator().manual_seed(0)
+    t = assoc_recall_multi_batch(8, 256, 8, 8, generator=g)
+    row = torch.arange(t.B).unsqueeze(1)
+    assert torch.equal(t.tokens[row, t.rows + 1], t.answers)
+    pick = (t.rows - (t.meta["query_base"] + 1)) // t.meta["query_block"]
+    assert int(t.dists.min()) > 16
+    assert check_local_prior_resistance(t, k=16)["passed"]
+    assert local_prior_accuracy(t, k=16)["accuracy"] < 0.047
+    # 判决行的可见窗口（最近 16 个位置）里只有 cue + 查询键本身，**没有别的符号**
+    # （尤其没有上一个查询的答案）⇒ 局部先验拿不到任何可抄的东西
+    sym = set(range(t.n_answers))
+    for b in range(t.B):
+        for j in range(t.M):
+            r = int(t.rows[b, j])
+            win = [int(v) for v in t.tokens[b, r - 15:r + 1]]
+            assert set(win) & sym == {int(t.tokens[b, r])}
+    assert list(pick.shape) == [t.B, t.M]

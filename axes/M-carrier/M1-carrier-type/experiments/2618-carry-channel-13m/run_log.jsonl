@@ -1,0 +1,34 @@
+{"t": 0.02, "msg": "加载三臂（sha256 断言）"}
+{"t": 0.97, "msg": "U0: 8e8ec726a8220b78… carry=None"}
+{"t": 1.67, "msg": "U1: 9b74ddd280875416… carry=plain"}
+{"t": 2.41, "msg": "U2: 40ec6472fee5be3b… carry=delta"}
+{"t": 2.41, "msg": "自检 ①：释放版（is_causal）vs 显式因果掩码（逐位）"}
+{"t": 2.75, "msg": "  max|Δlogit| = 0.000e+00"}
+{"t": 2.75, "msg": "自检 ①：模型自带窗口掩码前向 vs masked_logits+window_anchor_keep_mask（逐位）"}
+{"t": 2.86, "msg": "  max|Δlogit| = 0.000e+00"}
+{"t": 2.86, "msg": "自检 ①：逐位等参数（U1 vs U2）+ 通道臂主干 == U0（同 seed 重新构造）"}
+{"t": 9.02, "msg": "  U1 vs U2 逐位等参数: True（13801064 参数）"}
+{"t": 9.02, "msg": "  通道臂主干逐位 == U0: True；新增参数 264296（1.95%）"}
+{"t": 9.02, "msg": "  单边零起步（γ=0）⇒ 起步 logits 逐位等于 U0: {'U1_matches_U0_bitwise': True, 'U2_matches_U0_bitwise': True}"}
+{"t": 9.03, "msg": "判据 ②③④：关联回忆（主腿）+ 毁源对照臂"}
+{"t": 16.34, "msg": "  U0 K=4: acc=0.0176 CI=[0.013982, 0.022078] n=4096 | 毁源=0.0176"}
+{"t": 23.34, "msg": "  U0 K=8: acc=0.0137 CI=[0.010544, 0.017711] n=4096 | 毁源=0.0137"}
+{"t": 30.61, "msg": "  U0 K=16: acc=0.0117 CI=[0.00885, 0.015502] n=4096 | 毁源=0.0117"}
+{"t": 39.65, "msg": "  U1 K=4: acc=0.0012 CI=[0.000522, 0.002855] n=4096 | 毁源=0.0012"}
+{"t": 47.61, "msg": "  U1 K=8: acc=0.0007 CI=[0.000249, 0.002151] n=4096 | 毁源=0.0007"}
+{"t": 57.15, "msg": "  U1 K=16: acc=0.0005 CI=[0.000134, 0.001779] n=4096 | 毁源=0.0005"}
+{"t": 65.83, "msg": "  U2 K=4: acc=0.1443 CI=[0.133859, 0.155382] n=4096 | 毁源=0.0071"}
+{"t": 75.01, "msg": "  U2 K=8: acc=0.0950 CI=[0.086368, 0.104333] n=4096 | 毁源=0.0081"}
+{"t": 84.32, "msg": "  U2 K=16: acc=0.0557 CI=[0.04905, 0.063111] n=4096 | 毁源=0.0085"}
+{"t": 84.32, "msg": "判据 ①（前提校验）：U0 acc=0.0137 CI=[0.010544, 0.017711] chance=0.015625 ⇒ 显著高于 chance: False"}
+{"t": 84.32, "msg": "判据 ②（主）：U2 vs U0 Δ=8.13pp CI 不重叠=True ⇒ 过"}
+{"t": 84.32, "msg": "判据 ③：U2 vs U1 Δ=9.424pp CI 不重叠=True ⇒ delta 优"}
+{"t": 84.32, "msg": "判据 ⑤：变距离回忆（辅助腿，三臂 × 六档距离）"}
+{"t": 93.33, "msg": "  U0: d16:0.012 d32:0.015 d64:0.018 d128:0.016 d192:0.020 d255:0.016"}
+{"t": 105.2, "msg": "  U1: d16:0.003 d32:0.000 d64:0.002 d128:0.000 d192:0.002 d255:0.000"}
+{"t": 117.73, "msg": "  U2: d16:0.036 d32:0.000 d64:0.289 d128:0.102 d192:0.001 d255:0.595"}
+{"t": 117.73, "msg": "判据 ⑥：通道活性 / loss 斜率 / 显存"}
+{"t": 117.73, "msg": "  U0: wall 11.12 min, peak 2015.3 MB, loss_slope -0.001738, read_mass {'enabled': False, 'read_share_per_layer': None, 'slot_score_mass_per_query': None, 'far_read_norm_frac': None}"}
+{"t": 120.01, "msg": "  U1: wall 13.48 min, peak 2169.5 MB, loss_slope 0.026008, read_mass {'enabled': True, 'window': 16, 'read_share_per_layer': 0.085214, 'read_share_by_layer': [0.01046, 0.027473, 0.079073, 0.073315, 0.031961, 0.111339, 0.127223, 0.071984, 0.137787, 0.089606, 0.104686, 0.157665], 'slot_score_mass_per_query': 3.191026, 'far_read_norm_frac': 0.881367, 'notes': 'read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）'}"}
+{"t": 120.42, "msg": "  U2: wall 16.26 min, peak 2282.4 MB, loss_slope -0.05323, read_mass {'enabled': True, 'window': 16, 'read_share_per_layer': 0.386711, 'read_share_by_layer': [0.103891, 0.209502, 0.088001, 0.170804, 0.21165, 0.302382, 0.224524, 0.369204, 0.517278, 0.704164, 0.804658, 0.934477], 'slot_score_mass_per_query': 22.136227, 'far_read_norm_frac': 1.002647, 'notes': 'read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）'}"}
+{"t": 120.43, "msg": "复现性：主腿 K=8 再跑一遍（同 seed）"}

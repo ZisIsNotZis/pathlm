@@ -10,16 +10,19 @@ import argparse, json, math, os, sys, time
 from dataclasses import asdict
 
 import torch
+import torch.nn.functional as F
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from pathlm.data import load_enwik8_full, batch
+from tools.evalkit.longrange_tasks import assoc_recall_multi_batch
 from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
                              depth_curve, tf_acceptance, workspace_probe,
                              generation_quality, readout_workspace_energy,
                              spec_cost_model, topology_liveness,
                              attn_sparse_probe, window_mask_liveness,
                              window_mask_probe, attn_linear_probe,
-                             kv_head_liveness)
-from pathlm.data import load_enwik8_full, batch
+                             kv_head_liveness, carry_liveness, carry_probe,
+                             carry_read_mass_stats)
 
 
 def _linear_anneal(v0: float, v1: float | None, step: int, steps: int,
@@ -61,7 +64,8 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
           shallow_stopgrad: bool = False, dense_aux: bool = False,
           exit_anneal_to: float | None = None,
           exit_anneal_frac: float = 0.25,
-          final_anneal_to: float | None = None):
+          final_anneal_to: float | None = None,
+          synth: dict | None = None):
     """随机退出深度训练：每步均匀采样 d_i ∈ {0..L}；记录逐深度 CE 与门均值。
     浅层 CE 权重按 aux_weight_at(step) 调度（默认恒 1 = v1 等权）；最终深度
     权重 final_weight（ticket 24：默认 1.0 = v1，2.0 = 契约「最终深度 2×」）。
@@ -125,6 +129,49 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
             "kv_rows_fro_mean": round(
                 float(sum(float(r.norm()) for r in rows) / len(rows)), 4),
         }
+    # 写入通道（ticket 35 契约 U）的活性量（SCHEMA §10/§17.4）：与线性注意力同款，
+    # 每步**按张量**累加、每 200 步随同一行日志落盘（不在每步做 `.item()`）。
+    # carry 参数（写门权重/读出增益）是**静态块**：每个 200 步行写同一份，
+    # 其中 read_scale_absmean 是「单边零初始化是否已逃逸」的直接证据。
+    carry_keys = ("read_scale_absmean", "read_share", "mem_write_to_resid_ratio")
+    carry_sum = {k: None for k in carry_keys}
+    carry_layer_sum: list[dict] = []          # 逐层累计（每层每步一份）
+    n_carry_layers = 0
+    # 合成任务的**答案行** CE（契约 U 的训练侧诊断，不是判据）：只有这些行真的
+    # 依赖通道；整段 loss 的其余部分是 filler（学得很快）与不可预测的随机符号
+    # （恒在 ln64 地板）⇒ 只看总 loss 会看不到通道到底有没有在学。
+    ans_ce_sum = 0.0
+    ans_ce_n = 0
+
+    def carry_log() -> dict | None:
+        """每 200 步落盘的通道活性量：扫描侧（state_fro/β/写入量/读出范数）+ 读出侧
+        （read_scale 逃逸、每层读出占注意力输出的比例 read_share）。"""
+        if model.cfg.carry_rule is None:
+            return None
+        out = {k: round(float(v) / n_carry_layers, 6)
+               for k, v in carry_sum.items() if v is not None} if n_carry_layers else {}
+        scan = getattr(model, "_carry_tele", None)
+        if scan is not None:
+            out.update({k: round(float(scan[k]), 6)
+                        for k in ("state_fro", "beta_mean", "write_rel",
+                                  "read_norm")})
+        out["n_layer_samples"] = n_carry_layers
+        out["rule"] = model.cfg.carry_rule
+        out["carry_chunk"] = int(model.cfg.carry_chunk)
+        return out
+
+    def data_batch():
+        """一个训练批的 token `[bs, seq]`（cuda）+ 合成任务的判决行（用于诊断）。"""
+        if synth is not None:
+            tb = assoc_recall_multi_batch(
+                bs, seq, synth["pairs"], synth["queries"],
+                sym_vocab=synth["sym_vocab"], filler_token=synth["filler_token"],
+                cue_token=synth["cue_token"], gap=synth["gap"],
+                generator=torch_rng)
+            return tb.tokens.cuda(), tb.rows.cuda(), tb.answers.cuda()
+        x, _ = batch(train_arr, bs, seq, torch_rng)
+        return x.cuda(), None, None
+
     opt = torch.optim.AdamW(model.parameters(), lr=tcfg["lr"], weight_decay=0.01)
     sched = torch.optim.lr_scheduler.LambdaLR(
         opt, lambda s: min((s + 1) / 200, 0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * s / steps))))
@@ -167,8 +214,7 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
     n_grad_skip = 0
     for step in range(steps):
         model.train()
-        x, _ = batch(train_arr, bs, seq, torch_rng)
-        x = x.cuda()
+        x, ans_rows, ans_vals = data_batch()
         if exit_mode == "full":
             depths = torch.full((bs, seq), L, dtype=torch.long).cuda()
         else:
@@ -228,6 +274,25 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                                      else lin_sum["state_norm"]
                                      + s["state_norm"].detach())
             n_lin_layers += 1
+        for i, s in enumerate(aux.get("attn_carry", ())):
+            while len(carry_layer_sum) <= i:
+                carry_layer_sum.append({k: None for k in carry_keys})
+            for kk in carry_keys:
+                v = s[kk].detach()
+                carry_sum[kk] = v if carry_sum[kk] is None else carry_sum[kk] + v
+                cur = carry_layer_sum[i][kk]
+                carry_layer_sum[i][kk] = v if cur is None else cur + v
+            n_carry_layers += 1
+        if ans_rows is not None:
+            with torch.no_grad():
+                lg = aux["depth_logits"][-1].float()               # [B,T,V]
+                ar_ = torch.arange(lg.shape[0], device=lg.device).unsqueeze(1)
+                sel = lg[ar_, ans_rows]                            # [B,Q,V]
+                assert sel.shape[:2] == ans_vals.shape
+                ce = F.cross_entropy(sel.reshape(-1, sel.shape[-1]),
+                                     ans_vals.reshape(-1))
+                ans_ce_sum += float(ce)
+                ans_ce_n += 1
         n_logged += 1
         if step % 200 == 0 or step == steps - 1:
             with open(log_path, "a") as f:
@@ -242,6 +307,11 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                                     for kk, v in sparse_acc.items()}
                                    if n_sparse_layers else None),
                     "attn_linear": lin_log(),
+                    "attn_carry": carry_log(),
+                    "synth_answer_ce": (round(ans_ce_sum / max(ans_ce_n, 1), 4)
+                                        if ans_ce_n else None),
+                    "synth_chance_ce": (round(math.log(synth["sym_vocab"]), 4)
+                                        if synth is not None else None),
                     "window_mask": win_live,
                     "kv_heads": kv_live(),
                     "lr": round(float(sched.get_last_lr()[0]), 6),
@@ -264,6 +334,22 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                                              if k != "n_layer_samples"}
                                             if d else None))(lin_log()),
             "attn_linear_layer_samples": n_lin_layers,
+            "attn_carry_mean": (lambda d: ({k: v for k, v in d.items()
+                                            if k != "n_layer_samples"}
+                                           if d else None))(carry_log()),
+            "attn_carry_layer_samples": n_carry_layers,
+            "attn_carry_layer_stats": (
+                [{k: round(float(v) / max(steps, 1), 6) for k, v in row.items()
+                  if v is not None} for row in carry_layer_sum]
+                if n_carry_layers else None),
+            "attn_carry_scan_mean": (lambda d: ({k: round(float(v), 6) for k, v in
+                                                  d.items()} if d else None))(
+                (model._carry_tele if getattr(model, "_carry_tele", None) else None)),
+            "synth_answer_ce_mean": (round(ans_ce_sum / max(ans_ce_n, 1), 4)
+                                     if ans_ce_n else None),
+            "synth_answer_ce_n_steps": ans_ce_n,
+            "synth_chance_ce": (round(math.log(synth["sym_vocab"]), 4)
+                                if synth is not None else None),
             "window_mask": win_live,
             "window_mask_probe": win_probe,
             "kv_heads": kv_live(),
@@ -290,7 +376,10 @@ def build_depthar_config(args) -> DepthARConfig:
                          linear_chunk=args.linear_chunk,
                          train_window=args.train_window,
                          train_anchors=args.train_anchors,
-                         n_kv_heads=args.n_kv_heads)
+                         n_kv_heads=args.n_kv_heads,
+                         carry_rule=(None if args.carry_write == "none"
+                                     else args.carry_write),
+                         carry_chunk=args.carry_chunk)
 
 
 def _kv_head_liveness(model: DepthARModel, vocab_size: int,
@@ -309,6 +398,26 @@ def _kv_head_liveness(model: DepthARModel, vocab_size: int,
     out["probe_tokens_shape"] = list(x.shape)
     out["probe_seed"] = 1234
     return out
+
+
+def _probe_tokens(model: DepthARModel, vocab_size: int, args, synth) -> torch.Tensor:
+    """通道功能探针（`carry_probe`）的输入：与训练**同分布**的一批固定 seed 输入。
+
+    形态：合成任务（契约 U）时用 `assoc_recall_multi_batch`（seed 1234）的两行；
+    否则用固定 seed 的随机 token（形状类活性量与输入分布无关，同
+    `_kv_head_liveness`）。不消耗训练随机数（在训练结束后、落盘前调用）。
+    """
+    if synth is not None:
+        tb = assoc_recall_multi_batch(
+            2, args.seq_len, synth["pairs"], synth["queries"],
+            sym_vocab=synth["sym_vocab"], filler_token=synth["filler_token"],
+            cue_token=synth["cue_token"], gap=synth["gap"],
+            generator=torch.Generator().manual_seed(1234))
+        x = tb.tokens
+    else:
+        g = torch.Generator().manual_seed(1234)
+        x = torch.randint(0, vocab_size, (2, min(args.seq_len, 64)), generator=g)
+    return x.cuda() if torch.cuda.is_available() else x
 
 
 def main():
@@ -385,6 +494,29 @@ def main():
                     help="no-fill ragged 语义（ticket 23e）：早退位置在未跑层"
                          "的 KV 中缺席（原引擎 per-layer cache 语义）；缺省 = "
                          "v1 fill（W0 复现点）")
+    ap.add_argument("--carry-write", choices=("none", "plain", "delta"),
+                    default="none",
+                    help="显式写入通道（ticket 35 契约 U）：none = 无通道（U0，"
+                         "缺省，逐位还原 v1）；plain = 逐位置累加写 S←S+βvk̂ᵀ（U1）；"
+                         "delta = 残差写 S←S(I−βk̂k̂ᵀ)+βvk̂ᵀ（U2）。U1/U2 逐位等参数，"
+                         "唯一变量 = 写入规则；读出增益单边零 ⇒ 起步恒等于 U0。"
+                         "需配合 --dense 且 topology=sequential（单因素），可与 "
+                         "--train-window 同时开（窗口造需求、通道提供路径）")
+    ap.add_argument("--carry-chunk", type=int, default=64,
+                    help="写入通道状态扫描的分块大小（实现细节：只改浮点累加顺序，"
+                         "不改语义；缺省 64）")
+    ap.add_argument("--synth-task", choices=("none", "assoc-mqar"),
+                    default="none",
+                    help="训练数据源：none = enwik8（缺省，逐位还原历史）；"
+                         "assoc-mqar = 多查询关联回忆合成任务（契约 U 的主任务，"
+                         "见 tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch）")
+    ap.add_argument("--synth-pairs", type=int, default=8,
+                    help="合成任务的 (key,value) 对数 K")
+    ap.add_argument("--synth-queries", type=int, default=8,
+                    help="合成任务末尾的查询数 Q（= 每行依赖记忆的监督行数）")
+    ap.add_argument("--synth-gap", type=int, default=14,
+                    help="合成任务里查询之间的 filler 数（≥16−3 ⇒ 判决行的可见窗口"
+                         "与单查询版同一局部模式、窗口内无符号）")
     ap.add_argument("--proj-fill", action="store_true",
                     help="fill 基础上加逐层线性 adapter（恒等初始化，学得 "
                          "remap；ticket 23e 可选臂，需 fill_kv）")
@@ -429,7 +561,18 @@ def main():
         print(f"[diag] 每 {dump_secs}s 打一次全线程 Python 栈（PATHLM_DUMP_STACKS）",
               flush=True)
     torch.manual_seed(args.seed)
-    train_arr, eval_arr, vocab_size = load_enwik8_full(".tmp/enwik8", "data/enwik8_full.npz")
+    torch.cuda.reset_peak_memory_stats()
+    synth = (None if args.synth_task == "none" else
+             {"task": args.synth_task, "pairs": args.synth_pairs,
+              "queries": args.synth_queries, "gap": args.synth_gap,
+              "sym_vocab": 64, "filler_token": 64, "cue_token": 205})
+    if synth is None:
+        train_arr, eval_arr, vocab_size = load_enwik8_full(
+            ".tmp/enwik8", "data/enwik8_full.npz")
+    else:
+        # 合成任务（契约 U）：vocab 仍用主干的 206（cue = vocab-1 = 205 是本仓
+        # 既有 needle 约定），不加载 enwik8
+        train_arr, eval_arr, vocab_size = None, None, 206
     cfg = build_depthar_config(args)
     model = DepthARModel(cfg, vocab_size).cuda()
     n_params = sum(p.numel() for p in model.parameters())
@@ -437,7 +580,8 @@ def main():
           f"topology {args.topology}, attn_sparse_k {args.attn_sparse_k}, "
           f"attn_linear {args.attn_linear} (chunk {args.linear_chunk}), "
           f"train_window {args.train_window}/+{args.train_anchors}, "
-          f"n_kv_heads {args.n_kv_heads}, "
+          f"n_kv_heads {args.n_kv_heads}, carry {args.carry_write} "
+          f"(chunk {args.carry_chunk}), synth {args.synth_task}, "
           f"steps {args.steps} x bs{args.batch_size} x seq{args.seq_len} "
           f"= {args.steps*args.batch_size*args.seq_len/1e6:.1f}M tokens", flush=True)
 
@@ -455,7 +599,8 @@ def main():
         dense_aux=args.dense_aux,
         exit_anneal_to=(args.exit_anneal_to if args.exit_anneal else None),
         exit_anneal_frac=args.exit_anneal_frac,
-        final_anneal_to=(args.final_anneal_to if args.exit_anneal else None))
+        final_anneal_to=(args.final_anneal_to if args.exit_anneal else None),
+        synth=synth)
     torch.save(model.state_dict(), os.path.join(run_dir, "model.pt"))
 
     model.eval()
@@ -468,8 +613,25 @@ def main():
         "train_window": args.train_window,
         "train_anchors": args.train_anchors,
         "n_kv_heads": args.n_kv_heads,
+        "carry_write": args.carry_write,
+        "carry_chunk": args.carry_chunk,
+        "synth": synth,
+        "synth_task_config": (assoc_recall_multi_batch(
+            2, args.seq_len, args.synth_pairs, args.synth_queries,
+            gap=args.synth_gap,
+            generator=torch.Generator().manual_seed(1234)).meta
+            if synth is not None else None),
         "kv_head_liveness": _kv_head_liveness(model, vocab_size,
-                                               seq_len=args.seq_len),
+                                              seq_len=args.seq_len),
+        "carry_liveness": carry_liveness(
+            model, getattr(model, "_carry_tele", None),
+            train_stats.get("attn_carry_layer_stats"),
+            prob=carry_probe(model, _probe_tokens(model, vocab_size, args, synth))),
+        "carry_read_mass": carry_read_mass_stats(
+            model, _probe_tokens(model, vocab_size, args, synth),
+            window=args.train_window if args.train_window > 0 else 16),
+        "carry_probe_input": ("synth assoc-mqar（seed 1234）" if synth is not None
+                              else "enwik8 eval 批（data.batch, seed 1234）"),
         "topology_liveness": topology_liveness(model),
         "exit_mode": args.exit_mode,
         "fill_kv": args.fill_kv, "proj_fill": args.proj_fill,
@@ -487,6 +649,8 @@ def main():
         "params": n_params, "vocab_size": vocab_size,
         "train_tokens": args.steps * args.batch_size * args.seq_len,
         "wall_minutes": round(wall / 60, 2),
+        "peak_gpu_mem_mb": (round(torch.cuda.max_memory_allocated() / 2 ** 20, 1)
+                            if torch.cuda.is_available() else None),
         "avg_train_depth_ce": [round(c, 4) for c in avg_depth_ce],
         "avg_train_gate_mean": [round(g, 4) for g in avg_gate],
     }
@@ -506,24 +670,10 @@ def main():
         results["generation"] = generation_quality(model, eval_arr, device="cuda",
                                                    prompt_len=64, n_new=128)
     else:
-        curve = depth_curve(model, eval_arr, device="cuda", n_batches=args.eval_batches)
-        # 23c H1（dense+aux）也需全深度曲线（depth-L 主数字 + depth-4 出口 bpc）
-        results["depth_curve"] = curve
-        results["bpc"] = curve[-1]["bpc"]
-        results["next_token_acc"] = curve[-1]["acc"]
-        # ticket 25 电池：dense 也报 tf（中间读出无监督，截断资产 proxy 口径）
-        results["tf_acceptance"] = tf_acceptance(model, eval_arr, device="cuda",
-                                                 n_batches=args.eval_batches)
-        results["tf_note"] = ("dense 中间深度读出无直接监督：tf 系 depth-k "
-                              "残差态 tied 读出与 depth-L 读出的 argmax 一致率 "
-                              "proxy（截断资产口径，非训练出口资产）")
-        # 内容 top-k 稀疏的活性块（SCHEMA §10）：真实前向的保留键数 + 选择统计
-        results["attn_sparse_liveness"] = attn_sparse_probe(
-            model, eval_arr, device="cuda")
-        # 线性注意力的活性块（SCHEMA §10，契约 R）：φ/分母实测量程 + 同权重换算子的
-        # 反事实偏差（rel_dev > 0 ⇒ 不是换个名字的全注意力）+ 核质量分布
-        results["attn_linear_liveness"] = attn_linear_probe(
-            model, eval_arr, device="cuda")
+        # 合成任务（契约 U）：enwik8 电池不适用（bpc/生成段都定义在真实文本上）；
+        # 本臂的评测在实验目录的 `run.py` 里跑（合成长程任务电池 + 毁源对照臂）。
+        results["synth_note"] = ("训练用合成多查询关联回忆（契约 U），未在本入口跑 "
+                                 "enwik8 电池；机制读数见实验目录 run.py/results.json")
     with open(os.path.join(run_dir, "results.json"), "w") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
     print(json.dumps({k: v for k, v in results.items()

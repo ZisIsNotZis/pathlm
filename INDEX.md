@@ -2,7 +2,7 @@
 
 # INDEX · 设计空间状态灯
 
-共 **51** 个格子 ｜ ✅ judged 32 ｜ ◐ partial 7 ｜ 🏭 reference 7 ｜ ⬜ stub 5
+共 **51** 个格子 ｜ ✅ judged 33 ｜ ◐ partial 6 ｜ 🏭 reference 7 ｜ ⬜ stub 5
 
 > 全部内容由 `tools/build_wiki.py` 从 `catalog.yaml` 生成；**不要手改本文件**。
 
@@ -77,7 +77,7 @@
 
 | 格子 | 状态 | 判读 |
 |---|---|---|
-| [`M1-carrier-type`](axes/M-carrier/M1-carrier-type/README.md) · 状态载体类型 | ◐ partial | 只有 KV 载体；**ticket 34 造出「不靠语言先验」的长程天平并给出关键诊断：我们 13M 主干的长程能力是「分任务型」的——关联回忆 0.0061、变距离回忆 0.005–0.010（… |
+| [`M1-carrier-type`](axes/M-carrier/M1-carrier-type/README.md) · 状态载体类型 | ✅ judged | **载体类型首验（ticket 35）：显式写入通道成立**——在「关联回忆 + 窗口 16（key 100% 落在窗外）」的合成任务上，13M/12k 步：无通道 U0 = 0.0137（≈ch… |
 | [`M2-carrier-compression`](axes/M-carrier/M2-carrier-compression/README.md) · 载体压缩 | ◐ partial | 驱逐已测（价格见 A3）；量化/摘要/低秩零经验。 |
 | [`M3-cross-step-assumption`](axes/M-carrier/M3-cross-step-assumption/README.md) · 跨步假设 | ✅ judged | 有界内存的价签已测两档：**窗口 192 的训练税 −0.0028（近零）**、窗口 32 为 +0.0866；但 192 档**本就没有头寸**（未重训限制到 192 只 +0.0029），真正… |
 
