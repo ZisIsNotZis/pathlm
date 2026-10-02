@@ -30,6 +30,49 @@ def sample_rounds(pcap: PathConfig, rng: random.Random, n_layers: int) -> list:
     return paths
 
 
+def activity_line(step: int, loss, lr: float, minutes: float, gnorm, paths: list,
+                  aux: dict, n_layers: int) -> dict:
+    """The 200-step training log line, INCLUDING the activity record (SCHEMA §10,
+    §17.4: activity must be written to the SAME line as loss/lr so a reviewer can
+    cross-check the trajectory point by point). Pure function of its inputs —
+    the V3 activity seam, pinned by tests/test_decorrelation_at_scale.py.
+
+    `diversity_js` is the capped -JS reward term the model returns when
+    w_diversity > 0 and at least two paths ran; it is None for the w_diversity=0
+    arms (the ladder's control), which is NOT a dead switch. `skip_frac` is the
+    realized path stochasticity: kept layers / n_layers, averaged over the paths
+    of this step (1.0 = no layer dropped, i.e. the stock arm)."""
+    return {"step": step, "loss": round(float(loss.detach()), 4),
+            "lr": round(float(lr), 6), "min": round(float(minutes), 1),
+            "gnorm": round(float(gnorm), 4),
+            "n_paths": len(paths),
+            "skip_frac": round(sum(len(p.layer_order) for p in paths)
+                               / (len(paths) * n_layers), 4),
+            "diversity_js": (round(float(aux["diversity"]), 6)
+                             if "diversity" in aux else None)}
+
+
+def liveness_record(pcap: PathConfig, div_hist: list, skip_hist: list,
+                    gnorm_hist: list, gate_skips: int, n_paths) -> dict:
+    """The SCHEMA §10 activity block: is the arm's intervention alive, and with
+    what magnitude? w_diversity=0 arms report alive=False with a note that they
+    are the ladder's control, not an untriggered switch."""
+    return {
+        "w_diversity": pcap.w_diversity,
+        "p_skip": pcap.p_skip,
+        "n_paths_per_step": n_paths,
+        "alive": bool(div_hist),
+        "diversity_js_first": round(div_hist[0], 6) if div_hist else None,
+        "diversity_js_last": round(div_hist[-1], 6) if div_hist else None,
+        "diversity_js_mean": round(sum(div_hist) / len(div_hist), 6) if div_hist else None,
+        "n_diversity_observations": len(div_hist),
+        "skip_frac_mean": (round(sum(skip_hist) / len(skip_hist), 4)
+                           if skip_hist else None),
+        "gnorm_max": round(max(gnorm_hist), 4) if gnorm_hist else None,
+        "gate_skips": gate_skips,
+    }
+
+
 def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
           ckpt_dir: str | None = None, ckpt_every: int = 0):
     """ckpt_every > 0 also writes model_step{step:06d}.pt every ckpt_every steps
@@ -100,33 +143,16 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
         if "diversity" in aux:
             div_hist.append(float(aux["diversity"]))
         if step % 200 == 0 or step == steps - 1:
-            line = {"step": step, "loss": round(float(loss.detach()), 4),
-                    "lr": round(float(sched.get_last_lr()[0]), 6),
-                    "min": round((time.time() - t0) / 60, 1),
-                    "gnorm": round(float(gnorm), 4),
-                    "n_paths": paths_hist[-1],
-                    "skip_frac": round(skip_hist[-1], 4),
-                    "diversity_js": (round(float(aux["diversity"]), 6)
-                                     if "diversity" in aux else None)}
+            line = activity_line(step, loss, sched.get_last_lr()[0],
+                                 (time.time() - t0) / 60, gnorm, paths, aux,
+                                 model.mcfg.n_layers)
             try:
                 with open(log_path, "a") as f:
                     f.write(json.dumps(line) + "\n")
             except OSError as e:
                 raise RuntimeError(f"cannot append train log {log_path}: {e}") from e
-    liveness = {
-        "w_diversity": pcap.w_diversity,
-        "p_skip": pcap.p_skip,
-        "n_paths_per_step": paths_hist[-1] if paths_hist else None,
-        "alive": bool(div_hist),
-        "diversity_js_first": round(div_hist[0], 6) if div_hist else None,
-        "diversity_js_last": round(div_hist[-1], 6) if div_hist else None,
-        "diversity_js_mean": round(sum(div_hist) / len(div_hist), 6) if div_hist else None,
-        "n_diversity_observations": len(div_hist),
-        "skip_frac_mean": (round(sum(skip_hist) / len(skip_hist), 4)
-                           if skip_hist else None),
-        "gnorm_max": round(max(gnorm_hist), 4) if gnorm_hist else None,
-        "gate_skips": gate_skips,
-    }
+    liveness = liveness_record(pcap, div_hist, skip_hist, gnorm_hist, gate_skips,
+                               paths_hist[-1] if paths_hist else None)
     return time.time() - t0, liveness
 
 

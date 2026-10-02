@@ -136,7 +136,7 @@ $ git status --porcelain pathlm/recon_signal.py                 # 本线新文�
 2. 单测 `…::test_recon_head_dead_at_lambda_zero_grads_flow_at_lambda_one`
    —— 只反传主干时 `recon_head.weight.grad is None`（AdamW 连 weight decay 都不作用）；
 3. **20 步冒烟**：`smoke/smoke_A`（有头、λ=0）与 `smoke/smoke_A_off`（`--recon-window 0`，
-   纯 v1 路径）逐步日志**完全一致**（step 0 `loss 4.7499`、step 19 `loss 0.8147`、
+   纯 v1 路径）逐步日志在**损失/梯度/答案 CE 上一致**（挂钟与权重范数遥测因跨进程 CUDA 归约存在末位差）（step 0 `loss 4.7499`、step 19 `loss 0.8147`、
    `gnorm 66.07→1.76`、答案行 CE 同值）；
 4. 运行期自检：同 seed 重建「有头 / 无头」两模型，**主干参数与 logits 均逐位相同**
    （`selfchecks.lambda0_implementation_equivalence`，新增张量仅 `recon_head.weight`）。

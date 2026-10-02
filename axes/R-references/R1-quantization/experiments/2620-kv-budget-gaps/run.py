@@ -399,6 +399,9 @@ def main() -> int:
     n_arms = len(cfg["arms"])
     for i, (arm, spec) in enumerate(cfg["arms"].items(), 1):
         model, ck = load_model_for_arm(cfg, arm, spec, dev)
+        if spec["kind"] == "quant_head":
+            ck = {**ck, "base_arm": spec["base_arm"], "quantized_mode": spec["mode"],
+                  "note": "头共享 checkpoint（fp16 存储）× 评测期 KV 量化往返；权重未改"}
         fn = make_logits_fn(model, spec, T, dev)
         bpc = b19.bpc_of(fn, eval_arr, T, cfg["eval"]["n_batches"],
                          cfg["eval"]["batch_size"], cfg["eval"]["window_seed"], dev)
@@ -461,7 +464,7 @@ def main() -> int:
             row["source_bpc"] = r1[p["arm"]]["bpc"]
         elif p["arm"] in w3:
             row["source_bpc"] = w3[p["arm"]].get("bpc_second_path_masked_bpc")
-        elif p["arm"].startswith("win"):
+        elif cfg["arms"][p["arm"]]["kind"] == "window":
             row["source_bpc"] = m2.get(f"recent:d={cfg['arms'][p['arm']]['d']}", {}).get("bpc")
         else:
             row["source_bpc"] = None

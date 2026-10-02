@@ -175,3 +175,23 @@ def paired_delta_ci(a_batches, b_batches, **kw) -> dict:
 
 def per_batch_bpc(run: dict) -> list:
     return [r["bpc"] for r in run["per_batch"]]
+
+
+def reading_B(bpc_l1_k1: float, bpc_stock_k1: float, bpc_divl1_kmax: float) -> dict:
+    """主判据（读法 B，部署问题；契约 README §4.1 的预登记形式）：
+    `[bpc_l1@K1 − bpc_divl1@Kmax] − [bpc_l1@K1 − bpc_stock@K1] > 0`
+    等价于 `bpc_stock@K1 − bpc_divl1@Kmax > 0`（同一项相消）。两种写法都算出来，
+    并断言代数等价（§12 算术对账）——防止只报化简式、丢了预登记形式。
+    这里只给点估计的判定；CI 由 `paired_delta_ci` 另算（见 run.py）。"""
+    verbatim = (bpc_l1_k1 - bpc_divl1_kmax) - (bpc_l1_k1 - bpc_stock_k1)
+    reduced = bpc_stock_k1 - bpc_divl1_kmax
+    return {"verbatim": verbatim, "reduced": reduced,
+            "algebra_consistent": abs(verbatim - reduced) < 1e-9,
+            "passed_point_estimate": reduced > 0}
+
+
+def reading_A(bpc_l1_k1: float, bpc_divl1_kmax: float) -> dict:
+    """并列判据（读法 A，机制问题；契约 README §4.2）：
+    在**固定路径机制**下，去相关压力的净效果 `bpc_l1@K1 − bpc_divl1@Kmax > 0`。"""
+    v = bpc_l1_k1 - bpc_divl1_kmax
+    return {"value": v, "passed_point_estimate": v > 0}
