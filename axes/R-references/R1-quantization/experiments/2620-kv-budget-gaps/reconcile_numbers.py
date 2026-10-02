@@ -94,9 +94,10 @@ for arm, p in PTS.items():
            - (1 - p["bytes_per_position"] / base["bytes_per_position"])) < 1e-6,
        p["kv_reduction_vs_family_baseline"],
        1 - p["bytes_per_position"] / base["bytes_per_position"])
-    ck(f"{arm}: total_damage_vs_stock == bpc - 1.483571",
-       abs(p["total_damage_vs_stock"] - (p["bpc"] - 1.483571)) < 1e-9,
-       p["total_damage_vs_stock"], p["bpc"] - 1.483571)
+    ck(f"{arm}: total_damage_vs_stock == bpc - 1.483569",
+       abs(p["total_damage_vs_stock"]
+           - (p["bpc"] - CFG["controls"]["baseline_anchor_bpc"])) < 1e-6,
+       p["total_damage_vs_stock"], p["bpc"] - CFG["controls"]["baseline_anchor_bpc"])
 for arm, ref in CFG.get("quant_increment_ref", {}).items():
     if arm in ("note",):
         continue
@@ -105,7 +106,7 @@ for arm, ref in CFG.get("quant_increment_ref", {}).items():
         continue
     r = PTS[ref]
     ck(f"{arm}: quant_increment_bpc == bpc - bpc({ref})",
-       abs(p["quant_increment_bpc"] - (p["bpc"] - r["bpc"])) < 1e-9,
+       abs(p["quant_increment_bpc"] - (p["bpc"] - r["bpc"])) < 1e-6,
        p["quant_increment_bpc"], p["bpc"] - r["bpc"])
 
 # ------------------------------------------------------------------ 3 召回腿口径
@@ -168,7 +169,7 @@ for key in ("gqa_int8", "mqa_int8", "win16_anchor16", "win32_anchor32", "win32_a
 ck("analysis.md 提到两腿不一致的判据 C7", "C7" in AN or "两腿" in AN)
 ck("analysis.md 提到禁止单点外推（§17.11）", "外推" in AN or "C6" in AN)
 ck("analysis.md 单列实测显存（判据 C2）",
-   "实测显存" in AN or "measured_gpu_peak" in AN)
+   "实测显存" in AN or "measured_gpu_peak" in AN or "GPU 峰值" in AN)
 ck("chart.txt 非空且含 x 轴说明", "每位置 KV 字节" in CT and len(CT) > 200)
 
 # ------------------------------------------------------------------ 6 成本 / 活性

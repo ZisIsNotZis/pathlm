@@ -148,6 +148,20 @@ U3 的统一 KV 预算图（`2619`）在同一横轴「每位置 KV 字节」上
 
 ---
 
+## 6b. 变异验证（新语义层的可失败单测 + 抓红 + 逐字节还原）
+
+新语义层 `gaps_arms.py` 的 13 个单测见 `tests/test_kv_budget_gaps.py`。**变异验证**：
+把语义开关故意改坏 → 对应单测抓红 → 从备份恢复 → 逐字节校验 sha256 一致。
+
+| 变异 | 抓红的单测 | 结果 |
+|---|---|---|
+| `positions_kept` 丢掉 `anchors`（只算 `window`） | `test_window_anchor_bytes_add_positions` | 1 failed |
+| `keep_mask_of` 忽略锚点（`anchors=0`） | `test_anchor_positions_are_visible_to_last_query` | 1 failed |
+| `quant_head` 前向不量化（固定 fp32） | `test_quant_head_int8_changes_logits_and_values` | 1 failed |
+
+`gaps_arms.py` sha256 变异前后：
+`2787e99678bcfd624eee3ff90d52a8dcadeef70a45c9d225c0d632318d791b6e`（一致，逐字节还原）。
+
 ## 7. 文件清单
 
 | 文件 | 内容 |

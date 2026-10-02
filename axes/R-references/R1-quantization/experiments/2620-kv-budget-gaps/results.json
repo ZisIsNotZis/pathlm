@@ -1,0 +1,6679 @@
+{
+ "experiment": "2620-kv-budget-gaps",
+ "contract": ".scratch/37-gaps/issues/01-gaps.md §「契约 V1」",
+ "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。本实验为测量/汇总类（无训练、无新参数、不改权重）。注：契约 V1 明确要求补「组合」缺口（GQA×int8 / 窗口×锚点 / MQA×int8），这是本批次被授权的**例外组合臂**，每个组合只叠加两个已单测的因子。",
+ "config": {
+  "experiment": "2620-kv-budget-gaps",
+  "line": "ticket 37 · V1 线（KV 预算图的缺失组合：纯 eval，不训练）",
+  "contract": ".scratch/37-gaps/issues/01-gaps.md §「契约 V1」",
+  "contract_copy": "README.md（同目录，判据线逐字）",
+  "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。本实验为测量/汇总类（无训练、无新参数、不改权重）。注：契约 V1 明确要求补「组合」缺口（GQA×int8 / 窗口×锚点 / MQA×int8），这是本批次被授权的**例外组合臂**，每个组合只叠加两个已单测的因子。",
+  "axis_definition": {
+   "quantity": "bytes_per_position",
+   "formula": "2(K,V) * n_layers * n_kv_heads_eff * head_dim * value_bytes * (positions_kept / T)",
+   "unit": "字节 / 上下文位置",
+   "seq_len_T": 256,
+   "strictness": "所有点的横轴坐标必须由本公式算出（判据 C1）；无法用本公式表达的点不入图。新组合臂在同一乘式里同时改两个因子（quant_head: n_kv_heads_eff 与 value_bytes；window_anchor: positions_kept = window + anchors）。",
+   "per_position_bytes_fp16_full": 12288,
+   "caveats": [
+    "窗口/锚点档的 positions_kept/T 随评测长度 T 变化 —— 本图所有窗口点都在 T=256 上测。",
+    "头共享档是『换模型重训』（架构改动），量化/窗口档是『同一模型改推理』——两者基线不同（trunk 1.483569 vs mha 1.482026）。",
+    "本列是解析（部署口径）KV 占用；评测期实现会把 K/V 立刻反量化/按掩码取子集 ⇒ 实测显存峰值不随档下降，两者必须分列（判据 C2）。",
+    "锚点档占用位置预算（kept = window + anchors），因此可以在同一横轴上与纯窗口档做等字节对照；锚点只对落在锚区的信息有效，不是通用召回杠杆。"
+   ]
+  },
+  "checkpoints": {
+   "trunk": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "role": "trunk 族（量化 / 窗口 / 窗口+锚点）的被测模型：13.5M dense decoder-only，12k 步，clean bpc 1.483569",
+    "train_ref": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/MODEL.md"
+   },
+   "head_family": {
+    "root": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs",
+    "registry": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/model_hashes.json",
+    "arms": {
+     "mha": {
+      "run": "mha-12k-s0",
+      "n_kv_heads": null,
+      "sha256": "557453eb12b56a453b29ea279cdbbc0969cfa6bf0dbe1cdbd9965cd6cec62528"
+     },
+     "gqa": {
+      "run": "gqa-12k-s0",
+      "n_kv_heads": 2,
+      "sha256": "bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00"
+     },
+     "mqa": {
+      "run": "mqa-12k-s0",
+      "n_kv_heads": 1,
+      "sha256": "24bdfe7f1549107175e9343444372a6abe3aba7c6ba2423e8ab069a145b1ea97"
+     }
+    },
+    "role": "head 族（MHA/GQA/MQA）与 quant_head 组合臂（GQA/MQA × int8）的被测模型：同配方 12k 步（d256/L12/H8/mlp6/seq256/seed0）"
+   }
+  },
+  "model": {
+   "d_model": 256,
+   "n_layers": 12,
+   "n_heads": 8,
+   "seq_len": 256,
+   "mlp_mult": 6,
+   "dense": true
+  },
+  "arms": {
+   "fp16": {
+    "family": "trunk",
+    "kind": "quant",
+    "mode": "fp16",
+    "value_bytes": 2.0,
+    "positions_kept": 256,
+    "role": "本图基线（不压缩、fp16 存储）"
+   },
+   "int8": {
+    "family": "trunk",
+    "kind": "quant",
+    "mode": "int8",
+    "value_bytes": 1.0,
+    "positions_kept": 256,
+    "role": "R1 参照线：KV int8（省 50%）"
+   },
+   "win16": {
+    "family": "trunk",
+    "kind": "window",
+    "d": 16,
+    "value_bytes": 2.0,
+    "positions_kept": 16,
+    "role": "M2/A3：只保留最近 16 个位置（768 B/位置；MQA×int8 的等字节对照）"
+   },
+   "win32": {
+    "family": "trunk",
+    "kind": "window",
+    "d": 32,
+    "value_bytes": 2.0,
+    "positions_kept": 32,
+    "role": "M2/A3：只保留最近 32 个位置（1536 B/位置；GQA×int8 的等字节对照）"
+   },
+   "win64": {
+    "family": "trunk",
+    "kind": "window",
+    "d": 64,
+    "value_bytes": 2.0,
+    "positions_kept": 64,
+    "role": "M2/A3：只保留最近 64 个位置（3072 B/位置；win32+anchor32 的等字节对照）"
+   },
+   "mha": {
+    "family": "head",
+    "kind": "head",
+    "n_kv_heads": 8,
+    "value_bytes": 2.0,
+    "positions_kept": 256,
+    "role": "head 族全精度基线（MHA）"
+   },
+   "gqa": {
+    "family": "head",
+    "kind": "head",
+    "n_kv_heads": 2,
+    "value_bytes": 2.0,
+    "positions_kept": 256,
+    "role": "W3：GQA（KV −75%）——gqa_int8 的 fp16 对照"
+   },
+   "mqa": {
+    "family": "head",
+    "kind": "head",
+    "n_kv_heads": 1,
+    "value_bytes": 2.0,
+    "positions_kept": 256,
+    "role": "W3：MQA（KV −87.5%）——mqa_int8 的 fp16 对照"
+   },
+   "gqa_int8": {
+    "family": "quant_head",
+    "kind": "quant_head",
+    "base_arm": "gqa",
+    "n_kv_heads": 2,
+    "mode": "int8",
+    "value_bytes": 1.0,
+    "positions_kept": 256,
+    "role": "缺口①：GQA × int8（两个因子叠加，1536 B/位置）；fp16 对照 = gqa，组合增量对照 = gqa"
+   },
+   "mqa_int8": {
+    "family": "quant_head",
+    "kind": "quant_head",
+    "base_arm": "mqa",
+    "n_kv_heads": 1,
+    "mode": "int8",
+    "value_bytes": 1.0,
+    "positions_kept": 256,
+    "role": "缺口③：MQA × int8（768 B/位置）；fp16 对照 = mqa，组合增量对照 = mqa"
+   },
+   "win16_anchor16": {
+    "family": "trunk",
+    "kind": "window_anchor",
+    "window": 16,
+    "anchors": 16,
+    "value_bytes": 2.0,
+    "positions_kept": 32,
+    "role": "缺口②：窗口 16 + 锚点 16（1536 B/位置；与 win32 等字节对照）"
+   },
+   "win32_anchor32": {
+    "family": "trunk",
+    "kind": "window_anchor",
+    "window": 32,
+    "anchors": 32,
+    "value_bytes": 2.0,
+    "positions_kept": 64,
+    "role": "缺口②：窗口 32 + 锚点 32（3072 B/位置；与 win64 等字节对照）"
+   },
+   "win32_anchor8": {
+    "family": "trunk",
+    "kind": "window_anchor",
+    "window": 32,
+    "anchors": 8,
+    "value_bytes": 2.0,
+    "positions_kept": 40,
+    "role": "缺口②：窗口 32 + 锚点 8（1920 B/位置；A3 的『小锚槽』档，看小锚点能否拉动召回）"
+   }
+  },
+  "family_baseline": {
+   "trunk": "fp16",
+   "head": "mha",
+   "quant_head": "mha"
+  },
+  "quant_increment_ref": {
+   "gqa_int8": "gqa",
+   "mqa_int8": "mqa",
+   "note": "组合臂的量化增量 = bpc(组合) − bpc(同架构 fp16)；主 damage 列仍相对全精度基线（mha），以便与 U3 的 GQA/MQA 档直接同轴比较。"
+  },
+  "data": {
+   "name": "enwik8_full",
+   "path": "data/enwik8_full.npz",
+   "split": "前 90M 训练 / 末 10M 评测（本实验只用评测尾段跑 bpc）",
+   "vocab_size": 206,
+   "n_real_tokens": 205,
+   "mask_token": 205,
+   "bpc_only": true,
+   "note": "合成召回任务不使用 enwik8 文本，只用词表大小（206）；SCHEMA §19 不用 enwik8 当长程主任务。"
+  },
+  "tokens": {
+   "sym_vocab": 64,
+   "filler_token": 64,
+   "cue_token": 205,
+   "local_k": 8
+  },
+  "tasks": {
+   "copy": {
+    "copy_len": 32,
+    "src_positions": [
+     0,
+     96,
+     191
+    ],
+    "batch_size": 16,
+    "n_batches": 2,
+    "role": "合成长程召回主腿（与 2619 同任务同 seed，逐臂同批）：远处随机片段原样复制。src_pos=0 落在锚区可测『锚点通道』；src_pos=96/191 测通用召回"
+   },
+   "induction": {
+    "prefix_len": 192,
+    "copy_len": 32,
+    "src_starts": [
+     0,
+     159
+    ],
+    "batch_size": 16,
+    "n_batches": 16,
+    "role": "副腿：末尾重复段之后的那一项（induction）"
+   },
+   "var_recall": {
+    "distances": [
+     64,
+     192
+    ],
+    "batch_size": 16,
+    "n_batches": 16,
+    "role": "副腿：单 (key,value) 变距离回忆（本主干预期落在地板，用于如实记录不可分辨）"
+   }
+  },
+  "controls": {
+   "chance": "uniform_answer_set = 1/sym_vocab = 1/64",
+   "local_prior": "longrange_tasks.local_prior_accuracy(k=8)",
+   "corrupt_source": "copy 任务源片段整段换随机符号（逐臂，源区间 = [src_pos, src_pos+copy_len)）——测读数是否真来自被搬运的信息",
+   "baseline_anchor_bpc": 1.483569,
+   "baseline_anchor_source": "axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/results.json::instrument.bpc_full_release_path"
+  },
+  "eval": {
+   "bpc_method": "run.py::bpc_of（与 2619 同一统一路径：因果移位 CE token 平均，逐臂同一 logits_fn 接口）",
+   "bpc_cross_path_check": "retention.masked_bpc（独立路径，逐位对照）",
+   "n_batches": 24,
+   "batch_size": 16,
+   "window_seed": 2,
+   "device": "cuda",
+   "note": "window_seed=2 + 24×16 与 2610/2614/2615/2616/2619 同一窗口序 ⇒ clean bpc 与历史基线同口径可比"
+  },
+  "criterion": {
+   "verbatim_contract": [
+    "补三个最优先组合：① GQA × int8（能否在 ~1536 B/位置两腿近无损）；② 窗口 × 锚点/sink（锚点是不是拉动窗口召回最便宜的杠杆）；③ MQA × int8（若便宜）。",
+    "每点两腿（clean bpc + 合成长程召回），与 U3 的图同横轴同口径；毁源对照臂必做；禁止单点外推；解析内存与实测显存分列。若两腿结论不一致必须显式标注。"
+   ],
+   "sign_convention": "SCHEMA §17.3：Δ_schema = bpc_对照 − bpc_实验（正 = 实验臂更好）；damage_bpc = bpc_实验 − bpc_对照（正 = 更差）。本实验的『对照』= 本族基线（quant_head 族 = mha 全精度基线）。",
+   "variance_band_bpc": 0.014,
+   "recall_ci": "Wilson 95%",
+   "recall_at_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（读作『在该任务上不可分辨』，不得写成『机制无效』，SCHEMA §19）",
+   "no_single_point_extrapolation": "SCHEMA §17.11：单点只描述；趋势需 ≥2 个直接测点。锚点杠杆只在 win32_anchor8(40) / win16_anchor16(32) / win32_anchor32(64) 三个直接测点之间读。"
+  },
+  "reuse": {
+   "policy": "SCHEMA §9：复用历史 run 只省算力、不省证据",
+   "bpc_recompute": "全部 13 臂在本实验内**同进程重测**（不做跨 run 取数）；2619 的值只用于对照（`reproducibility_vs_2619`）",
+   "checkpoint_sha256_asserted": true,
+   "new_module": "gaps_arms.py（quant_head / window_anchor 的唯一语义层；§22 第 7 条新逻辑进新模块）",
+   "code_anchors": [
+    "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/run.py",
+    "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/gaps_arms.py",
+    "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/run.py",
+    "tools/evalkit/longrange_tasks.py",
+    "tools/evalkit/kv_quant.py",
+    "tools/evalkit/retention.py"
+   ]
+  },
+  "cost": {
+   "gpu_wall_budget_min": 20,
+   "gpu_wall_budget_source": "契约 V1「成本 ≈20 min（纯 eval + 汇总）」",
+   "budget_cut_rule": "预算不够时砍任务档数（先砍 var_recall，再砍 induction），保 copy 主腿与全部预算点；不砍判据线（SCHEMA §8/§17.7）",
+   "peak_mem_budget_gib": 5,
+   "smoke": "python3 run.py --smoke（缩小批量/档数，实测步时与显存，不外推时间）"
+  },
+  "reproducibility": {
+   "rerun": true,
+   "max_abs_delta_bpc_threshold": 0.005,
+   "nondeterminism_note": "纯推理、无随机采样；同 seed 重跑应逐位相同"
+  },
+  "compare_against_2619": {
+   "results": "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json",
+   "arms": [
+    "fp16",
+    "int8",
+    "win16",
+    "win32",
+    "win64",
+    "mha",
+    "gqa",
+    "mqa"
+   ],
+   "note": "参考臂与 2619 同任务同 seed 同窗口序；重测应与 2619 逐位一致（阈值 1e-5），作为跨 run 的可控性证据。"
+  },
+  "seed": 7
+ },
+ "smoke": false,
+ "instrument": {
+  "bpc_path": {
+   "bpc_of": 1.483569,
+   "retention.masked_bpc": 1.483569,
+   "abs_diff": 0.0,
+   "bitwise_equal": true,
+   "anchor_2614_release_bpc": 1.483569,
+   "abs_diff_vs_anchor": 2.3767567713939286e-07,
+   "mode": "fp32（恒等：KV 数值未改）"
+  },
+  "synth_path": {
+   "run_2620::synth_accuracy": 0.007812,
+   "longrange_tasks.accuracy": 0.007812,
+   "n_equal": true,
+   "n_hits_equal": true,
+   "by_distance_equal": true
+  },
+  "quant_head_self_check": null,
+  "note": "两条腿都先证明「本实验路径 == 既有仪器路径」，再进入跨臂比较（SCHEMA §9）。"
+ },
+ "controls": {
+  "chance_uniform": 0.015625,
+  "local_prior_copy": {
+   "accuracy": 0.014648,
+   "n": 1024,
+   "n_hits": 15,
+   "by_distance": {
+    "223": {
+     "accuracy": 0.014648,
+     "n": 1024
+    }
+   },
+   "k": 8
+  },
+  "local_prior_induction": {
+   "accuracy": 0.015625,
+   "n": 256,
+   "n_hits": 4,
+   "by_distance": {
+    "224": {
+     "accuracy": 0.015625,
+     "n": 256
+    }
+   },
+   "k": 8
+  },
+  "local_prior_var_recall": {
+   "accuracy": 0.019531,
+   "n": 256,
+   "n_hits": 5,
+   "by_distance": {
+    "64": {
+     "accuracy": 0.019531,
+     "n": 256
+    }
+   },
+   "k": 8
+  },
+  "local_prior_resistance": {
+   "copy": {
+    "task": "copy",
+    "chance": 0.015625,
+    "ceiling": 0.046875,
+    "local_prior_accuracy": 0.014648,
+    "passed": true,
+    "n": 1024,
+    "k": 8,
+    "by_distance": {
+     "223": {
+      "accuracy": 0.014648,
+      "n": 1024
+     }
+    }
+   },
+   "induction": {
+    "task": "induction",
+    "chance": 0.015625,
+    "ceiling": 0.046875,
+    "local_prior_accuracy": 0.015625,
+    "passed": true,
+    "n": 256,
+    "k": 8,
+    "by_distance": {
+     "224": {
+      "accuracy": 0.015625,
+      "n": 256
+     }
+    }
+   },
+   "var_recall": {
+    "task": "var_recall",
+    "chance": 0.015625,
+    "ceiling": 0.046875,
+    "local_prior_accuracy": 0.019531,
+    "passed": true,
+    "n": 256,
+    "k": 8,
+    "by_distance": {
+     "64": {
+      "accuracy": 0.019531,
+      "n": 256
+     }
+    }
+   }
+  },
+  "corrupt_source_note": "把 copy 主腿的源片段整段换成随机符号（其余逐位不变），**逐臂**报该对照（源区间 = 该档自己的 [src_pos, src_pos+32)）。"
+ },
+ "cross_check_vs_source": {
+  "rows": [
+   {
+    "arm": "fp16",
+    "this_bpc": 1.483571,
+    "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+    "source_bpc": 1.483571,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "int8",
+    "this_bpc": 1.483721,
+    "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+    "source_bpc": 1.483721,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win16",
+    "this_bpc": 2.085526,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": 2.085526,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win32",
+    "this_bpc": 1.695384,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": 1.695384,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win64",
+    "this_bpc": 1.564077,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": 1.564077,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "mha",
+    "this_bpc": 1.482026,
+    "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+    "source_bpc": 1.482026,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "gqa",
+    "this_bpc": 1.496325,
+    "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+    "source_bpc": 1.496325,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "mqa",
+    "this_bpc": 1.493763,
+    "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+    "source_bpc": 1.493763,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "gqa_int8",
+    "this_bpc": 1.496489,
+    "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json × R1 int8（本批组合，无单一来源）",
+    "source_bpc": null,
+    "match": null
+   },
+   {
+    "arm": "mqa_int8",
+    "this_bpc": 1.494105,
+    "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json × R1 int8（本批组合，无单一来源）",
+    "source_bpc": null,
+    "match": null
+   },
+   {
+    "arm": "win16_anchor16",
+    "this_bpc": 1.858406,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": null,
+    "match": null
+   },
+   {
+    "arm": "win32_anchor32",
+    "this_bpc": 1.590539,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": null,
+    "match": null
+   },
+   {
+    "arm": "win32_anchor8",
+    "this_bpc": 1.633097,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": null,
+    "match": null
+   }
+  ],
+  "sources": {
+   "R1": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+   "W3": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+   "M2": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json"
+  },
+  "all_matched": true,
+  "note": "参考臂应与其来源实验逐位一致；新组合臂没有来源（match=None，属预期）。"
+ },
+ "reproducibility_vs_2619": {
+  "compared_to": "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json",
+  "rows": [
+   {
+    "arm": "fp16",
+    "bpc": 1.483571,
+    "bpc_2619": 1.483571,
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "int8",
+    "bpc": 1.483721,
+    "bpc_2619": 1.483721,
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win16",
+    "bpc": 2.085526,
+    "bpc_2619": 2.085526,
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win32",
+    "bpc": 1.695384,
+    "bpc_2619": 1.695384,
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win64",
+    "bpc": 1.564077,
+    "bpc_2619": 1.564077,
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "mha",
+    "bpc": 1.482026,
+    "bpc_2619": 1.482026,
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "gqa",
+    "bpc": 1.496325,
+    "bpc_2619": 1.496325,
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "mqa",
+    "bpc": 1.493763,
+    "bpc_2619": 1.493763,
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "match": true
+   }
+  ],
+  "max_bpc_abs_diff": 0.0,
+  "all_matched": true
+ },
+ "points": [
+  {
+   "arm": "fp16",
+   "role": "本图基线（不压缩、fp16 存储）",
+   "family": "trunk",
+   "class": "baseline",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.483571,
+   "activity": {
+    "kind": "quant",
+    "mode": "fp16",
+    "n_values": 6291456,
+    "mean_abs_err": 0.000167348,
+    "max_abs_err": 0.00390625,
+    "rel_err": 0.000176208,
+    "changed_frac": 0.999846458,
+    "clipped_frac": 0.0
+   },
+   "recall_copy": {
+    "accuracy": 0.141276,
+    "n": 3072,
+    "n_hits": 434,
+    "wilson95": [
+     0.129407,
+     0.154041
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.125977,
+      "n": 1024,
+      "n_hits": 129
+     },
+     "127": {
+      "accuracy": 0.157227,
+      "n": 1024,
+      "n_hits": 161
+     },
+     "223": {
+      "accuracy": 0.140625,
+      "n": 1024,
+      "n_hits": 144
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.140625,
+      "n": 1024,
+      "n_hits": 144,
+      "wilson95": [
+       0.120673,
+       0.163263
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.157227,
+      "n": 1024,
+      "n_hits": 161,
+      "wilson95": [
+       0.136217,
+       0.180798
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.125977,
+      "n": 1024,
+      "n_hits": 129,
+      "wilson95": [
+       0.107041,
+       0.147708
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.013997,
+    "n": 3072,
+    "n_hits": 43,
+    "wilson95": [
+     0.010409,
+     0.0188
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     },
+     "127": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     },
+     "223": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15,
+      "wilson95": [
+       0.008897,
+       0.024028
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.064453,
+    "n": 512,
+    "n_hits": 33,
+    "wilson95": [
+     0.046259,
+     0.089134
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.085938,
+      "n": 256,
+      "n_hits": 22
+     },
+     "224": {
+      "accuracy": 0.042969,
+      "n": 256,
+      "n_hits": 11
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.042969,
+      "n": 256,
+      "n_hits": 11,
+      "wilson95": [
+       0.02416,
+       0.075291
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.085938,
+      "n": 256,
+      "n_hits": 22,
+      "wilson95": [
+       0.057436,
+       0.126682
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.003906,
+    "n": 512,
+    "n_hits": 2,
+    "wilson95": [
+     0.001072,
+     0.014129
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "b",
+   "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+   "bytes_per_position": 12288.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 256,
+   "factor_positions_kept_over_T": 1.0,
+   "T": 256,
+   "family_baseline": "fp16",
+   "damage_bpc": 0.0,
+   "delta_schema": 0.0,
+   "kv_reduction_vs_family_baseline": 0.0,
+   "total_damage_vs_stock": 2e-06,
+   "quant_increment_bpc": null
+  },
+  {
+   "arm": "int8",
+   "role": "R1 参照线：KV int8（省 50%）",
+   "family": "trunk",
+   "class": "quant",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.483721,
+   "activity": {
+    "kind": "quant",
+    "mode": "int8",
+    "n_values": 6291456,
+    "mean_abs_err": 0.004589118,
+    "max_abs_err": 0.054513931,
+    "rel_err": 0.004832245,
+    "changed_frac": 0.998282115,
+    "clipped_frac": 0.000302951,
+    "scale_min": 0.0012000731658190489,
+    "scale_max": 0.10916200280189514
+   },
+   "recall_copy": {
+    "accuracy": 0.142578,
+    "n": 3072,
+    "n_hits": 438,
+    "wilson95": [
+     0.13066,
+     0.155389
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.126953,
+      "n": 1024,
+      "n_hits": 130
+     },
+     "127": {
+      "accuracy": 0.157227,
+      "n": 1024,
+      "n_hits": 161
+     },
+     "223": {
+      "accuracy": 0.143555,
+      "n": 1024,
+      "n_hits": 147
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.140625,
+      "n": 1024,
+      "n_hits": 144,
+      "wilson95": [
+       0.120673,
+       0.163263
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.158203,
+      "n": 1024,
+      "n_hits": 162,
+      "wilson95": [
+       0.137134,
+       0.181827
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.126953,
+      "n": 1024,
+      "n_hits": 130,
+      "wilson95": [
+       0.107947,
+       0.148748
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.013672,
+    "n": 3072,
+    "n_hits": 42,
+    "wilson95": [
+     0.010131,
+     0.018428
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     },
+     "127": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     },
+     "223": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16,
+      "wilson95": [
+       0.00964,
+       0.02523
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.0625,
+    "n": 512,
+    "n_hits": 32,
+    "wilson95": [
+     0.044617,
+     0.0869
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.082031,
+      "n": 256,
+      "n_hits": 21
+     },
+     "224": {
+      "accuracy": 0.042969,
+      "n": 256,
+      "n_hits": 11
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.042969,
+      "n": 256,
+      "n_hits": 11,
+      "wilson95": [
+       0.02416,
+       0.075291
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.082031,
+      "n": 256,
+      "n_hits": 21,
+      "wilson95": [
+       0.054278,
+       0.122143
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.003906,
+    "n": 512,
+    "n_hits": 2,
+    "wilson95": [
+     0.001072,
+     0.014129
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "8",
+   "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+   "bytes_per_position": 6144.0,
+   "factor_value_bytes": 1.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 256,
+   "factor_positions_kept_over_T": 1.0,
+   "T": 256,
+   "family_baseline": "fp16",
+   "damage_bpc": 0.00015,
+   "delta_schema": -0.00015,
+   "kv_reduction_vs_family_baseline": 0.5,
+   "total_damage_vs_stock": 0.000152,
+   "quant_increment_bpc": null
+  },
+  {
+   "arm": "win16",
+   "role": "M2/A3：只保留最近 16 个位置（768 B/位置；MQA×int8 的等字节对照）",
+   "family": "trunk",
+   "class": "window",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 2.085526,
+   "activity": {
+    "kind": "window",
+    "d": 16,
+    "n_dropped_pairs": 28920,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.87913424,
+    "n_dropped_keys": 240,
+    "diagonal_kept": true
+   },
+   "recall_copy": {
+    "accuracy": 0.014974,
+    "n": 3072,
+    "n_hits": 46,
+    "wilson95": [
+     0.011245,
+     0.019914
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15
+     },
+     "127": {
+      "accuracy": 0.017578,
+      "n": 1024,
+      "n_hits": 18
+     },
+     "223": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.017578,
+      "n": 1024,
+      "n_hits": 18,
+      "wilson95": [
+       0.011148,
+       0.027615
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15,
+      "wilson95": [
+       0.008897,
+       0.024028
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": true
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.012695,
+    "n": 3072,
+    "n_hits": 39,
+    "wilson95": [
+     0.009301,
+     0.017307
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8
+     },
+     "127": {
+      "accuracy": 0.017578,
+      "n": 1024,
+      "n_hits": 18
+     },
+     "223": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.017578,
+      "n": 1024,
+      "n_hits": 18,
+      "wilson95": [
+       0.011148,
+       0.027615
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8,
+      "wilson95": [
+       0.003964,
+       0.01534
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.013672,
+    "n": 512,
+    "n_hits": 7,
+    "wilson95": [
+     0.006638,
+     0.027949
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1
+     },
+     "224": {
+      "accuracy": 0.023438,
+      "n": 256,
+      "n_hits": 6
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.023438,
+      "n": 256,
+      "n_hits": 6,
+      "wilson95": [
+       0.010785,
+       0.050181
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1,
+      "wilson95": [
+       0.00069,
+       0.021791
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.001953,
+    "n": 512,
+    "n_hits": 1,
+    "wilson95": [
+     0.000345,
+     0.010979
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1,
+      "wilson95": [
+       0.00069,
+       0.021791
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "w",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "bytes_per_position": 768.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 16,
+   "factor_positions_kept_over_T": 0.0625,
+   "T": 256,
+   "family_baseline": "fp16",
+   "damage_bpc": 0.601955,
+   "delta_schema": -0.601955,
+   "kv_reduction_vs_family_baseline": 0.9375,
+   "total_damage_vs_stock": 0.601957,
+   "quant_increment_bpc": null
+  },
+  {
+   "arm": "win32",
+   "role": "M2/A3：只保留最近 32 个位置（1536 B/位置；GQA×int8 的等字节对照）",
+   "family": "trunk",
+   "class": "window",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.695384,
+   "activity": {
+    "kind": "window",
+    "d": 32,
+    "n_dropped_pairs": 25200,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.76605058,
+    "n_dropped_keys": 224,
+    "diagonal_kept": true
+   },
+   "recall_copy": {
+    "accuracy": 0.013997,
+    "n": 3072,
+    "n_hits": 43,
+    "wilson95": [
+     0.010409,
+     0.0188
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.020508,
+      "n": 1024,
+      "n_hits": 21
+     },
+     "127": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     },
+     "223": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8,
+      "wilson95": [
+       0.003964,
+       0.01534
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.020508,
+      "n": 1024,
+      "n_hits": 21,
+      "wilson95": [
+       0.013452,
+       0.031148
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": true
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.011393,
+    "n": 3072,
+    "n_hits": 35,
+    "wilson95": [
+     0.008204,
+     0.015803
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     },
+     "127": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     },
+     "223": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8,
+      "wilson95": [
+       0.003964,
+       0.01534
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.011719,
+    "n": 512,
+    "n_hits": 6,
+    "wilson95": [
+     0.005382,
+     0.025328
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3
+     },
+     "224": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3,
+      "wilson95": [
+       0.003993,
+       0.033882
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3,
+      "wilson95": [
+       0.003993,
+       0.033882
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.001953,
+    "n": 512,
+    "n_hits": 1,
+    "wilson95": [
+     0.000345,
+     0.010979
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1,
+      "wilson95": [
+       0.00069,
+       0.021791
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "w",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "bytes_per_position": 1536.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 32,
+   "factor_positions_kept_over_T": 0.125,
+   "T": 256,
+   "family_baseline": "fp16",
+   "damage_bpc": 0.211813,
+   "delta_schema": -0.211813,
+   "kv_reduction_vs_family_baseline": 0.875,
+   "total_damage_vs_stock": 0.211815,
+   "quant_increment_bpc": null
+  },
+  {
+   "arm": "win64",
+   "role": "M2/A3：只保留最近 64 个位置（3072 B/位置；win32+anchor32 的等字节对照）",
+   "family": "trunk",
+   "class": "window",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.564077,
+   "activity": {
+    "kind": "window",
+    "d": 64,
+    "n_dropped_pairs": 18528,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.56322957,
+    "n_dropped_keys": 192,
+    "diagonal_kept": true
+   },
+   "recall_copy": {
+    "accuracy": 0.058919,
+    "n": 3072,
+    "n_hits": 181,
+    "wilson95": [
+     0.05113,
+     0.06781
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.143555,
+      "n": 1024,
+      "n_hits": 147
+     },
+     "127": {
+      "accuracy": 0.020508,
+      "n": 1024,
+      "n_hits": 21
+     },
+     "223": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.020508,
+      "n": 1024,
+      "n_hits": 21,
+      "wilson95": [
+       0.013452,
+       0.031148
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.143555,
+      "n": 1024,
+      "n_hits": 147,
+      "wilson95": [
+       0.12341,
+       0.166364
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.015299,
+    "n": 3072,
+    "n_hits": 47,
+    "wilson95": [
+     0.011525,
+     0.020285
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     },
+     "127": {
+      "accuracy": 0.020508,
+      "n": 1024,
+      "n_hits": 21
+     },
+     "223": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.020508,
+      "n": 1024,
+      "n_hits": 21,
+      "wilson95": [
+       0.013452,
+       0.031148
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.013672,
+    "n": 512,
+    "n_hits": 7,
+    "wilson95": [
+     0.006638,
+     0.027949
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3
+     },
+     "224": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4,
+      "wilson95": [
+       0.006093,
+       0.039479
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3,
+      "wilson95": [
+       0.003993,
+       0.033882
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.005859,
+    "n": 512,
+    "n_hits": 3,
+    "wilson95": [
+     0.001995,
+     0.017084
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1,
+      "wilson95": [
+       0.00069,
+       0.021791
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "w",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "bytes_per_position": 3072.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 64,
+   "factor_positions_kept_over_T": 0.25,
+   "T": 256,
+   "family_baseline": "fp16",
+   "damage_bpc": 0.080506,
+   "delta_schema": -0.080506,
+   "kv_reduction_vs_family_baseline": 0.75,
+   "total_damage_vs_stock": 0.080508,
+   "quant_increment_bpc": null
+  },
+  {
+   "arm": "mha",
+   "role": "head 族全精度基线（MHA）",
+   "family": "head",
+   "class": "baseline",
+   "checkpoint": {
+    "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt",
+    "sha256": "557453eb12b56a453b29ea279cdbbc0969cfa6bf0dbe1cdbd9965cd6cec62528",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.482026,
+   "activity": {
+    "kind": "head",
+    "n_kv_heads": 8,
+    "enabled": false,
+    "mha": true,
+    "n_heads": 8,
+    "head_dim": 32,
+    "group_size": 1,
+    "block_python_class": "Block",
+    "qkv_out_width": 768,
+    "qkv_out_width_mha_equivalent": 768,
+    "k_batch_shape": [
+     4,
+     8,
+     256,
+     32
+    ],
+    "params_per_layer_kv_elems": 512,
+    "params_added": 0,
+    "params_added_note": "MHA（n_kv_heads == n_heads）：无共享，参数与 v1 逐位相同",
+    "kv_qkv_weight_nonzero_frac": 1.0,
+    "kv_qkv_weight_fro": 330.167443,
+    "kv_elems_per_position_per_layer": 512,
+    "kv_elems_per_position": 6144,
+    "kv_bytes_per_position_fp16": 12288,
+    "kv_bytes_per_position_fp32": 24576,
+    "kv_reduction_frac": 0.0,
+    "mha_kv_bytes_per_position_fp16": 12288,
+    "k_proj_per_kv_head_row_norm": [
+     2.696007,
+     2.117582,
+     3.447595,
+     3.008014,
+     3.458506,
+     2.605743,
+     2.819528,
+     3.619385
+    ],
+    "kv_head_pair_max_abs_weight_diff": 0.329497,
+    "kv_rows_fro_mean": 21.369409,
+    "per_layer": [
+     {
+      "layer": 0,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       2.696007,
+       2.117582,
+       3.447595,
+       3.008014,
+       3.458506,
+       2.605743,
+       2.819528,
+       3.619385
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.329497,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.344829
+     },
+     {
+      "layer": 1,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       4.657124,
+       4.661612,
+       3.89515,
+       4.677652,
+       5.063333,
+       5.106948,
+       4.196846,
+       5.133276
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.123011,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 18.225182
+     },
+     {
+      "layer": 2,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       5.931482,
+       6.363838,
+       5.584767,
+       5.777408,
+       5.491821,
+       5.660104,
+       6.55056,
+       5.771769
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.427421,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 21.374987
+     },
+     {
+      "layer": 3,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.23334,
+       7.067846,
+       6.288575,
+       6.180157,
+       6.510381,
+       5.524885,
+       6.035748,
+       6.602264
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.363065,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 23.003002
+     },
+     {
+      "layer": 4,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.550805,
+       5.614795,
+       6.513595,
+       6.464754,
+       5.798258,
+       6.853422,
+       6.437573,
+       6.766465
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.354682,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 23.07457
+     },
+     {
+      "layer": 5,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.348223,
+       5.484228,
+       5.953751,
+       6.616597,
+       6.461418,
+       5.439415,
+       6.638439,
+       6.746096
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.150676,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 22.772787
+     },
+     {
+      "layer": 6,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.111582,
+       5.680002,
+       6.217037,
+       4.942884,
+       6.744008,
+       5.624632,
+       6.218484,
+       6.146624
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.115062,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 22.452177
+     },
+     {
+      "layer": 7,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.818475,
+       6.343605,
+       6.702964,
+       5.627956,
+       6.758563,
+       5.636951,
+       5.948731,
+       6.003482
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.048135,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 22.658112
+     },
+     {
+      "layer": 8,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.769369,
+       6.530401,
+       6.487614,
+       6.706152,
+       6.089996,
+       6.526228,
+       6.74228,
+       5.824721
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.036629,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 22.986259
+     },
+     {
+      "layer": 9,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       5.666479,
+       7.200574,
+       6.202637,
+       6.492287,
+       6.78961,
+       6.706473,
+       6.489775,
+       6.984139
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.952848,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 23.163485
+     },
+     {
+      "layer": 10,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       5.997741,
+       6.518177,
+       6.703611,
+       5.600087,
+       6.602309,
+       6.644446,
+       6.695823,
+       6.75333
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.882814,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 22.30411
+     },
+     {
+      "layer": 11,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.472607,
+       7.305851,
+       6.277754,
+       6.683568,
+       6.8832,
+       7.383242,
+       6.639261,
+       5.73821
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.716138,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 23.073406
+     }
+    ],
+    "alive": true,
+    "alive_note": "MHA（n_kv_heads == n_heads）：无共享，KV 形状 = [B, n_heads, T, dh]"
+   },
+   "recall_copy": {
+    "accuracy": 0.152995,
+    "n": 3072,
+    "n_hits": 470,
+    "wilson95": [
+     0.140699,
+     0.166157
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.149414,
+      "n": 1024,
+      "n_hits": 153
+     },
+     "127": {
+      "accuracy": 0.141602,
+      "n": 1024,
+      "n_hits": 145
+     },
+     "223": {
+      "accuracy": 0.167969,
+      "n": 1024,
+      "n_hits": 172
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.167969,
+      "n": 1024,
+      "n_hits": 172,
+      "wilson95": [
+       0.146322,
+       0.192098
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.141602,
+      "n": 1024,
+      "n_hits": 145,
+      "wilson95": [
+       0.121585,
+       0.164297
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.149414,
+      "n": 1024,
+      "n_hits": 153,
+      "wilson95": [
+       0.128891,
+       0.172558
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.012695,
+    "n": 3072,
+    "n_hits": 39,
+    "wilson95": [
+     0.009301,
+     0.017307
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15
+     },
+     "127": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11
+     },
+     "223": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11,
+      "wilson95": [
+       0.006009,
+       0.019133
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15,
+      "wilson95": [
+       0.008897,
+       0.024028
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.048828,
+    "n": 512,
+    "n_hits": 25,
+    "wilson95": [
+     0.033289,
+     0.071087
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.042969,
+      "n": 256,
+      "n_hits": 11
+     },
+     "224": {
+      "accuracy": 0.054688,
+      "n": 256,
+      "n_hits": 14
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.054688,
+      "n": 256,
+      "n_hits": 14,
+      "wilson95": [
+       0.032852,
+       0.08969
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.042969,
+      "n": 256,
+      "n_hits": 11,
+      "wilson95": [
+       0.02416,
+       0.075291
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.015625,
+    "n": 512,
+    "n_hits": 8,
+    "wilson95": [
+     0.007938,
+     0.030526
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4
+     },
+     "192": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4,
+      "wilson95": [
+       0.006093,
+       0.039479
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4,
+      "wilson95": [
+       0.006093,
+       0.039479
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "M",
+   "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+   "bytes_per_position": 12288.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 256,
+   "factor_positions_kept_over_T": 1.0,
+   "T": 256,
+   "family_baseline": "mha",
+   "damage_bpc": 0.0,
+   "delta_schema": 0.0,
+   "kv_reduction_vs_family_baseline": 0.0,
+   "total_damage_vs_stock": -0.001543,
+   "quant_increment_bpc": null
+  },
+  {
+   "arm": "gqa",
+   "role": "W3：GQA（KV −75%）——gqa_int8 的 fp16 对照",
+   "family": "head",
+   "class": "head",
+   "checkpoint": {
+    "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt",
+    "sha256": "bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00",
+    "size_bytes": 49456651,
+    "sha256_verified": true
+   },
+   "bpc": 1.496325,
+   "activity": {
+    "kind": "head",
+    "n_kv_heads": 2,
+    "enabled": true,
+    "mha": false,
+    "n_heads": 8,
+    "head_dim": 32,
+    "group_size": 4,
+    "block_python_class": "GQABlock",
+    "qkv_out_width": 384,
+    "qkv_out_width_mha_equivalent": 768,
+    "k_batch_shape": [
+     4,
+     2,
+     256,
+     32
+    ],
+    "params_per_layer_kv_elems": 128,
+    "params_added": -1184256,
+    "params_added_note": "KV 头共享**减少**参数（K/V 投影半边变窄），故为负；= −2·(d − n_kv_heads·dh)·(d+1)·n_layers（含 qkv 偏置的半边差）⇒ 容量差异，见 analysis.md 混杂声明（SCHEMA §15 的剪枝类情形）",
+    "kv_qkv_weight_nonzero_frac": 1.0,
+    "kv_qkv_weight_fro": 252.933667,
+    "kv_elems_per_position_per_layer": 128,
+    "kv_elems_per_position": 1536,
+    "kv_bytes_per_position_fp16": 3072,
+    "kv_bytes_per_position_fp32": 6144,
+    "kv_reduction_frac": 0.75,
+    "mha_kv_bytes_per_position_fp16": 12288,
+    "k_proj_per_kv_head_row_norm": [
+     2.570209,
+     3.162903
+    ],
+    "kv_head_pair_max_abs_weight_diff": 0.368759,
+    "kv_rows_fro_mean": 10.696817,
+    "per_layer": [
+     {
+      "layer": 0,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       2.570209,
+       3.162903
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.368759,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 5.185723
+     },
+     {
+      "layer": 1,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       4.211735,
+       4.235597
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.859921,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.720653
+     },
+     {
+      "layer": 2,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       5.598068,
+       5.98264
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.038866,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 10.622649
+     },
+     {
+      "layer": 3,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.47161,
+       6.013295
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.96702,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.359586
+     },
+     {
+      "layer": 4,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.282112,
+       5.81241
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.890264,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.186337
+     },
+     {
+      "layer": 5,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.707636,
+       5.663027
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.893381,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.557301
+     },
+     {
+      "layer": 6,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.584192,
+       6.697145
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.060624,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.744651
+     },
+     {
+      "layer": 7,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.608265,
+       6.752112
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.005947,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.733713
+     },
+     {
+      "layer": 8,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.695703,
+       6.108229
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.915643,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.621923
+     },
+     {
+      "layer": 9,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       7.298332,
+       6.23551
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.751672,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 12.062722
+     },
+     {
+      "layer": 10,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.664524,
+       6.247923
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.736212,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.124303
+     },
+     {
+      "layer": 11,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       5.712683,
+       7.311049
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.47019,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.442246
+     }
+    ],
+    "alive": true,
+    "alive_note": "活性证据 = 前向实际 K/V 张量形状 [B, n_kv_heads, T, dh]（不是标签）+ qkv 投影权重非零 + 各 KV 头的 K 投影行不全同"
+   },
+   "recall_copy": {
+    "accuracy": 0.168945,
+    "n": 3072,
+    "n_hits": 519,
+    "wilson95": [
+     0.15611,
+     0.182607
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.143555,
+      "n": 1024,
+      "n_hits": 147
+     },
+     "127": {
+      "accuracy": 0.180664,
+      "n": 1024,
+      "n_hits": 185
+     },
+     "223": {
+      "accuracy": 0.182617,
+      "n": 1024,
+      "n_hits": 187
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.182617,
+      "n": 1024,
+      "n_hits": 187,
+      "wilson95": [
+       0.160154,
+       0.207453
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.180664,
+      "n": 1024,
+      "n_hits": 185,
+      "wilson95": [
+       0.158306,
+       0.205409
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.143555,
+      "n": 1024,
+      "n_hits": 147,
+      "wilson95": [
+       0.12341,
+       0.166364
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.013672,
+    "n": 3072,
+    "n_hits": 42,
+    "wilson95": [
+     0.010131,
+     0.018428
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     },
+     "127": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     },
+     "223": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.027344,
+    "n": 512,
+    "n_hits": 14,
+    "wilson95": [
+     0.016357,
+     0.04537
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.035156,
+      "n": 256,
+      "n_hits": 9
+     },
+     "224": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5,
+      "wilson95": [
+       0.008371,
+       0.044898
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.035156,
+      "n": 256,
+      "n_hits": 9,
+      "wilson95": [
+       0.018604,
+       0.065453
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.011719,
+    "n": 512,
+    "n_hits": 6,
+    "wilson95": [
+     0.005382,
+     0.025328
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     },
+     "192": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4,
+      "wilson95": [
+       0.006093,
+       0.039479
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "G",
+   "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+   "bytes_per_position": 3072.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 2,
+   "factor_positions_kept": 256,
+   "factor_positions_kept_over_T": 1.0,
+   "T": 256,
+   "family_baseline": "mha",
+   "damage_bpc": 0.014299,
+   "delta_schema": -0.014299,
+   "kv_reduction_vs_family_baseline": 0.75,
+   "total_damage_vs_stock": 0.012756,
+   "quant_increment_bpc": null
+  },
+  {
+   "arm": "mqa",
+   "role": "W3：MQA（KV −87.5%）——mqa_int8 的 fp16 对照",
+   "family": "head",
+   "class": "head",
+   "checkpoint": {
+    "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/mqa-12k-s0/model.pt",
+    "sha256": "24bdfe7f1549107175e9343444372a6abe3aba7c6ba2423e8ab069a145b1ea97",
+    "size_bytes": 48667147,
+    "sha256_verified": true
+   },
+   "bpc": 1.493763,
+   "activity": {
+    "kind": "head",
+    "n_kv_heads": 1,
+    "enabled": true,
+    "mha": false,
+    "n_heads": 8,
+    "head_dim": 32,
+    "group_size": 8,
+    "block_python_class": "GQABlock",
+    "qkv_out_width": 320,
+    "qkv_out_width_mha_equivalent": 768,
+    "k_batch_shape": [
+     4,
+     1,
+     256,
+     32
+    ],
+    "params_per_layer_kv_elems": 64,
+    "params_added": -1381632,
+    "params_added_note": "KV 头共享**减少**参数（K/V 投影半边变窄），故为负；= −2·(d − n_kv_heads·dh)·(d+1)·n_layers（含 qkv 偏置的半边差）⇒ 容量差异，见 analysis.md 混杂声明（SCHEMA §15 的剪枝类情形）",
+    "kv_qkv_weight_nonzero_frac": 1.0,
+    "kv_qkv_weight_fro": 234.01727,
+    "kv_elems_per_position_per_layer": 64,
+    "kv_elems_per_position": 768,
+    "kv_bytes_per_position_fp16": 1536,
+    "kv_bytes_per_position_fp32": 3072,
+    "kv_reduction_frac": 0.875,
+    "mha_kv_bytes_per_position_fp16": 12288,
+    "k_proj_per_kv_head_row_norm": [
+     2.639291
+    ],
+    "kv_head_pair_max_abs_weight_diff": null,
+    "kv_rows_fro_mean": 7.40325,
+    "per_layer": [
+     {
+      "layer": 0,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       2.639291
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 3.152459
+     },
+     {
+      "layer": 1,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       3.505239
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 5.854015
+     },
+     {
+      "layer": 2,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       4.98109
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 6.96931
+     },
+     {
+      "layer": 3,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.250021
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.167289
+     },
+     {
+      "layer": 4,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.418927
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.216643
+     },
+     {
+      "layer": 5,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.614647
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.307085
+     },
+     {
+      "layer": 6,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.46068
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.241719
+     },
+     {
+      "layer": 7,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.187773
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.130063
+     },
+     {
+      "layer": 8,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.291126
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 7.845725
+     },
+     {
+      "layer": 9,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       5.904354
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 7.623765
+     },
+     {
+      "layer": 10,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.731966
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.782336
+     },
+     {
+      "layer": 11,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.405501
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 7.548595
+     }
+    ],
+    "alive": true,
+    "alive_note": "活性证据 = 前向实际 K/V 张量形状 [B, n_kv_heads, T, dh]（不是标签）+ qkv 投影权重非零 + 各 KV 头的 K 投影行不全同"
+   },
+   "recall_copy": {
+    "accuracy": 0.243164,
+    "n": 3072,
+    "n_hits": 747,
+    "wilson95": [
+     0.228321,
+     0.258649
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.28125,
+      "n": 1024,
+      "n_hits": 288
+     },
+     "127": {
+      "accuracy": 0.260742,
+      "n": 1024,
+      "n_hits": 267
+     },
+     "223": {
+      "accuracy": 0.1875,
+      "n": 1024,
+      "n_hits": 192
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.1875,
+      "n": 1024,
+      "n_hits": 192,
+      "wilson95": [
+       0.164778,
+       0.212558
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.260742,
+      "n": 1024,
+      "n_hits": 267,
+      "wilson95": [
+       0.234781,
+       0.288492
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.28125,
+      "n": 1024,
+      "n_hits": 288,
+      "wilson95": [
+       0.254569,
+       0.309566
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.010742,
+    "n": 3072,
+    "n_hits": 33,
+    "wilson95": [
+     0.007659,
+     0.015047
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8
+     },
+     "127": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     },
+     "223": {
+      "accuracy": 0.011719,
+      "n": 1024,
+      "n_hits": 12
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.011719,
+      "n": 1024,
+      "n_hits": 12,
+      "wilson95": [
+       0.006716,
+       0.020371
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8,
+      "wilson95": [
+       0.003964,
+       0.01534
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.09375,
+    "n": 512,
+    "n_hits": 48,
+    "wilson95": [
+     0.07144,
+     0.12211
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.125,
+      "n": 256,
+      "n_hits": 32
+     },
+     "224": {
+      "accuracy": 0.0625,
+      "n": 256,
+      "n_hits": 16
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.0625,
+      "n": 256,
+      "n_hits": 16,
+      "wilson95": [
+       0.038834,
+       0.099102
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.125,
+      "n": 256,
+      "n_hits": 32,
+      "wilson95": [
+       0.089952,
+       0.171136
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.003906,
+    "n": 512,
+    "n_hits": 2,
+    "wilson95": [
+     0.001072,
+     0.014129
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "Q",
+   "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+   "bytes_per_position": 1536.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 1,
+   "factor_positions_kept": 256,
+   "factor_positions_kept_over_T": 1.0,
+   "T": 256,
+   "family_baseline": "mha",
+   "damage_bpc": 0.011737,
+   "delta_schema": -0.011737,
+   "kv_reduction_vs_family_baseline": 0.875,
+   "total_damage_vs_stock": 0.010194,
+   "quant_increment_bpc": null
+  },
+  {
+   "arm": "gqa_int8",
+   "role": "缺口①：GQA × int8（两个因子叠加，1536 B/位置）；fp16 对照 = gqa，组合增量对照 = gqa",
+   "family": "quant_head",
+   "class": "quant_head",
+   "checkpoint": {
+    "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt",
+    "sha256": "bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00",
+    "size_bytes": 49456651,
+    "sha256_verified": true,
+    "base_arm": "gqa",
+    "quantized_mode": "int8",
+    "note": "头共享 checkpoint（fp16 存储）× 评测期 KV 量化往返；权重未改"
+   },
+   "bpc": 1.496489,
+   "activity": {
+    "kind": "quant_head",
+    "mode": "int8",
+    "n_kv_heads": 2,
+    "quant": {
+     "n_values": 1572864,
+     "mean_abs_err": 0.004759646,
+     "max_abs_err": 0.045699596,
+     "rel_err": 0.004702058,
+     "changed_frac": 0.99814415,
+     "clipped_frac": 0.000322342,
+     "scale_min": 0.0012711761519312859,
+     "scale_max": 0.09143056720495224
+    },
+    "enabled": true,
+    "mha": false,
+    "n_heads": 8,
+    "head_dim": 32,
+    "group_size": 4,
+    "block_python_class": "GQABlock",
+    "qkv_out_width": 384,
+    "qkv_out_width_mha_equivalent": 768,
+    "k_batch_shape": [
+     4,
+     2,
+     256,
+     32
+    ],
+    "params_per_layer_kv_elems": 128,
+    "params_added": -1184256,
+    "params_added_note": "KV 头共享**减少**参数（K/V 投影半边变窄），故为负；= −2·(d − n_kv_heads·dh)·(d+1)·n_layers（含 qkv 偏置的半边差）⇒ 容量差异，见 analysis.md 混杂声明（SCHEMA §15 的剪枝类情形）",
+    "kv_qkv_weight_nonzero_frac": 1.0,
+    "kv_qkv_weight_fro": 252.933667,
+    "kv_elems_per_position_per_layer": 128,
+    "kv_elems_per_position": 1536,
+    "kv_bytes_per_position_fp16": 3072,
+    "kv_bytes_per_position_fp32": 6144,
+    "kv_reduction_frac": 0.75,
+    "mha_kv_bytes_per_position_fp16": 12288,
+    "k_proj_per_kv_head_row_norm": [
+     2.570209,
+     3.162903
+    ],
+    "kv_head_pair_max_abs_weight_diff": 0.368759,
+    "kv_rows_fro_mean": 10.696817,
+    "per_layer": [
+     {
+      "layer": 0,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       2.570209,
+       3.162903
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.368759,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 5.185723
+     },
+     {
+      "layer": 1,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       4.211735,
+       4.235597
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.859921,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.720653
+     },
+     {
+      "layer": 2,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       5.598068,
+       5.98264
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.038866,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 10.622649
+     },
+     {
+      "layer": 3,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.47161,
+       6.013295
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.96702,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.359586
+     },
+     {
+      "layer": 4,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.282112,
+       5.81241
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.890264,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.186337
+     },
+     {
+      "layer": 5,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.707636,
+       5.663027
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.893381,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.557301
+     },
+     {
+      "layer": 6,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.584192,
+       6.697145
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.060624,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.744651
+     },
+     {
+      "layer": 7,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.608265,
+       6.752112
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.005947,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.733713
+     },
+     {
+      "layer": 8,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.695703,
+       6.108229
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.915643,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.621923
+     },
+     {
+      "layer": 9,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       7.298332,
+       6.23551
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.751672,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 12.062722
+     },
+     {
+      "layer": 10,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.664524,
+       6.247923
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.736212,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.124303
+     },
+     {
+      "layer": 11,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       5.712683,
+       7.311049
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.47019,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.442246
+     }
+    ],
+    "alive": true,
+    "alive_note": "活性证据 = 前向实际 K/V 张量形状 [B, n_kv_heads, T, dh]（不是标签）+ qkv 投影权重非零 + 各 KV 头的 K 投影行不全同"
+   },
+   "recall_copy": {
+    "accuracy": 0.16862,
+    "n": 3072,
+    "n_hits": 518,
+    "wilson95": [
+     0.155795,
+     0.182272
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.140625,
+      "n": 1024,
+      "n_hits": 144
+     },
+     "127": {
+      "accuracy": 0.178711,
+      "n": 1024,
+      "n_hits": 183
+     },
+     "223": {
+      "accuracy": 0.186523,
+      "n": 1024,
+      "n_hits": 191
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.178711,
+      "n": 1024,
+      "n_hits": 183,
+      "wilson95": [
+       0.15646,
+       0.203364
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.177734,
+      "n": 1024,
+      "n_hits": 182,
+      "wilson95": [
+       0.155537,
+       0.202341
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.140625,
+      "n": 1024,
+      "n_hits": 144,
+      "wilson95": [
+       0.120673,
+       0.163263
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.013672,
+    "n": 3072,
+    "n_hits": 42,
+    "wilson95": [
+     0.010131,
+     0.018428
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     },
+     "127": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     },
+     "223": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.029297,
+    "n": 512,
+    "n_hits": 15,
+    "wilson95": [
+     0.017833,
+     0.047771
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.035156,
+      "n": 256,
+      "n_hits": 9
+     },
+     "224": {
+      "accuracy": 0.023438,
+      "n": 256,
+      "n_hits": 6
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.023438,
+      "n": 256,
+      "n_hits": 6,
+      "wilson95": [
+       0.010785,
+       0.050181
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.035156,
+      "n": 256,
+      "n_hits": 9,
+      "wilson95": [
+       0.018604,
+       0.065453
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.011719,
+    "n": 512,
+    "n_hits": 6,
+    "wilson95": [
+     0.005382,
+     0.025328
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     },
+     "192": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4,
+      "wilson95": [
+       0.006093,
+       0.039479
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "g",
+   "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json × R1 int8（本批组合，无单一来源）",
+   "bytes_per_position": 1536.0,
+   "factor_value_bytes": 1.0,
+   "factor_n_kv_heads_eff": 2,
+   "factor_positions_kept": 256,
+   "factor_positions_kept_over_T": 1.0,
+   "T": 256,
+   "family_baseline": "mha",
+   "damage_bpc": 0.014463,
+   "delta_schema": -0.014463,
+   "kv_reduction_vs_family_baseline": 0.875,
+   "total_damage_vs_stock": 0.01292,
+   "quant_increment_bpc": 0.000164,
+   "quant_increment_vs_arm": "gqa",
+   "quant_increment_recall_delta": -0.000325
+  },
+  {
+   "arm": "mqa_int8",
+   "role": "缺口③：MQA × int8（768 B/位置）；fp16 对照 = mqa，组合增量对照 = mqa",
+   "family": "quant_head",
+   "class": "quant_head",
+   "checkpoint": {
+    "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/mqa-12k-s0/model.pt",
+    "sha256": "24bdfe7f1549107175e9343444372a6abe3aba7c6ba2423e8ab069a145b1ea97",
+    "size_bytes": 48667147,
+    "sha256_verified": true,
+    "base_arm": "mqa",
+    "quantized_mode": "int8",
+    "note": "头共享 checkpoint（fp16 存储）× 评测期 KV 量化往返；权重未改"
+   },
+   "bpc": 1.494105,
+   "activity": {
+    "kind": "quant_head",
+    "mode": "int8",
+    "n_kv_heads": 1,
+    "quant": {
+     "n_values": 786432,
+     "mean_abs_err": 0.005198628,
+     "max_abs_err": 0.046944618,
+     "rel_err": 0.004880618,
+     "changed_frac": 0.998168945,
+     "clipped_frac": 0.000363668,
+     "scale_min": 0.0012979813618585467,
+     "scale_max": 0.09409976005554199
+    },
+    "enabled": true,
+    "mha": false,
+    "n_heads": 8,
+    "head_dim": 32,
+    "group_size": 8,
+    "block_python_class": "GQABlock",
+    "qkv_out_width": 320,
+    "qkv_out_width_mha_equivalent": 768,
+    "k_batch_shape": [
+     4,
+     1,
+     256,
+     32
+    ],
+    "params_per_layer_kv_elems": 64,
+    "params_added": -1381632,
+    "params_added_note": "KV 头共享**减少**参数（K/V 投影半边变窄），故为负；= −2·(d − n_kv_heads·dh)·(d+1)·n_layers（含 qkv 偏置的半边差）⇒ 容量差异，见 analysis.md 混杂声明（SCHEMA §15 的剪枝类情形）",
+    "kv_qkv_weight_nonzero_frac": 1.0,
+    "kv_qkv_weight_fro": 234.01727,
+    "kv_elems_per_position_per_layer": 64,
+    "kv_elems_per_position": 768,
+    "kv_bytes_per_position_fp16": 1536,
+    "kv_bytes_per_position_fp32": 3072,
+    "kv_reduction_frac": 0.875,
+    "mha_kv_bytes_per_position_fp16": 12288,
+    "k_proj_per_kv_head_row_norm": [
+     2.639291
+    ],
+    "kv_head_pair_max_abs_weight_diff": null,
+    "kv_rows_fro_mean": 7.40325,
+    "per_layer": [
+     {
+      "layer": 0,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       2.639291
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 3.152459
+     },
+     {
+      "layer": 1,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       3.505239
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 5.854015
+     },
+     {
+      "layer": 2,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       4.98109
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 6.96931
+     },
+     {
+      "layer": 3,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.250021
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.167289
+     },
+     {
+      "layer": 4,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.418927
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.216643
+     },
+     {
+      "layer": 5,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.614647
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.307085
+     },
+     {
+      "layer": 6,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.46068
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.241719
+     },
+     {
+      "layer": 7,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.187773
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.130063
+     },
+     {
+      "layer": 8,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.291126
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 7.845725
+     },
+     {
+      "layer": 9,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       5.904354
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 7.623765
+     },
+     {
+      "layer": 10,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.731966
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.782336
+     },
+     {
+      "layer": 11,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.405501
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 7.548595
+     }
+    ],
+    "alive": true,
+    "alive_note": "活性证据 = 前向实际 K/V 张量形状 [B, n_kv_heads, T, dh]（不是标签）+ qkv 投影权重非零 + 各 KV 头的 K 投影行不全同"
+   },
+   "recall_copy": {
+    "accuracy": 0.244792,
+    "n": 3072,
+    "n_hits": 752,
+    "wilson95": [
+     0.229912,
+     0.260309
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.283203,
+      "n": 1024,
+      "n_hits": 290
+     },
+     "127": {
+      "accuracy": 0.260742,
+      "n": 1024,
+      "n_hits": 267
+     },
+     "223": {
+      "accuracy": 0.19043,
+      "n": 1024,
+      "n_hits": 195
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.186523,
+      "n": 1024,
+      "n_hits": 191,
+      "wilson95": [
+       0.163853,
+       0.211537
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.259766,
+      "n": 1024,
+      "n_hits": 266,
+      "wilson95": [
+       0.233841,
+       0.287486
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.283203,
+      "n": 1024,
+      "n_hits": 290,
+      "wilson95": [
+       0.256457,
+       0.31157
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.010742,
+    "n": 3072,
+    "n_hits": 33,
+    "wilson95": [
+     0.007659,
+     0.015047
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8
+     },
+     "127": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     },
+     "223": {
+      "accuracy": 0.011719,
+      "n": 1024,
+      "n_hits": 12
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.011719,
+      "n": 1024,
+      "n_hits": 12,
+      "wilson95": [
+       0.006716,
+       0.020371
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8,
+      "wilson95": [
+       0.003964,
+       0.01534
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.095703,
+    "n": 512,
+    "n_hits": 49,
+    "wilson95": [
+     0.073149,
+     0.124279
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.128906,
+      "n": 256,
+      "n_hits": 33
+     },
+     "224": {
+      "accuracy": 0.0625,
+      "n": 256,
+      "n_hits": 16
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.0625,
+      "n": 256,
+      "n_hits": 16,
+      "wilson95": [
+       0.038834,
+       0.099102
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.128906,
+      "n": 256,
+      "n_hits": 33,
+      "wilson95": [
+       0.093281,
+       0.175504
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.003906,
+    "n": 512,
+    "n_hits": 2,
+    "wilson95": [
+     0.001072,
+     0.014129
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "q",
+   "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json × R1 int8（本批组合，无单一来源）",
+   "bytes_per_position": 768.0,
+   "factor_value_bytes": 1.0,
+   "factor_n_kv_heads_eff": 1,
+   "factor_positions_kept": 256,
+   "factor_positions_kept_over_T": 1.0,
+   "T": 256,
+   "family_baseline": "mha",
+   "damage_bpc": 0.012079,
+   "delta_schema": -0.012079,
+   "kv_reduction_vs_family_baseline": 0.9375,
+   "total_damage_vs_stock": 0.010536,
+   "quant_increment_bpc": 0.000342,
+   "quant_increment_vs_arm": "mqa",
+   "quant_increment_recall_delta": 0.001628
+  },
+  {
+   "arm": "win16_anchor16",
+   "role": "缺口②：窗口 16 + 锚点 16（1536 B/位置；与 win32 等字节对照）",
+   "family": "trunk",
+   "class": "window_anchor",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.858406,
+   "activity": {
+    "kind": "window_anchor",
+    "window": 16,
+    "anchors": 16,
+    "n_dropped_pairs": 25200,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.76605058,
+    "n_dropped_keys": 224,
+    "diagonal_kept": true,
+    "anchor_contribution_pairs": 3976
+   },
+   "recall_copy": {
+    "accuracy": 0.061849,
+    "n": 3072,
+    "n_hits": 190,
+    "wilson95": [
+     0.053866,
+     0.070926
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15
+     },
+     "127": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11
+     },
+     "223": {
+      "accuracy": 0.160156,
+      "n": 1024,
+      "n_hits": 164
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.160156,
+      "n": 1024,
+      "n_hits": 164,
+      "wilson95": [
+       0.138969,
+       0.183883
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11,
+      "wilson95": [
+       0.006009,
+       0.019133
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15,
+      "wilson95": [
+       0.008897,
+       0.024028
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.00944,
+    "n": 3072,
+    "n_hits": 29,
+    "wilson95": [
+     0.006581,
+     0.013525
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.006836,
+      "n": 1024,
+      "n_hits": 7
+     },
+     "127": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11
+     },
+     "223": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11,
+      "wilson95": [
+       0.006009,
+       0.019133
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11,
+      "wilson95": [
+       0.006009,
+       0.019133
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.006836,
+      "n": 1024,
+      "n_hits": 7,
+      "wilson95": [
+       0.003315,
+       0.014043
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.011719,
+    "n": 512,
+    "n_hits": 6,
+    "wilson95": [
+     0.005382,
+     0.025328
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "224": {
+      "accuracy": 0.023438,
+      "n": 256,
+      "n_hits": 6
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.023438,
+      "n": 256,
+      "n_hits": 6,
+      "wilson95": [
+       0.010785,
+       0.050181
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.001953,
+    "n": 512,
+    "n_hits": 1,
+    "wilson95": [
+     0.000345,
+     0.010979
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1,
+      "wilson95": [
+       0.00069,
+       0.021791
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "a",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "bytes_per_position": 1536.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 32,
+   "factor_positions_kept_over_T": 0.125,
+   "T": 256,
+   "family_baseline": "fp16",
+   "damage_bpc": 0.374835,
+   "delta_schema": -0.374835,
+   "kv_reduction_vs_family_baseline": 0.875,
+   "total_damage_vs_stock": 0.374837,
+   "quant_increment_bpc": null
+  },
+  {
+   "arm": "win32_anchor32",
+   "role": "缺口②：窗口 32 + 锚点 32（3072 B/位置；与 win64 等字节对照）",
+   "family": "trunk",
+   "class": "window_anchor",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.590539,
+   "activity": {
+    "kind": "window_anchor",
+    "window": 32,
+    "anchors": 32,
+    "n_dropped_pairs": 18528,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.56322957,
+    "n_dropped_keys": 192,
+    "diagonal_kept": true,
+    "anchor_contribution_pairs": 7696
+   },
+   "recall_copy": {
+    "accuracy": 0.093424,
+    "n": 3072,
+    "n_hits": 287,
+    "wilson95": [
+     0.083635,
+     0.10423
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16
+     },
+     "127": {
+      "accuracy": 0.017578,
+      "n": 1024,
+      "n_hits": 18
+     },
+     "223": {
+      "accuracy": 0.24707,
+      "n": 1024,
+      "n_hits": 253
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.24707,
+      "n": 1024,
+      "n_hits": 253,
+      "wilson95": [
+       0.221631,
+       0.2744
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.017578,
+      "n": 1024,
+      "n_hits": 18,
+      "wilson95": [
+       0.011148,
+       0.027615
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16,
+      "wilson95": [
+       0.00964,
+       0.02523
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.014648,
+    "n": 3072,
+    "n_hits": 45,
+    "wilson95": [
+     0.010966,
+     0.019543
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16
+     },
+     "127": {
+      "accuracy": 0.017578,
+      "n": 1024,
+      "n_hits": 18
+     },
+     "223": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11,
+      "wilson95": [
+       0.006009,
+       0.019133
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.017578,
+      "n": 1024,
+      "n_hits": 18,
+      "wilson95": [
+       0.011148,
+       0.027615
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16,
+      "wilson95": [
+       0.00964,
+       0.02523
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.017578,
+    "n": 512,
+    "n_hits": 9,
+    "wilson95": [
+     0.009275,
+     0.033066
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4
+     },
+     "224": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5,
+      "wilson95": [
+       0.008371,
+       0.044898
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4,
+      "wilson95": [
+       0.006093,
+       0.039479
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.003906,
+    "n": 512,
+    "n_hits": 2,
+    "wilson95": [
+     0.001072,
+     0.014129
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "A",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "bytes_per_position": 3072.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 64,
+   "factor_positions_kept_over_T": 0.25,
+   "T": 256,
+   "family_baseline": "fp16",
+   "damage_bpc": 0.106968,
+   "delta_schema": -0.106968,
+   "kv_reduction_vs_family_baseline": 0.75,
+   "total_damage_vs_stock": 0.10697,
+   "quant_increment_bpc": null
+  },
+  {
+   "arm": "win32_anchor8",
+   "role": "缺口②：窗口 32 + 锚点 8（1920 B/位置；A3 的『小锚槽』档，看小锚点能否拉动召回）",
+   "family": "trunk",
+   "class": "window_anchor",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.633097,
+   "activity": {
+    "kind": "window_anchor",
+    "window": 32,
+    "anchors": 8,
+    "n_dropped_pairs": 23436,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.71242704,
+    "n_dropped_keys": 216,
+    "diagonal_kept": true,
+    "anchor_contribution_pairs": 2020
+   },
+   "recall_copy": {
+    "accuracy": 0.028971,
+    "n": 3072,
+    "n_hits": 89,
+    "wilson95": [
+     0.023603,
+     0.035516
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.018555,
+      "n": 1024,
+      "n_hits": 19
+     },
+     "127": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16
+     },
+     "223": {
+      "accuracy": 0.052734,
+      "n": 1024,
+      "n_hits": 54
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.052734,
+      "n": 1024,
+      "n_hits": 54,
+      "wilson95": [
+       0.04064,
+       0.068172
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16,
+      "wilson95": [
+       0.00964,
+       0.02523
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.018555,
+      "n": 1024,
+      "n_hits": 19,
+      "wilson95": [
+       0.01191,
+       0.028798
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.013021,
+    "n": 3072,
+    "n_hits": 40,
+    "wilson95": [
+     0.009577,
+     0.017681
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.011719,
+      "n": 1024,
+      "n_hits": 12
+     },
+     "127": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16
+     },
+     "223": {
+      "accuracy": 0.011719,
+      "n": 1024,
+      "n_hits": 12
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.011719,
+      "n": 1024,
+      "n_hits": 12,
+      "wilson95": [
+       0.006716,
+       0.020371
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16,
+      "wilson95": [
+       0.00964,
+       0.02523
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.011719,
+      "n": 1024,
+      "n_hits": 12,
+      "wilson95": [
+       0.006716,
+       0.020371
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.015625,
+    "n": 512,
+    "n_hits": 8,
+    "wilson95": [
+     0.007938,
+     0.030526
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3
+     },
+     "224": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5,
+      "wilson95": [
+       0.008371,
+       0.044898
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3,
+      "wilson95": [
+       0.003993,
+       0.033882
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.001953,
+    "n": 512,
+    "n_hits": 1,
+    "wilson95": [
+     0.000345,
+     0.010979
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1,
+      "wilson95": [
+       0.00069,
+       0.021791
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "n",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "bytes_per_position": 1920.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 40,
+   "factor_positions_kept_over_T": 0.15625,
+   "T": 256,
+   "family_baseline": "fp16",
+   "damage_bpc": 0.149526,
+   "delta_schema": -0.149526,
+   "kv_reduction_vs_family_baseline": 0.84375,
+   "total_damage_vs_stock": 0.149528,
+   "quant_increment_bpc": null
+  }
+ ],
+ "memory_convention": {
+  "analytic_bytes_per_position": "见 points[*].bytes_per_position（判据 C1 的唯一公式）",
+  "measured_gpu_peak_mib": 462.5,
+  "isolation_note": "判据 C2：解析字节是本图的**横轴**；实测显存峰值单列在此，**不**进横轴。评测实现把 K/V 立刻反量化 / 按掩码取子集（SDPA 仍算 T×T 分数矩阵）⇒ 实测峰值不随档下降。"
+ },
+ "code": {
+  "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/run.py": "2ab3cb878b52153b",
+  "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/gaps_arms.py": "2787e99678bcfd62",
+  "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/run.py": "7920d2002e9eb34c",
+  "tools/evalkit/longrange_tasks.py": "4a02b93f19db8e99",
+  "tools/evalkit/kv_quant.py": "1630f4519fa76562",
+  "tools/evalkit/retention.py": "8320f03a2ecf74e3"
+ },
+ "cost": {
+  "device": "cuda",
+  "wall_seconds": 62.68,
+  "wall_minutes": 1.045,
+  "peak_mem_mib": 462.5
+ },
+ "chart_png": true
+}

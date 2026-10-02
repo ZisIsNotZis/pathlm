@@ -19,7 +19,7 @@ Run: `python3 -m pytest tests/ -q`
    锚点由被放行的因果对数证明。
 
 破坏上述语义的变异（改 `VALUE_BYTES`、改锚点位置判据、把 `quant_head` 的前向换成
-不量化的路径）会让对应单测抓红；变异与逐字节还原见 `README.md` §5「变异验证」。
+不量化的路径）会让对应单测抓红；变异与逐字节还原见 `README.md` §6b「变异验证」。
 """
 
 import importlib.util

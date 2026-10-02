@@ -178,7 +178,7 @@ def render_table(cfg, points, controls, rec) -> str:
              f"{controls['local_prior_induction']['accuracy']:.4f}（induction）/ "
              f"{controls['local_prior_var_recall']['accuracy']:.4f}（var_recall）。"
              "『量化增量』= 组合臂 bpc − 同架构 fp16 臂 bpc（隔离 int8 叠加代价）；"
-             "『相对 stock』= bpc − 1.483571（不压缩 trunk 基线）。")
+             "『相对 stock』= bpc − 1.483569（不压缩 trunk 的释放版 bpc）。")
     L.append(markdown_table(points).rstrip("\n"))
 
     L.append("## 表 2 · 逐任务召回 + copy 分 src_pos（同一仪器，同一 seed）\n\n"
@@ -316,6 +316,8 @@ def main() -> int:
     os.makedirs(args.out_dir, exist_ok=True)
     if args.charts_only:
         rec = json.load(open(os.path.join(args.out_dir, "results.json")))
+        rec["code"] = {name: b19.sha256_file(os.path.join(ROOT, name))[:16]
+                       for name in rec["config"]["reuse"]["code_anchors"]}
         write_charts(rec["config"], rec["points"], rec["controls"], rec, args.out_dir)
         with open(os.path.join(args.out_dir, "results.json"), "w") as f:
             json.dump(rec, f, indent=1, ensure_ascii=False)
