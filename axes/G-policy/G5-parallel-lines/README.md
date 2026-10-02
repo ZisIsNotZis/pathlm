@@ -6,11 +6,11 @@ title: "并行多线机制"
 status: judged
 judge: "质量增益（同 FLOPs）+ 线间相关度 + 每线边际收益曲线"
 cost: "13M 纯推理分钟级–单臂 25 min（若需训练多样性）"
-tax: "多样性压力 mech 的税 +0.023（capped −JS）"
-benefit: "去相关 voter 有效：DIVL1（capped −JS + float32 + pre-step grad-norm gate）同时改善 baseline 与集成斜率（−0.062 > −0.047，上限 +0.023）"
-verdict: "共享主干的多线几乎不增益——瓶颈是相关性，不是算力。"
+tax: "**去相关税（ERRATA 更正）**：battery 口径 **13M −0.0086 / 50M +0.0710**（capped −JS 压力）；旧文写的 +0.023 是**误标**——0.0227 实为 `L1@K8 − DIVL1@K8`（去相关臂集成更好的**收益**），已更正"
+benefit: "13M：DIVL1 同时改善 baseline 与集成斜率（−0.062 > −0.047）——**该收益在 50M 反转**（去相关税由 −0.0086 变 +0.0710 且线间更相似，见 failure）；路径随机化**机制税随规模缩小 54%**（+0.1748 → +0.0810）"
+verdict: "**两档判负（13M 与 50M）**：共享主干的多线几乎不增益（瓶颈是相关性不是算力）；50M 上「8× 推理算力换多线」仍输单线 0.1115，**连不付去相关税的天花板也输 0.0223**；我们的去相关训练（capped −JS）**没能去相关**（成对 JS 反而 0.0333→0.0250）⇒ 该路线在无新去相关机制前无部署价值（独立多模型=深集成有效但 N× 推理，属业界已知）。"
 deps: ["G1-selector", "C6-depth-supervision", "F1-iteration-object"]
-evidence: [".scratch/08-tts-probe/evidence @aa97bcf", ".scratch/09-m3-interactions/evidence @39b1838", ".scratch/02-engine-m0/evidence/REPORT.md @27418ae"]
+evidence: [".scratch/08-tts-probe/evidence @aa97bcf", ".scratch/09-m3-interactions/evidence @39b1838", ".scratch/02-engine-m0/evidence/REPORT.md @27418ae", "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/analysis.md @ticket37", "axes/G-policy/PRIOR_ART_ENGINE.md @ticket36"]
 ---
 
 <!-- AUTO:begin -->
@@ -19,7 +19,7 @@ evidence: [".scratch/08-tts-probe/evidence @aa97bcf", ".scratch/09-m3-interactio
 
 > 轴：**G 策略与调度** ｜ 状态：**✅ judged**
 
-> **判读**：共享主干的多线几乎不增益——瓶颈是相关性，不是算力。
+> **判读**：**两档判负（13M 与 50M）**：共享主干的多线几乎不增益（瓶颈是相关性不是算力）；50M 上「8× 推理算力换多线」仍输单线 0.1115，**连不付去相关税的天花板也输 0.0223**；我们的去相关训练（capped −JS）**没能去相关**（成对 JS 反而 0.0333→0.0250）⇒ 该路线在无新去相关机制前无部署价值（独立多模型=深集成有效但 N× 推理，属业界已知）。
 
 ## 1. 命题
 
@@ -35,21 +35,26 @@ evidence: [".scratch/08-tts-probe/evidence @aa97bcf", ".scratch/09-m3-interactio
 
 ## 3. 状态（我们做了什么 / 行业做了什么）
 
-**本地已测**：去相关 voter 有效：DIVL1（capped −JS + float32 + pre-step grad-norm gate）同时改善 baseline 与集成斜率（−0.062 > −0.047，上限 +0.023）
+**本地已测**：13M：DIVL1 同时改善 baseline 与集成斜率（−0.062 > −0.047）——**该收益在 50M 反转**（去相关税由 −0.0086 变 +0.0710 且线间更相似，见 failure）；路径随机化**机制税随规模缩小 54%**（+0.1748 → +0.0810）
 
 **行业口径**：见 `docs/playbook.md` 与参照线 `R-references/`。
 
 ## 4. 结论与数字
 
-- **税**：多样性压力 mech 的税 +0.023（capped −JS）
-- **收益**：去相关 voter 有效：DIVL1（capped −JS + float32 + pre-step grad-norm gate）同时改善 baseline 与集成斜率（−0.062 > −0.047，上限 +0.023）
-- **判读**：共享主干的多线几乎不增益——瓶颈是相关性，不是算力。
+- **税**：**去相关税（ERRATA 更正）**：battery 口径 **13M −0.0086 / 50M +0.0710**（capped −JS 压力）；旧文写的 +0.023 是**误标**——0.0227 实为 `L1@K8 − DIVL1@K8`（去相关臂集成更好的**收益**），已更正
+- **收益**：13M：DIVL1 同时改善 baseline 与集成斜率（−0.062 > −0.047）——**该收益在 50M 反转**（去相关税由 −0.0086 变 +0.0710 且线间更相似，见 failure）；路径随机化**机制税随规模缩小 54%**（+0.1748 → +0.0810）
+- **判读**：**两档判负（13M 与 50M）**：共享主干的多线几乎不增益（瓶颈是相关性不是算力）；50M 上「8× 推理算力换多线」仍输单线 0.1115，**连不付去相关税的天花板也输 0.0223**；我们的去相关训练（capped −JS）**没能去相关**（成对 JS 反而 0.0333→0.0250）⇒ 该路线在无新去相关机制前无部署价值（独立多模型=深集成有效但 N× 推理，属业界已知）。
 
 ## 5. 失败路径与原因
 
-1. 共享 trunk 的 voter 太相关：集成增益仅 +0.0008~+0.0015（可忽略）
-2. 确定性路径 checkpoint 的 K-path 集成恰好得 0——beam search 产出的多线正落在这个死区
-3. 深度集成失败：置信头只排序深度、不排序逐 token 可靠性
+1. **规模判决（ticket 37-V3，50M=5184 万参数、stock→l1→divl1 三臂阶梯、各 9830 万 token 同 seed）**：**多线仍输且更干脆**——divl1 的 8 路径集成 1.5620 vs 单线 1.4505，**差 0.1115（CI 不重叠）**，与 13M 同判据 0.115 几乎相同；**连天花板都不够**：不付去相关税时（借 l1 读数）8 路径集成 1.4727 仍差 **0.0223**（CI [−0.0287,−0.0172]，超 0.014 方差界）
+2. **机制诊断（V3）**：路径随机化机制税随规模**缩小 54%**（13M +0.1748 → 50M +0.0810），但**去相关训练反而更贵**（−0.0086 → **+0.0710**）且**没能去相关**——成对 JS 从 l1 的 0.0333 掉到 divl1 的 **0.0250**（更像了）⇒ capped-−JS 不是有效去相关源
+3. **确定性路径对照恰好 0.0000**（8 条路径 logits 逐位相同，60/60 批）⇒ 集成增益只来自「路径真的不同」
+4. **未排除的解释（V3 如实声明）**：divl1 臂的 grad-norm 门跳过 5121/12000 步（42.7%）、实际约 6900 次更新 ⇒ 「去相关税为何变贵」三解释未排除（罚则有害/欠训练/权重不适配大规模）；**主判据不受影响**（用 l1 当天花板仍不过）
+5. **参照线（§21，业界已知 ⇒ 写结论不重复实验）**：独立训练多模型（deep ensembles）是已知有效的去相关源，代价 **N× 推理**；单模型多路径这一唯一便宜形态已被 13M/50M 两档判负
+6. 共享 trunk 的 voter 太相关：集成增益仅 +0.0008~+0.0015（可忽略）
+7. 确定性路径 checkpoint 的 K-path 集成恰好得 0——beam search 产出的多线正落在这个死区
+8. 深度集成失败：置信头只排序深度、不排序逐 token 可靠性
 
 ## 6. 判据与判决实验设计
 
@@ -70,6 +75,8 @@ evidence: [".scratch/08-tts-probe/evidence @aa97bcf", ".scratch/09-m3-interactio
 1. .scratch/08-tts-probe/evidence @aa97bcf
 2. .scratch/09-m3-interactions/evidence @39b1838
 3. .scratch/02-engine-m0/evidence/REPORT.md @27418ae
+4. axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/analysis.md @ticket37
+5. axes/G-policy/PRIOR_ART_ENGINE.md @ticket36
 
 ## 备注
 

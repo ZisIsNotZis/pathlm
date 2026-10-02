@@ -16,13 +16,14 @@ python3 train_m1.py divl1  --config .../configs/divl1.json  --steps 12000 --ckpt
 
 ## 权重（训练后由 `fill_config_hashes.py` 回填，`run.py` 每次评测前断言）
 
-| 臂 | 文件 | sha256 | 体积 |
-|---|---|---|---|
-| `stock` | `train/stock/model.pt` | `TO_FILL_AFTER_TRAINING` | — |
-| `l1` | `train/l1/model.pt` | `TO_FILL_AFTER_TRAINING` | — |
-| `divl1` | `train/divl1/model.pt` | `TO_FILL_AFTER_TRAINING` | — |
+| 臂 | 文件 | sha256 | 体积 | 参数量 |
+|---|---|---|---|---|
+| `stock` | `train/stock/model.pt` | `3649f076f0c4a4f30809550196553ad13dea50e485f3ba496017d65e77d7c6dd` | 207,415,747 B | 51,843,075 |
+| `l1` | `train/l1/model.pt` | `e9304612b1c5614c58b4140f0a4030aa4053f7f06d2b76f93d557ad5076b9a59` | 207,415,747 B | 51,843,075 |
+| `divl1` | `train/divl1/model.pt` | `f2f6acd8982ca19f451b0e9d3ce56b2e2f3e8b450a06e582a0457af21a18a242` | 207,415,747 B | 51,843,075 |
 
-- 三臂参数量相同：`TO_FILL`（训练后与 `results.json::checkpoints.*.params` 对齐）。
+（与 `config.json::arms.*.sha256` 一致，`run.py` 每次评测前断言；三臂参数量完全相同；
+同一文件体积 207,415,747 B 也说明三臂结构逐位相同——去相关压力不加参数。）
 - 中间检查点（收敛门禁用）：`.tmp/v3-ckpts/<arm>/model_step006000.pt`（不入库）。
 - 数据集：`data/enwik8_full.npz`（由 `.tmp/enwik8` 生成；val = 后 10M 字符，训练从不碰）。
 

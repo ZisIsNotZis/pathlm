@@ -133,7 +133,9 @@ def main() -> None:
 
     results: dict = {"config": cfg, "checkpoints": ck}
     results["scope"] = {
-        "口径": "matched-step 快照（6000 步）；K 曲线 = 60-batch probe 协议（与 13M 锚点同方法）",
+        "口径": (f"matched-step 快照（{cfg['steps_full']} 步 × bs 16 × T 512 = "
+                 f"{cfg['steps_full'] * 16 * 512 / 1e6:.1f}M tokens）；K 曲线 = 60-batch probe "
+                 f"协议（与 13M 锚点同方法）"),
         "单点不外推": True,
         "算力价签": "K8 集成 = 8× 前向/token；stock 单线 = 1× 前向/token",
     }

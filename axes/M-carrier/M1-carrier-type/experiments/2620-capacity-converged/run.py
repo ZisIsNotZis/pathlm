@@ -300,8 +300,12 @@ def main():
         a, b = grid[f"{small}_K{K}"], grid[f"{big}_K{K}"]
         v = L.capacity_verdict(a["accuracy"], a["n"], b["accuracy"], b["n"],
                                a["accuracy_ci"], b["accuracy_ci"])
-        v["two_proportion"] = two_proportion(b["n_hits"], b["n"],
-                                             a["n_hits"], a["n"])
+        # 符号约定与判据线一致：Δ = 大状态 − 小状态（正 = 大状态更好）。
+        # `two_proportion(k_a, n_a, k_b, n_b)` 返回 delta = p_b − p_a ⇒ 传（小, 大）。
+        v["two_proportion"] = two_proportion(a["n_hits"], a["n"],
+                                              b["n_hits"], b["n"])
+        v["two_proportion"]["note"] = ("ci_a = 小状态臂，ci_b = 大状态臂；"
+                                        "delta_pp = 大 − 小（与主判据同号）")
         v["is_main_leg"] = (K == L.MAIN_LEVEL_K)
         v["gated_by_convergence"] = conv_both
         main_by_K[f"K{K}"] = {"small_arm": small, "big_arm": big, "verdict": v}
@@ -356,8 +360,10 @@ def main():
             "ci_overlap": not (kr["accuracy_ci"][0] > ko["accuracy_ci"][1]
                                or ko["accuracy_ci"][0] > kr["accuracy_ci"][1]),
         }
-        d["two_proportion"] = two_proportion(kr["n_hits"], kr["n"],
-                                             ko["n_hits"], ko["n"])
+        d["two_proportion"] = two_proportion(ko["n_hits"], ko["n"],
+                                             kr["n_hits"], kr["n"])
+        d["two_proportion"]["note"] = ("ci_a = 原跑，ci_b = 重跑；"
+                                        "delta_pp = 重跑 − 原跑（与 accuracy_at_main_leg 同号）")
         d["verdict"] = ("训练侧散度 ≥ 判据线（同配置两跑 CI 不重叠）⇒ 本尺度 3pp 不可分辨"
                         if not d["accuracy_at_main_leg"]["ci_overlap"]
                         else "同配置两跑 CI 重叠 ⇒ 训练侧散度不足以解释主判据")
@@ -428,9 +434,53 @@ def main():
                 if src:
                     u1["grid_by_arm_K"][f"{arm_here}_K{K}"] = {
                         "accuracy": src["accuracy"], "accuracy_ci": src["accuracy_ci"],
-                        "n": src["n"], "corrupt": src["corrupt_source"]["accuracy"]}
+                        "n": src["n"], "n_hits": src["n_hits"],
+                        "corrupt": src["corrupt_source"]["accuracy"]}
         u1["u1_loss_slope_loglog"] = u1res.get("loss_slope")
     results["u1_10k_reference"] = u1
+
+    # 与 U1 的 10k 跑**同难度档**横向对照（本实验 24k vs U1 10k，同 seed 同配方）
+    u1_cmp = {"note": ("每格：U1 的 10k 读数 / 本实验的 24k 读数 / Δpp（本实验 − U1）与 CI 是否重叠；"
+                        "**直接测点，不外推**——两者差异同时包含「步数」与「训练侧散度」两个因素"),
+              "by_arm_K": {}}
+    for arm_u1, arm_here in (("D16", "S16"), ("D128", "S128")):
+        for (K, _) in levels:
+            src = u1["grid_by_arm_K"].get(f"{arm_here}_K{K}")
+            if not src:
+                continue
+            now = grid[f"{arm_here}_K{K}"]
+            tp = two_proportion(src["n_hits"], src["n"], now["n_hits"], now["n"])
+            u1_cmp["by_arm_K"][f"{arm_here}_K{K}"] = {
+                "u1_arm": arm_u1, "u1_accuracy": src["accuracy"],
+                "u1_ci": src["accuracy_ci"], "u1_n": src["n"],
+                "now_accuracy": now["accuracy"], "now_ci": now["accuracy_ci"],
+                "now_n": now["n"],
+                "delta_pp_now_minus_u1": round(100 * (now["accuracy"] - src["accuracy"]), 3),
+                "ci_overlap": not (now["accuracy_ci"][0] > src["accuracy_ci"][1]
+                                   or src["accuracy_ci"][0] > now["accuracy_ci"][1]),
+                "two_proportion": tp,
+            }
+    results["u1_10k_vs_now"] = u1_cmp
+
+    # 与 U1 的 10k 跑**同步骤** loss / 答案行 CE 差（第三次/第四次散度读数，只读引用）
+    u1_step = {"note": ("本实验两臂前 10k 步与 U1 同配置臂在**同步骤**上的 loss / 答案行 CE 差；"
+                        "U1 的日志只读引用（不复现）"), "by_pair": {}}
+    for arm_u1, arm_here in (("D16", "S16"), ("D128", "S128")):
+        p = resolve(cfg["u1_reference"]["train_log_template"].format(arm=arm_u1))
+        if not os.path.exists(p):
+            u1_step["by_pair"][f"{arm_here}_vs_{arm_u1}"] = {"missing": p}
+            continue
+        mine = read_jsonl(resolve(arms_cfg[arm_here]["train_log"]))
+        theirs = read_jsonl(p)
+        d = L.training_divergence(mine, theirs)
+        src = u1["grid_by_arm_K"].get(f"{arm_here}_K{L.MAIN_LEVEL_K}")
+        u1_step["by_pair"][f"{arm_here}_vs_{arm_u1}"] = {
+            "source": p,
+            "loss": d["per_key"]["loss"],
+            "synth_answer_ce": d["per_key"]["synth_answer_ce"],
+            "u1_10k_accuracy_at_K8": (src or {}).get("accuracy"),
+        }
+    results["u1_10k_matched_step_divergence"] = u1_step
 
     # ---------------- 收尾：复现性 / 成本 / 哈希 ----------------
     note("复现性：主腿格同 seed 再跑一遍（纯推理）")
@@ -472,7 +522,11 @@ def main():
                   "tools/evalkit/retention.py")
     results["code"] = {}
     for p in code_files:
-        cand = resolve(p) if os.path.exists(resolve(p)) else os.path.join(HERE, p)
+        # **本目录文件优先**（否则 `README.md` 这类同名文件会被解析成仓库根的 README；
+        # 2026-10-02 自查发现：上一轮 `results.json::code.README.md` 记的是仓库根 README 的哈希，
+        # 与本实验契约不是同一份 ⇒ 已修并重跑）
+        local = os.path.join(HERE, p)
+        cand = local if os.path.exists(local) else resolve(p)
         results["code"][p] = sha256_file(cand) if os.path.exists(cand) else None
     results["reconciliation"] = L.reconciliation_checks(results)
     with open(os.path.join(args.out_dir, "results.json"), "w") as f:

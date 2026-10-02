@@ -41,13 +41,26 @@ python3 run.py --smoke   # 冒烟（需先有 train/ 下的权重）
 的只读快照；运行期指纹另见 `results.json::code`，两者若不同以 `results.json::code` 为准。
 
 ```
-pathlm/depth_ar.py             <filled>
-train_depth_ar.py              <filled>
-tests/test_depth_ar.py         <filled>
-tools/evalkit/carry_channel.py <filled>
-tools/evalkit/longrange_tasks.py <filled>
-tools/evalkit/retention.py     <filled>
+pathlm/depth_ar.py               248a92754154d65e0857ca5ceccda91ef63ffd9b90b3cfde2199da29b6b59135
+train_depth_ar.py                8c333e5405baf23812cd8d389e69063a3b0129fa17993db7fe1ddb50e71828a0
+tests/test_depth_ar.py           433d4ef4dc48de4c40d70a068a1c916004cd35fc38aad11be377af7fd22bdead
+tools/evalkit/carry_channel.py   4dcd91facd60a512dcc983836fb29a7c91aad988bada1c95ada666824d226753
+tools/evalkit/longrange_tasks.py 4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b
+tools/evalkit/retention.py       8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502
 ```
+
+（以上 6 个共享文件在本实验全程**只读**；`git diff --stat` 对它们为空 ⇒ 与 `HEAD`（`68483da`）
+逐字节一致，不存在「含邻线未提交改动」的口径重叠。运行期指纹另见 `results.json::code`。）
+
+### 权重 sha256（三臂）
+
+| 臂 | sha256 | 体积 |
+|---|---|---|
+| `S16` | `10b79c5b5770cbd6` … （完整值见 `config.json::arms.S16.sha256`） | 55,263,811 B |
+| `S128` | `dafc85c2e66af2a2` … | 55,249,475 B |
+| `S16_rep` | `c0dee9b4254aeb79` … | 55,263,811 B |
+
+（`run.py` 加载时逐臂断言完整 sha256；`config.json` 由 `fill_config_hashes.py` 回填。）
 
 **口径重叠声明**：本轮同批还有 V1（`R1-quantization/2620-kv-budget-gaps`）与
 V3（`G5-parallel-lines/2620-decorrelation-at-scale`）两条 GPU 线并行，V3 **改**

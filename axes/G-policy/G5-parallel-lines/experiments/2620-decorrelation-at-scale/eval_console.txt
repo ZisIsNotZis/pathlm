@@ -1,0 +1,41 @@
+[    0.1s] 载入 enwik8 val（后 10M 字符，训练从不碰）
+[    0.2s] 载入三臂（model.pt sha256 断言）
+[    1.7s]   stock: sha256 3649f076f0c4a4f3… params 51843075
+[    3.0s]   l1: sha256 e9304612b1c5614c… params 51843075
+[    4.3s]   divl1: sha256 f2f6acd8982ca19f… params 51843075
+[    4.3s] 自检 ①：本入口 K 集成 vs probe_tts.bpc_k（13M 锚点同一方法）
+[   12.2s]   K=1: mine 1.5266 vs probe_tts 1.5266 ⇒ equal=True
+[   24.3s]   K=2: mine 1.4968 vs probe_tts 1.4968 ⇒ equal=True
+[   24.3s] K 曲线：三臂 × K ∈ [1, 2, 4, 8]（60-batch probe 协议）
+[   27.7s]   stock K=1: bpc 1.4505 acc 0.7036
+[   34.4s]   stock K=2: bpc 1.4505 acc 0.7036 | JS 0.0000 bits | paths identical=True
+[   47.7s]   stock K=4: bpc 1.4505 acc 0.7036 | paths identical=True
+[   74.7s]   stock K=8: bpc 1.4505 acc 0.7036 | JS 0.0000 bits | paths identical=True
+[   77.8s]   l1 K=1: bpc 1.5266 acc 0.6883
+[   83.9s]   l1 K=2: bpc 1.4968 acc 0.6967 | JS 0.0338 bits | paths identical=False
+[   96.0s]   l1 K=4: bpc 1.4854 acc 0.6998 | paths identical=False
+[  120.4s]   l1 K=8: bpc 1.4727 acc 0.701 | JS 0.0333 bits | paths identical=False
+[  123.5s]   divl1 K=1: bpc 1.6005 acc 0.6744
+[  129.5s]   divl1 K=2: bpc 1.5799 acc 0.6797 | JS 0.0244 bits | paths identical=False
+[  141.7s]   divl1 K=4: bpc 1.5716 acc 0.6821 | paths identical=False
+[  166.1s]   divl1 K=8: bpc 1.562 acc 0.683 | JS 0.0250 bits | paths identical=False
+[  166.1s] 确定性路径对照（增益应恰好 0）：stock 臂 + divl1 强制 p_skip=0
+[  196.1s]   stock: K1 1.4505 → K8 1.4505 | 增益 0.0 | 路径逐位相同=True
+[  226.2s]   divl1_forced: K1 1.5522 → K8 1.5522 | 增益 0.0 | 路径逐位相同=True
+[  226.2s] 成对 JS（路径相关度，K=8）
+[  226.2s]   stock: 0.0 bits (0.0 nats)
+[  226.2s]   l1: 0.033320095983012936 bits (0.023095730586612177 nats)
+[  226.2s]   divl1: 0.025044426318415327 bits (0.017359473491350877 nats)
+[  226.2s] 判据：主（读法 B）/ 并列（读法 A）
+[  226.3s]   主判据（读法 B）：-0.1115 CI [-0.11812408408140618, -0.10633125439902376] ⇒ 过=False
+[  226.3s]   并列判据（读法 A）：-0.0354 CI [-0.07177714415892282, 0.014779296706781155] ⇒ 过=False
+[  226.3s] 200-batch battery clean bpc（与公开锚 B0 1.5074 同协议）
+[  237.8s]   stock: battery bpc 1.4377 acc 0.7065
+[  248.2s]   l1: battery bpc 1.5187 acc 0.6904
+[  258.5s]   divl1: battery bpc 1.5897 acc 0.6766
+[  258.5s] 活性量与 loss 斜率（同方法）读训练产物
+[  258.5s]   stock: wall 8.8 min, peak 3286.7 MB, slope -0.246239, div_js_last None, skip_frac_mean 1.0, gate_skips 0
+[  258.5s]   l1: wall 8.3 min, peak 3285.6 MB, slope -0.299043, div_js_last None, skip_frac_mean 0.9, gate_skips 0
+[  258.5s]   divl1: wall 12.8 min, peak 5610.4 MB, slope -0.245946, div_js_last 0.020559, skip_frac_mean 0.891, gate_skips 5121
+[  294.4s]   轨迹 @6000 步：stock@K1 1.6159 l1@K1 1.7984 divl1@K1 1.8111 | 判据量 -0.1096
+[  294.4s] 完成：/home/z/vibe/pathlm/axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/results.json（评测墙钟 4.91 min）

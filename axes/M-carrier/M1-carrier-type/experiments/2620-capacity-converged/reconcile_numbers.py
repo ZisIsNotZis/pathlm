@@ -30,7 +30,7 @@ RM = open(os.path.join(HERE, "README.md")).read()
 ST = open(os.path.join(HERE, "stability.md")).read()
 
 checks = []
-NUM_RE = re.compile(r"\d+\.\d+")
+NUM_RE = re.compile(r"[-\u2212]?\d+\.\d+")   # 带可选负号（含 U+2212 真负号）
 
 
 def ck(label, ok, got=None, want=None):
@@ -38,11 +38,15 @@ def ck(label, ok, got=None, want=None):
 
 
 def num_in(text, value, label, tol=5e-4):
-    """数值容差匹配（要求报告里出现带小数点的数值 token）。"""
+    """数值容差匹配（要求报告里出现带小数点、**带符号**的数值 token）。
+
+    符号规范化：报告里用 U+2212（−）写真负号，先换成 ASCII `-` 再抽 token；
+    抽出来的 token 保留符号 ⇒ 「−0.093」不会与「0.093」混淆。
+    """
     if value is None:
         ck(label, False, None, "value is None")
         return
-    toks = [float(t) for t in NUM_RE.findall(text)]
+    toks = [float(t) for t in NUM_RE.findall(text.replace("\u2212", "-"))]
     ok = any(abs(t - float(value)) <= tol for t in toks)
     ck(label, ok, f"nearest={min((abs(t-float(value)) for t in toks), default=None)}",
        f"{value}±{tol}")
@@ -184,6 +188,34 @@ for pair, d in crit["c3_2_training_divergence"].items():
            rec["per_key"][key]["n_steps_compared"]
            == d["per_key"][key]["n_steps_compared"])
 
+# ---------------------------------------------------------------- 与 U1 的横向对照复算
+for cell, v in R["u1_10k_vs_now"]["by_arm_K"].items():
+    ck(f"U1 对照 {cell} delta_pp 复算一致",
+       v["delta_pp_now_minus_u1"] == round(100 * (v["now_accuracy"] - v["u1_accuracy"]), 3),
+       v["delta_pp_now_minus_u1"],
+       round(100 * (v["now_accuracy"] - v["u1_accuracy"]), 3))
+    ck(f"U1 对照 {cell} ci_overlap 复算一致",
+       v["ci_overlap"] == (not (v["now_ci"][0] > v["u1_ci"][1]
+                                or v["u1_ci"][0] > v["now_ci"][1])))
+    ck(f"U1 对照 {cell} 与 grid/引用一致",
+       v["now_accuracy"] == grid[f"{cell}"]["accuracy"]
+       and v["now_n"] == grid[f"{cell}"]["n"])
+    ck(f"U1 对照 {cell} u1 值 == U1 results.json",
+       v["u1_accuracy"] == R["u1_10k_reference"]["grid_by_arm_K"][cell]["accuracy"])
+for pair, v in R["u1_10k_matched_step_divergence"]["by_pair"].items():
+    arm_here, arm_u1 = pair.split("_vs_")
+    mine = [json.loads(x) for x in
+            open(os.path.join(ROOT, CFG["arms"][arm_here]["train_log"])) if x.strip()]
+    theirs = [json.loads(x) for x in open(
+        os.path.join(ROOT, CFG["u1_reference"]["train_log_template"].format(arm=arm_u1)))
+        if x.strip()]
+    rec = L.training_divergence(mine, theirs)
+    ck(f"U1 同步骤对照 {pair} loss max|Δ| 复算一致",
+       rec["per_key"]["loss"]["max_abs_diff"] == v["loss"]["max_abs_diff"])
+    ck(f"U1 同步骤对照 {pair} ansce max|Δ| 复算一致",
+       rec["per_key"]["synth_answer_ce"]["max_abs_diff"]
+       == v["synth_answer_ce"]["max_abs_diff"])
+
 # ---------------------------------------------------------------- 活性量 / 成本
 for n in arms:
     s = R["liveness_series"][n]
@@ -237,6 +269,8 @@ for n in CFG["main_arms"]:
            f"analysis 里有 {n} 总 CE 末窗斜率")
 num_in(AN, cost["train_wall_minutes_total"], "analysis 里有训练墙钟合计")
 num_in(AN, cost["wall_minutes_total_eval"], "analysis 里有评测墙钟")
+for cell, v in R["u1_10k_vs_now"]["by_arm_K"].items():
+    num_in(AN, v["delta_pp_now_minus_u1"], f"analysis 里有 U1 对照 {cell} 的 Δpp")
 num_in(ST, 0.0014, "stability 里有 600 步确定性探针的 loss 差（近似）", tol=5e-4)
 ck("README 含判据线与预登记字样", "预登记" in RM and "§4" in RM)
 ck("README 含 GPU 锁声明", "pathlm_gpu.lock" in RM)
