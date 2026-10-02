@@ -5,7 +5,7 @@
 > 对账：`reconcile_numbers.py` → `reconcile_report.json`。
 > 仪器：`tools/evalkit/longrange_tasks.py`（合成长程任务）、`tools/evalkit/kv_quant.py`（KV 量化往返）、
 > `tools/evalkit/retention.py`（可见性掩码 / 检索腿）。
-> 成本：**GPU 墙钟 32.7 s**（`results.json::cost`），**峰值 430.5 MiB**，14 个预算点，全部同进程重测。
+> 成本：**GPU 墙钟 32.11 s**（`results.json::cost`），**峰值 430.5 MiB**，14 个预算点，全部同进程重测。
 > 代码锚（`results.json::code`，sha256 前 16 位）：`2619/run.py` **32975b7600cf4d72**、
 > `longrange_tasks.py` **4a02b93f19db8e99**、`kv_quant.py` **1630f4519fa76562**、`retention.py` **8320f03a2ecf74e3**。
 
@@ -202,7 +202,7 @@
 
 | 项 | 值 |
 |---|---|
-| GPU 墙钟 | **32.7 s**（`results.json::cost.wall_seconds`，契约预算 20 min ⇒ 用掉 2.7%） |
+| GPU 墙钟 | **32.11 s**（`results.json::cost.wall_seconds`，契约预算 20 min ⇒ 用掉 2.7%） |
 | 评测峰值 | **430.5 MiB**（净，远低于 5 GB 上限） |
 | 臂/点数 | 14 点 ×（bpc 24×16 + 3 件合成任务 + 毁源对照）|
 | 重跑 | `rerun/`（同 seed 全跑一遍）⇒ max\|Δbpc\| = 0.0、max\|Δcopy\| = 0.0 |
@@ -242,3 +242,5 @@
    在 4096/131072 上窗口会便宜几十倍（`results.json::memory_convention` 亦只给解析外推）。
 4. **真实文本针召回（2615 仪器）跨族** —— 量化/头共享族没有这条腿；不同仪器不得混列，
    所以本图未并入，但它能给「召回」一条**不靠合成任务**的独立确认。
+
+> 主 Agent 修正（复核 V4 的 P2-1）：墙钟以 `results.json::cost.wall_seconds = 32.11` 为准（原 32.7 无出处；机检 `num_in` 曾以子串 `"32"` 假通过）。

@@ -80,7 +80,7 @@ def kv_quant_head_logits(model, tokens: torch.Tensor, mode: str):
         else:
             raise ValueError(
                 f"quant_head 只定义在 stock Block / GQABlock 上，遇到 {type(blk).__name__}")
-    return model.readout(h), summarize_stats(acc)
+    return model.readout(h), acc
 
 
 def effective_n_kv_heads(spec: dict, n_heads: int) -> int:

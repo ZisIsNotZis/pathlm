@@ -9,6 +9,7 @@
 | 实验 | 来源 |
 |---|---|
 | [`2508-tts-probes`](2508-tts-probes/README.md) | 目录内 README |
+| [`2620-decorrelation-at-scale`](2620-decorrelation-at-scale/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 

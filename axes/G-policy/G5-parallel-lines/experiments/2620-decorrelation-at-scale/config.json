@@ -1,0 +1,61 @@
+{
+  "device": "cuda",
+  "vocab_size": 206,
+  "probe_seed": 11,
+  "eval": {
+    "batch_size": 32,
+    "n_batches": 60
+  },
+  "k_sweep": [1, 2, 4, 8],
+  "js_k": [2, 8],
+  "selfcheck_k": [1, 2],
+  "determinism_k": [1, 8],
+  "main_k": 8,
+  "battery": {
+    "enabled": true,
+    "n_batches": 200
+  },
+  "gpu_wall_budget_min": 115,
+  "probe_protocol": {
+    "method": "probe_tts.bpc_k（13M 锚点 L1/DIVL1 的同一方法）",
+    "seed": 11,
+    "batch_size": 32,
+    "n_batches": 60,
+    "temperature": 1.0,
+    "note": "本入口的 K 集成与该函数在本检查点上逐位同值（results.json::selfchecks）"
+  },
+  "arms": {
+    "stock": {
+      "config": "configs/stock.json",
+      "train_dir": "train/stock",
+      "sha256": "TO_FILL_AFTER_TRAINING",
+      "role": "阶梯底：单线单模型（无路径机制、无去相关压力）"
+    },
+    "l1": {
+      "config": "configs/l1.json",
+      "train_dir": "train/l1",
+      "sha256": "TO_FILL_AFTER_TRAINING",
+      "role": "路径机制（p_skip 0.1），无去相关压力"
+    },
+    "divl1": {
+      "config": "configs/divl1.json",
+      "train_dir": "train/divl1",
+      "sha256": "TO_FILL_AFTER_TRAINING",
+      "role": "路径机制 + capped −JS 去相关压力（w_diversity 0.05）"
+    }
+  },
+  "anchors_13m": {
+    "note": "既有 13M 锚点（probe_tts 60-batch 协议，seed 11）；本实验不重跑，只作同方法趋势",
+    "stock_b0_battery_bpc": 1.5074,
+    "l1": {"K1": 1.6926, "K2": 1.6657, "K4": 1.6543, "K8": 1.6454},
+    "divl1": {"K1": 1.6842, "K2": 1.6482, "K4": 1.6339, "K8": 1.6227},
+    "sources": [".scratch/08-tts-probe/evidence/tts_results.json",
+                ".scratch/09-m3-interactions/evidence/DIVL1/k_sweep.json"],
+    "approx_equal_compute_reference": {
+      "b0_1p1ep_bpc": 1.5074, "b0_4p4ep_bpc": 1.3459,
+      "delta_bpc": -0.1615, "train_token_multiple": 4.0,
+      "source": ".scratch/11-retry-matrix-validity/evidence/README.md (D5 final)",
+      "label": "近似参照，非同算力实测"
+    }
+  }
+}

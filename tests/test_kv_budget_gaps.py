@@ -160,10 +160,11 @@ def test_quant_head_int8_changes_logits_and_values():
     int8 = ga.make_logits_fn(m, {"kind": "quant_head", "mode": "int8",
                                  "n_kv_heads": 2, "value_bytes": 1.0},
                              m.cfg.seq_len, "cpu")
-    _, want = ga.kv_quant_head_logits(m, x, "int8")
-    assert torch.allclose(int8(x), want, atol=0, rtol=0)      # 与量化路径同值
-    assert not torch.equal(fp32(x), int8(x))                  # 量化真的改了 logits
-    assert int(want["n_values"]) > 0 and float(want["rel_err"]) > 0
+    want_logits, want_raw = ga.kv_quant_head_logits(m, x, "int8")
+    assert torch.allclose(int8(x), want_logits, atol=0, rtol=0)  # 与量化路径同值
+    assert not torch.equal(fp32(x), int8(x))                     # 量化真的改了 logits
+    summary = ga.summarize_stats(want_raw)
+    assert int(summary["n_values"]) > 0 and float(summary["rel_err"]) > 0
     assert m.cfg.n_kv_heads == 2                              # head 共享确实生效
 
 

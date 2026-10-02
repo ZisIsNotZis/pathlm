@@ -35,7 +35,14 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
     """ckpt_every > 0 also writes model_step{step:06d}.pt every ckpt_every steps
     (curve mode: probe_curve.py reads them for effectiveness-vs-steps). Derived
     weights are intermediates, so ckpt_dir should stay out of git (runs/, .tmp/);
-    the committed evidence is the curve jsonl, not the weights."""
+    the committed evidence is the curve jsonl, not the weights.
+
+    Returns (wall_seconds, liveness). `liveness` carries the SCHEMA §10/§17.4
+    activity record: the diversity JS and the realized skip fraction are logged
+    on the SAME 200-step line as loss/lr/min (so a reviewer can cross-check the
+    trajectory point by point), and the pre-step grad-norm gate count is
+    reported. w_diversity == 0 arms also get a record, with alive=False —
+    "no decorrelation pressure" is the ladder's control, not a dead switch."""
     steps, bs = tcfg["steps"], tcfg["batch_size"]
     seq = model.mcfg.seq_len
     opt = torch.optim.AdamW(model.parameters(), lr=tcfg["lr"], weight_decay=0.01)
@@ -44,6 +51,12 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
     rng = random.Random(tcfg["seed"])
     torch_rng = torch.Generator().manual_seed(tcfg["seed"])
     t0 = time.time()
+    # --- V3 activity accumulators (SCHEMA §10; every 200 steps to the log) ---
+    div_hist: list = []          # capped -JS between the parallel paths' node-1 preds
+    skip_hist: list = []         # realized path stochasticity: kept layers / n_layers
+    gnorm_hist: list = []
+    gate_skips = 0               # pre-step grad-norm gate firings
+    paths_hist: list = []
     for step in range(steps):
         model.train()
         is_needle = pcap.p_needle > 0 and rng.random() < pcap.p_needle
@@ -64,13 +77,14 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
                if clean_needle else contextlib.nullcontext())
         with ctx, torch.autocast("cuda", dtype=torch.bfloat16,
                                  enabled=torch.cuda.is_available()):
-            loss, _ = model(x, paths, x)  # targets = the clean tokens themselves
+            loss, aux = model(x, paths, x)  # targets = the clean tokens themselves
         opt.zero_grad(set_to_none=True)
         loss.backward()
         gnorm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         if not torch.isfinite(gnorm) or gnorm > 1e4:
             # gradient explosion (observed with the negative-JS reward term):
             # skip BEFORE opt.step — a poisoned optimizer state is unrecoverable
+            gate_skips += 1
             opt.zero_grad(set_to_none=True)
             sched.step()
             continue
@@ -78,15 +92,42 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
         if ckpt_dir and ckpt_every > 0 and (step + 1) % ckpt_every == 0:
             torch.save(model.state_dict(),
                        os.path.join(ckpt_dir, f"model_step{step + 1:06d}.pt"))
+        # activity of the two ladder rungs (path mechanism / diversity pressure)
+        skip_hist.append(sum(len(p.layer_order) for p in paths)
+                         / (len(paths) * model.mcfg.n_layers))
+        paths_hist.append(len(paths))
+        gnorm_hist.append(float(gnorm))
+        if "diversity" in aux:
+            div_hist.append(float(aux["diversity"]))
         if step % 200 == 0 or step == steps - 1:
+            line = {"step": step, "loss": round(float(loss.detach()), 4),
+                    "lr": round(float(sched.get_last_lr()[0]), 6),
+                    "min": round((time.time() - t0) / 60, 1),
+                    "gnorm": round(float(gnorm), 4),
+                    "n_paths": paths_hist[-1],
+                    "skip_frac": round(skip_hist[-1], 4),
+                    "diversity_js": (round(float(aux["diversity"]), 6)
+                                     if "diversity" in aux else None)}
             try:
                 with open(log_path, "a") as f:
-                    f.write(json.dumps({"step": step, "loss": round(float(loss.detach()), 4),
-                                        "lr": round(float(sched.get_last_lr()[0]), 6),
-                                        "min": round((time.time() - t0) / 60, 1)}) + "\n")
+                    f.write(json.dumps(line) + "\n")
             except OSError as e:
                 raise RuntimeError(f"cannot append train log {log_path}: {e}") from e
-    return time.time() - t0
+    liveness = {
+        "w_diversity": pcap.w_diversity,
+        "p_skip": pcap.p_skip,
+        "n_paths_per_step": paths_hist[-1] if paths_hist else None,
+        "alive": bool(div_hist),
+        "diversity_js_first": round(div_hist[0], 6) if div_hist else None,
+        "diversity_js_last": round(div_hist[-1], 6) if div_hist else None,
+        "diversity_js_mean": round(sum(div_hist) / len(div_hist), 6) if div_hist else None,
+        "n_diversity_observations": len(div_hist),
+        "skip_frac_mean": (round(sum(skip_hist) / len(skip_hist), 4)
+                           if skip_hist else None),
+        "gnorm_max": round(max(gnorm_hist), 4) if gnorm_hist else None,
+        "gate_skips": gate_skips,
+    }
+    return time.time() - t0, liveness
 
 
 def run_battery(model: PathLM, eval_arr, vocab_size: int, pcap: PathConfig) -> dict:
@@ -161,8 +202,11 @@ def main():
                   f"them out of git", flush=True)
 
     log_path = os.path.join(run_dir, "train_log.jsonl")
-    wall = train(model, train_arr, cfg["train"], pcap, log_path,
-                 ckpt_dir=ckpt_dir, ckpt_every=args.ckpt_every)
+    torch.cuda.reset_peak_memory_stats()
+    wall, liveness = train(model, train_arr, cfg["train"], pcap, log_path,
+                           ckpt_dir=ckpt_dir, ckpt_every=args.ckpt_every)
+    peak_mb = (round(torch.cuda.max_memory_allocated() / 2 ** 20, 1)
+               if torch.cuda.is_available() else None)
     torch.save(model.state_dict(), os.path.join(run_dir, "model.pt"))
 
     results = run_battery(model, eval_arr, vocab_size, pcap)
@@ -181,6 +225,18 @@ def main():
               f"against others", flush=True)
     results["params"] = n_params
     results["wall_minutes"] = round(wall / 60, 1)
+    results["peak_gpu_mem_mb"] = peak_mb
+    # SCHEMA §10: the activity record for the arm's intervention. The diversity
+    # pressure adds NO parameters (it is a loss term over an extra forward),
+    # so params_added is 0 by construction and the live quantity is the JS.
+    results["intervention"] = {
+        "name": "capped_negative_js_diversity_pressure",
+        **liveness,
+        "params_added": 0,
+        "extra_forward_per_step": 1 if pcap.w_diversity > 0 else 0,
+        "note": ("w_diversity>0 每步多采样一条并行路径（额外 1 次前向）并减去 capped "
+                 "−JS；w_diversity=0 臂是阶梯的对照，不是未激活的开关"),
+    }
     results["train_tokens"] = cfg["train"]["steps"] * cfg["train"]["batch_size"] * mcfg.seq_len
     try:
         rf = open(os.path.join(run_dir, "results.json"), "w")

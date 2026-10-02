@@ -125,6 +125,8 @@ for f, h in R["code"].items():
     ck(f"code[{f}] 已落盘", h is not None, h, "hash")
 
 # ---------------------------------------------------------------- SPECIFIC 数字
+# 注意（复核 V4 汇总 6）：本函数用**子串**匹配，会把 32.11 与 32、0.82 与 0.8 混淆；
+# 后续请改为按数值容差匹配（abs(float(a)-float(b)) < tol），并禁止落入无小数点整数档。
 def num_in(text, value, label, places=6):
     for fmt in (f"{value:.{places}f}", f"{value:.4f}", f"{value:.3f}",
                 f"{value:.2f}", f"{value:.1f}"):
