@@ -2715,3 +2715,77 @@ def test_mqar_training_task_layout_and_local_prior():
             win = [int(v) for v in t.tokens[b, r - 15:r + 1]]
             assert set(win) & sym == {int(t.tokens[b, r])}
     assert list(pick.shape) == [t.B, t.M]
+
+
+# =====================================================================
+# ⑦ 容量旋钮（ticket 36 契约 U1）：`carry_state_dim` 只改记忆槽的状态宽度，
+#    不改注意力。默认口径（None）与显式 dh = d_model/n_heads 必须逐位相同；
+#    显式 dh ≠ d/n_heads 时注意力逐位不变、只有记忆槽的头结构/读出增益变化。
+# =====================================================================
+
+
+def test_carry_state_dim_default_and_explicit_n_heads_bitwise_equal():
+    """`carry_state_dim = d_model/n_heads` 与缺省（None）**逐位相同**：
+    参数逐位相等、同输入前向逐位相等。⇒ 容量旋钮的缺省口径就是 v1。"""
+    m_def = carry_model("delta")
+    m_exp = carry_model("delta", carry_state_dim=8)      # d=32, n_heads=4 ⇒ dh=8
+    assert m_def.carry.head_dim == m_exp.carry.head_dim == 8
+    assert m_def.carry.n_heads == m_exp.carry.n_heads == 4
+    sd_def, sd_exp = m_def.state_dict(), m_exp.state_dict()
+    assert set(sd_def) == set(sd_exp)
+    for k in sd_def:
+        assert torch.equal(sd_def[k], sd_exp[k]), k
+    x = torch.randint(0, 10, (2, 12))
+    m_def.eval(); m_exp.eval()
+    with torch.no_grad():
+        a = m_def(x)[1]["depth_logits"][-1]
+        b = m_exp(x)[1]["depth_logits"][-1]
+    assert torch.equal(a, b)
+
+
+def test_carry_state_dim_decouples_state_from_attention_heads():
+    """dh = 16 ≠ d/n_heads = 8：**注意力头与主干逐位不变**，只有记忆槽头数
+    4 → 2、状态宽度 8 → 16（总状态浮点 32·8 → 32·16 = 翻倍）。"""
+    m_def = carry_model("delta")
+    m_big = carry_model("delta", carry_state_dim=16)     # d=32, dh=16 ⇒ H_carry=2
+    assert m_big.blocks[0].n_heads == 4                  # 注意力头不变
+    assert m_big.carry.n_heads == 2 and m_big.carry.head_dim == 16
+    assert m_big.blocks[0].carry_heads == 2
+    assert m_big.carry.n_heads * m_big.carry.head_dim ** 2 == 32 * 16
+    assert m_def.carry.n_heads * m_def.carry.head_dim ** 2 == 32 * 8
+    # 主干（除 carry.* 与每层 carry_scale）逐位相同
+    sa, sb = m_def.state_dict(), m_big.state_dict()
+    carry_names = {k for k in sa if k.startswith("carry.")
+                   or k.endswith("carry_scale")}
+    assert set(sa) == set(sb)
+    for k in sa:
+        if k in carry_names:
+            continue
+        assert torch.equal(sa[k], sb[k]), k
+    # 读出增益随记忆槽头数定形
+    assert m_def.blocks[0].carry_scale.shape == (4,)
+    assert m_big.blocks[0].carry_scale.shape == (2,)
+    # 存活：γ 逃逸后前向形状正确、梯度到达写门
+    for blk in m_big.blocks:
+        blk.carry_scale.data.normal_(std=0.5)
+    x = torch.randint(0, 10, (2, 12))
+    out = m_big(x)[1]["depth_logits"][-1]
+    assert out.shape == (2, 12, 10)
+    loss = out.float().pow(2).mean()
+    loss.backward()
+    assert float(m_big.carry.w_v.grad.abs().max()) > 0
+
+
+def test_carry_state_dim_validation():
+    """`carry_state_dim` 只在开启通道时有意义、且必须整除 d_model。"""
+    import pytest
+    with pytest.raises(ValueError, match="carry_state_dim"):
+        torch.manual_seed(0)
+        DepthARModel(DepthARConfig(d_model=32, n_layers=2, n_heads=4, seq_len=8,
+                                   dense=True, carry_rule=None,
+                                   carry_state_dim=16), vocab_size=10)
+    with pytest.raises(ValueError, match="整除"):
+        torch.manual_seed(0)
+        DepthARModel(DepthARConfig(d_model=32, n_layers=2, n_heads=4, seq_len=8,
+                                   dense=True, carry_rule="delta",
+                                   carry_state_dim=5), vocab_size=10)

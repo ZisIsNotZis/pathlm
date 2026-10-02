@@ -379,7 +379,8 @@ def build_depthar_config(args) -> DepthARConfig:
                          n_kv_heads=args.n_kv_heads,
                          carry_rule=(None if args.carry_write == "none"
                                      else args.carry_write),
-                         carry_chunk=args.carry_chunk)
+                         carry_chunk=args.carry_chunk,
+                         carry_state_dim=args.carry_state_dim)
 
 
 def _kv_head_liveness(model: DepthARModel, vocab_size: int,
@@ -505,6 +506,11 @@ def main():
     ap.add_argument("--carry-chunk", type=int, default=64,
                     help="写入通道状态扫描的分块大小（实现细节：只改浮点累加顺序，"
                          "不改语义；缺省 64）")
+    ap.add_argument("--carry-state-dim", type=int, default=None,
+                    help="写入通道的**状态宽度** dh（ticket 36 契约 U1 的容量轴）："
+                         "缺省 None = v1 口径 dh = d_model/n_heads（与注意力头同宽）；"
+                         "给整数则通道头数 = d_model/dh、与注意力 n_heads 解耦。"
+                         "必须整除 d_model，且只在 --carry-write 非 none 时有效")
     ap.add_argument("--synth-task", choices=("none", "assoc-mqar"),
                     default="none",
                     help="训练数据源：none = enwik8（缺省，逐位还原历史）；"
@@ -581,7 +587,8 @@ def main():
           f"attn_linear {args.attn_linear} (chunk {args.linear_chunk}), "
           f"train_window {args.train_window}/+{args.train_anchors}, "
           f"n_kv_heads {args.n_kv_heads}, carry {args.carry_write} "
-          f"(chunk {args.carry_chunk}), synth {args.synth_task}, "
+          f"(chunk {args.carry_chunk}, state_dim {args.carry_state_dim}), "
+          f"synth {args.synth_task}, "
           f"steps {args.steps} x bs{args.batch_size} x seq{args.seq_len} "
           f"= {args.steps*args.batch_size*args.seq_len/1e6:.1f}M tokens", flush=True)
 
@@ -615,6 +622,7 @@ def main():
         "n_kv_heads": args.n_kv_heads,
         "carry_write": args.carry_write,
         "carry_chunk": args.carry_chunk,
+        "carry_state_dim": args.carry_state_dim,
         "synth": synth,
         "synth_task_config": (assoc_recall_multi_batch(
             2, args.seq_len, args.synth_pairs, args.synth_queries,

@@ -149,6 +149,20 @@ class DepthARConfig:
     # 状态扫描的分块大小（实现细节：只改浮点累加顺序，不改语义；默认 64 ⇒
     # T=256 每层 4 个块）。与 `linear_chunk` 同款定位，不是第二个干预档。
     carry_chunk: int = DEFAULT_CARRY_CHUNK
+    # 写入通道的**状态宽度** dh（ticket 36 契约 U1，M1 难度/容量曲线的容量轴）。
+    # 唯一变量 = 记忆槽每个头把 dh 维键映到 dh 维值的宽度；注意力路径完全不动。
+    #   None（缺省）= 沿用 v1 口径 dh = d_model / n_heads（与注意力头共享宽度），
+    #                 逐位还原 ticket 35 的 U1/U2；
+    #   int          = 通道自己有 dh 维状态，头数 = d_model / dh，**与注意力的
+    #                 n_heads 解耦**。总状态浮点数 = n_heads·dh² = d_model·dh
+    #                 （dh 翻倍 ⇒ 状态翻倍），而可学参数只差 (n_heads − d/dh)·d
+    #                 量级的 beta 表（≈0.02%），因此容量轴上「状态宽度」与
+    #                 「参数量」几乎解耦。**必须整除 d_model**。
+    # 为什么需要它：直接改 n_heads 会同时改注意力的头维度 ⇒ 容量与注意力混在
+    # 一起，破单因素归因（SCHEMA §6.2）。只开 carry_state_dim 时注意力逐位不变；
+    # carry_state_dim = d_model / n_heads 与缺省逐位相同（单测钉住）。
+    # 只在 carry_rule is not None 时有效（否则报错）。
+    carry_state_dim: int | None = None
 
 
 TOPOLOGIES = ("sequential", "parallel", "parallel-dual-ln", "dense")
@@ -1267,13 +1281,20 @@ class CarryChannel(nn.Module):
         d, nh = cfg.d_model, cfg.n_heads
         self.rule = rule
         self.chunk = int(chunk)
-        self.n_heads = nh
-        self.head_dim = d // nh
+        # 状态宽度：缺省 = 与注意力头同宽（v1 口径）；契约 U1 的容量轴用它解耦
+        # 状态宽度与注意力头（见 `DepthARConfig.carry_state_dim`）。
+        self.head_dim = (int(cfg.carry_state_dim) if cfg.carry_state_dim
+                         else d // nh)
+        if d % self.head_dim:
+            raise ValueError(f"carry_state_dim={self.head_dim} 必须整除 "
+                             f"d_model={d}")
+        self.n_heads = d // self.head_dim
         # 用**原始 Parameter**（torch.zeros）而不是 nn.Linear：构造时不消耗随机数，
         # 参数在模型 init 循环之后统一抽签 ⇒ 同 seed 下 U0/U1/U2 的**主干参数逐位相同**
         # （单测 `test_carry_channel_identity_start_matches_no_channel`）。
         for name, shape in (("w_k", (d, d)), ("w_v", (d, d)), ("w_q", (d, d)),
-                            ("beta_w", (nh, d)), ("beta_b", (nh,)),
+                            ("beta_w", (self.n_heads, d)),
+                            ("beta_b", (self.n_heads,)),
                             ("gate_w", (d, d))):
             self.register_parameter(name, nn.Parameter(torch.zeros(*shape)))
 
@@ -1315,10 +1336,15 @@ class CarryChannelBlock(Block):
 
     telemetry_kind = "carry_channel"
 
-    def __init__(self, cfg: ModelConfig):
+    def __init__(self, cfg: ModelConfig, carry_state_dim: int | None = None):
         super().__init__(cfg)
-        self.head_dim = cfg.d_model // cfg.n_heads
-        self.carry_scale = nn.Parameter(torch.zeros(cfg.n_heads))
+        # 读出增益按**记忆槽**的头结构定形（不是注意力的头）：契约 U1 的容量轴
+        # 让两者解耦（见 `DepthARConfig.carry_state_dim`）。缺省时两者相等，逐位
+        # 还原 ticket 35 的 v1 口径。
+        self.carry_head_dim = (int(carry_state_dim) if carry_state_dim
+                               else cfg.d_model // cfg.n_heads)
+        self.carry_heads = cfg.d_model // self.carry_head_dim
+        self.carry_scale = nn.Parameter(torch.zeros(self.carry_heads))
         self._carry_box: dict = {}
 
     def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
@@ -1344,16 +1370,20 @@ class CarryChannelBlock(Block):
         qs, ks, vs = shape(q), shape(k), shape(v)
         a = F.scaled_dot_product_attention(qs, ks, vs, attn_mask=attn_mask,
                                             is_causal=attn_mask is None)
-        scaled = (mem.view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
-                  * self.carry_scale.float().view(1, -1, 1, 1))
-        a = a + scaled.to(a.dtype)
+        # 读出拆到 [B,T,d] 空间再做加法：每层增益按**记忆槽头**展开到各自 dh 个
+        # 通道（缺省 H_carry == H_attn 时与 v1 逐位相同：加法与 reshape 可交换）。
+        # 这样容量轴（carry_state_dim）换记忆槽头数时仍能读回，而注意力头结构
+        # 不受影响。
+        gain = self.carry_scale.float().repeat_interleave(
+            self.carry_head_dim).view(1, 1, d)
+        scaled = mem * gain
+        a = a.transpose(1, 2).reshape(B, T, d) + scaled.to(a.dtype)
         tele = {"read_scale_absmean": self.carry_scale.detach().float().abs().mean(),
                 "read_share": (scaled.detach().float().norm()
                                / a.detach().float().norm().clamp_min(1e-6)),
                 "mem_write_to_resid_ratio": (
                     scaled.detach().float().norm() / x.detach().float().norm()
                     .clamp_min(1e-6))}
-        a = a.transpose(1, 2).reshape(B, T, d)
         x = x + self.proj(a)
         x = x + self.mlp(self.ln2(x))
         return x, tele
@@ -1635,6 +1665,16 @@ class DepthARModel(nn.Module):
             raise ValueError(
                 "attn_linear 与 train_window 互斥（单因素：一次只改一个因素）——"
                 f"收到 train_window={cfg.train_window}")
+        if cfg.carry_state_dim is not None:
+            if cfg.carry_rule is None:
+                raise ValueError(
+                    "carry_state_dim 只在开启写入通道（carry_rule）时有意义，"
+                    f"收到 carry_state_dim={cfg.carry_state_dim} 且 carry_rule=None")
+            if cfg.carry_state_dim < 1 or cfg.d_model % cfg.carry_state_dim:
+                raise ValueError(
+                    "carry_state_dim 必须为正且整除 d_model，收到 "
+                    f"carry_state_dim={cfg.carry_state_dim} / "
+                    f"d_model={cfg.d_model}")
         if cfg.carry_rule is not None:
             if cfg.carry_rule not in CARRY_RULES:
                 raise ValueError(f"unknown carry_rule {cfg.carry_rule!r}; "
@@ -1692,7 +1732,7 @@ class DepthARModel(nn.Module):
                                         for _ in range(cfg.n_layers))
         elif cfg.carry_rule is not None:
             # 显式写入通道（契约 U）：与 stock `Block` 同构 + 每层一个读出增益
-            self.blocks = nn.ModuleList(CarryChannelBlock(mcfg)
+            self.blocks = nn.ModuleList(CarryChannelBlock(mcfg, cfg.carry_state_dim)
                                         for _ in range(cfg.n_layers))
             # **单共享记忆槽**（见 `CarryChannel` 的文档：per-layer-12 实测出局）
             self.carry = CarryChannel(cfg, cfg.carry_rule, cfg.carry_chunk)
