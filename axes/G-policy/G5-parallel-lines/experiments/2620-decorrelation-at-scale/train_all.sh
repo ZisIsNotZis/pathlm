@@ -14,8 +14,8 @@ EXP=$ROOT/axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scal
 LOCK=/tmp/pathlm_gpu.lock
 ARMS="stock l1 divl1"
 MODE="${1:-full}"
-STEPS="${STEPS:-6000}"
-SMOKE_STEPS="${SMOKE_STEPS:-60}"
+STEPS="${STEPS:-12000}"
+SMOKE_STEPS="${SMOKE_STEPS:-400}"
 
 cd "$ROOT" || exit 1
 
@@ -67,7 +67,7 @@ echo "=== FULL TRAIN: steps=$STEPS ==="
 START=$SECONDS
 for arm in $ARMS; do
   python3 train_m1.py "$arm" --config "$EXP/configs/$arm.json" --steps "$STEPS" \
-      --ckpt-every 3000 --ckpt-dir "$ROOT/.tmp/v3-ckpts/$arm" \
+      --ckpt-every 6000 --ckpt-dir "$ROOT/.tmp/v3-ckpts/$arm" \
       --out-root "$EXP/train" > "$EXP/train_$arm.log" 2>&1
   echo "train $arm exit=$? elapsed=$(( (SECONDS-START)/60 ))min"
 done

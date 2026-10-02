@@ -32,6 +32,7 @@ import torch
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
 sys.path.insert(0, ROOT)
+os.chdir(ROOT)   # 数据路径（.tmp/enwik8, data/enwik8_full.npz）是相对仓库根的
 
 from pathlm.config import ModelConfig, PathConfig                    # noqa: E402
 from pathlm.data import load_enwik8_full                             # noqa: E402
@@ -40,7 +41,7 @@ from pathlm.model import PathLM                                      # noqa: E40
 from tools.evalkit.carry_channel import loss_slope                   # noqa: E402
 from tools.evalkit.ensemble_probe import (                           # noqa: E402
     bootstrap_ci, deterministic_paths, paired_delta_ci, pairwise_js,
-    path_ensemble_bpc, per_batch_bpc)
+    path_ensemble_bpc, per_batch_bpc, reading_A, reading_B)
 
 ARMS = ("stock", "l1", "divl1")
 
@@ -207,8 +208,8 @@ def main() -> None:
     b1 = {a: curves[a][k1]["bpc"] for a in ARMS}
     bk = {a: curves[a][kk]["bpc"] for a in ARMS}
     # 主判据按预登记形式写一遍，再断言与化简式一致（§12 算术对账）
-    t_main_form = (b1["l1"] - bk["divl1"]) - (b1["l1"] - b1["stock"])
-    t_main_reduced = b1["stock"] - bk["divl1"]
+    rb = reading_B(b1["l1"], b1["stock"], bk["divl1"])
+    ra = reading_A(b1["l1"], bk["divl1"])
     b1_pb = {a: per_batch_bpc(curves[a][k1]) for a in ARMS}
     bk_pb = {a: per_batch_bpc(curves[a][kk]) for a in ARMS}
 
@@ -223,11 +224,13 @@ def main() -> None:
             "baseline": "stock (p_skip=0, w_diversity=0, same tokens/seed)",
             "cost_term": "bpc_l1@K1 - bpc_stock@K1 (same protocol as the baseline read)",
             "primary": True,
-            "value_verbatim_form": round(t_main_form, 6),
-            "value_reduced_form": round(t_main_reduced, 6),
-            "algebra_consistent": abs(t_main_form - t_main_reduced) < 1e-9,
+            "value_verbatim_form": round(rb["verbatim"], 6),
+            "value_reduced_form": round(rb["reduced"], 6),
+            "algebra_consistent": rb["algebra_consistent"],
             "ci": ci_stock_vs_div,
-            "passed": bool(t_main_reduced > 0 and ci_stock_vs_div["paired_ci_excludes_zero"]),
+            "passed_point_estimate": rb["passed_point_estimate"],
+            "passed": bool(rb["passed_point_estimate"]
+                           and ci_stock_vs_div["paired_ci_excludes_zero"]),
             "compute_price_tag": "divl1@K8 = 8x forwards/token; stock@K1 = 1x",
         },
         "parallel_reading_A": {
@@ -235,9 +238,10 @@ def main() -> None:
             "baseline": "l1 (p_skip=0.1, w_diversity=0)",
             "cost_term": "bpc_divl1@K1 - bpc_l1@K1",
             "primary": False,
-            "value": round(b1["l1"] - bk["divl1"], 6),
+            "value": round(ra["value"], 6),
             "ci": ci_l1_vs_div,
-            "passed": bool(b1["l1"] - bk["divl1"] > 0
+            "passed_point_estimate": ra["passed_point_estimate"],
+            "passed": bool(ra["passed_point_estimate"]
                            and ci_l1_vs_div["paired_ci_excludes_zero"]),
         },
         "taxes": {
@@ -282,12 +286,101 @@ def main() -> None:
             "intervention": res.get("intervention"),
             "unspecified_path_keys": res.get("unspecified_path_keys"),
             "first_log": lines[0], "last_log": lines[-1]}
-        results["loss_slope"][arm] = loss_slope(lines, lo=200, hi=6000)
+        results["loss_slope"][arm] = loss_slope(lines, lo=200, hi=int(cfg["steps_full"]))
         note(f"  {arm}: wall {res.get('wall_minutes')} min, peak {res.get('peak_gpu_mem_mb')} MB, "
              f"slope {results['loss_slope'][arm]['slope']}, "
              f"div_js_last {res.get('intervention', {}).get('diversity_js_last')}, "
              f"skip_frac_mean {res.get('intervention', {}).get('skip_frac_mean')}, "
              f"gate_skips {res.get('intervention', {}).get('gate_skips')}")
+
+    # ---------------- ⑦b 收敛门禁：落在**决定判据的那个量**上（SCHEMA §17.15） ----------------
+    # 判据是评测流上的 clean bpc（不是训练 loss）：总 CE 会被已学会的部分掩盖，所以门禁
+    # 与趋势都在**评测 bpc**上取，同一方法（60-batch probe）在 3000 / 6000 两个点各测一次；
+    # 判据量本身（`stock@K1 − divl1@K8`）也在这两个点上直接测。
+    traj = {}
+    ckpt_root = cfg.get("trajectory", {}).get("ckpt_root", ".tmp/v3-ckpts")
+    ck_steps = cfg.get("trajectory", {}).get("ckpt_steps", [3000])
+    if cfg.get("trajectory", {}).get("enabled", True):
+        for st in ck_steps:
+            row = {}
+            for arm in ARMS:
+                p = os.path.join(ROOT, ckpt_root, arm, f"model_step{st:06d}.pt")
+                if not os.path.exists(p):
+                    continue
+                mcfg = json.load(open(os.path.join(HERE, "configs", f"{arm}.json")))
+                m = PathLM(ModelConfig(**mcfg["model"]), PathConfig(**mcfg["path"]),
+                           vocab_size=vocab)
+                m.load_state_dict(torch.load(p, map_location=device, weights_only=True))
+                m.to(device).eval()
+                for q in m.parameters():
+                    q.requires_grad_(False)
+                r1 = ensemble(m, eval_arr, 1, cfg)
+                row[arm] = {"K1_bpc": r1["bpc"], "K1_ci": bootstrap_ci(per_batch_bpc(r1), seed=7)}
+                if arm == "divl1":
+                    rk = ensemble(m, eval_arr, cfg["main_k"], cfg)
+                    row[arm][f"K{cfg['main_k']}_bpc"] = rk["bpc"]
+                    row[arm][f"K{cfg['main_k']}_ci"] = bootstrap_ci(per_batch_bpc(rk), seed=8)
+                    row[arm][f"K{cfg['main_k']}_per_batch"] = per_batch_bpc(rk)
+                row[arm]["K1_per_batch"] = per_batch_bpc(r1)
+                del m
+            if row and all(a in row for a in ARMS) and f"K{cfg['main_k']}_bpc" in row["divl1"]:
+                row["criterion_value"] = round(row["stock"]["K1_bpc"]
+                                               - row["divl1"][f"K{cfg['main_k']}_bpc"], 6)
+                row["criterion_delta_ci"] = paired_delta_ci(
+                    row["stock"]["K1_per_batch"], row["divl1"][f"K{cfg['main_k']}_per_batch"],
+                    seed=9)
+                row["trajectory_label"] = "criterion quantity measured at this checkpoint"
+            traj[str(st)] = row
+            note(f"  轨迹 @{st} 步：" + " ".join(
+                f"{a}@K1 {row[a]['K1_bpc']}" for a in ARMS if a in row)
+                + (f" | 判据量 {row.get('criterion_value')}" if "criterion_value" in row else ""))
+        full = {"stock@K1": b1["stock"],
+                f"divl1@K{cfg['main_k']}": bk["divl1"],
+                "criterion_value": round(b1["stock"] - bk["divl1"], 6)}
+        results["trajectory"] = {"checkpoints": traj, "full_run_steps": cfg["steps_full"],
+                                 "full_run": full}
+        # §17.15：门禁与趋势都落在判据量上；两套斜率并报（训练 loss vs 评测 bpc）
+        if ck_steps:
+            st = max(ck_steps)
+            if str(st) in traj and "criterion_value" in traj[str(st)]:
+                d = cfg["steps_full"] - st
+                results["convergence_gate"] = {
+                    "quantity": "eval-stream clean bpc / the criterion quantity itself",
+                    "why": ("SCHEMA §17.15：收敛门禁必须落在决定判据的量上；本例判据 = 评测 bpc "
+                            "的差，不是训练总 CE"),
+                    "criterion_value_at_ckpt": traj[str(st)]["criterion_value"],
+                    "criterion_value_at_full": full["criterion_value"],
+                    "criterion_slope_per_1k": round(
+                        (full["criterion_value"] - traj[str(st)]["criterion_value"])
+                        / (d / 1000.0), 6) if d else None,
+                    "stock_K1_slope_per_1k": round(
+                        (b1["stock"] - traj[str(st)]["stock"]["K1_bpc"]) / (d / 1000.0), 6),
+                    "divl1_Kmax_slope_per_1k": round(
+                        (bk["divl1"] - traj[str(st)]["divl1"][f"K{cfg['main_k']}_bpc"])
+                        / (d / 1000.0), 6),
+                    "train_loss_slopes": {a: results["loss_slope"][a]["slope"] for a in ARMS},
+                    "train_loss_note": ("训练总 CE 斜率仅作并报（§17.15：它会被已学会的部分掩盖，"
+                                        "不得用它代替上面的判据量斜率）"),
+                    "note": ("50M/6000 步是匹配 13M 锚点的同步数快照；上面两个斜率说明判据量在这个"
+                             "预算下是仍在移动（未收敛 ⇒ 快照口径）还是已平"),
+                }
+            else:
+                results["convergence_gate"] = {
+                    "available": False,
+                    "quantity": "eval-stream clean bpc / the criterion quantity itself",
+                    "why": ("SCHEMA §17.15：门禁必须落在决定判据的量上；本次未拿到中间检查点"
+                            "（预算降步后 ckpt 未落盘）⇒ 只能标快照口径"),
+                    "train_loss_slopes": {a: results["loss_slope"][a]["slope"] for a in ARMS},
+                    "train_loss_note": "训练总 CE 仅作并报，不得代替判据量",
+                }
+        else:
+            results["convergence_gate"] = {
+                "available": False, "quantity": "n/a（未安排中间检查点）",
+                "train_loss_slopes": {a: results["loss_slope"][a]["slope"] for a in ARMS}}
+    else:
+        results["convergence_gate"] = {
+            "available": False, "quantity": "n/a（trajectory 关闭）",
+            "train_loss_slopes": {a: results["loss_slope"][a]["slope"] for a in ARMS}}
     results["memory_measured"] = {
         "eval_peak_gpu_mem_mb": round(torch.cuda.max_memory_allocated() / 2 ** 20, 1),
         "note": "本进程净分配（不含共享卡上其他任务的占用），与训练侧 peak_gpu_mem_mb 同口径"}
@@ -304,6 +397,7 @@ def main() -> None:
             + (cfg["battery"]["n_batches"] * len(ARMS)
                if cfg.get("battery", {}).get("enabled", True) and not args.no_battery else 0)),
         "note": "每批 = bs×T 个 token 的一次前向（K 路径就是 K 次前向，价签的来源）",
+    }
     code_files = ["train_m1.py", "pathlm/model.py", "pathlm/config.py",
                   "pathlm/eval.py", "tools/evalkit/ensemble_probe.py", "probe_tts.py",
                   "tests/test_decorrelation_at_scale.py", "reconcile_numbers.py"]

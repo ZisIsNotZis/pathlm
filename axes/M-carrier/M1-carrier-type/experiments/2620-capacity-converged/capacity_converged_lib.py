@@ -92,15 +92,18 @@ def convergence_gate(ansce_linear: dict) -> dict:
                 "thresholds": {"abs_slope_per_1k": CONVERGENCE_SLOPE_MAX,
                                "rel_drop": CONVERGENCE_REL_DROP_MAX}}
     passes_slope = abs(s) < CONVERGENCE_SLOPE_MAX
-    passes_rel = rel < CONVERGENCE_REL_DROP_MAX
+    # 「相对下降 < 1%」实现为**末窗相对变化幅度 < 1%**（升幅同样必须 < 1%，
+    # 否则不是「接近平台」而是还在恶化/还在下降）；只判 `rel < 0.01` 会把「上升」
+    # 误判成达标，是变异 M5 的近亲陷阱。
+    passes_rel = abs(rel) < CONVERGENCE_REL_DROP_MAX
     return {"converged": bool(passes_slope or passes_rel),
             "metric": ansce_linear["key"],
             "slope_per_1k": s, "rel_drop": rel,
             "passes_slope": passes_slope, "passes_rel_drop": passes_rel,
             "thresholds": {"abs_slope_per_1k": CONVERGENCE_SLOPE_MAX,
-                           "rel_drop": CONVERGENCE_REL_DROP_MAX},
-            "reason": ("slope 与相对下降至少一条达标" if (passes_slope or passes_rel)
-                       else "slope 与相对下降都未达标 ⇒ 未收敛")}
+                           "abs_rel_drop": CONVERGENCE_REL_DROP_MAX},
+            "reason": ("slope 与相对变化至少一条达标" if (passes_slope or passes_rel)
+                       else "slope 与相对变化都未达标 ⇒ 未收敛")}
 
 
 def capacity_verdict(acc_small: float, n_small: int, acc_big: float, n_big: int,
@@ -166,7 +169,7 @@ def reconciliation_checks(results: dict) -> dict:
             checks[f"convergence_{arm}"] = False
             continue
         expect = bool(abs(s) < CONVERGENCE_SLOPE_MAX
-                      or rel < CONVERGENCE_REL_DROP_MAX)
+                      or abs(rel) < CONVERGENCE_REL_DROP_MAX)
         checks[f"convergence_{arm}"] = (expect == bool(g.get("converged")))
     for cell, blk in results.get("criteria", {}).get("c2_main_by_K", {}).items():
         v = blk.get("verdict", {})

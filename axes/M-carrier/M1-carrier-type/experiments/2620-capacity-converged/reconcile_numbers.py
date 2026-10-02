@@ -106,7 +106,7 @@ for n in CFG["main_arms"]:
        recomputed["rel_drop"] == lin["rel_drop"],
        recomputed["rel_drop"], lin["rel_drop"])
     expect = (abs(lin["slope_per_1k"]) < L.CONVERGENCE_SLOPE_MAX
-              or lin["rel_drop"] < L.CONVERGENCE_REL_DROP_MAX)
+              or abs(lin["rel_drop"]) < L.CONVERGENCE_REL_DROP_MAX)
     ck(f"{n} 门禁旗标复算一致", g["converged"] == expect,
        g["converged"], expect)
     ck(f"{n} 总 CE 末窗斜率已报（对照，不作门禁）",
@@ -121,6 +121,12 @@ for arm in ("D16", "D128"):
        abs(u["ansce_[6000,10000]_linear"]["slope_per_1k"]) >= 0.01,
        u["ansce_[6000,10000]_linear"]["slope_per_1k"], ">=0.01")
 crit = R["criteria"]
+prem = R["premise_check"]
+ck("前提校验：显著高于 chance == (CI 下界 > chance)",
+   prem["significantly_above_chance"] == (prem["accuracy_ci"][0] > prem["chance"]))
+ck("前提校验：multiple_of_chance == acc/chance",
+   abs(prem["multiple_of_chance"] - prem["accuracy"] / prem["chance"]) < 5e-4,
+   prem["multiple_of_chance"], prem["accuracy"] / prem["chance"])
 ck("c1 门禁 == 两主臂 gate 全过",
    crit["c1_convergence_gate"]["both_converged"]
    == all(conv["by_arm"][n]["gate"]["converged"] for n in CFG["main_arms"]))
@@ -200,8 +206,14 @@ for n in arms:
     ck(f"{n} 峰值显存一致",
        R["train_results"][n]["peak_gpu_mem_mb"] == tr["peak_gpu_mem_mb"])
     ck(f"{n} 参数量一致", R["train_results"][n]["params"] == tr["params"])
-    ck(f"{n} 训练步数 == 24000", tr["steps"] == CFG["train_recipe"]["steps"],
-       tr["steps"], CFG["train_recipe"]["steps"])
+    ck(f"{n} 训练步数 == 24000",
+       R["train_results"][n]["steps_derived"] == CFG["train_recipe"]["steps"],
+       R["train_results"][n]["steps_derived"], CFG["train_recipe"]["steps"])
+    ck(f"{n} train_tokens == 步数×bs×T",
+       tr["train_tokens"] == CFG["train_recipe"]["steps"]
+       * CFG["train_recipe"]["batch_size"] * CFG["model"]["seq_len"],
+       tr["train_tokens"], CFG["train_recipe"]["steps"]
+       * CFG["train_recipe"]["batch_size"] * CFG["model"]["seq_len"])
 
 # ---------------------------------------------------------------- 复现性 / 变异 / §22
 ck("同 seed 复跑逐位一致", R["reproducibility"]["pass"] is True)

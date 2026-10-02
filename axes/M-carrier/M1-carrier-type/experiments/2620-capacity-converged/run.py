@@ -213,6 +213,23 @@ def main():
                  f"毁源={row['corrupt_source']['accuracy']:.4f}")
     results["grid"] = grid
 
+    # ---------------- 前提校验：锚点格显著高于 chance（失败决策树 §10.1） ----------------
+    anchor = grid[cfg["premise_cell"]]
+    premise = {
+        "cell": cfg["premise_cell"], "accuracy": anchor["accuracy"],
+        "accuracy_ci": anchor["accuracy_ci"], "chance": anchor["chance"],
+        "significantly_above_chance": anchor["accuracy_ci"][0] > anchor["chance"],
+        "multiple_of_chance": round(anchor["accuracy"] / anchor["chance"], 3),
+        "query_key_distance": anchor["query_key_distance"],
+        "local_prior": anchor["local_prior"],
+        "note": ("前提校验：小状态臂在 K=8（训练同档）必须显著高于 chance，否则先查"
+                 "窗口/活性量，不进入容量判读（README §10.1）"),
+    }
+    results["premise_check"] = premise
+    note(f"前提校验：{cfg['premise_cell']} acc={premise['accuracy']:.4f} "
+         f"CI={premise['accuracy_ci']} chance={premise['chance']:.6f} ⇒ "
+         f"显著高于 chance: {premise['significantly_above_chance']}")
+
     # ---------------- 判据 ① 收敛门禁（读训练日志） ----------------
     note("判据 ①：收敛门禁（synth_answer_ce 末窗线性斜率）+ 三套口径并报")
     win = tuple(cfg["convergence"]["window"])
@@ -366,6 +383,10 @@ def main():
             "peak_gpu_mem_mb": res_p.get("peak_gpu_mem_mb"),
             "params": res_p.get("params"),
             "steps": res_p.get("steps"),
+            "train_tokens": res_p.get("train_tokens"),
+            "steps_derived": (res_p.get("train_tokens") // (cfg["train_recipe"]["batch_size"]
+                                                           * cfg["model"]["seq_len"])
+                              if res_p.get("train_tokens") else None),
             "carry_liveness": res_p.get("carry_liveness"),
             "carry_read_mass": res_p.get("carry_read_mass"),
             "gnorm_monitor": {k: res_p.get("gnorm_monitor", {}).get(k)
@@ -379,6 +400,7 @@ def main():
             model, probe_x, window=window)
         note(f"  {name}: wall {results['train_results'][name]['wall_minutes']} min, "
              f"peak {results['train_results'][name]['peak_gpu_mem_mb']} MB, "
+             f"steps={results['train_results'][name]['steps_derived']}, "
              f"read_share_last={series[-1].get('read_share') if series else None}")
     results["memory_analytic"] = analytic_memory(
         {**cfg["model"], "n_params": results["train_results"][small]["params"]},

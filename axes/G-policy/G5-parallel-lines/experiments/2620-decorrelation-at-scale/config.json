@@ -6,10 +6,24 @@
     "batch_size": 32,
     "n_batches": 60
   },
-  "k_sweep": [1, 2, 4, 8],
-  "js_k": [2, 8],
-  "selfcheck_k": [1, 2],
-  "determinism_k": [1, 8],
+  "k_sweep": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "js_k": [
+    2,
+    8
+  ],
+  "selfcheck_k": [
+    1,
+    2
+  ],
+  "determinism_k": [
+    1,
+    8
+  ],
   "main_k": 8,
   "battery": {
     "enabled": true,
@@ -47,15 +61,47 @@
   "anchors_13m": {
     "note": "既有 13M 锚点（probe_tts 60-batch 协议，seed 11）；本实验不重跑，只作同方法趋势",
     "stock_b0_battery_bpc": 1.5074,
-    "l1": {"K1": 1.6926, "K2": 1.6657, "K4": 1.6543, "K8": 1.6454},
-    "divl1": {"K1": 1.6842, "K2": 1.6482, "K4": 1.6339, "K8": 1.6227},
-    "sources": [".scratch/08-tts-probe/evidence/tts_results.json",
-                ".scratch/09-m3-interactions/evidence/DIVL1/k_sweep.json"],
+    "l1": {
+      "K1": 1.6926,
+      "K2": 1.6657,
+      "K4": 1.6543,
+      "K8": 1.6454
+    },
+    "divl1": {
+      "K1": 1.6842,
+      "K2": 1.6482,
+      "K4": 1.6339,
+      "K8": 1.6227
+    },
+    "sources": [
+      ".scratch/08-tts-probe/evidence/tts_results.json",
+      ".scratch/09-m3-interactions/evidence/DIVL1/k_sweep.json"
+    ],
     "approx_equal_compute_reference": {
-      "b0_1p1ep_bpc": 1.5074, "b0_4p4ep_bpc": 1.3459,
-      "delta_bpc": -0.1615, "train_token_multiple": 4.0,
+      "b0_1p1ep_bpc": 1.5074,
+      "b0_4p4ep_bpc": 1.3459,
+      "delta_bpc": -0.1615,
+      "train_token_multiple": 4.0,
       "source": ".scratch/11-retry-matrix-validity/evidence/README.md (D5 final)",
       "label": "近似参照，非同算力实测"
     }
+  },
+  "steps_full": 12000,
+  "trajectory": {
+    "enabled": true,
+    "ckpt_root": ".tmp/v3-ckpts",
+    "ckpt_steps": [
+      6000
+    ],
+    "note": "SCHEMA §17.15：收敛门禁与趋势落在决定判据的量上（评测 bpc 与判据量本身），不用训练总 CE 代替；每个点用同一 60-batch probe 方法各测一次"
+  },
+  "convergence_gate": {
+    "quantity": "criterion quantity = bpc_stock@K1 − bpc_divl1@K8 (eval stream)",
+    "rule": "在 3000 → 6000 两点上直接测；斜率与两臂各自的 K1 斜率并报；仍在大幅移动 ⇒ 标快照口径"
+  },
+  "train_recipe_note": "bs 16 × 12000 步（= 98.3M tokens，与 13M 锚点同 token）；为什么不是 bs32×6000：divl1 每步多一条路径 ⇒ bs32 在共享卡上 OOM（净需求 ~9.9GB > 可用 ~9.8GB），且 bs32 的 stock 单臂峰值已达 5.59GB（超 ≤5GB 纪律）。不等字段：bs 32→16、步数 6000→12000、LR cosine 视界 6000→12000（三臂内部完全一致）",
+  "smoke_protocol": {
+    "steps": 400,
+    "why": "SCHEMA §17.5：短窗口的墙钟字段不得外推；400 步把 0.1 min 的日志精度压到 ±0.3%"
   }
 }

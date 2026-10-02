@@ -81,8 +81,16 @@ def test_convergence_gate_accepts_small_relative_drop_even_if_slope_big():
     r = L.linear_window(lines, "synth_answer_ce", 16000, 23999)
     g = L.convergence_gate(r)
     assert abs(r["slope_per_1k"]) >= 0.01
-    assert r["rel_drop"] < 0.01
+    assert abs(r["rel_drop"]) < 0.01
     assert g["converged"] is True and g["passes_rel_drop"] is True
+
+
+def test_convergence_gate_rejects_rising_ansce():
+    """末窗**上升**（答案行 CE 变差）绝不能判成「收敛」——哪怕幅度看起来小。"""
+    rising_big = mk_lines("synth_answer_ce", lambda s: 1.0 + 0.001 * (s - 16000))
+    g = L.convergence_gate(L.linear_window(rising_big, "synth_answer_ce", 16000, 23999))
+    assert g["rel_drop"] < 0 and abs(g["rel_drop"]) > 0.01
+    assert g["converged"] is False
 
 
 def test_convergence_gate_insufficient_points_is_not_converged():
