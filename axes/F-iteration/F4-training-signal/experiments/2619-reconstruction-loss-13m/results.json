@@ -1,0 +1,2065 @@
+{
+  "config": {
+    "device": "cuda",
+    "seed": 0,
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true,
+      "topology": "sequential",
+      "train_window": 16,
+      "train_anchors": 0,
+      "recon_window": 16
+    },
+    "data": {
+      "vocab_size": 206,
+      "source": "合成多查询关联回忆（tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch）",
+      "enwik8": "未使用（契约要求主任务不用 enwik8；见 README §12）"
+    },
+    "tokens": {
+      "sym_vocab": 64,
+      "filler_token": 64,
+      "cue_token": 205,
+      "local_k": 8
+    },
+    "visibility": {
+      "train_window": 16,
+      "train_anchors": 0,
+      "note": "训练与评测用同一个 window_anchor_keep_mask(T,16,0)"
+    },
+    "recon": {
+      "window": 16,
+      "lambda": 1.0,
+      "target": "行 i（隐状态行号）重建 tokens[i−16]（刚掉出可见窗口的那一格）",
+      "precommit": "λ=1.0 预登记，不在结果上再调（README §3）"
+    },
+    "eval": {
+      "batch_size": 64,
+      "n_batches": 64
+    },
+    "distance_leg": {
+      "distances": [
+        16,
+        32,
+        64,
+        128,
+        192,
+        255
+      ],
+      "batch_size": 64,
+      "n_batches": 8
+    },
+    "ksweep": [
+      4,
+      8,
+      16
+    ],
+    "arms": {
+      "A": {
+        "path": "axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m/train/A/model.pt",
+        "results_json": "axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m/train/A/results.json",
+        "train_log": "axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m/train/A/train_log.jsonl",
+        "recon_lambda": 0.0,
+        "role": "对照臂（纯 CE；解码头存在但未被训练）",
+        "sha256": "b718d1b66237283251c2152efe112a3f80b08f833a48a01930686ad5ada9f898",
+        "size_bytes": 54404935
+      },
+      "B": {
+        "path": "axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m/train/B/model.pt",
+        "results_json": "axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m/train/B/results.json",
+        "train_log": "axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m/train/B/train_log.jsonl",
+        "recon_lambda": 1.0,
+        "role": "主臂（CE + 1.0·重建）",
+        "sha256": "4db1db26a5bd23122c0ae3b802f7cd938d46f7790c6b474d359d43c02de9f886",
+        "size_bytes": 54404935
+      },
+      "B_rep": {
+        "path": "axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m/train/B_rep/model.pt",
+        "results_json": "axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m/train/B_rep/results.json",
+        "train_log": "axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m/train/B_rep/train_log.jsonl",
+        "recon_lambda": 1.0,
+        "role": "重跑臂（c3：与 B 逐字段相同，量训练侧散度）",
+        "sha256": "b114874e04c24d67e6fe4f3f0aa2ca25e8f31990e9936b1863f3f37797ec6ed9",
+        "size_bytes": 54404935
+      }
+    },
+    "train_recipe": {
+      "steps": 12000,
+      "batch_size": 32,
+      "lr": 0.001,
+      "optimizer": "AdamW(weight_decay=0.01) + cosine",
+      "exit_mode": "uniform",
+      "aux_weight": 1.0,
+      "final_weight": 1.0,
+      "synth_task": "assoc-mqar",
+      "synth_pairs": 8,
+      "synth_queries": 8,
+      "synth_gap": 14,
+      "note": "三臂逐字段一致，唯一变量 = --recon-lambda（0.0 / 1.0 / 1.0）"
+    },
+    "K_main": 8
+  },
+  "checkpoints": {
+    "A": {
+      "path": "axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m/train/A/model.pt",
+      "sha256": "b718d1b66237283251c2152efe112a3f80b08f833a48a01930686ad5ada9f898",
+      "size_bytes": 54404935,
+      "sha256_verified": true,
+      "recon_lambda": 0.0
+    },
+    "B": {
+      "path": "axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m/train/B/model.pt",
+      "sha256": "4db1db26a5bd23122c0ae3b802f7cd938d46f7790c6b474d359d43c02de9f886",
+      "size_bytes": 54404935,
+      "sha256_verified": true,
+      "recon_lambda": 1.0
+    },
+    "B_rep": {
+      "path": "axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m/train/B_rep/model.pt",
+      "sha256": "b114874e04c24d67e6fe4f3f0aa2ca25e8f31990e9936b1863f3f37797ec6ed9",
+      "size_bytes": 54404935,
+      "sha256_verified": true,
+      "recon_lambda": 1.0
+    }
+  },
+  "visibility": {
+    "train_window": 16,
+    "train_anchors": 0,
+    "recon_window": 16
+  },
+  "selfchecks": {
+    "release_vs_explicit_causal_max_abs_logit": 0.0,
+    "model_window_forward_vs_mask_instrument_max_abs_logit": 0.0,
+    "lambda0_implementation_equivalence": {
+      "added_tensors": [
+        "recon_head.weight"
+      ],
+      "trunk_bitwise_equal": true,
+      "logits_bitwise_equal": true,
+      "n_params_head": 13589504,
+      "n_params_nohead": 13536768,
+      "note": "同 seed 重建两模型：唯一差异 = recon_head.weight（建在参数 init 循环之后 ⇒ 不消耗其余参数的随机数）"
+    },
+    "recon_target_premise": {
+      "rows": [
+        16,
+        255
+      ],
+      "n_rows": 240,
+      "target_equals_tokens_i_minus_W": true,
+      "target_hidden_at_row_i": {
+        "violations": 0,
+        "expect": 0
+      },
+      "target_visible_at_row_i_minus_1": {
+        "ok": 240,
+        "expect": 240
+      },
+      "target_split": {
+        "n_symbol": 608,
+        "n_filler": 3232,
+        "n_targets": 3840
+      },
+      "local_prior": {
+        "task": "assoc_recall_multi",
+        "chance": 0.015625,
+        "ceiling": 0.046875,
+        "local_prior_accuracy": 0.007812,
+        "passed": true,
+        "n": 128,
+        "k": 8,
+        "by_distance": {
+          "107": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "111": {
+            "accuracy": 0.0,
+            "n": 3
+          },
+          "113": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "115": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "117": {
+            "accuracy": 0.0,
+            "n": 4
+          },
+          "119": {
+            "accuracy": 0.0,
+            "n": 3
+          },
+          "121": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "124": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "126": {
+            "accuracy": 0.0,
+            "n": 3
+          },
+          "128": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "130": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "132": {
+            "accuracy": 0.0,
+            "n": 5
+          },
+          "134": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "136": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "138": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "141": {
+            "accuracy": 0.0,
+            "n": 6
+          },
+          "143": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "145": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "147": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "149": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "151": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "153": {
+            "accuracy": 0.0,
+            "n": 3
+          },
+          "155": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "158": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "160": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "162": {
+            "accuracy": 0.0,
+            "n": 3
+          },
+          "166": {
+            "accuracy": 0.0,
+            "n": 3
+          },
+          "168": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "170": {
+            "accuracy": 0.0,
+            "n": 4
+          },
+          "172": {
+            "accuracy": 0.0,
+            "n": 3
+          },
+          "175": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "177": {
+            "accuracy": 0.0,
+            "n": 4
+          },
+          "179": {
+            "accuracy": 0.0,
+            "n": 3
+          },
+          "181": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "183": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "185": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "189": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "192": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "194": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "196": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "198": {
+            "accuracy": 0.0,
+            "n": 3
+          },
+          "200": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "202": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "204": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "206": {
+            "accuracy": 0.0,
+            "n": 4
+          },
+          "209": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "211": {
+            "accuracy": 0.0,
+            "n": 3
+          },
+          "213": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "215": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "219": {
+            "accuracy": 0.0,
+            "n": 4
+          },
+          "221": {
+            "accuracy": 0.25,
+            "n": 4
+          },
+          "223": {
+            "accuracy": 0.0,
+            "n": 1
+          },
+          "226": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "228": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "230": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "232": {
+            "accuracy": 0.0,
+            "n": 6
+          },
+          "234": {
+            "accuracy": 0.0,
+            "n": 2
+          },
+          "240": {
+            "accuracy": 0.0,
+            "n": 2
+          }
+        }
+      },
+      "note": "目标 = 刚掉出可见窗口的那一格；两臂的目标完全一致，`target_split` 说明非平凡（符号）目标占比"
+    }
+  },
+  "assoc_recall": {
+    "A_K4": {
+      "K": 4,
+      "n_batches": 64,
+      "local_prior": 0.015625,
+      "chance": 0.015625,
+      "accuracy": 0.014404,
+      "n": 4096,
+      "n_hits": 59,
+      "accuracy_ci": [
+        0.011184,
+        0.018535
+      ],
+      "corrupt_source": {
+        "span": [
+          0,
+          8
+        ],
+        "accuracy": 0.014404,
+        "n": 4096,
+        "n_hits": 59,
+        "accuracy_ci": [
+          0.011184,
+          0.018535
+        ]
+      },
+      "query_key_distance": {
+        "min": 249,
+        "max": 255,
+        "median": 253,
+        "frac_outside_window": 1.0,
+        "window": 16,
+        "n": 4096
+      },
+      "by_distance": {
+        "249": {
+          "n": 1022,
+          "n_hits": 19
+        },
+        "251": {
+          "n": 1014,
+          "n_hits": 15
+        },
+        "253": {
+          "n": 1062,
+          "n_hits": 11
+        },
+        "255": {
+          "n": 998,
+          "n_hits": 14
+        }
+      }
+    },
+    "A_K8": {
+      "K": 8,
+      "n_batches": 64,
+      "local_prior": 0.0,
+      "chance": 0.015625,
+      "accuracy": 0.016113,
+      "n": 4096,
+      "n_hits": 66,
+      "accuracy_ci": [
+        0.012686,
+        0.020447
+      ],
+      "corrupt_source": {
+        "span": [
+          0,
+          16
+        ],
+        "accuracy": 0.016113,
+        "n": 4096,
+        "n_hits": 66,
+        "accuracy_ci": [
+          0.012686,
+          0.020447
+        ]
+      },
+      "query_key_distance": {
+        "min": 241,
+        "max": 255,
+        "median": 247,
+        "frac_outside_window": 1.0,
+        "window": 16,
+        "n": 4096
+      },
+      "by_distance": {
+        "241": {
+          "n": 519,
+          "n_hits": 7
+        },
+        "243": {
+          "n": 533,
+          "n_hits": 8
+        },
+        "245": {
+          "n": 498,
+          "n_hits": 11
+        },
+        "247": {
+          "n": 529,
+          "n_hits": 5
+        },
+        "249": {
+          "n": 496,
+          "n_hits": 9
+        },
+        "251": {
+          "n": 474,
+          "n_hits": 10
+        },
+        "253": {
+          "n": 544,
+          "n_hits": 10
+        },
+        "255": {
+          "n": 503,
+          "n_hits": 6
+        }
+      }
+    },
+    "A_K16": {
+      "K": 16,
+      "n_batches": 64,
+      "local_prior": 0.015625,
+      "chance": 0.015625,
+      "accuracy": 0.015625,
+      "n": 4096,
+      "n_hits": 64,
+      "accuracy_ci": [
+        0.012256,
+        0.019902
+      ],
+      "corrupt_source": {
+        "span": [
+          0,
+          32
+        ],
+        "accuracy": 0.015625,
+        "n": 4096,
+        "n_hits": 64,
+        "accuracy_ci": [
+          0.012256,
+          0.019902
+        ]
+      },
+      "query_key_distance": {
+        "min": 225,
+        "max": 255,
+        "median": 241,
+        "frac_outside_window": 1.0,
+        "window": 16,
+        "n": 4096
+      },
+      "by_distance": {
+        "225": {
+          "n": 233,
+          "n_hits": 7
+        },
+        "227": {
+          "n": 242,
+          "n_hits": 3
+        },
+        "229": {
+          "n": 252,
+          "n_hits": 4
+        },
+        "231": {
+          "n": 254,
+          "n_hits": 2
+        },
+        "233": {
+          "n": 237,
+          "n_hits": 6
+        },
+        "235": {
+          "n": 251,
+          "n_hits": 1
+        },
+        "237": {
+          "n": 272,
+          "n_hits": 8
+        },
+        "239": {
+          "n": 249,
+          "n_hits": 3
+        },
+        "241": {
+          "n": 274,
+          "n_hits": 5
+        },
+        "243": {
+          "n": 272,
+          "n_hits": 5
+        },
+        "245": {
+          "n": 250,
+          "n_hits": 1
+        },
+        "247": {
+          "n": 253,
+          "n_hits": 5
+        },
+        "249": {
+          "n": 274,
+          "n_hits": 5
+        },
+        "251": {
+          "n": 242,
+          "n_hits": 1
+        },
+        "253": {
+          "n": 283,
+          "n_hits": 6
+        },
+        "255": {
+          "n": 258,
+          "n_hits": 2
+        }
+      }
+    },
+    "B_K4": {
+      "K": 4,
+      "n_batches": 64,
+      "local_prior": 0.015625,
+      "chance": 0.015625,
+      "accuracy": 0.014404,
+      "n": 4096,
+      "n_hits": 59,
+      "accuracy_ci": [
+        0.011184,
+        0.018535
+      ],
+      "corrupt_source": {
+        "span": [
+          0,
+          8
+        ],
+        "accuracy": 0.014404,
+        "n": 4096,
+        "n_hits": 59,
+        "accuracy_ci": [
+          0.011184,
+          0.018535
+        ]
+      },
+      "query_key_distance": {
+        "min": 249,
+        "max": 255,
+        "median": 253,
+        "frac_outside_window": 1.0,
+        "window": 16,
+        "n": 4096
+      },
+      "by_distance": {
+        "249": {
+          "n": 1022,
+          "n_hits": 12
+        },
+        "251": {
+          "n": 1014,
+          "n_hits": 10
+        },
+        "253": {
+          "n": 1062,
+          "n_hits": 20
+        },
+        "255": {
+          "n": 998,
+          "n_hits": 17
+        }
+      }
+    },
+    "B_K8": {
+      "K": 8,
+      "n_batches": 64,
+      "local_prior": 0.0,
+      "chance": 0.015625,
+      "accuracy": 0.013672,
+      "n": 4096,
+      "n_hits": 56,
+      "accuracy_ci": [
+        0.010544,
+        0.017711
+      ],
+      "corrupt_source": {
+        "span": [
+          0,
+          16
+        ],
+        "accuracy": 0.013672,
+        "n": 4096,
+        "n_hits": 56,
+        "accuracy_ci": [
+          0.010544,
+          0.017711
+        ]
+      },
+      "query_key_distance": {
+        "min": 241,
+        "max": 255,
+        "median": 247,
+        "frac_outside_window": 1.0,
+        "window": 16,
+        "n": 4096
+      },
+      "by_distance": {
+        "241": {
+          "n": 519,
+          "n_hits": 8
+        },
+        "243": {
+          "n": 533,
+          "n_hits": 9
+        },
+        "245": {
+          "n": 498,
+          "n_hits": 11
+        },
+        "247": {
+          "n": 529,
+          "n_hits": 5
+        },
+        "249": {
+          "n": 496,
+          "n_hits": 6
+        },
+        "251": {
+          "n": 474,
+          "n_hits": 7
+        },
+        "253": {
+          "n": 544,
+          "n_hits": 3
+        },
+        "255": {
+          "n": 503,
+          "n_hits": 7
+        }
+      }
+    },
+    "B_K16": {
+      "K": 16,
+      "n_batches": 64,
+      "local_prior": 0.015625,
+      "chance": 0.015625,
+      "accuracy": 0.018555,
+      "n": 4096,
+      "n_hits": 76,
+      "accuracy_ci": [
+        0.01485,
+        0.023161
+      ],
+      "corrupt_source": {
+        "span": [
+          0,
+          32
+        ],
+        "accuracy": 0.018555,
+        "n": 4096,
+        "n_hits": 76,
+        "accuracy_ci": [
+          0.01485,
+          0.023161
+        ]
+      },
+      "query_key_distance": {
+        "min": 225,
+        "max": 255,
+        "median": 241,
+        "frac_outside_window": 1.0,
+        "window": 16,
+        "n": 4096
+      },
+      "by_distance": {
+        "225": {
+          "n": 233,
+          "n_hits": 2
+        },
+        "227": {
+          "n": 242,
+          "n_hits": 2
+        },
+        "229": {
+          "n": 252,
+          "n_hits": 12
+        },
+        "231": {
+          "n": 254,
+          "n_hits": 4
+        },
+        "233": {
+          "n": 237,
+          "n_hits": 5
+        },
+        "235": {
+          "n": 251,
+          "n_hits": 4
+        },
+        "237": {
+          "n": 272,
+          "n_hits": 2
+        },
+        "239": {
+          "n": 249,
+          "n_hits": 5
+        },
+        "241": {
+          "n": 274,
+          "n_hits": 9
+        },
+        "243": {
+          "n": 272,
+          "n_hits": 5
+        },
+        "245": {
+          "n": 250,
+          "n_hits": 2
+        },
+        "247": {
+          "n": 253,
+          "n_hits": 6
+        },
+        "249": {
+          "n": 274,
+          "n_hits": 7
+        },
+        "251": {
+          "n": 242,
+          "n_hits": 5
+        },
+        "253": {
+          "n": 283,
+          "n_hits": 2
+        },
+        "255": {
+          "n": 258,
+          "n_hits": 4
+        }
+      }
+    },
+    "B_rep_K4": {
+      "K": 4,
+      "n_batches": 64,
+      "local_prior": 0.015625,
+      "chance": 0.015625,
+      "accuracy": 0.0,
+      "n": 4096,
+      "n_hits": 0,
+      "accuracy_ci": [
+        0.0,
+        0.000937
+      ],
+      "corrupt_source": {
+        "span": [
+          0,
+          8
+        ],
+        "accuracy": 0.0,
+        "n": 4096,
+        "n_hits": 0,
+        "accuracy_ci": [
+          0.0,
+          0.000937
+        ]
+      },
+      "query_key_distance": {
+        "min": 249,
+        "max": 255,
+        "median": 253,
+        "frac_outside_window": 1.0,
+        "window": 16,
+        "n": 4096
+      },
+      "by_distance": {
+        "249": {
+          "n": 1022,
+          "n_hits": 0
+        },
+        "251": {
+          "n": 1014,
+          "n_hits": 0
+        },
+        "253": {
+          "n": 1062,
+          "n_hits": 0
+        },
+        "255": {
+          "n": 998,
+          "n_hits": 0
+        }
+      }
+    },
+    "B_rep_K8": {
+      "K": 8,
+      "n_batches": 64,
+      "local_prior": 0.0,
+      "chance": 0.015625,
+      "accuracy": 0.0,
+      "n": 4096,
+      "n_hits": 0,
+      "accuracy_ci": [
+        0.0,
+        0.000937
+      ],
+      "corrupt_source": {
+        "span": [
+          0,
+          16
+        ],
+        "accuracy": 0.0,
+        "n": 4096,
+        "n_hits": 0,
+        "accuracy_ci": [
+          0.0,
+          0.000937
+        ]
+      },
+      "query_key_distance": {
+        "min": 241,
+        "max": 255,
+        "median": 247,
+        "frac_outside_window": 1.0,
+        "window": 16,
+        "n": 4096
+      },
+      "by_distance": {
+        "241": {
+          "n": 519,
+          "n_hits": 0
+        },
+        "243": {
+          "n": 533,
+          "n_hits": 0
+        },
+        "245": {
+          "n": 498,
+          "n_hits": 0
+        },
+        "247": {
+          "n": 529,
+          "n_hits": 0
+        },
+        "249": {
+          "n": 496,
+          "n_hits": 0
+        },
+        "251": {
+          "n": 474,
+          "n_hits": 0
+        },
+        "253": {
+          "n": 544,
+          "n_hits": 0
+        },
+        "255": {
+          "n": 503,
+          "n_hits": 0
+        }
+      }
+    },
+    "B_rep_K16": {
+      "K": 16,
+      "n_batches": 64,
+      "local_prior": 0.015625,
+      "chance": 0.015625,
+      "accuracy": 0.0,
+      "n": 4096,
+      "n_hits": 0,
+      "accuracy_ci": [
+        0.0,
+        0.000937
+      ],
+      "corrupt_source": {
+        "span": [
+          0,
+          32
+        ],
+        "accuracy": 0.0,
+        "n": 4096,
+        "n_hits": 0,
+        "accuracy_ci": [
+          0.0,
+          0.000937
+        ]
+      },
+      "query_key_distance": {
+        "min": 225,
+        "max": 255,
+        "median": 241,
+        "frac_outside_window": 1.0,
+        "window": 16,
+        "n": 4096
+      },
+      "by_distance": {
+        "225": {
+          "n": 233,
+          "n_hits": 0
+        },
+        "227": {
+          "n": 242,
+          "n_hits": 0
+        },
+        "229": {
+          "n": 252,
+          "n_hits": 0
+        },
+        "231": {
+          "n": 254,
+          "n_hits": 0
+        },
+        "233": {
+          "n": 237,
+          "n_hits": 0
+        },
+        "235": {
+          "n": 251,
+          "n_hits": 0
+        },
+        "237": {
+          "n": 272,
+          "n_hits": 0
+        },
+        "239": {
+          "n": 249,
+          "n_hits": 0
+        },
+        "241": {
+          "n": 274,
+          "n_hits": 0
+        },
+        "243": {
+          "n": 272,
+          "n_hits": 0
+        },
+        "245": {
+          "n": 250,
+          "n_hits": 0
+        },
+        "247": {
+          "n": 253,
+          "n_hits": 0
+        },
+        "249": {
+          "n": 274,
+          "n_hits": 0
+        },
+        "251": {
+          "n": 242,
+          "n_hits": 0
+        },
+        "253": {
+          "n": 283,
+          "n_hits": 0
+        },
+        "255": {
+          "n": 258,
+          "n_hits": 0
+        }
+      }
+    }
+  },
+  "premise_check": {
+    "task": "assoc_recall",
+    "K": 8,
+    "window": 16,
+    "chance": 0.015625,
+    "A_accuracy": 0.016113,
+    "A_ci": [
+      0.012686,
+      0.020447
+    ],
+    "A_ceiling": 0.046875,
+    "A_near_chance": true,
+    "query_key_distance": {
+      "min": 241,
+      "max": 255,
+      "median": 247,
+      "frac_outside_window": 1.0,
+      "window": 16,
+      "n": 4096
+    },
+    "local_prior": 0.0,
+    "note": "c0：A（无损失臂）必须 ≈ chance ⇒ 任务+窗口确实制造了「不搬就答不出」的需求；距离分布证明被问的 pair 落在窗口外"
+  },
+  "comparisons": {
+    "B_vs_A": {
+      "p_a": 0.016113,
+      "p_b": 0.013672,
+      "delta_pp": -0.244,
+      "ci_a": [
+        0.012686,
+        0.020447
+      ],
+      "ci_b": [
+        0.010544,
+        0.017711
+      ],
+      "ci_overlap": true,
+      "diff_ci_95": [
+        -0.007687,
+        0.002804
+      ],
+      "z": -0.912,
+      "p_value": 0.36167647
+    },
+    "Brep_vs_A": {
+      "p_a": 0.016113,
+      "p_b": 0.0,
+      "delta_pp": -1.611,
+      "ci_a": [
+        0.012686,
+        0.020447
+      ],
+      "ci_b": [
+        0.0,
+        0.000937
+      ],
+      "ci_overlap": false,
+      "diff_ci_95": [
+        -0.019969,
+        -0.012257
+      ],
+      "z": -8.157,
+      "p_value": 0.0
+    },
+    "B_vs_Brep": {
+      "p_a": 0.0,
+      "p_b": 0.013672,
+      "delta_pp": 1.367,
+      "ci_a": [
+        0.0,
+        0.000937
+      ],
+      "ci_b": [
+        0.010544,
+        0.017711
+      ],
+      "ci_overlap": false,
+      "diff_ci_95": [
+        0.010116,
+        0.017228
+      ],
+      "z": 7.509,
+      "p_value": 0.0
+    }
+  },
+  "criteria": {
+    "c0_premise_A_near_chance": true,
+    "c1_main_B_ge_A_3pp_and_ci_disjoint": false,
+    "c2_corrupt_source_control": {
+      "A": {
+        "main": 0.016113,
+        "corrupt": 0.016113,
+        "corrupt_ci": [
+          0.012686,
+          0.020447
+        ],
+        "chance": 0.015625,
+        "invalid_threshold": 0.0625,
+        "invalidated": false
+      },
+      "B": {
+        "main": 0.013672,
+        "corrupt": 0.013672,
+        "corrupt_ci": [
+          0.010544,
+          0.017711
+        ],
+        "chance": 0.015625,
+        "invalid_threshold": 0.0625,
+        "invalidated": false
+      },
+      "B_rep": {
+        "main": 0.0,
+        "corrupt": 0.0,
+        "corrupt_ci": [
+          0.0,
+          0.000937
+        ],
+        "chance": 0.015625,
+        "invalid_threshold": 0.0625,
+        "invalidated": false
+      }
+    },
+    "c3_rerun_rep_ge_A_3pp_and_ci_disjoint": false,
+    "c3_B_vs_Brep_ci_disjoint": true,
+    "c3_interpretation": "B 与 B_rep（同配置同 seed）读数 CI 不重叠 ⇒ 训练侧双稳态/散度显著，本尺度不可分辨；c1 即使过也不得记为「成立」"
+  },
+  "distance_leg": {
+    "A": {
+      "16": {
+        "distance": 16,
+        "n": 512,
+        "accuracy": 0.029297,
+        "accuracy_ci": [
+          0.017833,
+          0.047772
+        ],
+        "corrupt_source": {
+          "accuracy": 0.007812,
+          "n": 512,
+          "accuracy_ci": [
+            0.003042,
+            0.019914
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.015625,
+        "source_position": 239,
+        "source_inside_window": false
+      },
+      "32": {
+        "distance": 32,
+        "n": 512,
+        "accuracy": 0.007812,
+        "accuracy_ci": [
+          0.003042,
+          0.019914
+        ],
+        "corrupt_source": {
+          "accuracy": 0.007812,
+          "n": 512,
+          "accuracy_ci": [
+            0.003042,
+            0.019914
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.015625,
+        "source_position": 223,
+        "source_inside_window": false
+      },
+      "64": {
+        "distance": 64,
+        "n": 512,
+        "accuracy": 0.017578,
+        "accuracy_ci": [
+          0.009275,
+          0.033067
+        ],
+        "corrupt_source": {
+          "accuracy": 0.017578,
+          "n": 512,
+          "accuracy_ci": [
+            0.009275,
+            0.033067
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.015625,
+        "source_position": 191,
+        "source_inside_window": false
+      },
+      "128": {
+        "distance": 128,
+        "n": 512,
+        "accuracy": 0.025391,
+        "accuracy_ci": [
+          0.014897,
+          0.042953
+        ],
+        "corrupt_source": {
+          "accuracy": 0.025391,
+          "n": 512,
+          "accuracy_ci": [
+            0.014897,
+            0.042953
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.015625,
+        "source_position": 127,
+        "source_inside_window": false
+      },
+      "192": {
+        "distance": 192,
+        "n": 512,
+        "accuracy": 0.009766,
+        "accuracy_ci": [
+          0.004178,
+          0.022655
+        ],
+        "corrupt_source": {
+          "accuracy": 0.009766,
+          "n": 512,
+          "accuracy_ci": [
+            0.004178,
+            0.022655
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.0,
+        "source_position": 63,
+        "source_inside_window": false
+      },
+      "255": {
+        "distance": 255,
+        "n": 512,
+        "accuracy": 0.015625,
+        "accuracy_ci": [
+          0.007938,
+          0.030526
+        ],
+        "corrupt_source": {
+          "accuracy": 0.015625,
+          "n": 512,
+          "accuracy_ci": [
+            0.007938,
+            0.030526
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.0625,
+        "source_position": 0,
+        "source_inside_window": false
+      }
+    },
+    "B": {
+      "16": {
+        "distance": 16,
+        "n": 512,
+        "accuracy": 0.0,
+        "accuracy_ci": [
+          0.0,
+          0.007447
+        ],
+        "corrupt_source": {
+          "accuracy": 0.001953,
+          "n": 512,
+          "accuracy_ci": [
+            0.000345,
+            0.01098
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.015625,
+        "source_position": 239,
+        "source_inside_window": false
+      },
+      "32": {
+        "distance": 32,
+        "n": 512,
+        "accuracy": 0.001953,
+        "accuracy_ci": [
+          0.000345,
+          0.01098
+        ],
+        "corrupt_source": {
+          "accuracy": 0.021484,
+          "n": 512,
+          "accuracy_ci": [
+            0.012038,
+            0.038058
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.015625,
+        "source_position": 223,
+        "source_inside_window": false
+      },
+      "64": {
+        "distance": 64,
+        "n": 512,
+        "accuracy": 0.027344,
+        "accuracy_ci": [
+          0.016357,
+          0.045371
+        ],
+        "corrupt_source": {
+          "accuracy": 0.027344,
+          "n": 512,
+          "accuracy_ci": [
+            0.016357,
+            0.045371
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.015625,
+        "source_position": 191,
+        "source_inside_window": false
+      },
+      "128": {
+        "distance": 128,
+        "n": 512,
+        "accuracy": 0.021484,
+        "accuracy_ci": [
+          0.012038,
+          0.038058
+        ],
+        "corrupt_source": {
+          "accuracy": 0.021484,
+          "n": 512,
+          "accuracy_ci": [
+            0.012038,
+            0.038058
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.015625,
+        "source_position": 127,
+        "source_inside_window": false
+      },
+      "192": {
+        "distance": 192,
+        "n": 512,
+        "accuracy": 0.011719,
+        "accuracy_ci": [
+          0.005381,
+          0.025329
+        ],
+        "corrupt_source": {
+          "accuracy": 0.011719,
+          "n": 512,
+          "accuracy_ci": [
+            0.005381,
+            0.025329
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.0,
+        "source_position": 63,
+        "source_inside_window": false
+      },
+      "255": {
+        "distance": 255,
+        "n": 512,
+        "accuracy": 0.029297,
+        "accuracy_ci": [
+          0.017833,
+          0.047772
+        ],
+        "corrupt_source": {
+          "accuracy": 0.029297,
+          "n": 512,
+          "accuracy_ci": [
+            0.017833,
+            0.047772
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.0625,
+        "source_position": 0,
+        "source_inside_window": false
+      }
+    },
+    "B_rep": {
+      "16": {
+        "distance": 16,
+        "n": 512,
+        "accuracy": 0.0,
+        "accuracy_ci": [
+          0.0,
+          0.007447
+        ],
+        "corrupt_source": {
+          "accuracy": 0.0,
+          "n": 512,
+          "accuracy_ci": [
+            0.0,
+            0.007447
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.015625,
+        "source_position": 239,
+        "source_inside_window": false
+      },
+      "32": {
+        "distance": 32,
+        "n": 512,
+        "accuracy": 0.0,
+        "accuracy_ci": [
+          0.0,
+          0.007447
+        ],
+        "corrupt_source": {
+          "accuracy": 0.0,
+          "n": 512,
+          "accuracy_ci": [
+            0.0,
+            0.007447
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.015625,
+        "source_position": 223,
+        "source_inside_window": false
+      },
+      "64": {
+        "distance": 64,
+        "n": 512,
+        "accuracy": 0.0,
+        "accuracy_ci": [
+          0.0,
+          0.007447
+        ],
+        "corrupt_source": {
+          "accuracy": 0.0,
+          "n": 512,
+          "accuracy_ci": [
+            0.0,
+            0.007447
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.015625,
+        "source_position": 191,
+        "source_inside_window": false
+      },
+      "128": {
+        "distance": 128,
+        "n": 512,
+        "accuracy": 0.0,
+        "accuracy_ci": [
+          0.0,
+          0.007447
+        ],
+        "corrupt_source": {
+          "accuracy": 0.0,
+          "n": 512,
+          "accuracy_ci": [
+            0.0,
+            0.007447
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.015625,
+        "source_position": 127,
+        "source_inside_window": false
+      },
+      "192": {
+        "distance": 192,
+        "n": 512,
+        "accuracy": 0.0,
+        "accuracy_ci": [
+          0.0,
+          0.007447
+        ],
+        "corrupt_source": {
+          "accuracy": 0.0,
+          "n": 512,
+          "accuracy_ci": [
+            0.0,
+            0.007447
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.0,
+        "source_position": 63,
+        "source_inside_window": false
+      },
+      "255": {
+        "distance": 255,
+        "n": 512,
+        "accuracy": 0.0,
+        "accuracy_ci": [
+          0.0,
+          0.007447
+        ],
+        "corrupt_source": {
+          "accuracy": 0.0,
+          "n": 512,
+          "accuracy_ci": [
+            0.0,
+            0.007447
+          ]
+        },
+        "chance": 0.015625,
+        "local_prior": 0.0625,
+        "source_position": 0,
+        "source_inside_window": false
+      }
+    }
+  },
+  "recon_activity_on_trained_heads": {
+    "A": {
+      "fixed_batch": "assoc_recall_multi_batch(bs=64, K=8, Q=8, gap=14, seed=1234)",
+      "ce_all": 6.4296,
+      "ce_symbol": 10.092,
+      "ce_filler": 5.7406,
+      "acc_all": 0.00026,
+      "acc_symbol": 0.001645,
+      "n_symbol": 2432,
+      "n_filler": 12928,
+      "chance_uniform_vocab": 0.004854,
+      "chance_symbol_set": 0.015625,
+      "head_w_fro": 4.594904
+    },
+    "B": {
+      "fixed_batch": "assoc_recall_multi_batch(bs=64, K=8, Q=8, gap=14, seed=1234)",
+      "ce_all": 0.0,
+      "ce_symbol": 0.0001,
+      "ce_filler": 0.0,
+      "acc_all": 1.0,
+      "acc_symbol": 1.0,
+      "n_symbol": 2432,
+      "n_filler": 12928,
+      "chance_uniform_vocab": 0.004854,
+      "chance_symbol_set": 0.015625,
+      "head_w_fro": 13.606418
+    },
+    "B_rep": {
+      "fixed_batch": "assoc_recall_multi_batch(bs=64, K=8, Q=8, gap=14, seed=1234)",
+      "ce_all": 0.0,
+      "ce_symbol": 0.0001,
+      "ce_filler": 0.0,
+      "acc_all": 1.0,
+      "acc_symbol": 1.0,
+      "n_symbol": 2432,
+      "n_filler": 12928,
+      "chance_uniform_vocab": 0.004854,
+      "chance_symbol_set": 0.015625,
+      "head_w_fro": 14.368907
+    }
+  },
+  "train_results": {
+    "A": {
+      "wall_minutes": 8.78,
+      "peak_gpu_mem_mb": 2015.5,
+      "params": 13589504,
+      "gnorm_monitor": {
+        "gnorm_max": 92.91,
+        "gnorm_mean": 0.113,
+        "grad_skips": 0,
+        "attn_sparse_mean": null,
+        "attn_sparse_layer_samples": 0,
+        "attn_linear_mean": null,
+        "attn_linear_layer_samples": 0,
+        "attn_carry_mean": null,
+        "attn_carry_layer_samples": 0,
+        "attn_carry_layer_stats": null,
+        "attn_carry_scan_mean": null,
+        "recon_window": 16,
+        "recon_lambda": 0.0,
+        "recon_mean": null,
+        "synth_answer_ce_mean": 4.1823,
+        "synth_answer_ce_n_steps": 12000,
+        "synth_chance_ce": 4.1589,
+        "window_mask": {
+          "train_window": 16,
+          "train_anchors": 0,
+          "params_added": 0,
+          "n_visible_pairs": 3976,
+          "causal_pairs": 32896,
+          "visible_frac": 0.120866,
+          "dropped_frac": 0.879134,
+          "alive": true,
+          "max_abs_logit_diff_masked_vs_open": 2.106155
+        },
+        "window_mask_probe": {
+          "max_abs_logit_diff_masked_vs_open": 2.106155,
+          "alive": true
+        },
+        "kv_heads": null,
+        "kv_heads_n_logged_lines": 0
+      },
+      "window_mask": null,
+      "recon_liveness": {
+        "recon_window": 16,
+        "recon_lambda": 0.0,
+        "enabled": true,
+        "params_added": 52736,
+        "w_fro": 4.594904,
+        "w_absmax": 0.08421,
+        "nonzero_frac": 1.0,
+        "head_gnorm_mean": null,
+        "recon_ce_mean": null,
+        "recon_ce_symbol_mean": null,
+        "recon_ce_filler_mean": null,
+        "recon_acc_symbol_mean": null,
+        "recon_acc_all_mean": null,
+        "recon_n_steps": null,
+        "recon_n_symbol_frac": null,
+        "grad_flowed": null,
+        "alive": false,
+        "alive_note": "λ=0 臂：头存在但**未被训练**（p.grad is None ⇒ AdamW 整条跳过）⇒ 这不是干预，也不会扰动主干（逐位等价基线）"
+      },
+      "intervention": {
+        "recon_window": 16,
+        "recon_lambda": 0.0,
+        "enabled": true,
+        "params_added": 52736,
+        "w_fro": 4.594904,
+        "w_absmax": 0.08421,
+        "nonzero_frac": 1.0,
+        "head_gnorm_mean": null,
+        "recon_ce_mean": null,
+        "recon_ce_symbol_mean": null,
+        "recon_ce_filler_mean": null,
+        "recon_acc_symbol_mean": null,
+        "recon_acc_all_mean": null,
+        "recon_n_steps": null,
+        "recon_n_symbol_frac": null,
+        "grad_flowed": null,
+        "alive": false,
+        "alive_note": "λ=0 臂：头存在但**未被训练**（p.grad is None ⇒ AdamW 整条跳过）⇒ 这不是干预，也不会扰动主干（逐位等价基线）",
+        "name": "reconstruction_sufficiency_loss",
+        "note": "目标 = 位置 i 重建 tokens[i−recon_window]（刚掉出可见窗口的那一格）；λ=0 时整条项不建图（add_recon_term 原样返回 loss 对象）"
+      },
+      "avg_train_trunk_ce": [
+        0.5106
+      ],
+      "synth_answer_ce_mean": 4.1823
+    },
+    "B": {
+      "wall_minutes": 9.85,
+      "peak_gpu_mem_mb": 2016.2,
+      "params": 13589504,
+      "gnorm_monitor": {
+        "gnorm_max": 93.69,
+        "gnorm_mean": 0.151,
+        "grad_skips": 0,
+        "attn_sparse_mean": null,
+        "attn_sparse_layer_samples": 0,
+        "attn_linear_mean": null,
+        "attn_linear_layer_samples": 0,
+        "attn_carry_mean": null,
+        "attn_carry_layer_samples": 0,
+        "attn_carry_layer_stats": null,
+        "attn_carry_scan_mean": null,
+        "recon_window": 16,
+        "recon_lambda": 1.0,
+        "recon_mean": {
+          "window": 16,
+          "ce_all": 0.0115,
+          "ce_symbol": 0.0504,
+          "ce_filler": 0.0042,
+          "acc_all": 0.997988,
+          "acc_symbol": 0.989704,
+          "head_gnorm": 0.007064,
+          "n_symbol_frac": 0.1583,
+          "n_steps": 12000
+        },
+        "synth_answer_ce_mean": 4.2015,
+        "synth_answer_ce_n_steps": 12000,
+        "synth_chance_ce": 4.1589,
+        "window_mask": {
+          "train_window": 16,
+          "train_anchors": 0,
+          "params_added": 0,
+          "n_visible_pairs": 3976,
+          "causal_pairs": 32896,
+          "visible_frac": 0.120866,
+          "dropped_frac": 0.879134,
+          "alive": true,
+          "max_abs_logit_diff_masked_vs_open": 2.106155
+        },
+        "window_mask_probe": {
+          "max_abs_logit_diff_masked_vs_open": 2.106155,
+          "alive": true
+        },
+        "kv_heads": null,
+        "kv_heads_n_logged_lines": 0
+      },
+      "window_mask": null,
+      "recon_liveness": {
+        "recon_window": 16,
+        "recon_lambda": 1.0,
+        "enabled": true,
+        "params_added": 52736,
+        "w_fro": 13.606418,
+        "w_absmax": 0.446258,
+        "nonzero_frac": 1.0,
+        "head_gnorm_mean": 0.007064,
+        "recon_ce_mean": 0.0115,
+        "recon_ce_symbol_mean": 0.0504,
+        "recon_ce_filler_mean": 0.0042,
+        "recon_acc_symbol_mean": 0.989704,
+        "recon_acc_all_mean": 0.997988,
+        "recon_n_steps": 12000,
+        "recon_n_symbol_frac": 0.1583,
+        "grad_flowed": true,
+        "alive": true
+      },
+      "intervention": {
+        "recon_window": 16,
+        "recon_lambda": 1.0,
+        "enabled": true,
+        "params_added": 52736,
+        "w_fro": 13.606418,
+        "w_absmax": 0.446258,
+        "nonzero_frac": 1.0,
+        "head_gnorm_mean": 0.007064,
+        "recon_ce_mean": 0.0115,
+        "recon_ce_symbol_mean": 0.0504,
+        "recon_ce_filler_mean": 0.0042,
+        "recon_acc_symbol_mean": 0.989704,
+        "recon_acc_all_mean": 0.997988,
+        "recon_n_steps": 12000,
+        "recon_n_symbol_frac": 0.1583,
+        "grad_flowed": true,
+        "alive": true,
+        "name": "reconstruction_sufficiency_loss",
+        "note": "目标 = 位置 i 重建 tokens[i−recon_window]（刚掉出可见窗口的那一格）；λ=0 时整条项不建图（add_recon_term 原样返回 loss 对象）"
+      },
+      "avg_train_trunk_ce": [
+        0.5114
+      ],
+      "synth_answer_ce_mean": 4.2015
+    },
+    "B_rep": {
+      "wall_minutes": 9.03,
+      "peak_gpu_mem_mb": 2016.2,
+      "params": 13589504,
+      "gnorm_monitor": {
+        "gnorm_max": 138.07,
+        "gnorm_mean": 0.152,
+        "grad_skips": 0,
+        "attn_sparse_mean": null,
+        "attn_sparse_layer_samples": 0,
+        "attn_linear_mean": null,
+        "attn_linear_layer_samples": 0,
+        "attn_carry_mean": null,
+        "attn_carry_layer_samples": 0,
+        "attn_carry_layer_stats": null,
+        "attn_carry_scan_mean": null,
+        "recon_window": 16,
+        "recon_lambda": 1.0,
+        "recon_mean": {
+          "window": 16,
+          "ce_all": 0.0122,
+          "ce_symbol": 0.0534,
+          "ce_filler": 0.0044,
+          "acc_all": 0.997896,
+          "acc_symbol": 0.989319,
+          "head_gnorm": 0.007247,
+          "n_symbol_frac": 0.1583,
+          "n_steps": 12000
+        },
+        "synth_answer_ce_mean": 4.1915,
+        "synth_answer_ce_n_steps": 12000,
+        "synth_chance_ce": 4.1589,
+        "window_mask": {
+          "train_window": 16,
+          "train_anchors": 0,
+          "params_added": 0,
+          "n_visible_pairs": 3976,
+          "causal_pairs": 32896,
+          "visible_frac": 0.120866,
+          "dropped_frac": 0.879134,
+          "alive": true,
+          "max_abs_logit_diff_masked_vs_open": 2.106155
+        },
+        "window_mask_probe": {
+          "max_abs_logit_diff_masked_vs_open": 2.106155,
+          "alive": true
+        },
+        "kv_heads": null,
+        "kv_heads_n_logged_lines": 0
+      },
+      "window_mask": null,
+      "recon_liveness": {
+        "recon_window": 16,
+        "recon_lambda": 1.0,
+        "enabled": true,
+        "params_added": 52736,
+        "w_fro": 14.368907,
+        "w_absmax": 0.437968,
+        "nonzero_frac": 1.0,
+        "head_gnorm_mean": 0.007247,
+        "recon_ce_mean": 0.0122,
+        "recon_ce_symbol_mean": 0.0534,
+        "recon_ce_filler_mean": 0.0044,
+        "recon_acc_symbol_mean": 0.989319,
+        "recon_acc_all_mean": 0.997896,
+        "recon_n_steps": 12000,
+        "recon_n_symbol_frac": 0.1583,
+        "grad_flowed": true,
+        "alive": true
+      },
+      "intervention": {
+        "recon_window": 16,
+        "recon_lambda": 1.0,
+        "enabled": true,
+        "params_added": 52736,
+        "w_fro": 14.368907,
+        "w_absmax": 0.437968,
+        "nonzero_frac": 1.0,
+        "head_gnorm_mean": 0.007247,
+        "recon_ce_mean": 0.0122,
+        "recon_ce_symbol_mean": 0.0534,
+        "recon_ce_filler_mean": 0.0044,
+        "recon_acc_symbol_mean": 0.989319,
+        "recon_acc_all_mean": 0.997896,
+        "recon_n_steps": 12000,
+        "recon_n_symbol_frac": 0.1583,
+        "grad_flowed": true,
+        "alive": true,
+        "name": "reconstruction_sufficiency_loss",
+        "note": "目标 = 位置 i 重建 tokens[i−recon_window]（刚掉出可见窗口的那一格）；λ=0 时整条项不建图（add_recon_term 原样返回 loss 对象）"
+      },
+      "avg_train_trunk_ce": [
+        0.5116
+      ],
+      "synth_answer_ce_mean": 4.1915
+    }
+  },
+  "loss_slope": {
+    "A": {
+      "n_points": 60,
+      "slope": -0.002557,
+      "first_loss": 4.7499,
+      "last_loss": 0.5055,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "B": {
+      "n_points": 60,
+      "slope": -0.007527,
+      "first_loss": 10.1384,
+      "last_loss": 0.5051,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "B_rep": {
+      "n_points": 60,
+      "slope": -0.00625,
+      "first_loss": 10.1384,
+      "last_loss": 0.5053,
+      "window_steps": [
+        200,
+        12000
+      ]
+    }
+  },
+  "train_log_tail": {
+    "A": {
+      "last_step": 11999,
+      "last_loss": 0.5055,
+      "last_answer_ce": 4.1823,
+      "last_recon": null,
+      "first_recon": null
+    },
+    "B": {
+      "last_step": 11999,
+      "last_loss": 0.5051,
+      "last_answer_ce": 4.2015,
+      "last_recon": {
+        "window": 16,
+        "ce_all": 0.0115,
+        "ce_symbol": 0.0504,
+        "ce_filler": 0.0042,
+        "acc_all": 0.997988,
+        "acc_symbol": 0.989704,
+        "head_gnorm": 0.007064,
+        "n_symbol_frac": 0.1583,
+        "n_steps": 12000
+      },
+      "first_recon": {
+        "window": 16,
+        "ce_all": 5.3885,
+        "ce_symbol": 5.3621,
+        "ce_filler": 5.3934,
+        "acc_all": 0.000781,
+        "acc_symbol": 0.004934,
+        "head_gnorm": 0.106795,
+        "n_symbol_frac": 0.1583,
+        "n_steps": 1
+      }
+    },
+    "B_rep": {
+      "last_step": 11999,
+      "last_loss": 0.5053,
+      "last_answer_ce": 4.1915,
+      "last_recon": {
+        "window": 16,
+        "ce_all": 0.0122,
+        "ce_symbol": 0.0534,
+        "ce_filler": 0.0044,
+        "acc_all": 0.997896,
+        "acc_symbol": 0.989319,
+        "head_gnorm": 0.007247,
+        "n_symbol_frac": 0.1583,
+        "n_steps": 12000
+      },
+      "first_recon": {
+        "window": 16,
+        "ce_all": 5.3885,
+        "ce_symbol": 5.3621,
+        "ce_filler": 5.3934,
+        "acc_all": 0.000781,
+        "acc_symbol": 0.004934,
+        "head_gnorm": 0.106795,
+        "n_symbol_frac": 0.1583,
+        "n_steps": 1
+      }
+    }
+  },
+  "memory_analytic": {
+    "params": 13589504,
+    "params_bytes_fp32": 54358016,
+    "optimizer_bytes_adamw": 108716032,
+    "train_act_floats_per_sample_est": 3932160,
+    "train_act_bytes_bf16_batch": 480.0,
+    "window_attn_scores_floats_per_layer": 2097152,
+    "window_attn_scores_mb": 8.0,
+    "full_attn_scores_mb_for_contrast": 128.0,
+    "carry_state_floats": 8192,
+    "carry_state_bytes": 32768,
+    "carry_state_note": "单共享槽 H·dh·dh = 8192 floats/样本，**与 T 无关**",
+    "kv_cache_bytes_per_sample": 6291456
+  },
+  "memory_measured": {
+    "eval_peak_gpu_mem_mb": 1118.7,
+    "train_peak_gpu_mem_mb": {
+      "A": 2015.5,
+      "B": 2016.2,
+      "B_rep": 2016.2
+    },
+    "note": "实测 = 本进程 torch.cuda.max_memory_allocated（净分配，不含共享卡上其他任务的占用）；解析 = analytic_memory（复用 evalkit）"
+  },
+  "reproducibility": {
+    "n_per_pass": 1024,
+    "n_batches_per_pass": 16,
+    "accuracy_1": 0.016602,
+    "accuracy_2": 0.016602,
+    "n_hits_1": 17,
+    "n_hits_2": 17,
+    "same_seed_rerun_max_abs_diff": 0.0,
+    "pass": true,
+    "note": "同 seed、同代码、同设备把 A 的主腿整批再跑一遍（纯推理复现性）"
+  },
+  "cost": {
+    "wall_minutes_total_eval": 0.82,
+    "train_wall_minutes": {
+      "A": 8.78,
+      "B": 9.85,
+      "B_rep": 9.03
+    },
+    "gpu_wall_budget_min": 45,
+    "n_forward_batches": 720
+  },
+  "code": {
+    "run.py": "15eb9c8eed99111ff918487f56ed715fa77dad13e7989008b44c29dc9c2bb452",
+    "reconcile_numbers.py": "0510486e4fa8934f37c365add396d4082ede9efdf0dbb8f9ad73014579e9d4b7",
+    "mutate.py": "7973aafbeae1f2e2fcab851480663bc2910335b07709de9f973a51b95cf62b5f",
+    "config.json": "ffc800e56329f7ec30a72760cd3e622ff127eceb515d632cbf140b1f9ca9ef21",
+    "slope_diagnosis.py": "8d2358dc206ebb17212221f5e092dd85b57c5041d4727bc4a81580afb03ddd63",
+    "pathlm/depth_ar.py": "248a92754154d65e0857ca5ceccda91ef63ffd9b90b3cfde2199da29b6b59135",
+    "pathlm/recon_signal.py": "b0cc8480b29384f26decbfd844c91014bf3da307b0ede126198e4393adc182d8",
+    "train_depth_ar.py": "8c333e5405baf23812cd8d389e69063a3b0129fa17993db7fe1ddb50e71828a0",
+    "tests/test_recon_signal.py": "df33b74487f6a303e3316f76ac73d61bfbb74046eae3f163c126bf768c85cbf2",
+    "tools/evalkit/carry_channel.py": "4dcd91facd60a512dcc983836fb29a7c91aad988bada1c95ada666824d226753",
+    "tools/evalkit/longrange_tasks.py": "4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b",
+    "tools/evalkit/retention.py": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502",
+    "2619-README.md (本契约)": "8a0ae1bfddd998e80109c7e84d3415135bc6511c5e93000f84966919441ddae9",
+    "repo-root README.md (参照，非本契约)": "4c82f2f4e5991dc8f30d8580b3b8d4e65ba147a836e45f4cc2c6bfe339e1a799"
+  }
+}

@@ -23,6 +23,26 @@ from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
                              window_mask_probe, attn_linear_probe,
                              kv_head_liveness, carry_liveness, carry_probe,
                              carry_read_mass_stats)
+# 重建训练信号（ticket 36 波二 U2 线，F4）：逻辑全在 `pathlm/recon_signal.py`，
+# 这里只做「开关 → 损失接线 → 活性量落盘」。
+from pathlm.recon_signal import recon_loss, recon_liveness
+
+
+def add_recon_term(loss, model, hidden, tokens, recon_lambda, filler_token=None):
+    """把重建项接到主干损失上（本契约的**唯一干预接线**）。
+
+    `recon_lambda <= 0` 或 `recon_window == 0` ⇒ **原样返回传入的 `loss` 对象**
+    （不是 `loss + 0·x`）：不建图、不做浮点运算、不消耗随机数 ⇒ λ=0 与基线逐位
+    等价（单测 `test_recon_lambda_zero_returns_same_loss_object` 钉住对象同一性；
+    头参数 `p.grad is None` ⇒ AdamW 整条跳过，连 weight decay 都不作用）。
+
+    返回 `(loss, stats | None)`；`stats` 的键见 `recon_signal.recon_loss`。
+    """
+    if recon_lambda <= 0 or model.cfg.recon_window <= 0:
+        return loss, None
+    stats = recon_loss(model.recon_head, hidden, tokens,
+                       model.cfg.recon_window, filler_token)
+    return loss + recon_lambda * stats["loss"], stats
 
 
 def _linear_anneal(v0: float, v1: float | None, step: int, steps: int,
@@ -65,6 +85,7 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
           exit_anneal_to: float | None = None,
           exit_anneal_frac: float = 0.25,
           final_anneal_to: float | None = None,
+          recon_lambda: float = 0.0,
           synth: dict | None = None):
     """随机退出深度训练：每步均匀采样 d_i ∈ {0..L}；记录逐深度 CE 与门均值。
     浅层 CE 权重按 aux_weight_at(step) 调度（默认恒 1 = v1 等权）；最终深度
@@ -74,7 +95,11 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
     ticket 25 C 臂 --exit-anneal：exit_anneal_to 给定时浅层权重在末
     exit_anneal_frac 步线性降到该值，final 权重同窗线性降到 final_anneal_to
     （2× → 1.0）；调度关断时行为与 ticket-24 逐位一致。
-    梯度范数监控（ticket 24）：全程累计 gnorm max/mean 与跳步数，随结果落盘。"""
+    梯度范数监控（ticket 24）：全程累计 gnorm max/mean 与跳步数，随结果落盘。
+    recon_lambda（ticket 36 波二 U2 线，F4 训练信号）：> 0 时把重建项
+    λ·CE(recon_head(hidden), tokens[i−W]) 加在主损失上（fp32，走**同一个** pre-step
+    grad-norm gate）；= 0 时 `add_recon_term` **原样返回**主损失对象 ⇒ 不建图、
+    逐位等价基线（单测钉住）。"""
     steps, bs = tcfg["steps"], tcfg["batch_size"]
     seq = model.cfg.seq_len
     L = model.cfg.n_layers
@@ -212,6 +237,29 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
     gnorm_sum = 0.0
     gnorm_max = 0.0
     n_grad_skip = 0
+    # 重建训练信号（ticket 36 波二 U2 线）的活性量（SCHEMA §10/§17.4）：每步按张量
+    # 累加、每 200 步随同一行日志落盘；`head_gnorm` 是该解码头 **真的拿到梯度**
+    # 的证据（λ=0 臂恒 None）。
+    recon_acc: dict = {}
+
+    def recon_log() -> dict | None:
+        n = recon_acc.get("n_steps", 0)
+        if not n:
+            return None
+        n_sym, n_fill = recon_acc.get("n_symbol"), recon_acc.get("n_filler")
+        g = recon_acc.get("head_gnorm")
+        return {
+            "window": int(model.cfg.recon_window),
+            "ce_all": round(float(recon_acc["ce_all"]) / n, 4),
+            "ce_symbol": round(float(recon_acc["ce_symbol"]) / n, 4),
+            "ce_filler": round(float(recon_acc["ce_filler"]) / n, 4),
+            "acc_all": round(float(recon_acc["acc_all"]) / n, 6),
+            "acc_symbol": round(float(recon_acc["acc_symbol"]) / n, 6),
+            "head_gnorm": (round(float(g) / n, 6) if g is not None else None),
+            "n_symbol_frac": (round(float(n_sym / (n_sym + n_fill)), 4)
+                              if n_sym is not None else None),
+            "n_steps": n,
+        }
     for step in range(steps):
         model.train()
         x, ans_rows, ans_vals = data_batch()
@@ -233,6 +281,11 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                               final_weight=fw,
                               shallow_stopgrad=shallow_stopgrad,
                               dense_aux=dense_aux)
+            # 重建项（λ>0 才建图；目标 = 刚掉出可见窗口的那一格 tokens[i−W]）
+            loss, recon_term = add_recon_term(
+                loss, model, aux["states"][-1], x, recon_lambda,
+                filler_token=(synth["filler_token"] if synth is not None
+                              else None))
         opt.zero_grad(set_to_none=True)
         loss.backward()
         gnorm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -283,6 +336,18 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                 cur = carry_layer_sum[i][kk]
                 carry_layer_sum[i][kk] = v if cur is None else cur + v
             n_carry_layers += 1
+        if recon_term is not None:
+            for kk in ("ce_all", "ce_symbol", "ce_filler", "acc_all",
+                       "acc_symbol", "n_symbol", "n_filler"):
+                v = recon_term[kk].detach()
+                cur = recon_acc.get(kk)
+                recon_acc[kk] = v if cur is None else cur + v
+            recon_acc["n_steps"] = recon_acc.get("n_steps", 0) + 1
+            g = model.recon_head.weight.grad
+            if g is not None:
+                gn = g.detach().norm()
+                cur = recon_acc.get("head_gnorm")
+                recon_acc["head_gnorm"] = gn if cur is None else cur + gn
         if ans_rows is not None:
             with torch.no_grad():
                 lg = aux["depth_logits"][-1].float()               # [B,T,V]
@@ -308,6 +373,7 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                                    if n_sparse_layers else None),
                     "attn_linear": lin_log(),
                     "attn_carry": carry_log(),
+                    "recon": recon_log(),
                     "synth_answer_ce": (round(ans_ce_sum / max(ans_ce_n, 1), 4)
                                         if ans_ce_n else None),
                     "synth_chance_ce": (round(math.log(synth["sym_vocab"]), 4)
@@ -345,6 +411,9 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
             "attn_carry_scan_mean": (lambda d: ({k: round(float(v), 6) for k, v in
                                                   d.items()} if d else None))(
                 (model._carry_tele if getattr(model, "_carry_tele", None) else None)),
+            "recon_window": int(model.cfg.recon_window),
+            "recon_lambda": float(recon_lambda),
+            "recon_mean": recon_log(),
             "synth_answer_ce_mean": (round(ans_ce_sum / max(ans_ce_n, 1), 4)
                                      if ans_ce_n else None),
             "synth_answer_ce_n_steps": ans_ce_n,
@@ -380,6 +449,11 @@ def build_depthar_config(args) -> DepthARConfig:
                          carry_rule=(None if args.carry_write == "none"
                                      else args.carry_write),
                          carry_chunk=args.carry_chunk,
+                         # 缺省 0（= 关闭）：`build_depthar_config` 的历史单测用的是不带
+                         # 这个新字段的 `argparse.Namespace`，用 getattr 保证它们逐字不动；
+                         # 「CLI 开关不是死的」由 `tests/test_recon_signal.py::
+                         # test_recon_cli_plumbed_to_config` 单独钉住。
+                         recon_window=getattr(args, "recon_window", 0),
                          carry_state_dim=args.carry_state_dim)
 
 
@@ -511,6 +585,15 @@ def main():
                          "缺省 None = v1 口径 dh = d_model/n_heads（与注意力头同宽）；"
                          "给整数则通道头数 = d_model/dh、与注意力 n_heads 解耦。"
                          "必须整除 d_model，且只在 --carry-write 非 none 时有效")
+    ap.add_argument("--recon-window", type=int, default=0,
+                    help="重建训练信号（ticket 36 波二 U2 线，F4）：0 = 关闭（缺省，"
+                         "逐位还原 v1）；> 0 = 建单层线性解码头，要求位置 i 的隐状态重建"
+                         " tokens[i−recon-window]（刚掉出可见窗口的那一格）。需配合 "
+                         "--dense、topology=sequential 且 --train-window > 0；本实验"
+                         "用 --recon-window 16（= train_window）")
+    ap.add_argument("--recon-lambda", type=float, default=0.0,
+                    help="重建项权重 λ：> 0 = CE + λ·重建 CE（fp32，走同一个 pre-step "
+                         "grad-norm gate）；= 0（缺省）= 不建图、逐位等价基线")
     ap.add_argument("--synth-task", choices=("none", "assoc-mqar"),
                     default="none",
                     help="训练数据源：none = enwik8（缺省，逐位还原历史）；"
@@ -554,6 +637,13 @@ def main():
     ap.add_argument("--eval-batches", type=int, default=20)
     ap.add_argument("--out-root", default=".scratch/23-depth-ar/evidence")
     args = ap.parse_args()
+
+    # 重建训练信号（ticket 36 波二 U2 线）：λ>0 但没开窗 = 「死的干预」⇒ 直接报错
+    # （SCHEMA §10：不允许交付一个看起来开了、实际没接线的开关）。
+    if args.recon_lambda > 0 and args.recon_window <= 0:
+        raise SystemExit("--recon-lambda > 0 需要 --recon-window > 0（否则重建项恒不生效）")
+    if args.recon_window > 0 and args.recon_lambda < 0:
+        raise SystemExit(f"--recon-lambda 必须 >= 0，收到 {args.recon_lambda}")
 
     run_dir = os.path.join(args.out_root, args.run_name)
     os.makedirs(run_dir, exist_ok=True)
@@ -607,6 +697,7 @@ def main():
         exit_anneal_to=(args.exit_anneal_to if args.exit_anneal else None),
         exit_anneal_frac=args.exit_anneal_frac,
         final_anneal_to=(args.final_anneal_to if args.exit_anneal else None),
+        recon_lambda=args.recon_lambda,
         synth=synth)
     torch.save(model.state_dict(), os.path.join(run_dir, "model.pt"))
 
@@ -624,6 +715,8 @@ def main():
         "carry_chunk": args.carry_chunk,
         "carry_state_dim": args.carry_state_dim,
         "synth": synth,
+        "recon_window": args.recon_window,
+        "recon_lambda": args.recon_lambda,
         "synth_task_config": (assoc_recall_multi_batch(
             2, args.seq_len, args.synth_pairs, args.synth_queries,
             gap=args.synth_gap,
@@ -640,6 +733,10 @@ def main():
             window=args.train_window if args.train_window > 0 else 16),
         "carry_probe_input": ("synth assoc-mqar（seed 1234）" if synth is not None
                               else "enwik8 eval 批（data.batch, seed 1234）"),
+        "recon_liveness": recon_liveness(
+            (model.recon_head if model.cfg.recon_window > 0 else None),
+            model.cfg.recon_window, args.recon_lambda,
+            train_stats.get("recon_mean")),
         "topology_liveness": topology_liveness(model),
         "exit_mode": args.exit_mode,
         "fill_kv": args.fill_kv, "proj_fill": args.proj_fill,
@@ -682,6 +779,14 @@ def main():
         # 本臂的评测在实验目录的 `run.py` 里跑（合成长程任务电池 + 毁源对照臂）。
         results["synth_note"] = ("训练用合成多查询关联回忆（契约 U），未在本入口跑 "
                                  "enwik8 电池；机制读数见实验目录 run.py/results.json")
+    # SCHEMA §10：results.json 必须落一个 `intervention:` 活性块（与 recon_liveness
+    # 同一份，不重复计算）。λ=0 臂同样落块，但 `alive=False`、`grad_flowed=None` ——
+    # 「头存在但未被训练」是基线的一部分，不是一个未激活的干预。
+    results["intervention"] = {**results["recon_liveness"],
+                               "name": "reconstruction_sufficiency_loss",
+                               "note": ("目标 = 位置 i 重建 tokens[i−recon_window]"
+                                        "（刚掉出可见窗口的那一格）；λ=0 时整条项不建图"
+                                        "（add_recon_term 原样返回 loss 对象）")}
     with open(os.path.join(run_dir, "results.json"), "w") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
     print(json.dumps({k: v for k, v in results.items()

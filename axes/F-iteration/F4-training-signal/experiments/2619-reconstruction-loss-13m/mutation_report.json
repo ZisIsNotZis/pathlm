@@ -1,0 +1,80 @@
+{
+  "targets": {
+    "pathlm/recon_signal.py": "b0cc8480b29384f26decbfd844c91014bf3da307b0ede126198e4393adc182d8",
+    "train_depth_ar.py": "8c333e5405baf23812cd8d389e69063a3b0129fa17993db7fe1ddb50e71828a0"
+  },
+  "code_lock": "/tmp/pathlm_code.lock 存在（运行前检查通过）",
+  "note": "路径锚点：pathlm/recon_signal.py 全文件；train_depth_ar.py 只变异本线新增片段（add_recon_term 的 λ=0 守卫 / build_depthar_config 的 recon_window 接线）",
+  "mutations": [
+    {
+      "id": "M1",
+      "desc": "目标偏移错一格（做成 tokens[i−W+1]：落在窗内 ⇒ 退化成平凡项）",
+      "target": "pathlm/recon_signal.py",
+      "expected_tests": [
+        "test_recon_targets_are_exactly_window_masked",
+        "test_recon_loss_matches_manual_ce"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "229630d425e288dd0985f87a595d3b41c2ea81a23992230e9853b6075daca300",
+      "restored_bitwise": true,
+      "pytest_summary": "2 failed, 12 deselected in 2.21s"
+    },
+    {
+      "id": "M2",
+      "desc": "取错隐状态行（用前 T−W 行而不是 rows 指定的行）",
+      "target": "pathlm/recon_signal.py",
+      "expected_tests": [
+        "test_recon_loss_matches_manual_ce",
+        "test_recon_mutation_target_shift_changes_loss"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "125d6fd19f5e8edaf8416c07c8220b3e04de12fa5e77984f8d4cb51c45ee42aa",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 1 passed, 12 deselected in 1.89s"
+    },
+    {
+      "id": "M3",
+      "desc": "λ=0 守卫被放宽（λ=0 也建图 ⇒ 不再是「原样返回」，逐位等价失效）",
+      "target": "train_depth_ar.py",
+      "expected_tests": [
+        "test_recon_lambda_zero_returns_same_loss_object",
+        "test_recon_head_dead_at_lambda_zero_grads_flow_at_lambda_one"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "c79d1198e57c0a3f5f03c7c62aa9cef4710ab751e75dcb18d123faf02cc3adb0",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 1 passed, 12 deselected in 2.03s"
+    },
+    {
+      "id": "M4",
+      "desc": "CLI 开关没接到 config（开关是死的）",
+      "target": "train_depth_ar.py",
+      "expected_tests": [
+        "test_recon_cli_plumbed_to_config"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "0e6a893f81aed56cdb550fd79748181e7688ef14e82958c84fd0ad94d62fe8e2",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 13 deselected in 3.29s"
+    },
+    {
+      "id": "M5",
+      "desc": "fp32 口径被破坏（头在 autocast 内出 bf16 logits）",
+      "target": "pathlm/recon_signal.py",
+      "expected_tests": [
+        "test_recon_logits_is_fp32_under_bf16_autocast"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "88421e699b8e90e4b38519fa6199d6b478fa8367420ac03583e552223f38bfee",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 13 deselected in 2.66s"
+    }
+  ],
+  "all_caught_red": true,
+  "all_restored_bitwise": true
+}

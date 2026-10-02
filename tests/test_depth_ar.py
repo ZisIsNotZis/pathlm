@@ -2259,7 +2259,7 @@ def test_train_cli_kv_heads_plumbed_to_config():
                 proj_fill=False, readout_dims=None, readout_gated=False,
                 readout_linear_resid=False, attn_sparse_k=0, attn_linear=False,
                 linear_chunk=64, train_window=0, train_anchors=0,
-                carry_write="none", carry_chunk=64)
+                carry_write="none", carry_chunk=64, carry_state_dim=None)
     cfg = T.build_depthar_config(argparse.Namespace(**base, n_kv_heads=1))
     assert cfg.n_kv_heads == 1
     torch.manual_seed(0)
@@ -2643,12 +2643,17 @@ def test_carry_cli_plumbed_to_config():
                 proj_fill=False, readout_dims=None, readout_gated=False,
                 readout_linear_resid=False, attn_sparse_k=0, attn_linear=False,
                 linear_chunk=64, train_window=0, train_anchors=0,
-                n_kv_heads=None, carry_chunk=64)
+                n_kv_heads=None, carry_chunk=64, carry_state_dim=None)
     cfg = T.build_depthar_config(argparse.Namespace(**base, carry_write="delta"))
     assert cfg.carry_rule == "delta"
     torch.manual_seed(0)
     m = DepthARModel(cfg, vocab_size=10)
     assert type(m.blocks[0]).__name__ == "CarryChannelBlock"
+    # 容量旋钮（ticket 36 U1）也必须真的进 config（否则就是死开关）
+    cfg_cap = T.build_depthar_config(argparse.Namespace(
+        **{**base, "carry_state_dim": 16}, carry_write="delta"))
+    assert cfg_cap.carry_state_dim == 16
+    assert DepthARModel(cfg_cap, 10).carry.head_dim == 16
     cfg_off = T.build_depthar_config(
         argparse.Namespace(**base, carry_write="none"))
     assert cfg_off.carry_rule is None

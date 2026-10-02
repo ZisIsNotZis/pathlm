@@ -13,6 +13,7 @@
 | [`2617-longrange-task-battery`](2617-longrange-task-battery/README.md) | 目录内 README |
 | [`2617-prior-art-memory`](2617-prior-art-memory/README.md) | 目录内 README |
 | [`2618-carry-channel-13m`](2618-carry-channel-13m/README.md) | 目录内 README |
+| [`2619-carry-difficulty-capacity`](2619-carry-difficulty-capacity/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 

@@ -26,6 +26,9 @@ import torch.nn.functional as F
 
 from .config import ModelConfig
 from .model import Block, cap_norm
+# 重建训练信号（ticket 36 波二 U2 线，F4）：只在这里接两处（配置字段 + 建头），
+# 全部逻辑（目标定义 / 损失 / 活性量）在 `pathlm/recon_signal.py`，避免共享文件膨胀。
+from .recon_signal import build_recon_head
 
 LN2 = 0.6931471805599453  # nats → bits
 
@@ -163,6 +166,15 @@ class DepthARConfig:
     # carry_state_dim = d_model / n_heads 与缺省逐位相同（单测钉住）。
     # 只在 carry_rule is not None 时有效（否则报错）。
     carry_state_dim: int | None = None
+    # 重建训练信号（ticket 36 波二 U2 线，F4「重建/充分性损失」）。0 = 关闭（缺省，
+    # 逐位还原 v1）；> 0 = 建一个**单层线性解码头** d→V，训练时要求位置 i 的隐状态
+    # 重建 `tokens[i − recon_window]`（刚掉出可见窗口的那一格，见
+    # `pathlm/recon_signal.py` 的可见性论证）。**只改训练信号、不改前向结构**：
+    # 头不参与模型自身的 logits（单测钉住），λ=0 时整条损失不建图 ⇒ 与基线逐位等价。
+    # 单因素：需 dense=True + topology="sequential" + train_window > 0，且与
+    # attn_sparse_k / attn_linear / n_kv_heads / carry_rule 互斥。本实验用
+    # recon_window == train_window == 16（「刚掉出窗口」正是最小可学的交班要求）。
+    recon_window: int = 0
 
 
 TOPOLOGIES = ("sequential", "parallel", "parallel-dual-ln", "dense")
@@ -1814,6 +1826,11 @@ class DepthARModel(nn.Module):
             nn.init.zeros_(self.carry.beta_b)      # β 起步 ≈ 0.5（非退化、有梯度）
             for blk in self.blocks:
                 nn.init.zeros_(blk.carry_scale)    # **单边零**：起步恒等于无通道基线
+        # 重建解码头（ticket 36 波二 U2 线）：建在参数 init 循环之后 ⇒ 不消耗其余
+        # 参数的随机数（同 seed 下「有头 / 无头」两臂主干逐位相同，单测钉住）。
+        # 它**不参与模型自身 logits**：只被 `pathlm/recon_signal.recon_loss` 使用。
+        if cfg.recon_window > 0:
+            self.recon_head = build_recon_head(cfg, vocab_size)
 
     # ---------- 读出 ----------
 

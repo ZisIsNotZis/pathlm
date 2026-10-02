@@ -310,26 +310,36 @@ python3 tools/check_schema.py           # 格式/完备/证据锚点
 
 ```bash
 # 取锁（最多等 10 分钟；等不到就上报，不许杀别人的进程）
+LOCK=/tmp/pathlm_gpu.lock
 n=0
-until mkdir /tmp/pathlm_gpu.lock 2>/dev/null; do
-  # 自愈回收（任一条成立即可回收，必须打印理由）
-  hp=$(cat /tmp/pathlm_gpu.lock/holder_pid 2>/dev/null)
-  if [ -n "$hp" ] && ! kill -0 "$hp" 2>/dev/null; then
-    echo "reclaim: holder pid $hp 已死"; rmdir /tmp/pathlm_gpu.lock 2>/dev/null; continue
-  fi
-  if [ -d /tmp/pathlm_gpu.lock ] && [ $(( $(date +%s) - $(stat -c %Y /tmp/pathlm_gpu.lock) )) -gt 600 ] \
-     && ! pgrep -af "train_depth_ar|run.py" >/dev/null; then
-    echo "reclaim: 锁 mtime >10min 且无本仓 GPU 进程"; rmdir /tmp/pathlm_gpu.lock 2>/dev/null; continue
+while ! mkdir "$LOCK" 2>/dev/null; do
+  hp=$(cat "$LOCK/holder_pid" 2>/dev/null)
+  stale=0; reason=""
+  if [ -n "$hp" ] && ! kill -0 "$hp" 2>/dev/null; then stale=1; reason="holder_pid $hp 已死"; fi
+  if [ -z "$hp" ] && [ -d "$LOCK" ] && [ $(( $(date +%s) - $(stat -c %Y "$LOCK") )) -gt 900 ]; then
+    stale=1; reason="无 holder_pid 且锁龄 >15min"; fi
+  if [ $stale -eq 1 ]; then
+    echo "reclaim: $reason"
+    rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null   # 关键：先清空内容再 rmdir
+    rmdir "$LOCK" 2>/dev/null || true
+    continue
   fi
   sleep 15; n=$((n+1)); [ $n -gt 40 ] && exit 9
 done
-echo $$ > /tmp/pathlm_gpu.lock/holder_pid            # 自愈所需的持有者标识
-trap 'rmdir /tmp/pathlm_gpu.lock 2>/dev/null' EXIT
-# ... 你的 GPU 工作（峰值 ≤5GB net；长训练 nohup 后台 + ≤110s 轮询，轮询期间保持持锁）...
-rmdir /tmp/pathlm_gpu.lock 2>/dev/null
+echo $$ > "$LOCK/holder_pid"; touch "$LOCK/heartbeat"
+trap 'rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/null' EXIT
+# ... GPU 工作（峰值 ≤5GB net；长训练 nohup 后台 + ≤110s 轮询，轮询时 touch "$LOCK/heartbeat"）...
+rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/null
 ```
 
-**自愈判定（2026-10-02 孤儿锁事故后新增）**：等待者**不再**只看 120 分钟；**任一条成立即可回收**：
+**自愈判定（2026-10-02 孤儿锁事故后新增；同日修两处 bug）**：
+- **bug ①（全体受害）**：锁目录里有 `holder_pid` ⇒ `rmdir` 删不掉非空目录 ⇒ **每个 EXIT trap 都在漏锁**。
+  修法：释放与回收一律**先 `rm -f` 内容再 `rmdir`**。
+- **bug ②（回收失效 + 空转）**：回收条件用 `pgrep -af "train_depth_ar|run.py"`，会**命中等待者自己的命令行**
+  （`pgrep` 经典陷阱）⇒ 陈旧锁永不回收；且回收失败后 `continue` 无 `sleep` ⇒ 实测空转 2800 s。
+  修法：**放弃 pgrep 判据**，只用 `holder_pid` 存活性；无 `holder_pid` 的老锁按锁龄 >15 min 回收；
+  回收分支必须先清空再删，且循环路径上始终有 `sleep`。
+：等待者**不再**只看 120 分钟；**任一条成立即可回收**：
 ① 锁目录内 `holder_pid` 不存在或进程已死；② 锁目录 mtime 超过 **10 分钟**且确认无本仓 GPU 进程。
 （事故：harness 杀进程会**跳过 EXIT trap**，持锁 shell 死掉后锁永久残留，三条 GPU 线全部卡死 ⇒ 必须有自愈。）
 

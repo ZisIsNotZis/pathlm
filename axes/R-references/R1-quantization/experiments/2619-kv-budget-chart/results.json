@@ -1,0 +1,5945 @@
+{
+ "experiment": "2619-kv-budget-chart",
+ "contract": ".scratch/36-parallel/issues/01-parallel.md §「波二 U3 线」",
+ "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。本实验为测量/汇总类（无训练、无新参数）。",
+ "config": {
+  "experiment": "2619-kv-budget-chart",
+  "line": "ticket 36 波二 · U3 线（统一 KV 预算参照线总图）",
+  "contract": ".scratch/36-parallel/issues/01-parallel.md §「波二 U3 线」",
+  "contract_copy": "README.md（同目录，判据线逐字）",
+  "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。本实验为测量/汇总类（无训练、无新参数）。",
+  "axis_definition": {
+   "quantity": "bytes_per_position",
+   "formula": "2(K,V) * n_layers * n_kv_heads_eff * head_dim * value_bytes * (positions_kept / T)",
+   "unit": "字节 / 上下文位置",
+   "seq_len_T": 256,
+   "strictness": "所有点的横轴坐标必须由本公式算出（判据 C1）；无法用本公式表达的点不入图。",
+   "per_position_bytes_fp16_full": 12288,
+   "caveats": [
+    "窗口档的 positions_kept/T 随评测长度 T 变化 —— 本图所有窗口点都在 T=256 上测；T 越长窗口越便宜（未测）。",
+    "头共享档是『换模型再训』（架构改动），量化/窗口档是『同一模型改推理』（推理期改动）——两者基线不同（trunk 1.483569 vs mha 1.482026，差 0.0016 为同配置重训散度）。",
+    "本列是解析（部署口径）KV 占用；评测期实现会把 K/V 立刻反量化/按掩码取子集，故实测显存峰值不随档下降，两者必须分列（判据 C2）。"
+   ]
+  },
+  "checkpoints": {
+   "trunk": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "role": "trunk 族（量化 / 窗口）的被测模型：13.5M dense decoder-only，12k 步，clean bpc 1.483569",
+    "train_ref": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/MODEL.md"
+   },
+   "head_family": {
+    "root": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs",
+    "registry": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/model_hashes.json",
+    "arms": {
+     "mha": {
+      "run": "mha-12k-s0",
+      "n_kv_heads": null,
+      "sha256": "557453eb12b56a453b29ea279cdbbc0969cfa6bf0dbe1cdbd9965cd6cec62528"
+     },
+     "gqa": {
+      "run": "gqa-12k-s0",
+      "n_kv_heads": 2,
+      "sha256": "bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00"
+     },
+     "mqa": {
+      "run": "mqa-12k-s0",
+      "n_kv_heads": 1,
+      "sha256": "24bdfe7f1549107175e9343444372a6abe3aba7c6ba2423e8ab069a145b1ea97"
+     }
+    },
+    "role": "head 族（MHA/GQA/MQA）的被测模型：同配方 12k 步（d256/L12/H8/mlp6/seq256/seed0）"
+   }
+  },
+  "model": {
+   "d_model": 256,
+   "n_layers": 12,
+   "n_heads": 8,
+   "seq_len": 256,
+   "mlp_mult": 6,
+   "dense": true
+  },
+  "arms": {
+   "fp16": {
+    "family": "trunk",
+    "kind": "quant",
+    "mode": "fp16",
+    "value_bytes": 2.0,
+    "positions_kept": 256,
+    "role": "本族基线（不压缩、fp16 存储）"
+   },
+   "int8": {
+    "family": "trunk",
+    "kind": "quant",
+    "mode": "int8",
+    "value_bytes": 1.0,
+    "positions_kept": 256,
+    "role": "R1 参照线：KV int8 对称 per-channel 往返"
+   },
+   "int4": {
+    "family": "trunk",
+    "kind": "quant",
+    "mode": "int4",
+    "value_bytes": 0.5,
+    "positions_kept": 256,
+    "role": "R1 参照线：KV int4 对称 per-channel 往返"
+   },
+   "win16": {
+    "family": "trunk",
+    "kind": "window",
+    "d": 16,
+    "value_bytes": 2.0,
+    "positions_kept": 16,
+    "role": "M2/A3：只保留最近 16 个位置"
+   },
+   "win32": {
+    "family": "trunk",
+    "kind": "window",
+    "d": 32,
+    "value_bytes": 2.0,
+    "positions_kept": 32,
+    "role": "M2/A3：只保留最近 32 个位置（ERRATA 的累计口径）"
+   },
+   "win64": {
+    "family": "trunk",
+    "kind": "window",
+    "d": 64,
+    "value_bytes": 2.0,
+    "positions_kept": 64,
+    "role": "M2/A3：只保留最近 64 个位置"
+   },
+   "win128": {
+    "family": "trunk",
+    "kind": "window",
+    "d": 128,
+    "value_bytes": 2.0,
+    "positions_kept": 128,
+    "role": "M2/A3：只保留最近 128 个位置"
+   },
+   "win144": {
+    "family": "trunk",
+    "kind": "window",
+    "d": 144,
+    "value_bytes": 2.0,
+    "positions_kept": 144,
+    "role": "M2/A3：只保留最近 144 个位置（2615 检索腿的『低损伤』边界档）"
+   },
+   "win160": {
+    "family": "trunk",
+    "kind": "window",
+    "d": 160,
+    "value_bytes": 2.0,
+    "positions_kept": 160,
+    "role": "M2/A3：只保留最近 160 个位置"
+   },
+   "win176": {
+    "family": "trunk",
+    "kind": "window",
+    "d": 176,
+    "value_bytes": 2.0,
+    "positions_kept": 176,
+    "role": "M2/A3：只保留最近 176 个位置"
+   },
+   "win192": {
+    "family": "trunk",
+    "kind": "window",
+    "d": 192,
+    "value_bytes": 2.0,
+    "positions_kept": 192,
+    "role": "M2/A3：只保留最近 192 个位置"
+   },
+   "mha": {
+    "family": "head",
+    "kind": "head",
+    "n_kv_heads": 8,
+    "value_bytes": 2.0,
+    "positions_kept": 256,
+    "role": "head 族基线（MHA）"
+   },
+   "gqa": {
+    "family": "head",
+    "kind": "head",
+    "n_kv_heads": 2,
+    "value_bytes": 2.0,
+    "positions_kept": 256,
+    "role": "W3：GQA（KV −75%）"
+   },
+   "mqa": {
+    "family": "head",
+    "kind": "head",
+    "n_kv_heads": 1,
+    "value_bytes": 2.0,
+    "positions_kept": 256,
+    "role": "W3：MQA（KV −87.5%）"
+   }
+  },
+  "family_baseline": {
+   "trunk": "fp16",
+   "head": "mha"
+  },
+  "data": {
+   "name": "enwik8_full",
+   "path": "data/enwik8_full.npz",
+   "split": "前 90M 训练 / 末 10M 评测（本实验只用评测尾段跑 bpc）",
+   "vocab_size": 206,
+   "n_real_tokens": 205,
+   "mask_token": 205,
+   "bpc_only": true,
+   "note": "合成召回任务不使用 enwik8 文本，只用词表大小（206）；SCHEMA §19 不用 enwik8 当长程主任务。"
+  },
+  "tokens": {
+   "sym_vocab": 64,
+   "filler_token": 64,
+   "cue_token": 205,
+   "local_k": 8
+  },
+  "tasks": {
+   "copy": {
+    "copy_len": 32,
+    "src_positions": [
+     0,
+     96,
+     191
+    ],
+    "batch_size": 16,
+    "n_batches": 2,
+    "role": "合成长程召回主腿：远处随机片段原样复制；答案不可由局部先验猜出"
+   },
+   "induction": {
+    "prefix_len": 192,
+    "copy_len": 32,
+    "src_starts": [
+     0,
+     159
+    ],
+    "batch_size": 16,
+    "n_batches": 16,
+    "role": "副腿：末尾重复段之后的那一项（induction）；M=1 ⇒ 用更多批把 n 提到 512"
+   },
+   "var_recall": {
+    "distances": [
+     64,
+     192
+    ],
+    "batch_size": 16,
+    "n_batches": 16,
+    "role": "副腿：单 (key,value) 变距离回忆（本主干预期落在地板，用于如实记录不可分辨）；n=512"
+   }
+  },
+  "controls": {
+   "chance": "uniform_answer_set = 1/sym_vocab = 1/64",
+   "local_prior": "longrange_tasks.local_prior_accuracy(k=8)",
+   "corrupt_source": "copy 任务源片段整段换随机符号（fp16 臂）——测读数是否真来自被搬运的信息",
+   "baseline_anchor_bpc": 1.483569,
+   "baseline_anchor_source": "axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/results.json::instrument.bpc_full_release_path"
+  },
+  "eval": {
+   "bpc_method": "run.py::bpc_of（本轮统一路径：因果移位 CE token 平均，逐臂同一 logits_fn 接口）",
+   "bpc_cross_path_check": "retention.masked_bpc（独立路径，逐位对照）",
+   "n_batches": 24,
+   "batch_size": 16,
+   "window_seed": 2,
+   "device": "cuda",
+   "note": "window_seed=2 + 24×16 与 2610/2614/2615/2616 同一窗口序 ⇒ clean bpc 与历史基线同口径可比"
+  },
+  "criterion": {
+   "verbatim_contract": [
+    "把已实测的四类点画到同一横轴「每位置 KV 字节」：int8/int4 量化（R1）、GQA/MQA（W3）、驱逐/窗口（M2）、以及「不压缩」基线；纵轴至少两条腿：clean bpc 与合成长程检索召回（用 tools/evalkit/longrange_tasks.py）。",
+    "产出**一张图（PNG 或 ASCII/表格）+ 一张表**，每点含（字节/位置、Δbpc、召回、来源路径、口径），并明确标出缺失组合（我们没测的）作为下一批候选。禁止把解析内存与实测显存混在一列。"
+   ],
+   "sign_convention": "SCHEMA §17.3：Δ_schema = bpc_对照 − bpc_实验（正 = 实验臂更好）；damage_bpc = bpc_实验 − bpc_对照（正 = 更差）。本实验的『对照』= 本族基线。",
+   "variance_band_bpc": 0.014,
+   "recall_ci": "Wilson 95%",
+   "recall_at_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（读作『在该任务上不可分辨』，不得写成『机制无效』）"
+  },
+  "reuse": {
+   "policy": "SCHEMA §9：复用历史 run 只省算力、不省证据",
+   "bpc_recompute": "全部 14 臂在本实验内**同进程重测**（不做跨 run 取数）；来源实验的值只用于对照",
+   "checkpoint_sha256_asserted": true,
+   "code_anchors": [
+    "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/run.py",
+    "tools/evalkit/longrange_tasks.py",
+    "tools/evalkit/kv_quant.py",
+    "tools/evalkit/retention.py"
+   ]
+  },
+  "cost": {
+   "gpu_wall_budget_min": 20,
+   "gpu_wall_budget_source": "契约 U3「成本 ≈20 min（纯 eval + 汇总已有 json）」",
+   "budget_cut_rule": "预算不够时砍任务档数（先砍 var_recall，再砍 induction），保 copy 主腿与全部预算点；不砍判据线（SCHEMA §8/§17.7）",
+   "peak_mem_budget_gib": 5,
+   "smoke": "python3 run.py --smoke（缩小批量/档数，实测步时与显存，不外推时间）"
+  },
+  "reproducibility": {
+   "rerun": true,
+   "max_abs_delta_bpc_threshold": 0.005,
+   "nondeterminism_note": "纯推理、无随机采样；同 seed 重跑应逐位相同"
+  },
+  "seed": 7
+ },
+ "smoke": false,
+ "instrument": {
+  "bpc_path": {
+   "bpc_of": 1.483569,
+   "retention.masked_bpc": 1.483569,
+   "abs_diff": 0.0,
+   "bitwise_equal": true,
+   "anchor_2614_release_bpc": 1.483569,
+   "abs_diff_vs_anchor": 2.3767567713939286e-07,
+   "mode": "fp32（恒等：KV 数值未改）"
+  },
+  "synth_path": {
+   "run.py::synth_accuracy": 0.007812,
+   "longrange_tasks.accuracy": 0.007812,
+   "n_equal": true,
+   "n_hits_equal": true,
+   "by_distance_equal": true
+  },
+  "note": "两条腿都先证明「本实验路径 == 既有仪器路径」，再进入跨臂比较（SCHEMA §9 实现层等值）。"
+ },
+ "controls": {
+  "chance_uniform": 0.015625,
+  "local_prior_copy": {
+   "accuracy": 0.014648,
+   "n": 1024,
+   "n_hits": 15,
+   "by_distance": {
+    "223": {
+     "accuracy": 0.014648,
+     "n": 1024
+    }
+   },
+   "k": 8
+  },
+  "local_prior_induction": {
+   "accuracy": 0.015625,
+   "n": 256,
+   "n_hits": 4,
+   "by_distance": {
+    "224": {
+     "accuracy": 0.015625,
+     "n": 256
+    }
+   },
+   "k": 8
+  },
+  "local_prior_var_recall": {
+   "accuracy": 0.019531,
+   "n": 256,
+   "n_hits": 5,
+   "by_distance": {
+    "64": {
+     "accuracy": 0.019531,
+     "n": 256
+    }
+   },
+   "k": 8
+  },
+  "local_prior_resistance": {
+   "copy": {
+    "task": "copy",
+    "chance": 0.015625,
+    "ceiling": 0.046875,
+    "local_prior_accuracy": 0.014648,
+    "passed": true,
+    "n": 1024,
+    "k": 8,
+    "by_distance": {
+     "223": {
+      "accuracy": 0.014648,
+      "n": 1024
+     }
+    }
+   },
+   "induction": {
+    "task": "induction",
+    "chance": 0.015625,
+    "ceiling": 0.046875,
+    "local_prior_accuracy": 0.015625,
+    "passed": true,
+    "n": 256,
+    "k": 8,
+    "by_distance": {
+     "224": {
+      "accuracy": 0.015625,
+      "n": 256
+     }
+    }
+   },
+   "var_recall": {
+    "task": "var_recall",
+    "chance": 0.015625,
+    "ceiling": 0.046875,
+    "local_prior_accuracy": 0.019531,
+    "passed": true,
+    "n": 256,
+    "k": 8,
+    "by_distance": {
+     "64": {
+      "accuracy": 0.019531,
+      "n": 256
+     }
+    }
+   }
+  },
+  "corrupt_source_note": "把 copy 主腿的源片段整段换成随机符号（其余逐位不变）：读数若真的来自被搬运的信息，必须落回 chance。**逐臂**都报了该对照（`recall_copy_source_corrupt`），因为窗口臂即使源可见也不会看到它。"
+ },
+ "cross_check_vs_source": {
+  "rows": [
+   {
+    "arm": "fp16",
+    "this_bpc": 1.483571,
+    "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+    "source_bpc": 1.483571,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "int8",
+    "this_bpc": 1.483721,
+    "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+    "source_bpc": 1.483721,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "int4",
+    "this_bpc": 1.529232,
+    "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+    "source_bpc": 1.529232,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win16",
+    "this_bpc": 2.085526,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": 2.085526,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win32",
+    "this_bpc": 1.695384,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": 1.695384,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win64",
+    "this_bpc": 1.564077,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": 1.564077,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win128",
+    "this_bpc": 1.503634,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": 1.503634,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win144",
+    "this_bpc": 1.497328,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": 1.497328,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win160",
+    "this_bpc": 1.492435,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": 1.492435,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win176",
+    "this_bpc": 1.489695,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": 1.489695,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "win192",
+    "this_bpc": 1.487744,
+    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source_bpc": 1.487744,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "mha",
+    "this_bpc": 1.482026,
+    "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+    "source_bpc": 1.482026,
+    "source_bpc_headline": 1.482,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "gqa",
+    "this_bpc": 1.496325,
+    "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+    "source_bpc": 1.496325,
+    "source_bpc_headline": 1.4963,
+    "abs_diff": 0.0,
+    "match": true
+   },
+   {
+    "arm": "mqa",
+    "this_bpc": 1.493763,
+    "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+    "source_bpc": 1.493763,
+    "source_bpc_headline": 1.4938,
+    "abs_diff": 0.0,
+    "match": true
+   }
+  ],
+  "all_matched": true,
+  "note": "本实验 14 臂全部同进程重测；此表证明与来源实验一致。"
+ },
+ "points": [
+  {
+   "arm": "fp16",
+   "role": "本族基线（不压缩、fp16 存储）",
+   "family": "trunk",
+   "class": "baseline",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.483571,
+   "damage_bpc": 0.0,
+   "family_baseline": "fp16",
+   "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+   "activity": {
+    "kind": "quant",
+    "mode": "fp16",
+    "n_values": 6291456,
+    "mean_abs_err": 0.000167348,
+    "max_abs_err": 0.00390625,
+    "rel_err": 0.000176208,
+    "changed_frac": 0.999846458,
+    "clipped_frac": 0.0
+   },
+   "recall_copy": {
+    "accuracy": 0.141276,
+    "n": 3072,
+    "n_hits": 434,
+    "wilson95": [
+     0.129407,
+     0.154041
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.125977,
+      "n": 1024,
+      "n_hits": 129
+     },
+     "127": {
+      "accuracy": 0.157227,
+      "n": 1024,
+      "n_hits": 161
+     },
+     "223": {
+      "accuracy": 0.140625,
+      "n": 1024,
+      "n_hits": 144
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.140625,
+      "n": 1024,
+      "n_hits": 144,
+      "wilson95": [
+       0.120673,
+       0.163263
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.157227,
+      "n": 1024,
+      "n_hits": 161,
+      "wilson95": [
+       0.136217,
+       0.180798
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.125977,
+      "n": 1024,
+      "n_hits": 129,
+      "wilson95": [
+       0.107041,
+       0.147708
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.011393,
+    "n": 3072,
+    "n_hits": 35,
+    "wilson95": [
+     0.008204,
+     0.015803
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10
+     },
+     "127": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16
+     },
+     "223": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9,
+      "wilson95": [
+       0.004631,
+       0.016619
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16,
+      "wilson95": [
+       0.00964,
+       0.02523
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10,
+      "wilson95": [
+       0.005313,
+       0.017883
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.064453,
+    "n": 512,
+    "n_hits": 33,
+    "wilson95": [
+     0.046259,
+     0.089134
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.085938,
+      "n": 256,
+      "n_hits": 22
+     },
+     "224": {
+      "accuracy": 0.042969,
+      "n": 256,
+      "n_hits": 11
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.042969,
+      "n": 256,
+      "n_hits": 11,
+      "wilson95": [
+       0.02416,
+       0.075291
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.085938,
+      "n": 256,
+      "n_hits": 22,
+      "wilson95": [
+       0.057436,
+       0.126682
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.003906,
+    "n": 512,
+    "n_hits": 2,
+    "wilson95": [
+     0.001072,
+     0.014129
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "b",
+   "bytes_per_position": 12288.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 256,
+   "factor_positions_kept_over_T": 1.0,
+   "T": 256,
+   "delta_schema": 0.0,
+   "kv_reduction_vs_family_baseline": 0.0
+  },
+  {
+   "arm": "int8",
+   "role": "R1 参照线：KV int8 对称 per-channel 往返",
+   "family": "trunk",
+   "class": "quant",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.483721,
+   "damage_bpc": 0.00015,
+   "family_baseline": "fp16",
+   "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+   "activity": {
+    "kind": "quant",
+    "mode": "int8",
+    "n_values": 6291456,
+    "mean_abs_err": 0.004589118,
+    "max_abs_err": 0.054513931,
+    "rel_err": 0.004832245,
+    "changed_frac": 0.998282115,
+    "clipped_frac": 0.000302951,
+    "scale_min": 0.0012000731658190489,
+    "scale_max": 0.10916200280189514
+   },
+   "recall_copy": {
+    "accuracy": 0.142578,
+    "n": 3072,
+    "n_hits": 438,
+    "wilson95": [
+     0.13066,
+     0.155389
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.126953,
+      "n": 1024,
+      "n_hits": 130
+     },
+     "127": {
+      "accuracy": 0.157227,
+      "n": 1024,
+      "n_hits": 161
+     },
+     "223": {
+      "accuracy": 0.143555,
+      "n": 1024,
+      "n_hits": 147
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.140625,
+      "n": 1024,
+      "n_hits": 144,
+      "wilson95": [
+       0.120673,
+       0.163263
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.158203,
+      "n": 1024,
+      "n_hits": 162,
+      "wilson95": [
+       0.137134,
+       0.181827
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.126953,
+      "n": 1024,
+      "n_hits": 130,
+      "wilson95": [
+       0.107947,
+       0.148748
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.011068,
+    "n": 3072,
+    "n_hits": 34,
+    "wilson95": [
+     0.007931,
+     0.015426
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9
+     },
+     "127": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16
+     },
+     "223": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9,
+      "wilson95": [
+       0.004631,
+       0.016619
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16,
+      "wilson95": [
+       0.00964,
+       0.02523
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9,
+      "wilson95": [
+       0.004631,
+       0.016619
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.0625,
+    "n": 512,
+    "n_hits": 32,
+    "wilson95": [
+     0.044617,
+     0.0869
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.082031,
+      "n": 256,
+      "n_hits": 21
+     },
+     "224": {
+      "accuracy": 0.042969,
+      "n": 256,
+      "n_hits": 11
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.042969,
+      "n": 256,
+      "n_hits": 11,
+      "wilson95": [
+       0.02416,
+       0.075291
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.082031,
+      "n": 256,
+      "n_hits": 21,
+      "wilson95": [
+       0.054278,
+       0.122143
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.003906,
+    "n": 512,
+    "n_hits": 2,
+    "wilson95": [
+     0.001072,
+     0.014129
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "8",
+   "bytes_per_position": 6144.0,
+   "factor_value_bytes": 1.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 256,
+   "factor_positions_kept_over_T": 1.0,
+   "T": 256,
+   "delta_schema": -0.00015,
+   "kv_reduction_vs_family_baseline": 0.5
+  },
+  {
+   "arm": "int4",
+   "role": "R1 参照线：KV int4 对称 per-channel 往返",
+   "family": "trunk",
+   "class": "quant",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.529232,
+   "damage_bpc": 0.045661,
+   "family_baseline": "fp16",
+   "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+   "activity": {
+    "kind": "quant",
+    "mode": "int4",
+    "n_values": 6291456,
+    "mean_abs_err": 0.083444878,
+    "max_abs_err": 0.992912471,
+    "rel_err": 0.087690974,
+    "changed_frac": 0.999168396,
+    "clipped_frac": 0.0,
+    "scale_min": 0.021772755309939384,
+    "scale_max": 1.9902470111846924
+   },
+   "recall_copy": {
+    "accuracy": 0.124674,
+    "n": 3072,
+    "n_hits": 383,
+    "wilson95": [
+     0.113459,
+     0.136827
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.113281,
+      "n": 1024,
+      "n_hits": 116
+     },
+     "127": {
+      "accuracy": 0.130859,
+      "n": 1024,
+      "n_hits": 134
+     },
+     "223": {
+      "accuracy": 0.129883,
+      "n": 1024,
+      "n_hits": 133
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.129883,
+      "n": 1024,
+      "n_hits": 133,
+      "wilson95": [
+       0.110668,
+       0.151864
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.131836,
+      "n": 1024,
+      "n_hits": 135,
+      "wilson95": [
+       0.112484,
+       0.15394
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.113281,
+      "n": 1024,
+      "n_hits": 116,
+      "wilson95": [
+       0.095297,
+       0.134156
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.010091,
+    "n": 3072,
+    "n_hits": 31,
+    "wilson95": [
+     0.007118,
+     0.014288
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10
+     },
+     "127": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     },
+     "223": {
+      "accuracy": 0.006836,
+      "n": 1024,
+      "n_hits": 7
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.005859,
+      "n": 1024,
+      "n_hits": 6,
+      "wilson95": [
+       0.002688,
+       0.012724
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10,
+      "wilson95": [
+       0.005313,
+       0.017883
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.048828,
+    "n": 512,
+    "n_hits": 25,
+    "wilson95": [
+     0.033289,
+     0.071087
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.0625,
+      "n": 256,
+      "n_hits": 16
+     },
+     "224": {
+      "accuracy": 0.035156,
+      "n": 256,
+      "n_hits": 9
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.035156,
+      "n": 256,
+      "n_hits": 9,
+      "wilson95": [
+       0.018604,
+       0.065453
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.0625,
+      "n": 256,
+      "n_hits": 16,
+      "wilson95": [
+       0.038834,
+       0.099102
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.001953,
+    "n": 512,
+    "n_hits": 1,
+    "wilson95": [
+     0.000345,
+     0.010979
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1,
+      "wilson95": [
+       0.00069,
+       0.021791
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "4",
+   "bytes_per_position": 3072.0,
+   "factor_value_bytes": 0.5,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 256,
+   "factor_positions_kept_over_T": 1.0,
+   "T": 256,
+   "delta_schema": -0.045661,
+   "kv_reduction_vs_family_baseline": 0.75
+  },
+  {
+   "arm": "win16",
+   "role": "M2/A3：只保留最近 16 个位置",
+   "family": "trunk",
+   "class": "window",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 2.085526,
+   "damage_bpc": 0.601955,
+   "family_baseline": "fp16",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "activity": {
+    "kind": "window",
+    "d": 16,
+    "n_dropped_pairs": 28920,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.87913424,
+    "n_dropped_keys": 240,
+    "diagonal_kept": true
+   },
+   "recall_copy": {
+    "accuracy": 0.014974,
+    "n": 3072,
+    "n_hits": 46,
+    "wilson95": [
+     0.011245,
+     0.019914
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15
+     },
+     "127": {
+      "accuracy": 0.017578,
+      "n": 1024,
+      "n_hits": 18
+     },
+     "223": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.017578,
+      "n": 1024,
+      "n_hits": 18,
+      "wilson95": [
+       0.011148,
+       0.027615
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15,
+      "wilson95": [
+       0.008897,
+       0.024028
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": true
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.015299,
+    "n": 3072,
+    "n_hits": 47,
+    "wilson95": [
+     0.011525,
+     0.020285
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16
+     },
+     "127": {
+      "accuracy": 0.017578,
+      "n": 1024,
+      "n_hits": 18
+     },
+     "223": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.017578,
+      "n": 1024,
+      "n_hits": 18,
+      "wilson95": [
+       0.011148,
+       0.027615
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16,
+      "wilson95": [
+       0.00964,
+       0.02523
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.013672,
+    "n": 512,
+    "n_hits": 7,
+    "wilson95": [
+     0.006638,
+     0.027949
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1
+     },
+     "224": {
+      "accuracy": 0.023438,
+      "n": 256,
+      "n_hits": 6
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.023438,
+      "n": 256,
+      "n_hits": 6,
+      "wilson95": [
+       0.010785,
+       0.050181
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1,
+      "wilson95": [
+       0.00069,
+       0.021791
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.001953,
+    "n": 512,
+    "n_hits": 1,
+    "wilson95": [
+     0.000345,
+     0.010979
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1,
+      "wilson95": [
+       0.00069,
+       0.021791
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "w",
+   "bytes_per_position": 768.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 16,
+   "factor_positions_kept_over_T": 0.0625,
+   "T": 256,
+   "delta_schema": -0.601955,
+   "kv_reduction_vs_family_baseline": 0.9375
+  },
+  {
+   "arm": "win32",
+   "role": "M2/A3：只保留最近 32 个位置（ERRATA 的累计口径）",
+   "family": "trunk",
+   "class": "window",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.695384,
+   "damage_bpc": 0.211813,
+   "family_baseline": "fp16",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "activity": {
+    "kind": "window",
+    "d": 32,
+    "n_dropped_pairs": 25200,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.76605058,
+    "n_dropped_keys": 224,
+    "diagonal_kept": true
+   },
+   "recall_copy": {
+    "accuracy": 0.013997,
+    "n": 3072,
+    "n_hits": 43,
+    "wilson95": [
+     0.010409,
+     0.0188
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.020508,
+      "n": 1024,
+      "n_hits": 21
+     },
+     "127": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     },
+     "223": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8,
+      "wilson95": [
+       0.003964,
+       0.01534
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.020508,
+      "n": 1024,
+      "n_hits": 21,
+      "wilson95": [
+       0.013452,
+       0.031148
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": true
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.011393,
+    "n": 3072,
+    "n_hits": 35,
+    "wilson95": [
+     0.008204,
+     0.015803
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     },
+     "127": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     },
+     "223": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8,
+      "wilson95": [
+       0.003964,
+       0.01534
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.011719,
+    "n": 512,
+    "n_hits": 6,
+    "wilson95": [
+     0.005382,
+     0.025328
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3
+     },
+     "224": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3,
+      "wilson95": [
+       0.003993,
+       0.033882
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3,
+      "wilson95": [
+       0.003993,
+       0.033882
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.001953,
+    "n": 512,
+    "n_hits": 1,
+    "wilson95": [
+     0.000345,
+     0.010979
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1,
+      "wilson95": [
+       0.00069,
+       0.021791
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "w",
+   "bytes_per_position": 1536.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 32,
+   "factor_positions_kept_over_T": 0.125,
+   "T": 256,
+   "delta_schema": -0.211813,
+   "kv_reduction_vs_family_baseline": 0.875
+  },
+  {
+   "arm": "win64",
+   "role": "M2/A3：只保留最近 64 个位置",
+   "family": "trunk",
+   "class": "window",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.564077,
+   "damage_bpc": 0.080506,
+   "family_baseline": "fp16",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "activity": {
+    "kind": "window",
+    "d": 64,
+    "n_dropped_pairs": 18528,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.56322957,
+    "n_dropped_keys": 192,
+    "diagonal_kept": true
+   },
+   "recall_copy": {
+    "accuracy": 0.058919,
+    "n": 3072,
+    "n_hits": 181,
+    "wilson95": [
+     0.05113,
+     0.06781
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.143555,
+      "n": 1024,
+      "n_hits": 147
+     },
+     "127": {
+      "accuracy": 0.020508,
+      "n": 1024,
+      "n_hits": 21
+     },
+     "223": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.020508,
+      "n": 1024,
+      "n_hits": 21,
+      "wilson95": [
+       0.013452,
+       0.031148
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.143555,
+      "n": 1024,
+      "n_hits": 147,
+      "wilson95": [
+       0.12341,
+       0.166364
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.016276,
+    "n": 3072,
+    "n_hits": 50,
+    "wilson95": [
+     0.012368,
+     0.021393
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15
+     },
+     "127": {
+      "accuracy": 0.021484,
+      "n": 1024,
+      "n_hits": 22
+     },
+     "223": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.021484,
+      "n": 1024,
+      "n_hits": 22,
+      "wilson95": [
+       0.01423,
+       0.032315
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15,
+      "wilson95": [
+       0.008897,
+       0.024028
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.013672,
+    "n": 512,
+    "n_hits": 7,
+    "wilson95": [
+     0.006638,
+     0.027949
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3
+     },
+     "224": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4,
+      "wilson95": [
+       0.006093,
+       0.039479
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.011719,
+      "n": 256,
+      "n_hits": 3,
+      "wilson95": [
+       0.003993,
+       0.033882
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.005859,
+    "n": 512,
+    "n_hits": 3,
+    "wilson95": [
+     0.001995,
+     0.017084
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1,
+      "wilson95": [
+       0.00069,
+       0.021791
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "w",
+   "bytes_per_position": 3072.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 64,
+   "factor_positions_kept_over_T": 0.25,
+   "T": 256,
+   "delta_schema": -0.080506,
+   "kv_reduction_vs_family_baseline": 0.75
+  },
+  {
+   "arm": "win128",
+   "role": "M2/A3：只保留最近 128 个位置",
+   "family": "trunk",
+   "class": "window",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.503634,
+   "damage_bpc": 0.020063,
+   "family_baseline": "fp16",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "activity": {
+    "kind": "window",
+    "d": 128,
+    "n_dropped_pairs": 8256,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.25097276,
+    "n_dropped_keys": 128,
+    "diagonal_kept": true
+   },
+   "recall_copy": {
+    "accuracy": 0.110026,
+    "n": 3072,
+    "n_hits": 338,
+    "wilson95": [
+     0.099444,
+     0.121582
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.146484,
+      "n": 1024,
+      "n_hits": 150
+     },
+     "127": {
+      "accuracy": 0.170898,
+      "n": 1024,
+      "n_hits": 175
+     },
+     "223": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.170898,
+      "n": 1024,
+      "n_hits": 175,
+      "wilson95": [
+       0.149083,
+       0.195173
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.146484,
+      "n": 1024,
+      "n_hits": 150,
+      "wilson95": [
+       0.126149,
+       0.169462
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.014648,
+    "n": 3072,
+    "n_hits": 45,
+    "wilson95": [
+     0.010966,
+     0.019543
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     },
+     "127": {
+      "accuracy": 0.018555,
+      "n": 1024,
+      "n_hits": 19
+     },
+     "223": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.018555,
+      "n": 1024,
+      "n_hits": 19,
+      "wilson95": [
+       0.01191,
+       0.028798
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.074219,
+    "n": 512,
+    "n_hits": 38,
+    "wilson95": [
+     0.054548,
+     0.100231
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.128906,
+      "n": 256,
+      "n_hits": 33
+     },
+     "224": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5,
+      "wilson95": [
+       0.008371,
+       0.044898
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.128906,
+      "n": 256,
+      "n_hits": 33,
+      "wilson95": [
+       0.093281,
+       0.175504
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.005859,
+    "n": 512,
+    "n_hits": 3,
+    "wilson95": [
+     0.001995,
+     0.017084
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1,
+      "wilson95": [
+       0.00069,
+       0.021791
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "w",
+   "bytes_per_position": 6144.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 128,
+   "factor_positions_kept_over_T": 0.5,
+   "T": 256,
+   "delta_schema": -0.020063,
+   "kv_reduction_vs_family_baseline": 0.5
+  },
+  {
+   "arm": "win144",
+   "role": "M2/A3：只保留最近 144 个位置（2615 检索腿的『低损伤』边界档）",
+   "family": "trunk",
+   "class": "window",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.497328,
+   "damage_bpc": 0.013757,
+   "family_baseline": "fp16",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "activity": {
+    "kind": "window",
+    "d": 144,
+    "n_dropped_pairs": 6328,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.19236381,
+    "n_dropped_keys": 112,
+    "diagonal_kept": true
+   },
+   "recall_copy": {
+    "accuracy": 0.110026,
+    "n": 3072,
+    "n_hits": 338,
+    "wilson95": [
+     0.099444,
+     0.121582
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.150391,
+      "n": 1024,
+      "n_hits": 154
+     },
+     "127": {
+      "accuracy": 0.168945,
+      "n": 1024,
+      "n_hits": 173
+     },
+     "223": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11,
+      "wilson95": [
+       0.006009,
+       0.019133
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.168945,
+      "n": 1024,
+      "n_hits": 173,
+      "wilson95": [
+       0.147242,
+       0.193123
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.150391,
+      "n": 1024,
+      "n_hits": 154,
+      "wilson95": [
+       0.129806,
+       0.173589
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.012695,
+    "n": 3072,
+    "n_hits": 39,
+    "wilson95": [
+     0.009301,
+     0.017307
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     },
+     "127": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16
+     },
+     "223": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10,
+      "wilson95": [
+       0.005313,
+       0.017883
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.015625,
+      "n": 1024,
+      "n_hits": 16,
+      "wilson95": [
+       0.00964,
+       0.02523
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.068359,
+    "n": 512,
+    "n_hits": 35,
+    "wilson95": [
+     0.04956,
+     0.093588
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.117188,
+      "n": 256,
+      "n_hits": 30
+     },
+     "224": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5,
+      "wilson95": [
+       0.008371,
+       0.044898
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.117188,
+      "n": 256,
+      "n_hits": 30,
+      "wilson95": [
+       0.083331,
+       0.162363
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.005859,
+    "n": 512,
+    "n_hits": 3,
+    "wilson95": [
+     0.001995,
+     0.017084
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.003906,
+      "n": 256,
+      "n_hits": 1,
+      "wilson95": [
+       0.00069,
+       0.021791
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "w",
+   "bytes_per_position": 6912.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 144,
+   "factor_positions_kept_over_T": 0.5625,
+   "T": 256,
+   "delta_schema": -0.013757,
+   "kv_reduction_vs_family_baseline": 0.4375
+  },
+  {
+   "arm": "win160",
+   "role": "M2/A3：只保留最近 160 个位置",
+   "family": "trunk",
+   "class": "window",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.492435,
+   "damage_bpc": 0.008864,
+   "family_baseline": "fp16",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "activity": {
+    "kind": "window",
+    "d": 160,
+    "n_dropped_pairs": 4656,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.14153696,
+    "n_dropped_keys": 96,
+    "diagonal_kept": true
+   },
+   "recall_copy": {
+    "accuracy": 0.108724,
+    "n": 3072,
+    "n_hits": 334,
+    "wilson95": [
+     0.098201,
+     0.120225
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.149414,
+      "n": 1024,
+      "n_hits": 153
+     },
+     "127": {
+      "accuracy": 0.166016,
+      "n": 1024,
+      "n_hits": 170
+     },
+     "223": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.010742,
+      "n": 1024,
+      "n_hits": 11,
+      "wilson95": [
+       0.006009,
+       0.019133
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.166016,
+      "n": 1024,
+      "n_hits": 170,
+      "wilson95": [
+       0.144482,
+       0.190046
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.149414,
+      "n": 1024,
+      "n_hits": 153,
+      "wilson95": [
+       0.128891,
+       0.172558
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.011393,
+    "n": 3072,
+    "n_hits": 35,
+    "wilson95": [
+     0.008204,
+     0.015803
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9
+     },
+     "127": {
+      "accuracy": 0.016602,
+      "n": 1024,
+      "n_hits": 17
+     },
+     "223": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9,
+      "wilson95": [
+       0.004631,
+       0.016619
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.016602,
+      "n": 1024,
+      "n_hits": 17,
+      "wilson95": [
+       0.010391,
+       0.026426
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9,
+      "wilson95": [
+       0.004631,
+       0.016619
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.066406,
+    "n": 512,
+    "n_hits": 34,
+    "wilson95": [
+     0.047907,
+     0.091363
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.113281,
+      "n": 256,
+      "n_hits": 29
+     },
+     "224": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5,
+      "wilson95": [
+       0.008371,
+       0.044898
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.113281,
+      "n": 256,
+      "n_hits": 29,
+      "wilson95": [
+       0.080041,
+       0.157956
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.003906,
+    "n": 512,
+    "n_hits": 2,
+    "wilson95": [
+     0.001072,
+     0.014129
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "w",
+   "bytes_per_position": 7680.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 160,
+   "factor_positions_kept_over_T": 0.625,
+   "T": 256,
+   "delta_schema": -0.008864,
+   "kv_reduction_vs_family_baseline": 0.375
+  },
+  {
+   "arm": "win176",
+   "role": "M2/A3：只保留最近 176 个位置",
+   "family": "trunk",
+   "class": "window",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.489695,
+   "damage_bpc": 0.006124,
+   "family_baseline": "fp16",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "activity": {
+    "kind": "window",
+    "d": 176,
+    "n_dropped_pairs": 3240,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.09849222,
+    "n_dropped_keys": 80,
+    "diagonal_kept": true
+   },
+   "recall_copy": {
+    "accuracy": 0.107422,
+    "n": 3072,
+    "n_hits": 330,
+    "wilson95": [
+     0.096958,
+     0.118866
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.147461,
+      "n": 1024,
+      "n_hits": 151
+     },
+     "127": {
+      "accuracy": 0.166016,
+      "n": 1024,
+      "n_hits": 170
+     },
+     "223": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9,
+      "wilson95": [
+       0.004631,
+       0.016619
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.166016,
+      "n": 1024,
+      "n_hits": 170,
+      "wilson95": [
+       0.144482,
+       0.190046
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.147461,
+      "n": 1024,
+      "n_hits": 151,
+      "wilson95": [
+       0.127062,
+       0.170495
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.012044,
+    "n": 3072,
+    "n_hits": 37,
+    "wilson95": [
+     0.008751,
+     0.016557
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10
+     },
+     "127": {
+      "accuracy": 0.018555,
+      "n": 1024,
+      "n_hits": 19
+     },
+     "223": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8,
+      "wilson95": [
+       0.003964,
+       0.01534
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.018555,
+      "n": 1024,
+      "n_hits": 19,
+      "wilson95": [
+       0.01191,
+       0.028798
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10,
+      "wilson95": [
+       0.005313,
+       0.017883
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.0625,
+    "n": 512,
+    "n_hits": 32,
+    "wilson95": [
+     0.044617,
+     0.0869
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.101562,
+      "n": 256,
+      "n_hits": 26
+     },
+     "224": {
+      "accuracy": 0.023438,
+      "n": 256,
+      "n_hits": 6
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.023438,
+      "n": 256,
+      "n_hits": 6,
+      "wilson95": [
+       0.010785,
+       0.050181
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.101562,
+      "n": 256,
+      "n_hits": 26,
+      "wilson95": [
+       0.070255,
+       0.144651
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.003906,
+    "n": 512,
+    "n_hits": 2,
+    "wilson95": [
+     0.001072,
+     0.014129
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "w",
+   "bytes_per_position": 8448.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 176,
+   "factor_positions_kept_over_T": 0.6875,
+   "T": 256,
+   "delta_schema": -0.006124,
+   "kv_reduction_vs_family_baseline": 0.3125
+  },
+  {
+   "arm": "win192",
+   "role": "M2/A3：只保留最近 192 个位置",
+   "family": "trunk",
+   "class": "window",
+   "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.487744,
+   "damage_bpc": 0.004173,
+   "family_baseline": "fp16",
+   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "activity": {
+    "kind": "window",
+    "d": 192,
+    "n_dropped_pairs": 2080,
+    "causal_pairs": 32896,
+    "dropped_frac": 0.06322957,
+    "n_dropped_keys": 64,
+    "diagonal_kept": true
+   },
+   "recall_copy": {
+    "accuracy": 0.106445,
+    "n": 3072,
+    "n_hits": 327,
+    "wilson95": [
+     0.096027,
+     0.117847
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.148438,
+      "n": 1024,
+      "n_hits": 152
+     },
+     "127": {
+      "accuracy": 0.162109,
+      "n": 1024,
+      "n_hits": 166
+     },
+     "223": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.008789,
+      "n": 1024,
+      "n_hits": 9,
+      "wilson95": [
+       0.004631,
+       0.016619
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.162109,
+      "n": 1024,
+      "n_hits": 166,
+      "wilson95": [
+       0.140806,
+       0.185939
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.148438,
+      "n": 1024,
+      "n_hits": 152,
+      "wilson95": [
+       0.127976,
+       0.171526
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.012044,
+    "n": 3072,
+    "n_hits": 37,
+    "wilson95": [
+     0.008751,
+     0.016557
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10
+     },
+     "127": {
+      "accuracy": 0.018555,
+      "n": 1024,
+      "n_hits": 19
+     },
+     "223": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8,
+      "wilson95": [
+       0.003964,
+       0.01534
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.018555,
+      "n": 1024,
+      "n_hits": 19,
+      "wilson95": [
+       0.01191,
+       0.028798
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10,
+      "wilson95": [
+       0.005313,
+       0.017883
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.060547,
+    "n": 512,
+    "n_hits": 31,
+    "wilson95": [
+     0.04298,
+     0.084659
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.097656,
+      "n": 256,
+      "n_hits": 25
+     },
+     "224": {
+      "accuracy": 0.023438,
+      "n": 256,
+      "n_hits": 6
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.023438,
+      "n": 256,
+      "n_hits": 6,
+      "wilson95": [
+       0.010785,
+       0.050181
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.097656,
+      "n": 256,
+      "n_hits": 25,
+      "wilson95": [
+       0.067024,
+       0.140185
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.003906,
+    "n": 512,
+    "n_hits": 2,
+    "wilson95": [
+     0.001072,
+     0.014129
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "w",
+   "bytes_per_position": 9216.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 192,
+   "factor_positions_kept_over_T": 0.75,
+   "T": 256,
+   "delta_schema": -0.004173,
+   "kv_reduction_vs_family_baseline": 0.25
+  },
+  {
+   "arm": "mha",
+   "role": "head 族基线（MHA）",
+   "family": "head",
+   "class": "baseline",
+   "checkpoint": {
+    "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt",
+    "sha256": "557453eb12b56a453b29ea279cdbbc0969cfa6bf0dbe1cdbd9965cd6cec62528",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+   },
+   "bpc": 1.482026,
+   "damage_bpc": 0.0,
+   "family_baseline": "mha",
+   "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+   "activity": {
+    "kind": "head",
+    "n_kv_heads": 8,
+    "enabled": false,
+    "mha": true,
+    "n_heads": 8,
+    "head_dim": 32,
+    "group_size": 1,
+    "block_python_class": "Block",
+    "qkv_out_width": 768,
+    "qkv_out_width_mha_equivalent": 768,
+    "k_batch_shape": [
+     4,
+     8,
+     256,
+     32
+    ],
+    "params_per_layer_kv_elems": 512,
+    "params_added": 0,
+    "params_added_note": "MHA（n_kv_heads == n_heads）：无共享，参数与 v1 逐位相同",
+    "kv_qkv_weight_nonzero_frac": 1.0,
+    "kv_qkv_weight_fro": 330.167443,
+    "kv_elems_per_position_per_layer": 512,
+    "kv_elems_per_position": 6144,
+    "kv_bytes_per_position_fp16": 12288,
+    "kv_bytes_per_position_fp32": 24576,
+    "kv_reduction_frac": 0.0,
+    "mha_kv_bytes_per_position_fp16": 12288,
+    "k_proj_per_kv_head_row_norm": [
+     2.696007,
+     2.117582,
+     3.447595,
+     3.008014,
+     3.458506,
+     2.605743,
+     2.819528,
+     3.619385
+    ],
+    "kv_head_pair_max_abs_weight_diff": 0.329497,
+    "kv_rows_fro_mean": 21.369409,
+    "per_layer": [
+     {
+      "layer": 0,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       2.696007,
+       2.117582,
+       3.447595,
+       3.008014,
+       3.458506,
+       2.605743,
+       2.819528,
+       3.619385
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.329497,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.344829
+     },
+     {
+      "layer": 1,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       4.657124,
+       4.661612,
+       3.89515,
+       4.677652,
+       5.063333,
+       5.106948,
+       4.196846,
+       5.133276
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.123011,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 18.225182
+     },
+     {
+      "layer": 2,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       5.931482,
+       6.363838,
+       5.584767,
+       5.777408,
+       5.491821,
+       5.660104,
+       6.55056,
+       5.771769
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.427421,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 21.374987
+     },
+     {
+      "layer": 3,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.23334,
+       7.067846,
+       6.288575,
+       6.180157,
+       6.510381,
+       5.524885,
+       6.035748,
+       6.602264
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.363065,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 23.003002
+     },
+     {
+      "layer": 4,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.550805,
+       5.614795,
+       6.513595,
+       6.464754,
+       5.798258,
+       6.853422,
+       6.437573,
+       6.766465
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.354682,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 23.07457
+     },
+     {
+      "layer": 5,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.348223,
+       5.484228,
+       5.953751,
+       6.616597,
+       6.461418,
+       5.439415,
+       6.638439,
+       6.746096
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.150676,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 22.772787
+     },
+     {
+      "layer": 6,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.111582,
+       5.680002,
+       6.217037,
+       4.942884,
+       6.744008,
+       5.624632,
+       6.218484,
+       6.146624
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.115062,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 22.452177
+     },
+     {
+      "layer": 7,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.818475,
+       6.343605,
+       6.702964,
+       5.627956,
+       6.758563,
+       5.636951,
+       5.948731,
+       6.003482
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.048135,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 22.658112
+     },
+     {
+      "layer": 8,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.769369,
+       6.530401,
+       6.487614,
+       6.706152,
+       6.089996,
+       6.526228,
+       6.74228,
+       5.824721
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.036629,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 22.986259
+     },
+     {
+      "layer": 9,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       5.666479,
+       7.200574,
+       6.202637,
+       6.492287,
+       6.78961,
+       6.706473,
+       6.489775,
+       6.984139
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.952848,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 23.163485
+     },
+     {
+      "layer": 10,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       5.997741,
+       6.518177,
+       6.703611,
+       5.600087,
+       6.602309,
+       6.644446,
+       6.695823,
+       6.75333
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.882814,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 22.30411
+     },
+     {
+      "layer": 11,
+      "class": "Block",
+      "qkv_weight_shape": [
+       768,
+       256
+      ],
+      "qkv_out_width": 768,
+      "k_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 8,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 512,
+      "kv_bytes_per_position_fp16": 1024,
+      "kv_bytes_per_position_fp32": 2048,
+      "k_proj_per_kv_head_row_norm": [
+       6.472607,
+       7.305851,
+       6.277754,
+       6.683568,
+       6.8832,
+       7.383242,
+       6.639261,
+       5.73821
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.716138,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 23.073406
+     }
+    ],
+    "alive": true,
+    "alive_note": "MHA（n_kv_heads == n_heads）：无共享，KV 形状 = [B, n_heads, T, dh]"
+   },
+   "recall_copy": {
+    "accuracy": 0.152995,
+    "n": 3072,
+    "n_hits": 470,
+    "wilson95": [
+     0.140699,
+     0.166157
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.149414,
+      "n": 1024,
+      "n_hits": 153
+     },
+     "127": {
+      "accuracy": 0.141602,
+      "n": 1024,
+      "n_hits": 145
+     },
+     "223": {
+      "accuracy": 0.167969,
+      "n": 1024,
+      "n_hits": 172
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.167969,
+      "n": 1024,
+      "n_hits": 172,
+      "wilson95": [
+       0.146322,
+       0.192098
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.141602,
+      "n": 1024,
+      "n_hits": 145,
+      "wilson95": [
+       0.121585,
+       0.164297
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.149414,
+      "n": 1024,
+      "n_hits": 153,
+      "wilson95": [
+       0.128891,
+       0.172558
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.010091,
+    "n": 3072,
+    "n_hits": 31,
+    "wilson95": [
+     0.007118,
+     0.014288
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     },
+     "127": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10
+     },
+     "223": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8,
+      "wilson95": [
+       0.003964,
+       0.01534
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10,
+      "wilson95": [
+       0.005313,
+       0.017883
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.048828,
+    "n": 512,
+    "n_hits": 25,
+    "wilson95": [
+     0.033289,
+     0.071087
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.042969,
+      "n": 256,
+      "n_hits": 11
+     },
+     "224": {
+      "accuracy": 0.054688,
+      "n": 256,
+      "n_hits": 14
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.054688,
+      "n": 256,
+      "n_hits": 14,
+      "wilson95": [
+       0.032852,
+       0.08969
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.042969,
+      "n": 256,
+      "n_hits": 11,
+      "wilson95": [
+       0.02416,
+       0.075291
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.015625,
+    "n": 512,
+    "n_hits": 8,
+    "wilson95": [
+     0.007938,
+     0.030526
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4
+     },
+     "192": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4,
+      "wilson95": [
+       0.006093,
+       0.039479
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4,
+      "wilson95": [
+       0.006093,
+       0.039479
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "M",
+   "bytes_per_position": 12288.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 8,
+   "factor_positions_kept": 256,
+   "factor_positions_kept_over_T": 1.0,
+   "T": 256,
+   "delta_schema": 0.0,
+   "kv_reduction_vs_family_baseline": 0.0
+  },
+  {
+   "arm": "gqa",
+   "role": "W3：GQA（KV −75%）",
+   "family": "head",
+   "class": "head",
+   "checkpoint": {
+    "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt",
+    "sha256": "bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00",
+    "size_bytes": 49456651,
+    "sha256_verified": true
+   },
+   "bpc": 1.496325,
+   "damage_bpc": 0.014299,
+   "family_baseline": "mha",
+   "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+   "activity": {
+    "kind": "head",
+    "n_kv_heads": 2,
+    "enabled": true,
+    "mha": false,
+    "n_heads": 8,
+    "head_dim": 32,
+    "group_size": 4,
+    "block_python_class": "GQABlock",
+    "qkv_out_width": 384,
+    "qkv_out_width_mha_equivalent": 768,
+    "k_batch_shape": [
+     4,
+     2,
+     256,
+     32
+    ],
+    "params_per_layer_kv_elems": 128,
+    "params_added": -1184256,
+    "params_added_note": "KV 头共享**减少**参数（K/V 投影半边变窄），故为负；= −2·(d − n_kv_heads·dh)·(d+1)·n_layers（含 qkv 偏置的半边差）⇒ 容量差异，见 analysis.md 混杂声明（SCHEMA §15 的剪枝类情形）",
+    "kv_qkv_weight_nonzero_frac": 1.0,
+    "kv_qkv_weight_fro": 252.933667,
+    "kv_elems_per_position_per_layer": 128,
+    "kv_elems_per_position": 1536,
+    "kv_bytes_per_position_fp16": 3072,
+    "kv_bytes_per_position_fp32": 6144,
+    "kv_reduction_frac": 0.75,
+    "mha_kv_bytes_per_position_fp16": 12288,
+    "k_proj_per_kv_head_row_norm": [
+     2.570209,
+     3.162903
+    ],
+    "kv_head_pair_max_abs_weight_diff": 0.368759,
+    "kv_rows_fro_mean": 10.696817,
+    "per_layer": [
+     {
+      "layer": 0,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       2.570209,
+       3.162903
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.368759,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 5.185723
+     },
+     {
+      "layer": 1,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       4.211735,
+       4.235597
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.859921,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.720653
+     },
+     {
+      "layer": 2,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       5.598068,
+       5.98264
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.038866,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 10.622649
+     },
+     {
+      "layer": 3,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.47161,
+       6.013295
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.96702,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.359586
+     },
+     {
+      "layer": 4,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.282112,
+       5.81241
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.890264,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.186337
+     },
+     {
+      "layer": 5,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.707636,
+       5.663027
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.893381,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.557301
+     },
+     {
+      "layer": 6,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.584192,
+       6.697145
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.060624,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.744651
+     },
+     {
+      "layer": 7,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.608265,
+       6.752112
+      ],
+      "kv_head_pair_max_abs_weight_diff": 1.005947,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.733713
+     },
+     {
+      "layer": 8,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.695703,
+       6.108229
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.915643,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.621923
+     },
+     {
+      "layer": 9,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       7.298332,
+       6.23551
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.751672,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 12.062722
+     },
+     {
+      "layer": 10,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       6.664524,
+       6.247923
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.736212,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.124303
+     },
+     {
+      "layer": 11,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       384,
+       256
+      ],
+      "qkv_out_width": 384,
+      "k_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       2,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 2,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 128,
+      "kv_bytes_per_position_fp16": 256,
+      "kv_bytes_per_position_fp32": 512,
+      "k_proj_per_kv_head_row_norm": [
+       5.712683,
+       7.311049
+      ],
+      "kv_head_pair_max_abs_weight_diff": 0.47019,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 11.442246
+     }
+    ],
+    "alive": true,
+    "alive_note": "活性证据 = 前向实际 K/V 张量形状 [B, n_kv_heads, T, dh]（不是标签）+ qkv 投影权重非零 + 各 KV 头的 K 投影行不全同"
+   },
+   "recall_copy": {
+    "accuracy": 0.168945,
+    "n": 3072,
+    "n_hits": 519,
+    "wilson95": [
+     0.15611,
+     0.182607
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.143555,
+      "n": 1024,
+      "n_hits": 147
+     },
+     "127": {
+      "accuracy": 0.180664,
+      "n": 1024,
+      "n_hits": 185
+     },
+     "223": {
+      "accuracy": 0.182617,
+      "n": 1024,
+      "n_hits": 187
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.182617,
+      "n": 1024,
+      "n_hits": 187,
+      "wilson95": [
+       0.160154,
+       0.207453
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.180664,
+      "n": 1024,
+      "n_hits": 185,
+      "wilson95": [
+       0.158306,
+       0.205409
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.143555,
+      "n": 1024,
+      "n_hits": 147,
+      "wilson95": [
+       0.12341,
+       0.166364
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.010742,
+    "n": 3072,
+    "n_hits": 33,
+    "wilson95": [
+     0.007659,
+     0.015047
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10
+     },
+     "127": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10
+     },
+     "223": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.012695,
+      "n": 1024,
+      "n_hits": 13,
+      "wilson95": [
+       0.007434,
+       0.021599
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10,
+      "wilson95": [
+       0.005313,
+       0.017883
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.009766,
+      "n": 1024,
+      "n_hits": 10,
+      "wilson95": [
+       0.005313,
+       0.017883
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.027344,
+    "n": 512,
+    "n_hits": 14,
+    "wilson95": [
+     0.016357,
+     0.04537
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.035156,
+      "n": 256,
+      "n_hits": 9
+     },
+     "224": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.019531,
+      "n": 256,
+      "n_hits": 5,
+      "wilson95": [
+       0.008371,
+       0.044898
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.035156,
+      "n": 256,
+      "n_hits": 9,
+      "wilson95": [
+       0.018604,
+       0.065453
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.011719,
+    "n": 512,
+    "n_hits": 6,
+    "wilson95": [
+     0.005382,
+     0.025328
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     },
+     "192": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.015625,
+      "n": 256,
+      "n_hits": 4,
+      "wilson95": [
+       0.006093,
+       0.039479
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "G",
+   "bytes_per_position": 3072.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 2,
+   "factor_positions_kept": 256,
+   "factor_positions_kept_over_T": 1.0,
+   "T": 256,
+   "delta_schema": -0.014299,
+   "kv_reduction_vs_family_baseline": 0.75
+  },
+  {
+   "arm": "mqa",
+   "role": "W3：MQA（KV −87.5%）",
+   "family": "head",
+   "class": "head",
+   "checkpoint": {
+    "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/mqa-12k-s0/model.pt",
+    "sha256": "24bdfe7f1549107175e9343444372a6abe3aba7c6ba2423e8ab069a145b1ea97",
+    "size_bytes": 48667147,
+    "sha256_verified": true
+   },
+   "bpc": 1.493763,
+   "damage_bpc": 0.011737,
+   "family_baseline": "mha",
+   "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+   "activity": {
+    "kind": "head",
+    "n_kv_heads": 1,
+    "enabled": true,
+    "mha": false,
+    "n_heads": 8,
+    "head_dim": 32,
+    "group_size": 8,
+    "block_python_class": "GQABlock",
+    "qkv_out_width": 320,
+    "qkv_out_width_mha_equivalent": 768,
+    "k_batch_shape": [
+     4,
+     1,
+     256,
+     32
+    ],
+    "params_per_layer_kv_elems": 64,
+    "params_added": -1381632,
+    "params_added_note": "KV 头共享**减少**参数（K/V 投影半边变窄），故为负；= −2·(d − n_kv_heads·dh)·(d+1)·n_layers（含 qkv 偏置的半边差）⇒ 容量差异，见 analysis.md 混杂声明（SCHEMA §15 的剪枝类情形）",
+    "kv_qkv_weight_nonzero_frac": 1.0,
+    "kv_qkv_weight_fro": 234.01727,
+    "kv_elems_per_position_per_layer": 64,
+    "kv_elems_per_position": 768,
+    "kv_bytes_per_position_fp16": 1536,
+    "kv_bytes_per_position_fp32": 3072,
+    "kv_reduction_frac": 0.875,
+    "mha_kv_bytes_per_position_fp16": 12288,
+    "k_proj_per_kv_head_row_norm": [
+     2.639291
+    ],
+    "kv_head_pair_max_abs_weight_diff": null,
+    "kv_rows_fro_mean": 7.40325,
+    "per_layer": [
+     {
+      "layer": 0,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       2.639291
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 3.152459
+     },
+     {
+      "layer": 1,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       3.505239
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 5.854015
+     },
+     {
+      "layer": 2,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       4.98109
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 6.96931
+     },
+     {
+      "layer": 3,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.250021
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.167289
+     },
+     {
+      "layer": 4,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.418927
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.216643
+     },
+     {
+      "layer": 5,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.614647
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.307085
+     },
+     {
+      "layer": 6,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.46068
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.241719
+     },
+     {
+      "layer": 7,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.187773
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.130063
+     },
+     {
+      "layer": 8,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.291126
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 7.845725
+     },
+     {
+      "layer": 9,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       5.904354
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 7.623765
+     },
+     {
+      "layer": 10,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.731966
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 8.782336
+     },
+     {
+      "layer": 11,
+      "class": "GQABlock",
+      "qkv_weight_shape": [
+       320,
+       256
+      ],
+      "qkv_out_width": 320,
+      "k_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "v_shape": [
+       4,
+       1,
+       256,
+       32
+      ],
+      "q_shape": [
+       4,
+       8,
+       256,
+       32
+      ],
+      "n_kv_heads": 1,
+      "head_dim": 32,
+      "q_heads": 8,
+      "kv_elems_per_position": 64,
+      "kv_bytes_per_position_fp16": 128,
+      "kv_bytes_per_position_fp32": 256,
+      "k_proj_per_kv_head_row_norm": [
+       6.405501
+      ],
+      "kv_head_pair_max_abs_weight_diff": null,
+      "k_rows_nonzero_frac": 1.0,
+      "kv_rows_fro": 7.548595
+     }
+    ],
+    "alive": true,
+    "alive_note": "活性证据 = 前向实际 K/V 张量形状 [B, n_kv_heads, T, dh]（不是标签）+ qkv 投影权重非零 + 各 KV 头的 K 投影行不全同"
+   },
+   "recall_copy": {
+    "accuracy": 0.243164,
+    "n": 3072,
+    "n_hits": 747,
+    "wilson95": [
+     0.228321,
+     0.258649
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.28125,
+      "n": 1024,
+      "n_hits": 288
+     },
+     "127": {
+      "accuracy": 0.260742,
+      "n": 1024,
+      "n_hits": 267
+     },
+     "223": {
+      "accuracy": 0.1875,
+      "n": 1024,
+      "n_hits": 192
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.1875,
+      "n": 1024,
+      "n_hits": 192,
+      "wilson95": [
+       0.164778,
+       0.212558
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.260742,
+      "n": 1024,
+      "n_hits": 267,
+      "wilson95": [
+       0.234781,
+       0.288492
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.28125,
+      "n": 1024,
+      "n_hits": 288,
+      "wilson95": [
+       0.254569,
+       0.309566
+      ],
+      "distances": [
+       32
+      ]
+     }
+    },
+    "at_floor": false
+   },
+   "recall_copy_source_corrupt": {
+    "accuracy": 0.012044,
+    "n": 3072,
+    "n_hits": 37,
+    "wilson95": [
+     0.008751,
+     0.016557
+    ],
+    "by_distance": {
+     "32": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8
+     },
+     "127": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15
+     },
+     "223": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.013672,
+      "n": 1024,
+      "n_hits": 14,
+      "wilson95": [
+       0.008161,
+       0.022818
+      ],
+      "distances": [
+       223
+      ]
+     },
+     "96": {
+      "accuracy": 0.014648,
+      "n": 1024,
+      "n_hits": 15,
+      "wilson95": [
+       0.008897,
+       0.024028
+      ],
+      "distances": [
+       127
+      ]
+     },
+     "191": {
+      "accuracy": 0.007812,
+      "n": 1024,
+      "n_hits": 8,
+      "wilson95": [
+       0.003964,
+       0.01534
+      ],
+      "distances": [
+       32
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.09375,
+    "n": 512,
+    "n_hits": 48,
+    "wilson95": [
+     0.07144,
+     0.12211
+    ],
+    "by_distance": {
+     "65": {
+      "accuracy": 0.125,
+      "n": 256,
+      "n_hits": 32
+     },
+     "224": {
+      "accuracy": 0.0625,
+      "n": 256,
+      "n_hits": 16
+     }
+    },
+    "per_setting": {
+     "0": {
+      "accuracy": 0.0625,
+      "n": 256,
+      "n_hits": 16,
+      "wilson95": [
+       0.038834,
+       0.099102
+      ],
+      "distances": [
+       224
+      ]
+     },
+     "159": {
+      "accuracy": 0.125,
+      "n": 256,
+      "n_hits": 32,
+      "wilson95": [
+       0.089952,
+       0.171136
+      ],
+      "distances": [
+       65
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.003906,
+    "n": 512,
+    "n_hits": 2,
+    "wilson95": [
+     0.001072,
+     0.014129
+    ],
+    "by_distance": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2
+     }
+    },
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 256,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.014784
+      ],
+      "distances": [
+       64
+      ]
+     },
+     "192": {
+      "accuracy": 0.007812,
+      "n": 256,
+      "n_hits": 2,
+      "wilson95": [
+       0.002145,
+       0.028033
+      ],
+      "distances": [
+       192
+      ]
+     }
+    }
+   },
+   "chance_uniform": 0.015625,
+   "local_prior_copy": 0.014648,
+   "local_prior_induction": 0.015625,
+   "local_prior_var_recall": 0.019531,
+   "mark": "Q",
+   "bytes_per_position": 1536.0,
+   "factor_value_bytes": 2.0,
+   "factor_n_kv_heads_eff": 1,
+   "factor_positions_kept": 256,
+   "factor_positions_kept_over_T": 1.0,
+   "T": 256,
+   "delta_schema": -0.011737,
+   "kv_reduction_vs_family_baseline": 0.875
+  }
+ ],
+ "missing_combinations": [
+  {
+   "id": "GQA × int8/int4",
+   "why_missing": "两类机制分属不同实验（W3 只测头共享、R1 只测量化），本项目 scope 禁组合实验",
+   "next_step": "单因素拆分：固定 GQA(2 头) 再逐档量化 K/V；契约须写清 2×2 的臂数与步时实测"
+  },
+  {
+   "id": "窗口 × 锚点 / sink",
+   "why_missing": "A3 已测锚点通道（needle 76.8→93.3%）但那是**真实文本针**口径；本图未给锚点档的字节/位置与合成召回",
+   "next_step": "把 window_anchor_keep_mask 加进本图（锚点占 bytes/pos 极小，应单列一档）"
+  },
+  {
+   "id": "窗口 × 量化",
+   "why_missing": "同 scope 限制（组合未测）",
+   "next_step": "固定窗口 d 后量化剩余 KV；两因子在同一个字节轴上相互作用可测"
+  },
+  {
+   "id": "权重 / 激活量化",
+   "why_missing": "R1 只测了 KV cache 量化；权重/激活量化本项目零经验",
+   "next_step": "先分诊（业界已做透 ⇒ 可能直接写 reference 结论），再决定是否本地补测"
+  },
+  {
+   "id": "MLA 低秩 KV（W3 选项之一）",
+   "why_missing": "零经验；低秩投影的压缩率不是本图的单一乘式（需报秩 r）",
+   "next_step": "先扩展横轴公式为 2·d·r 形式，再测 13M"
+  },
+  {
+   "id": "摘要压缩（M2 选项之一）",
+   "why_missing": "零经验；压缩率依赖摘要器，不是单一乘式",
+   "next_step": "先定摘要器与预算口径，再测；注意 SCHEMA §17.9 的成本交叉点"
+  },
+  {
+   "id": "长 T（>256）下的窗口 / 驱逐",
+   "why_missing": "本图所有点都在 T=256 上评测；窗口的 bytes/pos = 12288·d/T 随 T 下降，T 越长窗口越便宜（未测）",
+   "next_step": "在 T∈{512,1024,4096} 上重测窗口档的 bpc 与合成召回，给出与 T 的关系"
+  },
+  {
+   "id": "各臂的**实测**显存峰值",
+   "why_missing": "本实验评测实现把 K/V 立刻反量化、窗口按掩码取子集（SDPA 仍算 T×T 分数矩阵）⇒ 实测峰值不随档下降，本实验只报解析列（判据 C2）",
+   "next_step": "写一个真正的 cache 实现（分页/分组存储 + 只在需要时反量化），再测部署口径峰值"
+  },
+  {
+   "id": "召回腿的真实文本针（needle v3）跨族",
+   "why_missing": "2615 只给 trunk 族的窗口档测了真实文本针召回；量化/头共享族没有该腿（不同仪器不得混列，本图未并入）",
+   "next_step": "用同一 2615 仪器补跑 int8/int4/gqa/mqa 的针召回，作为**第二条召回腿**单列"
+  },
+  {
+   "id": "GQA/MQA 的等参数对照臂",
+   "why_missing": "W3 的自述缺口：GQA/MQA 参数量比 MHA 少 8.75%/10.25%，代价混着容量差",
+   "next_step": "补等参数对照（加宽 MLP 或少层），再判头共享的净代价"
+  }
+ ],
+ "memory_convention": {
+  "analytic_bytes_per_position": "见 points[*].bytes_per_position（判据 C1 的唯一公式）",
+  "measured_gpu_peak_mib": 430.5,
+  "isolation_note": "判据 C2：解析字节是本图的**横轴**；实测显存峰值单列在此，**不**进横轴、**不**与解析列混排。评测期实现把 K/V 立刻反量化 / 按掩码取子集（SDPA 仍算 T×T 分数矩阵）⇒ 实测峰值不随档下降——这正是它不能当横轴的原因。",
+  "source_experiments_analytic_note": "R1/W3 的解析口径与本公式逐位一致（见 cross_check）。"
+ },
+ "code": {
+  "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/run.py": "32975b7600cf4d72",
+  "tools/evalkit/longrange_tasks.py": "4a02b93f19db8e99",
+  "tools/evalkit/kv_quant.py": "1630f4519fa76562",
+  "tools/evalkit/retention.py": "8320f03a2ecf74e3"
+ },
+ "reproducibility": {
+  "compared_to": "rerun/results.json",
+  "rows": [
+   {
+    "arm": "fp16",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   },
+   {
+    "arm": "int8",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   },
+   {
+    "arm": "int4",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   },
+   {
+    "arm": "win16",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   },
+   {
+    "arm": "win32",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   },
+   {
+    "arm": "win64",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   },
+   {
+    "arm": "win128",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   },
+   {
+    "arm": "win144",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   },
+   {
+    "arm": "win160",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   },
+   {
+    "arm": "win176",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   },
+   {
+    "arm": "win192",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   },
+   {
+    "arm": "mha",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   },
+   {
+    "arm": "gqa",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   },
+   {
+    "arm": "mqa",
+    "bpc_abs_diff": 0.0,
+    "copy_abs_diff": 0.0,
+    "induction_abs_diff": 0.0,
+    "var_abs_diff": 0.0
+   }
+  ],
+  "max_bpc_abs_diff": 0.0,
+  "max_recall_abs_diff": 0.0,
+  "threshold_bpc": 0.005,
+  "pass": true
+ },
+ "cost": {
+  "wall_seconds": 32.11,
+  "device": "cuda",
+  "wall_minutes": 0.535,
+  "peak_mem_mib": 430.5
+ },
+ "chart_png": true
+}
