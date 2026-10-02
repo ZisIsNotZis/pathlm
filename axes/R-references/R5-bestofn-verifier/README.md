@@ -17,7 +17,7 @@ evidence: [".scratch/08-tts-probe/evidence @aa97bcf"]
 
 # R5-bestofn-verifier · best-of-n + verifier
 
-> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference**
+> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference（含业界结论）**
 
 ## 1. 命题
 

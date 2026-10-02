@@ -3,21 +3,21 @@ id: W2-expertization
 axis: W
 grid_dir: W-width/W2-expertization
 title: "专家化（MoE）"
-status: stub
+status: reference
 judge: "同 FLOPs 的质量（主）+ 负载均衡 + 路由稳定性 + 内存"
 cost: "13M 单臂 ~25–40 min（路由器需要至少 2–4 专家才可判）"
-tax: "—"
-benefit: "—"
+tax: "—（未做本地实验）"
+benefit: "业界结论（记忆·未核，非本地实测）：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`"
 verdict: "—"
 deps: []
-evidence: []
+evidence: ["axes/W-width/PRIOR_ART.md @ticket36"]
 ---
 
 <!-- AUTO:begin -->
 
 # W2-expertization · 专家化（MoE）
 
-> 轴：**W 宽度** ｜ 状态：**⬜ stub**
+> 轴：**W 宽度** ｜ 状态：**🏭 reference（含业界结论）**
 
 ## 1. 命题
 
@@ -33,15 +33,21 @@ evidence: []
 
 ## 3. 状态（我们做了什么 / 行业做了什么）
 
-**本地**：零经验（无实验）。
+**本地已测**：业界结论（记忆·未核，非本地实测）：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`
 
 **行业口径**：MoE 是「同 FLOPs 更多参数」唯一被大规模验证的路线（Mixtral/DeepSeek-MoE 系，
 细粒度专家 + 共享专家成为主流配方）。负载均衡与路由坍缩是主要工程风险。
 
+## 3b. 既有做法（ticket 36 分诊，SCHEMA §21）
+
+**业界结论（非本地实测）**：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`
+
+来源：`axes/W-width/PRIOR_ART.md @ticket36`（`记忆·未核`，联网不可用，待核）
+
 ## 4. 结论与数字
 
-- **税**：—
-- **收益**：—
+- **税**：—（未做本地实验）
+- **收益**：业界结论（记忆·未核，非本地实测）：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`
 
 ## 5. 失败路径与原因
 
@@ -50,12 +56,6 @@ evidence: []
 ## 6. 判据与判决实验设计
 
 - **判据**：同 FLOPs 的质量（主）+ 负载均衡 + 路由稳定性 + 内存
-
-**下一步判决实验**（未做时必填）：
-
-- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
-- 判据线：同 FLOPs 的质量（主）+ 负载均衡 + 路由稳定性 + 内存
-- 成本：13M 单臂 ~25–40 min（路由器需要至少 2–4 专家才可判）
 
 ## 7. 成本估计
 
@@ -67,7 +67,7 @@ evidence: []
 
 ## 9. 复现手段
 
-（本地未做；复现命令待本格实验目录建立后补）
+1. axes/W-width/PRIOR_ART.md @ticket36
 
 ## 备注
 

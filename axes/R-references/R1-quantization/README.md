@@ -17,7 +17,7 @@ evidence: ["axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m
 
 # R1-quantization · 量化
 
-> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference**
+> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference（含业界结论）**
 
 ## 1. 命题
 

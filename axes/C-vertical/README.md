@@ -24,6 +24,8 @@ C5 精化算子 · C6 训练深度分布
 元素税定律在本轴同样成立：skip +0.175、层序重排 +0.545（最贵）。
 层间拓扑（C3）与权重共享（C4）本地零经验——这是最便宜的真空白。
 
+> **既有做法情报**：[PRIOR_ART.md](PRIOR_ART.md)（含机器可读分诊表；来源标 `记忆·未核`，联网不可用）
+
 ## 格子索引
 
 | 格子 | 状态 | 判读 | 税 |
@@ -31,7 +33,7 @@ C5 精化算子 · C6 训练深度分布
 | [`C1-layers-per-token`](C1-layers-per-token/README.md) | ✅ judged | 逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。 | 形态税 +0.6786（13M 首验）→ matched-step 真税 +… |
 | [`C2-layer-selection-order`](C2-layer-selection-order/README.md) | ✅ judged | 元素税定律的原始出处：破坏型元素贵，保留型近免费。 | skip +0.175（最贵深度元素）；redo +0.044；层序 shu… |
 | [`C3-inter-layer-topology`](C3-inter-layer-topology/README.md) | ✅ judged | 首探无优势：**并行子层明确有害**（+0.0458，等参数对照 +0.0402 复现），**层间学习加权和中性**（−0.0008）。 | parallel +0.0458（1.5254 → 1.5712）/ par… |
-| [`C4-weight-sharing`](C4-weight-sharing/README.md) | ⬜ stub | — | — |
+| [`C4-weight-sharing`](C4-weight-sharing/README.md) | 🏭 reference（含业界结论） | — | —（未做本地实验） |
 | [`C5-refinement-operator`](C5-refinement-operator/README.md) | ✅ judged | 携带门是形态税的承载者之一，也是「任意深度可读」的结构来源。 | carry 门 + 填充 + 退出堆栈合计是形态税的主体（同引擎 +0.43… |
 | [`C6-depth-supervision`](C6-depth-supervision/README.md) | ✅ judged | 出口资产只能由深度维监督造出来——这是本项目最有迁移价值的一条结论。 | 全深度等权 +0.067（13M）；dense 0.2 剂量的税为负（EX2… |
 

@@ -17,7 +17,7 @@ evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scal
 
 # R7-existing-early-exit · 既有早退实现（CALM / LayerSkip / MoD）
 
-> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference**
+> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference（含业界结论）**
 
 ## 1. 命题
 

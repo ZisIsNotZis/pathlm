@@ -2,7 +2,7 @@
 
 # INDEX · 设计空间状态灯
 
-共 **51** 个格子 ｜ ✅ judged 33 ｜ ◐ partial 6 ｜ 🏭 reference 7 ｜ ⬜ stub 5
+共 **51** 个格子 ｜ ✅ judged 33 ｜ ◐ partial 6 ｜ 🏭 reference（含业界结论） 12
 
 > 全部内容由 `tools/build_wiki.py` 从 `catalog.yaml` 生成；**不要手改本文件**。
 
@@ -12,13 +12,13 @@
 
 | 格子 | 状态 | 判读 |
 |---|---|---|
-| [`A1-causality`](axes/A-mixing/A1-causality/README.md) · 因果性 | ⬜ stub | — |
+| [`A1-causality`](axes/A-mixing/A1-causality/README.md) · 因果性 | 🏭 reference（含业界结论） | — |
 | [`A2-full-attention`](axes/A-mixing/A2-full-attention/README.md) · 全注意力基线 | ✅ judged | 基底成立，外部锚在公开数字范围内。 |
 | [`A3-window-anchor`](axes/A-mixing/A3-window-anchor/README.md) · 窗口 / 锚点 / sink | ✅ judged | 丢前缀的代价**由距离与预算共同决定、并不便宜**（见 ERRATA：只保留最近 32 个 = +0.212 bpc）；锚点通道是真产物（76.8→93.3%）；检索腿显示「低损伤 ≠ 保住了」。 |
 | [`A4-soft-distance-penalty`](axes/A-mixing/A4-soft-distance-penalty/README.md) · 软距离惩罚（ALiBi 式加性偏置） | ✅ judged | 唯一改善 clean bpc 的元素，但不创造保留——它改变使用率，不改变依赖是否为零。 |
-| [`A5-dilated-window`](axes/A-mixing/A5-dilated-window/README.md) · 膨胀 / 跨步窗 | ⬜ stub | — |
+| [`A5-dilated-window`](axes/A-mixing/A5-dilated-window/README.md) · 膨胀 / 跨步窗 | 🏭 reference（含业界结论） | — |
 | [`A6-mixing-operator`](axes/A-mixing/A6-mixing-operator/README.md) · 混合算子 | ✅ judged | 内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）——稀疏的收益要到长上下… |
-| [`A7-addressing`](axes/A-mixing/A7-addressing/README.md) · 寻址方式 | ⬜ stub | — |
+| [`A7-addressing`](axes/A-mixing/A7-addressing/README.md) · 寻址方式 | 🏭 reference（含业界结论） | — |
 | [`A8-positional-semantics`](axes/A-mixing/A8-positional-semantics/README.md) · 位置语义 | ◐ partial | 绝对位置嵌入是硬上界（解码总长 ≤ seq_len），相对偏置族已侧证。 |
 | [`A9-old-info-retention`](axes/A-mixing/A9-old-info-retention/README.md) · 旧信息处理策略 | ◐ partial | 保留 / 硬丢 / 锚豁免已测；压缩、递归、外置三类零经验。 |
 | [`A10-compression-trigger`](axes/A-mixing/A10-compression-trigger/README.md) · 压缩触发与优先级 | ✅ judged | 「按访问频率优先压（LRU）」在同等删除预算下没有可见收益**——字面优势经对账后归因于「恰好删掉的可见性对数更少」，重对齐后消失（见 ERRATA）。压缩优先级这一维度在 13M/256 快照上… |
@@ -32,7 +32,7 @@
 | [`C1-layers-per-token`](axes/C-vertical/C1-layers-per-token/README.md) · 每个 token 跑几层 | ✅ judged | 逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。 |
 | [`C2-layer-selection-order`](axes/C-vertical/C2-layer-selection-order/README.md) · 选哪些层与执行顺序 | ✅ judged | 元素税定律的原始出处：破坏型元素贵，保留型近免费。 |
 | [`C3-inter-layer-topology`](axes/C-vertical/C3-inter-layer-topology/README.md) · 层间拓扑（残差之外的连接） | ✅ judged | 首探无优势：**并行子层明确有害**（+0.0458，等参数对照 +0.0402 复现），**层间学习加权和中性**（−0.0008）。 |
-| [`C4-weight-sharing`](axes/C-vertical/C4-weight-sharing/README.md) · 权重共享 | ⬜ stub | — |
+| [`C4-weight-sharing`](axes/C-vertical/C4-weight-sharing/README.md) · 权重共享 | 🏭 reference（含业界结论） | — |
 | [`C5-refinement-operator`](axes/C-vertical/C5-refinement-operator/README.md) · 精化算子 | ✅ judged | 携带门是形态税的承载者之一，也是「任意深度可读」的结构来源。 |
 | [`C6-depth-supervision`](axes/C-vertical/C6-depth-supervision/README.md) · 训练期深度分布与监督密度 | ✅ judged | 出口资产只能由深度维监督造出来——这是本项目最有迁移价值的一条结论。 |
 
@@ -55,7 +55,7 @@
 | 格子 | 状态 | 判读 |
 |---|---|---|
 | [`W1-active-width`](axes/W-width/W1-active-width/README.md) · 激活宽度 | ✅ judged | 减宽 = 减容量，不买灵活性；结构化约束会把状态能量赶出被约束子空间。 |
-| [`W2-expertization`](axes/W-width/W2-expertization/README.md) · 专家化（MoE） | ⬜ stub | — |
+| [`W2-expertization`](axes/W-width/W2-expertization/README.md) · 专家化（MoE） | 🏭 reference（含业界结论） | — |
 | [`W3-kv-head-sharing`](axes/W-width/W3-kv-head-sharing/README.md) · KV 头共享 | ✅ judged | 参考线已补齐**：GQA（KV −75%）实测 damage **+0.0143**、同 seed 重跑 +0.0139（**跨在门槛两侧**，散度仅 0.0004 ⇒ 依预登记规则该臂判读作废、… |
 | [`W4-readout-geometry`](axes/W-width/W4-readout-geometry/README.md) · 读出几何 | ✅ judged | 读出几何**可以**解耦（prob0/提交/传输不受损，同空间前提不冲突），但**增量归因于「读出重参数化 + 额外 2d² 参数」，不是非线性本身**：等参数纯线性对照 Δ=−0.0888 与 … |
 | [`W5-capacity-vs-compute`](axes/W-width/W5-capacity-vs-compute/README.md) · 容量-计算分离 | ✅ judged | 减容量不买灵活性；买灵活性必须走保容量减计算。 |
@@ -99,13 +99,13 @@
 
 | 格子 | 状态 | 判读 |
 |---|---|---|
-| [`R1-quantization`](axes/R-references/R1-quantization/README.md) · 量化 | 🏭 reference | — |
-| [`R2-distillation`](axes/R-references/R2-distillation/README.md) · 蒸馏 | 🏭 reference | — |
-| [`R3-pruning-sparsity`](axes/R-references/R3-pruning-sparsity/README.md) · 剪枝 / 结构化稀疏 | 🏭 reference | — |
-| [`R4-window-kv-quant-retrieval`](axes/R-references/R4-window-kv-quant-retrieval/README.md) · 窗口注意力 + KV 量化 + 检索 | 🏭 reference | — |
-| [`R5-bestofn-verifier`](axes/R-references/R5-bestofn-verifier/README.md) · best-of-n + verifier | 🏭 reference | — |
-| [`R6-moe-scale`](axes/R-references/R6-moe-scale/README.md) · MoE 规模轴 | 🏭 reference | — |
-| [`R7-existing-early-exit`](axes/R-references/R7-existing-early-exit/README.md) · 既有早退实现（CALM / LayerSkip / MoD） | 🏭 reference | — |
+| [`R1-quantization`](axes/R-references/R1-quantization/README.md) · 量化 | 🏭 reference（含业界结论） | — |
+| [`R2-distillation`](axes/R-references/R2-distillation/README.md) · 蒸馏 | 🏭 reference（含业界结论） | — |
+| [`R3-pruning-sparsity`](axes/R-references/R3-pruning-sparsity/README.md) · 剪枝 / 结构化稀疏 | 🏭 reference（含业界结论） | — |
+| [`R4-window-kv-quant-retrieval`](axes/R-references/R4-window-kv-quant-retrieval/README.md) · 窗口注意力 + KV 量化 + 检索 | 🏭 reference（含业界结论） | — |
+| [`R5-bestofn-verifier`](axes/R-references/R5-bestofn-verifier/README.md) · best-of-n + verifier | 🏭 reference（含业界结论） | — |
+| [`R6-moe-scale`](axes/R-references/R6-moe-scale/README.md) · MoE 规模轴 | 🏭 reference（含业界结论） | — |
+| [`R7-existing-early-exit`](axes/R-references/R7-existing-early-exit/README.md) · 既有早退实现（CALM / LayerSkip / MoD） | 🏭 reference（含业界结论） | — |
 
 ## P · 修饰符（不是轴）（6 格）
 

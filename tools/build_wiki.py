@@ -31,7 +31,7 @@ STATUS_BADGE = {
     "partial": "◐ partial",
     "judged": "✅ judged",
     "falsified": "❌ falsified",
-    "reference": "🏭 reference",
+    "reference": "🏭 reference（含业界结论）",
 }
 
 REQUIRED_GRID_KEYS = ("id", "axis", "title", "claim", "options", "judge", "cost", "status")
@@ -98,6 +98,18 @@ def page(grid: dict, axis: dict) -> str:
         body += ["**本地**：零经验（无实验）。", ""]
     body += ["**行业口径**：" + (industry if industry else "见 `docs/playbook.md` 与参照线 `R-references/`。"), ""]
 
+    pa_c = (grid.get("prior_art_conclusion") or "").strip()
+    pa_n = (grid.get("prior_art_note") or "").strip()
+    pa_s = (grid.get("prior_art_source") or "").strip()
+    if pa_c or pa_n:
+        body += ["## 3b. 既有做法（ticket 36 分诊，SCHEMA §21）", ""]
+        if pa_c:
+            body += [f"**业界结论（非本地实测）**：{pa_c}", ""]
+        if pa_n:
+            body += [f"**既有做法参照**：{pa_n}", ""]
+        if pa_s:
+            body += [f"来源：`{pa_s}`（`记忆·未核`，联网不可用，待核）", ""]
+
     body += ["## 4. 结论与数字", ""]
     body += [f"- **税**：{(local.get('tax') or '—')}", f"- **收益**：{(local.get('benefit') or '—')}"]
     if verdict:
@@ -138,6 +150,9 @@ def axis_page(axis: dict) -> str:
     out += [f"- **原语**：{axis.get('primitive', '—')}", f"- **命题**：{axis['claim'].strip()}", ""]
     out += ["## 定义", "", axis["definition"].strip(), "", "## 子维度", "", axis["subdims"].strip(), ""]
     out += ["## 本地总体结论", "", axis["local_summary"].strip(), ""]
+    pa = (ROOT / "axes" / axis["dir"] / "PRIOR_ART.md")
+    if pa.exists():
+        out += [f"> **既有做法情报**：[PRIOR_ART.md](PRIOR_ART.md)（含机器可读分诊表；来源标 `记忆·未核`，联网不可用）", ""]
     out += ["## 格子索引", "", "| 格子 | 状态 | 判读 | 税 |", "|---|---|---|---|"]
     for g in grids:
         local = g.get("local") or {}

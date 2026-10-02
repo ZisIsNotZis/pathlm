@@ -17,7 +17,7 @@ evidence: [".scratch/07-x1-x3/evidence @7b47555", "axes/M-carrier/M2-carrier-com
 
 # R4-window-kv-quant-retrieval · 窗口注意力 + KV 量化 + 检索
 
-> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference**
+> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference（含业界结论）**
 
 ## 1. 命题
 

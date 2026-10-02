@@ -17,7 +17,7 @@ evidence: []
 
 # R2-distillation · 蒸馏
 
-> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference**
+> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference（含业界结论）**
 
 ## 1. 命题
 

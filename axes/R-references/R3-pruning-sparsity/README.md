@@ -17,7 +17,7 @@ evidence: [".scratch/25-tax-attribution/evidence @2e86924"]
 
 # R3-pruning-sparsity · 剪枝 / 结构化稀疏
 
-> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference**
+> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference（含业界结论）**
 
 ## 1. 命题
 
