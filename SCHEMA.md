@@ -310,11 +310,28 @@ python3 tools/check_schema.py           # 格式/完备/证据锚点
 
 ```bash
 # 取锁（最多等 10 分钟；等不到就上报，不许杀别人的进程）
-n=0; until mkdir /tmp/pathlm_gpu.lock 2>/dev/null; do sleep 15; n=$((n+1)); [ $n -gt 40 ] && exit 9; done
+n=0
+until mkdir /tmp/pathlm_gpu.lock 2>/dev/null; do
+  # 自愈回收（任一条成立即可回收，必须打印理由）
+  hp=$(cat /tmp/pathlm_gpu.lock/holder_pid 2>/dev/null)
+  if [ -n "$hp" ] && ! kill -0 "$hp" 2>/dev/null; then
+    echo "reclaim: holder pid $hp 已死"; rmdir /tmp/pathlm_gpu.lock 2>/dev/null; continue
+  fi
+  if [ -d /tmp/pathlm_gpu.lock ] && [ $(( $(date +%s) - $(stat -c %Y /tmp/pathlm_gpu.lock) )) -gt 600 ] \
+     && ! pgrep -af "train_depth_ar|run.py" >/dev/null; then
+    echo "reclaim: 锁 mtime >10min 且无本仓 GPU 进程"; rmdir /tmp/pathlm_gpu.lock 2>/dev/null; continue
+  fi
+  sleep 15; n=$((n+1)); [ $n -gt 40 ] && exit 9
+done
+echo $$ > /tmp/pathlm_gpu.lock/holder_pid            # 自愈所需的持有者标识
 trap 'rmdir /tmp/pathlm_gpu.lock 2>/dev/null' EXIT
 # ... 你的 GPU 工作（峰值 ≤5GB net；长训练 nohup 后台 + ≤110s 轮询，轮询期间保持持锁）...
 rmdir /tmp/pathlm_gpu.lock 2>/dev/null
 ```
+
+**自愈判定（2026-10-02 孤儿锁事故后新增）**：等待者**不再**只看 120 分钟；**任一条成立即可回收**：
+① 锁目录内 `holder_pid` 不存在或进程已死；② 锁目录 mtime 超过 **10 分钟**且确认无本仓 GPU 进程。
+（事故：harness 杀进程会**跳过 EXIT trap**，持锁 shell 死掉后锁永久残留，三条 GPU 线全部卡死 ⇒ 必须有自愈。）
 
 - **纯 CPU 工作**（情报、设计、写文档、对账、汇总已落盘数据）**不取锁**，可自由并行。
 - 锁泄漏判定：锁存在 >120 分钟**且** `nvidia-smi` 无我们的训练进程 ⇒ 可 `rmdir` 并在报告中记录。
