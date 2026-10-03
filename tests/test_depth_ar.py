@@ -974,6 +974,187 @@ def test_readout_gated_and_linear_resid_mutually_exclusive():
         tiny_model(readout_gated=True, readout_linear_resid=True)
 
 
+# ---------- W4 ticket 38：逐深度独立读出（readout_perdepth）----------
+# 唯一变量 = 读出是否逐深度独立：A 臂 = 共享 tied 读出；PD 臂 = 每个深度一套线性
+# 读出头（实现 = 逐深度线性状态变换 h → h + P_k(Q_k h)，再走共享 tied 表）；
+# EP 臂 = **单个共享**线性变换 h → h + A(B h)，名义参数与 PD 臂相等（SCHEMA §15）。
+# 变异验证（实验目录 smoke.py）：忽略 perdepth 开关 / 逐深度共用一套 P/Q / 把 EP
+# 变成逐深度 —— 三条必须被抓红（对应下面的 test_readout_perdepth_*）。
+
+
+def test_readout_perdepth_off_matches_v1_bitwise():
+    """① 开关关闭逐位还原 v1：全深度与随机退出两条路径下 logits 都 == 手算
+    s·Eᵀ（防止新分支被无条件接入）。"""
+    m = tiny_model()
+    torch.manual_seed(31)
+    x = torch.randint(0, 10, (2, 12))
+    for depths in (None, sample_exit_depths(
+            2, 12, m.cfg.n_layers, torch.Generator().manual_seed(32))):
+        _, aux = m(x, exit_depths=depths)
+        for s, lg in zip(aux["states"], aux["depth_logits"]):
+            assert torch.equal(lg, s.float() @ m.embed.weight.float().T)
+
+
+def test_readout_perdepth_identity_start_and_init_parity():
+    """② init 规范（写死）：Q_k ~ N(0,0.02)、P_k = 0 ⇒ 起步 transform = 0，读出
+    与共享 tied 线性逐位一致；P_k/Q_k 建在参数 init 循环之后 ⇒ 同 seed 下与 A 臂
+    **其余全部参数逐位一致**（单因素：只加逐深度读出头）。"""
+    a = tiny_model()
+    pd = tiny_model(readout_perdepth=True)
+    sa, sp = a.state_dict(), pd.state_dict()
+    extra = set(sp) - set(sa)
+    L = pd.cfg.n_layers
+    assert extra == {f"readout_pd_{t}.{k}.weight" for t in ("p", "q")
+                     for k in range(L + 1)}
+    for k in sa:
+        assert torch.equal(sa[k], sp[k]), k
+    for t in ("p", "q"):
+        for k in range(L + 1):
+            w = sp[f"readout_pd_{t}.{k}.weight"]
+            assert (torch.count_nonzero(w) == 0) == (t == "p")
+    torch.manual_seed(33)
+    x = torch.randint(0, 10, (2, 12))
+    _, a1 = a(x, exit_depths=None)
+    _, p1 = pd(x, exit_depths=None)
+    for l1, l2 in zip(a1["depth_logits"], p1["depth_logits"]):
+        assert torch.equal(l1, l2)
+
+
+def test_readout_perdepth_formula_and_independence():
+    """③ 读数公式 = (h + P_k·(Q_k h))·Eᵀ（逐深度），且**每个深度一套**：
+    - 只扰动 P_0 ⇒ 只有 depth 0 的 logits 变，depth 1 不变（逐深度独立性的直接钉）；
+    - P_2 与 P_0 独立赋值 ⇒ 两个深度得到不同变换；
+    变异必抓红：(a) 忽略开关（P_k 非零时仍返回 tied）；(b) 逐深度共用一套 P/Q
+    （实现里把 P_k 取成同一张量）会让「扰动 P_0 只改 depth 0」失配。"""
+    pd = tiny_model(readout_perdepth=True)
+    torch.manual_seed(34)
+    with torch.no_grad():
+        for mod in pd.readout_pd_p:
+            nn.init.normal_(mod.weight, std=0.3)
+        for mod in pd.readout_pd_q:
+            nn.init.normal_(mod.weight, std=0.3)
+    x = torch.randint(0, 10, (2, 12))
+    _, aux = pd(x, exit_depths=None)
+    states = aux["states"]
+    for k in (0, 1, pd.cfg.n_layers):
+        hf = states[k].float()
+        expected = (hf + pd.readout_pd_p[k](pd.readout_pd_q[k](hf))) \
+            @ pd.embed.weight.float().T
+        assert torch.allclose(aux["depth_logits"][k], expected, atol=0)
+    # (a) 开关生效：与 tied 显著不同
+    assert not torch.allclose(aux["depth_logits"][0],
+                              states[0].float() @ pd.embed.weight.float().T,
+                              atol=1e-6)
+    # 逐深度独立性：只改 P_0 ⇒ depth 0 变、depth 1 逐位不变
+    with torch.no_grad():
+        pd.readout_pd_p[0].weight.mul_(-1.0)
+    _, aux2 = pd(x, exit_depths=None)
+    assert not torch.equal(aux2["depth_logits"][0], aux["depth_logits"][0])
+    assert torch.equal(aux2["depth_logits"][1], aux["depth_logits"][1])
+    # 不同深度用不同的头：P_0 与 P_2 独立 ⇒ 各自深度的读出不同
+    assert not torch.allclose(pd.readout_pd_p[0].weight,
+                              pd.readout_pd_p[2].weight)
+
+
+def test_readout_perdepth_requires_depth():
+    """④ 逐深度读出必须显式传 depth（depth=None 会静默退化 ⇒ 报错）；且 A/EP
+    两个非逐深度臂的 readout 不带 depth 也能算（向后兼容）。"""
+    pd = tiny_model(readout_perdepth=True)
+    with pytest.raises(ValueError):
+        pd.readout(torch.randn(2, 12, 16))
+    # 非逐深度臂：readout(h) 仍可用且 == readout(h, depth=k)
+    a = tiny_model()
+    h = torch.randn(2, 12, 16)
+    assert torch.equal(a.readout(h), a.readout(h, depth=3))
+    ep = tiny_model(readout_wide_shared=64)
+    assert torch.equal(ep.readout(h), ep.readout(h, depth=3))
+
+
+def test_readout_perdepth_init_escapes_saddle_and_liveness():
+    """⑤ 干预活性门（SCHEMA §10）：P_k = 0 处起步恒等但非鞍点。全深度监督下
+    **每个深度**的 ∂L/∂P_k ≠ 0（可学）；∂L/∂Q_k 在 P_k=0 处为 0（嵌套因子），
+    P_k 离零后 Q_k 获得梯度 ⇒ 全参数可流。"""
+    pd = tiny_model(readout_perdepth=True)
+    x = torch.randint(0, 10, (2, 12))
+    L = pd.cfg.n_layers
+    loss, aux = pd(x, exit_depths=None)          # 全深度 ⇒ 每个头都被监督
+    loss.backward()
+    for k in range(L + 1):
+        assert torch.count_nonzero(pd.readout_pd_p[k].weight.grad) > 0, k
+        assert torch.count_nonzero(pd.readout_pd_q[k].weight.grad) == 0, k
+    opt = torch.optim.AdamW(pd.parameters(), lr=1e-3)
+    opt.step()
+    opt.zero_grad(set_to_none=True)
+    for k in range(L + 1):
+        assert torch.count_nonzero(pd.readout_pd_p[k].weight) > 0, k
+    loss, _ = pd(x, exit_depths=None)
+    loss.backward()
+    for k in range(L + 1):
+        assert torch.count_nonzero(pd.readout_pd_q[k].weight.grad) > 0, k
+
+
+def test_readout_wide_shared_equal_params_and_identity():
+    """⑥ SCHEMA §15 等参数对照：共享读出臂（m = (L+1)·d）的新增参数量与
+    per-depth 臂 **完全相等**（各 (L+1)·2d²）；且起步严格恒等（A=0）、忽略
+    depth（共享语义）。"""
+    a = tiny_model()
+    pd = tiny_model(readout_perdepth=True)
+    d, L = 16, 3
+    ep = tiny_model(readout_wide_shared=(L + 1) * d)
+    n = lambda m: sum(p.numel() for p in m.parameters())
+    assert n(pd) - n(a) == n(ep) - n(a) == (L + 1) * 2 * d * d
+    torch.manual_seed(41)
+    x = torch.randint(0, 10, (2, 12))
+    _, a_aux = a(x, exit_depths=None)
+    _, e_aux = ep(x, exit_depths=None)
+    for l1, l2 in zip(a_aux["depth_logits"], e_aux["depth_logits"]):
+        assert torch.equal(l1, l2)
+    # 共享语义：所有深度用同一张量 ⇒ 两个不同深度的变换由同一 A/B 决定
+    h = torch.randn(2, 12, 16)
+    assert torch.equal(ep.readout(h, depth=0), ep.readout(h, depth=2))
+    # 非鞍点：A=0 起步 ∂L/∂A ≠ 0（B 非零）
+    loss, _ = ep(x, exit_depths=None)
+    loss.backward()
+    assert torch.count_nonzero(ep.readout_shared_a.weight.grad) > 0
+
+
+def test_readout_geometries_mutually_exclusive():
+    """单因素纪律：四种读出几何干预最多开一个（同时开会混淆归因）。"""
+    for kw in ({"readout_gated": True, "readout_perdepth": True},
+               {"readout_linear_resid": True, "readout_perdepth": True},
+               {"readout_gated": True, "readout_wide_shared": 64},
+               {"readout_perdepth": True, "readout_wide_shared": 64}):
+        with pytest.raises(ValueError):
+            tiny_model(**kw)
+
+
+def test_train_cli_perdepth_plumbed_to_config():
+    """CLI 通道（可失败）：`--readout-perdepth` / `--readout-wide-shared` 必须真的
+    进 `DepthARConfig` 并改变参数集合，否则就是「开关是死的」。变异验证（把
+    `build_depthar_config` 里这两行删掉）靠这条抓红。"""
+    import argparse
+    import train_depth_ar as T
+
+    base = dict(d=16, layers=3, heads=2, seq_len=12, mlp_mult=4, dense=False,
+                gate_bias_init=-2.0, topology="sequential", fill_kv=True,
+                proj_fill=False, readout_dims=None, readout_gated=False,
+                readout_linear_resid=False, attn_sparse_k=0, attn_linear=False,
+                linear_chunk=64, train_window=0, train_anchors=0,
+                carry_write="none", carry_chunk=64, carry_state_dim=None,
+                n_kv_heads=None)
+    cfg = T.build_depthar_config(argparse.Namespace(**base,
+                                                   readout_perdepth=True))
+    assert cfg.readout_perdepth is True and cfg.readout_wide_shared == 0
+    assert "readout_pd_p.0.weight" in DepthARModel(cfg, 10).state_dict()
+    cfg_w = T.build_depthar_config(argparse.Namespace(
+        **base, readout_perdepth=False, readout_wide_shared=64))
+    assert cfg_w.readout_wide_shared == 64
+    assert "readout_shared_a.weight" in DepthARModel(cfg_w, 10).state_dict()
+    # 缺字段的历史 Namespace 仍可用（向后兼容）
+    cfg_off = T.build_depthar_config(argparse.Namespace(**base))
+    assert cfg_off.readout_perdepth is False and cfg_off.readout_wide_shared == 0
+
+
 # ---------------- 层间拓扑（ticket 30 契约 E）----------------
 
 

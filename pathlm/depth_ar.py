@@ -86,6 +86,27 @@ class DepthARConfig:
     # transform = P(Qh) = 0 严格恒等起步（单测钉住）；∂L/∂P = grad ⊗ (Qh) ≠ 0
     # ⇒ 非鞍点。**不能 P=Q=0**（同 gated 的零初始鞍点）。与 readout_gated 互斥。
     readout_linear_resid: bool = False
+    # 逐深度独立读出（ticket 38 W4 线）：唯一变量 = 读出是否逐深度独立。每个深度
+    # 一套线性读出：读出前做**逐深度**线性状态变换 h → h + P_k·(Q_k h)
+    # （P_k、Q_k 各 d×d 无偏置，k = 0..L 各一套），再走**共享** tied 读出 h·Eᵀ
+    # ⇒ 每个深度的有效读出头 `(I + P_kQ_k)ᵀ Eᵀ` 各不相同——即「逐深度一个线性头」。
+    # 13M 形态 d=256 > V=206：该头可满秩，与「每深度一个独立 [V,d] 头」等价
+    # （无表征损失），同时保住 tied 表（prob0 / Σp·E 提交 / 传输语义不变）。
+    # init：Q_k ~ N(0, 0.02)、P_k = 0（单边零）⇒ 起步 transform = 0，逐位还原
+    # 共享 tied 读出（单测钉住）；∂L/∂P_k ≠ 0 ⇒ 非鞍点。新增参数 (L+1)·2d²。
+    # 与其它读出几何干预（readout_gated / readout_linear_resid /
+    # readout_wide_shared）互斥（单因素）。
+    readout_perdepth: bool = False
+    # 等参数**深度共享**读出对照（ticket 38 W4 线，SCHEMA §15）：读出前做**单个
+    # 共享**线性状态变换 h → h + A·(B h)，A ∈ R^{d×m}、B ∈ R^{m×d}，m =
+    # readout_wide_shared > 0；参数 2·d·m —— 与 per-depth 臂（(L+1)·2d²）**名义
+    # 参数完全相等**（取 m = (L+1)·d），但没有逐深度自由度（所有深度共用同一个
+    # d×d 有效映射 I + AB）。用来把 per-depth 臂的增益拆成「逐深度独立性」与
+    # 「容量」两半。init：B ~ N(0, 0.02)、**A = 0**（单边零，输出侧置零）⇒ 起步
+    # transform = A(Bh) = 0 严格恒等起步；∂L/∂A = grad ⊗ (Bh) ≠ 0 ⇒ 非鞍点。
+    # **注**：深度无关的线性映射最多 d² 个有效自由度 ⇒ 「名义等参数」靠冗余达成；
+    # 这正是要检验的对比（(L+1) 个独立 d×d vs 1 个共享 d×d，同名义预算）。
+    readout_wide_shared: int = 0
     # 层间拓扑（ticket 30 契约 E，唯一变量 = 层与层之间的接法）。只在
     # dense=True（stock decoder-only 形态：无门/无退出/仅最终 CE）下开放——
     # 层间接法与退出/填充语义耦合时无法单因素归因。缺省 "sequential" 逐位还原 v1。
@@ -1803,14 +1824,43 @@ class DepthARModel(nn.Module):
         # ∂L/∂P ≠ 0（非鞍点）。同样建在参数 init 循环之后——不消耗其余参数的
         # 随机数，同 seed 下与 A 臂其余参数逐位一致。与 readout_gated 互斥。
         if cfg.readout_linear_resid:
-            if cfg.readout_gated:
-                raise ValueError(
-                    "readout_linear_resid 与 readout_gated 互斥：读出几何"
-                    "只允许一个干预（单因素）")
             self.readout_p = nn.Linear(d, d, bias=False)
             self.readout_q = nn.Linear(d, d, bias=False)
             nn.init.normal_(self.readout_q.weight, std=0.02)
             nn.init.zeros_(self.readout_p.weight)
+        # 逐深度独立读出（ticket 38 W4 线）：每个深度一套线性状态变换
+        # h → h + P_k·(Q_k h)（P_k、Q_k 各 d×d）。建在参数 init 循环之后 ⇒ 不消耗
+        # 其余参数的随机数（同 seed 下与 A 臂其余参数逐位一致，单测钉住）。
+        # init：Q_k ~ N(0, 0.02)、P_k = 0（单边零）⇒ 起步逐位还原共享 tied 读出。
+        if cfg.readout_perdepth:
+            self.readout_pd_p = nn.ModuleList(
+                nn.Linear(d, d, bias=False) for _ in range(cfg.n_layers + 1))
+            self.readout_pd_q = nn.ModuleList(
+                nn.Linear(d, d, bias=False) for _ in range(cfg.n_layers + 1))
+            for mod in self.readout_pd_q:
+                nn.init.normal_(mod.weight, std=0.02)
+            for mod in self.readout_pd_p:
+                nn.init.zeros_(mod.weight)
+        # 等参数深度共享读出对照（ticket 38 W4 线，SCHEMA §15）：单个共享线性状态
+        # 变换 h → h + A·(B h)（A [d,m]、B [m,d]），参数 2·d·m = (L+1)·2d² 与
+        # per-depth 臂名义相等。init：B ~ N(0, 0.02)、A = 0（单边零）⇒ 起步恒等。
+        if cfg.readout_wide_shared > 0:
+            self.readout_shared_b = nn.Linear(d, cfg.readout_wide_shared,
+                                              bias=False)
+            self.readout_shared_a = nn.Linear(cfg.readout_wide_shared, d,
+                                              bias=False)
+            nn.init.normal_(self.readout_shared_b.weight, std=0.02)
+            nn.init.zeros_(self.readout_shared_a.weight)
+        # 读出几何干预的单因素互斥（一次只改一个因素）：四个开关最多开一个。
+        _readout_modes = [
+            ("readout_gated", cfg.readout_gated),
+            ("readout_linear_resid", cfg.readout_linear_resid),
+            ("readout_perdepth", cfg.readout_perdepth),
+            ("readout_wide_shared", cfg.readout_wide_shared > 0)]
+        _on = [name for name, on in _readout_modes if on]
+        if len(_on) > 1:
+            raise ValueError(
+                "读出几何干预只允许一个（单因素），收到同时开启：" + ", ".join(_on))
         # 写入通道的三个参数（契约 U）在建在参数 init 循环之后——不消耗其他参数的
         # 随机数 ⇒ 同 seed 下 U1/U2 的**主干参数与 U0 臂逐位相同**（单测
         # `test_carry_channel_identity_start_matches_no_channel`）。
@@ -1834,7 +1884,8 @@ class DepthARModel(nn.Module):
 
     # ---------- 读出 ----------
 
-    def readout(self, h: torch.Tensor) -> torch.Tensor:
+    def readout(self, h: torch.Tensor,
+                depth: int | None = None) -> torch.Tensor:
         """Tied unembed，fp32 头（autocast 之外强制 fp32）。
 
         readout_dims（ticket 25 B 臂）：只读前 r 个通道，tied 表取列切片
@@ -1849,13 +1900,30 @@ class DepthARModel(nn.Module):
         h → h + P·(Q h)（整体 = (I + PQ) h），再走 tied 读出；参数量与 gated
         臂相同（2·d²）但**无任何非线性**。切片语义同 gated。
 
-        缺省（两者皆 False）与上述全维度/切片路径都逐位还原 v1。"""
+        readout_perdepth（W4 ticket 38 主臂，逐深度独立读出）：先做**逐深度**线性
+        变换 h → h + P_k·(Q_k h)（k = 传入的 depth），再走共享 tied 读出 ⇒ 每个
+        深度的有效读出头不同。**必须显式传 depth**（否则报错）——默认/漏传会
+        静默用同一套头，破坏「逐深度独立」的语义。
+
+        readout_wide_shared（W4 ticket 38 等参数对照臂）：先做**单个共享**线性变换
+        h → h + A·(B h)（所有深度同一套），再走 tied 读出；与 per-depth 臂名义
+        等参数、但无逐深度自由度。depth 参数被忽略（共享语义）。
+
+        缺省（全部为假/0）与上述全维度/切片路径都逐位还原 v1。"""
         with torch.autocast("cuda", enabled=False):
             hf = h.float()
             if self.cfg.readout_gated:
                 hf = hf + F.silu(self.readout_w1(hf)) * self.readout_w2(hf)
             elif self.cfg.readout_linear_resid:
                 hf = hf + self.readout_p(self.readout_q(hf))
+            elif self.cfg.readout_perdepth:
+                if depth is None:
+                    raise ValueError(
+                        "readout_perdepth 需要显式 depth（每个深度一套读出头）："
+                        "depth=None 会静默退化")
+                hf = hf + self.readout_pd_p[depth](self.readout_pd_q[depth](hf))
+            elif self.cfg.readout_wide_shared > 0:
+                hf = hf + self.readout_shared_a(self.readout_shared_b(hf))
             r = self.cfg.readout_dims
             if r is None or r == self.cfg.d_model:
                 return hf @ self.embed.weight.float().T
@@ -1973,8 +2041,9 @@ class DepthARModel(nn.Module):
         sg = bool(shallow_stopgrad)
         n_states = len(states)
         # H3 stop-grad：浅层读出走 detached 状态（梯度不穿 trunk）；最终深度不变
-        depth_logits = [self.readout(s.detach() if sg and k < n_states - 1 else s)
-                        for k, s in enumerate(states)]
+        depth_logits = [self.readout(
+            s.detach() if sg and k < n_states - 1 else s, depth=k)
+            for k, s in enumerate(states)]
         # H1 dense+aux：dense 臂也监督全部深度；缺省 dense 仅最终深度
         readouts = depth_logits if (not self.cfg.dense or dense_aux) else depth_logits[-1:]
         loss = tokens.new_zeros(()).float()
@@ -2173,8 +2242,8 @@ def workspace_probe(model: DepthARModel, eval_arr, n_batches: int = 4,
             frac = (null_part.norm(dim=-1) ** 2) / h.norm(dim=-1).pow(2).clamp_min(1e-12)
             energy[k].append(frac.mean().item())
         h_mid = aux["states"][k_mid].float()
-        logits_mid = model.readout(aux["states"][k_mid])
-        logits_L = model.readout(aux["states"][-1])
+        logits_mid = model.readout(aux["states"][k_mid], depth=k_mid)
+        logits_L = model.readout(aux["states"][-1], depth=L)
         eps_rows = eps_frac * h_mid.norm(dim=-1, keepdim=True)     # [B,T,1]
         for j in range(null_dim):
             n_j = Nb[j]                                            # [d]
@@ -2183,9 +2252,10 @@ def workspace_probe(model: DepthARModel, eval_arr, n_batches: int = 4,
                 hh = h_p
                 for gi in range(k_mid, L):
                     hh = model._gated_step(gi, hh)
-                dlog = (model.readout(hh) - logits_L).abs().flatten()
+                dlog = (model.readout(hh, depth=L) - logits_L).abs().flatten()
                 dir_medians.append(dlog.median().item())
-                ctrl = (model.readout(h_p) - logits_mid).abs().flatten().max().item()
+                ctrl = (model.readout(h_p, depth=k_mid)
+                        - logits_mid).abs().flatten().max().item()
                 control = min(control, ctrl)
     med = sorted(dir_medians)
     return {
@@ -2360,7 +2430,7 @@ class DepthARDecoder:
             torch.cat([self.frozen, frozen_self], dim=1)
         self.depths.append(forced_depth)
         self.n += 1
-        return h, model.readout(h)
+        return h, model.readout(h, depth=forced_depth)
 
 
 def token_input(model: DepthARModel, token: int, pos: int) -> torch.Tensor:

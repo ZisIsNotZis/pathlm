@@ -260,6 +260,22 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                               if n_sym is not None else None),
             "n_steps": n,
         }
+    # 读出几何干预的活性量（SCHEMA §10/§17.4，ticket 38 W4 线）：每 200 步随同一
+    # 行训练日志落盘。per-depth 臂报**逐深度**的 P_k/Q_k fro 范数（证明每个深度
+    # 的头都真的在学、不是死开关）；等参数共享对照臂报 A/B fro 范数。
+    def readout_log() -> dict | None:
+        if model.cfg.readout_perdepth:
+            return {"mode": "perdepth",
+                    "p_fro_by_depth": [round(float(m.weight.norm()), 4)
+                                       for m in model.readout_pd_p],
+                    "q_fro_by_depth": [round(float(m.weight.norm()), 4)
+                                       for m in model.readout_pd_q]}
+        if model.cfg.readout_wide_shared > 0:
+            return {"mode": "wide_shared",
+                    "m": int(model.cfg.readout_wide_shared),
+                    "a_fro": round(float(model.readout_shared_a.weight.norm()), 4),
+                    "b_fro": round(float(model.readout_shared_b.weight.norm()), 4)}
+        return None
     for step in range(steps):
         model.train()
         x, ans_rows, ans_vals = data_batch()
@@ -374,6 +390,7 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
                     "attn_linear": lin_log(),
                     "attn_carry": carry_log(),
                     "recon": recon_log(),
+                    "readout": readout_log(),
                     "synth_answer_ce": (round(ans_ce_sum / max(ans_ce_n, 1), 4)
                                         if ans_ce_n else None),
                     "synth_chance_ce": (round(math.log(synth["sym_vocab"]), 4)
@@ -440,6 +457,10 @@ def build_depthar_config(args) -> DepthARConfig:
                          readout_dims=args.readout_dims,
                          readout_gated=args.readout_gated,
                          readout_linear_resid=args.readout_linear_resid,
+                         # ticket 38 W4 线：新开关用 getattr ⇒ 历史用不带这两个字段
+                         # 的 `argparse.Namespace` 的单测逐字不动（同 recon_window）。
+                         readout_perdepth=getattr(args, "readout_perdepth", False),
+                         readout_wide_shared=getattr(args, "readout_wide_shared", 0),
                          attn_sparse_k=args.attn_sparse_k,
                          attn_linear=args.attn_linear,
                          linear_chunk=args.linear_chunk,
@@ -623,6 +644,18 @@ def main():
                          "状态变换 h + P·(Q h)（init Q~N(0,0.02)/P=0 ⇒ 严格恒等"
                          "起步、非鞍点）；参数与 --readout-gated 相同（2·d²）但"
                          "无非线性；两者互斥", dest="readout_linear_resid")
+    ap.add_argument("--readout-perdepth", action="store_true",
+                    help="逐深度独立读出（W4 ticket 38 主臂）：每个深度 k 一套"
+                         "线性状态变换 h + P_k·(Q_k h)，再走共享 tied 读出 ⇒ 每个"
+                         "深度的有效读出头不同（= 逐深度一个线性头）；init "
+                         "Q_k~N(0,0.02)/P_k=0 ⇒ 严格恒等起步、非鞍点；新增参数 "
+                         "(L+1)·2d²", dest="readout_perdepth")
+    ap.add_argument("--readout-wide-shared", type=int, default=0,
+                    help="等参数深度共享读出对照（W4 ticket 38，SCHEMA §15）：读"
+                         "出前加单个共享线性变换 h + A·(B h)（A [d,m]、B [m,d]，"
+                         "m = 本值）；与 per-depth 臂**名义等参数**（取 m=(L+1)·d）"
+                         "但无逐深度自由度。0 = 关闭（缺省）",
+                    dest="readout_wide_shared")
     ap.add_argument("--exit-anneal", action="store_true",
                     help="C 臂冷却退火（ticket 25）：浅层 aux 权重均匀到 "
                          "(1−frac) 处、末 frac 线性降到 --exit-anneal-to；"
@@ -745,7 +778,8 @@ def main():
         "readout_dims": args.readout_dims,
         "readout_gated": args.readout_gated,
         "readout_linear_resid": args.readout_linear_resid,
-        "exit_anneal": args.exit_anneal,
+        "readout_perdepth": getattr(args, "readout_perdepth", False),
+        "readout_wide_shared": getattr(args, "readout_wide_shared", 0),
         "exit_anneal_to": args.exit_anneal_to if args.exit_anneal else None,
         "exit_anneal_frac": args.exit_anneal_frac if args.exit_anneal else None,
         "final_anneal_to": args.final_anneal_to if args.exit_anneal else None,
