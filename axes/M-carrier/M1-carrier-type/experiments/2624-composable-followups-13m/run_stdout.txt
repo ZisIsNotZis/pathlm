@@ -1,0 +1,61 @@
+[    0.0s] 加载臂（sha256 断言 + 参数量断言）：['stock', 'gqa', 'gqa_carry', 'gqa_carry_window', 'mha_mlp5', 'gqa_10k', 'gqa_carry_10k']
+[    0.8s]   stock              72ed2438e99c… Block              params=13536768 steps=6000
+[    1.3s]   gqa                411f962f0b0a… GQABlock           params=12352512 steps=6000
+[    1.8s]   gqa_carry          5ec1e0c5df6f… ComposableBlock    params=12616808 steps=6000
+[    2.3s]   gqa_carry_window   48c4e39ec058… ComposableBlock    params=12616808 steps=6000
+[    2.7s]   mha_mlp5           f5290f7be486… Block              params=11960832 steps=6000
+[    3.1s]   gqa_10k            8f5850fc10bf… GQABlock           params=12352512 steps=10000
+[    3.6s]   gqa_carry_10k      5ab683a5f087… ComposableBlock    params=12616808 steps=10000
+[    3.6s] 自检：参数量账 + ① 的容量括号非退化（§17.16）+ 窗口掩码非退化
+[    3.7s]   ① 括号：mha_mlp5(11960832) < gqa(12352512) < stock(13536768)；窗口非退化=True
+[    4.4s]   KV 头形状：{'gqa': [2, 2, 256, 32], 'stock': [2, 8, 256, 32]}
+[    4.4s] 判决腿（单查询 assoc-mqar，native 可见性）+ 毁源对照
+[    6.1s]   stock              acc=0.0000 CI=[0.0, 0.001872] corrupt=0.0000
+[    7.7s]   gqa                acc=0.0015 CI=[0.000498, 0.004298] corrupt=0.0010
+[   10.2s]   gqa_carry          acc=0.1567 CI=[0.141637, 0.173125] corrupt=0.0137
+[   12.8s]   gqa_carry_window   acc=0.1533 CI=[0.138366, 0.169573] corrupt=0.0142
+[   14.4s]   mha_mlp5           acc=0.0000 CI=[0.0, 0.001872] corrupt=0.0000
+[   15.9s]   gqa_10k            acc=0.0215 CI=[0.016043, 0.028718] corrupt=0.0015
+[   18.4s]   gqa_carry_10k      acc=0.1685 CI=[0.152871, 0.185284] corrupt=0.0181
+[   18.4s] 交叉口径：全因果（所有臂 keep_mask=None）
+[   31.9s] ② 分布内腿 Q=8（训练布局，逐查询块分解 ⇒ 直接暴露末块伪影）
+[   32.3s]   stock              acc=0.3501 末块=1.0000 leaky=True
+[   32.7s]   gqa                acc=0.3584 末块=1.0000 leaky=True
+[   33.3s]   gqa_carry          acc=0.3623 末块=1.0000 leaky=True
+[   34.0s]   gqa_carry_window   acc=0.3477 末块=1.0000 leaky=True
+[   34.4s]   mha_mlp5           acc=0.3562 末块=1.0000 leaky=True
+[   34.7s]   gqa_10k            acc=0.3577 末块=1.0000 leaky=True
+[   35.3s]   gqa_carry_10k      acc=0.3611 末块=1.0000 leaky=True
+[   35.3s] ② 无泄漏分布内腿 Q=7（Q=K−1 ⇒ 末块不再是「唯一没被问过」的那一对）
+[   35.8s]   stock              acc=0.2623 末块=0.4805 leaky=False corrupt=0.0156
+[   36.2s]   gqa                acc=0.2709 末块=0.5293 leaky=False corrupt=0.0140
+[   36.8s]   gqa_carry          acc=0.2729 末块=0.5293 leaky=False corrupt=0.0148
+[   37.4s]   gqa_carry_window   acc=0.2609 末块=0.5000 leaky=False corrupt=0.0159
+[   37.8s]   mha_mlp5           acc=0.2667 末块=0.5176 leaky=False corrupt=0.0148
+[   38.2s]   gqa_10k            acc=0.2701 末块=0.5254 leaky=False corrupt=0.0170
+[   38.8s]   gqa_carry_10k      acc=0.2732 末块=0.5352 leaky=False corrupt=0.0151
+[   38.8s] 辅助：变距离回忆曲线
+[   41.9s] clean bpc（enwik8 评测尾段；非退化锚，非质量判据）
+[   42.2s]   stock              clean bpc=13.069118
+[   42.3s]   gqa                clean bpc=37.145279
+[   42.6s]   gqa_carry          clean bpc=58.307878
+[   43.0s]   gqa_carry_window   clean bpc=54.970002
+[   43.1s]   mha_mlp5           clean bpc=23.245991
+[   43.2s]   gqa_10k            clean bpc=34.236186
+[   43.5s]   gqa_carry_10k      clean bpc=54.254435
+[   43.5s]   enwik8 vocab=206（模型 vocab=206）
+[   43.5s] 收敛门禁（§17.15，答案行 CE 末窗斜率 nats/1k）：stock=-0.09264, gqa=-0.07398, gqa_carry=-0.06019, gqa_carry_window=-0.06076, mha_mlp5=-0.06497, gqa_10k=-0.03418, gqa_carry_10k=-0.02397
+[   43.5s] ① GQA 的容量括号 + 插值（**不是逐位等参数臂**；README §4b 声明）
+[   43.5s]   clean_bpc          MHA 斜率=-6.457668966 bpc / 1M 参数；插值=20.716651 GQA=37.145279 残差=16.428628（可排序=True）
+[   43.5s]   main_leg_acc       MHA 斜率=0.0 pp / 1M 参数；插值=0.000000 GQA=0.001465 残差=0.146（可排序=False）
+[   43.5s]   q7_leakfree_acc    MHA 斜率=-0.283 pp / 1M 参数；插值=0.265632 GQA=0.270926 残差=0.529（可排序=False）
+[   43.5s]   q7_mid_blocks_acc  MHA 斜率=0.062 pp / 1M 参数；插值=0.225178 GQA=0.227865 残差=0.269（可排序=False）
+[   43.5s] ② 无泄漏 Q=7 判定（逐块 + 与 Q=8 对照）
+[   43.5s] ③ carry 的 6k → 10k（同相对刻度；§17.17 分量分解）
+[   43.5s]   steps=6000: carry Δ(判决腿)=15.527pp （可排序=True）；Q=7 分布内 Δ=0.195pp；bpc Δ=21.162599
+[   43.5s]   steps=10000: carry Δ(判决腿)=14.697pp （可排序=True）；Q=7 分布内 Δ=0.307pp；bpc Δ=20.018249
+[   43.5s]   毁源对照：21/21 通过
+MAINLEG: {'stock': 0.0, 'gqa': 0.001465, 'gqa_carry': 0.156738, 'gqa_carry_window': 0.15332, 'mha_mlp5': 0.0, 'gqa_10k': 0.021484, 'gqa_carry_10k': 0.168457}
+Q7: {'stock': 0.262277, 'gqa': 0.270926, 'gqa_carry': 0.272879, 'gqa_carry_window': 0.260882, 'mha_mlp5': 0.266741, 'gqa_10k': 0.270089, 'gqa_carry_10k': 0.273158}
+P1: {"clean_bpc": {"mha_slope_per_1M_params": -6.457668966, "unit": "bpc / 1M 参数", "mha_bracket": {"mha_mlp5": 23.245991, "stock": 13.069118}, "mha_interp_at_gqa_params": 20.716651, "gqa_observed": 37.145279, "gqa_residual_vs_interp": 16.428628, "residual_orderable": true}, "main_leg_acc": {"mha_slope_per_1M_params": 0.0, "unit": "pp / 1M 参数", "mha_bracket": {"mha_mlp5": 0.0, "stock": 0.0}, "mha_interp_at_gqa_params": 0.0, "gqa_observed": 0.001465, "gqa_residual_vs_interp": 0.146, "residual_orderable": false}, "q7_leakfree_acc": {"mha_slope_per_1M_params": -0.283, "unit": "pp / 1M 参数", "mha_bracket": {"mha_mlp5": 0.266741, "stock": 0.262277}, "mha_interp_at_gqa_params": 0.265632, "gqa_observed": 0.270926, "gqa_residual_vs_interp": 0.529, "residual_orderable": false}, "q7_mid_blocks_acc": {"mha_slope_per_1M_params": 0.062, "unit": "pp / 1M 参数", "mha_bracket": {"mha_mlp5": 0.224935, "stock": 0.225911}, "mha_interp_at_gqa_params": 0.225178, "gqa_observed": 0.227865, "gqa_residual_vs_interp": 0.269, "residual_orderable": false}}
+P3: {"target_pp_6k": 15.527, "target_pp_10k": 14.697, "delta_pp": -0.83, "orderable_change": false, "note": "两点的臂内配方逐字段相同（只差步数）；读的是 Δ 的变化量，不是绝对水平（§17.16/§17.11）"}

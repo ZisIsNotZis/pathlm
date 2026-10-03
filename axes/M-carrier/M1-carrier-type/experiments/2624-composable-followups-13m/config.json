@@ -1,0 +1,172 @@
+{
+  "experiment": "2624-composable-followups-13m",
+  "ticket": ".scratch/41-followups/issues/01-followups.md#Z2",
+  "device": "cuda",
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "dense": true,
+    "topology": "sequential",
+    "note": "mlp_mult 逐臂不同（stock/gqa/10k 臂 = 6，mha_mlp5 = 5），见 arms"
+  },
+  "train": {
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0,
+    "synth_task": "assoc-mqar",
+    "synth_pairs": 8,
+    "synth_queries": 8,
+    "synth_gap": 14,
+    "note": "训练配方逐字段同 2623（单一变量 = arms 表里的 flags/steps）；6k 臂 = 49.0M token，10k 臂 = 81.9M token。"
+  },
+  "arms": {
+    "stock": {
+      "flags": {},
+      "mlp_mult": 6,
+      "steps": 6000,
+      "source": "2623",
+      "role": "基准（容量括号上端 / 无窗无 carry 的 stock 对照）"
+    },
+    "gqa": {
+      "flags": {
+        "n_kv_heads": 2
+      },
+      "mlp_mult": 6,
+      "steps": 6000,
+      "source": "2623",
+      "role": "① 被检验的 GQA 点（12,352,512）/ ③ 的 6k 无 carry 点"
+    },
+    "gqa_carry": {
+      "flags": {
+        "n_kv_heads": 2,
+        "carry_rule": "delta"
+      },
+      "mlp_mult": 6,
+      "steps": 6000,
+      "source": "2623",
+      "role": "③ 的 6k carry 点"
+    },
+    "gqa_carry_window": {
+      "flags": {
+        "n_kv_heads": 2,
+        "carry_rule": "delta",
+        "train_window": 16,
+        "train_anchors": 0
+      },
+      "mlp_mult": 6,
+      "steps": 6000,
+      "source": "2623",
+      "role": "② 的四臂之一（2623 的既有阶梯顶）"
+    },
+    "mha_mlp5": {
+      "flags": {},
+      "mlp_mult": 5,
+      "steps": 6000,
+      "source": "2624",
+      "role": "① 的容量括号下端（MHA，11,960,832）"
+    },
+    "gqa_10k": {
+      "flags": {
+        "n_kv_heads": 2
+      },
+      "mlp_mult": 6,
+      "steps": 10000,
+      "source": "2624",
+      "role": "③ 的 10k 无 carry 点"
+    },
+    "gqa_carry_10k": {
+      "flags": {
+        "n_kv_heads": 2,
+        "carry_rule": "delta"
+      },
+      "mlp_mult": 6,
+      "steps": 10000,
+      "source": "2624",
+      "role": "③ 的 10k carry 点"
+    }
+  },
+  "checkpoint": {
+    "dir": "axes/M-carrier/M1-carrier-type/experiments/2624-composable-followups-13m/train",
+    "sha256": {
+      "stock": "72ed2438e99c41ed5c139ee31b7cd9cda13ce6a440524418293c3a9162f2d54d",
+      "gqa": "411f962f0b0acc8f40b7d8e5927a787600141f442610f61d43dfa8d189303e2a",
+      "gqa_carry": "5ec1e0c5df6ffe0c371996bbe0c5d02e6eb7bd57385355321c666359c8e26c1c",
+      "gqa_carry_window": "48c4e39ec058b8c509de88744e32f4169f993eb4f2680e6b4080b1b410f9c8a6",
+      "mha_mlp5": "f5290f7be4863ecdf9a3e705363d407d50a743d5277c5e6fdf2789ed64c89aa9",
+      "gqa_10k": "8f5850fc10bf70b227a2ada89e5aa50b1a280ea26a277c583ddd0988aef0f6a3",
+      "gqa_carry_10k": "5ab683a5f087feb6ff492feb8de6d06d93464922afa60e8ec2b76024cae13658"
+    },
+    "note": "6k 四臂复用 2623 的检查点（哈希与 2623/config.json 逐位一致，SCHEMA §9 对照复用）；新三臂本线自训。权重不入库。"
+  },
+  "data": {
+    "train_source": "tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch（Q=8 训练布局）",
+    "vocab_size": 206,
+    "bpc_name": "enwik8_full",
+    "bpc_path": "data/enwik8_full.npz",
+    "bpc_split": "末 10M 评测尾段（只作非退化锚，不用 enwik8 当长程主任务）"
+  },
+  "tokens": {
+    "sym_vocab": 64,
+    "filler_token": 64,
+    "cue_token": 205,
+    "local_k": 8
+  },
+  "eval": {
+    "K_main": 8,
+    "batch_size": 64,
+    "n_batches": 32,
+    "seed_base": 1000,
+    "note": "判决腿（单查询 assoc-mqar，被问 pair 的距离 241–255）；每臂在**自己训练时的可见性**下评测（训练/评测同一掩码）。种子/批数与 2623 逐字段一致 ⇒ 四臂 6k 读数应与 2623 的 results.json 逐位相同（对账项「仪器一致性」）。"
+  },
+  "cross_leg": {
+    "batch_size": 64,
+    "n_batches": 32,
+    "note": "交叉口径：所有臂 keep_mask=None（全因果）。"
+  },
+  "train_task_leg": {
+    "batch_size": 64,
+    "n_batches": 8,
+    "gap": 14,
+    "note": "训练布局（Q=K=8）：in-distribution 腿 + **逐查询块分解**（末块 = 排除法伪影）。"
+  },
+  "q7_leg": {
+    "batch_size": 64,
+    "n_batches": 8,
+    "gap": 14,
+    "n_queries": 7,
+    "note": "② 无泄漏版（Q=K−1=7）：末块问的那一对**不再是唯一没被前面问过的那一对**，排除法伪影条件被消除。**只做评测**：四臂仍是 Q=8 训练的检查点（README §4c）。"
+  },
+  "distance_leg": {
+    "distances": [
+      16,
+      32,
+      64,
+      128,
+      192,
+      255
+    ],
+    "batch_size": 64,
+    "n_batches": 3,
+    "note": "辅助腿；d=255 在单 pair 布局上是伪影（2623 已记），中段 64–192 才是有效读数。"
+  },
+  "bpc_leg": {
+    "batch_size": 16,
+    "n_batches": 16,
+    "window_seed": 2,
+    "note": "clean bpc（enwik8 尾段，全因果）；合成训练 ⇒ 非退化锚，不作质量判据（① 的「基准质量」列按此口径声明）。"
+  },
+  "criteria": {
+    "c1_p1_bracket": "① 容量括号：MHA 的容量斜率（clean bpc / 判决腿 / Q=7 分布内腿三列）+ GQA 相对**插值到 12.35M 的 MHA** 的残差；显式声明不是逐位等参数臂",
+    "c2_p2_leakfree": "② Q=7 无泄漏分布内腿（准确率 + Wilson CI + 毁源对照 + 局部先验 + chance），并报 Q=8 的逐查询块分解直接暴露末块伪影",
+    "c3_p3_scale": "③ carry 增量在 6k 与 10k 两点（同相对刻度，§17.16）+ §17.17 分量分解（对基准质量 = Q=7 分布内 Δ 与 bpc Δ；对目标量 = 判决腿 Δ）",
+    "c4_corrupt": "毁源对照臂：源 KV 段 [0,2K) 换成同分布新随机符号；任一腿毁源后 CI 下界 > 4×chance ⇒ 该读数作废",
+    "c5_activity": "活性量每 200 步（KV 头形状 / carry / window），来自训练日志",
+    "c6_convergence": "§17.15：答案行 CE（synth_answer_ce）末窗斜率；6k 与 10k 各报",
+    "c7_instrument_equality": "本次重评 2623 的四臂必须与 2623/results.json 逐位相同（§9 对照复用规则 1）"
+  },
+  "variance_band_pp": 1.4,
+  "gpu_wall_budget_min": 70,
+  "budget_ruling": "主 Agent 2026-10-03 裁决：① 用容量括号 + 插值（不做逐位等参数臂）；③ 用 10k × {gqa, gqa_carry}（声明「10k 快照、1.67× 于 6k 基线」）；总预算放宽到 ≈70 min（含训练 55.3 min + 评测 ~4 min）。② 只评测不重训。"
+}
