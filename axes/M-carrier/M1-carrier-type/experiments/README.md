@@ -20,6 +20,7 @@
 | [`2623-composable-arms-13m`](2623-composable-arms-13m/README.md) | 目录内 README |
 | [`2624-carry-under-compression-quality`](2624-carry-under-compression-quality/README.md) | 目录内 README |
 | [`2624-composable-followups-13m`](2624-composable-followups-13m/README.md) | 目录内 README |
+| [`2625-ood-leg-variance`](2625-ood-leg-variance/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 
