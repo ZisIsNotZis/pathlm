@@ -2271,14 +2271,15 @@ def test_kv_heads_default_off_matches_v1_bitwise():
 
 def test_kv_heads_guards_require_dense_sequential_and_divisibility():
     """单因素护栏：GQA/MQA 只在 dense + sequential 下开放、与内容 top-k / 线性注意力
-    / 训练窗口互斥；n_kv_heads 必须整除 n_heads；stock 路径守卫（dist_pen/kv_from/
-    gate_vec）；增量解码路径显式拒绝（契约 S 不主张解码侧收益）。"""
+    互斥；n_kv_heads 必须整除 n_heads；stock 路径守卫（dist_pen/kv_from/
+    gate_vec）；增量解码路径显式拒绝（契约 S 不主张解码侧收益）。
+
+    ENG1（ticket 39-X2）：与训练期可见窗口（train_window>0）**不再互斥**——窗口
+    掩码是与 block 类正交的装饰层，下面补一条正向断言（该组合现在能建起来）。"""
     with pytest.raises(ValueError):
         tiny_model(dense=False, n_kv_heads=1)              # dense=False
     with pytest.raises(ValueError):
         gqa_model(2, topology="parallel")
-    with pytest.raises(ValueError):
-        gqa_model(2, train_window=4)
     with pytest.raises(ValueError):
         gqa_model(2, attn_linear=True)
     with pytest.raises(ValueError):
@@ -2286,6 +2287,8 @@ def test_kv_heads_guards_require_dense_sequential_and_divisibility():
     for bad in (0, 3, 16):                                 # 0 / 不整除 8 / > n_heads
         with pytest.raises(ValueError):
             gqa_model(bad)
+    # ENG1：GQA × 训练期窗口现在合法（块类仍是 GQABlock，窗口经 attn_mask 正交接入）
+    assert type(gqa_model(2, train_window=4).blocks[0]).__name__ == "GQABlock"
     ok = gqa_model(2)
     assert type(ok.blocks[0]).__name__ == "GQABlock"
     with pytest.raises(ValueError):
@@ -2843,8 +2846,11 @@ def test_carry_cli_plumbed_to_config():
 
 def test_carry_config_rejects_combinations():
     """单因素：写入通道与其它干预互斥/依赖必须显式报错；与 `train_window`
-    **可以**同时开（窗口造需求、通道提供路径）。"""
-    bad = ({"attn_linear": True}, {"n_kv_heads": 2}, {"topology": "parallel"},
+    **可以**同时开（窗口造需求、通道提供路径）。
+
+    ENG1（ticket 39-X2）：与 GQA/MQA（n_kv_heads<n_heads）**不再互斥**——KV 头投影
+    已从 block 类解耦（GQA × carry 走 `ComposableBlock`），下面补正向断言。"""
+    bad = ({"attn_linear": True}, {"topology": "parallel"},
            {"attn_sparse_k": 2})
     for kw in bad:
         with pytest.raises(ValueError):
@@ -2860,6 +2866,10 @@ def test_carry_config_rejects_combinations():
     m = carry_model("plain", train_window=4)        # 组合合法：window + channel
     assert m.cfg.train_window == 4 and m.cfg.carry_rule == "plain"
     m(torch.randint(0, 10, (2, 12)))
+    # ENG1：GQA × channel 现在合法，走可组合块（KV 头投影从块类解耦）
+    m2 = carry_model("plain", n_kv_heads=2)
+    assert type(m2.blocks[0]).__name__ == "ComposableBlock"
+    m2(torch.randint(0, 10, (2, 12)))
 
 
 def test_carry_default_off_matches_v1_bitwise():

@@ -373,11 +373,89 @@ class TopKBlock(Block):
         return x, tele
 
 
-# ---------- KV 头共享（ticket 33 契约 S，W3 参照线） ----------
+# ---------- KV 头共享（ticket 33 契约 S，W3 参照线；ENG1 ticket 39-X2 解耦） ----------
 
 
-class GQABlock(nn.Module):
+class KVHeadProjectionMixin:
+    """KV 头投影（GQA/MQA）的**可组合化**（ticket 39-X2 / ENG1）。
+
+    把「qkv 输出宽度 = `d + 2·n_kv_heads·dh`（GQA/MQA）还是 `3d`（MHA）」这件结构
+    从具体 block 类里解耦：`GQABlock`（单特性快路径）与 `ComposableBlock`
+    （GQA × 写入通道 × 窗口掩码）共用同一份投影 / 注意力实现——ENG1 前它是
+    「选不选 `GQABlock` 类」的互斥选择。
+
+    - `n_kv_heads is None or == n_heads` ⇒ 全宽 `3d`（MHA），与 stock `Block` 的
+      qkv 逐位同构；
+    - `_init_kv_projection` 必须在 ln1（及 ln2）之后调用：模块创建顺序恒为
+      ln1→ln2→qkv→proj→mlp ⇒ 同 seed 下随机数消耗与 `Block` 一致，缺省路径
+      逐位还原 v1；
+    - `_attention` 的 `attn_mask`（窗口 / 可见性掩码）是与本投影**正交**的入口，
+      训练期与评测期共用同一函数 ⇒ 掩码语义不随块类变化。
+    """
+
+    def _init_kv_projection(self, cfg: ModelConfig,
+                            n_kv_heads: int | None) -> None:
+        d, nh = cfg.d_model, cfg.n_heads
+        self.n_heads = nh
+        self.head_dim = d // nh
+        if n_kv_heads is None or n_kv_heads == nh:
+            self.n_kv_heads = None
+            self.kv_dim = d
+            self.enable_gqa = False
+            self.qkv = nn.Linear(d, 3 * d)
+        else:
+            if not 0 < n_kv_heads < nh or nh % n_kv_heads:
+                raise ValueError(
+                    f"n_kv_heads 必须满足 0 < n_kv_heads < n_heads 且整除 n_heads，"
+                    f"收到 n_kv_heads={n_kv_heads} / n_heads={nh}（n_kv_heads == "
+                    "n_heads 是 MHA，走全宽 qkv，不用本路径）")
+            self.n_kv_heads = int(n_kv_heads)
+            self.kv_dim = self.n_kv_heads * self.head_dim
+            self.enable_gqa = True
+            # K/V 半边只有 kv_dim 宽（唯一的结构差异；q 半边恒 d）
+            self.qkv = nn.Linear(d, d + 2 * self.kv_dim)
+        #: 每次前向记录实际进 SDPA 的 K/V 张量形状（活性证据，不进 state_dict）
+        self.kv_telemetry: dict | None = None
+
+    def _attention(self, x_ln: torch.Tensor,
+                   attn_mask: torch.Tensor | None) -> torch.Tensor:
+        """从 pre-LN 输入算注意力输出 `[B,T,d]`；GQA/MQA 时记录 `kv_telemetry`。
+        MHA 路径与 stock `Block` 逐位一致（`qkv.chunk(3)` + SDPA）。"""
+        B, T, d = x_ln.shape
+        qkv = self.qkv(x_ln)
+
+        def shape(t: torch.Tensor, nh: int) -> torch.Tensor:
+            return t.view(B, T, nh, self.head_dim).transpose(1, 2)
+
+        if not self.enable_gqa:
+            q, k, v = qkv.chunk(3, dim=-1)
+            qs, ks, vs = (shape(q, self.n_heads), shape(k, self.n_heads),
+                          shape(v, self.n_heads))
+            a = F.scaled_dot_product_attention(qs, ks, vs, attn_mask=attn_mask,
+                                               is_causal=attn_mask is None)
+        else:
+            q, kv = qkv[..., :d], qkv[..., d:]
+            k, v = kv[..., :self.kv_dim], kv[..., self.kv_dim:]
+            qs = shape(q, self.n_heads)
+            ks, vs = shape(k, self.n_kv_heads), shape(v, self.n_kv_heads)
+            a = F.scaled_dot_product_attention(qs, ks, vs, attn_mask=attn_mask,
+                                               is_causal=attn_mask is None,
+                                               enable_gqa=True)
+            self.kv_telemetry = {
+                "q_shape": tuple(qs.shape), "k_shape": tuple(ks.shape),
+                "v_shape": tuple(vs.shape), "qkv_out_width": int(qkv.shape[-1]),
+                "n_kv_heads": self.n_kv_heads, "head_dim": self.head_dim,
+                "enable_gqa": True, "expanded_to_n_heads": False,
+                "attn_mask": attn_mask is not None,
+            }
+        return a.transpose(1, 2).reshape(B, T, d)
+
+
+class GQABlock(KVHeadProjectionMixin, nn.Module):
     """KV 头共享注意力块（ticket 33 契约 S，W3 参照线）：GQA / MQA。
+
+    KV 头投影已抽出为 `KVHeadProjectionMixin`（ENG1 / ticket 39-X2）——本类 = 该投影
+    + stock 残差接线（ln1 → qkv → proj、ln2 → mlp），因此投影不再专属某一个块类。
 
     与 stock `Block` 的唯一差别 = K/V 的**头数**（query 头数不变）：n_kv_heads 个
     K/V 头，每组 `n_heads / n_kv_heads` 个 query 头共享同一组 K/V（n_kv_heads=1
@@ -390,34 +468,22 @@ class GQABlock(nn.Module):
       `[B, n_kv_heads, T, dh]` 进内核、由内核按组广播（**不物化**复制到 n_heads；
       实测与手工 `repeat_interleave` 展开逐位一致，单测钉住），该形状就是部署侧
       KV cache 的形状（`kv_telemetry` 逐次前向记录，作活性证据）；
-    - 子模块创建顺序与 `Block` 一致（ln1 → qkv → proj → mlp）；
+    - 子模块创建顺序与 `Block` 一致（ln1 → ln2 → qkv → proj → mlp）；
     - 只支持 stock 路径（无 dist_pen/kv_from/gate_vec）——KV 头共享只在 dense=True
       （无退出/无填充）形态下开放；评测期可见性掩码 `attn_mask` 支持。
     """
 
     def __init__(self, cfg: ModelConfig, n_kv_heads: int):
         super().__init__()
-        d, nh = cfg.d_model, cfg.n_heads
-        if not 0 < n_kv_heads < nh or nh % n_kv_heads:
-            raise ValueError(
-                f"n_kv_heads 必须满足 0 < n_kv_heads < n_heads 且整除 n_heads，"
-                f"收到 n_kv_heads={n_kv_heads} / n_heads={nh}（n_kv_heads == "
-                "n_heads 是 MHA，走 stock Block，不用本块）")
-        self.n_heads = nh
-        self.n_kv_heads = int(n_kv_heads)
-        self.head_dim = d // nh
-        self.kv_dim = self.n_kv_heads * self.head_dim
+        d = cfg.d_model
         self.ln1 = nn.LayerNorm(d)
         self.ln2 = nn.LayerNorm(d)
-        # K/V 半边只有 kv_dim 宽（唯一的结构差异；q 半边恒 d）
-        self.qkv = nn.Linear(d, d + 2 * self.kv_dim)
+        self._init_kv_projection(cfg, n_kv_heads)
         self.proj = nn.Linear(d, d)
         self.mlp = nn.Sequential(
             nn.Linear(d, cfg.mlp_mult * d), nn.GELU(),
             nn.Linear(cfg.mlp_mult * d, d), nn.Dropout(cfg.dropout),
         )
-        #: 每次前向记录实际进 SDPA 的 K/V 张量形状（活性证据，不进 state_dict）
-        self.kv_telemetry: dict | None = None
 
     def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
                 dist_pen: float = 0.0, kv_from: torch.Tensor | None = None,
@@ -432,29 +498,89 @@ class GQABlock(nn.Module):
                     "dense=True（无退出/无填充）形态下开放")
         if attn_mask is not None and attn_mask.dim() not in (2, 4):
             raise ValueError("attn_mask 必须是 [T,T] 或 [B,H,T,T]（评测期可见性掩码）")
-        B, T, d = x.shape
-        qkv = self.qkv(self.ln1(x))
-        q, kv = qkv[..., :d], qkv[..., d:]
-        k, v = kv[..., :self.kv_dim], kv[..., self.kv_dim:]
-
-        def shape(t: torch.Tensor, nh: int) -> torch.Tensor:
-            return t.view(B, T, nh, self.head_dim).transpose(1, 2)
-
-        qs, ks, vs = shape(q, self.n_heads), shape(k, self.n_kv_heads), shape(v, self.n_kv_heads)
-        a = F.scaled_dot_product_attention(qs, ks, vs, attn_mask=attn_mask,
-                                           is_causal=attn_mask is None,
-                                           enable_gqa=True)
-        self.kv_telemetry = {
-            "q_shape": tuple(qs.shape), "k_shape": tuple(ks.shape),
-            "v_shape": tuple(vs.shape), "qkv_out_width": int(qkv.shape[-1]),
-            "n_kv_heads": self.n_kv_heads, "head_dim": self.head_dim,
-            "enable_gqa": True, "expanded_to_n_heads": False,
-            "attn_mask": attn_mask is not None,
-        }
-        a = a.transpose(1, 2).reshape(B, T, d)
+        a = self._attention(self.ln1(x), attn_mask)
         x = x + self.proj(a)
         x = x + self.mlp(self.ln2(x))
         return x, None
+
+
+class ComposableBlock(KVHeadProjectionMixin, nn.Module):
+    """**可组合块**（ENG1，ticket 39-X2）：ENG1 前不存在的组合的落点。
+
+    把三种**正交**特性叠在同一 block 类里：
+
+    ① **KV 头投影**（GQA/MQA）——由 `KVHeadProjectionMixin` 提供（与 block 类解耦，
+       不再是「选不选 `GQABlock` 类」的互斥选择）；
+    ② **写入通道读出**（carry）——与 `CarryChannelBlock` 同一读出式
+       `a ← a + γ ⊙ mem_t`（γ 单边零初始化，记忆槽由模型共享）；
+    ③ **窗口 / 可见性掩码**——`attn_mask` 是**正交装饰层**（训练期由
+       `DepthARModel._window_mask` 给、评测期由 `retention` 给），与 ①② 无关。
+
+    缺省（`n_kv_heads=None`、`carry_on=False`）与 stock `Block` 逐位一致（单测钉住）。
+    单特性路径仍走 `GQABlock` / `CarryChannelBlock` 快路径（逐位不变）；本类只在
+    GQA × carry 同时开时由 `DepthARModel` 选中。
+    """
+
+    telemetry_kind = "carry_channel"
+
+    def __init__(self, cfg: ModelConfig, n_kv_heads: int | None = None,
+                 carry_state_dim: int | None = None, carry_on: bool = False):
+        super().__init__()
+        d = cfg.d_model
+        self.carry_on = bool(carry_on)
+        self.ln1 = nn.LayerNorm(d)
+        self.ln2 = nn.LayerNorm(d)
+        self._init_kv_projection(cfg, n_kv_heads)
+        self.proj = nn.Linear(d, d)
+        self.mlp = nn.Sequential(
+            nn.Linear(d, cfg.mlp_mult * d), nn.GELU(),
+            nn.Linear(cfg.mlp_mult * d, d), nn.Dropout(cfg.dropout),
+        )
+        if self.carry_on:
+            # 读出增益按**记忆槽**头结构定形（与 `CarryChannelBlock` 同口径；缺省
+            # H_carry == H_attn）。原始 Parameter，构造时不消耗随机数。
+            self.carry_head_dim = (int(carry_state_dim) if carry_state_dim
+                                   else d // cfg.n_heads)
+            self.carry_heads = d // self.carry_head_dim
+            self.carry_scale = nn.Parameter(torch.zeros(self.carry_heads))
+            self._carry_box: dict = {}
+
+    def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
+                dist_pen: float = 0.0, kv_from: torch.Tensor | None = None,
+                gate_vec: torch.Tensor | None = None
+                ) -> tuple[torch.Tensor, dict | None]:
+        for name, given in (("dist_pen", dist_pen > 0),
+                            ("kv_from", kv_from is not None),
+                            ("gate_vec", gate_vec is not None)):
+            if given:
+                raise ValueError(
+                    f"ComposableBlock 只支持 stock 注意力路径，收到 {name}：GQA / "
+                    "写入通道只在 dense=True + 顺序残差（无退出/无填充）形态下开放")
+        if attn_mask is not None and attn_mask.dim() not in (2, 4):
+            raise ValueError("attn_mask 必须是 [T,T] 或 [B,H,T,T]（窗口/可见性掩码）")
+        B, T, d = x.shape
+        a = self._attention(self.ln1(x), attn_mask)
+        tele = None
+        if self.carry_on:
+            mem = self._carry_box.get("mem")
+            if mem is None:
+                raise RuntimeError(
+                    "ComposableBlock 需要先经 `DepthARModel._input_states` 算好共享"
+                    "记忆槽（它把读出放进模型的 `_carry_box`）—— 直接调用单块不支持")
+            gain = self.carry_scale.float().repeat_interleave(
+                self.carry_head_dim).view(1, 1, d)
+            scaled = mem * gain
+            a = a + scaled.to(a.dtype)
+            tele = {"read_scale_absmean":
+                    self.carry_scale.detach().float().abs().mean(),
+                    "read_share": (scaled.detach().float().norm()
+                                   / a.detach().float().norm().clamp_min(1e-6)),
+                    "mem_write_to_resid_ratio": (
+                        scaled.detach().float().norm() / x.detach().float().norm()
+                        .clamp_min(1e-6))}
+        x = x + self.proj(a)
+        x = x + self.mlp(self.ln2(x))
+        return x, tele
 
 
 @torch.no_grad()
@@ -1722,11 +1848,11 @@ class DepthARModel(nn.Module):
                 raise ValueError(
                     "carry_rule 与层间拓扑互斥（单因素：一次只改一个因素）——"
                     f"收到 topology={cfg.topology!r}")
+            # ENG1（ticket 39-X2）：carry_rule **可以**与 GQA/MQA（n_kv_heads<
+            # n_heads）同时开——KV 头投影已从 block 类解耦（`ComposableBlock`）。
+            # 仍互斥的是另两种注意力算子（内容 top-k / 线性注意力）。
             for other, on in (("attn_sparse_k", cfg.attn_sparse_k > 0),
-                              ("attn_linear", cfg.attn_linear),
-                              ("n_kv_heads < n_heads",
-                               cfg.n_kv_heads is not None
-                               and cfg.n_kv_heads < cfg.n_heads)):
+                              ("attn_linear", cfg.attn_linear)):
                 if on:
                     raise ValueError(
                         f"carry_rule 与 {other} 互斥（单因素：一次只改一个因素）")
@@ -1745,20 +1871,33 @@ class DepthARModel(nn.Module):
                     raise ValueError(
                         "n_kv_heads 与层间拓扑互斥（单因素：一次只改一个因素）——"
                         f"收到 topology={cfg.topology!r}")
+                # ENG1（ticket 39-X2）：GQA/MQA **可以**与训练期可见窗口同时开——
+                # 窗口掩码是与 block 类正交的装饰层（`attn_mask`）。仍互斥的是另两
+                # 种注意力算子。
                 for other, on in (("attn_sparse_k", cfg.attn_sparse_k > 0),
-                                  ("attn_linear", cfg.attn_linear),
-                                  ("train_window", cfg.train_window > 0)):
+                                  ("attn_linear", cfg.attn_linear)):
                     if on:
                         raise ValueError(
                             f"n_kv_heads 与 {other} 互斥（单因素：一次只改一个"
                             "因素）")
+        # ENG1（ticket 39-X2）：GQA（n_kv_heads < n_heads）与写入通道（carry_rule）
+        # 现在可组合——两者同时开时走 `ComposableBlock`（下面），单开时仍走
+        # `GQABlock` / `CarryChannelBlock` 快路径（逐位不变）。
+        _gqa = cfg.n_kv_heads is not None and cfg.n_kv_heads < cfg.n_heads
         if cfg.attn_sparse_k > 0:
             self.blocks = nn.ModuleList(TopKBlock(mcfg, cfg.attn_sparse_k)
                                         for _ in range(cfg.n_layers))
         elif cfg.attn_linear:
             self.blocks = nn.ModuleList(LinearAttnBlock(mcfg, cfg.linear_chunk)
                                         for _ in range(cfg.n_layers))
-        elif cfg.n_kv_heads is not None and cfg.n_kv_heads < cfg.n_heads:
+        elif cfg.carry_rule is not None and _gqa:
+            # GQA × 写入通道同时开——ENG1 前块类二选一 ⇒ 该组合在引擎里不存在
+            self.blocks = nn.ModuleList(
+                ComposableBlock(mcfg, cfg.n_kv_heads, cfg.carry_state_dim,
+                                carry_on=True)
+                for _ in range(cfg.n_layers))
+            self._wire_carry(cfg)
+        elif _gqa:
             # KV 头共享（契约 S）：n_kv_heads == n_heads 时走下面的 stock Block，
             # 因此「缺省 / MHA」与 v1 逐位一致
             self.blocks = nn.ModuleList(GQABlock(mcfg, cfg.n_kv_heads)
@@ -1767,11 +1906,7 @@ class DepthARModel(nn.Module):
             # 显式写入通道（契约 U）：与 stock `Block` 同构 + 每层一个读出增益
             self.blocks = nn.ModuleList(CarryChannelBlock(mcfg, cfg.carry_state_dim)
                                         for _ in range(cfg.n_layers))
-            # **单共享记忆槽**（见 `CarryChannel` 的文档：per-layer-12 实测出局）
-            self.carry = CarryChannel(cfg, cfg.carry_rule, cfg.carry_chunk)
-            self._carry_box: dict = {}
-            for blk in self.blocks:
-                blk._carry_box = self._carry_box
+            self._wire_carry(cfg)
         elif cfg.topology == "parallel":
             self.blocks = nn.ModuleList(ParallelBlock(mcfg, share_ln=True)
                                         for _ in range(cfg.n_layers))
@@ -1881,6 +2016,18 @@ class DepthARModel(nn.Module):
         # 它**不参与模型自身 logits**：只被 `pathlm/recon_signal.recon_loss` 使用。
         if cfg.recon_window > 0:
             self.recon_head = build_recon_head(cfg, vocab_size)
+
+    def _wire_carry(self, cfg: DepthARConfig) -> None:
+        """写入通道的**单共享记忆槽**接线（契约 U；ENG1 后 `CarryChannelBlock` 与
+        `ComposableBlock` 共用）：建共享槽 + 把同一个 box 挂到每层读出。
+
+        在块建完之后调用（`self.carry` 的三个参数在建在参数 init 循环之后——
+        不消耗其余参数的随机数 ⇒ 同 seed 下与 U0 臂主干参数逐位相同）。
+        """
+        self.carry = CarryChannel(cfg, cfg.carry_rule, cfg.carry_chunk)
+        self._carry_box: dict = {}
+        for blk in self.blocks:
+            blk._carry_box = self._carry_box
 
     # ---------- 读出 ----------
 
