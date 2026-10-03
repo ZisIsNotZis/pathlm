@@ -138,8 +138,9 @@ def main() -> None:
     note("载入三臂（model.pt sha256 断言）")
     models, ck = {}, {}
     for arm in ARMS:
-        models[arm], ck[arm] = load_arm(scfg, arm, vocab, device,
-                                        cfg.get("arms", {}).get(f"{args.scale}/{arm}"))
+        entry = cfg.get("arms", {}).get(f"{args.scale}/{arm}")
+        want = entry.get("sha256") if isinstance(entry, dict) else entry
+        models[arm], ck[arm] = load_arm(scfg, arm, vocab, device, want)
         note(f"  {arm}: sha256 {ck[arm]['sha256'][:16]}… params {ck[arm]['params']} "
              f"reused={ck[arm]['reused']}")
 
@@ -343,8 +344,8 @@ def main() -> None:
             row["criterion_delta_ci"] = paired_delta_ci(
                 row["repr"][f"K{cfg['main_k']}_per_batch"], row["stock"]["K1_per_batch"], seed=9)
         traj[str(st)] = row
-        note(f"  轨迹 @{st} 步：" + " ".join(f"{a}@K1 {row[a]['K1_bpc']}" for a in row
-                                             if isinstance(row[a], dict))
+        note(f"  轨迹 @{st} 步：" + " ".join(f"{a}@K1 {row[a]['K1_bpc']}" for a in ARMS
+                                             if isinstance(row.get(a), dict))
              + (f" | 判据量 {row.get('criterion_value')}" if "criterion_value" in row else ""))
     full_criterion = round(bk["repr"] - b1["stock"], 6)
     results["trajectory"] = {"checkpoints": traj, "full_run_steps": steps_full,

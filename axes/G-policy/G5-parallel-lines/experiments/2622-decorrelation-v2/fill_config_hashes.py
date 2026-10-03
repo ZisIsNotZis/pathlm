@@ -34,7 +34,8 @@ def main() -> None:
         for arm in arms:
             p = os.path.join(HERE, train_dir, arm, "model.pt")
             if not os.path.exists(p):
-                raise SystemExit(f"缺权重 {p}")
+                print(f"SKIP {scale}/{arm}: 尚未训练（{p}）")
+                continue
             cfg["arms"][f"{scale}/{arm}"] = {
                 "sha256": sha256_file(p), "size_bytes": os.path.getsize(p),
                 "path": os.path.relpath(p, ROOT)}

@@ -71,6 +71,8 @@ SYNTH_BATCH, SYNTH_CHUNK = 64, 16
 EVAL_BATCHES, EVAL_BS = 20, 16
 
 LOCK = "/tmp/pathlm_gpu.lock"
+#: 锁等待上限（秒）：共享卡上别的线可能长时间持锁；eval 是短任务，等得住。
+LOCK_MAX_WAIT = 3600
 
 
 # ------------------------------------------------------------------ 工具
@@ -405,6 +407,38 @@ def attn_island_cost(seq_len: int, window: int, iters: int = 8) -> dict:
     return out
 
 
+def cost_theory() -> dict:
+    """纯算术的等效 FLOPs / 占比口径（不碰 GPU）——report 阶段可独立复算。"""
+    theory = {
+        "other_macs_per_token_per_layer": OTHER_MACS,
+        "attn_macs_full_per_token_per_layer": {str(T): 2 * T * D for T in (256, 512)},
+        "attn_share_formula": {str(T): round(attn_share_formula(T), 4)
+                               for T in (256, 512)},
+        "attn_share_formula_note": ("K10 公式 512T/(512T+786432)；T=512 = 0.2500"
+                                    "（主 Agent 修正 K10 原文的 0.257）"),
+        "window_theory": {},
+    }
+    for T, w in ((256, 128), (512, 256)):
+        live = window_mask_liveness(T, w, 0)
+        attn_win = 2 * w * D
+        attn_full = 2 * T * D
+        share_win = attn_win / (attn_win + OTHER_MACS)
+        total_full = attn_full + OTHER_MACS
+        total_win = attn_win + OTHER_MACS
+        theory["window_theory"][f"{w}@{T}"] = {
+            "visible_frac_of_causal": live["visible_frac"],
+            "attn_macs_window_per_token_per_layer": attn_win,
+            "attn_share_window_formula": round(share_win, 4),
+            "attn_flops_reduction_relative_to_full": round(1 - attn_win / attn_full, 4),
+            "layer_macs_reduction_all_in": round(1 - total_win / total_full, 4),
+            "note": ("理论节省 = 只数注意力 MACs；本实装走稠密 bool 掩码 ⇒ 墙钟未必兑现"
+                     "（见 measured.ratio_by_T）。attn_flops_reduction = 1 − w/T（渐进 50%）；"
+                     "layer_macs_reduction_all_in = 1 − (attn_win+other)/(attn_full+other)，"
+                     "即整模型每 token 的**理论等效 FLOPs** 降幅"),
+        }
+    return theory
+
+
 def cost_probe(iters: int = 6) -> dict:
     measured = {"model_step": [], "attn_island": [], "ratio_by_T": []}
     for T, w in ((256, 0), (256, 128), (512, 0), (512, 256)):
@@ -429,29 +463,7 @@ def cost_probe(iters: int = 6) -> dict:
             "attn_island_over_model_step": round(isl_f["median_ms"] / f["median_ms"], 4),
             "attn_share_formula": round(attn_share_formula(T), 4),
         })
-    theory = {
-        "other_macs_per_token_per_layer": OTHER_MACS,
-        "attn_macs_full_per_token_per_layer": {str(T): 2 * T * D for T in (256, 512)},
-        "attn_share_formula": {str(T): round(attn_share_formula(T), 4)
-                               for T in (256, 512)},
-        "attn_share_formula_note": ("K10 公式 512T/(512T+786432)；T=512 = 0.2500"
-                                    "（主 Agent 修正 K10 原文的 0.257）"),
-        "window_theory": {},
-    }
-    for T, w in ((256, 128), (512, 256)):
-        live = window_mask_liveness(T, w, 0)
-        attn_win = 2 * w * D
-        share_win = attn_win / (attn_win + OTHER_MACS)
-        share_full = attn_share_formula(T)
-        theory["window_theory"][f"{w}@{T}"] = {
-            "visible_frac_of_causal": live["visible_frac"],
-            "attn_macs_window_per_token_per_layer": attn_win,
-            "attn_share_window_formula": round(share_win, 4),
-            "attn_flops_reduction_relative_to_full": round(1 - attn_win / (2 * T * D), 4),
-            "layer_macs_reduction_all_in": round(1 - share_win / share_full, 4),
-            "note": ("理论节省 = 只数注意力 MACs；本实装走稠密 bool 掩码 ⇒ 墙钟未必兑现"
-                     "（见 measured.ratio_by_T）"),
-        }
+    theory = cost_theory()
     return {"theory": theory, "measured": measured,
             "note": ("双口径：理论（等效 FLOPs）+ 实测（墙钟/显存）。公式值只作对照，"
                      "不得当判据（SCHEMA §17.11）")}
@@ -461,7 +473,7 @@ def cost_probe(iters: int = 6) -> dict:
 
 def stage_preflight(cost_iters: int) -> None:
     os.makedirs(os.path.join(HERE, "smoke"), exist_ok=True)
-    gpu_acquire()
+    gpu_acquire(max_wait_s=LOCK_MAX_WAIT)
     try:
         out = {"note": "20 步冒烟：四臂各跑 20 步，检查活性量落盘与实测步时/显存（无外推时间字段）",
                "arms": {}}
@@ -499,7 +511,7 @@ def stage_preflight(cost_iters: int) -> None:
 def stage_train(arm: str) -> None:
     spec = ARM_BY_NAME[arm]
     steps = steps_for(spec["seq_len"])
-    gpu_acquire()
+    gpu_acquire(max_wait_s=LOCK_MAX_WAIT)
     try:
         train_arm(spec, steps=steps)
     finally:
@@ -517,7 +529,7 @@ def stage_train_all(gap_s: int = 60) -> None:
 
 def stage_eval(cost_iters: int = 6) -> None:
     _, eval_arr, vocab = load_enwik8_full(".tmp/enwik8", os.path.join(ROOT, DATA))
-    gpu_acquire()
+    gpu_acquire(max_wait_s=LOCK_MAX_WAIT)
     try:
         out = {"batteries": {}, "selfchecks": {}, "synth": {}, "field_by_field": {}}
         for spec in ARMS:
@@ -543,8 +555,8 @@ def stage_eval(cost_iters: int = 6) -> None:
         out["cost"] = cost_probe(iters=cost_iters)
         json.dump(out, open(os.path.join(HERE, "eval.json"), "w"),
                   indent=2, ensure_ascii=False)
-        print(json.dumps({a: out["batteries"][a]["bpc_native"] for a in ARM_BY_NAME},
-                         indent=2))
+        print(json.dumps({a["arm"]: out["batteries"][a["arm"]]["bpc_native"]
+                         for a in ARMS}, indent=2))
     finally:
         gpu_release()
 
@@ -555,6 +567,7 @@ def stage_report(cost_iters: int) -> None:
     trains = {a["arm"]: json.load(open(os.path.join(HERE, f"{a['arm']}-train_summary.json")))
               for a in ARMS}
     cost = ev["cost"]
+    cost["theory"] = cost_theory()          # 纯算术，独立复算（不信任 eval.json 的历史版）
 
     b = ev["batteries"]
     full256, win256 = b["full-256"], b["win128-256"]
@@ -568,11 +581,11 @@ def stage_report(cost_iters: int) -> None:
         return "0" if abs(x) < band else ("+" if x > 0 else "-")
 
     liveness = {}
-    for a in ARM_BY_NAME:
-        mon = json.load(open(os.path.join(HERE, "runs", a, "results.json")))[
+    for a in ARMS:
+        mon = json.load(open(os.path.join(HERE, "runs", a["arm"], "results.json")))[
             "gnorm_monitor"]
-        liveness[a] = {"window_mask": mon.get("window_mask"),
-                       "window_mask_probe": mon.get("window_mask_probe")}
+        liveness[a["arm"]] = {"window_mask": mon.get("window_mask"),
+                              "window_mask_probe": mon.get("window_mask_probe")}
     cfg = {
         "contract": "axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/README.md",
         "scope": ("本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验"
@@ -611,7 +624,7 @@ def stage_report(cost_iters: int) -> None:
         "config": cfg,
         "arms": {a["arm"]: {**trains[a["arm"]],
                             "battery": b[a["arm"]],
-                            "selfcheck": ev["selfchecks"][a["arm"]]} for a in ARM_BY_NAME},
+                            "selfcheck": ev["selfchecks"][a["arm"]]} for a in ARMS},
         "criteria": {
             "criterion_1_quality": {
                 "delta_convention": "Δ = bpc_full − bpc_window（正 = 窗口更好）",
@@ -634,8 +647,17 @@ def stage_report(cost_iters: int) -> None:
                 "variance_band": band,
                 "sign_T256": sign(d256), "sign_T512": sign(d512),
                 "same_sign": sign(d256) == sign(d512),
+                "raw_delta_sign_T256": ("+" if d256 > 0 else "-" if d256 < 0 else "0"),
+                "raw_delta_sign_T512": ("+" if d512 > 0 else "-" if d512 < 0 else "0"),
+                "same_raw_delta_sign": ((d256 > 0) == (d512 > 0) and
+                                        (d256 < 0) == (d512 < 0)),
+                "primary_reading": ("band（|Δ|<0.014 判「不亏」）——契约「同判据」的字面口径；"
+                                    "raw Δ 符号作并列描述"),
+                "band_class_T256": ("不亏" if abs(d256) < band else "亏"),
+                "band_class_T512": ("不亏" if abs(d512) < band else "亏"),
                 "note": ("两点只描述、禁止外推（SCHEMA §17.16 / §17.11）；"
-                         "|Δ|<0.014 ⇒ 该点「不亏」"),
+                         "|Δ|<0.014 ⇒ 该点「不亏」；两种读法（raw 符号 / 带宽分类）都报，"
+                         "主口径 = 带宽分类"),
             },
             "criterion_2_attn_share": {
                 "measured": cost["measured"]["ratio_by_T"],
@@ -644,12 +666,12 @@ def stage_report(cost_iters: int) -> None:
             },
             "criterion_3_memory": {
                 "peak_torch_gb_by_arm": {a["arm"]: trains[a["arm"]]["peak_torch_gb"]
-                                         for a in ARM_BY_NAME},
+                                         for a in ARMS},
                 "peak_nvidia_smi_gb_by_arm": {
                     a["arm"]: trains[a["arm"]]["peak_child_mem_gb_nvidia_smi"]
-                    for a in ARM_BY_NAME},
+                    for a in ARMS},
                 "budget_gb_net": 5.0,
-                "max_peak_gb": max(trains[a["arm"]]["peak_torch_gb"] for a in ARM_BY_NAME),
+                "max_peak_gb": max(trains[a["arm"]]["peak_torch_gb"] for a in ARMS),
             },
             "criterion_4_crossover": {
                 "window256_T512_not_losing": bool(d512 >= -band),
@@ -668,7 +690,7 @@ def stage_report(cost_iters: int) -> None:
         },
         "liveness": liveness,
         "preflight_step_ms_by_T": smoke["cost_measured_step_ms_by_T"],
-        "wall_total_min": round(sum(trains[a["arm"]]["wall_min"] for a in ARM_BY_NAME), 2),
+        "wall_total_min": round(sum(trains[a["arm"]]["wall_min"] for a in ARMS), 2),
     }
     json.dump(results, open(os.path.join(HERE, "results.json"), "w"),
               indent=2, ensure_ascii=False)

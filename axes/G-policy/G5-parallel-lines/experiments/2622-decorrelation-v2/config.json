@@ -6,10 +6,24 @@
     "batch_size": 32,
     "n_batches": 60
   },
-  "k_sweep": [1, 2, 4, 8],
-  "js_k": [2, 8],
-  "selfcheck_k": [1, 2],
-  "determinism_k": [1, 8],
+  "k_sweep": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "js_k": [
+    2,
+    8
+  ],
+  "selfcheck_k": [
+    1,
+    2
+  ],
+  "determinism_k": [
+    1,
+    8
+  ],
   "main_k": 8,
   "battery": {
     "enabled": true,
@@ -29,11 +43,21 @@
       "steps_full": 6000,
       "train_dir": "train13m",
       "config_dir": "configs13m",
-      "arms": ["stock", "l1", "repr"],
+      "arms": [
+        "stock",
+        "l1",
+        "repr"
+      ],
       "arms_meta": {
-        "stock": {"role": "阶梯底：单线单模型（p_skip=0, w_repr_decorr=0）"},
-        "l1": {"role": "路径机制（p_skip=0.1），无去相关压力"},
-        "repr": {"role": "路径机制 + 表征级去相关（w_repr_decorr=1.0，跨路隐状态相关罚则）"}
+        "stock": {
+          "role": "阶梯底：单线单模型（p_skip=0, w_repr_decorr=0）"
+        },
+        "l1": {
+          "role": "路径机制（p_skip=0.1），无去相关压力"
+        },
+        "repr": {
+          "role": "路径机制 + 表征级去相关（w_repr_decorr=1.0，跨路隐状态相关罚则）"
+        }
       },
       "midpoint_ckpt": 3000
     },
@@ -41,14 +65,22 @@
       "steps_full": 12000,
       "train_dir": "train50m",
       "config_dir": "configs50m",
-      "arms": ["stock", "l1", "repr"],
+      "arms": [
+        "stock",
+        "l1",
+        "repr"
+      ],
       "arms_meta": {
         "stock": {
           "role": "阶梯底：单线单模型；**复用 ticket 37 / 2620 的 50M stock 检查点**（同配置、同 seed、同 token；该臂 gate_skips=0 ⇒ 新 gate 代码下逐位等价），在本入口下重新评测",
           "reuse_ckpt": "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/train/stock/model.pt"
         },
-        "l1": {"role": "路径机制（p_skip=0.1），无去相关压力（本轮重训，与 repr 同代码）"},
-        "repr": {"role": "路径机制 + 表征级去相关（w_repr_decorr=1.0）"}
+        "l1": {
+          "role": "路径机制（p_skip=0.1），无去相关压力（本轮重训，与 repr 同代码）"
+        },
+        "repr": {
+          "role": "路径机制 + 表征级去相关（w_repr_decorr=1.0）"
+        }
       },
       "midpoint_ckpt": 6000
     }
@@ -56,8 +88,18 @@
   "anchors_13m": {
     "note": "既有 13M 锚点（probe_tts 60-batch 协议，seed 11）；只作同方法趋势，本轮 13M 三臂是全新重训",
     "stock_b0_battery_bpc": 1.5074,
-    "l1": {"K1": 1.6926, "K2": 1.6657, "K4": 1.6543, "K8": 1.6454},
-    "divl1": {"K1": 1.6842, "K2": 1.6482, "K4": 1.6339, "K8": 1.6227},
+    "l1": {
+      "K1": 1.6926,
+      "K2": 1.6657,
+      "K4": 1.6543,
+      "K8": 1.6454
+    },
+    "divl1": {
+      "K1": 1.6842,
+      "K2": 1.6482,
+      "K4": 1.6339,
+      "K8": 1.6227
+    },
     "sources": [
       ".scratch/08-tts-probe/evidence/tts_results.json",
       ".scratch/09-m3-interactions/evidence/DIVL1/k_sweep.json"
@@ -67,5 +109,28 @@
   "smoke_protocol": {
     "steps": 400,
     "why": "SCHEMA §17.5：短窗口的墙钟字段不得外推；400 步把 0.1 min 的日志精度压到 ±0.3%"
+  },
+  "arms": {
+    "13m/stock": {
+      "sha256": "f591c6bf63627c0e1ea8b7b32aacf84601a5f507272ecf844deb4cec3716788f",
+      "size_bytes": 52349379,
+      "path": "axes/G-policy/G5-parallel-lines/experiments/2622-decorrelation-v2/train13m/stock/model.pt"
+    },
+    "13m/l1": {
+      "sha256": "456d0300280be674667177a810eb2491d97759ae428954d6d93736664092c64c",
+      "size_bytes": 52349379,
+      "path": "axes/G-policy/G5-parallel-lines/experiments/2622-decorrelation-v2/train13m/l1/model.pt"
+    },
+    "13m/repr": {
+      "sha256": "7d25c035a013c7ebe87141546586289ee9509feb4501de7bf80177be5cbd18ef",
+      "size_bytes": 52349379,
+      "path": "axes/G-policy/G5-parallel-lines/experiments/2622-decorrelation-v2/train13m/repr/model.pt"
+    },
+    "50m/stock": {
+      "sha256": "3649f076f0c4a4f30809550196553ad13dea50e485f3ba496017d65e77d7c6dd",
+      "size_bytes": 207415747,
+      "path": "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/train/stock/model.pt",
+      "reused_from": "2620-decorrelation-at-scale"
+    }
   }
 }

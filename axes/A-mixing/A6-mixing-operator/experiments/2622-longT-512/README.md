@@ -134,6 +134,7 @@ status: judged
 | 项 | 值 |
 |---|---|
 | `gpu_wall_budget` | **45 min**（含冒烟 + 成本基准 + 4 训练臂 + 电池 + 合成腿）；主 Agent 批准上限 60 min |
+| **实测总墙钟（GPU 阶段）** | **≈33 min** = preflight ≈1.5 + 四臂训练 **27.41**（`results.json::wall_total_min`）+ eval ≈4；**未用满 45 min 预算**，砍项（合成腿距离档 → release 口径 → cost-iters）**未触发** |
 | 预算过程（§8） | 开跑前用 `--stage preflight` **实测步时/显存**再锁定（禁按公式估）——实测值见 `results.json::cost` 与 `analysis.md` |
 | 训练臂（4） | `full-256`(12k 步) / `win128-256`(12k) / `full-512`(6k) / `win256-512`(6k)，均 bs32、seed0 |
 | **token 口径** | **同 token 预算 98.3M**（T=256: 12000×32×256；T=512: 6000×32×512）。**同步数**在 T=512 对内成立（两臂均 6000 步）；跨点用同 token 口径（K10 §3.3 主口径）。另报步数/epoch 数 |
