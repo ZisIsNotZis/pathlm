@@ -1,0 +1,137 @@
+{
+  "experiment": "2623-composable-arms-13m",
+  "ticket": ".scratch/40-next-wave/issues/01-next-wave.md#Y1",
+  "device": "cuda",
+  "seed": 0,
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true,
+    "topology": "sequential"
+  },
+  "train": {
+    "steps": 6000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0,
+    "tokens_per_arm": 49152000,
+    "note": "6k×32×256=49.0M token，四臂严格同预算；主 Agent 裁决为「快照 token 预算」，与 2618 的 12k 不可比（见 README §4c）。"
+  },
+  "arms": [
+    {
+      "name": "stock",
+      "flags": {},
+      "stacked": [],
+      "native_window": 0
+    },
+    {
+      "name": "gqa",
+      "flags": {
+        "n_kv_heads": 2
+      },
+      "stacked": [
+        "gqa"
+      ],
+      "native_window": 0
+    },
+    {
+      "name": "gqa_carry",
+      "flags": {
+        "n_kv_heads": 2,
+        "carry_rule": "delta"
+      },
+      "stacked": [
+        "gqa",
+        "carry"
+      ],
+      "native_window": 0
+    },
+    {
+      "name": "gqa_carry_window",
+      "flags": {
+        "n_kv_heads": 2,
+        "carry_rule": "delta",
+        "train_window": 16,
+        "train_anchors": 0
+      },
+      "stacked": [
+        "gqa",
+        "carry",
+        "window"
+      ],
+      "native_window": 16
+    }
+  ],
+  "checkpoint": {
+    "dir": "axes/M-carrier/M1-carrier-type/experiments/2623-composable-arms-13m/train",
+    "sha256": {
+      "stock": "72ed2438e99c41ed5c139ee31b7cd9cda13ce6a440524418293c3a9162f2d54d",
+      "gqa": "411f962f0b0acc8f40b7d8e5927a787600141f442610f61d43dfa8d189303e2a",
+      "gqa_carry": "5ec1e0c5df6ffe0c371996bbe0c5d02e6eb7bd57385355321c666359c8e26c1c",
+      "gqa_carry_window": "48c4e39ec058b8c509de88744e32f4169f993eb4f2680e6b4080b1b410f9c8a6"
+    },
+    "note": "本实验四臂**自己训练**（6k 步合成 assoc-mqar）；权重不入库，运行时 sha256 断言。"
+  },
+  "data": {
+    "train_source": "tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch",
+    "vocab_size": 206,
+    "bpc_name": "enwik8_full",
+    "bpc_path": "data/enwik8_full.npz",
+    "bpc_split": "末 10M 评测尾段（只用词表大小 206 与 LM 质量口径，不用 enwik8 当长程主任务）"
+  },
+  "tokens": {
+    "sym_vocab": 64,
+    "filler_token": 64,
+    "cue_token": 205,
+    "local_k": 8
+  },
+  "eval": {
+    "K_main": 8,
+    "batch_size": 64,
+    "n_batches": 32,
+    "note": "关联回忆判决腿；每臂在**自己训练时的可见性**下评测（训练/评测同一掩码）。"
+  },
+  "cross_leg": {
+    "batch_size": 64,
+    "n_batches": 32,
+    "note": "交叉口径：所有臂都 keep_mask=None（全因果），与 native 口径并报。"
+  },
+  "train_task_leg": {
+    "n_queries": 8,
+    "gap": 14,
+    "batch_size": 64,
+    "n_batches": 8,
+    "note": "训练型任务（多查询 assoc-mqar）上的召回 —— in-distribution 口径；距离与训练同分布（≤240），与判决腿（距离 241–255）分开读。"
+  },
+  "distance_leg": {
+    "distances": [
+      16,
+      32,
+      64,
+      128,
+      192,
+      255
+    ],
+    "batch_size": 64,
+    "n_batches": 3
+  },
+  "bpc_leg": {
+    "batch_size": 16,
+    "n_batches": 16,
+    "window_seed": 2,
+    "note": "clean bpc（enwik8 评测尾段，全因果）；合成训练 ⇒ 此腿是非退化锚，不作质量判据。"
+  },
+  "criteria": {
+    "c1_recall_two_leg": "主腿 = 合成关联回忆准确率（native 可见性 + 全因果交叉口径）；第二腿 = clean bpc（enwik8 尾段）",
+    "c2_increments": "逐叠加步的增量（相邻两臂 acc 差，pp）+ 净和；净和落方差带内时按 §17.17 给分量分解",
+    "c3_corrupt_source": "毁源对照臂：把源 KV 段 [0, 2K) 毁掉；任一臂毁源后 CI 下界 > 4×chance ⇒ 该臂读数作废",
+    "c4_param_declaration": "GQA −8.75%（−1,184,256 参数）；carry +264,296（+1.95%）；window +0。按 §15 声明是否混淆归因（GQA 为剪枝类，见 analysis.md）",
+    "c5_activity": "KV 头形状 / carry read_share / window mask 每 200 步落盘",
+    "c6_convergence": "§17.15：答案行 CE（synth_answer_ce）末窗斜率；仍在陡降则结论只读臂间增量"
+  },
+  "variance_band_pp": 1.4,
+  "gpu_wall_budget_min": 60
+}
