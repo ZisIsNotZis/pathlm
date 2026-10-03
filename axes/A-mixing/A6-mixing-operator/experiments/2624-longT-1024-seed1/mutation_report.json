@@ -1,0 +1,58 @@
+{
+  "target": "process-local monkeypatch（不改文件）",
+  "sha256_before": {
+    "pathlm/depth_ar.py": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279",
+    "tests/test_longT_1024_seed1.py": "396ac8769193fe01ba6fbb1b3b74d1b6f18ba74e4b64ab508c694b00b402b638",
+    "run.py": "a3ac15c8ec1bd3a8297591c276480f508040e98d8e4129777a8e1d4391da3726"
+  },
+  "note": "本实验未改动 pathlm/depth_ar.py；变异用进程内 monkeypatch 完成（SCHEMA §22.2）。seed 单因素另由 Z1-M5 以常量替换验证。",
+  "mutations": [
+    {
+      "id": "Z1-M1",
+      "desc": "窗口掩码被换成恒等（退化点不再被识别）",
+      "target_test": "test_window512_at_T1024_is_nondegenerate",
+      "args": [],
+      "caught_red": true,
+      "detail": "window512@T=1024 不得退化为恒等"
+    },
+    {
+      "id": "Z1-M2",
+      "desc": "带宽被放到 0.5（越界点被误判为带内）",
+      "target_test": "test_band_class_boundary_and_direction",
+      "args": [],
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "Z1-M3",
+      "desc": "复现判据结果翻转（把复现报成未复现）",
+      "target_test": "test_explosion_reproduction_not_reproduced",
+      "args": [],
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "Z1-M4",
+      "desc": "忽略降速旋钮（两臂可能不同刻度）",
+      "target_test": "test_steps_override_keeps_both_arms_at_same_scale",
+      "args": [],
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "Z1-M5",
+      "desc": "把 SEED 改成 0（seed 单因素声明被破坏）",
+      "target_test": "test_seed1_arms_only_differ_in_train_window",
+      "args": [],
+      "caught_red": true,
+      "detail": "两臂 seed 必须相同且为 1"
+    }
+  ],
+  "sha256_after": {
+    "pathlm/depth_ar.py": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279",
+    "tests/test_longT_1024_seed1.py": "396ac8769193fe01ba6fbb1b3b74d1b6f18ba74e4b64ab508c694b00b402b638",
+    "run.py": "a3ac15c8ec1bd3a8297591c276480f508040e98d8e4129777a8e1d4391da3726"
+  },
+  "restored_bitwise": true,
+  "all_caught": true
+}

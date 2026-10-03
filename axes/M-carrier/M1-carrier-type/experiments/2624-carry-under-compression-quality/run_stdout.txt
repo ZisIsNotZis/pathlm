@@ -1,0 +1,28 @@
+[    0.0s] 加载两条训练臂（sha256 断言）
+[    0.9s]   carry_mha  18cfc48e71874567… block=CarryChannelBlock params=13801064
+[    1.6s]   carry_gqa  02c390d8b1cb41a3… block=ComposableBlock params=12616808
+[    1.6s] 自检①：块类 / 参数量 / 窗口非退化（§17.16）/ fp32 逐位等值（实现锚）
+[    2.4s]   fp32 逐位等值：{'carry_mha': True, 'carry_gqa': True}
+[    2.6s]   KV 头形状：{'carry_mha': [8, 8, 256, 32], 'carry_gqa': [8, 2, 256, 32]}
+[    2.6s] 判据①③④：合成关联回忆（native window16）+ 毁源对照臂
+[    7.8s]   carry_mha_fp16   mode=fp16 acc=0.0396 CI=[0.031936, 0.04889] chance=0.0156 lp=0.0000 corrupt=0.0059
+[   12.6s]   carry_gqa_fp16   mode=fp16 acc=0.0093 CI=[0.005947, 0.014445] chance=0.0156 lp=0.0000 corrupt=0.0010
+[   18.5s]   carry_gqa_int8   mode=int8 acc=0.0093 CI=[0.005947, 0.014445] chance=0.0156 lp=0.0000 corrupt=0.0010
+[   18.5s] 交叉口径：全因果（keep_mask=None）
+[   23.2s]   carry_mha_fp16   full-causal acc=0.1553 corrupt=0.0137
+[   27.6s]   carry_gqa_fp16   full-causal acc=0.0991 corrupt=0.0068
+[   33.4s]   carry_gqa_int8   full-causal acc=0.0991 corrupt=0.0068
+[   33.4s] 训练型任务（多查询 assoc-mqar）召回 —— in-distribution 口径
+[   34.6s]   carry_mha_fp16   acc=0.3481 CI=[0.333704, 0.36287] corrupt=0.0144 dist=107-240
+[   35.8s]   carry_gqa_fp16   acc=0.3572 CI=[0.342643, 0.37198] corrupt=0.0149 dist=107-240
+[   37.2s]   carry_gqa_int8   acc=0.3569 CI=[0.342402, 0.371734] corrupt=0.0149 dist=107-240
+[   37.2s] 辅助腿：变距离回忆距离曲线（native 可见性）
+[   41.4s] 判据②③：头共享增量 / int8 增量 / 净和（§17.17）
+[   41.4s]   native: -3.027pp / 0.0pp / net -3.027pp
+[   41.4s]   train_task: 0.903pp / -0.024pp / net 0.879pp
+[   41.4s]   毁源对照有效：{'carry_mha_fp16': True, 'carry_gqa_fp16': True, 'carry_gqa_int8': True}
+[   41.4s] 判据⑥：量化活性（changed_frac / rel_err）
+[   41.6s]   int8 活性：changed_frac=0.999319712 rel_err=0.004802536
+[   41.6s] 收敛门禁（§17.15，答案行 CE 末窗斜率 nats/1k）：carry_mha=-0.06683, carry_gqa=-0.05826
+MAINLEG: {'carry_mha_fp16': 0.039551, 'carry_gqa_fp16': 0.009277, 'carry_gqa_int8': 0.009277}
+INCREMENTS(native): {'gqa_vs_mha_pp': -3.027, 'int8_vs_fp16_pp': 0.0, 'net_pp': -3.027, 'accuracy': {'carry_mha_fp16': 0.039551, 'carry_gqa_fp16': 0.009277, 'carry_gqa_int8': 0.009277}}

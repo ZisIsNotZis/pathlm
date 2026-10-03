@@ -18,6 +18,8 @@
 | [`2621-carry-under-compression`](2621-carry-under-compression/README.md) | 目录内 README |
 | [`2622-eng1-composable`](2622-eng1-composable/README.md) | 目录内 README |
 | [`2623-composable-arms-13m`](2623-composable-arms-13m/README.md) | 目录内 README |
+| [`2624-carry-under-compression-quality`](2624-carry-under-compression-quality/README.md) | 目录内 README |
+| [`2624-composable-followups-13m`](2624-composable-followups-13m/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 

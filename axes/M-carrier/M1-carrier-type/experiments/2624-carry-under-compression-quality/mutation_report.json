@@ -1,0 +1,69 @@
+{
+  "targets": {
+    "quant_carry.py": "315c3c99568148f4b556235af96875ecf7e0d048694439cd7c573f2a2f10f747",
+    "compression_arms.py": "533c500131cf4f584cac13372c0991a896cb33820036bd4352e11fb75e5a610c"
+  },
+  "mutations": [
+    {
+      "id": "M1",
+      "file": "quant_carry.py",
+      "desc": "_quant_carry_block：K/V 量化钉死成 fp32（假压缩）",
+      "expected_test": "test_int8_changes_values_and_logits",
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "99f64b787af8a0abbb0822855f75d1160f33bb65685aa38cbec9bb1fb2099cdc",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 11 deselected in 3.71s"
+    },
+    {
+      "id": "M2",
+      "file": "quant_carry.py",
+      "desc": "_attn_mask_of：窗口掩码被吞掉（前向不再逐位等值）",
+      "expected_test": "test_fp32_bitwise_matches_released_composable",
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "4a9d330b444937a92a8a94fbae9ee2b23f513e89439171847c4dd48f8109c1ef",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 11 deselected in 3.30s"
+    },
+    {
+      "id": "M3",
+      "file": "compression_arms.py",
+      "desc": "compress_increment：int8 增量符号反掉",
+      "expected_test": "test_compress_increment_signs",
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "9969242e87e34e6e00591fe6a6d00450177a93f40cd37f0b54b40012c2c27024",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 11 deselected in 3.05s"
+    },
+    {
+      "id": "M4",
+      "file": "compression_arms.py",
+      "desc": "expected_block_class：GQA×carry 仍报 GQABlock",
+      "expected_test": "test_expected_block_classes",
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "c839aca8f9152fb64007c1e16ef5e9864ad6641598dd87ca5136c38529756edd",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 11 deselected in 3.45s"
+    },
+    {
+      "id": "M5",
+      "file": "compression_arms.py",
+      "desc": "EVAL_ARMS：压缩行偷换成 fp16（假 int8 臂）",
+      "expected_test": "test_eval_rows_three_int8_shares_gqa_weights",
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "44605f150b72582076243b341abb12e13a7ce5bc86ee9773ad21a29ca506c7dd",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 11 deselected in 3.13s"
+    }
+  ],
+  "all_caught_red": true,
+  "all_restored_bitwise": true,
+  "sha256_restored": {
+    "quant_carry.py": "315c3c99568148f4b556235af96875ecf7e0d048694439cd7c573f2a2f10f747",
+    "compression_arms.py": "533c500131cf4f584cac13372c0991a896cb33820036bd4352e11fb75e5a610c"
+  }
+}

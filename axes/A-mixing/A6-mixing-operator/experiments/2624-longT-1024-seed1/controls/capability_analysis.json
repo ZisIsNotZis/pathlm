@@ -1,0 +1,24 @@
+{
+  "contract_combo": "--dense --topology sequential --seq-len 1024 --train-window {0,512} --seed 1（两臂）",
+  "forward": {
+    "full-1024-seed1": {
+      "ok": true,
+      "params": 7159296
+    },
+    "win512-1024-seed1": {
+      "ok": true,
+      "params": 7159296
+    }
+  },
+  "reverse_mutex_present": {
+    "train_window>0 and not dense": {
+      "ok": false,
+      "error": "训练期可见窗口只在 dense=True（stock decoder-only 形态）下验证（单因素）——收到 train_window=512 且 dense=False"
+    },
+    "train_window>0 and topology!=sequential": {
+      "ok": false,
+      "error": "train_window 与层间拓扑互斥（单因素：一次只改一个因素）——收到 topology='parallel'"
+    }
+  },
+  "conclusion": "契约组合在引擎中**可达**（两臂正向构造成功，参数同为 7,159,296）；互斥校验在 `DepthARModel.__init__` 中**确实生效**（反向构造被拒）。"
+}
