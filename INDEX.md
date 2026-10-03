@@ -2,7 +2,7 @@
 
 # INDEX · 设计空间状态灯
 
-共 **51** 个格子 ｜ ✅ judged 32 ｜ ◐ partial 7 ｜ 🏭 reference（含业界结论） 12
+共 **51** 个格子 ｜ ✅ judged 33 ｜ ◐ partial 6 ｜ 🏭 reference（含业界结论） 12
 
 > 全部内容由 `tools/build_wiki.py` 从 `catalog.yaml` 生成；**不要手改本文件**。
 
@@ -91,7 +91,7 @@
 | [`G2-currency`](axes/G-policy/G2-currency/README.md) · 记账货币 | ✅ judged | 双货币必须双报——本项目多次出现口径分歧。 |
 | [`G3-signal`](axes/G-policy/G3-signal/README.md) · 观测信号 | ✅ judged | 三信号正交监测栈成形；生成段没有单一信号够用。 |
 | [`G4-calibration`](axes/G-policy/G4-calibration/README.md) · 校准 | ✅ judged | 校准跨规模存活是本项目最稳的资产之一。 |
-| [`G5-parallel-lines`](axes/G-policy/G5-parallel-lines/README.md) · 并行多线机制 | ◐ partial | **实测结论（快照）**：13M 与 50M 上，我们**已测的**多线臂都输给同 token 预算的单线（50M：divl1@K8 1.5620 vs stock@K1 1.4505，差 0.1… |
+| [`G5-parallel-lines`](axes/G-policy/G5-parallel-lines/README.md) · 并行多线机制 | ✅ judged | **收口（两规模、预登记判据）**：多线设想的**机制**在 13M 成立、在 **50M 失效**，而**部署判据两个规模都不过**（8× 推理算力仍输同 token 预算单线：13M 最好 λ… |
 
 ## R · 参照线（必须打败的基线）（7 格）
 
