@@ -12,10 +12,10 @@ import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
-SCALES = {"13m": ("train13m", ("stock", "l1", "repr")),
-          "50m": ("train50m", ("l1", "repr"))}
-REUSE = {"50m/stock": "axes/G-policy/G5-parallel-lines/experiments/"
-                      "2620-decorrelation-at-scale/train/stock/model.pt"}
+SCALES = {"13m": ("train13m", ("stock", "l1", "repr", "repr01")),
+          "50m": ("train50m", ("repr01",))}
+REUSE = {"50m/stock": "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/train/stock/model.pt",
+         "50m/l1": "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/train/l1/model.pt"}
 
 
 def sha256_file(path: str) -> str:

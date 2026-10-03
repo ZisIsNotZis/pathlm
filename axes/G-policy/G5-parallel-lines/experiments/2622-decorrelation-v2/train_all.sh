@@ -55,7 +55,7 @@ mkdir -p "$EXP/smoke" "$EXP/train13m" "$EXP/train50m" "$ROOT/.tmp/v2-ckpts"
 if [ "$MODE" = "smoke" ]; then
   # 整程 <10 min ⇒ 允许整程持锁（§20.1）
   take_lock || exit 9
-  for arm in stock l1 repr; do
+  for arm in stock l1 repr repr01; do
     python3 train_m1.py "smoke13m_$arm" --config "$EXP/configs13m/$arm.json" \
         --steps "$SMOKE_STEPS" --out-root "$EXP/smoke" > "$EXP/smoke/smoke13m_$arm.log" 2>&1
     echo "smoke 13m $arm exit=$?"; tail -3 "$EXP/smoke/smoke13m_$arm.log"
@@ -71,9 +71,9 @@ fi
 
 if [ "$MODE" = "train" ]; then
   if [ "$SCALE" = "13m" ]; then
-    ARMS="stock l1 repr"; CFGDIR=configs13m; STEPS=6000; CKPT_EVERY=3000
+    ARMS="stock l1 repr repr01"; CFGDIR=configs13m; STEPS=6000; CKPT_EVERY=3000
   else
-    ARMS="l1 repr"; CFGDIR=configs50m; STEPS=12000; CKPT_EVERY=6000
+    ARMS="repr01"; CFGDIR=configs50m; STEPS=12000; CKPT_EVERY=6000
   fi
   for arm in $ARMS; do
     take_lock || exit 9

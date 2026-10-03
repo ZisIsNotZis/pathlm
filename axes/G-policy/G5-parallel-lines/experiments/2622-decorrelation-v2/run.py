@@ -115,6 +115,8 @@ def main() -> None:
     cfg = json.load(open(args.config))
     scfg = cfg["scales"][args.scale]
     ARMS = tuple(scfg["arms"])
+    # the primary decorrelation arm for the pre-registered main/parallel criteria
+    PRIMARY = scfg.get("primary_repr") or scfg.get("repr_arms", ["repr"])[0]
     if args.smoke:
         cfg["eval"] = {**cfg["eval"], "n_batches": 2}
         cfg["probe_seed"] = 11
@@ -189,12 +191,14 @@ def main() -> None:
     results["k_curve"] = curves
 
     # ---------------- ④ 确定性路径对照 ----------------
-    note("确定性路径对照（增益应恰好 0）：stock 臂 + repr 臂强制 p_skip=0")
+    det_arms = scfg.get("det_arms", ["stock", "repr"])
+    note(f"确定性路径对照（增益应恰好 0）：{det_arms} 强制 p_skip=0")
     det = {}
-    for tag, arm in (("stock", "stock"), ("repr_forced", "repr")):
+    for arm in det_arms:
+        tag = "stock" if arm == "stock" else f"{arm}_forced"
         r = {}
         for k in cfg["determinism_k"]:
-            run = ensemble(models[arm], eval_arr, k, cfg, deterministic=(tag != "stock"))
+            run = ensemble(models[arm], eval_arr, k, cfg, deterministic=(arm != "stock"))
             r[f"K{k}"] = {kk: vv for kk, vv in run.items() if kk != "per_batch"}
         kmax = max(cfg["determinism_k"])
         r["gain_K1_minus_Kmax"] = round(r["K1"]["bpc"] - r[f"K{kmax}"]["bpc"], 6)
@@ -221,15 +225,15 @@ def main() -> None:
     b1 = {a: curves[a][k1]["bpc"] for a in ARMS}
     bk = {a: curves[a][kk]["bpc"] for a in ARMS}
     # 主判据：任务预登记形式 `(K 路径集成) − (stock 单线) < 0`；等价于 reading_B 的 reduced 取负。
-    rb = reading_B(b1["l1"], b1["stock"], bk["repr"])
-    main_value = bk["repr"] - b1["stock"]                 # 任务形式：< 0 = 多线首次成立
-    main_verbatim = (bk["repr"] - b1["stock"]) - 0.0      # 与 reading_B 的 reduced 对照
+    rb = reading_B(b1["l1"], b1["stock"], bk[PRIMARY])
+    main_value = bk[PRIMARY] - b1["stock"]                 # 任务形式：< 0 = 多线首次成立
+    main_verbatim = (bk[PRIMARY] - b1["stock"]) - 0.0      # 与 reading_B 的 reduced 对照
     b1_pb = {a: per_batch_bpc(curves[a][k1]) for a in ARMS}
     bk_pb = {a: per_batch_bpc(curves[a][kk]) for a in ARMS}
 
-    ci_stock_vs_repr = paired_delta_ci(bk_pb["repr"], b1_pb["stock"], seed=1)   # repr@K8 − stock@K1
-    ci_l1_vs_repr = paired_delta_ci(bk_pb["repr"], bk_pb["l1"], seed=2)         # repr@K8 − l1@K8
-    ci_repr_tax = paired_delta_ci(b1_pb["repr"], b1_pb["l1"], seed=3)           # repr@K1 − l1@K1
+    ci_stock_vs_repr = paired_delta_ci(bk_pb[PRIMARY], b1_pb["stock"], seed=1)   # repr@K8 − stock@K1
+    ci_l1_vs_repr = paired_delta_ci(bk_pb[PRIMARY], bk_pb["l1"], seed=2)         # repr@K8 − l1@K8
+    ci_repr_tax = paired_delta_ci(b1_pb[PRIMARY], b1_pb["l1"], seed=3)           # repr@K1 − l1@K1
     ci_mech_tax = paired_delta_ci(b1_pb["l1"], b1_pb["stock"], seed=4)          # l1@K1 − stock@K1
 
     crit = {
@@ -250,18 +254,18 @@ def main() -> None:
         "parallel_mechanism": {
             "task_form": "(bpc_repr@K8) - (bpc_l1@K8) < 0",
             "baseline": "l1 (p_skip=0.1, w_repr_decorr=0, same tokens/seed/scale)",
-            "value": round(bk["repr"] - bk["l1"], 6),
+            "value": round(bk[PRIMARY] - bk["l1"], 6),
             "primary": False,
             "ci": ci_l1_vs_repr,
-            "passed_point_estimate": (bk["repr"] - bk["l1"]) < 0,
-            "passed": bool((bk["repr"] - bk["l1"]) < 0
+            "passed_point_estimate": (bk[PRIMARY] - bk["l1"]) < 0,
+            "passed": bool((bk[PRIMARY] - bk["l1"]) < 0
                            and ci_l1_vs_repr["paired_ci_excludes_zero"]),
             "js_less_correlated": (
-                None if not js.get("repr") or not js.get("l1")
-                else bool(js["repr"]["mean_bits"] > js["l1"]["mean_bits"])),
+                None if not js.get(PRIMARY) or not js.get("l1")
+                else bool(js[PRIMARY]["mean_bits"] > js["l1"]["mean_bits"])),
         },
         "taxes": {
-            "repr_clean_tax_vs_l1": round(b1["repr"] - b1["l1"], 6),
+            "repr_clean_tax_vs_l1": round(b1[PRIMARY] - b1["l1"], 6),
             "repr_clean_tax_vs_l1_ci": ci_repr_tax,
             "mechanism_clean_tax_vs_stock": round(b1["l1"] - b1["stock"], 6),
             "mechanism_clean_tax_vs_stock_ci": ci_mech_tax,
@@ -274,6 +278,42 @@ def main() -> None:
     note(f"  并列判据：repr@K8 − l1@K8 = {crit['parallel_mechanism']['value']} "
          f"CI {ci_l1_vs_repr['delta_ci']} ⇒ 过={crit['parallel_mechanism']['passed']}")
     results["criteria"] = crit
+
+    # ---------------- ⑤b λ 扫描与预登记判决规则（主 Agent 2026-10-03 裁决）----------------
+    # 规则（按次序，预登记）：
+    #   1) l1@K8 − repr@K8 ≥ 0.014（repr 集成明显更好）⇒ 机制净成立 ⇒ 放行 50M；
+    #   2) |l1@K8 − repr@K8| < 0.014（不可排序）⇒ 不放行 50M；
+    #   3) λ 更差 ⇒ 不放行；给 λ 与税/增益的趋势描述（禁外推）。
+    repr_arms = scfg.get("repr_arms", ["repr"])
+    sweep = {}
+    for a in repr_arms:
+        l1_minus = bk["l1"] - bk[a]
+        gain = b1[a] - bk[a]
+        gain_l1 = b1["l1"] - bk["l1"]
+        if l1_minus >= 0.014:
+            status = "release_50m"
+        elif abs(l1_minus) < 0.014:
+            status = "close_unorderable"
+        else:
+            status = "close_not_better"
+        sweep[a] = {
+            "K1": b1[a], "K8": bk[a],
+            "ensemble_gain_K1_minus_K8": round(gain, 6),
+            "gain_increment_vs_l1": round(gain - gain_l1, 6),
+            "clean_tax_vs_l1": round(b1[a] - b1["l1"], 6),
+            "l1_K8_minus_arm_K8": round(l1_minus, 6),
+            "js_bits_K8": (js[a]["mean_bits"] if js.get(a) else None),
+            "ci_arm_vs_l1_K8": paired_delta_ci(bk_pb[a], bk_pb["l1"], seed=11),
+            "rule_status": status,
+        }
+        note(f"  λ 臂 {a}: l1@K8 − {a}@K8 = {l1_minus:.4f} ⇒ {status}"
+             f"（税增量 {b1[a]-b1['l1']:+.4f} / 增益增量 {gain-gain_l1:+.4f}）")
+    results["lambda_sweep"] = {
+        "repr_arms": repr_arms,
+        "rule": ("1) l1@K8−arm@K8 ≥ 0.014 ⇒ release_50m；2) |·|<0.014 ⇒ close_unorderable；"
+                 "3) 更差 ⇒ close_not_better"),
+        "arms": sweep, "variance_floor": 0.014,
+    }
 
     # ---------------- ⑥ 200-batch battery ----------------
     if cfg.get("battery", {}).get("enabled", True) and not args.no_battery:
@@ -333,23 +373,23 @@ def main() -> None:
             r1 = ensemble(m, eval_arr, 1, cfg)
             row[arm] = {"K1_bpc": r1["bpc"], "K1_ci": bootstrap_ci(per_batch_bpc(r1), seed=7),
                         "K1_per_batch": per_batch_bpc(r1)}
-            if arm == "repr":
+            if arm == PRIMARY:
                 rk = ensemble(m, eval_arr, cfg["main_k"], cfg)
                 row[arm][f"K{cfg['main_k']}_bpc"] = rk["bpc"]
                 row[arm][f"K{cfg['main_k']}_ci"] = bootstrap_ci(per_batch_bpc(rk), seed=8)
                 row[arm][f"K{cfg['main_k']}_per_batch"] = per_batch_bpc(rk)
             del m
-        if row and "stock" in row and "repr" in row and f"K{cfg['main_k']}_bpc" in row["repr"]:
-            row["criterion_value"] = round(row["repr"][f"K{cfg['main_k']}_bpc"] - row["stock"]["K1_bpc"], 6)
+        if row and "stock" in row and PRIMARY in row and f"K{cfg['main_k']}_bpc" in row[PRIMARY]:
+            row["criterion_value"] = round(row[PRIMARY][f"K{cfg['main_k']}_bpc"] - row["stock"]["K1_bpc"], 6)
             row["criterion_delta_ci"] = paired_delta_ci(
-                row["repr"][f"K{cfg['main_k']}_per_batch"], row["stock"]["K1_per_batch"], seed=9)
+                row[PRIMARY][f"K{cfg['main_k']}_per_batch"], row["stock"]["K1_per_batch"], seed=9)
         traj[str(st)] = row
         note(f"  轨迹 @{st} 步：" + " ".join(f"{a}@K1 {row[a]['K1_bpc']}" for a in ARMS
                                              if isinstance(row.get(a), dict))
              + (f" | 判据量 {row.get('criterion_value')}" if "criterion_value" in row else ""))
-    full_criterion = round(bk["repr"] - b1["stock"], 6)
+    full_criterion = round(bk[PRIMARY] - b1["stock"], 6)
     results["trajectory"] = {"checkpoints": traj, "full_run_steps": steps_full,
-                             "full_run": {"repr@K8": bk["repr"], "stock@K1": b1["stock"],
+                             "full_run": {"repr@K8": bk[PRIMARY], "stock@K1": b1["stock"],
                                           "criterion_value": full_criterion}}
     if str(mid) in traj and "criterion_value" in traj[str(mid)]:
         d = steps_full - mid

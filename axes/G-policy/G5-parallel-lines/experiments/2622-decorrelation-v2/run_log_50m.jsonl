@@ -1,0 +1,40 @@
+{"t": 0.01, "msg": "scale=50m 载入 enwik8 val（后 10M 字符，训练从不碰）"}
+{"t": 0.2, "msg": "载入三臂（model.pt sha256 断言）"}
+{"t": 2.49, "msg": "  stock: sha256 3649f076f0c4a4f3… params 51843075 reused=True"}
+{"t": 4.09, "msg": "  l1: sha256 e9304612b1c5614c… params 51843075 reused=True"}
+{"t": 5.9, "msg": "  repr01: sha256 7b892d8fe3b0e4ac… params 51843075 reused=False"}
+{"t": 5.9, "msg": "自检 ①：本入口 K 集成 vs probe_tts.bpc_k（13M 锚点同一方法）"}
+{"t": 15.71, "msg": "  K=1: mine 1.5266 vs probe_tts 1.5266 ⇒ equal=True"}
+{"t": 33.77, "msg": "  K=2: mine 1.4968 vs probe_tts 1.4968 ⇒ equal=True"}
+{"t": 33.77, "msg": "K 曲线：三臂 × K ∈ [1, 2, 4, 8]（60-batch probe 协议）"}
+{"t": 38.32, "msg": "  stock K=1: bpc 1.4505 acc 0.7036"}
+{"t": 49.26, "msg": "  stock K=2: bpc 1.4505 acc 0.7036 | JS 0.0000 bits | paths identical=True"}
+{"t": 70.85, "msg": "  stock K=4: bpc 1.4505 acc 0.7036 | paths identical=True"}
+{"t": 117.32, "msg": "  stock K=8: bpc 1.4505 acc 0.7036 | JS 0.0000 bits | paths identical=True"}
+{"t": 122.74, "msg": "  l1 K=1: bpc 1.5266 acc 0.6883"}
+{"t": 133.95, "msg": "  l1 K=2: bpc 1.4968 acc 0.6967 | JS 0.0338 bits | paths identical=False"}
+{"t": 154.72, "msg": "  l1 K=4: bpc 1.4854 acc 0.6998 | paths identical=False"}
+{"t": 193.35, "msg": "  l1 K=8: bpc 1.4727 acc 0.701 | JS 0.0333 bits | paths identical=False"}
+{"t": 199.27, "msg": "  repr01 K=1: bpc 1.5461 acc 0.6846"}
+{"t": 209.41, "msg": "  repr01 K=2: bpc 1.5099 acc 0.6948 | JS 0.0378 bits | paths identical=False"}
+{"t": 228.58, "msg": "  repr01 K=4: bpc 1.4948 acc 0.6975 | paths identical=False"}
+{"t": 268.54, "msg": "  repr01 K=8: bpc 1.4827 acc 0.6983 | JS 0.0322 bits | paths identical=False"}
+{"t": 268.54, "msg": "确定性路径对照（增益应恰好 0）：['stock', 'repr01'] 强制 p_skip=0"}
+{"t": 317.21, "msg": "  stock: K1 1.4505 → K8 1.4505 | 增益 0.0 | 路径逐位相同=True"}
+{"t": 366.5, "msg": "  repr01_forced: K1 1.4688 → K8 1.4688 | 增益 0.0 | 路径逐位相同=True"}
+{"t": 366.5, "msg": "成对 JS（路径相关度，K=8）"}
+{"t": 366.5, "msg": "  stock: 0.0 bits (0.0 nats)"}
+{"t": 366.5, "msg": "  l1: 0.033320095983012936 bits (0.023095730586612177 nats)"}
+{"t": 366.5, "msg": "  repr01: 0.032163485010993066 bits (0.022294028952351903 nats)"}
+{"t": 366.5, "msg": "判据：主（task 形式 = repr@K8 − stock@K1 < 0）/ 并列（repr@K8 − l1@K8 < 0）"}
+{"t": 366.68, "msg": "  主判据：repr@K8 − stock@K1 = 0.0322 CI [0.025896558073667992, 0.03962196800005707] ⇒ 过=False"}
+{"t": 366.68, "msg": "  并列判据：repr@K8 − l1@K8 = 0.01 CI [0.007392852252186125, 0.012872361295076691] ⇒ 过=False"}
+{"t": 366.72, "msg": "  λ 臂 repr01: l1@K8 − repr01@K8 = -0.0100 ⇒ close_unorderable（税增量 +0.0195 / 增益增量 +0.0095）"}
+{"t": 366.72, "msg": "200-batch battery clean bpc（与公开锚 B0 1.5074 同协议）"}
+{"t": 387.85, "msg": "  stock: battery bpc 1.4377 acc 0.7065"}
+{"t": 404.68, "msg": "  l1: battery bpc 1.5187 acc 0.6904"}
+{"t": 421.46, "msg": "  repr01: battery bpc 1.5356 acc 0.687"}
+{"t": 421.46, "msg": "活性量与 loss 斜率（同方法）读训练产物"}
+{"t": 421.46, "msg": "  repr01: wall 20.6 min, peak 5633.4 MB, slope -0.287647, repr_last 0.007757, skip_frac_mean 0.9, gate_skips 0"}
+{"t": 421.46, "msg": "收敛门禁（§17.15）：判据量在中点 / 终点两点上直接测"}
+{"t": 464.98, "msg": "  轨迹 @6000 步：repr01@K1 1.7974"}

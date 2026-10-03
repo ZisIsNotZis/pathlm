@@ -29,6 +29,7 @@ SCALE = args.scale
 CFG = json.load(open(os.path.join(HERE, "config.json")))
 S = CFG["scales"][SCALE]
 ARMS = tuple(S["arms"])
+PRIMARY_REPR = S.get("primary_repr") or S.get("repr_arms", ["repr"])[0]
 R = json.load(open(os.path.join(HERE, f"results_{SCALE}.json")))
 MUT_PATH = os.path.join(HERE, "mutation_report.json")
 MUT = json.load(open(MUT_PATH)) if os.path.exists(MUT_PATH) else {"all_caught_and_restored": None}
@@ -95,7 +96,9 @@ for a in ARMS:
        iv["gate_skips"] == 0, iv["gate_skips"], 0)
 
 # 确定性路径对照：增益恰好 0 + 逐位相同
-for tag in ("stock", "repr_forced"):
+det_arms = S.get("det_arms", ["stock", PRIMARY_REPR])
+for arm in det_arms:
+    tag = "stock" if arm == "stock" else f"{arm}_forced"
     d = R["deterministic_path_control"][tag]
     ck(f"确定性对照 {tag}: gain == 0", d["gain_K1_minus_Kmax"] == 0.0, d["gain_K1_minus_Kmax"], 0.0)
     ck(f"确定性对照 {tag}: K 条路径 logits 逐位相同", d["paths_bitwise_identical_all"] is True)
@@ -104,16 +107,16 @@ for tag in ("stock", "repr_forced"):
 crit = R["criteria"]
 b1 = {a: R["k_curve"][a]["1"]["bpc"] for a in ARMS}
 bk = {a: R["k_curve"][a][str(CFG["main_k"])]["bpc"] for a in ARMS}
-rb = reading_B(b1["l1"], b1["stock"], bk["repr"])
+rb = reading_B(b1["l1"], b1["stock"], bk[PRIMARY_REPR])
 ck("主判据任务形式 = −reading_B.reduced（代数对账）",
    abs(crit["main_reading_B"]["value"] + rb["reduced"]) < 1e-9,
    crit["main_reading_B"]["value"], -rb["reduced"])
 ck("主判据值 = repr@K8 − stock@K1（从曲线重算）",
-   abs(crit["main_reading_B"]["value"] - (bk["repr"] - b1["stock"])) < 1e-9)
+   abs(crit["main_reading_B"]["value"] - (bk[PRIMARY_REPR] - b1["stock"])) < 1e-9)
 ck("并列判据值 = repr@K8 − l1@K8（从曲线重算）",
-   abs(crit["parallel_mechanism"]["value"] - (bk["repr"] - bk["l1"])) < 1e-9)
+   abs(crit["parallel_mechanism"]["value"] - (bk[PRIMARY_REPR] - bk["l1"])) < 1e-9)
 ck("税 repr−l1（@K1）从曲线重算",
-   abs(crit["taxes"]["repr_clean_tax_vs_l1"] - (b1["repr"] - b1["l1"])) < 1e-9)
+   abs(crit["taxes"]["repr_clean_tax_vs_l1"] - (b1[PRIMARY_REPR] - b1["l1"])) < 1e-9)
 ck("税 l1−stock（@K1）从曲线重算",
    abs(crit["taxes"]["mechanism_clean_tax_vs_stock"] - (b1["l1"] - b1["stock"])) < 1e-9)
 
@@ -149,7 +152,7 @@ def _num_in_md(value, text) -> bool:
 AN = _md()
 if AN:
     SPECIFIC = [
-        (f"{SCALE} repr@K8", bk["repr"]),
+        (f"{SCALE} repr@K8", bk[PRIMARY_REPR]),
         (f"{SCALE} l1@K8", bk["l1"]),
         (f"{SCALE} stock@K1", b1["stock"]),
         (f"{SCALE} 主判据 value", crit["main_reading_B"]["value"]),

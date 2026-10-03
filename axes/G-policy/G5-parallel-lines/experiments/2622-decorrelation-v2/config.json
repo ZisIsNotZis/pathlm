@@ -46,7 +46,8 @@
       "arms": [
         "stock",
         "l1",
-        "repr"
+        "repr",
+        "repr01"
       ],
       "arms_meta": {
         "stock": {
@@ -57,9 +58,21 @@
         },
         "repr": {
           "role": "路径机制 + 表征级去相关（w_repr_decorr=1.0，跨路隐状态相关罚则）"
+        },
+        "repr01": {
+          "role": "路径机制 + 表征级去相关（w_repr_decorr=0.1；主 Agent 裁决的 13M 二次权重，用于把‘λ 过强’与‘表征去相关无法回本’分开）"
         }
       },
-      "midpoint_ckpt": 3000
+      "midpoint_ckpt": 3000,
+      "repr_arms": [
+        "repr",
+        "repr01"
+      ],
+      "det_arms": [
+        "stock",
+        "repr",
+        "repr01"
+      ]
     },
     "50m": {
       "steps_full": 12000,
@@ -68,7 +81,7 @@
       "arms": [
         "stock",
         "l1",
-        "repr"
+        "repr01"
       ],
       "arms_meta": {
         "stock": {
@@ -76,13 +89,21 @@
           "reuse_ckpt": "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/train/stock/model.pt"
         },
         "l1": {
-          "role": "路径机制（p_skip=0.1），无去相关压力（本轮重训，与 repr 同代码）"
+          "role": "路径机制（p_skip=0.1），无去相关压力；**复用 ticket 37/2620 的 50M l1 检查点**（同配置/seed/token；该臂 gate_skips=0 ⇒ 新 gate 代码下等价），在本入口下重新评测",
+          "reuse_ckpt": "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/train/l1/model.pt"
         },
-        "repr": {
-          "role": "路径机制 + 表征级去相关（w_repr_decorr=1.0）"
+        "repr01": {
+          "role": "路径机制 + 表征级去相关（w_repr_decorr=0.1，13M 由主 Agent 裁决选出的最优 λ；50M 本轮重训）"
         }
       },
-      "midpoint_ckpt": 6000
+      "midpoint_ckpt": 6000,
+      "repr_arms": [
+        "repr01"
+      ],
+      "det_arms": [
+        "stock",
+        "repr01"
+      ]
     }
   },
   "anchors_13m": {
@@ -130,6 +151,22 @@
       "sha256": "3649f076f0c4a4f30809550196553ad13dea50e485f3ba496017d65e77d7c6dd",
       "size_bytes": 207415747,
       "path": "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/train/stock/model.pt",
+      "reused_from": "2620-decorrelation-at-scale"
+    },
+    "13m/repr01": {
+      "sha256": "e5aea26ae97d6b87d1efe765fd83c91391524e4268b13d00e36b75cc23a7b851",
+      "size_bytes": 52349379,
+      "path": "axes/G-policy/G5-parallel-lines/experiments/2622-decorrelation-v2/train13m/repr01/model.pt"
+    },
+    "50m/repr01": {
+      "sha256": "7b892d8fe3b0e4ac01ab7b57502bd87d622159062ba4e2c7b20e2debd31eaa0b",
+      "size_bytes": 207415747,
+      "path": "axes/G-policy/G5-parallel-lines/experiments/2622-decorrelation-v2/train50m/repr01/model.pt"
+    },
+    "50m/l1": {
+      "sha256": "e9304612b1c5614c58b4140f0a4030aa4053f7f06d2b76f93d557ad5076b9a59",
+      "size_bytes": 207415747,
+      "path": "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/train/l1/model.pt",
       "reused_from": "2620-decorrelation-at-scale"
     }
   }

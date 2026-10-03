@@ -48,13 +48,15 @@ def _fake_arr(n: int = 4096, vocab: int = 64, seed: int = 3) -> np.ndarray:
 
 
 # ------------------------------------------------------------------ 1. 阶梯
-@pytest.mark.parametrize("scale,path_keys", [("13m", ("stock", "l1", "repr")),
+@pytest.mark.parametrize("scale,path_keys", [("13m", ("stock", "l1", "repr", "repr01")),
                                              ("50m", ("stock", "l1", "repr"))])
 def test_ladder_configs_differ_only_in_declared_knobs(scale, path_keys):
     cdir = os.path.join(HERE, f"configs{scale}")
     cfgs = {a: json.load(open(os.path.join(cdir, f"{a}.json"))) for a in path_keys}
-    assert cfgs["stock"]["model"] == cfgs["l1"]["model"] == cfgs["repr"]["model"]
-    assert cfgs["stock"]["train"] == cfgs["l1"]["train"] == cfgs["repr"]["train"]
+    ref = cfgs["stock"]
+    for a in path_keys:
+        assert cfgs[a]["model"] == ref["model"], f"{a} model 段不同"
+        assert cfgs[a]["train"] == ref["train"], f"{a} train 段不同"
     assert (cfgs["stock"]["train"]["seed"] == cfgs["l1"]["train"]["seed"]
             == cfgs["repr"]["train"]["seed"]), "seed 必须逐臂一致"
 
@@ -65,6 +67,9 @@ def test_ladder_configs_differ_only_in_declared_knobs(scale, path_keys):
 
     assert path_delta("stock", "l1") == {"p_skip": (0.0, 0.1)}
     assert path_delta("l1", "repr") == {"w_repr_decorr": (0.0, 1.0)}
+    if scale == "13m":
+        assert path_delta("l1", "repr01") == {"w_repr_decorr": (0.0, 0.1)}
+        assert path_delta("repr", "repr01") == {"w_repr_decorr": (1.0, 0.1)}
     all_keys = {f.name for f in fields(PathConfig)}
     for a in path_keys:
         assert all_keys - set(cfgs[a]["path"]) == set(), f"{a} 未钉住全部 path 键"
