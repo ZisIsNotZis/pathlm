@@ -74,7 +74,8 @@ def _activate_carry(model, value=0.5):
 
 def combo_report(name, **kw):
     """一个组合的活性报告：三个特性各给一个「真的活着」的量。"""
-    x = torch.randint(0, 10, (2, 12))
+    g = torch.Generator().manual_seed(1)          # 同一批对比 token：重跑逐位可复现
+    x = torch.randint(0, 10, (2, 12), generator=g)
     m = build(**kw)
     rep = {"name": name, "block_class": type(m.blocks[0]).__name__,
            "gqa_on": kw.get("n_kv_heads") is not None,
@@ -115,7 +116,7 @@ def default_bitwise_v1():
     weights_equal = (list(sd_ref) == list(sd_comp)
                      and all(torch.equal(a, b)
                              for a, b in zip(sd_ref.values(), sd_comp.values())))
-    x = torch.randn(2, 12, 32)
+    x = torch.randn(2, 12, 32, generator=torch.Generator().manual_seed(2))
     with torch.no_grad():
         fwd_equal = torch.equal(ref(x)[0], comp(x)[0])
     return {"weights_bitwise_equal": bool(weights_equal),

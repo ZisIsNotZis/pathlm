@@ -30,6 +30,11 @@
 | 2 | **变深度增量解码的填充语义** | stock KV cache 无法表达「某些位置只跑到第 k 层」；已退出位置的 KV 用冻结表征经本层投影填充 | `DepthARDecoder._layer_kv`（与并行 forward 逐位一致，单测钉死） |
 | 3 | **全深度重打分的定稿不变量** | 变路径下必须有一个与路径无关的正确性判据 | `depth_ar.tf_acceptance` / `spec_cost_model` |
 
+**引擎能力（ENG1，ticket 39-X2）**：`KVHeadProjectionMixin`（KV 头投影从 block 类解耦）
++ 窗口掩码作为**正交装饰层** + `ComposableBlock` 承载 `GQA × carry` ⇒
+`GQA × carry × window` **可组合**（此前三者互斥、块类二选一，导致该组合在引擎里不存在）。
+缺省（全关）与 stock `Block` 逐位相同。
+
 **其余部件一律用 stock 设计**（这是 scope 声明的一部分：基底恒为 stock 对照）。
 
 ## 3. 评测套件（eval kit，唯一不解耦的东西）
