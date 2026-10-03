@@ -1,0 +1,58 @@
+{
+  "target": "stability_driver.py（monkeypatch，不改文件）",
+  "sha256_before": {
+    "tests/test_longT_stability.py": "33431691fa7233e9cfb6ec07fd8bad06bcd2c0cad81924376aff3401ac6f97a2",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20"
+  },
+  "note": "本实验未改动任何共享文件；变异用进程内 monkeypatch 完成（SCHEMA §22.2）",
+  "mutations": [
+    {
+      "id": "W1-M1",
+      "desc": "temp/qk-norm 的 qkv hook 被换成恒等（语义开关是死的）",
+      "target_test": "test_temp_candidate_actually_changes_logits",
+      "caught_red": true,
+      "detail": "temp 候选是死的（前向输出未变）"
+    },
+    {
+      "id": "W1-M2",
+      "desc": "qk-norm 被换成恒等（每个头不再是 √d_h 尺度）",
+      "target_test": "test_qk_norm_gives_unit_scale_heads",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "W1-M3",
+      "desc": "warmup 长度被忽略（永远 200 步）",
+      "target_test": "test_warmup_patch_only_extends_warmup",
+      "caught_red": true,
+      "detail": "预热拉长后第 0 步 LR 必须更小"
+    },
+    {
+      "id": "W1-M4",
+      "desc": "clip 阈值被忽略（永远 1.0）",
+      "target_test": "test_clip_threshold_patch_replaces_max_norm",
+      "caught_red": true,
+      "detail": "阈值未被替换"
+    },
+    {
+      "id": "W1-M5",
+      "desc": "weight decay 实参被忽略（永远 0.01）",
+      "target_test": "test_weight_decay_patch_sets_optimizer_arg",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "W1-M6",
+      "desc": "探针丢掉注意力统计（活性量缺失）",
+      "target_test": "test_probe_records_all_layer_stats",
+      "caught_red": true,
+      "detail": ""
+    }
+  ],
+  "sha256_after": {
+    "tests/test_longT_stability.py": "33431691fa7233e9cfb6ec07fd8bad06bcd2c0cad81924376aff3401ac6f97a2",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20"
+  },
+  "restored_bitwise": true,
+  "all_caught": true
+}

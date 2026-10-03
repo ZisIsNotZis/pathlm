@@ -1,0 +1,24 @@
+{
+  "experiment": "2625-longT-stability",
+  "ticket": "42-W1",
+  "base_recipe": {
+    "d_model": 256, "n_layers": 8, "n_heads": 8, "mlp_mult": 4,
+    "dense": true, "topology": "sequential", "exit_mode": "uniform",
+    "lr": 0.001, "batch_size": 8, "seq_len": 1024, "steps": 12000,
+    "tokens": 98304000, "data": "enwik8 train 90M / eval 10M", "vocab_size": 206
+  },
+  "note": "本文件描述候选臂的**字段对照**；逐字段核对由 reconcile_numbers.py 从各臂 runs/<arm>/results.json 复算。",
+  "reference_arms": {
+    "full-1024": {"path": "../2623-longT-1024", "seed": 0, "gnorm_max": 1740.92},
+    "full-1024-seed1": {"path": "../2624-longT-1024-seed1", "seed": 1, "gnorm_max": 29578.57},
+    "win512-1024": {"path": "../2623-longT-1024", "seed": 0, "gnorm_max": 7.35},
+    "win512-1024-seed1": {"path": "../2624-longT-1024-seed1", "seed": 1, "gnorm_max": 7.66}
+  },
+  "short_T_baselines": {
+    "full-256": {"path": "../2622-longT-512", "bpc_native": 1.525389, "batch_size": 32,
+                 "steps": 12000, "window": 0},
+    "full-512": {"path": "../2622-longT-512", "bpc_native": 1.574020, "batch_size": 32,
+                 "steps": 6000, "window": 0}
+  },
+  "code_fingerprints_shared_files_untouched": true
+}
