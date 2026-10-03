@@ -1,0 +1,57 @@
+{
+  "target": "axes/A-mixing/A9-old-info-retention/experiments/2623-window-on-longrange-13m/lr_eval.py",
+  "sha256_original": "6d99524b1feb2e28e3f3c95426e474ea9744966f1c8db53253a10e481525220c",
+  "mutations": [
+    {
+      "id": "M1",
+      "desc": "窗口臂被当成释放版（native_keep_mask 对 window>0 也返回 None）",
+      "expected_tests": [
+        "test_native_keep_mask_win16_is_window_operator"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "fe6a9bdde75b2450af5d6f1de2d44b390dc8c89f08ed39444e119d3286232546",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 9 deselected in 2.98s"
+    },
+    {
+      "id": "M2",
+      "desc": "窗口算子退化为恒等（窗口参数被写死成 ≥T）",
+      "expected_tests": [
+        "test_native_keep_mask_win16_is_window_operator",
+        "test_window16_at_T256_is_nondegenerate"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "9ee163a852141ebe7b24fea37c76dae2f92f40c93ec6c0fa880ce94b4132fe44",
+      "restored_bitwise": true,
+      "pytest_summary": "2 failed, 8 deselected in 2.69s"
+    },
+    {
+      "id": "M3",
+      "desc": "距离腿窗内外判据失效（恒判「在窗内」）",
+      "expected_tests": [
+        "test_distance_source_inside_window"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "4e4723e9ecdf14fded79a7666812bbd9f5d217b2f04edd78ec3aa153a7d28916",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 9 deselected in 2.83s"
+    },
+    {
+      "id": "M4",
+      "desc": "聚合口径错（n 用批数而非逐批求和）",
+      "expected_tests": [
+        "test_aggregate_recall_wilson_and_totals"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "a674086ab65a2905f8e8cf539fa97dd5cbe7dbd5a875a78a5ca7ff74c46e2868",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 9 deselected in 2.42s"
+    }
+  ],
+  "all_caught_red": true,
+  "all_restored_bitwise": true
+}

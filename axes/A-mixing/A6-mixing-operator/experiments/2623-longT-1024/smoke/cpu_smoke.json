@@ -1,0 +1,65 @@
+{
+  "note": "CPU 冒烟：两臂 config 可构造 + 不变量 + 理论表（无 GPU）",
+  "arms": {
+    "full-1024": {
+      "seq_len": 1024,
+      "window": 0,
+      "steps": 6000,
+      "tokens": 98304000,
+      "params": 7159296,
+      "window_mask_liveness": null
+    },
+    "win512-1024": {
+      "seq_len": 1024,
+      "window": 512,
+      "steps": 6000,
+      "tokens": 98304000,
+      "params": 7159296,
+      "window_mask_liveness": {
+        "train_window": 512,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 393472,
+        "causal_pairs": 524800,
+        "visible_frac": 0.749756,
+        "dropped_frac": 0.250244,
+        "alive": true
+      }
+    }
+  },
+  "invariants": {
+    "window512@T1024_is_nondegenerate": true,
+    "window1024@T1024_is_identity": true,
+    "window512@T1024_visible_frac": 0.749756,
+    "token_budget_equal_across_arms": true,
+    "param_delta_T1024_minus_T512": 131072
+  },
+  "three_points": [
+    {
+      "window": 128,
+      "T": 256,
+      "ratio": 0.5,
+      "visible_frac": 0.749027
+    },
+    {
+      "window": 256,
+      "T": 512,
+      "ratio": 0.5,
+      "visible_frac": 0.749513
+    },
+    {
+      "window": 512,
+      "T": 1024,
+      "ratio": 0.5,
+      "visible_frac": 0.749756
+    }
+  ],
+  "theory": {
+    "attn_share_formula": {
+      "256": 0.1429,
+      "512": 0.25,
+      "1024": 0.4
+    },
+    "note": "公式只作对照；T=1024 = 40.0%"
+  }
+}

@@ -1,0 +1,102 @@
+{
+  "device": "cuda",
+  "seed": 0,
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "mlp_mult": 6,
+    "seq_len": 256,
+    "dense": true,
+    "topology": "sequential"
+  },
+  "data": {
+    "vocab_size": 206,
+    "source": "合成多查询关联回忆（tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch 训练；assoc_recall_batch / var_recall_batch 评测）",
+    "enwik8": "未使用（契约：长程判决必须用合成长程任务，不得用 enwik8 当长程主任务）"
+  },
+  "tokens": {
+    "sym_vocab": 64,
+    "filler_token": 64,
+    "cue_token": 205,
+    "local_k": 8
+  },
+  "train_recipe": {
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "optimizer": "AdamW(weight_decay=0.01) + cosine",
+    "exit_mode": "uniform",
+    "aux_weight": 1.0,
+    "final_weight": 1.0,
+    "synth_task": "assoc-mqar",
+    "synth_pairs": 8,
+    "synth_queries": 8,
+    "synth_gap": 14,
+    "note": "两臂逐字段一致，唯一变量 = 训练/评测可见掩码（full 无掩码 vs 窗口 16 + anchors 0）"
+  },
+  "arms": {
+    "full": {
+      "path": "axes/A-mixing/A9-old-info-retention/experiments/2623-window-on-longrange-13m/train/full/model.pt",
+      "results_json": "axes/A-mixing/A9-old-info-retention/experiments/2623-window-on-longrange-13m/train/full/results.json",
+      "train_log": "axes/A-mixing/A9-old-info-retention/experiments/2623-window-on-longrange-13m/train/full/train_log.jsonl",
+      "train_window": 0,
+      "train_anchors": 0,
+      "sha256": "d80f4c625a0f62f5fe94fb7e86fc77e262cf73acd1b1bb45dacd88ddc76331b8",
+      "size_bytes": 54193675
+    },
+    "win16": {
+      "path": "axes/A-mixing/A9-old-info-retention/experiments/2623-window-on-longrange-13m/train/win16/model.pt",
+      "results_json": "axes/A-mixing/A9-old-info-retention/experiments/2623-window-on-longrange-13m/train/win16/results.json",
+      "train_log": "axes/A-mixing/A9-old-info-retention/experiments/2623-window-on-longrange-13m/train/win16/train_log.jsonl",
+      "train_window": 16,
+      "train_anchors": 0,
+      "sha256": "525bd3067910b8cedaf92aeff9483c45063da491b1401667e49e73a6862b2532",
+      "size_bytes": 54193675
+    },
+    "win16_rep": {
+      "path": "axes/A-mixing/A9-old-info-retention/experiments/2623-window-on-longrange-13m/train/win16_rep/model.pt",
+      "results_json": "axes/A-mixing/A9-old-info-retention/experiments/2623-window-on-longrange-13m/train/win16_rep/results.json",
+      "train_log": "axes/A-mixing/A9-old-info-retention/experiments/2623-window-on-longrange-13m/train/win16_rep/train_log.jsonl",
+      "train_window": 16,
+      "train_anchors": 0,
+      "sha256": "c5988dafbf1583e31cdccaf040b7a92a31315681476be9b4733a91b9750a7e4c",
+      "size_bytes": 54193675,
+      "note": "同配置重跑（n=1 负结果复现臂）；预算不足时砍本臂（契约 §成本）"
+    }
+  },
+  "visibility": {
+    "full": {
+      "train_window": 0,
+      "train_anchors": 0
+    },
+    "win16": {
+      "train_window": 16,
+      "train_anchors": 0
+    },
+    "note": "训练与评测用同一掩码：full = 释放版（is_causal）；win16 = window_anchor_keep_mask(T,16,0)"
+  },
+  "eval": {
+    "batch_size": 64,
+    "n_batches_main": 32,
+    "n_batches_other": 16,
+    "ksweep": [
+      4,
+      8,
+      16
+    ],
+    "K_main": 8
+  },
+  "distance_leg": {
+    "distances": [
+      16,
+      32,
+      64,
+      128,
+      192,
+      255
+    ],
+    "batch_size": 64,
+    "n_batches": 16
+  }
+}

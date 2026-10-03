@@ -1,0 +1,54 @@
+{
+  "target": "pathlm/depth_ar.py（monkeypatch，不改文件）",
+  "sha256_before": {
+    "pathlm/depth_ar.py": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279",
+    "tests/test_longT_1024.py": "749478ed5b609410ca9c842ba7118ffbadf317c6ec38c79628fac74b190a2d91"
+  },
+  "note": "本实验未改动 pathlm/depth_ar.py 与 tests/test_longT_1024.py；变异用进程内 monkeypatch 完成（SCHEMA §22.2）",
+  "mutations": [
+    {
+      "id": "Y2-M1",
+      "desc": "窗口掩码被换成恒等（退化点不再被识别）",
+      "target_test": "test_window512_at_T1024_is_nondegenerate",
+      "args": [],
+      "caught_red": true,
+      "detail": "window512@T=1024 不得退化为恒等"
+    },
+    {
+      "id": "Y2-M2",
+      "desc": "窗口边界 off-by-one（< 变成多放一个位置）",
+      "target_test": "test_window_keep_count_matches_closed_form",
+      "args": [
+        512,
+        1024
+      ],
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "Y2-M3",
+      "desc": "掩码丢掉因果项（放出未来键）",
+      "target_test": "test_window_mask_is_causal_and_keeps_diagonal",
+      "args": [
+        512,
+        1024
+      ],
+      "caught_red": true,
+      "detail": "窗口不得放出未来键"
+    },
+    {
+      "id": "Y2-M4",
+      "desc": "窗口被夹到 256（主臂的 512 没生效）",
+      "target_test": "test_window512_at_T1024_is_nondegenerate",
+      "args": [],
+      "caught_red": true,
+      "detail": ""
+    }
+  ],
+  "sha256_after": {
+    "pathlm/depth_ar.py": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279",
+    "tests/test_longT_1024.py": "749478ed5b609410ca9c842ba7118ffbadf317c6ec38c79628fac74b190a2d91"
+  },
+  "restored_bitwise": true,
+  "all_caught": true
+}

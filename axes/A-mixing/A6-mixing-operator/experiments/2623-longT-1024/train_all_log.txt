@@ -1,0 +1,188 @@
+[run] full-1024: started pid=1966362 steps=12000 seq_len=1024 window=0
+[run] full-1024 {"step": 1000, "loss": 2.0415, "depth_ce": [2.0415], "gate_mean": [], "gnorm": 0.82, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "attn_linear":
+[run] full-1024 {"step": 2000, "loss": 1.3433, "depth_ce": [1.3433], "gate_mean": [], "gnorm": 0.53, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "attn_linear":
+[run] full-1024 {"step": 3000, "loss": 1.3809, "depth_ce": [1.3809], "gate_mean": [], "gnorm": 0.65, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "attn_linear":
+[run] full-1024 {"step": 8000, "loss": 0.9091, "depth_ce": [0.9091], "gate_mean": [], "gnorm": 1.33, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "attn_linear":
+[run] full-1024 {"step": 9000, "loss": 1.1671, "depth_ce": [1.1671], "gate_mean": [], "gnorm": 1.04, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "attn_linear":
+[run] full-1024 {"step": 10000, "loss": 1.369, "depth_ce": [1.369], "gate_mean": [], "gnorm": 63.01, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "attn_linear":
+[run] full-1024 {"step": 11000, "loss": 1.0307, "depth_ce": [1.0307], "gate_mean": [], "gnorm": 2.83, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "attn_linear"
+[run] full-1024: done wall=9.02 min peak(nvidia-smi)=1.48GB peak(torch)=0.914GB
+[run] 释放锁，留 60s 窗口（§20.1）
+[run] win512-1024: started pid=1990624 steps=12000 seq_len=1024 window=512
+[run] win512-1024 {"step": 1000, "loss": 2.0276, "depth_ce": [2.0276], "gate_mean": [], "gnorm": 0.74, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "attn_linear":
+[run] win512-1024 {"step": 4000, "loss": 1.3118, "depth_ce": [1.3118], "gate_mean": [], "gnorm": 0.53, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "attn_linear":
+[run] win512-1024 {"step": 6000, "loss": 1.1049, "depth_ce": [1.1049], "gate_mean": [], "gnorm": 0.52, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "attn_linear":
+[run] win512-1024 {"step": 8000, "loss": 0.8819, "depth_ce": [0.8819], "gate_mean": [], "gnorm": 0.41, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "attn_linear":
+[run] win512-1024 {"step": 10000, "loss": 1.0696, "depth_ce": [1.0696], "gate_mean": [], "gnorm": 0.44, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "attn_linear"
+[run] win512-1024 {"step": 11000, "loss": 1.0072, "depth_ce": [1.0072], "gate_mean": [], "gnorm": 0.48, "aux_w": 1.0, "final_w": 1.0, "attn_sparse": null, "attn_linear"
+[run] win512-1024: done wall=10.02 min peak(nvidia-smi)=2.53GB peak(torch)=1.915GB
+=== TRAIN rc=0 ===
+[eval] full-1024 done
+[eval] win512-1024 done
+{
+  "full-1024": 1.510446,
+  "win512-1024": 1.487027
+}
+=== EVAL rc=0 ===
+{
+  "criterion_1_quality": {
+    "delta_convention": "Δ = bpc_full − bpc_window（正 = 窗口更好）",
+    "this_point_native": {
+      "bpc_full_1024": 1.510446,
+      "bpc_window512_1024": 1.487027,
+      "delta_bpc_T1024_window512": 0.023419
+    },
+    "this_point_release": {
+      "bpc_full_1024": 1.510446,
+      "bpc_window512_1024": 1.908688,
+      "delta_bpc_T1024_window512": -0.398242
+    },
+    "three_points_native": [
+      {
+        "T": 256,
+        "window": 128,
+        "delta_native": -0.014836,
+        "band_class": "亏",
+        "source": "X3(2622)"
+      },
+      {
+        "T": 512,
+        "window": 256,
+        "delta_native": -0.00873,
+        "band_class": "不亏",
+        "source": "X3(2622)"
+      },
+      {
+        "T": 1024,
+        "window": 512,
+        "delta_native": 0.023419,
+        "band_class": "亏",
+        "source": "this(2623)"
+      }
+    ],
+    "x3_reference": {
+      "available": true,
+      "source": "axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/results.json",
+      "native": {
+        "T256_window128": {
+          "bpc_full": 1.525389,
+          "bpc_window": 1.540225,
+          "delta": -0.014836
+        },
+        "T512_window256": {
+          "bpc_full": 1.57402,
+          "bpc_window": 1.58275,
+          "delta": -0.00873
+        }
+      },
+      "release": {
+        "T256_window128": {
+          "bpc_full": 1.525389,
+          "bpc_window": 1.637071,
+          "delta": -0.111682
+        },
+        "T512_window256": {
+          "bpc_full": 1.57402,
+          "bpc_window": 1.807471,
+          "delta": -0.233451
+        }
+      },
+      "attn_share_measured": {
+        "256": 0.0541,
+        "512": 0.1078
+      }
+    },
+    "variance_band": 0.014,
+    "sign_T1024": "+",
+    "raw_delta_sign_T1024": "+",
+    "band_class_T1024": "亏",
+    "primary_reading": "band（|Δ|<0.014 判「不亏」）——契约「同判据」的字面口径；raw Δ 符号作并列描述",
+    "note": "三点 = 128@256 / 256@512（X3 跨 run 引用）/ 512@1024（本实验）；只描述、禁止外推（SCHEMA §17.16 / §17.11）；|Δ|<0.014 ⇒ 该点「不亏」"
+  },
+  "criterion_2_attn_share": {
+    "measured_T1024": [
+      {
+        "T": 1024,
+        "window": 512,
+        "step_ms_full": 28.798,
+        "step_ms_window": 33.561,
+        "r_time_window_over_full": 1.1654,
+        "peak_full_gib": 0.811,
+        "peak_window_gib": 1.753,
+        "r_mem_window_over_full": 2.1615,
+        "attn_island_ms_full": 8.148,
+        "attn_island_over_model_step": 0.2829,
+        "attn_island_over_model_step_window": 0.2564,
+        "attn_share_formula": 0.4
+      }
+    ],
+    "measured_X3_256_512": {
+      "256": 0.0541,
+      "512": 0.1078
+    },
+    "formula": {
+      "256": 0.1429,
+      "512": 0.25,
+      "1024": 0.4
+    },
+    "note": "公式 T=1024 = 0.4000；公式只作对照（不是判据）。X3 实测 5.41%@256 → 10.78%@512 并列"
+  },
+  "criterion_3_memory": {
+    "peak_torch_gb_by_arm": {
+      "full-1024": 0.914,
+      "win512-1024": 1.915
+    },
+    "peak_nvidia_smi_gb_by_arm": {
+      "full-1024": 1.48,
+      "win512-1024": 2.53
+    },
+    "budget_gb_net": 5.0,
+    "max_peak_gb": 1.915,
+    "free_mb_before": 4624.0,
+    "free_mb_after": 4099.0
+  },
+  "criterion_4_wallclock": {
+    "round_1_preflight_step_ms": [
+      {
+        "seq_len": 1024,
+        "window": 0,
+        "median_ms": 35.856,
+        "min_ms": 25.615,
+        "n_iters": 6,
+        "batch_size": 16,
+        "peak_mem_gib": 1.482
+      },
+      {
+        "seq_len": 1024,
+        "window": 512,
+        "median_ms": 61.459,
+        "min_ms": 53.164,
+        "n_iters": 6,
+        "batch_size": 16,
+        "peak_mem_gib": 3.37
+      }
+    ],
+    "round_2_eval": [
+      {
+        "median_ms": 28.798,
+        "min_ms": 26.345,
+        "n_iters": 6,
+        "seq_len": 1024,
+        "window": 0,
+        "batch_size": 8,
+        "peak_mem_gib": 0.811
+      },
+      {
+        "median_ms": 33.561,
+        "min_ms": 29.922,
+        "n_iters": 6,
+        "seq_len": 1024,
+        "window": 512,
+        "batch_size": 8,
+        "peak_mem_gib": 1.753
+      }
+    ],
+    "note": "两轮实测；方向不明则如实记「测不出方向」；窗口走稠密 bool 掩码 ⇒ 理论省 12.5% 等效 FLOPs 未必兑现"
+  }
+}
+=== REPORT rc=0 ===
