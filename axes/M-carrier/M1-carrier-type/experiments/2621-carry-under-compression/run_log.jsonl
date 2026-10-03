@@ -1,0 +1,75 @@
+{"t": 0.05, "msg": "加载 U2 检查点（sha256 断言；delta 写 + 窗口 16 + MHA）"}
+{"t": 1.42, "msg": "  U2 40ec6472fee5be3b… params=13801064 carry=delta"}
+{"t": 1.57, "msg": "自检 ①：释放版（is_causal）vs 显式因果掩码（逐位）"}
+{"t": 2.69, "msg": "  max|Δlogit| = 0.000e+00"}
+{"t": 2.69, "msg": "自检 ①：模型自带窗口掩码 == masked_logits + window_anchor_keep_mask（逐位）"}
+{"t": 3.03, "msg": "  max|Δlogit| = 0.000e+00"}
+{"t": 3.03, "msg": "自检 ①（本实验关键）：carry_quant fp32 == 释放版前向（逐位）"}
+{"t": 3.12, "msg": "  max|Δlogit| vs 模型前向 = 0.000e+00；vs masked_logits = 0.000e+00"}
+{"t": 3.21, "msg": "  fp32 档 quantize_kv 活性：{'n_values': 0, 'mean_abs_err': 0.0, 'max_abs_err': 0.0, 'rel_err': 0.0, 'changed_frac': 0.0, 'clipped_frac': 0.0}"}
+{"t": 3.21, "msg": "判据 ①②③：关联回忆（K=8，主腿）+ 毁源对照臂（3 个 mode）"}
+{"t": 12.15, "msg": "  fp32: acc=0.0938 CI=[0.081875, 0.107146] n=2048 | 毁源=0.0073 | read_share=0.34217"}
+{"t": 25.39, "msg": "  fp16: acc=0.0938 CI=[0.081875, 0.107146] n=2048 | 毁源=0.0073 | read_share=0.34217"}
+{"t": 38.06, "msg": "  int8: acc=0.0928 CI=[0.08096, 0.106112] n=2048 | 毁源=0.0073 | read_share=0.342165"}
+{"t": 38.06, "msg": "辅助腿：变距离回忆（fp16 vs int8 × 六档距离）"}
+{"t": 44.43, "msg": "  fp16: d16:0.062 d32:0.000 d64:0.276 d128:0.083 d192:0.000 d255:0.578"}
+{"t": 51.53, "msg": "  int8: d16:0.062 d32:0.000 d64:0.276 d128:0.083 d192:0.000 d255:0.578"}
+{"t": 51.53, "msg": "判据 ②：解析每位置字节 + clean bpc（enwik8 评测尾段）"}
+{"t": 51.53, "msg": "  fp32: 24576.0 B/位置（释放版锚（无压缩，两倍于 fp16））"}
+{"t": 51.53, "msg": "  fp16: 12288.0 B/位置（基线）"}
+{"t": 51.53, "msg": "  int8: 6144.0 B/位置（相对 fp16 下降 50.0%）"}
+{"t": 52.06, "msg": "  enwik8 评测尾段 vocab=206（模型 vocab=206，一致）"}
+{"t": 52.08, "msg": "bpc[fp32] batch 0: bpc_so_far=97.758258"}
+{"t": 52.11, "msg": "bpc[fp32] batch 1: bpc_so_far=98.002453"}
+{"t": 52.14, "msg": "bpc[fp32] batch 2: bpc_so_far=100.311152"}
+{"t": 52.16, "msg": "bpc[fp32] batch 3: bpc_so_far=100.428150"}
+{"t": 52.18, "msg": "bpc[fp32] batch 4: bpc_so_far=100.817673"}
+{"t": 52.22, "msg": "bpc[fp32] batch 5: bpc_so_far=101.661824"}
+{"t": 52.24, "msg": "bpc[fp32] batch 6: bpc_so_far=103.447683"}
+{"t": 52.26, "msg": "bpc[fp32] batch 7: bpc_so_far=103.649058"}
+{"t": 52.28, "msg": "bpc[fp32] batch 8: bpc_so_far=102.906743"}
+{"t": 52.3, "msg": "bpc[fp32] batch 9: bpc_so_far=103.438536"}
+{"t": 52.33, "msg": "bpc[fp32] batch 10: bpc_so_far=103.719203"}
+{"t": 52.36, "msg": "bpc[fp32] batch 11: bpc_so_far=103.630164"}
+{"t": 52.39, "msg": "bpc[fp32] batch 12: bpc_so_far=103.296247"}
+{"t": 52.41, "msg": "bpc[fp32] batch 13: bpc_so_far=103.788089"}
+{"t": 52.44, "msg": "bpc[fp32] batch 14: bpc_so_far=103.483091"}
+{"t": 52.47, "msg": "bpc[fp32] batch 15: bpc_so_far=103.611675"}
+{"t": 52.47, "msg": "  fp32: clean bpc=103.611675"}
+{"t": 52.5, "msg": "bpc[fp16] batch 0: bpc_so_far=97.758567"}
+{"t": 52.54, "msg": "bpc[fp16] batch 1: bpc_so_far=98.002740"}
+{"t": 52.58, "msg": "bpc[fp16] batch 2: bpc_so_far=100.311421"}
+{"t": 52.61, "msg": "bpc[fp16] batch 3: bpc_so_far=100.428368"}
+{"t": 52.65, "msg": "bpc[fp16] batch 4: bpc_so_far=100.817839"}
+{"t": 52.69, "msg": "bpc[fp16] batch 5: bpc_so_far=101.662023"}
+{"t": 52.72, "msg": "bpc[fp16] batch 6: bpc_so_far=103.447831"}
+{"t": 52.78, "msg": "bpc[fp16] batch 7: bpc_so_far=103.649198"}
+{"t": 52.83, "msg": "bpc[fp16] batch 8: bpc_so_far=102.906889"}
+{"t": 52.86, "msg": "bpc[fp16] batch 9: bpc_so_far=103.438685"}
+{"t": 52.9, "msg": "bpc[fp16] batch 10: bpc_so_far=103.719371"}
+{"t": 52.94, "msg": "bpc[fp16] batch 11: bpc_so_far=103.630318"}
+{"t": 53.0, "msg": "bpc[fp16] batch 12: bpc_so_far=103.296392"}
+{"t": 53.08, "msg": "bpc[fp16] batch 13: bpc_so_far=103.788231"}
+{"t": 53.14, "msg": "bpc[fp16] batch 14: bpc_so_far=103.483217"}
+{"t": 53.21, "msg": "bpc[fp16] batch 15: bpc_so_far=103.611790"}
+{"t": 53.21, "msg": "  fp16: clean bpc=103.611790"}
+{"t": 53.27, "msg": "bpc[int8] batch 0: bpc_so_far=97.755761"}
+{"t": 53.33, "msg": "bpc[int8] batch 1: bpc_so_far=98.001591"}
+{"t": 53.4, "msg": "bpc[int8] batch 2: bpc_so_far=100.308669"}
+{"t": 53.47, "msg": "bpc[int8] batch 3: bpc_so_far=100.424459"}
+{"t": 53.53, "msg": "bpc[int8] batch 4: bpc_so_far=100.815034"}
+{"t": 53.61, "msg": "bpc[int8] batch 5: bpc_so_far=101.658912"}
+{"t": 53.7, "msg": "bpc[int8] batch 6: bpc_so_far=103.444297"}
+{"t": 53.75, "msg": "bpc[int8] batch 7: bpc_so_far=103.646282"}
+{"t": 53.8, "msg": "bpc[int8] batch 8: bpc_so_far=102.903081"}
+{"t": 53.93, "msg": "bpc[int8] batch 9: bpc_so_far=103.435425"}
+{"t": 54.05, "msg": "bpc[int8] batch 10: bpc_so_far=103.715375"}
+{"t": 54.2, "msg": "bpc[int8] batch 11: bpc_so_far=103.626429"}
+{"t": 54.28, "msg": "bpc[int8] batch 12: bpc_so_far=103.292880"}
+{"t": 54.36, "msg": "bpc[int8] batch 13: bpc_so_far=103.785332"}
+{"t": 54.46, "msg": "bpc[int8] batch 14: bpc_so_far=103.480457"}
+{"t": 54.56, "msg": "bpc[int8] batch 15: bpc_so_far=103.609283"}
+{"t": 54.56, "msg": "  int8: clean bpc=103.609283"}
+{"t": 54.56, "msg": "判据 ④：通道活性（read_share / carry_liveness / carry_probe）"}
+{"t": 55.17, "msg": "复现性：主腿 fp16 再跑一遍（同 seed）"}
+{"t": 59.95, "msg": "  {'pass': True, 'same_seed_rerun_max_abs_diff': 0.0, 'fp16_n_hits_pass1': 21, 'fp16_n_hits_pass2': 21, 'fp16_max_abs_diff': 0.0, 'int8_n_hits_pass1': 20, 'int8_n_hits_pass2': 20, 'int8_max_abs_diff': 0.0}"}

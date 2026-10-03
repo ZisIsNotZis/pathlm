@@ -135,13 +135,14 @@ def part_b():
     out_root = os.path.join(HERE, "smoke")
     for name, flag in (("perdepth", ["--readout-perdepth"]),
                        ("wide_shared", ["--readout-wide-shared", "2304"])):
-        d = os.path.join(out_root, name)
+        run_name = f"smoke-{name}"
+        d = os.path.join(out_root, run_name)
         os.makedirs(d, exist_ok=True)
         for f in ("train_log.jsonl", "gate_log.jsonl"):
             p = os.path.join(d, f)
             if os.path.exists(p):
                 os.remove(p)
-        cmd = [sys.executable, "train_depth_ar.py", f"smoke-{name}",
+        cmd = [sys.executable, "train_depth_ar.py", run_name,
                "--d", "256", "--layers", "8", "--heads", "8", "--seq-len", "256",
                "--mlp-mult", "4", "--steps", "20", "--batch-size", "32", "--seed", "0",
                "--exit-mode", "uniform", *flag, "--eval-batches", "2",

@@ -1,0 +1,28 @@
+[    0.0s] 加载 U2 检查点（sha256 断言；delta 写 + 窗口 16 + MHA）
+[    1.4s]   U2 40ec6472fee5be3b… params=13801064 carry=delta
+[    1.6s] 自检 ①：释放版（is_causal）vs 显式因果掩码（逐位）
+[    2.7s]   max|Δlogit| = 0.000e+00
+[    2.7s] 自检 ①：模型自带窗口掩码 == masked_logits + window_anchor_keep_mask（逐位）
+[    3.0s]   max|Δlogit| = 0.000e+00
+[    3.0s] 自检 ①（本实验关键）：carry_quant fp32 == 释放版前向（逐位）
+[    3.1s]   max|Δlogit| vs 模型前向 = 0.000e+00；vs masked_logits = 0.000e+00
+[    3.2s]   fp32 档 quantize_kv 活性：{'n_values': 0, 'mean_abs_err': 0.0, 'max_abs_err': 0.0, 'rel_err': 0.0, 'changed_frac': 0.0, 'clipped_frac': 0.0}
+[    3.2s] 判据 ①②③：关联回忆（K=8，主腿）+ 毁源对照臂（3 个 mode）
+[   12.1s]   fp32: acc=0.0938 CI=[0.081875, 0.107146] n=2048 | 毁源=0.0073 | read_share=0.34217
+[   25.4s]   fp16: acc=0.0938 CI=[0.081875, 0.107146] n=2048 | 毁源=0.0073 | read_share=0.34217
+[   38.1s]   int8: acc=0.0928 CI=[0.08096, 0.106112] n=2048 | 毁源=0.0073 | read_share=0.342165
+[   38.1s] 辅助腿：变距离回忆（fp16 vs int8 × 六档距离）
+[   44.4s]   fp16: d16:0.062 d32:0.000 d64:0.276 d128:0.083 d192:0.000 d255:0.578
+[   51.5s]   int8: d16:0.062 d32:0.000 d64:0.276 d128:0.083 d192:0.000 d255:0.578
+[   51.5s] 判据 ②：解析每位置字节 + clean bpc（enwik8 评测尾段）
+[   51.5s]   fp32: 24576.0 B/位置（释放版锚（无压缩，两倍于 fp16））
+[   51.5s]   fp16: 12288.0 B/位置（基线）
+[   51.5s]   int8: 6144.0 B/位置（相对 fp16 下降 50.0%）
+[   52.1s]   enwik8 评测尾段 vocab=206（模型 vocab=206，一致）
+[   52.5s]   fp32: clean bpc=103.611675
+[   53.2s]   fp16: clean bpc=103.611790
+[   54.6s]   int8: clean bpc=103.609283
+[   54.6s] 判据 ④：通道活性（read_share / carry_liveness / carry_probe）
+[   55.2s] 复现性：主腿 fp16 再跑一遍（同 seed）
+[   60.0s]   {'pass': True, 'same_seed_rerun_max_abs_diff': 0.0, 'fp16_n_hits_pass1': 21, 'fp16_n_hits_pass2': 21, 'fp16_max_abs_diff': 0.0, 'int8_n_hits_pass1': 20, 'int8_n_hits_pass2': 20, 'int8_max_abs_diff': 0.0}
+[   60.0s] 完成：/home/z/vibe/pathlm/axes/M-carrier/M1-carrier-type/experiments/2621-carry-under-compression/results.json（评测墙钟 0.92 min，峰值 431.6 MB）

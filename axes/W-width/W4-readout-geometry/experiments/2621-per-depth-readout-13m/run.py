@@ -265,6 +265,11 @@ def equivalence_table(hist: dict, expected: dict) -> list[dict]:
         ("vocab_size", hist["vocab_size"], 206),
     ]
     rows += [(f, hist.get(f, False), v) for f, v in expected.items()]
+    # 读出几何四字段全列出来核（不只看本臂那一个）：臂自己的字段应等于其设定值、
+    # 其余三个应为关（单因素：一次只开一个）。注：readout_wide_shared 缺省是 0（int）。
+    for f in READOUT_FIELDS:
+        want = expected.get(f, 0 if f == "readout_wide_shared" else False)
+        rows.append((f, hist.get(f, 0 if f == "readout_wide_shared" else False), want))
     def _eq(h, t):
         return h == t and isinstance(h, bool) == isinstance(t, bool)
     return [{"field": f, "ref_arm": h, "expected": t, "equal": _eq(h, t),
@@ -276,7 +281,9 @@ READOUT_FIELDS = ("readout_gated", "readout_linear_resid", "readout_perdepth",
 
 
 def equiv_ok(table: list[dict]) -> bool:
-    return all(r["equal"] for r in table if r["field"] not in READOUT_FIELDS)
+    """§9 等值性门：**所有**字段（含读出几何四字段）都必须等于本臂的预期设定。
+    臂与臂之间的差异由各自的 `expected` 承载（唯一变量 = 读出几何）。"""
+    return all(r["equal"] for r in table)
 
 
 # ---------------------- 稳定性统计（时序数据源） ----------------------
@@ -489,6 +496,17 @@ def stage_assemble(args):
                          "独立性引入税" % (d_pd, d_ep))
     verdict["C2_note"] = ("EP 的「名义等参数」靠冗余达成（一个 d×d 映射），因此 PD vs EP"
                           " 含「有效容量」混杂——见 analysis.md §6。")
+    # C1/C2 的组合读数（两个判据各自的预登记分支不变，此处只把二者合起来说一次）：
+    # C1 只问「逐深度读出相对 A 有没有效」；C2 是 §15 的归因判别（同名义参数的共享对照）。
+    if d_pd <= -0.014 and d_pd > d_ep + 0.014:
+        verdict["combined"] = (
+            "C1 的字面分支（逐深度读出有效）成立，但 C2 的§15 等参数对照把所有增益归到"
+            "容量：同名义参数的**共享**变换（EP）反而严格更好（Δbpc %.4f vs %.4f，差 "
+            "%.4f ≥ 0.014）⇒ 「一个共享读出服务所有深度 = 本形态缺陷」这一具体机制"
+            "**不被支持**（逐深度独立反而引入税）；能站住的只是弱化版 W4 归因"
+            "「本形态的读出容量/重参数化不足」。" % (d_ep, d_pd, abs(d_ep - d_pd)))
+    else:
+        verdict["combined"] = "C1 与 C2 一致（见各自分支），无需额外调和。"
     out["verdict"] = verdict
     out["stability"] = {
         "A_arm": stability_stats(split_runs(read_rows(

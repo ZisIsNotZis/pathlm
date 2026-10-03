@@ -5,7 +5,7 @@ date: "2026-10-03"
 grid: W4-readout-geometry
 engine: depth-ar（13M 档）
 budget: "gpu_wall_budget: 62 min（步时实测后定：冒烟 ≈4 + A/gated 复用电池 ≈4 + PD 训练 ≈26 + EP 训练 ≈24 + 组装 ≈4）；峰值显存 ≤5GB（net）"
-status: in_progress
+status: judged
 ---
 
 # 2621 · 逐深度独立读出 vs 共享 tied 读出 · 13M · depth-ar

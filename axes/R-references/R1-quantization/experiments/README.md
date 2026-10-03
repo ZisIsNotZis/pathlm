@@ -11,6 +11,7 @@
 | [`2614-kv-quant-eval-13m`](2614-kv-quant-eval-13m/README.md) | 目录内 README |
 | [`2619-kv-budget-chart`](2619-kv-budget-chart/README.md) | 目录内 README |
 | [`2620-kv-budget-gaps`](2620-kv-budget-gaps/README.md) | 目录内 README |
+| [`2621-kv-budget-rest`](2621-kv-budget-rest/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 

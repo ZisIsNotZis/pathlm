@@ -1,0 +1,57 @@
+{
+  "target": "axes/M-carrier/M1-carrier-type/experiments/2621-carry-under-compression/carry_quant.py",
+  "sha256_original": "beb74dde6f63ee92e57f36430c0b84a0fb27805e2021230528cba26c033d9117",
+  "mutations": [
+    {
+      "id": "M1",
+      "desc": "量化没有真的发生（K/V 原样进 SDPA ⇒ int8 == fp32）",
+      "expected_tests": [
+        "test_carry_quant_int8_changes_values_and_logits"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "4bf00fbfb222c784e483cf27011cbd5499b23831761aebb35252ba65f2fc48e0",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 7 deselected in 4.75s"
+    },
+    {
+      "id": "M2",
+      "desc": "carry 读出没有嫁接到注意力输出（通道成摆设）",
+      "expected_tests": [
+        "test_carry_quant_forward_reads_the_carry_channel"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "ddbdffa8c86db7ab3a3337b59c6533e5120004033027e2648048fce53b59d851",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 7 deselected in 5.09s"
+    },
+    {
+      "id": "M3",
+      "desc": "keep_mask（窗口掩码）被忽略（不再接进 SDPA）",
+      "expected_tests": [
+        "test_carry_quant_window_mask_changes_logits_vs_full_causal"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "af96b6b871320a8e183b6b540791bbd11382dd8362220fe7ec9d7b6d18cfc914",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 7 deselected in 5.07s"
+    },
+    {
+      "id": "M4",
+      "desc": "字节口径的基线被换成 fp32（int8 的下降比例算错）",
+      "expected_tests": [
+        "test_bytes_table_int8_is_half_of_fp16"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "46f8316eb8731d74efb6ee2f46623dbf171536498715ed0f74c8360e3e84c8dc",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 7 deselected in 4.47s"
+    }
+  ],
+  "all_caught_red": true,
+  "all_restored_bitwise": true,
+  "sha256_restored": "beb74dde6f63ee92e57f36430c0b84a0fb27805e2021230528cba26c033d9117"
+}

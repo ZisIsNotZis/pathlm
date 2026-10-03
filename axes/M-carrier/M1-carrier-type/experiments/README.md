@@ -15,6 +15,7 @@
 | [`2618-carry-channel-13m`](2618-carry-channel-13m/README.md) | 目录内 README |
 | [`2619-carry-difficulty-capacity`](2619-carry-difficulty-capacity/README.md) | 目录内 README |
 | [`2620-capacity-converged`](2620-capacity-converged/README.md) | 目录内 README |
+| [`2621-carry-under-compression`](2621-carry-under-compression/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 

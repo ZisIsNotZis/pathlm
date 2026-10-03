@@ -1,0 +1,74 @@
+{
+  "experiment": "2621-carry-under-compression",
+  "ticket": ".scratch/38-auto-parallel/issues/01-auto-parallel.md#W3",
+  "device": "cuda",
+  "seed": 0,
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true,
+    "topology": "sequential",
+    "train_window": 16,
+    "train_anchors": 0,
+    "carry_rule": "delta",
+    "carry_chunk": 64
+  },
+  "checkpoint": {
+    "arm": "U2",
+    "path": "axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m/train/U2/model.pt",
+    "sha256": "40ec6472fee5be3b8d3650ee74f541eb388f6d86e525942d44479e7279923420",
+    "size_bytes": 55255619,
+    "source_experiment": "axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m",
+    "note": "ticket 35 的 U2 = delta 写通道 + 窗口 16（MHA）。本实验只读 + 运行时 sha256 断言；权重不入库。"
+  },
+  "modes": ["fp32", "fp16", "int8"],
+  "primary_baseline_mode": "fp16",
+  "data": {
+    "bpc_name": "enwik8_full",
+    "bpc_path": "data/enwik8_full.npz",
+    "bpc_split": "前 90M 训练 / 末 10M 评测（本实验只用评测尾段；bpc 腿只用词表大小 206，不用 enwik8 当长程主任务）",
+    "recall_name": "tools/evalkit/longrange_tasks.py::assoc_recall_batch",
+    "recall_note": "合成长程任务（SCHEMA §19：不用 enwik8 当长程主任务）"
+  },
+  "tokens": {
+    "sym_vocab": 64,
+    "filler_token": 64,
+    "cue_token": 205,
+    "local_k": 8
+  },
+  "visibility": {
+    "train_window": 16,
+    "train_anchors": 0,
+    "note": "训练与评测用同一个 window_anchor_keep_mask(T,16,0)"
+  },
+  "eval": {
+    "K_main": 8,
+    "ksweep": [8],
+    "batch_size": 64,
+    "n_batches": 32
+  },
+  "distance_leg": {
+    "distances": [16, 32, 64, 128, 192, 255],
+    "batch_size": 64,
+    "n_batches": 3,
+    "modes": ["fp16", "int8"]
+  },
+  "bpc_leg": {
+    "batch_size": 16,
+    "n_batches": 16,
+    "window_seed": 2
+  },
+  "criteria": {
+    "c1_recall_not_broken": "int8 的关联回忆准确率 ≥ fp16 − 3pp；若 CI 不重叠且更低则记「崩」",
+    "c1b_ci_overlap": "判据 ① 的操作化：崩 = delta_pp < −3 且 Wilson 95% CI 不重叠",
+    "c2_bytes_per_position": "int8 的解析每位置字节相对 fp16 下降 50%",
+    "c3_corrupt_source": "任一 mode 毁源后仍保持高准确率（CI 下界 > 4×chance）⇒ 该读数不来自被搬运的信息",
+    "c4_activity": "量化活性（changed_frac/rel_err）非零 + 通道活性（read_share>0）非零",
+    "c5_param_confound": "int8 量化新增 0 参数 ⇒ 无参数量混杂；GQA 因子未测（引擎互斥，见 README §4b）"
+  },
+  "variance_band_pp": 1.4,
+  "gpu_wall_budget_min": 10
+}

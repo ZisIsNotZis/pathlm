@@ -10,6 +10,7 @@
 |---|---|
 | [`2523-depth-ar-first`](2523-depth-ar-first/README.md) | 目录内 README |
 | [`2523d-residual-tax-decomposition`](2523d-residual-tax-decomposition/README.md) | 目录内 README |
+| [`2621-depth-draft-e2e`](2621-depth-draft-e2e/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 

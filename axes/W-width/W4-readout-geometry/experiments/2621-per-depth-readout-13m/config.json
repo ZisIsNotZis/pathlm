@@ -1,0 +1,42 @@
+{
+  "experiment": "2621-per-depth-readout-13m",
+  "seed": 0,
+  "steps": 12000,
+  "batch_size": 32,
+  "lr": 0.001,
+  "data": "data/enwik8_full.npz",
+  "data_split": "first 90M train / last 10M eval, vocab from full file",
+  "vocab_size": 206,
+  "d_model": 256,
+  "n_layers": 8,
+  "n_heads": 8,
+  "seq_len": 256,
+  "mlp_mult": 4,
+  "A_arm": {
+    "readout": "shared tied h·Eᵀ",
+    "source": ".scratch/23-depth-ar/evidence/23c-H2-w0-12k"
+  },
+  "perdepth_arm": {
+    "readout": "h + P_k(Q_k h) per depth, then tied Eᵀ",
+    "init": "Q_k ~ N(0,0.02), P_k = 0 (identity start)",
+    "params_extra": 1179648
+  },
+  "wide_shared_arm": {
+    "readout": "h + A(B h) shared, then tied Eᵀ",
+    "m": 2304,
+    "init": "B ~ N(0,0.02), A = 0",
+    "params_extra": 1179648,
+    "note": "§15 名义等参数对照，无逐深度自由度"
+  },
+  "base": {
+    "dense": false,
+    "fill_kv": true,
+    "proj_fill": false,
+    "gate_bias_init": -2.0,
+    "aux_weight": 1.0,
+    "final_weight": 1.0,
+    "shallow_stopgrad": false,
+    "dense_aux": false,
+    "exit_mode": "uniform"
+  }
+}
