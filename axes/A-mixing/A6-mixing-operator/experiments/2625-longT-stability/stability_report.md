@@ -1,7 +1,8 @@
 # 2625 · 判读：长 T 训练稳定性修复（A6 的入场券）
 
 > 契约：同目录 `README.md`（判据线逐字，未改）。原始结果：`runs/<arm>/results.json`、
-> `runs/<arm>/train_log.jsonl`、`runs/<arm>/probe.jsonl`；对账：`reconcile_report.json`；
+> `runs/<arm>/train_log.jsonl`、`runs/<arm>/probe.jsonl`（`runs/` 不入库；
+> 其可入库副本 = `curves.json` 与 `eval.json`）；对账：`reconcile_report.json`；
 > 变异：`mutation_report.json`；权重清单：`MODEL.md`。
 
 ## 人话摘要（先看这段）

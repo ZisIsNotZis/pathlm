@@ -347,7 +347,7 @@ rep = {"checks": checks, "n_checks": len(checks),
        "criteria_1_pass": bool(g0["gnorm_max"] < 100 and g0["grad_skips"] == 0
                               and g1["gnorm_max"] < 100 and g1["grad_skips"] == 0),
        "criteria_2_band": BAND, "criteria_2_short_T": short,
-       "curves_file": "curves.json"}
+       "curves_file": "curves.json", "eval_file": "eval.json"}
 
 # 注意：rep 的 `n_failed` 必须涵盖全部 ck（包括下面 curves 段的），故在最后重建。
 
@@ -384,6 +384,25 @@ for arm in ("full-T1024-qknorm-s0", "full-T1024-qknorm-s1"):
        >= 0.9 * arms[arm]["gnorm_monitor"]["gnorm_max"] - 1e-9, True)
 
 # ------------------------------------------------------------ 最终汇总
+# 把各臂 clean bpc 汇到根目录 `eval.json`（`runs/` 不入库，与 2622/2623 同约定）
+EVAL = {arm: json.load(open(os.path.join(HERE, "runs", arm, "eval.json")))
+        for arm in ("full-T1024-qknorm-s0", "full-T1024-qknorm-s1",
+                    "full-T256-qknorm256-s0", "full-T512-qknorm512-s0",
+                    "full-T512-none512-s0", "full-T512-none512b-s0",
+                    "full-T512-cond512-s0")
+        if os.path.exists(os.path.join(HERE, "runs", arm, "eval.json"))}
+with open(os.path.join(HERE, "eval.json"), "w") as f:
+    json.dump({"eval_stream": {"fn": "tools.evalkit.retention.masked_bpc",
+                              "n_batches": 20, "batch_size": 16,
+                              "window_seed": 2},
+               "native_operating_point": ("full 臂 = 全因果（release）；"
+                                          "窗口臂 = 自身训练掩码"),
+               "baselines_2622": {"full-256": 1.525389, "full-512": 1.574020},
+               "baselines_2623_2624": {"full-1024": 1.510446,
+                                       "full-1024-seed1": 1.606426},
+               "arms": EVAL}, f, indent=2, ensure_ascii=False)
+ck("eval.json 含 7 个臂的 clean bpc", len(EVAL), 7)
+
 rep["checks"] = checks
 rep["n_checks"] = len(checks)
 rep["n_failed"] = sum(1 for c in checks if not c["ok"])

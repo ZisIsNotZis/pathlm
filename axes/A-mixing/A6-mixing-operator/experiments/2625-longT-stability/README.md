@@ -227,7 +227,8 @@ lr 1e-3，12000 步 / 98.3M token，全因果）上，**只改一个训练/结�
 `eval_bpc.py` / `probe_attention_scale.py` / `probe_grad_scale.py` /
 `probe_checkpoint_scar.py` / `smoke.py` / `mutate.py` /
 `reconcile_numbers.py` / `config.json` / `reconcile_report.json` /
-`mutation_report.json` / `curves.json` / `MODEL.md` / `smoke/*.json` / `runs/**`
+`mutation_report.json` / `curves.json` / `eval.json` / `MODEL.md` /
+`smoke/*.json` / `runs/**`
 （权重 `model.pt` 不入库）；`tests/test_longT_stability.py`。
 
 > 契约副本标注（SCHEMA §17.6）：§0 的 W1 原文段与主 Agent 补充纪律为**逐字**抄录；
