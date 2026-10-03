@@ -12,6 +12,7 @@
 | [`2611-equalparams-linear-control-13m`](2611-equalparams-linear-control-13m/README.md) | 目录内 README |
 | [`2612-gated-readout-24k-13m`](2612-gated-readout-24k-13m/README.md) | 目录内 README |
 | [`2613-readout-reparam-dense-13m`](2613-readout-reparam-dense-13m/README.md) | 目录内 README |
+| [`2621-per-depth-readout-13m`](2621-per-depth-readout-13m/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 
