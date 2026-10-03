@@ -11,6 +11,7 @@
 | [`2614-topk-sparse-attn-13m`](2614-topk-sparse-attn-13m/README.md) | 目录内 README |
 | [`2616-linear-attention-13m`](2616-linear-attention-13m/README.md) | 目录内 README |
 | [`2622-longT-512`](2622-longT-512/README.md) | 目录内 README |
+| [`2623-longT-1024`](2623-longT-1024/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 

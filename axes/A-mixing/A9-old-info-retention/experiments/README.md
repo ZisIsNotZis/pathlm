@@ -9,6 +9,7 @@
 | 实验 | 来源 |
 |---|---|
 | [`2615-window-trained-retention-13m`](2615-window-trained-retention-13m/README.md) | 目录内 README |
+| [`2623-window-on-longrange-13m`](2623-window-on-longrange-13m/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 
