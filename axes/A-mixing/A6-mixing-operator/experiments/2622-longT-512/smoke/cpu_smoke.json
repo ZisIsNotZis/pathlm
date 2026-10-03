@@ -1,0 +1,69 @@
+{
+  "note": "CPU 冒烟：四臂 config 可构造 + 不变量 + 理论表（无 GPU）",
+  "arms": {
+    "full-256": {
+      "seq_len": 256,
+      "window": 0,
+      "steps": 12000,
+      "tokens": 98304000,
+      "params": 6962688,
+      "window_mask_liveness": null
+    },
+    "win128-256": {
+      "seq_len": 256,
+      "window": 128,
+      "steps": 12000,
+      "tokens": 98304000,
+      "params": 6962688,
+      "window_mask_liveness": {
+        "train_window": 128,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 24640,
+        "causal_pairs": 32896,
+        "visible_frac": 0.749027,
+        "dropped_frac": 0.250973,
+        "alive": true
+      }
+    },
+    "full-512": {
+      "seq_len": 512,
+      "window": 0,
+      "steps": 6000,
+      "tokens": 98304000,
+      "params": 7028224,
+      "window_mask_liveness": null
+    },
+    "win256-512": {
+      "seq_len": 512,
+      "window": 256,
+      "steps": 6000,
+      "tokens": 98304000,
+      "params": 7028224,
+      "window_mask_liveness": {
+        "train_window": 256,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 98432,
+        "causal_pairs": 131328,
+        "visible_frac": 0.749513,
+        "dropped_frac": 0.250487,
+        "alive": true
+      }
+    }
+  },
+  "invariants": {
+    "window256@T256_is_identity": true,
+    "window256@T512_visible_frac": 0.749513,
+    "window128@T256_visible_frac": 0.749027,
+    "token_budget_equal_across_T": true,
+    "param_delta_T512_minus_T256": 65536
+  },
+  "theory": {
+    "attn_share_formula": {
+      "256": 0.1429,
+      "512": 0.25
+    },
+    "note": "公式只作对照；K10 原 T=512=25.7% 已由主 Agent 修正为 25.0%"
+  }
+}

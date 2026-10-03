@@ -1,0 +1,59 @@
+{
+  "target": "pathlm/depth_ar.py",
+  "sha256_original": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279",
+  "mutations": [
+    {
+      "id": "M1",
+      "desc": "GQA×carry：可组合块的写入通道读出被丢掉（通道成摆设）",
+      "expected_tests": [
+        "test_eng1_gqa_x_carry_composes_and_both_active",
+        "test_eng1_gqa_x_carry_x_window_all_compose"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "9ba6894e84418e8bb74e516798511b62604b8ae5e3e1cfca406cd8c81b213fcf",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 1 passed, 4 deselected in 4.78s"
+    },
+    {
+      "id": "M2",
+      "desc": "GQA×window：KV 头投影的注意力忽略窗口掩码（退化为恒等因果）",
+      "expected_tests": [
+        "test_eng1_gqa_x_window_composes_and_window_active",
+        "test_eng1_gqa_x_carry_x_window_all_compose"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "f538a7b92bdc1e7bb8d3b72529d9696dad1ab2970a097190a6245a6f0ef86db6",
+      "restored_bitwise": true,
+      "pytest_summary": "2 failed, 4 deselected in 4.33s"
+    },
+    {
+      "id": "M3",
+      "desc": "carry×window：写入通道块忽略窗口掩码",
+      "expected_tests": [
+        "test_eng1_carry_x_window_composes_and_both_active"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "912040a21174e57a7e62e9e8b65f30b6b9da0312264917ba3bd04ecea6448424",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 5 deselected in 4.02s"
+    },
+    {
+      "id": "M4",
+      "desc": "三者齐开：可组合块前向忽略 attn_mask（窗口对组合路径失效）",
+      "expected_tests": [
+        "test_eng1_gqa_x_carry_x_window_all_compose"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "9978b9557cba8c4604c494b4a6e9ce7886da1a443de370ac015dabf2abdb1eed",
+      "restored_bitwise": true,
+      "pytest_summary": "1 failed, 5 deselected in 3.59s"
+    }
+  ],
+  "all_caught_red": true,
+  "all_restored_bitwise": true,
+  "sha256_restored": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279"
+}

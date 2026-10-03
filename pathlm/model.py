@@ -28,6 +28,34 @@ def cap_norm(x: torch.Tensor, cap: float) -> torch.Tensor:
     return torch.where(norm > cap, x * cap / norm.clamp_min(1e-6), x)
 
 
+def repr_decorr_penalty(h_prev: torch.Tensor, h: torch.Tensor,
+                        eps: float = 1e-5) -> torch.Tensor:
+    """Cross-path hidden-state correlation penalty (ticket 39, decorrelation v2).
+
+    `h_prev` and `h` are the two random paths' trunk hidden states [B, T, d] for
+    the SAME tokens. Flatten to [N, d] and, per feature dimension, take the
+    Pearson correlation between the two paths (float32); the penalty is the mean
+    over features of its square. Identical paths give exactly 1.0, linearly
+    decorrelated paths give ~0.
+
+    This is a *representation-level* second-moment penalty, unlike the capped
+    output-JS term (`w_diversity`), which at 50M left the two paths *more* alike
+    (pairwise JS 0.0333 -> 0.0250 bits). Pearson correlation is scale-invariant,
+    so the term cannot be reduced by shrinking the state; it is uncapped, so it
+    has no gradient-free plateau. `h_prev` is detached by the caller, so the
+    gradient flows into the current path only — the same one-sided convention
+    as the diversity term.
+    """
+    d = h.shape[-1]
+    a = h_prev.float().reshape(-1, d)
+    b = h.float().reshape(-1, d)
+    a = a - a.mean(0, keepdim=True)
+    b = b - b.mean(0, keepdim=True)
+    cov = (a * b).mean(0)
+    scale = (a.pow(2).mean(0).sqrt() * b.pow(2).mean(0).sqrt()).clamp_min(eps)
+    return ((cov / scale) ** 2).mean()
+
+
 class Block(nn.Module):
     """Pre-LN causal transformer block ('enhancer' in design terms)."""
 
@@ -448,6 +476,16 @@ class PathLM(nn.Module):
                             + F.kl_div(q.clamp_min(1e-8).log(), p, reduction="none").sum(-1)).mean()
                 loss = loss - pc.w_diversity * js.clamp_max(2.0)
                 aux["diversity"] = js.detach()
+            # Representation-level decorrelation (ticket 39): penalize the
+            # cross-path correlation of the trunk hidden states. Wired only for
+            # the v2 arm (w_repr_decorr > 0); the previous path's state is
+            # detached so the gradient goes into the current path only.
+            if pc.w_repr_decorr > 0:
+                if "repr_pair_h" in aux:
+                    pen = repr_decorr_penalty(aux["repr_pair_h"], h)
+                    loss = loss + pc.w_repr_decorr * pen
+                    aux["repr_decorr"] = pen.detach()
+                aux["repr_pair_h"] = h.detach()
             if 1 in nodes:  # node-1 may be absent (n_mtp=0)
                 aux["diversity_pairs"] = nodes[1]["logits"].detach()
             aux["rounds"].append(nodes)

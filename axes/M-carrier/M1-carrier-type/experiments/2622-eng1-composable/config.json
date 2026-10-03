@@ -1,0 +1,46 @@
+{
+  "experiment": "2622-eng1-composable",
+  "ticket": "39-X2 (ENG1)",
+  "grid": "M1-carrier-type",
+  "engine": "组合自检 d=32/3L/8H（CPU）；冒烟 13.08M（d=256/12L/8H, dense）",
+  "device_combos": "cpu",
+  "seed": 0,
+  "combo_test_point": {
+    "d_model": 32,
+    "n_layers": 3,
+    "n_heads": 8,
+    "head_dim": 4,
+    "seq_len": 12,
+    "dense": true,
+    "topology": "sequential",
+    "n_kv_heads": 2,
+    "carry_rule": ["delta", "plain"],
+    "train_window": [4, 12],
+    "carry_activation_value": 0.5
+  },
+  "combos": [
+    {"name": "gqa_x_carry", "kwargs": {"carry_rule": "delta", "carry_chunk": 64, "n_kv_heads": 2}},
+    {"name": "gqa_x_window", "kwargs": {"n_kv_heads": 2, "train_window": 4}},
+    {"name": "carry_x_window", "kwargs": {"carry_rule": "plain", "carry_chunk": 64, "train_window": 4}},
+    {"name": "gqa_x_carry_x_window", "kwargs": {"carry_rule": "delta", "carry_chunk": 64, "n_kv_heads": 2, "train_window": 4}}
+  ],
+  "smoke": {
+    "run_name": "master",
+    "data_source": "合成多查询关联回忆 tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch（不用 enwik8，SCHEMA §19）",
+    "model": {"d": 256, "layers": 12, "heads": 8, "mlp_mult": 6, "seq_len": 256, "dense": true},
+    "intervention": {"train_window": 16, "train_anchors": 0, "carry_write": "delta", "carry_chunk": 64, "n_kv_heads": 2},
+    "synth": {"task": "assoc-mqar", "pairs": 8, "queries": 8, "gap": 14, "sym_vocab": 64, "filler_token": 64, "cue_token": 205},
+    "steps": 20,
+    "batch_size": 8,
+    "train_tokens": 40960,
+    "note": "20 步冒烟只证明三特性共存可训练（活性量落盘），不外推训练时间/质量（SCHEMA §17.5）"
+  },
+  "code_under_test": {
+    "pathlm/depth_ar.py": "新建 KVHeadProjectionMixin + ComposableBlock；放宽 carry⊕GQA 与 GQA⊕train_window 两道护栏；块构造路由加可组合块分支；carry 接线抽成 _wire_carry",
+    "train_depth_ar.py": "未改动（本线只 grep 断言其邻线标记仍在）",
+    "tests/test_eng1_composable.py": "新增 6 条可失败单测"
+  },
+  "sha256": {
+    "recorded_in": "results.json::code"
+  }
+}

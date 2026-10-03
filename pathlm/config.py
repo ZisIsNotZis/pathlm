@@ -109,6 +109,14 @@ class PathConfig:
     # so test-time path ensembling has uncorrelated errors to average. The
     # cap (2.0 nats) prevents the degenerate uniform-output optimum.
     w_diversity: float = 0.0
+    # Representation-level decorrelation (ticket 39, "decorrelation v2"): with
+    # one parallel path sampled per step, penalize the cross-path Pearson
+    # correlation of the trunk hidden states (see `repr_decorr_penalty`). The
+    # output-JS term above did not buy decorrelation at 50M (pairwise JS 0.0333
+    # -> 0.0250 bits); this term attacks the representation directly, is
+    # uncapped (no gradient-free plateau) and scale-invariant. Only one of
+    # w_diversity / w_repr_decorr may be active at a time (single factor).
+    w_repr_decorr: float = 0.0
     # Losses
     w_consistency: float = 0.0     # weight of T2 ~ T1@T1 consistency loss
     # Depth-ensemble capture (T2 probe, eval only): when True, the dense-exit

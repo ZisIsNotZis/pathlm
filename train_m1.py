@@ -18,14 +18,31 @@ from pathlm.eval import bpc, repair, depth_curve, needle_acc, decode_speed, loca
 from pathlm.model import PathLM
 
 
+def gate_skip(gnorm: torch.Tensor) -> bool:
+    """Pre-step grad-norm gate (ticket 39). Only a NON-FINITE norm may poison the
+    optimizer, so only that skips the step; `clip_grad_norm_` has already rescaled
+    any large-but-finite gradient to the 1.0 budget, so a finite explosion no
+    longer needs the update dropped. (The old `gnorm > 1e4` skip removed 42.7%
+    of the updates from the 50M decorrelation arm — a training confound.)"""
+    return not bool(torch.isfinite(gnorm))
+
+
+def validate_pcap(pcap: PathConfig) -> None:
+    """Reject no-op / multi-factor path configs before touching the GPU."""
+    if pcap.reentry_mix and pcap.p_retry == 0 and pcap.p_token_retry == 0:
+        raise ValueError("reentry_mix without a loop (p_retry/p_token_retry) is a no-op element")
+    if pcap.w_diversity > 0 and pcap.w_repr_decorr > 0:
+        raise ValueError("w_diversity 与 w_repr_decorr 不能同时开（单因素：两条去相关罚则）")
+
+
 def sample_rounds(pcap: PathConfig, rng: random.Random, n_layers: int) -> list:
     """Base path decides the retry count; each round gets its own fresh path.
-    w_diversity > 0 additionally samples one parallel path per step so the
-    diversity loss has a partner to decorrelate from (the partner is an extra
+    w_diversity > 0 or w_repr_decorr > 0 additionally samples one parallel path
+    per step so the decorrelation term has a partner (the partner is an extra
     estimator pass, not a retry round)."""
     base = sample_path(pcap, rng, n_layers)
     paths = [base] + [sample_path(pcap, rng, n_layers) for _ in range(base.n_retries)]
-    if pcap.w_diversity > 0:
+    if pcap.w_diversity > 0 or pcap.w_repr_decorr > 0:
         paths.append(sample_path(pcap, rng, n_layers))
     return paths
 
@@ -38,10 +55,12 @@ def activity_line(step: int, loss, lr: float, minutes: float, gnorm, paths: list
     the V3 activity seam, pinned by tests/test_decorrelation_at_scale.py.
 
     `diversity_js` is the capped -JS reward term the model returns when
-    w_diversity > 0 and at least two paths ran; it is None for the w_diversity=0
-    arms (the ladder's control), which is NOT a dead switch. `skip_frac` is the
-    realized path stochasticity: kept layers / n_layers, averaged over the paths
-    of this step (1.0 = no layer dropped, i.e. the stock arm)."""
+    w_diversity > 0 and at least two paths ran; `repr_decorr` is the v2
+    cross-path hidden-state correlation penalty returned when w_repr_decorr > 0.
+    Both are None for the w_diversity=0 / w_repr_decorr=0 arms (the ladder's
+    control), which is NOT a dead switch. `skip_frac` is the realized path
+    stochasticity: kept layers / n_layers, averaged over the paths of this step
+    (1.0 = no layer dropped, i.e. the stock arm)."""
     return {"step": step, "loss": round(float(loss.detach()), 4),
             "lr": round(float(lr), 6), "min": round(float(minutes), 1),
             "gnorm": round(float(gnorm), 4),
@@ -49,23 +68,35 @@ def activity_line(step: int, loss, lr: float, minutes: float, gnorm, paths: list
             "skip_frac": round(sum(len(p.layer_order) for p in paths)
                                / (len(paths) * n_layers), 4),
             "diversity_js": (round(float(aux["diversity"]), 6)
-                             if "diversity" in aux else None)}
+                             if "diversity" in aux else None),
+            "repr_decorr": (round(float(aux["repr_decorr"]), 6)
+                            if "repr_decorr" in aux else None)}
 
 
 def liveness_record(pcap: PathConfig, div_hist: list, skip_hist: list,
-                    gnorm_hist: list, gate_skips: int, n_paths) -> dict:
+                    gnorm_hist: list, gate_skips: int, n_paths,
+                    repr_hist: list | None = None) -> dict:
     """The SCHEMA §10 activity block: is the arm's intervention alive, and with
-    what magnitude? w_diversity=0 arms report alive=False with a note that they
-    are the ladder's control, not an untriggered switch."""
+    what magnitude? w_diversity=0 / w_repr_decorr=0 arms report alive=False with
+    a note that they are the ladder's control, not an untriggered switch.
+    `repr_hist` is the v2 cross-path hidden-state correlation penalty at each
+    logged step (empty/None for the non-v2 arms)."""
+    repr_hist = repr_hist or []
     return {
         "w_diversity": pcap.w_diversity,
+        "w_repr_decorr": pcap.w_repr_decorr,
         "p_skip": pcap.p_skip,
         "n_paths_per_step": n_paths,
-        "alive": bool(div_hist),
+        "alive": bool(div_hist or repr_hist),
         "diversity_js_first": round(div_hist[0], 6) if div_hist else None,
         "diversity_js_last": round(div_hist[-1], 6) if div_hist else None,
         "diversity_js_mean": round(sum(div_hist) / len(div_hist), 6) if div_hist else None,
         "n_diversity_observations": len(div_hist),
+        "repr_decorr_first": round(repr_hist[0], 6) if repr_hist else None,
+        "repr_decorr_last": round(repr_hist[-1], 6) if repr_hist else None,
+        "repr_decorr_mean": (round(sum(repr_hist) / len(repr_hist), 6)
+                             if repr_hist else None),
+        "n_repr_observations": len(repr_hist),
         "skip_frac_mean": (round(sum(skip_hist) / len(skip_hist), 4)
                            if skip_hist else None),
         "gnorm_max": round(max(gnorm_hist), 4) if gnorm_hist else None,
@@ -96,6 +127,7 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
     t0 = time.time()
     # --- V3 activity accumulators (SCHEMA §10; every 200 steps to the log) ---
     div_hist: list = []          # capped -JS between the parallel paths' node-1 preds
+    repr_hist: list = []         # v2 cross-path hidden-state correlation penalty
     skip_hist: list = []         # realized path stochasticity: kept layers / n_layers
     gnorm_hist: list = []
     gate_skips = 0               # pre-step grad-norm gate firings
@@ -124,9 +156,7 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
         opt.zero_grad(set_to_none=True)
         loss.backward()
         gnorm = torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        if not torch.isfinite(gnorm) or gnorm > 1e4:
-            # gradient explosion (observed with the negative-JS reward term):
-            # skip BEFORE opt.step — a poisoned optimizer state is unrecoverable
+        if gate_skip(gnorm):
             gate_skips += 1
             opt.zero_grad(set_to_none=True)
             sched.step()
@@ -142,6 +172,8 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
         gnorm_hist.append(float(gnorm))
         if "diversity" in aux:
             div_hist.append(float(aux["diversity"]))
+        if "repr_decorr" in aux:
+            repr_hist.append(float(aux["repr_decorr"]))
         if step % 200 == 0 or step == steps - 1:
             line = activity_line(step, loss, sched.get_last_lr()[0],
                                  (time.time() - t0) / 60, gnorm, paths, aux,
@@ -152,7 +184,8 @@ def train(model: PathLM, train_arr, tcfg: dict, pcap: PathConfig, log_path: str,
             except OSError as e:
                 raise RuntimeError(f"cannot append train log {log_path}: {e}") from e
     liveness = liveness_record(pcap, div_hist, skip_hist, gnorm_hist, gate_skips,
-                               paths_hist[-1] if paths_hist else None)
+                               paths_hist[-1] if paths_hist else None,
+                               repr_hist=repr_hist)
     return time.time() - t0, liveness
 
 
@@ -205,8 +238,7 @@ def main():
         raise RuntimeError(f"cannot create run dir {run_dir}: {e}") from e
     mcfg = ModelConfig(**cfg["model"])
     pcap = PathConfig(**cfg["path"])
-    if pcap.reentry_mix and pcap.p_retry == 0 and pcap.p_token_retry == 0:
-        raise ValueError("reentry_mix without a loop (p_retry/p_token_retry) is a no-op element")
+    validate_pcap(pcap)
     torch.manual_seed(cfg["train"]["seed"])
     train_arr, eval_arr, vocab_size = load_enwik8_full(".tmp/enwik8", "data/enwik8_full.npz")
     model = PathLM(mcfg, pcap, vocab_size).cuda()
@@ -252,16 +284,21 @@ def main():
     results["params"] = n_params
     results["wall_minutes"] = round(wall / 60, 1)
     results["peak_gpu_mem_mb"] = peak_mb
-    # SCHEMA §10: the activity record for the arm's intervention. The diversity
-    # pressure adds NO parameters (it is a loss term over an extra forward),
-    # so params_added is 0 by construction and the live quantity is the JS.
+    # SCHEMA §10: the activity record for the arm's intervention. The
+    # decorrelation pressure adds NO parameters (it is a loss term over an extra
+    # forward), so params_added is 0 by construction; the live quantity is the
+    # output JS (w_diversity) or the hidden-state correlation (w_repr_decorr).
+    repr_arm = pcap.w_repr_decorr > 0
     results["intervention"] = {
-        "name": "capped_negative_js_diversity_pressure",
+        "name": ("cross_path_hidden_correlation_repr_decorr" if repr_arm
+                 else "capped_negative_js_diversity_pressure"),
         **liveness,
         "params_added": 0,
-        "extra_forward_per_step": 1 if pcap.w_diversity > 0 else 0,
-        "note": ("w_diversity>0 每步多采样一条并行路径（额外 1 次前向）并减去 capped "
-                 "−JS；w_diversity=0 臂是阶梯的对照，不是未激活的开关"),
+        "extra_forward_per_step": 1 if (pcap.w_diversity > 0 or repr_arm) else 0,
+        "note": ("w_repr_decorr>0 每步多采样一条并行路径（额外 1 次前向），并对两条路径的"
+                 " trunk 隐状态做跨路 Pearson 相关罚则（无 cap、尺度不变）；" if repr_arm else
+                 "w_diversity>0 每步多采样一条并行路径（额外 1 次前向）并减去 capped "
+                 "−JS；w_diversity=0 与 w_repr_decorr=0 臂是阶梯对照，不是未激活的开关"),
     }
     results["train_tokens"] = cfg["train"]["steps"] * cfg["train"]["batch_size"] * mcfg.seq_len
     try:

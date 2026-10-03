@@ -1,0 +1,160 @@
+{
+  "config": {
+    "device_combos": "cpu",
+    "model": {
+      "d_model": 32,
+      "n_layers": 3,
+      "n_heads": 8,
+      "seq_len": 12,
+      "dense": true,
+      "topology": "sequential"
+    },
+    "seed": 0,
+    "carry_activation_value": 0.5,
+    "note": "组合自检 = CPU 前向；qkv 宽度 / K/V 张量形状 / read_share 都是活性量，不是标签"
+  },
+  "combos": [
+    {
+      "name": "gqa_x_carry",
+      "block_class": "ComposableBlock",
+      "gqa_on": true,
+      "carry_on": true,
+      "window_on": false,
+      "qkv_out_width": 48,
+      "qkv_out_width_mha_equivalent": 96,
+      "n_params": 41616,
+      "carry_read_share": 0.003573,
+      "kv_k_shape": [
+        2,
+        2,
+        12,
+        4
+      ],
+      "kv_attn_mask_applied": false,
+      "kv_qkv_out_width_seen": 48,
+      "window_changes_logits_vs_full": null
+    },
+    {
+      "name": "gqa_x_window",
+      "block_class": "GQABlock",
+      "gqa_on": true,
+      "carry_on": false,
+      "window_on": true,
+      "qkv_out_width": 48,
+      "qkv_out_width_mha_equivalent": 96,
+      "n_params": 37232,
+      "carry_read_share": null,
+      "kv_k_shape": [
+        2,
+        2,
+        12,
+        4
+      ],
+      "kv_attn_mask_applied": true,
+      "kv_qkv_out_width_seen": 48,
+      "window_changes_logits_vs_full": true
+    },
+    {
+      "name": "carry_x_window",
+      "block_class": "CarryChannelBlock",
+      "gqa_on": false,
+      "carry_on": true,
+      "window_on": true,
+      "qkv_out_width": 96,
+      "qkv_out_width_mha_equivalent": 96,
+      "n_params": 46368,
+      "carry_read_share": 0.004778,
+      "kv_k_shape": null,
+      "kv_attn_mask_applied": null,
+      "kv_qkv_out_width_seen": null,
+      "window_changes_logits_vs_full": true
+    },
+    {
+      "name": "gqa_x_carry_x_window",
+      "block_class": "ComposableBlock",
+      "gqa_on": true,
+      "carry_on": true,
+      "window_on": true,
+      "qkv_out_width": 48,
+      "qkv_out_width_mha_equivalent": 96,
+      "n_params": 41616,
+      "carry_read_share": 0.003643,
+      "kv_k_shape": [
+        2,
+        2,
+        12,
+        4
+      ],
+      "kv_attn_mask_applied": true,
+      "kv_qkv_out_width_seen": 48,
+      "window_changes_logits_vs_full": true
+    }
+  ],
+  "default_bitwise_v1": {
+    "weights_bitwise_equal": true,
+    "forward_bitwise_equal": true,
+    "n_params_block": 12704,
+    "n_params_composable": 12704,
+    "state_dict_keys": [
+      "ln1.weight",
+      "ln1.bias",
+      "ln2.weight",
+      "ln2.bias",
+      "qkv.weight",
+      "qkv.bias",
+      "proj.weight",
+      "proj.bias",
+      "mlp.0.weight",
+      "mlp.0.bias",
+      "mlp.2.weight",
+      "mlp.2.bias"
+    ]
+  },
+  "fast_paths": {
+    "gqa_only": "GQABlock",
+    "carry_only": "CarryChannelBlock",
+    "default": "Block",
+    "gqa_x_carry": "ComposableBlock"
+  },
+  "smoke": null,
+  "smoke_this_run_minutes": null,
+  "regression": {
+    "source": "pytest_full.txt",
+    "last_line": "367 passed in 1627.81s (0:27:07)"
+  },
+  "eng1_tests": {
+    "source": "pytest_eng1.txt",
+    "last_line": "6 passed in 5.87s"
+  },
+  "mutation": {
+    "n_mutations": 4,
+    "all_caught_red": true,
+    "all_restored_bitwise": true,
+    "sha256_original": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279",
+    "sha256_restored": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279",
+    "ids": [
+      "M1",
+      "M2",
+      "M3",
+      "M4"
+    ],
+    "caught": {
+      "M1": true,
+      "M2": true,
+      "M3": true,
+      "M4": true
+    }
+  },
+  "code": {
+    "pathlm/depth_ar.py": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279",
+    "train_depth_ar.py": "1035565281ed66af16e303ce29148e6907020d438047a4e3fdadc1799f78409e",
+    "tests/test_eng1_composable.py": "997542cdc9d028383dae4b9ea716c34903793d7a415e1e84dff9c9a56886a906",
+    "axes/M-carrier/M1-carrier-type/experiments/2622-eng1-composable/run.py": "c1ffb79d94b9899e7acc975a94eb4ca428ba8bb0bf47804f60113d03f85475b2",
+    "axes/M-carrier/M1-carrier-type/experiments/2622-eng1-composable/mutate.py": "88f83baaeefd0959590be46b8b2e7e98f13c2c67820dd29c4d5401d5bb198f6b",
+    "axes/M-carrier/M1-carrier-type/experiments/2622-eng1-composable/reconcile_numbers.py": "f979c9d7ce4bd06ab9b7d8de3bde0f3a8571daea0515bc0eed9f5ecdb0ef520c"
+  },
+  "cost": {
+    "cpu_selfcheck_minutes": 0.027,
+    "gpu_smoke_minutes": null
+  }
+}

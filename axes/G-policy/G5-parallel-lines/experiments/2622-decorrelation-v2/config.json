@@ -1,0 +1,71 @@
+{
+  "device": "cuda",
+  "vocab_size": 206,
+  "probe_seed": 11,
+  "eval": {
+    "batch_size": 32,
+    "n_batches": 60
+  },
+  "k_sweep": [1, 2, 4, 8],
+  "js_k": [2, 8],
+  "selfcheck_k": [1, 2],
+  "determinism_k": [1, 8],
+  "main_k": 8,
+  "battery": {
+    "enabled": true,
+    "n_batches": 200
+  },
+  "gpu_wall_budget_min": 110,
+  "probe_protocol": {
+    "method": "probe_tts.bpc_k（13M 锚点 L1/DIVL1 的同一方法）",
+    "seed": 11,
+    "batch_size": 32,
+    "n_batches": 60,
+    "temperature": 1.0,
+    "note": "本入口的 K 集成与该函数在本检查点上逐位同值（results.json::selfchecks）"
+  },
+  "scales": {
+    "13m": {
+      "steps_full": 6000,
+      "train_dir": "train13m",
+      "config_dir": "configs13m",
+      "arms": ["stock", "l1", "repr"],
+      "arms_meta": {
+        "stock": {"role": "阶梯底：单线单模型（p_skip=0, w_repr_decorr=0）"},
+        "l1": {"role": "路径机制（p_skip=0.1），无去相关压力"},
+        "repr": {"role": "路径机制 + 表征级去相关（w_repr_decorr=1.0，跨路隐状态相关罚则）"}
+      },
+      "midpoint_ckpt": 3000
+    },
+    "50m": {
+      "steps_full": 12000,
+      "train_dir": "train50m",
+      "config_dir": "configs50m",
+      "arms": ["stock", "l1", "repr"],
+      "arms_meta": {
+        "stock": {
+          "role": "阶梯底：单线单模型；**复用 ticket 37 / 2620 的 50M stock 检查点**（同配置、同 seed、同 token；该臂 gate_skips=0 ⇒ 新 gate 代码下逐位等价），在本入口下重新评测",
+          "reuse_ckpt": "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/train/stock/model.pt"
+        },
+        "l1": {"role": "路径机制（p_skip=0.1），无去相关压力（本轮重训，与 repr 同代码）"},
+        "repr": {"role": "路径机制 + 表征级去相关（w_repr_decorr=1.0）"}
+      },
+      "midpoint_ckpt": 6000
+    }
+  },
+  "anchors_13m": {
+    "note": "既有 13M 锚点（probe_tts 60-batch 协议，seed 11）；只作同方法趋势，本轮 13M 三臂是全新重训",
+    "stock_b0_battery_bpc": 1.5074,
+    "l1": {"K1": 1.6926, "K2": 1.6657, "K4": 1.6543, "K8": 1.6454},
+    "divl1": {"K1": 1.6842, "K2": 1.6482, "K4": 1.6339, "K8": 1.6227},
+    "sources": [
+      ".scratch/08-tts-probe/evidence/tts_results.json",
+      ".scratch/09-m3-interactions/evidence/DIVL1/k_sweep.json"
+    ]
+  },
+  "train_recipe_note": "13M：d256/12L/8H/T512/bs32/6000 步；50M：d512/12L/8H/T512/bs16/12000 步 —— 两个规模点都是 98.3M tokens、同 lr、同 seed；每规模内部三臂 model/path（除 p_skip、w_repr_decorr 外）/train 段逐字段相同",
+  "smoke_protocol": {
+    "steps": 400,
+    "why": "SCHEMA §17.5：短窗口的墙钟字段不得外推；400 步把 0.1 min 的日志精度压到 ±0.3%"
+  }
+}
