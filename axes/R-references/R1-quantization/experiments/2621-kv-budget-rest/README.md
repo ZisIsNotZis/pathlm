@@ -43,7 +43,7 @@
   - **head 族**（MHA/GQA/MQA、GQA×窗口）与 **quant_head 族**（GQA/MQA × int4）：
     `mha-12k-s0/model.pt`（clean bpc 1.482026）。组合臂的主 damage 列相对 mha，
     以便与 U3 的 GQA/MQA 档**同轴**；另单列「量化增量」= 组合臂 − 同架构 fp16 臂。
-- 两族基线差 0.0016（同配置同 seed 重训的 run-to-run 散度），已单列，未混。
+- 两族基线差 0.0015（同配置同 seed 重训的 run-to-run 散度），已单列，未混。
 
 ## 3. 指标表（多维，逐项分析）
 
@@ -196,3 +196,5 @@ python3 -m pytest tests/test_kv_budget_rest.py -q   # 19 绿
 - GPU 面上本线持有 `/tmp/pathlm_gpu.lock`（取锁 → 写 `holder_pid` + `heartbeat` → 释放先清
   内容再 `rmdir`）；整程 **<10 min** ⇒ 允许整程持锁（SCHEMA §20.1 第 1 条的例外）。
   **未发现**等锁超时 / 锁泄漏 / 显存超预算。
+
+> 主 Agent 补注（复核 X4 P1）：等字节 ≠ 等形状，跨形状排名须带该声明（见 analysis.md 末尾补写）。

@@ -400,3 +400,6 @@ def plain_greedy(model, prompt: list[int], n_new: int, exit_depth: int | None = 
         inp = commit_input(model, logits, h, "hard", d.n)
         h, logits = d.step(inp, fd)
     return gen
+
+# 主 Agent 修正（复核 X4 P2）：`plain_greedy` 走的是**仓库 `DepthARDecoder` 路径**；
+# 与 spec 共用同一套缓存机械的对照见 `plain_greedy_cache`（2.02× 实现层差来自两者之间）。
