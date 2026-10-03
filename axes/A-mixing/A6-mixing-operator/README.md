@@ -10,7 +10,7 @@ tax: "k=32 Δ = **−0.0166**（越 0.014 界，配对 20/20 批同向，t=−7.
 benefit: "理论：保留键数 −87.5%/−75%、注意力 FLOPs −43.75%/−37.5%（QKᵀ 因内容选择不可省）、整模型每 token FLOPs −6.25%/−5.36%、**KV 缓存 −0%**（结构性）"
 verdict: "内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）——稀疏的收益要到长上下文才可能出现。"
 deps: []
-evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/analysis.md @ticket31"]
+evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/analysis.md @ticket31", "axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m/analysis.md @ticket33", "axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/analysis.md @ticket39"]
 ---
 
 <!-- AUTO:begin -->
@@ -55,8 +55,9 @@ evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-1
 1. **成本实测量反方向**：整模型一步 24.34 → 54.02/54.76 ms（**2.22×/2.25× 慢**），进程峰值显存 1.47 → 2.55/2.57 GB（1.7×）；孤岛参考实现（真稀疏 gather）仍 1.63×/2.13× ⇒ 「T=256 净开销」是结论而非实现 bug
 2. **质量也越界**：k=32 的 Δ 达 −0.0166（>0.014），k=64 仅落在噪声带内（−0.0095）；两臂 loss 斜率同方法可比（0.0025/0.0037/0.0031，极差 0.0012）⇒ 水平差不是收敛差
 3. 交叉点只有公式外推（注意力占比 14.3%@256 → 72.7%@4096），**长 T 端未实测**；2× 训练点未做 ⇒ 限快照口径
-4. **线性注意力（ticket 33-R）：干预在当前实装下不可行**——三次尝试分别在 step 800/~500/400 停摆（faulthandler 栈落在 `loss.backward()`；停摆前 `den_min` 触 clamp 下限 1e-6、`phi_min` 触 0、gnorm 尖峰 5065.9 vs 基线 0.4–0.8）；5 次诊断二分（chunk 32/64/256 × eps × expandable_segments）全部跑完 ⇒ **非确定性运行时停摆**，不是确定性 bug。执行者拒绝削步数/换算子救场，如实记不可行
-5. 线性注意力的**成本交叉点已实测**（理论与实测并报）：理论 MACs/token/层 131072 → 49664（分块 −62.1%）/ 16896（流式 −87.1%）、推理缓存 T=256 时 −93.6%；**实测整模型 ms/step 比值 2.58@256 → 2.35@512 → 1.74@1024 → 1.53@2048（2048 内未回本）**；注意力子层孤岛在 T=1024 首次反超（0.96×）、T=2048 为 0.68×；峰值显存 1.41–1.47×（涨）
+4. **长 T 首探（ticket 39-X3，T=256→512，扩绝对位置表 +0.94% 参数）**：**窗口算子在 T=512 首次进入「不亏」带**（Δ256 = −0.014836 带宽判「亏」、Δ512 = −0.008730 判「不亏」⇒ 记交叉点首个观测点）；但 raw Δ 两点**同号（都略负）**，两种读法都报、主口径=带宽分类；**n=1 单点、不外推**（§17.11/§17.16）。注意力占比**实测** 5.41%@256 → 10.78%@512（+1.99×）与修正后公式 14.29%→25.00%（+1.75×）趋势一致；峰值显存 2.697 GiB；**墙钟测不出方向**（两轮相反）且窗口走稠密 bool 掩码 ⇒ 理论省 12.5% 等效 FLOPs **未兑现**；§19 合成腿四臂全在 chance（enwik8 权重在分布外任务上不会回忆）⇒ **空结果、不能区分两臂**，如实报并列下一步
+5. **线性注意力（ticket 33-R）：干预在当前实装下不可行**——三次尝试分别在 step 800/~500/400 停摆（faulthandler 栈落在 `loss.backward()`；停摆前 `den_min` 触 clamp 下限 1e-6、`phi_min` 触 0、gnorm 尖峰 5065.9 vs 基线 0.4–0.8）；5 次诊断二分（chunk 32/64/256 × eps × expandable_segments）全部跑完 ⇒ **非确定性运行时停摆**，不是确定性 bug。执行者拒绝削步数/换算子救场，如实记不可行
+6. 线性注意力的**成本交叉点已实测**（理论与实测并报）：理论 MACs/token/层 131072 → 49664（分块 −62.1%）/ 16896（流式 −87.1%）、推理缓存 T=256 时 −93.6%；**实测整模型 ms/step 比值 2.58@256 → 2.35@512 → 1.74@1024 → 1.53@2048（2048 内未回本）**；注意力子层孤岛在 T=1024 首次反超（0.96×）、T=2048 为 0.68×；峰值显存 1.41–1.47×（涨）
 
 ## 6. 判据与判决实验设计
 
@@ -73,6 +74,8 @@ evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-1
 ## 9. 复现手段
 
 1. axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/analysis.md @ticket31
+2. axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m/analysis.md @ticket33
+3. axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/analysis.md @ticket39
 
 ## 备注
 
