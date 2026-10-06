@@ -73,11 +73,11 @@
 
 ## 3. 三道对账（§12，脚本化 `reconcile_numbers.py`，87 项 0 失败）
 
-1. **算术对账**：训练 token = 步数×bs×T = 24×32×256×... = 12000×32×256 = 98,304,000（逐臂
+1. **算术对账**：训练 token = 步数×bs×T = 12000×32×256 = 98,304,000（逐臂
    闭式相等）；`accuracy == n_hits/n`；`chance == 1/64`；毁源 n == 主 n；`chance_bits == log2(64) == 6.0`；
    三臂 `params` 相等。
 2. **任务对账**：主腿源 key 距离 min=107（median 175）**≥ 窗 16**（源恒在窗外）；距离腿
-   `source_inside_window == (d<window)` 逐档一致；主腿 K/Q/gap 与训练同档（K8/Q8/gap14）；
+   `source_inside_window == (d<window)`（`w=0` 的 `full` 臂恒 `True`）逐档一致；主腿 K/Q/gap 与训练同档（K8/Q8/gap14）；
    vocab206 / cue205 一致。
 3. **口径对账**：各臂 `train_log` 末步 == `results.json` 记录；窗口掩码口径（`full` 无掩码 /
    `win16` 每 200 步落盘 `visible_frac=0.120866<1`）；判决行 CE 有记录；5 个共享文件指纹一致。
@@ -178,7 +178,7 @@
 - **口径**：准确率（native 掩码）；chance=1/64；95% Wilson CI 与两比例 pooled z；bpc = bit/token；
   Δ 一律 `Δ = full − win16`（正 = full 更好）。
 - **实测墙钟**：训练 full **13.01** / win16 **13.75** / win16_rep **14.18** min；评测全电池
-  **1.03** min；步时稳态 ≈**72 ms/step**（400 步探针，共享卡争用）。峰值显存 full **1630.4 MB** /
+  **1.04** min；步时稳态 ≈**72 ms/step**（400 步探针，共享卡争用）。峰值显存 full **1630.4 MB** /
   win16 **2015.3 MB**（**< 5GB net**，未触礼貌线）。
 - **锁台账**：取锁/释放按 §20.1（整程 >10 min ⇒ 按臂释放 + 臂间 ≥60s）；共享卡上与 Y1/Y2 线
   竞争，win16 与 win16_rep 各经历过 1 次 10 min 取锁超时（rc=9），由 `run_eval_then_rep.sh` /
@@ -192,3 +192,18 @@
 - **ticket 35（2618/2619/2620，M1）**：同一合成任务上，**给显式写通道**（delta）后窗口臂召回
   6× chance；本实验（无通道）是其**缺失的对照**：无通道的窗口臂 = chance。⇒ **通道是关键，
   不是窗口开关**。
+
+## 13. P2 修正记录（后于复核）
+
+> **来源**：ticket 43 V3「P2 收尾」，修正对象 = `.scratch/42-longt-stability/evidence/REVIEW_W3.md`
+> 的 report-only P2（Finding 2 / Finding 4）。**只改文档表述；不改任何数字结论、band 分类、判据表述。**
+> 本文件（`analysis.md`）与同目录 `README.md` 的改动逐条留痕如下。
+
+| # | 文件:位置 | 改了什么 | 改成什么 | 为什么不影响结论 |
+|---|---|---|---|---|
+| 1 | `README.md` §10（评测实测） | 全电池 `1.03 min` | 全电池 `1.04 min` | 笔误：对齐权威产物 `results.json::cost.wall_minutes_total_eval = 1.04`（results.json:4551）。仅评测墙钟成本，非判据量 |
+| 2 | `analysis.md` §11（实测墙钟） | 评测全电池 `1.03` min | 评测全电池 `1.04` min | 同 #1（同一数字的两处引用）；不涉任何判据/结论 |
+| 3 | `analysis.md` §3 项 1（算术对账） | `= 步数×bs×T = 24×32×256×... = 12000×32×256 = 98,304,000` | `= 步数×bs×T = 12000×32×256 = 98,304,000` | 只删除行内残片 `24×32×256×... =`；闭式值 `98,304,000` 未变（12000×32×256），`reconcile_numbers.py` 该 check 仍 0 失败 |
+| 4 | `analysis.md` §3 项 2（任务对账） | `source_inside_window == (d<window)` 逐档一致 | `source_inside_window == (d<window)`（`w=0` 的 `full` 臂恒 `True`）逐档一致 | 补注 `w=0` 特例，与实现 `(d<w) if w>0 else True`（`reconcile_numbers.py:90`）及报告原文 `True vs True (w=0)` 自洽；原简写与其自身 check 矛盾，语义与判定不变 |
+
+**未改动 / 复核结论**：`results.json`、`reconcile_report.json`、`mutation_report.json` 与全部数字结论、band 分类、判据线 **一字未动**；REVIEW_W3 的其余 finding（P0=Finding 1 已由 `a8f440d` 关闭；Finding 3/5 属 Y2，见其目录的 P2 修正记录）。

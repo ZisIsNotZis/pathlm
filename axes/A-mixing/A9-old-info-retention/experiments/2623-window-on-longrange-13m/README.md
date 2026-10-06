@@ -161,7 +161,7 @@ pathlm/depth_ar.py`）：本实验只用 **`--train-window` / `--train-anchors`�
   日志 200→399 步的**稳态**两者均 ≈**72 ms/step**，共享卡争用所致）。
 - **训练实测**：full **13.01 min** / win16 **13.75 min** / win16_rep **14.18 min**
   （两臂逐字段同配方，只差掩码；复现臂可砍）。训练总 **≈41 min**（3 臂）/ ≈27 min（2 臂）。
-- **评测实测**：全电池 **1.03 min**（纯推理；`results.json::cost.wall_minutes_total_eval`）。
+- **评测实测**：全电池 **1.04 min**（纯推理；`results.json::cost.wall_minutes_total_eval`）。
 - 峰值显存：full **1630.4 MB** / win16 **2015.3 MB**（**< 5GB net**，不触礼貌线；
   逐臂峰值见 `results.json::train_results`）。
 - 可中断性：训练中可杀（重跑 ≈14 min）；评测纯推理、可重跑（≈1 min）。

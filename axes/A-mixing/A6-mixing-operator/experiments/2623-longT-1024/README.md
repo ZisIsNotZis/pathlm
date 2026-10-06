@@ -32,7 +32,7 @@ status: judged
 
 在 stock decoder-only transformer（`train_depth_ar.py --dense`）上，把训练序列长度从 **512 提到
 1024**（唯一其他变化 = 位置表随 `seq_len` 线性增大），比较 **全因果注意力** vs **位置式窗口注意力**
-（窗口 = T/2 = 512，与前两点同相对刻度 50%），3000 步 / 98.3M token matched-token 快照下：
+（窗口 = T/2 = 512，与前两点同相对刻度 50%），12000 步 / 98.3M token matched-token 快照下：
 
 1. 窗口相对 full 的 **Δbpc 在 T=1024 点上的带宽分类**（与前两点 Δ256/Δ512 并列，只描述）；
 2. **注意力子层算力占比**在 T=1024 的**实测**值（与公式 `512T/(512T+786432)` = 40.0% 对照）；
@@ -156,7 +156,7 @@ status: judged
 | 代码改动 | **无**——本实验不改 `pathlm/`、`train_depth_ar.py`、`tests/`（只**新增** `tests/test_longT_1024.py` 与实验目录文件） |
 | 可失败单测 | 见 `tests/test_longT_1024.py`：非退化点、visible_frac 闭式、同相对刻度、位置表参数增量、占比公式、可变距离合成任务合法性 |
 | 变异验证 | `mutate.py`：**monkeypatch** 方式破坏掩码/占比 ⇒ 必须抓红 ⇒ 撤销（**不写共享文件**，见 §9） |
-| 落盘 | `results.json` / `config.json` / `<arm>-train_log.jsonl` / `<arm>-gate_log.jsonl` / `analysis.md` / `MODEL.md` / `smoke/smoke.json` / `smoke/cpu_smoke.json` / `mutation_report.json` / `reconcile_report.json` |
+| 落盘 | `results.json` / `config.json` / `<arm>-train_log.jsonl` / `<arm>-gate_log.jsonl`（逐 200 步原始日志，**已入库**，见 §10） / `analysis.md` / `MODEL.md` / `smoke/smoke.json` / `smoke/cpu_smoke.json` / `mutation_report.json` / `reconcile_report.json` |
 
 ## 8. 失败决策树
 

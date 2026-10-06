@@ -4,9 +4,9 @@
 唯一变量 = 训练期可见窗口（关闭 vs T/2 = 512）；第三点 = `window512@T=1024`
 （与 window128@T=256 / window256@T=512 **同相对刻度 50%**，SCHEMA §17.16）。
 
-两个训练臂（stock dense，d=256/L=8/h=8/mlp=4，bs32，seed0，lr 1e-3）：
-- `full-1024`     T=1024, 全因果,  3000 步（98.3M token）
-- `win512-1024`   T=1024, 窗口 512, 3000 步（长 T 第三点主臂）
+两个训练臂（stock dense，d=256/L=8/h=8/mlp=4，bs8，seed0，lr 1e-3；§20.2：T=1024 上 bs32/bs16 的窗口臂 OOM ⇒ 降 bs8、同步数，token 预算不变）：
+- `full-1024`     T=1024, 全因果,  12000 步（98.3M token）
+- `win512-1024`   T=1024, 窗口 512, 12000 步（长 T 第三点主臂）
 
 阶段（每个 GPU 阶段自己取/放锁，遵守 SCHEMA §20/§20.1）：
     python3 run.py --stage preflight            # 20 步冒烟（两臂）+ 成本基准 → smoke/
