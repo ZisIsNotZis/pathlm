@@ -1,0 +1,228 @@
+{
+  "batteries": {
+    "full-2048-clean": {
+      "arm": "full-2048-clean",
+      "seq_len": 2048,
+      "window": 0,
+      "bpc_native": 1.705365,
+      "bpc_release": 1.705365,
+      "n_batches": 20,
+      "batch_size": 16,
+      "window_seed": 2,
+      "native_mask": "release(causal)",
+      "native_mask_liveness": null
+    },
+    "win1024-2048-clean": {
+      "arm": "win1024-2048-clean",
+      "seq_len": 2048,
+      "window": 1024,
+      "bpc_native": 1.701179,
+      "bpc_release": 2.371519,
+      "n_batches": 20,
+      "batch_size": 16,
+      "window_seed": 2,
+      "native_mask": "window",
+      "native_mask_liveness": {
+        "train_window": 1024,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 1573376,
+        "causal_pairs": 2098176,
+        "visible_frac": 0.749878,
+        "dropped_frac": 0.250122,
+        "alive": true
+      }
+    }
+  },
+  "selfchecks": {
+    "full-2048-clean": {
+      "max_abs_logit_diff_released_vs_identity_mask": 0.0,
+      "n_batches": 4,
+      "batch_size": 8
+    },
+    "win1024-2048-clean": {
+      "max_abs_logit_diff_released_vs_identity_mask": 28.22982407,
+      "n_batches": 4,
+      "batch_size": 8
+    }
+  },
+  "synth": {
+    "full-2048-clean": {
+      "arm": "full-2048-clean",
+      "seq_len": 2048,
+      "window": 0,
+      "native_mask": "release(causal)",
+      "by_distance": {
+        "512": {
+          "accuracy": 0.015625,
+          "n": 64,
+          "chance_answer_set": 0.015625,
+          "local_prior_accuracy_k8": 0.015625,
+          "local_prior_resistance": true
+        },
+        "1024": {
+          "accuracy": 0.078125,
+          "n": 64,
+          "chance_answer_set": 0.015625,
+          "local_prior_accuracy_k8": 0.03125,
+          "local_prior_resistance": true
+        },
+        "1536": {
+          "accuracy": 0.015625,
+          "n": 64,
+          "chance_answer_set": 0.015625,
+          "local_prior_accuracy_k8": 0.03125,
+          "local_prior_resistance": true
+        }
+      }
+    },
+    "win1024-2048-clean": {
+      "arm": "win1024-2048-clean",
+      "seq_len": 2048,
+      "window": 1024,
+      "native_mask": "window",
+      "by_distance": {
+        "512": {
+          "accuracy": 0.015625,
+          "n": 64,
+          "chance_answer_set": 0.015625,
+          "local_prior_accuracy_k8": 0.015625,
+          "local_prior_resistance": true
+        },
+        "1024": {
+          "accuracy": 0.0625,
+          "n": 64,
+          "chance_answer_set": 0.015625,
+          "local_prior_accuracy_k8": 0.03125,
+          "local_prior_resistance": true
+        },
+        "1536": {
+          "accuracy": 0.0,
+          "n": 64,
+          "chance_answer_set": 0.015625,
+          "local_prior_accuracy_k8": 0.03125,
+          "local_prior_resistance": true
+        }
+      }
+    }
+  },
+  "field_by_field": {
+    "full-2048-clean": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "mlp_mult": 4,
+      "dense": true,
+      "topology": "sequential",
+      "batch_size": 8,
+      "lr": 0.001,
+      "seed": 0,
+      "steps": 6000,
+      "exit_mode": "uniform",
+      "seq_len": 2048,
+      "train_window": 0,
+      "qk_norm": "qk-normfrom512",
+      "qk_norm_min_t": 512,
+      "data": "enwik8 train 90M / eval 10M",
+      "vocab_size": 206
+    },
+    "win1024-2048-clean": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "mlp_mult": 4,
+      "dense": true,
+      "topology": "sequential",
+      "batch_size": 8,
+      "lr": 0.001,
+      "seed": 0,
+      "steps": 6000,
+      "exit_mode": "uniform",
+      "seq_len": 2048,
+      "train_window": 1024,
+      "qk_norm": "qk-normfrom512",
+      "qk_norm_min_t": 512,
+      "data": "enwik8 train 90M / eval 10M",
+      "vocab_size": 206
+    }
+  },
+  "cost": {
+    "theory": {
+      "other_macs_per_token_per_layer": 786432,
+      "attn_share_formula": {
+        "1024": 0.4,
+        "2048": 0.5714
+      },
+      "window_theory": {
+        "1024@2048": {
+          "visible_frac_of_causal": 0.749878,
+          "attn_flops_reduction_relative_to_full": 0.5,
+          "layer_macs_reduction_all_in": 0.2857
+        }
+      }
+    },
+    "measured": {
+      "model_step": [
+        {
+          "median_ms": 30.995,
+          "min_ms": 28.616,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 0,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 1.688
+        },
+        {
+          "median_ms": 46.722,
+          "min_ms": 46.512,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 1024,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 5.579
+        }
+      ],
+      "attn_island": [
+        {
+          "median_ms": 7.054,
+          "min_ms": 7.023,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 0,
+          "batch_size": 8,
+          "peak_mem_gib": 0.283
+        },
+        {
+          "median_ms": 14.123,
+          "min_ms": 13.604,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 1024,
+          "batch_size": 8,
+          "peak_mem_gib": 1.225
+        }
+      ],
+      "ratio_by_T": [
+        {
+          "T": 2048,
+          "window": 1024,
+          "step_ms_full": 30.995,
+          "step_ms_window": 46.722,
+          "r_time_window_over_full": 1.5074,
+          "qk_norm_hooks_full": 8,
+          "peak_full_gib": 1.688,
+          "peak_window_gib": 5.579,
+          "r_mem_window_over_full": 3.3051,
+          "attn_island_ms_full": 7.054,
+          "attn_island_over_model_step": 0.2276,
+          "attn_island_over_model_step_window": 0.3023,
+          "attn_share_formula": 0.5714
+        }
+      ],
+      "free_mb_before": 18952.0
+    },
+    "note": "双口径：理论（等效 FLOPs）+ 实测（墙钟/显存）。公式值只作对照，不得当判据（SCHEMA §17.11）。模型步成本已套 QK-Norm（同实验配方）。"
+  }
+}

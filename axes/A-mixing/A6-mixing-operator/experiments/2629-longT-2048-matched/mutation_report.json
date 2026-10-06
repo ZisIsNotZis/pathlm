@@ -1,0 +1,55 @@
+{
+  "target": "clean_driver.py + run.py + 2625 stability_driver.py（monkeypatch，不改文件）",
+  "sha256_before": {
+    "tests/test_longT_2048_matched.py": "1be89f186a19e1dd67f1f7c35a547e1e3bffcf909df47829a55c2263be75ac22",
+    "experiments/2629-longT-2048-matched/clean_driver.py": "5484cba82f138582f3c10d4cb4ddf54c71b8551021e349a7110789bc0bb284d6",
+    "experiments/2629-longT-2048-matched/run.py": "a7c03207f02c2319e30b9b8e08dc475115238c9b76c2e926a27ba7f1516d2069",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20"
+  },
+  "note": "本实验未改动任何共享文件；变异用进程内 monkeypatch 完成（SCHEMA §22.2）",
+  "mutations": [
+    {
+      "id": "MT-M1",
+      "desc": "长度条件门永远关（T=2048 也不挂 hook）",
+      "target_test": "test_qk_norm_active_at_2048",
+      "caught_red": true,
+      "detail": "T=2048 该挂 2 个 hook，得到 {'attn_scale_mode': 'qk-norm', 'tau': 1.0, 'min_t': 1000000000, 'n_qkv_hooks': 0, 'active': False}"
+    },
+    {
+      "id": "MT-M2",
+      "desc": "逐头归一被换成恒等（不是 √d_h 尺度）",
+      "target_test": "test_qk_norm_unit_scale_and_zero_params_at_2048",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "MT-M3",
+      "desc": "窗口臂的窗口被写成 T（退化点冒充真点）",
+      "target_test": "test_arm_table_is_one_point_two_arms",
+      "caught_red": true,
+      "detail": "T=2048 的臂必须是 {full, T/2}，得 [0, 2048]"
+    },
+    {
+      "id": "MT-M4",
+      "desc": "探针把 eval 前向也计入（步号错位）",
+      "target_test": "test_step_probe_counts_training_forwards_only",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "MT-M5",
+      "desc": "干预回退：STEPS 写成 3000（不再是 matched-step）",
+      "target_test": "test_steps_are_6000_and_match_2626_t1024",
+      "caught_red": true,
+      "detail": "本实验步数必须是 6000，得 3000"
+    }
+  ],
+  "sha256_after": {
+    "tests/test_longT_2048_matched.py": "1be89f186a19e1dd67f1f7c35a547e1e3bffcf909df47829a55c2263be75ac22",
+    "experiments/2629-longT-2048-matched/clean_driver.py": "5484cba82f138582f3c10d4cb4ddf54c71b8551021e349a7110789bc0bb284d6",
+    "experiments/2629-longT-2048-matched/run.py": "a7c03207f02c2319e30b9b8e08dc475115238c9b76c2e926a27ba7f1516d2069",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20"
+  },
+  "restored_bitwise": true,
+  "all_caught": true
+}

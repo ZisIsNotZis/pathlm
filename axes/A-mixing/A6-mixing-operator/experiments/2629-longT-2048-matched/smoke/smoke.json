@@ -1,0 +1,193 @@
+{
+  "note": "20 步冒烟：两臂各跑 20 步，检查活性量落盘与实测步时/显存（不含任何 20 步外推时间字段，§17.5）",
+  "free_mb_before": 19407.0,
+  "arms": {
+    "full-2048-clean": {
+      "config": {
+        "seq_len": 2048,
+        "window": 0,
+        "steps_full": 6000
+      },
+      "smoke_wall_min": 0.15,
+      "smoke_sec_per_step": 0.45442,
+      "peak_torch_gb": 1.906,
+      "params": 7421440,
+      "patch": {
+        "candidate": "qk-normfrom512",
+        "attn_scale_mode": "qk-norm",
+        "tau": 1.0,
+        "min_t": 512,
+        "n_qkv_hooks": 8,
+        "active": true,
+        "params_added": 0
+      },
+      "last_log_row": {
+        "step": 19,
+        "loss": 3.2899,
+        "depth_ce": [
+          3.2899
+        ],
+        "gate_mean": [],
+        "gnorm": 2.49,
+        "aux_w": 1.0,
+        "final_w": 1.0,
+        "attn_sparse": null,
+        "attn_linear": null,
+        "attn_carry": null,
+        "recon": null,
+        "readout": null,
+        "synth_answer_ce": null,
+        "synth_chance_ce": null,
+        "window_mask": null,
+        "kv_heads": null,
+        "lr": 0.0001,
+        "min": 0.03
+      },
+      "window_mask_liveness": null,
+      "config_validates": true
+    },
+    "win1024-2048-clean": {
+      "config": {
+        "seq_len": 2048,
+        "window": 1024,
+        "steps_full": 6000
+      },
+      "smoke_wall_min": 0.15,
+      "smoke_sec_per_step": 0.45435,
+      "peak_torch_gb": 5.91,
+      "params": 7421440,
+      "patch": {
+        "candidate": "qk-normfrom512",
+        "attn_scale_mode": "qk-norm",
+        "tau": 1.0,
+        "min_t": 512,
+        "n_qkv_hooks": 8,
+        "active": true,
+        "params_added": 0
+      },
+      "last_log_row": {
+        "step": 19,
+        "loss": 3.2889,
+        "depth_ce": [
+          3.2889
+        ],
+        "gate_mean": [],
+        "gnorm": 2.5,
+        "aux_w": 1.0,
+        "final_w": 1.0,
+        "attn_sparse": null,
+        "attn_linear": null,
+        "attn_carry": null,
+        "recon": null,
+        "readout": null,
+        "synth_answer_ce": null,
+        "synth_chance_ce": null,
+        "window_mask": {
+          "train_window": 1024,
+          "train_anchors": 0,
+          "params_added": 0,
+          "n_visible_pairs": 1573376,
+          "causal_pairs": 2098176,
+          "visible_frac": 0.749878,
+          "dropped_frac": 0.250122,
+          "alive": true,
+          "max_abs_logit_diff_masked_vs_open": 0.155103
+        },
+        "kv_heads": null,
+        "lr": 0.0001,
+        "min": 0.03
+      },
+      "window_mask_liveness": {
+        "train_window": 1024,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 1573376,
+        "causal_pairs": 2098176,
+        "visible_frac": 0.749878,
+        "dropped_frac": 0.250122,
+        "alive": true
+      },
+      "config_validates": true
+    }
+  },
+  "cost_measured": {
+    "theory": {
+      "other_macs_per_token_per_layer": 786432,
+      "attn_share_formula": {
+        "1024": 0.4,
+        "2048": 0.5714
+      },
+      "window_theory": {
+        "1024@2048": {
+          "visible_frac_of_causal": 0.749878,
+          "attn_flops_reduction_relative_to_full": 0.5,
+          "layer_macs_reduction_all_in": 0.2857
+        }
+      }
+    },
+    "measured": {
+      "model_step": [
+        {
+          "median_ms": 32.684,
+          "min_ms": 30.269,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 0,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 1.688
+        },
+        {
+          "median_ms": 45.998,
+          "min_ms": 45.968,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 1024,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 5.579
+        }
+      ],
+      "attn_island": [
+        {
+          "median_ms": 7.121,
+          "min_ms": 7.047,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 0,
+          "batch_size": 8,
+          "peak_mem_gib": 0.283
+        },
+        {
+          "median_ms": 14.052,
+          "min_ms": 13.691,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 1024,
+          "batch_size": 8,
+          "peak_mem_gib": 1.225
+        }
+      ],
+      "ratio_by_T": [
+        {
+          "T": 2048,
+          "window": 1024,
+          "step_ms_full": 32.684,
+          "step_ms_window": 45.998,
+          "r_time_window_over_full": 1.4074,
+          "qk_norm_hooks_full": 8,
+          "peak_full_gib": 1.688,
+          "peak_window_gib": 5.579,
+          "r_mem_window_over_full": 3.3051,
+          "attn_island_ms_full": 7.121,
+          "attn_island_over_model_step": 0.2179,
+          "attn_island_over_model_step_window": 0.3055,
+          "attn_share_formula": 0.5714
+        }
+      ],
+      "free_mb_before": 19411.0
+    },
+    "note": "双口径：理论（等效 FLOPs）+ 实测（墙钟/显存）。公式值只作对照，不得当判据（SCHEMA §17.11）。模型步成本已套 QK-Norm（同实验配方）。"
+  },
+  "free_mb_after": 18856.0
+}
