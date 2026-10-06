@@ -1,0 +1,73 @@
+{
+  "note": "§22.8 能力面分析：正向/反向构造（证明引擎校验活着）",
+  "checks": [
+    {
+      "kind": "positive",
+      "seq_len": 256,
+      "window": 0,
+      "dense": true,
+      "topology": "sequential",
+      "ok": true,
+      "params": 6962688
+    },
+    {
+      "kind": "positive",
+      "seq_len": 256,
+      "window": 128,
+      "dense": true,
+      "topology": "sequential",
+      "ok": true,
+      "params": 6962688
+    },
+    {
+      "kind": "positive",
+      "seq_len": 512,
+      "window": 0,
+      "dense": true,
+      "topology": "sequential",
+      "ok": true,
+      "params": 7028224
+    },
+    {
+      "kind": "positive",
+      "seq_len": 512,
+      "window": 256,
+      "dense": true,
+      "topology": "sequential",
+      "ok": true,
+      "params": 7028224
+    },
+    {
+      "kind": "positive",
+      "seq_len": 1024,
+      "window": 0,
+      "dense": true,
+      "topology": "sequential",
+      "ok": true,
+      "params": 7159296
+    },
+    {
+      "kind": "positive",
+      "seq_len": 1024,
+      "window": 512,
+      "dense": true,
+      "topology": "sequential",
+      "ok": true,
+      "params": 7159296
+    },
+    {
+      "kind": "negative",
+      "label": "dense=False + window",
+      "ok": false,
+      "error": "ValueError: 训练期可见窗口只在 dense=True（stock decoder-only 形态）下验证（单因素）——收到 train_window=256 且 dense=False"
+    },
+    {
+      "kind": "negative",
+      "label": "topology=parallel + window",
+      "ok": false,
+      "error": "ValueError: train_window 与层间拓扑互斥（单因素：一次只改一个因素）——收到 topology='parallel'"
+    }
+  ],
+  "all_positive_ok": true,
+  "all_negative_rejected": true
+}

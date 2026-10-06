@@ -1,0 +1,46 @@
+{
+  "target": "clean_driver.py + 2625 stability_driver.py（monkeypatch，不改文件）",
+  "sha256_before": {
+    "tests/test_longT_clean.py": "3343f0e3a5eb7509d2c6ba9506a3d23f24b9cdffefb6f197e77ffdac681f6998",
+    "experiments/2626-longT-clean/clean_driver.py": "88addbf0d46ad6d72fc1ed80869dc7913e31520ad6f401b994d3870abb276f93",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20"
+  },
+  "note": "本实验未改动任何共享文件；变异用进程内 monkeypatch 完成（SCHEMA §22.2）",
+  "mutations": [
+    {
+      "id": "V1-M1",
+      "desc": "长度条件门被忽略（T ≤ 512 也挂 hook）",
+      "target_test": "test_qk_norm_inert_at_or_below_min_t_bitwise",
+      "caught_red": true,
+      "detail": "T=16 不该挂 hook（min_t=512）"
+    },
+    {
+      "id": "V1-M2",
+      "desc": "长度条件门永远关（T > 512 也不挂 hook）",
+      "target_test": "test_qk_norm_active_and_unit_scale_above_min_t",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "V1-M3",
+      "desc": "逐头归一被换成恒等（不是 √d_h 尺度）",
+      "target_test": "test_qk_norm_active_and_unit_scale_above_min_t",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "V1-M4",
+      "desc": "探针把 eval 前向也计入（步号错位）",
+      "target_test": "test_step_probe_counts_training_forwards_only",
+      "caught_red": true,
+      "detail": ""
+    }
+  ],
+  "sha256_after": {
+    "tests/test_longT_clean.py": "3343f0e3a5eb7509d2c6ba9506a3d23f24b9cdffefb6f197e77ffdac681f6998",
+    "experiments/2626-longT-clean/clean_driver.py": "88addbf0d46ad6d72fc1ed80869dc7913e31520ad6f401b994d3870abb276f93",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20"
+  },
+  "restored_bitwise": true,
+  "all_caught": true
+}
