@@ -110,6 +110,11 @@ carry_scale=0.5`；退出模式见每行。**全部是活性量（布尔或占�
 `pytest tests/test_depth_ar.py` **134/134 绿**（含既有的 v1 复现用例：`test_nofill_*`、
 `test_proj_fill_identity_init_equals_fill`、`test_block_kv_from_is_noop_when_equal` 等）。
 
+**（后于复核）证据类型标注**：本节的「逐位还原 v1」证据是**结构性**的——块类/参数字典/`aux`
+断言（`test_eng2_default_path_bitwise_v1` 名含 `bitwise`，但断言只到结构层）+ 缺省前向**代码
+路径未被本线改动**；**未**对缺省前向 logits 做逐位 golden 对照。故更严的说法是「缺省路径
+**结构性还原 v1**」。见文末强断言证据标注。
+
 ## 5. 单测与变异（硬验收 ①）
 
 - 新增单测（`tests/test_depth_ar.py` §ENG2 段，7 条）：
@@ -203,3 +208,23 @@ carry_scale=0.5`；退出模式见每行。**全部是活性量（布尔或占�
   ⇒ 测试改用「换方向」扰动。
 - **§9（对照复用与 seed 逐字段）**：发现 proj-fill adapter 构造消耗随机数会让
   `carry×fill` 与 `carry×proj-fill` 的 carry 权重不同 ⇒ 修复后同 seed 逐位一致。
+
+---
+
+## 强断言证据标注（后于复核：W3 强断言纪律）
+
+> 依据（本轮 W3）：报告里的「逐位 / 唯一 / 首次 / 保持 / 稳健」等**强断言**必须附**可核对的
+> 证据类型**（**数值 golden 对照** / **结构性断言** / **统计检验**），**用词不得超出证据**。
+> 本节**只标注证据类型与措辞边界，不改任何数字、不改任何结论**；正文与判据线原样保留。
+> 机检入口：`reconcile_numbers.py` → `reconcile_report.json`；单测：`tests/test_depth_ar.py` §ENG2；
+> 变异：`mutation_report.json`。
+
+| 断言（原文用词） | 证据类型 | 是否达标 | 若否则降级表述 |
+|---|---|---|---|
+| 「缺省路径**逐位还原 v1**」（§1/§4/README §2） | **结构性**：缺省（`carry_rule=None`）块类 = `Block`、`has_carry_module/_box=False`、`aux` 无 `attn_carry`（`results.json::default_untouched`）；+ 缺省前向**代码路径未被本线改动** | **未达「逐位」等级**——单测 `test_eng2_default_path_bitwise_v1` 名含 `bitwise`，但断言只到结构层，**未做缺省前向 logits 的 golden 逐位对照**（对照 `test_*_default_off_matches_v1_bitwise` 类用 `torch.equal`） | 「缺省路径**结构性还原 v1**（块类/参数字典/aux 无通道项；未做缺省前向 logits 的逐位 golden 对照）」 |
+| 「通道真的被读/改前向（非摆设）」（§2） | **数值 golden 对照**：`carry_scale` 置零前后 logits **逐位不同**（`carry_changes_logits=True`） | **达标** | — |
+| 「写入时机与退出模式**无关**」（§3） | **数值 golden 对照**：三种退出模式下 `_carry_box["mem"]` **逐位相同**（`write_timing` 两条布尔 True） | **达标** | — |
+| 「变异 M1–M5 **全部抓红、逐字节还原**」（§5） | **数值 golden 对照**：`sha256_restored == sha256_original`（`mutation_report.json::all_restored_bitwise`） | **达标** | — |
+| 「四组合 **4/4 可测**」（§2） | **结构性**：`combo_buildable` + 块类断言（ENG2 前为硬 `ValueError`） | **达标** | — |
+| 「同 seed **逐位一致**（修 RNG 后）」（§5/§10） | **数值 golden 对照**：`test_eng2_carry_x_proj_fill_identity_starts_equal_to_fill` | **达标** | — |
+| 「**唯一**被改动的引擎结构 = 写入通道在非 dense 路径上的可组合性」（README §2 单因素） | **结构性 + 回归**：缺省路径结构未变（`default_untouched`）、单特性块类不变（`Block` / `CarryChannelBlock` / `ComposableBlock`）、`test_depth_ar.py` 134/134 绿 | **达标** | — |
