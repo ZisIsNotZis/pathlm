@@ -3,7 +3,7 @@
 > 契约与预登记判据线：同目录 `README.md`（§4，跑前写下，未事后调整）。
 > 原始数据：`results_13m.json`（`run.py` 落盘）、`train13m/<arm>/{results.json,train_log.jsonl}`、
 > `.tmp/2626-ckpts/13m/<arm>/model_step{006000,012000,018000,024000}.pt`、`run_log_13m.jsonl`。
-> 报告里每个数字都能回到结果文件 —— 由 `reconcile_numbers.py` 机检（`reconcile_report_13m.json`，69/69）。
+> 报告里每个数字都能回到结果文件 —— 由 `reconcile_numbers.py` 机检（`reconcile_report_13m.json`，85/85）。
 
 ---
 
@@ -274,7 +274,7 @@
 3. **口径对账**：K 曲线与轨迹同一函数同 seed（自检：与 `probe_tts.bpc_k` 逐位同值，
    `results_13m.json::selfchecks.all_equal=True`）；battery（200 批）与 probe（60 批）两套口径
    **分开列、不跨协议相减**。
-- **机检**：`reconcile_numbers.py --scale 13m` → **69/69** pass（`reconcile_report_13m.json`）。
+- **机检**：`reconcile_numbers.py --scale 13m` → **85/85** pass（`reconcile_report_13m.json`）。
 - **共享面回读断言**：
 
 ```bash
