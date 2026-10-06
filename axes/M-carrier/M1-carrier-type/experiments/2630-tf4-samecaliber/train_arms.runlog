@@ -1,0 +1,30 @@
+=== [base] 2026-10-06T16:01:09+08:00 取锁 ===
+=== [base] 训练开始 2026-10-06T16:01:09+08:00 ===
+=== [base] 训练结束 rc=0 2026-10-06T16:10:16+08:00 ===
+=== [base] 臂间窗口 65s ===
+=== [carry] 2026-10-06T16:11:21+08:00 取锁 ===
+=== [carry] 训练开始 2026-10-06T16:11:51+08:00 ===
+=== [carry] 训练结束 rc=1 2026-10-06T16:23:25+08:00 ===
+[carry] 训练失败，见 axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/train_carry.log
+  File "/home/z/vibe/pathlm/train_depth_ar.py", line 836, in <module>
+    main()
+  File "/home/z/vibe/pathlm/train_depth_ar.py", line 810, in main
+    results["generation"] = generation_quality(model, eval_arr, device="cuda",
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/vibe/pathlm/pathlm/depth_ar.py", line 2699, in generation_quality
+    gen, stats = generate(model, prompt[0], n_new, commit=commit,
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/vibe/pathlm/pathlm/depth_ar.py", line 2661, in generate
+    dec = DepthARDecoder(model)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/vibe/pathlm/pathlm/depth_ar.py", line 2573, in __init__
+    raise ValueError(
+ValueError: 增量解码（KV cache）路径未定义写入通道读出：carry_rule 只在训练/评测前向（DepthARModel.forward）上开放，解码器只用非 dense的变深度路径且尚未接入 γ ⊙ mem_t ⇒ 拒绝构造，避免静默丢路。
+=== [carry] 臂间窗口 65s ===
+ALL ARMS DONE 2026-10-06T16:24:30+08:00

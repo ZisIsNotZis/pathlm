@@ -1,0 +1,900 @@
+{
+  "config": {
+    "experiment": "2630-tf4-samecaliber",
+    "ticket": "ticket 46 · W1（任务下发文本逐字转录见 README §4）",
+    "device": "cuda",
+    "seed": 0,
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": false,
+      "topology": "sequential",
+      "fill_kv": true,
+      "proj_fill": true
+    },
+    "train": {
+      "steps": 6000,
+      "batch_size": 32,
+      "lr": 0.001,
+      "seed": 0,
+      "final_weight": 2.0,
+      "exit_mode": "uniform",
+      "tokens_per_arm": 49152000,
+      "data_source": "enwik8（原生预训练口径，非合成）",
+      "note": "6k×32×256=49.0M token，两臂严格同预算（快照 token 预算）；步时先测后定（SCHEMA §20.3）。final_weight=2.0 = 100M 出口资产配方（权重均匀 + 最终深度 2×），两臂同款。**与 2629 唯一的差别 = 训练数据（enwik8 vs 合成 assoc-mqar）**。"
+    },
+    "arms": [
+      {
+        "name": "base",
+        "carry": false
+      },
+      {
+        "name": "carry",
+        "carry": true
+      }
+    ],
+    "checkpoint": {
+      "dir": "axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/train",
+      "sha256": {
+        "base": "fcb8505e72e3089cd617dff69b39db8091b5bcbe493de2d909c9496a5cb285c8",
+        "carry": "dea708f788107d0edd92ae91f1f94edc24aceb69e35b1f46b4a627f266513bf0"
+      },
+      "note": "本实验两臂**自己训练**（6k 步 enwik8，随机退出 + proj-fill，非 dense）；权重不入库，运行时 sha256 断言。"
+    },
+    "data": {
+      "train_source": "data/enwik8_full.npz（+ .tmp/enwik8 原始字节；load_enwik8_full）",
+      "vocab_size": 206,
+      "split": "train 90M / eval 10M（引擎 load_enwik8_full 的既有切分，两臂同款）",
+      "bpc_name": "enwik8_full",
+      "bpc_path": "data/enwik8_full.npz",
+      "note": "**同口径**：训练与评测同分布（enwik8）。这与 2629（合成训练 + enwik8 跨分布代理）是两个不同分布的口径，数字不得混用。"
+    },
+    "tf_leg": {
+      "primary_metric": "tf4_enwik8_samecaliber",
+      "n_batches": 20,
+      "batch_size": 16,
+      "depths": [
+        4,
+        6
+      ],
+      "engine": "pathlm.depth_ar.tf_acceptance（与训练入口同函数、同 seed、同批数）",
+      "note": "出口资产 tf@4 / tf@6 = depth-k 出口 argmax 与全深度 argmax 的一致率（TF 代理）。**本线的口径 = enwik8 训练 + enwik8 评测（同口径）**。"
+    },
+    "clean_bpc_leg": {
+      "n_batches": 20,
+      "batch_size": 16,
+      "engine": "pathlm.depth_ar.depth_curve（全深度前向，取 depth=L 末点）",
+      "note": "clean bpc（同口径 enwik8 全深度前向）——质量代价项 + 非退化锚。"
+    },
+    "synth_diag": {
+      "K": 8,
+      "Q": 8,
+      "gap": 14,
+      "sym_vocab": 64,
+      "filler_token": 64,
+      "cue_token": 205,
+      "batch_size": 32,
+      "n_batches": 16,
+      "seed": 1234,
+      "note": "**反向跨分布诊断（不作判据）**：enwik8 训好的模型在 synth assoc-mqar 上评 tf@4，仅用于解释「口径为何会打架」。"
+    },
+    "criteria": {
+      "c1_tf4_samecaliber": "主腿 = 同口径 tf@4（enwik8 训练、enwik8 评测）；|Δ| < 1.4pp ⇒ 「carry 不弄坏出口资产」",
+      "c2_clean_bpc": "clean bpc（同口径）——质量代价项",
+      "c3_params": "参数量逐臂声明 + 差（+carry 参数）",
+      "c4_activity": "活性量：carry 臂读通道遥测每 200 步；无 carry 臂为 null",
+      "c5_caliber": "注明与 46-W1（2629）是两个不同分布的口径、不得混用",
+      "c6_no_extrapolation": "13M / 单 seed，禁外推"
+    },
+    "variance_band_pp": 1.4,
+    "gpu_wall_budget_min": 40,
+    "budget_note": "含两臂训练 + 评测（纯推理）；步时先测后定（smoke/steps300）。"
+  },
+  "capability_probe": {
+    "probe": "capability",
+    "dense": false,
+    "topology": "sequential",
+    "exit_mode": "uniform",
+    "proj_fill": true,
+    "fill_kv": true,
+    "data_source": "enwik8",
+    "arms": {
+      "base": {
+        "block_class": "Block",
+        "block_class_expected": "Block",
+        "n_params": 45152,
+        "carry_rule": null,
+        "proj_fill": true,
+        "fill_kv": true,
+        "dense": false
+      },
+      "carry": {
+        "block_class": "CarryChannelBlock",
+        "block_class_expected": "CarryChannelBlock",
+        "n_params": 49392,
+        "carry_rule": "delta",
+        "proj_fill": true,
+        "fill_kv": true,
+        "dense": false
+      }
+    },
+    "trunk_bit_identical": true,
+    "trunk_diff_keys": [],
+    "param_delta": 4240,
+    "carry_only_keys": [
+      "blocks.0.carry_scale",
+      "blocks.1.carry_scale",
+      "blocks.2.carry_scale",
+      "carry.beta_b",
+      "carry.beta_w",
+      "carry.gate_w",
+      "carry.w_k",
+      "carry.w_q",
+      "carry.w_v"
+    ],
+    "all_extra_params_are_carry": true,
+    "combo_buildable": true
+  },
+  "checkpoints": {
+    "base": {
+      "path": "axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/train/base/model.pt",
+      "sha256": "fcb8505e72e3089cd617dff69b39db8091b5bcbe493de2d909c9496a5cb285c8",
+      "size_bytes": 57358059,
+      "sha256_verified": true,
+      "block_class": "Block",
+      "block_class_expected": "Block",
+      "n_params": 14326272,
+      "carry_rule": false,
+      "dense": false,
+      "proj_fill": true,
+      "fill_kv": true
+    },
+    "carry": {
+      "path": "axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/train/carry/model.pt",
+      "sha256": "dea708f788107d0edd92ae91f1f94edc24aceb69e35b1f46b4a627f266513bf0",
+      "size_bytes": 58420003,
+      "sha256_verified": true,
+      "block_class": "CarryChannelBlock",
+      "block_class_expected": "CarryChannelBlock",
+      "n_params": 14590568,
+      "carry_rule": true,
+      "dense": false,
+      "proj_fill": true,
+      "fill_kv": true
+    }
+  },
+  "param_declaration": {
+    "base": {
+      "n_params": 14326272,
+      "delta_vs_base": 0,
+      "delta_pct_vs_base": 0.0
+    },
+    "carry": {
+      "n_params": 14590568,
+      "delta_vs_base": 264296,
+      "delta_pct_vs_base": 1.845
+    }
+  },
+  "architecture_equality": {
+    "block_class": {
+      "base": "Block",
+      "carry": "CarryChannelBlock"
+    },
+    "block_class_expected": {
+      "base": "Block",
+      "carry": "CarryChannelBlock"
+    },
+    "dense": {
+      "base": false,
+      "carry": false
+    },
+    "proj_fill": {
+      "base": true,
+      "carry": true
+    },
+    "fill_kv": {
+      "base": true,
+      "carry": true
+    },
+    "data_source": {
+      "base": "enwik8",
+      "carry": "enwik8"
+    }
+  },
+  "train_entry_battery": {
+    "base": {
+      "results_json": "axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/train/base/results.json",
+      "present": true,
+      "tf4": 0.9711,
+      "tf6": 0.986,
+      "clean_bpc": 2.0923,
+      "peak_gpu_mem_mb": 2279.9,
+      "wall_minutes": 8.78
+    },
+    "carry": {
+      "results_json": "axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/train/carry/results.json",
+      "present": false,
+      "note": "训练入口 enwik8 电池在 generation_quality 处中止（DepthARDecoder 拒绝 carry_rule，引擎已知限制）；model.pt 已保存，主电池由本入口独立重算"
+    }
+  },
+  "tf_enwik8_samecaliber": {
+    "base": {
+      "by_depth": [
+        {
+          "depth": 0,
+          "accept": 0.0605
+        },
+        {
+          "depth": 1,
+          "accept": 0.7635
+        },
+        {
+          "depth": 2,
+          "accept": 0.8975
+        },
+        {
+          "depth": 3,
+          "accept": 0.9491
+        },
+        {
+          "depth": 4,
+          "accept": 0.9711
+        },
+        {
+          "depth": 5,
+          "accept": 0.9797
+        },
+        {
+          "depth": 6,
+          "accept": 0.986
+        },
+        {
+          "depth": 7,
+          "accept": 0.9896
+        },
+        {
+          "depth": 8,
+          "accept": 0.993
+        },
+        {
+          "depth": 9,
+          "accept": 0.9952
+        },
+        {
+          "depth": 10,
+          "accept": 0.9968
+        },
+        {
+          "depth": 11,
+          "accept": 0.9979
+        }
+      ],
+      "tf4": 0.9711,
+      "tf6": 0.986,
+      "caliber": "enwik8（**同口径**：训练与评测同分布；TF 代理）"
+    },
+    "carry": {
+      "by_depth": [
+        {
+          "depth": 0,
+          "accept": 0.1224
+        },
+        {
+          "depth": 1,
+          "accept": 0.7542
+        },
+        {
+          "depth": 2,
+          "accept": 0.8906
+        },
+        {
+          "depth": 3,
+          "accept": 0.9436
+        },
+        {
+          "depth": 4,
+          "accept": 0.9635
+        },
+        {
+          "depth": 5,
+          "accept": 0.9752
+        },
+        {
+          "depth": 6,
+          "accept": 0.985
+        },
+        {
+          "depth": 7,
+          "accept": 0.9903
+        },
+        {
+          "depth": 8,
+          "accept": 0.9933
+        },
+        {
+          "depth": 9,
+          "accept": 0.9954
+        },
+        {
+          "depth": 10,
+          "accept": 0.9967
+        },
+        {
+          "depth": 11,
+          "accept": 0.9979
+        }
+      ],
+      "tf4": 0.9635,
+      "tf6": 0.985,
+      "caliber": "enwik8（**同口径**：训练与评测同分布；TF 代理）"
+    }
+  },
+  "clean_bpc_samecaliber": {
+    "base": {
+      "bpc": 2.0923,
+      "by_depth": [
+        {
+          "depth": 0,
+          "bpc": 6.2728,
+          "acc": 0.0535
+        },
+        {
+          "depth": 1,
+          "bpc": 2.458,
+          "acc": 0.5278
+        },
+        {
+          "depth": 2,
+          "bpc": 2.1609,
+          "acc": 0.5735
+        },
+        {
+          "depth": 3,
+          "bpc": 2.1085,
+          "acc": 0.5801
+        },
+        {
+          "depth": 4,
+          "bpc": 2.097,
+          "acc": 0.5815
+        },
+        {
+          "depth": 5,
+          "bpc": 2.0937,
+          "acc": 0.5818
+        },
+        {
+          "depth": 6,
+          "bpc": 2.0923,
+          "acc": 0.5822
+        },
+        {
+          "depth": 7,
+          "bpc": 2.0923,
+          "acc": 0.5817
+        },
+        {
+          "depth": 8,
+          "bpc": 2.092,
+          "acc": 0.582
+        },
+        {
+          "depth": 9,
+          "bpc": 2.092,
+          "acc": 0.582
+        },
+        {
+          "depth": 10,
+          "bpc": 2.0921,
+          "acc": 0.5817
+        },
+        {
+          "depth": 11,
+          "bpc": 2.0922,
+          "acc": 0.5818
+        },
+        {
+          "depth": 12,
+          "bpc": 2.0923,
+          "acc": 0.5817
+        }
+      ],
+      "n_batches": 20,
+      "batch_size": 16
+    },
+    "carry": {
+      "bpc": 2.0098,
+      "by_depth": [
+        {
+          "depth": 0,
+          "bpc": 5.5293,
+          "acc": 0.1021
+        },
+        {
+          "depth": 1,
+          "bpc": 2.4112,
+          "acc": 0.5291
+        },
+        {
+          "depth": 2,
+          "bpc": 2.0983,
+          "acc": 0.5852
+        },
+        {
+          "depth": 3,
+          "bpc": 2.0294,
+          "acc": 0.5954
+        },
+        {
+          "depth": 4,
+          "bpc": 2.0177,
+          "acc": 0.5978
+        },
+        {
+          "depth": 5,
+          "bpc": 2.0135,
+          "acc": 0.5985
+        },
+        {
+          "depth": 6,
+          "bpc": 2.011,
+          "acc": 0.5991
+        },
+        {
+          "depth": 7,
+          "bpc": 2.0102,
+          "acc": 0.5991
+        },
+        {
+          "depth": 8,
+          "bpc": 2.0097,
+          "acc": 0.5991
+        },
+        {
+          "depth": 9,
+          "bpc": 2.0097,
+          "acc": 0.599
+        },
+        {
+          "depth": 10,
+          "bpc": 2.0097,
+          "acc": 0.5989
+        },
+        {
+          "depth": 11,
+          "bpc": 2.0098,
+          "acc": 0.599
+        },
+        {
+          "depth": 12,
+          "bpc": 2.0098,
+          "acc": 0.5989
+        }
+      ],
+      "n_batches": 20,
+      "batch_size": 16
+    }
+  },
+  "tf_synth_crosscaliber_diag": {
+    "base": {
+      "accept": {
+        "4": 0.882598,
+        "6": 0.913794
+      },
+      "n_tokens": 130560,
+      "caliber": "synth-assoc-mqar（**反向跨分布诊断**，不作判据）"
+    },
+    "carry": {
+      "accept": {
+        "4": 0.593689,
+        "6": 0.827566
+      },
+      "n_tokens": 130560,
+      "caliber": "synth-assoc-mqar（**反向跨分布诊断**，不作判据）"
+    }
+  },
+  "increments": {
+    "tf4_enwik8_samecaliber": {
+      "carry_effect": -0.76,
+      "net_vs_base": -0.76
+    },
+    "tf6_enwik8_samecaliber": {
+      "carry_effect": -0.1,
+      "net_vs_base": -0.1
+    },
+    "tf4_synth_crosscaliber_diag": {
+      "carry_effect": -28.8909,
+      "net_vs_base": -28.8909
+    },
+    "bpc_samecaliber": {
+      "carry_effect": 0.0825,
+      "net_vs_base": 0.0825
+    }
+  },
+  "tf4_decision": {
+    "primary_metric": "tf4_enwik8_samecaliber",
+    "baseline_arm": "base",
+    "target_arm": "carry",
+    "delta_pp": -0.76,
+    "band_pp": 1.4,
+    "holds": true,
+    "rule": "|Δ(carry−base)| < 1.4pp ⇒ 记「carry 不弄坏出口资产」（同口径 tf@4）",
+    "caliber_note": "**同口径** = enwik8 训练 + enwik8 评测；与 2629 的「合成训练 + enwik8 跨分布代理」是两个不同分布的口径，数字**不得混用**"
+  },
+  "intervention": {
+    "name": "delta_carry_write_channel",
+    "enabled": true,
+    "params_added": 264296,
+    "w_fro": 76.018863,
+    "w_absmax": 0.912518,
+    "nonzero_frac": 1.0,
+    "read_scale_absmean": 0.167914,
+    "alive": true
+  },
+  "intervention_by_arm": {
+    "base": {
+      "name": "delta_carry_write_channel",
+      "enabled": false,
+      "params_added": 0,
+      "w_fro": null,
+      "w_absmax": null,
+      "nonzero_frac": null,
+      "read_scale_absmean": null,
+      "alive": false,
+      "note": "无通道（carry_rule=None）：读出量为 0"
+    },
+    "carry": {
+      "name": "delta_carry_write_channel",
+      "enabled": true,
+      "params_added": 264296,
+      "w_fro": 76.018863,
+      "w_absmax": 0.912518,
+      "nonzero_frac": 1.0,
+      "read_scale_absmean": 0.167914,
+      "alive": true
+    }
+  },
+  "train_activity": {
+    "base": {
+      "n_log_lines": 31,
+      "n_rows_step_multiple_of_200": 30,
+      "final_step": 5999,
+      "final_loss": 1.6862,
+      "last_attn_carry": null,
+      "attn_carry_series_present": 0,
+      "carry_series": [],
+      "carry_series_last200": null,
+      "full_depth_ce_slope_nats_per_1k_lastquarter": -0.054696,
+      "depth4_ce_slope_nats_per_1k_lastquarter": -0.064161,
+      "loss_slope_nats_per_1k_lastquarter": -0.055714,
+      "n_exit_ce": 13
+    },
+    "carry": {
+      "n_log_lines": 31,
+      "n_rows_step_multiple_of_200": 30,
+      "final_step": 5999,
+      "final_loss": 1.5786,
+      "last_attn_carry": {
+        "read_scale_absmean": 0.142323,
+        "read_share": 0.406998,
+        "mem_write_to_resid_ratio": 0.488598,
+        "state_fro": 5.975522,
+        "beta_mean": 0.709406,
+        "write_rel": 0.818394,
+        "read_norm": 6.102304,
+        "n_layer_samples": 72000,
+        "rule": "delta",
+        "carry_chunk": 64
+      },
+      "attn_carry_series_present": 31,
+      "carry_series": [
+        {
+          "step": 0,
+          "read_share": 0.0,
+          "read_scale_absmean": 0.0,
+          "state_fro": 0.504346,
+          "beta_mean": 0.499857
+        },
+        {
+          "step": 200,
+          "read_share": 0.038779,
+          "read_scale_absmean": 0.015821,
+          "state_fro": 10.367998,
+          "beta_mean": 0.703505
+        },
+        {
+          "step": 400,
+          "read_share": 0.160067,
+          "read_scale_absmean": 0.035833,
+          "state_fro": 10.347069,
+          "beta_mean": 0.771326
+        },
+        {
+          "step": 600,
+          "read_share": 0.222437,
+          "read_scale_absmean": 0.049521,
+          "state_fro": 9.895517,
+          "beta_mean": 0.760658
+        },
+        {
+          "step": 800,
+          "read_share": 0.260059,
+          "read_scale_absmean": 0.060566,
+          "state_fro": 9.296059,
+          "beta_mean": 0.752718
+        },
+        {
+          "step": 1000,
+          "read_share": 0.287743,
+          "read_scale_absmean": 0.070205,
+          "state_fro": 8.850357,
+          "beta_mean": 0.74529
+        },
+        {
+          "step": 1200,
+          "read_share": 0.309795,
+          "read_scale_absmean": 0.078807,
+          "state_fro": 8.527738,
+          "beta_mean": 0.729238
+        },
+        {
+          "step": 1400,
+          "read_share": 0.327566,
+          "read_scale_absmean": 0.086259,
+          "state_fro": 8.162283,
+          "beta_mean": 0.728654
+        },
+        {
+          "step": 1600,
+          "read_share": 0.341202,
+          "read_scale_absmean": 0.09266,
+          "state_fro": 7.848117,
+          "beta_mean": 0.720914
+        },
+        {
+          "step": 1800,
+          "read_share": 0.351773,
+          "read_scale_absmean": 0.098225,
+          "state_fro": 7.698264,
+          "beta_mean": 0.71559
+        },
+        {
+          "step": 2000,
+          "read_share": 0.360355,
+          "read_scale_absmean": 0.103131,
+          "state_fro": 7.701598,
+          "beta_mean": 0.715842
+        },
+        {
+          "step": 2200,
+          "read_share": 0.367361,
+          "read_scale_absmean": 0.107409,
+          "state_fro": 7.345171,
+          "beta_mean": 0.720173
+        },
+        {
+          "step": 2400,
+          "read_share": 0.372888,
+          "read_scale_absmean": 0.111211,
+          "state_fro": 7.184446,
+          "beta_mean": 0.713055
+        },
+        {
+          "step": 2600,
+          "read_share": 0.377428,
+          "read_scale_absmean": 0.11464,
+          "state_fro": 6.976692,
+          "beta_mean": 0.707705
+        },
+        {
+          "step": 2800,
+          "read_share": 0.381547,
+          "read_scale_absmean": 0.117695,
+          "state_fro": 7.091774,
+          "beta_mean": 0.706552
+        },
+        {
+          "step": 3000,
+          "read_share": 0.384973,
+          "read_scale_absmean": 0.120394,
+          "state_fro": 6.679564,
+          "beta_mean": 0.711769
+        },
+        {
+          "step": 3200,
+          "read_share": 0.387831,
+          "read_scale_absmean": 0.122825,
+          "state_fro": 6.522841,
+          "beta_mean": 0.709654
+        },
+        {
+          "step": 3400,
+          "read_share": 0.390315,
+          "read_scale_absmean": 0.125055,
+          "state_fro": 6.374194,
+          "beta_mean": 0.70682
+        },
+        {
+          "step": 3600,
+          "read_share": 0.392444,
+          "read_scale_absmean": 0.127087,
+          "state_fro": 6.557459,
+          "beta_mean": 0.708569
+        },
+        {
+          "step": 3800,
+          "read_share": 0.394293,
+          "read_scale_absmean": 0.128926,
+          "state_fro": 6.820318,
+          "beta_mean": 0.708904
+        },
+        {
+          "step": 4000,
+          "read_share": 0.396,
+          "read_scale_absmean": 0.130621,
+          "state_fro": 6.224221,
+          "beta_mean": 0.705235
+        },
+        {
+          "step": 4200,
+          "read_share": 0.397535,
+          "read_scale_absmean": 0.132184,
+          "state_fro": 6.281529,
+          "beta_mean": 0.711109
+        },
+        {
+          "step": 4400,
+          "read_share": 0.398909,
+          "read_scale_absmean": 0.133624,
+          "state_fro": 6.167469,
+          "beta_mean": 0.707844
+        },
+        {
+          "step": 4600,
+          "read_share": 0.400138,
+          "read_scale_absmean": 0.134965,
+          "state_fro": 6.241225,
+          "beta_mean": 0.712218
+        },
+        {
+          "step": 4800,
+          "read_share": 0.401236,
+          "read_scale_absmean": 0.136209,
+          "state_fro": 5.808556,
+          "beta_mean": 0.707459
+        },
+        {
+          "step": 5000,
+          "read_share": 0.402284,
+          "read_scale_absmean": 0.137382,
+          "state_fro": 6.078022,
+          "beta_mean": 0.710151
+        },
+        {
+          "step": 5200,
+          "read_share": 0.403395,
+          "read_scale_absmean": 0.138498,
+          "state_fro": 6.150384,
+          "beta_mean": 0.712026
+        },
+        {
+          "step": 5400,
+          "read_share": 0.404407,
+          "read_scale_absmean": 0.139545,
+          "state_fro": 6.199862,
+          "beta_mean": 0.714157
+        },
+        {
+          "step": 5600,
+          "read_share": 0.405295,
+          "read_scale_absmean": 0.140525,
+          "state_fro": 5.977291,
+          "beta_mean": 0.705678
+        },
+        {
+          "step": 5800,
+          "read_share": 0.406155,
+          "read_scale_absmean": 0.14145,
+          "state_fro": 6.831697,
+          "beta_mean": 0.714643
+        },
+        {
+          "step": 5999,
+          "read_share": 0.406998,
+          "read_scale_absmean": 0.142323,
+          "state_fro": 5.975522,
+          "beta_mean": 0.709406
+        }
+      ],
+      "carry_series_last200": {
+        "step": 5999,
+        "read_share": 0.406998,
+        "read_scale_absmean": 0.142323,
+        "state_fro": 5.975522,
+        "beta_mean": 0.709406
+      },
+      "full_depth_ce_slope_nats_per_1k_lastquarter": -0.007518,
+      "depth4_ce_slope_nats_per_1k_lastquarter": -0.0305,
+      "loss_slope_nats_per_1k_lastquarter": -0.018929,
+      "n_exit_ce": 13
+    }
+  },
+  "cost": {
+    "pure_inference": true,
+    "device": "cuda",
+    "peak_gpu_mem_mb": 628.1,
+    "free_mb_before": 17667,
+    "free_mb_after": 16859,
+    "wall_minutes_total_eval": 0.081
+  },
+  "provenance": {
+    "run_log": [
+      {
+        "t": 0.0,
+        "msg": "CPU 能力面自检（两臂可建 / 块类 / 主干逐位一致）"
+      },
+      {
+        "t": 0.01,
+        "msg": "  combo_buildable=True trunk_bit_identical=True param_delta=4240"
+      },
+      {
+        "t": 0.14,
+        "msg": "enwik8 vocab=206（模型 vocab=206）"
+      },
+      {
+        "t": 0.92,
+        "msg": "  base   fcb8505e72e3089c… block=Block params=14326272"
+      },
+      {
+        "t": 1.42,
+        "msg": "  carry  dea708f788107d0e… block=CarryChannelBlock params=14590568"
+      },
+      {
+        "t": 1.42,
+        "msg": "判据①（主）：同口径 tf@4/tf@6 —— enwik8 训练、enwik8 评测 （n_batches=20 bs=16）"
+      },
+      {
+        "t": 2.11,
+        "msg": "  base   tf@4=0.9711 tf@6=0.9860"
+      },
+      {
+        "t": 2.84,
+        "msg": "  carry  tf@4=0.9635 tf@6=0.9850"
+      },
+      {
+        "t": 2.84,
+        "msg": "判据②：clean bpc（同口径 enwik8 全深度前向，depth 曲线末点）"
+      },
+      {
+        "t": 3.26,
+        "msg": "  base   clean bpc(depth=12)=2.092300"
+      },
+      {
+        "t": 3.95,
+        "msg": "  carry  clean bpc(depth=12)=2.009800"
+      },
+      {
+        "t": 3.95,
+        "msg": "诊断腿（**不作判据**）：enwik8 训好的模型在 synth 上评 tf@4（反向跨分布）"
+      },
+      {
+        "t": 4.26,
+        "msg": "  base   tf@4(synth)=0.8826 tf@6(synth)=0.9138"
+      },
+      {
+        "t": 4.79,
+        "msg": "  carry  tf@4(synth)=0.5937 tf@6(synth)=0.8276"
+      },
+      {
+        "t": 4.79,
+        "msg": "判定：Δtf@4(同口径)=-0.76pp ⇒ holds=True"
+      }
+    ],
+    "smoke": false,
+    "n_batches": 20,
+    "batch_size": 16
+  }
+}
