@@ -1,0 +1,107 @@
+{
+  "contract": "axes/A-mixing/A6-mixing-operator/experiments/2628-longT-2048/README.md",
+  "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。",
+  "intervention": {
+    "factor": "T=2048 × 训练期可见窗口（full vs T/2 = 1024，同相对刻度 50%），两臂**全部**套用长度条件档 qk-normfrom512（min_t=512）",
+    "arms": {
+      "full-2048-clean": "T=2048 · 全因果",
+      "win1024-2048-clean": "T=2048 · 窗口 1024（50%）"
+    },
+    "mask": "keep[i,j] = (j<=i) & ((i-j) < train_window)；对角恒开；实现 = pathlm.depth_ar.window_anchor_keep_mask（训练/评测共用）",
+    "qk_norm": "长度条件档：seq_len > 512 时逐头 L2 归一 q/k（乘 √d_h，零新增参数）；本实验 seq_len=2048 > 512 ⇒ 两臂各 8 个 hook"
+  },
+  "model": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "mlp_mult": 4,
+    "dense": true,
+    "topology": "sequential"
+  },
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M train / 末 10M eval",
+    "vocab_size": 206
+  },
+  "token_budget": 49152000,
+  "batch_size": 8,
+  "lr": 0.001,
+  "seed": 0,
+  "arms": [
+    {
+      "arm": "full-2048-clean",
+      "seq_len": 2048,
+      "window": 0,
+      "steps": 3000,
+      "tokens": 49152000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 3000,
+        "exit_mode": "uniform",
+        "seq_len": 2048,
+        "train_window": 0,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "win1024-2048-clean",
+      "seq_len": 2048,
+      "window": 1024,
+      "steps": 3000,
+      "tokens": 49152000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 3000,
+        "exit_mode": "uniform",
+        "seq_len": 2048,
+        "train_window": 1024,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    }
+  ],
+  "checkpoints": {
+    "full-2048-clean": {
+      "path": "runs/full-2048-clean/model.pt",
+      "sha256": "0af4e484a085d968e0da8aa86be634fca549d294bc910034f1d8d9606012907e",
+      "size_bytes": 29717163,
+      "sha256_verified": true
+    },
+    "win1024-2048-clean": {
+      "path": "runs/win1024-2048-clean/model.pt",
+      "sha256": "5f28875016afee66821515c711b71578f66f819751980c7918ea13d8c3d6ca59",
+      "size_bytes": 29717163,
+      "sha256_verified": true
+    }
+  },
+  "code_fingerprints": {
+    "pathlm/depth_ar.py": "45f946793835f2afadf3a10f727b02ee879682ef6024b23fa179d3351c28c585",
+    "pathlm/model.py": "4dda7c08c4b5d564c5f066a0e8c2a52950f88498a4959ccdf68762430ab8d77f",
+    "train_depth_ar.py": "2d1863bbc4403e026d12b597d98a1da2b85f3606110073f2117a7dd1db2a1f35",
+    "tools/evalkit/longrange_tasks.py": "4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20",
+    "note": "本实验未改这些文件（只读）；qk-norm hook 从 2625 的 stability_driver.py 只读引用（单一实现来源）"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "contract_combo": "--dense --topology sequential --seq-len 2048 --train-window {0,1024} --candidate qk-normfrom512（两臂）",
+  "forward": {
+    "full-2048-clean": {
+      "ok": true,
+      "params": 7421440
+    },
+    "win1024-2048-clean": {
+      "ok": true,
+      "params": 7421440
+    }
+  },
+  "reverse_mutex_present": {
+    "train_window>0 and not dense": {
+      "ok": false,
+      "error": "训练期可见窗口只在 dense=True（stock decoder-only 形态）下验证（单因素）——收到 train_window=1024 且 dense=False"
+    },
+    "train_window>0 and topology!=sequential": {
+      "ok": false,
+      "error": "train_window 与层间拓扑互斥（单因素：一次只改一个因素）——收到 topology='parallel'"
+    }
+  },
+  "qk_norm_note": "QK-Norm 不是引擎 flag：它是 qkv 的 forward hook（min_t=512），seq_len=2048 > 512 ⇒ 两臂各挂 8 hook、零新增参数，不触碰 DepthARConfig 校验面",
+  "conclusion": "契约组合在引擎中**可达**（两臂正向构造成功）；互斥校验在 `DepthARModel.__init__` 中**确实生效**（反向构造被拒）。"
+}

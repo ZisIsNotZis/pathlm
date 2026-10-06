@@ -1,0 +1,246 @@
+{
+  "note": "20 步冒烟：六臂各跑 20 步，检查活性量落盘与实测步时/显存（不含任何 20 步外推时间字段，§17.5）",
+  "free_mb_before": 19439.0,
+  "arms": {
+    "full-2048-clean": {
+      "config": {
+        "seq_len": 2048,
+        "window": 0,
+        "steps_full": 3000
+      },
+      "smoke_wall_min": 0.15,
+      "smoke_sec_per_step": 0.45511,
+      "peak_torch_gb": 1.906,
+      "params": 7421440,
+      "patch": {
+        "candidate": "qk-normfrom512",
+        "attn_scale_mode": "qk-norm",
+        "tau": 1.0,
+        "min_t": 512,
+        "n_qkv_hooks": 8,
+        "active": true,
+        "params_added": 0
+      },
+      "last_log_row": {
+        "step": 19,
+        "loss": 3.2899,
+        "depth_ce": [
+          3.2899
+        ],
+        "gate_mean": [],
+        "gnorm": 2.49,
+        "aux_w": 1.0,
+        "final_w": 1.0,
+        "attn_sparse": null,
+        "attn_linear": null,
+        "attn_carry": null,
+        "recon": null,
+        "readout": null,
+        "synth_answer_ce": null,
+        "synth_chance_ce": null,
+        "window_mask": null,
+        "kv_heads": null,
+        "lr": 0.0001,
+        "min": 0.04
+      },
+      "window_mask_liveness": null,
+      "config_validates": true
+    },
+    "win1024-2048-clean": {
+      "config": {
+        "seq_len": 2048,
+        "window": 1024,
+        "steps_full": 3000
+      },
+      "smoke_wall_min": 0.15,
+      "smoke_sec_per_step": 0.45439,
+      "peak_torch_gb": 5.91,
+      "params": 7421440,
+      "patch": {
+        "candidate": "qk-normfrom512",
+        "attn_scale_mode": "qk-norm",
+        "tau": 1.0,
+        "min_t": 512,
+        "n_qkv_hooks": 8,
+        "active": true,
+        "params_added": 0
+      },
+      "last_log_row": {
+        "step": 19,
+        "loss": 3.289,
+        "depth_ce": [
+          3.289
+        ],
+        "gate_mean": [],
+        "gnorm": 2.5,
+        "aux_w": 1.0,
+        "final_w": 1.0,
+        "attn_sparse": null,
+        "attn_linear": null,
+        "attn_carry": null,
+        "recon": null,
+        "readout": null,
+        "synth_answer_ce": null,
+        "synth_chance_ce": null,
+        "window_mask": {
+          "train_window": 1024,
+          "train_anchors": 0,
+          "params_added": 0,
+          "n_visible_pairs": 1573376,
+          "causal_pairs": 2098176,
+          "visible_frac": 0.749878,
+          "dropped_frac": 0.250122,
+          "alive": true,
+          "max_abs_logit_diff_masked_vs_open": 0.155103
+        },
+        "kv_heads": null,
+        "lr": 0.0001,
+        "min": 0.03
+      },
+      "window_mask_liveness": {
+        "train_window": 1024,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 1573376,
+        "causal_pairs": 2098176,
+        "visible_frac": 0.749878,
+        "dropped_frac": 0.250122,
+        "alive": true
+      },
+      "config_validates": true
+    }
+  },
+  "cost_measured": {
+    "theory": {
+      "other_macs_per_token_per_layer": 786432,
+      "attn_share_formula": {
+        "1024": 0.4,
+        "2048": 0.5714
+      },
+      "window_theory": {
+        "1024@2048": {
+          "visible_frac_of_causal": 0.749878,
+          "attn_flops_reduction_relative_to_full": 0.5,
+          "layer_macs_reduction_all_in": 0.2857
+        }
+      }
+    },
+    "measured": {
+      "model_step": [
+        {
+          "median_ms": 33.464,
+          "min_ms": 32.389,
+          "n_iters": 6,
+          "seq_len": 1024,
+          "window": 0,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 0.911
+        },
+        {
+          "median_ms": 33.405,
+          "min_ms": 31.649,
+          "n_iters": 6,
+          "seq_len": 1024,
+          "window": 512,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 1.855
+        },
+        {
+          "median_ms": 36.44,
+          "min_ms": 34.317,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 0,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 1.688
+        },
+        {
+          "median_ms": 46.274,
+          "min_ms": 46.074,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 1024,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 5.579
+        }
+      ],
+      "attn_island": [
+        {
+          "median_ms": 2.932,
+          "min_ms": 2.882,
+          "n_iters": 6,
+          "seq_len": 1024,
+          "window": 0,
+          "batch_size": 8,
+          "peak_mem_gib": 0.151
+        },
+        {
+          "median_ms": 3.975,
+          "min_ms": 3.879,
+          "n_iters": 6,
+          "seq_len": 1024,
+          "window": 512,
+          "batch_size": 8,
+          "peak_mem_gib": 0.37
+        },
+        {
+          "median_ms": 7.379,
+          "min_ms": 7.18,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 0,
+          "batch_size": 8,
+          "peak_mem_gib": 0.283
+        },
+        {
+          "median_ms": 13.625,
+          "min_ms": 13.567,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 1024,
+          "batch_size": 8,
+          "peak_mem_gib": 1.225
+        }
+      ],
+      "ratio_by_T": [
+        {
+          "T": 1024,
+          "window": 512,
+          "step_ms_full": 33.464,
+          "step_ms_window": 33.405,
+          "r_time_window_over_full": 0.9982,
+          "qk_norm_hooks_full": 8,
+          "peak_full_gib": 0.911,
+          "peak_window_gib": 1.855,
+          "r_mem_window_over_full": 2.0362,
+          "attn_island_ms_full": 2.932,
+          "attn_island_over_model_step": 0.0876,
+          "attn_island_over_model_step_window": 0.119,
+          "attn_share_formula": 0.4
+        },
+        {
+          "T": 2048,
+          "window": 1024,
+          "step_ms_full": 36.44,
+          "step_ms_window": 46.274,
+          "r_time_window_over_full": 1.2699,
+          "qk_norm_hooks_full": 8,
+          "peak_full_gib": 1.688,
+          "peak_window_gib": 5.579,
+          "r_mem_window_over_full": 3.3051,
+          "attn_island_ms_full": 7.379,
+          "attn_island_over_model_step": 0.2025,
+          "attn_island_over_model_step_window": 0.2944,
+          "attn_share_formula": 0.5714
+        }
+      ],
+      "free_mb_before": 19446.0
+    },
+    "note": "双口径：理论（等效 FLOPs）+ 实测（墙钟/显存）。公式值只作对照，不得当判据（SCHEMA §17.11）。模型步成本已套 QK-Norm（同实验配方）。"
+  },
+  "free_mb_after": 18915.0
+}

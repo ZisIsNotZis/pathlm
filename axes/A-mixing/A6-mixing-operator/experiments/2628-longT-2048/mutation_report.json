@@ -1,0 +1,46 @@
+{
+  "target": "clean_driver.py + 2625 stability_driver.py（monkeypatch，不改文件）",
+  "sha256_before": {
+    "tests/test_longT_2048.py": "b8136f62796daf2aefe2fbfdea57e15914fba4eb594671b2c85e97449458797a",
+    "experiments/2628-longT-2048/clean_driver.py": "5e2cb54288f254cd5072ece62dad269960be232fdf53d860c70003cf4de5e015",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20"
+  },
+  "note": "本实验未改动任何共享文件；变异用进程内 monkeypatch 完成（SCHEMA §22.2）",
+  "mutations": [
+    {
+      "id": "L1-M1",
+      "desc": "长度条件门永远关（T=2048 也不挂 hook）",
+      "target_test": "test_qk_norm_active_at_2048",
+      "caught_red": true,
+      "detail": "T=2048 该挂 2 个 hook，得到 {'attn_scale_mode': 'qk-norm', 'tau': 1.0, 'min_t': 1000000000, 'n_qkv_hooks': 0, 'active': False}"
+    },
+    {
+      "id": "L1-M2",
+      "desc": "逐头归一被换成恒等（不是 √d_h 尺度）",
+      "target_test": "test_qk_norm_unit_scale_and_zero_params_at_2048",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "L1-M3",
+      "desc": "窗口臂的窗口被写成 T（退化点冒充真点）",
+      "target_test": "test_arm_table_is_one_point_two_arms",
+      "caught_red": true,
+      "detail": "T=2048 的臂必须是 {full, T/2}，得 [0, 2048]"
+    },
+    {
+      "id": "L1-M4",
+      "desc": "探针把 eval 前向也计入（步号错位）",
+      "target_test": "test_step_probe_counts_training_forwards_only",
+      "caught_red": true,
+      "detail": ""
+    }
+  ],
+  "sha256_after": {
+    "tests/test_longT_2048.py": "b8136f62796daf2aefe2fbfdea57e15914fba4eb594671b2c85e97449458797a",
+    "experiments/2628-longT-2048/clean_driver.py": "5e2cb54288f254cd5072ece62dad269960be232fdf53d860c70003cf4de5e015",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20"
+  },
+  "restored_bitwise": true,
+  "all_caught": true
+}
