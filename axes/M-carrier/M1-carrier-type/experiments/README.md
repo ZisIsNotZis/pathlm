@@ -24,6 +24,8 @@
 | [`2627-carry-x-depth`](2627-carry-x-depth/README.md) | 目录内 README |
 | [`2628-eng2-carry-ragged`](2628-eng2-carry-ragged/README.md) | 目录内 README |
 | [`2629-carry-ragged-projfill`](2629-carry-ragged-projfill/README.md) | 目录内 README |
+| [`2630-carry-ragged-seed1`](2630-carry-ragged-seed1/README.md) | 目录内 README |
+| [`2630-tf4-samecaliber`](2630-tf4-samecaliber/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 
