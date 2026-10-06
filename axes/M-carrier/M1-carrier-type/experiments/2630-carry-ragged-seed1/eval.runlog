@@ -1,0 +1,67 @@
+=== 冒烟 2026-10-06T17:37:22+08:00 ===
+[    0.2s] CPU 能力面自检（两臂可建 / 块类 / 主干逐位一致，复用 2629 语义层）
+[    0.2s]   combo_buildable=True trunk_bit_identical=True param_delta=4240
+[    0.2s] 加载 seed=1 两臂（sha256 断言）
+[    0.8s]   projfill_s1          d2539fb43a550bc0… block=Block params=14326272
+[    1.5s]   projfill_carry_s1    e52d2569b801345b… block=CarryChannelBlock params=14590568
+[    1.5s] 判据①：多查询 assoc-mqar 召回 —— in_distribution_random_exit + full_depth（seed=1）
+[    1.9s]   [in_distribution_random_exit ] projfill_s1          acc=0.3906 CI=[0.310469, 0.477155] chance=0.0156 lp=0.0312 corrupt=0.0000
+[    2.1s]   [in_distribution_random_exit ] projfill_carry_s1    acc=0.2734 CI=[0.203669, 0.356409] chance=0.0156 lp=0.0312 corrupt=0.0078
+[    2.1s]   [full_depth_deployment       ] projfill_s1          acc=0.3750 CI=[0.295923, 0.461362] chance=0.0156 lp=0.0312 corrupt=0.0000
+[    2.2s]   [full_depth_deployment       ] projfill_carry_s1    acc=0.2734 CI=[0.203669, 0.356409] chance=0.0156 lp=0.0312 corrupt=0.0156
+[    2.2s] 越界腿：单查询关联回忆（距离 241–255 = 训练分布外）—— 外推参照、非判据
+[    2.2s]   [in_distribution_random_exit ] projfill_s1          acc=0.0000 corrupt=0.0000
+[    2.3s]   [in_distribution_random_exit ] projfill_carry_s1    acc=0.0625 corrupt=0.0000
+[    2.3s]   [full_depth_deployment       ] projfill_s1          acc=0.0000 corrupt=0.0000
+[    2.4s]   [full_depth_deployment       ] projfill_carry_s1    acc=0.1250 corrupt=0.0000
+[    2.4s] 判据②：出口资产 tf@4 / tf@6（enwik8 口径 + synth 训练分布内口径）
+[    2.6s]   projfill_s1          tf@4(enwik8)=0.7294 tf@6(enwik8)=0.7772 tf@4(synth)=0.9935 tf@6(synth)=0.9940
+[    2.6s]   projfill_carry_s1    tf@4(enwik8)=0.8520 tf@6(enwik8)=0.8850 tf@4(synth)=0.9961 tf@6(synth)=0.9980
+[    2.6s] clean bpc（enwik8 全因果；跨分布 + 合成训练 ⇒ 非退化锚，不作召回判据）
+[    2.7s]   projfill_s1          clean bpc=15.826252
+[    2.7s]   projfill_carry_s1    clean bpc=17.227613
+[    2.7s]   enwik8 vocab=206（模型 vocab=206）
+[    2.7s]   毁源对照有效（CI 下界 ≤ 4×chance）：RAND={'projfill_s1': True, 'projfill_carry_s1': True}
+[    2.7s] 收敛门禁（§17.15，答案行 CE 末窗斜率 nats/1k）： projfill_s1=-0.18578, projfill_carry_s1=-0.22087
+[    2.7s]   出口资产 tf@4（主口径 in-dist）: base=0.9935 carry=0.9961 ⇒ holds=True；enwik8 代理: base=0.7294 carry=0.8520 (Δ=+12.26pp)
+[    2.7s] W2 判据①②③：与 2629（seed=0）合并为 n=2
+[    2.7s]   分布内召回（随机退出）每 seed 效应 pp：{'0': 0.36, '1': -11.719}，极差 12.079pp，冗余稳定=False
+[    2.7s]   越界腿（全深度）每 seed 效应 pp：{'0': 6.055, '1': 12.5}，极差 6.445pp，稳健=False
+MAINLEG(random_exit): {'projfill_s1': 0.390625, 'projfill_carry_s1': 0.273438}
+OOD(full_depth): {'projfill_s1': 0.0, 'projfill_carry_s1': 0.125}
+CROSS_SEED indist eff: {'0': 0.36, '1': -11.719}
+CROSS_SEED ood eff: {'0': 6.055, '1': 12.5}
+=== 全电池 2026-10-06T17:37:27+08:00 ===
+[    0.2s] CPU 能力面自检（两臂可建 / 块类 / 主干逐位一致，复用 2629 语义层）
+[    0.2s]   combo_buildable=True trunk_bit_identical=True param_delta=4240
+[    0.2s] 加载 seed=1 两臂（sha256 断言）
+[    0.8s]   projfill_s1          d2539fb43a550bc0… block=Block params=14326272
+[    1.3s]   projfill_carry_s1    e52d2569b801345b… block=CarryChannelBlock params=14590568
+[    1.3s] 判据①：多查询 assoc-mqar 召回 —— in_distribution_random_exit + full_depth（seed=1）
+[    4.2s]   [in_distribution_random_exit ] projfill_s1          acc=0.3336 CI=[0.326438, 0.340876] chance=0.0156 lp=0.0137 corrupt=0.0159
+[    7.5s]   [in_distribution_random_exit ] projfill_carry_s1    acc=0.3010 CI=[0.294049, 0.308095] chance=0.0156 lp=0.0137 corrupt=0.0161
+[   10.1s]   [full_depth_deployment       ] projfill_s1          acc=0.3641 CI=[0.3568, 0.371535] chance=0.0156 lp=0.0137 corrupt=0.0169
+[   13.3s]   [full_depth_deployment       ] projfill_carry_s1    acc=0.2863 CI=[0.279445, 0.293287] chance=0.0156 lp=0.0137 corrupt=0.0174
+[   13.3s] 越界腿：单查询关联回忆（距离 241–255 = 训练分布外）—— 外推参照、非判据
+[   16.0s]   [in_distribution_random_exit ] projfill_s1          acc=0.0552 corrupt=0.0059
+[   19.3s]   [in_distribution_random_exit ] projfill_carry_s1    acc=0.0195 corrupt=0.0151
+[   21.9s]   [full_depth_deployment       ] projfill_s1          acc=0.0542 corrupt=0.0063
+[   25.2s]   [full_depth_deployment       ] projfill_carry_s1    acc=0.0298 corrupt=0.0190
+[   25.2s] 判据②：出口资产 tf@4 / tf@6（enwik8 口径 + synth 训练分布内口径）
+[   26.1s]   projfill_s1          tf@4(enwik8)=0.6888 tf@6(enwik8)=0.7299 tf@4(synth)=0.9942 tf@6(synth)=0.9952
+[   27.2s]   projfill_carry_s1    tf@4(enwik8)=0.8212 tf@6(enwik8)=0.8612 tf@4(synth)=0.9953 tf@6(synth)=0.9972
+[   27.2s] clean bpc（enwik8 全因果；跨分布 + 合成训练 ⇒ 非退化锚，不作召回判据）
+[   27.4s]   projfill_s1          clean bpc=15.880892
+[   28.0s]   projfill_carry_s1    clean bpc=17.387679
+[   28.0s]   enwik8 vocab=206（模型 vocab=206）
+[   28.0s]   毁源对照有效（CI 下界 ≤ 4×chance）：RAND={'projfill_s1': True, 'projfill_carry_s1': True}
+[   28.0s] 收敛门禁（§17.15，答案行 CE 末窗斜率 nats/1k）： projfill_s1=-0.18578, projfill_carry_s1=-0.22087
+[   28.0s]   出口资产 tf@4（主口径 in-dist）: base=0.9942 carry=0.9953 ⇒ holds=True；enwik8 代理: base=0.6888 carry=0.8212 (Δ=+13.24pp)
+[   28.0s] W2 判据①②③：与 2629（seed=0）合并为 n=2
+[   28.0s]   分布内召回（随机退出）每 seed 效应 pp：{'0': 0.36, '1': -3.259}，极差 3.619pp，冗余稳定=False
+[   28.0s]   越界腿（全深度）每 seed 效应 pp：{'0': 6.055, '1': -2.441}，极差 8.496pp，稳健=False
+MAINLEG(random_exit): {'projfill_s1': 0.333618, 'projfill_carry_s1': 0.301025}
+OOD(full_depth): {'projfill_s1': 0.054199, 'projfill_carry_s1': 0.029785}
+CROSS_SEED indist eff: {'0': 0.36, '1': -3.259}
+CROSS_SEED ood eff: {'0': 6.055, '1': -2.441}
+=== DONE 2026-10-06T17:37:57+08:00 ===
