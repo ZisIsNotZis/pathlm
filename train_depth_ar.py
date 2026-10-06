@@ -596,8 +596,9 @@ def main():
                          "缺省，逐位还原 v1）；plain = 逐位置累加写 S←S+βvk̂ᵀ（U1）；"
                          "delta = 残差写 S←S(I−βk̂k̂ᵀ)+βvk̂ᵀ（U2）。U1/U2 逐位等参数，"
                          "唯一变量 = 写入规则；读出增益单边零 ⇒ 起步恒等于 U0。"
-                         "需配合 --dense 且 topology=sequential（单因素），可与 "
-                         "--train-window 同时开（窗口造需求、通道提供路径）")
+                         "需 topology=sequential（单因素），可与 --train-window 同时开"
+                         "（窗口造需求、通道提供路径）；ENG2 后也可与非 dense 的随机退出"
+                         "+ ragged/fill（含 --proj-fill）同开。")
     ap.add_argument("--carry-chunk", type=int, default=64,
                     help="写入通道状态扫描的分块大小（实现细节：只改浮点累加顺序，"
                          "不改语义；缺省 64）")
@@ -793,7 +794,7 @@ def main():
         "avg_train_depth_ce": [round(c, 4) for c in avg_depth_ce],
         "avg_train_gate_mean": [round(g, 4) for g in avg_gate],
     }
-    if not args.dense:
+    if not args.dense and synth is None:
         results["depth_curve"] = depth_curve(model, eval_arr, device="cuda",
                                              n_batches=args.eval_batches)
         results["tf_acceptance"] = tf_acceptance(model, eval_arr, device="cuda",
@@ -809,10 +810,13 @@ def main():
         results["generation"] = generation_quality(model, eval_arr, device="cuda",
                                                    prompt_len=64, n_new=128)
     else:
-        # 合成任务（契约 U）：enwik8 电池不适用（bpc/生成段都定义在真实文本上）；
-        # 本臂的评测在实验目录的 `run.py` 里跑（合成长程任务电池 + 毁源对照臂）。
-        results["synth_note"] = ("训练用合成多查询关联回忆（契约 U），未在本入口跑 "
-                                 "enwik8 电池；机制读数见实验目录 run.py/results.json")
+        # 合成任务（契约 U）或 dense 臂：enwik8 电池不适用（bpc/生成段都定义在
+        # 真实文本上，且 dense 臂不走变深度解码）；本臂的评测在实验目录的
+        # `run.py` 里跑（合成长程任务电池 + 毁源对照臂）。ENG2：非 dense + 合成
+        # 任务也走这里（此前会在 `depth_curve(eval_arr=None)` 上崩）。
+        results["synth_note"] = ("训练用合成多查询关联回忆（契约 U）或 dense 臂，"
+                                 "未在本入口跑 enwik8 电池；机制读数见实验目录 "
+                                 "run.py/results.json")
     # SCHEMA §10：results.json 必须落一个 `intervention:` 活性块（与 recon_liveness
     # 同一份，不重复计算）。λ=0 臂同样落块，但 `alive=False`、`grad_flowed=None` ——
     # 「头存在但未被训练」是基线的一部分，不是一个未激活的干预。

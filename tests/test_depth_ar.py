@@ -2855,10 +2855,15 @@ def test_carry_config_rejects_combinations():
     for kw in bad:
         with pytest.raises(ValueError):
             carry_model("plain", **kw)
-    with pytest.raises(ValueError):                 # dense=False 不允许
-        torch.manual_seed(0)
-        DepthARModel(DepthARConfig(d_model=32, n_layers=2, n_heads=4, seq_len=12,
-                                   carry_rule="plain"), vocab_size=10)
+    # ENG2（ticket 44 后续项）：dense=False（非 dense 的随机退出 / ragged / fill 路径）
+    # **不再**报错——写入通道现在可与混合填充语义同开，走 `CarryChannelBlock` 的
+    # kv_from / attn_mask / gate_vec 约定（正向断言；组合单测见文件末尾 §ENG2）。
+    torch.manual_seed(0)
+    m_nd = DepthARModel(DepthARConfig(d_model=32, n_layers=2, n_heads=4,
+                                      seq_len=12, carry_rule="plain"),
+                        vocab_size=10)
+    assert type(m_nd.blocks[0]).__name__ == "CarryChannelBlock"
+    m_nd(torch.randint(0, 10, (2, 12)))
     with pytest.raises(ValueError):                 # 未知规则
         torch.manual_seed(0)
         DepthARModel(DepthARConfig(d_model=32, n_layers=2, n_heads=4, seq_len=12,
@@ -2985,3 +2990,243 @@ def test_carry_state_dim_validation():
         DepthARModel(DepthARConfig(d_model=32, n_layers=2, n_heads=4, seq_len=8,
                                    dense=True, carry_rule="delta",
                                    carry_state_dim=5), vocab_size=10)
+
+
+# =====================================================================
+# ENG2（ticket 44 后续项）：写入通道 × 非 dense 路径
+# （ragged / 随机退出 / 混合填充 / proj-fill）
+#
+# carry 此前有硬校验要求 dense=True（`pathlm/depth_ar.py`），且 `CarryChannelBlock`
+# 拒绝 kv_from / gate_vec ⇒ 产品上有意义的「carry × 随机退出 × proj-fill」组合在
+# 引擎里不存在。本线解耦该校验，并把 `CarryChannelBlock` 的调用约定对齐 stock
+# `Block`（kv_from = fill 的混合 KV 源、attn_mask = no-fill ragged 掩码、gate_vec =
+# 逐通道门），使四条组合第一次可测。
+#
+# 四条组合各一条可失败单测；「故意破坏 ⇒ 抓红 ⇒ 逐字节还原」的变异验证见
+# `axes/M-carrier/M1-carrier-type/experiments/2628-eng2-carry-ragged/mutate.py`。
+#
+# 写入时机（本引擎的显式语义，`test_eng2_carry_write_timing_ignores_exit_depths`
+# 钉住）：写入在 `_input_states` 对输入流 h₀ 因果扫描一次、发生在任何退出之前 ⇒
+# **所有位置（含已退出位置）都写各自的 h₀**，通道状态与退出模式无关；读出的生效
+# 范围由调用方的 `where(active, out, frozen)` 决定。
+# =====================================================================
+
+
+def _nd_carry(rule="delta", **kw):
+    """非 dense（RAP）的写入通道位点：`tiny_model` 的 dense 缺省就是 False。"""
+    return tiny_model(carry_rule=rule, **kw)
+
+
+def _activate_carry_scales(model, value=0.5):
+    for blk in model.blocks:
+        blk.carry_scale.data.fill_(value)
+
+
+def _manual_nd_layer(m, k, h, frozen, mem, depths):
+    """非 dense 层的手写参照实现（与 `DepthARModel.forward` 非 dense 分支逐项对应）：
+    fill 时 K/V 取自 `where(active, h, kv_src)`、ragged 时只用因果 ∩ 已达层的键；
+    读出 `γ ⊙ mem_t` 加在注意力输出上（进 proj）；输出带门 `g ⊙ delta`。"""
+    blk = m.blocks[k - 1]
+    B, T, d = h.shape
+    nh, dh = blk.n_heads, d // blk.n_heads
+    shape = lambda t: t.view(B, T, nh, dh).transpose(1, 2)
+    active = depths >= k
+    if m.cfg.fill_kv:
+        kv_src = frozen
+        if m.cfg.proj_fill:
+            kv_src = m.kv_adapters[k - 1](frozen)
+        kv_in = torch.where(active.unsqueeze(-1), h, kv_src)
+        q = blk.qkv(blk.ln1(h))[..., :d]
+        kkv = blk.qkv(blk.ln1(kv_in))
+        kk, vv = kkv[..., d:2 * d], kkv[..., 2 * d:]
+        a = F.scaled_dot_product_attention(shape(q), shape(kk), shape(vv),
+                                           is_causal=True)
+    else:
+        allow = (torch.tril(torch.ones(T, T, dtype=torch.bool))
+                 & (depths[:, None, :] >= k)) | torch.eye(T, dtype=torch.bool)
+        allow = allow.unsqueeze(1).expand(-1, nh, -1, -1)
+        q, kk, vv = blk.qkv(blk.ln1(h)).chunk(3, dim=-1)
+        a = F.scaled_dot_product_attention(shape(q), shape(kk), shape(vv),
+                                           attn_mask=allow)
+    a = a.transpose(1, 2).reshape(B, T, d)
+    gain = blk.carry_scale.float().repeat_interleave(
+        blk.carry_head_dim).view(1, 1, d)
+    a = a + (mem * gain).to(a.dtype)
+    y = h + blk.proj(a)
+    y = y + blk.mlp(blk.ln2(y))
+    g = torch.sigmoid(m.gates[k - 1](h))
+    return h + g * (y - h)
+
+
+def _manual_nd_states(m, x, depths):
+    """按手写规则逐层重建 states（供四条组合单测对照模型前向）。"""
+    with torch.no_grad():
+        h = m._input_states(x)
+        mem = m._carry_box["mem"].detach()
+        frozen = h
+        states = [h]
+        for k in range(1, m.cfg.n_layers + 1):
+            active = depths >= k
+            out = _manual_nd_layer(m, k, h, frozen, mem, depths)
+            h = torch.where(active.unsqueeze(-1), out, frozen)
+            frozen = torch.where((depths == k).unsqueeze(-1), h, frozen)
+            states.append(h)
+    return states
+
+
+def _nd_depths(n_layers=3):
+    """固定的混合退出模式：逐 batch 内容不同（防掩码 [B,T,T]/[1,B,T,T] 侥幸）。"""
+    return torch.tensor([[0, 1, 2, 3, 1, 0, 3, 2, 0, 1, 3, 2],
+                         [3, 3, 1, 2, 3, 0, 1, 3, 2, 1, 2, 3]])
+
+
+# ---------------- ① carry × ragged（no-fill 掩码路径） ----------------
+
+def test_eng2_carry_x_ragged_layer_matches_manual_rule():
+    """carry × ragged 能建起来、且写入通道在 ragged 路径上真的活着：模型前向与手写
+    ragged+通道规则逐层一致（掩码 / 逐通道门 / 读出 / 读出进 proj 四处都对着抄），
+    且 γ 逃逸后读出量非零。"""
+    m = _nd_carry("delta", fill_kv=False)
+    assert type(m.blocks[0]).__name__ == "CarryChannelBlock"
+    _activate_carry_scales(m)
+    torch.manual_seed(5)
+    x = torch.randint(0, 10, (2, 12))
+    depths = _nd_depths()
+    _, aux = m(x, exit_depths=depths)
+    assert len(aux["attn_carry"]) == m.cfg.n_layers        # 遥测真的进了 aux
+    assert float(aux["attn_carry"][0]["read_share"]) > 0.0  # 通道活着
+    manual = _manual_nd_states(m, x, depths)
+    for k in range(m.cfg.n_layers + 1):
+        assert torch.allclose(manual[k], aux["states"][k], atol=1e-5), f"layer {k}"
+
+
+# ---------------- ② carry × 随机退出（fill 缺省，退出模式影响前向） ----------------
+
+def test_eng2_carry_x_random_exit_composes():
+    """carry × 随机退出：退出模式真的生效（已退出位置状态定格 = 冻结不变量），
+    且含通道的前向与手写规则逐层一致、读出量非零。"""
+    m = _nd_carry("delta", fill_kv=True)
+    assert type(m.blocks[0]).__name__ == "CarryChannelBlock"
+    _activate_carry_scales(m)
+    torch.manual_seed(6)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, m.cfg.n_layers,
+                                torch.Generator().manual_seed(7))
+    assert depths.min() < m.cfg.n_layers                   # 真的有退出（非全深度）
+    _, aux = m(x, exit_depths=depths)
+    assert float(aux["attn_carry"][0]["read_share"]) > 0.0
+    L = m.cfg.n_layers
+    for b in range(2):
+        for i in range(12):
+            for k in range(int(depths[b, i]) + 1, L + 1):
+                assert torch.allclose(aux["states"][k][b, i],
+                                      aux["states"][int(depths[b, i])][b, i],
+                                      atol=1e-6)          # 退出即冻结
+    manual = _manual_nd_states(m, x, depths)
+    for k in range(L + 1):
+        assert torch.allclose(manual[k], aux["states"][k], atol=1e-5), f"layer {k}"
+
+
+# ---------------- ③ carry × 随机退出 × fill（混合填充 KV 源被真的消费） ----------------
+
+def test_eng2_carry_x_random_exit_x_fill_consumes_frozen_kv():
+    """carry × 随机退出 × fill：混合填充的 KV 源（含 proj-fill adapter）**真的进了
+    带通道的块**——把 adapter 从恒等扰动成非恒等（**换方向**，不是缩放：kv 源经
+    `ln1` 的 LayerNorm 对正缩放几乎不敏感，缩放扰动是退化测试），底层 logits 必须
+    变。若块忽略 `kv_from`（变异 M1），adapter 被无视 ⇒ 本断言抓红。"""
+    m = _nd_carry("delta", fill_kv=True, proj_fill=True)
+    _activate_carry_scales(m)
+    torch.manual_seed(8)
+    x = torch.randint(0, 10, (2, 12))
+    depths = torch.full((2, 12), 3, dtype=torch.long)
+    depths[0, 4] = 0                                        # 至少一个早退位置
+    d = m.cfg.d_model
+    gen = torch.Generator().manual_seed(3)
+    with torch.no_grad():
+        base = m(x, exit_depths=depths)[1]["depth_logits"][-1].float().clone()
+        for a in m.kv_adapters:
+            # 非恒等且**换方向**（I + 0.2·N(0,1)），远离 LN 的缩放不变性
+            a.weight.data.copy_(
+                torch.eye(d) + 0.2 * torch.randn(d, d, generator=gen))
+        after = m(x, exit_depths=depths)[1]["depth_logits"][-1].float()
+    # 只有单个早退位置的 KV 源被扰动 ⇒ 信号很小（实测 max|Δlogit| ≈ 2e-4，在随机
+    # 初始化的近均匀注意力下），但 **kv_from 被真的消费时必非零**；忽略 kv_from 时
+    # 扰动完全不可见（Δ == 0 bitwise）⇒ 阈值取 1e-6（≫ float 噪声 1e-7）。
+    delta = float((base - after).abs().max())
+    assert delta > 1e-6, (
+        "混合填充的 KV adapter 未被带通道的块消费（kv_from 被忽略）；"
+        f"max|Δlogit|={delta}")
+    # 通道自身也活着
+    _, aux = m(x, exit_depths=depths)
+    assert float(aux["attn_carry"][0]["read_share"]) > 0.0
+
+
+# ---------------- ④ carry × proj-fill（恒等起步 = fill 臂） ----------------
+
+def test_eng2_carry_x_proj_fill_identity_starts_equal_to_fill():
+    """carry × proj-fill：adapter 恒等初始化 ⇒ 同 seed 下 states/loss 与 fill 臂
+    逐位一致（remap 从 fill 出发学）；通道读出量非零。"""
+    m_proj = _nd_carry("delta", fill_kv=True, proj_fill=True)
+    m_fill = _nd_carry("delta", fill_kv=True)
+    _activate_carry_scales(m_proj)
+    _activate_carry_scales(m_fill)
+    torch.manual_seed(9)
+    x = torch.randint(0, 10, (2, 12))
+    depths = sample_exit_depths(2, 12, 3, torch.Generator().manual_seed(10))
+    l1, a1 = m_proj(x, exit_depths=depths)
+    l2, a2 = m_fill(x, exit_depths=depths)
+    assert torch.allclose(l1.detach(), l2.detach(), atol=1e-6)
+    for s1, s2 in zip(a1["states"], a2["states"]):
+        assert torch.allclose(s1, s2, atol=1e-6)
+    assert float(a1["attn_carry"][0]["read_share"]) > 0.0
+
+
+# ---------------- ⑤ 写入时机：写入发生在退出之前、与退出模式无关 ----------------
+
+def test_eng2_carry_write_timing_ignores_exit_depths():
+    """写入时机语义钉（ENG2 的关键设计点）：记忆槽在 `_input_states` 对输入流 h₀
+    扫描一次，**所有位置（含已退出位置）都写各自的 h₀**，因此同一输入在任意退出
+    模式下得到**同一段记忆**；改变退出模式只改「读出在哪几层生效」，不改槽内容。
+    若有人把写入改成按退出跳过/改写成冻结表征，本断言抓红。"""
+    m = _nd_carry("delta", fill_kv=False)
+    _activate_carry_scales(m)
+    torch.manual_seed(11)
+    x = torch.randint(0, 10, (2, 12))
+    mems = []
+    for depths in (torch.full((2, 12), 3, dtype=torch.long),
+                   _nd_depths(),
+                   torch.zeros(2, 12, dtype=torch.long)):
+        with torch.no_grad():
+            m(x, exit_depths=depths)
+            mems.append(m._carry_box["mem"].clone())
+    assert torch.equal(mems[0], mems[1]) and torch.equal(mems[0], mems[2]), \
+        "写入通道的槽内容随退出模式变化（写入时机不再是「退出之前、全位置各写一次」）"
+
+
+# ---------------- ⑥ 缺省路径逐位还原 v1（ENG2 不改缺省行为） ----------------
+
+def test_eng2_default_path_bitwise_v1():
+    """ENG2 只解耦 carry 的守卫、只改 `CarryChannelBlock`（非缺省块）：缺省非 dense
+    模型（carry_rule=None）的块类、参数字典与前向仍与 `Block` 路径逐位一致。"""
+    m = tiny_model()                                        # dense=False，无通道
+    assert all(type(b).__name__ == "Block" for b in m.blocks)
+    assert m.cfg.carry_rule is None
+    x = torch.randint(0, 10, (2, 12))
+    depths = _nd_depths()
+    with torch.no_grad():
+        _, aux = m(x, exit_depths=depths)
+    # 无通道时 `_input_states` 不建槽、aux 不含 attn_carry（旧口径）
+    assert "attn_carry" not in aux
+    assert not hasattr(m, "_carry_box")
+
+
+# ---------------- ⑦ 增量解码路径显式拒绝 carry（不交付静默丢路） ----------------
+
+def test_eng2_decoder_rejects_carry_channel():
+    """ENG2 让写入通道可与非 dense 路径同开，但**增量解码路径尚未接入读出**
+    （`DepthARDecoder.step` 只算注意力、不会加 γ ⊙ mem_t）⇒ 显式报错，避免交付
+    一条「看起来能用、实际少了一路」的解码路径（同 GQA 的处置）。"""
+    from pathlm.depth_ar import DepthARDecoder
+    m = _nd_carry("delta", fill_kv=True)
+    with pytest.raises(ValueError, match="写入通道"):
+        DepthARDecoder(m)

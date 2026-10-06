@@ -1,0 +1,72 @@
+{
+  "target": "pathlm/depth_ar.py",
+  "sha256_original": "45f946793835f2afadf3a10f727b02ee879682ef6024b23fa179d3351c28c585",
+  "mutations": [
+    {
+      "id": "M1",
+      "desc": "carry×fill/proj-fill：带通道的块忽略 kv_from（混合深度 KV 源失效）",
+      "expected_tests": [
+        "test_eng2_carry_x_random_exit_x_fill_consumes_frozen_kv"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "43f6490dc94cd59265bb8428fcac607b05466d446bab0475f9fda77f245ad9e5",
+      "restored_bitwise": true,
+      "pytest_summary": "FAILED tests/test_depth_ar.py::test_eng2_carry_x_random_exit_x_fill_consumes_frozen_kv"
+    },
+    {
+      "id": "M2",
+      "desc": "carry×随机退出：带通道的块忽略 gate_vec（逐通道门失效）",
+      "expected_tests": [
+        "test_eng2_carry_x_random_exit_composes",
+        "test_eng2_carry_x_ragged_layer_matches_manual_rule"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "d18aef76ccae0bd81e3aa42eb9f59635d6763aca16a99face2c49c9641f7b885",
+      "restored_bitwise": true,
+      "pytest_summary": "FAILED tests/test_depth_ar.py::test_eng2_carry_x_random_exit_composes - Asser..."
+    },
+    {
+      "id": "M3",
+      "desc": "carry×全部：带通道的块把记忆读出乘 0（通道成摆设）",
+      "expected_tests": [
+        "test_eng2_carry_x_ragged_layer_matches_manual_rule",
+        "test_eng2_carry_x_random_exit_composes"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "a3239963ba3fbc6fee14192673fe31f86fd5908e1095fc15048b931dd91f6dd8",
+      "restored_bitwise": true,
+      "pytest_summary": "FAILED tests/test_depth_ar.py::test_eng2_carry_x_random_exit_composes - Asser..."
+    },
+    {
+      "id": "M4",
+      "desc": "carry×ragged：带通道的块忽略 attn_mask（ragged 掩码失效）",
+      "expected_tests": [
+        "test_eng2_carry_x_ragged_layer_matches_manual_rule"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "158dedba46d3571c80727b4371860cc9ad6f6ec8b7705e1b031c351615b24ba9",
+      "restored_bitwise": true,
+      "pytest_summary": "FAILED tests/test_depth_ar.py::test_eng2_carry_x_ragged_layer_matches_manual_rule"
+    },
+    {
+      "id": "M5",
+      "desc": "写入时机：非 dense 前向把「已退出位置的写入」按 depth-0 退出抹掉（槽内容错误地依赖退出模式）",
+      "expected_tests": [
+        "test_eng2_carry_write_timing_ignores_exit_depths",
+        "test_eng2_carry_x_ragged_layer_matches_manual_rule"
+      ],
+      "caught_red": true,
+      "outcome_ok": true,
+      "sha256_mutated": "5c1a87c0c727424c73f71d6e736110f3374a5fb424ce8d1a92deb6bb4343aa98",
+      "restored_bitwise": true,
+      "pytest_summary": "FAILED tests/test_depth_ar.py::test_eng2_carry_write_timing_ignores_exit_depths"
+    }
+  ],
+  "all_caught_red": true,
+  "all_restored_bitwise": true,
+  "sha256_restored": "45f946793835f2afadf3a10f727b02ee879682ef6024b23fa179d3351c28c585"
+}

@@ -1,0 +1,199 @@
+{
+  "config": {
+    "device_combos": "cpu",
+    "model": {
+      "d_model": 32,
+      "n_layers": 3,
+      "n_heads": 4,
+      "head_dim": 8,
+      "seq_len": 12,
+      "dense": false,
+      "topology": "sequential",
+      "carry_rule": "delta"
+    },
+    "seed": 0,
+    "carry_activation_value": 0.5,
+    "note": "组合自检 = 非 dense CPU 前向；块类 / read_share / 退出生效 / frozen 不变量 / adapter 消费 都是活性量，不是标签"
+  },
+  "combos": [
+    {
+      "name": "carry_x_ragged",
+      "block_class": "CarryChannelBlock",
+      "carry_on": true,
+      "fill_kv": false,
+      "proj_fill": false,
+      "exit_mode": "fixed",
+      "exit_min": 0,
+      "exit_max": 3,
+      "n_params": 46224,
+      "n_carry_layers_in_aux": 3,
+      "carry_read_share": 0.003395,
+      "carry_scan_tele_present": true,
+      "carry_changes_logits": true,
+      "frozen_invariant_ok": true,
+      "exit_changes_logits_vs_full": true,
+      "proj_fill_adapter_max_abs_logit_delta": null
+    },
+    {
+      "name": "carry_x_random_exit",
+      "block_class": "CarryChannelBlock",
+      "carry_on": true,
+      "fill_kv": false,
+      "proj_fill": false,
+      "exit_mode": "uniform(sampled seed7)",
+      "exit_min": 0,
+      "exit_max": 3,
+      "n_params": 46224,
+      "n_carry_layers_in_aux": 3,
+      "carry_read_share": 0.003416,
+      "carry_scan_tele_present": true,
+      "carry_changes_logits": true,
+      "frozen_invariant_ok": true,
+      "exit_changes_logits_vs_full": true,
+      "proj_fill_adapter_max_abs_logit_delta": null
+    },
+    {
+      "name": "carry_x_random_exit_x_fill",
+      "block_class": "CarryChannelBlock",
+      "carry_on": true,
+      "fill_kv": true,
+      "proj_fill": false,
+      "exit_mode": "uniform(sampled seed7)",
+      "exit_min": 0,
+      "exit_max": 3,
+      "n_params": 46224,
+      "n_carry_layers_in_aux": 3,
+      "carry_read_share": 0.003651,
+      "carry_scan_tele_present": true,
+      "carry_changes_logits": true,
+      "frozen_invariant_ok": true,
+      "exit_changes_logits_vs_full": true,
+      "proj_fill_adapter_max_abs_logit_delta": null
+    },
+    {
+      "name": "carry_x_proj_fill",
+      "block_class": "CarryChannelBlock",
+      "carry_on": true,
+      "fill_kv": true,
+      "proj_fill": true,
+      "exit_mode": "uniform(sampled seed7)",
+      "exit_min": 0,
+      "exit_max": 3,
+      "n_params": 49392,
+      "n_carry_layers_in_aux": 3,
+      "carry_read_share": 0.003651,
+      "carry_scan_tele_present": true,
+      "carry_changes_logits": true,
+      "frozen_invariant_ok": true,
+      "exit_changes_logits_vs_full": true,
+      "proj_fill_adapter_max_abs_logit_delta": 0.00286717
+    }
+  ],
+  "write_timing": {
+    "slot_identical_full_vs_fixed": true,
+    "slot_identical_full_vs_zero": true,
+    "note": "写入在 _input_states 对输入流 h₀ 扫描一次、发生在任何退出之前 ⇒ 同一 token 在任意退出模式下得到同一段记忆"
+  },
+  "default_untouched": {
+    "block_class": "Block",
+    "has_carry_module": false,
+    "has_carry_box": false,
+    "attn_carry_in_aux": false,
+    "n_params": 41984
+  },
+  "smoke": {
+    "run_dir": "axes/M-carrier/M1-carrier-type/experiments/2628-eng2-carry-ragged/smoke/master",
+    "n_log_rows": 2,
+    "final_step": 19,
+    "final_loss": 2.0071,
+    "wall_minutes": 0.05,
+    "attn_carry_step0": {
+      "read_scale_absmean": 0.0,
+      "read_share": 0.0,
+      "mem_write_to_resid_ratio": 0.0,
+      "state_fro": 0.309804,
+      "beta_mean": 0.499382,
+      "write_rel": 0.473089,
+      "read_norm": 0.005314,
+      "n_layer_samples": 12,
+      "rule": "delta",
+      "carry_chunk": 64
+    },
+    "attn_carry_final": {
+      "read_scale_absmean": 0.000225,
+      "read_share": 1e-06,
+      "mem_write_to_resid_ratio": 2e-06,
+      "state_fro": 0.311942,
+      "beta_mean": 0.499337,
+      "write_rel": 0.462327,
+      "read_norm": 0.005642,
+      "n_layer_samples": 240,
+      "rule": "delta",
+      "carry_chunk": 64
+    },
+    "params": 14590568,
+    "peak_gpu_mem_mb": 861.3,
+    "carry_liveness_alive": false,
+    "carry_liveness": {
+      "block_python_class": "CarryChannelBlock",
+      "params_added": 264296,
+      "state_fro": 0.343718,
+      "beta_mean": 0.500015,
+      "write_rel": 0.0,
+      "read_scale_absmean": 0.000225,
+      "read_share": 1e-06,
+      "rel_dev_vs_channel_off": 0.0
+    },
+    "rebind_carry_rule": "delta",
+    "fill_kv": true,
+    "proj_fill": true,
+    "exit_mode": "uniform",
+    "train_tokens": 40960,
+    "block_carry_liveness_class": "CarryChannelBlock"
+  },
+  "smoke_this_run_minutes": null,
+  "regression": {
+    "source": "pytest_full.txt",
+    "last_line": "539 passed, 1 skipped in 71.24s (0:01:11)",
+    "passed": 539
+  },
+  "eng2_tests": {
+    "source": "pytest_eng2.txt",
+    "last_line": "33 passed, 101 deselected in 2.70s",
+    "passed": 33
+  },
+  "mutation": {
+    "n_mutations": 5,
+    "all_caught_red": true,
+    "all_restored_bitwise": true,
+    "sha256_original": "45f946793835f2afadf3a10f727b02ee879682ef6024b23fa179d3351c28c585",
+    "sha256_restored": "45f946793835f2afadf3a10f727b02ee879682ef6024b23fa179d3351c28c585",
+    "ids": [
+      "M1",
+      "M2",
+      "M3",
+      "M4",
+      "M5"
+    ],
+    "caught": {
+      "M1": true,
+      "M2": true,
+      "M3": true,
+      "M4": true,
+      "M5": true
+    }
+  },
+  "code": {
+    "pathlm/depth_ar.py": "45f946793835f2afadf3a10f727b02ee879682ef6024b23fa179d3351c28c585",
+    "train_depth_ar.py": "2d1863bbc4403e026d12b597d98a1da2b85f3606110073f2117a7dd1db2a1f35",
+    "tests/test_depth_ar.py": "d14e874f531ddfdc8b47157c90feb4f95ca544b5fdb89fd4835f98031b907192",
+    "axes/M-carrier/M1-carrier-type/experiments/2628-eng2-carry-ragged/run.py": "341154d788f6e164e3b6ca357ea7fedc918235432ca8476cb07526667f6eed96",
+    "axes/M-carrier/M1-carrier-type/experiments/2628-eng2-carry-ragged/mutate.py": "8534f7e596d1f2d4526cd9bae410f25658dfb58d0d7ca954df27fe05de605b2e",
+    "axes/M-carrier/M1-carrier-type/experiments/2628-eng2-carry-ragged/reconcile_numbers.py": "08fe4bc2e1966818281e7767cbc8a3c90dd653d153f8e5e478b091d19d1e9bcd"
+  },
+  "cost": {
+    "cpu_selfcheck_minutes": 0.004,
+    "gpu_smoke_minutes": 0.05,
+    "peak_gpu_mem_mb": 861.3
+  }
+}

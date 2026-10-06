@@ -169,6 +169,18 @@ class DepthARConfig:
     # 通道与本仓的注意力窗口（train_window）**可以同时开**：窗口制造「必须搬」的
     # 需求、通道提供搬的路径（这正是本契约的干预）。其余干预（attn_sparse_k /
     # attn_linear / n_kv_heads）与之互斥（单因素：一次只改一个因素）。
+    #
+    # ENG2（ticket 44 后续项）：**不再要求 dense=True**——通道可以与非 dense 的
+    # 「随机退出 + ragged/fill 混合填充」路径同时开（此前是硬校验，产品上有意义的
+    # 「carry × 随机退出 × proj-fill」组合因此在引擎里不存在）。
+    #
+    # 混合填充语义下的**写入时机**（本引擎的显式语义选择，单测
+    # `test_carry_write_timing_ignores_exit_depths` 钉住）：写入在
+    # `DepthARModel._input_states` 里对**输入流 h₀** 因果扫描一次，发生在任何层
+    # 与任何退出之前 ⇒ **所有位置（含已退出位置）都写**，写的是各自的输入流表征
+    # h₀（即 depth-0 表征）；不按退出深度跳过、也不改写成冻结表征。理由见
+    # `CarryChannelBlock` 的类文档（读出的生效范围由 `where(active, out, frozen)`
+    # 决定，不由写入决定）。
     carry_rule: str | None = None
     # 状态扫描的分块大小（实现细节：只改浮点累加顺序，不改语义；默认 64 ⇒
     # T=256 每层 4 个块）。与 `linear_chunk` 同款定位，不是第二个干预档。
@@ -1484,13 +1496,34 @@ class CarryChannelBlock(Block):
     """带**读出**的注意力块（契约 U）：与 stock `Block` 的唯一差别是在注意力输出
     `a` 后加一路记忆读出 `γ ⊙ mem_t`（`γ` 是本层每个头的读出增益，**单边零初始化**）：
 
-        `a = SDPA(q,k,v; 窗口掩码)`（不变，窗口外仍然看不见）
+        `a = SDPA(q,k,v; 窗口/ragged掩码)`（不变，窗口外仍然看不见）
         `a ← a + γ ⊙ mem_t`（mem 来自**单共享记忆槽** `CarryChannel`，见上）
         `x = x + proj(a)；x = x + mlp(ln2 x)`
 
     这就是契约说的「槽作为额外的 KV 参与注意力」的最简形式：读出与注意力输出同门
     进 `proj`。子模块创建顺序与 `Block` 完全一致，新增参数只有一个 `[n_heads]` 的
     读出增益（原始 Parameter，构造时不消耗随机数）⇒ 主干参数逐位等于 U0 臂。
+
+    ENG2（ticket 44 后续项）：本块的调用约定与 stock `Block` **逐项对齐**，可以走
+    非 dense 的混合深度路径（`kv_from` = fill 的混合 KV 源、`gate_vec` = 逐通道
+    门、`attn_mask` = no-fill ragged 掩码）：
+
+    - `kv_from`：K/V 从 `ln1(kv_from)` 算、query 仍从 `ln1(x)` 算——与 `Block`
+      同款混合深度 KV 源（fill / proj-fill 臂：已退出位置用冻结表征或其 adapter
+      像）；
+    - `gate_vec`：`x = x_in + g ⊙ (block_delta(x))`，delta **包含**记忆读出
+      （与 `Block` 的 delta 口径一致：读出与注意力输出同门）；
+    - `attn_mask`：ragged 掩码直接进 SDPA（`is_causal` 只在掩码为 None 时为真）。
+
+    **写入时机不随退出/填充改变**（本引擎的显式语义）：记忆槽由
+    `DepthARModel._input_states` 在**输入流 h₀ 上一次扫描**得到——所有位置
+    （含已退出位置）都用自己的 h₀ 写一次，写入发生在退出之前，因此**通道状态
+    与退出深度模式无关**（同一个 token 在任何退出模式下得到同一段记忆，故可在
+    prefill 阶段一次算好、不随 decode 时的退出模式重算）。读出的生效范围由调用方
+    的 `where(active, out, frozen)` 决定：位置 i 在 depth k 读到的记忆只影响
+    depth ≤ d_i 的层（更深层的块输出被冻结表征替换）。`proj_fill` 的 adapter
+    是**注意力 KV 源**的 remap，**不**经过通道（通道有自己的 w_k/w_v/w_q/β）。
+    单测 `test_carry_write_timing_ignores_exit_depths` 钉住「写入与退出模式无关」。
     """
 
     telemetry_kind = "carry_channel"
@@ -1511,20 +1544,23 @@ class CarryChannelBlock(Block):
                 kv_from: torch.Tensor | None = None,
                 gate_vec: torch.Tensor | None = None
                 ) -> tuple[torch.Tensor, dict]:
-        for name, given in (("dist_pen", dist_pen > 0),
-                            ("kv_from", kv_from is not None),
-                            ("gate_vec", gate_vec is not None)):
-            if given:
-                raise ValueError(
-                    f"CarryChannelBlock 只支持 stock 注意力路径，收到 {name}："
-                    "写入通道只在 dense=True + 顺序残差（无退出/无填充）形态下开放")
+        if dist_pen > 0:
+            raise ValueError(
+                "CarryChannelBlock 只支持 stock 注意力路径，收到 dist_pen：写入通道"
+                "不支持距离惩罚读数")
         mem = self._carry_box.get("mem")
         if mem is None:
             raise RuntimeError(
                 "CarryChannelBlock 需要先经 `DepthARModel._input_states` 算好共享"
                 "记忆槽（它把读出放进模型的 `_carry_box`）—— 直接调用单块不支持")
         B, T, d = x.shape
+        x_in = x                                # gate_vec 的携带形式用
         q, k, v = self.qkv(self.ln1(x)).chunk(3, dim=-1)
+        if kv_from is not None:
+            # 混合深度 KV 源（fill / proj-fill）：K/V 取自 kv_from 的 pre-LN，
+            # query 仍取自 x——与 stock `Block` 逐字同款。
+            kv = self.qkv(self.ln1(kv_from))
+            k, v = kv[..., d:2 * d], kv[..., 2 * d:]
         shape = lambda t: t.view(B, T, self.n_heads, d // self.n_heads).transpose(1, 2)
         qs, ks, vs = shape(q), shape(k), shape(v)
         a = F.scaled_dot_product_attention(qs, ks, vs, attn_mask=attn_mask,
@@ -1545,6 +1581,8 @@ class CarryChannelBlock(Block):
                     .clamp_min(1e-6))}
         x = x + self.proj(a)
         x = x + self.mlp(self.ln2(x))
+        if gate_vec is not None:
+            x = x_in + gate_vec * (x - x_in)     # 与 `Block` 同款逐通道门
         return x, tele
 
 
@@ -1840,10 +1878,11 @@ class DepthARModel(nn.Module):
                                  f"expected one of {CARRY_RULES}")
             if cfg.carry_chunk < 1:
                 raise ValueError(f"carry_chunk must be >= 1, got {cfg.carry_chunk}")
-            if not cfg.dense:
-                raise ValueError(
-                    "写入通道只在 dense=True（stock decoder-only 形态）下验证"
-                    f"（单因素）——收到 carry_rule={cfg.carry_rule!r} 且 dense=False")
+            # ENG2（ticket 44 后续项）：写入通道**不再**要求 dense=True——它现在可以
+            # 与随机退出 + ragged/fill 混合填充路径同开（走 `CarryChannelBlock` 的
+            # `kv_from` / `attn_mask` / `gate_vec` 约定）。仍互斥的仍是其它干预；
+            # 非 dense 路径自身要求 topology="sequential"（上面的校验）⇒ 通道一定是
+            # 顺序残差。缺省路径（carry_rule=None）不受影响、逐位还原 v1。
             if cfg.topology != "sequential":
                 raise ValueError(
                     "carry_rule 与层间拓扑互斥（单因素：一次只改一个因素）——"
@@ -1937,11 +1976,15 @@ class DepthARModel(nn.Module):
                 nn.init.normal_(m.weight, std=0.02)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
-        # proj-fill 逐层 KV 源 adapter：恒等初始化（不消耗随机数，同 seed 下
-        # 其余参数初始化与 fill 臂逐位一致），起步 == fill（单测钉住）
+        # proj-fill 逐层 KV 源 adapter：恒等初始化（**不消耗随机数**——构造
+        # `nn.Linear` 会抽签，故先存回 CPU RNG 状态；同 seed 下其余参数初始化与
+        # fill 臂逐位一致，**包括 ENG2 后可与它同开的 carry 写门**），起步 ==
+        # fill（单测钉住）。
         if cfg.proj_fill:
+            _rng = torch.get_rng_state()
             self.kv_adapters = nn.ModuleList(
                 nn.Linear(d, d) for _ in range(cfg.n_layers))
+            torch.set_rng_state(_rng)
             for a in self.kv_adapters:
                 nn.init.zeros_(a.bias)
                 with torch.no_grad():
@@ -2085,6 +2128,12 @@ class DepthARModel(nn.Module):
         挂在这条路径上还保证了**评测仪器**（`retention.masked_logits` 逐块调用
         `blk(h, attn_mask=...)` 的路径）也会经过同一个钩子 —— 否则评测侧会静默丢掉
         通道（只算注意力）。开关关闭时不做任何事（逐位还原 v1）。
+
+        ENG2：写入发生在任何层与任何退出采样之前、对全部位置（含后来会退出/填充的
+        位置）各写一次 h₀ ⇒ 通道状态与退出深度模式**无关**（同一个 token 在任何
+        退出模式下得到同一段记忆，可在 prefill 一次算好）。读出何时生效由调用方的
+        `where(active, out, frozen)` 决定，不由写入决定；语义选择与理由见
+        `CarryChannelBlock` 文档与实验 `2628-eng2-carry-ragged` 的 `analysis.md`。
         """
         T = tokens.shape[1]
         h = self.embed(tokens) + self.pos_embed.weight[:T]
@@ -2147,7 +2196,7 @@ class DepthARModel(nn.Module):
                     if self.cfg.proj_fill:
                         kv_src = self.kv_adapters[k - 1](frozen)
                     kv_in = torch.where(active.unsqueeze(-1), h, kv_src)
-                    out, _ = self.blocks[k - 1](h, kv_from=kv_in, gate_vec=g)
+                    out, tele = self.blocks[k - 1](h, kv_from=kv_in, gate_vec=g)
                 else:
                     # no-fill ragged：早退位置在本层 KV 中缺席（原引擎语义，
                     # decode.Decoder per-layer cache 同款）——只有因果键 ∩
@@ -2155,8 +2204,15 @@ class DepthARModel(nn.Module):
                     # head（CUDA SDPA 内核不广播 bool 掩码的 head 维）
                     mask = self._ragged_mask(exit_depths, k)
                     mask = mask.expand(-1, self.cfg.n_heads, -1, -1)
-                    out, _ = self.blocks[k - 1](h, attn_mask=mask,
-                                                gate_vec=g)
+                    out, tele = self.blocks[k - 1](h, attn_mask=mask,
+                                                   gate_vec=g)
+                # ENG2：非 dense 路径也要把块自带遥测收进 aux（否则写入通道在退出/
+                # 填充路径上只有权重、没有活性量，SCHEMA §10 的「干预是否真活着」
+                # 断档）。dense 分支同款归类（本路径上唯一带遥测的块就是 carry）。
+                if tele is not None:
+                    kind = getattr(self.blocks[k - 1], "telemetry_kind", None)
+                    if kind == "carry_channel":
+                        attn_carry_layers.append(tele)
                 h_next = torch.where(active.unsqueeze(-1), out, frozen)
                 # 本层退出的位置在此冻结（其 depth-k 表征定格）
                 frozen = torch.where((exit_depths == k).unsqueeze(-1),
@@ -2509,6 +2565,15 @@ class DepthARDecoder:
                 "增量解码（KV cache）路径未定义 KV 头共享：GQA/MQA 只在 dense=True"
                 "（无退出/无填充）形态下开放，而解码器只用于非 dense 的变深度路径"
                 "（单因素 scope）。本契约不主张解码侧收益，故不实现。")
+        if model.cfg.carry_rule is not None:
+            # ENG2：写入通道现在可以与非 dense 路径同开（训练/评测前向），但**增量
+            # 解码路径未接入通道读出**——`step` 只算注意力输出，会静默丢掉
+            # `γ ⊙ mem_t`（那会让解码结果与同权重的训练前向不一致）。显式报错，
+            # 不交付一条「看起来能用、实际少了一路」的路径（同 GQA 的处置）。
+            raise ValueError(
+                "增量解码（KV cache）路径未定义写入通道读出：carry_rule 只在"
+                "训练/评测前向（DepthARModel.forward）上开放，解码器只用非 dense"
+                "的变深度路径且尚未接入 γ ⊙ mem_t ⇒ 拒绝构造，避免静默丢路。")
         self.model = model
         L = model.cfg.n_layers
         self.K: list[torch.Tensor | None] = [None] * L   # [1,H,C,dh] per layer

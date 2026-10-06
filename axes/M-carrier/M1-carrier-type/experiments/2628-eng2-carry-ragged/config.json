@@ -1,0 +1,48 @@
+{
+  "experiment": "2628-eng2-carry-ragged",
+  "ticket": "44 后续项 ENG2",
+  "grid": "M1-carrier-type",
+  "engine": "组合自检 d=32/3L/4H/dh=8（CPU，非 dense）；冒烟 13.08M（d=256/12L/8H，非 dense + proj-fill + carry）",
+  "device_combos": "cpu",
+  "seed": 0,
+  "combo_test_point": {
+    "d_model": 32,
+    "n_layers": 3,
+    "n_heads": 4,
+    "head_dim": 8,
+    "seq_len": 12,
+    "dense": false,
+    "topology": "sequential",
+    "carry_rule": "delta",
+    "carry_activation_value": 0.5,
+    "exit_depths": {
+      "fixed_mixed": [[0, 1, 2, 3, 1, 0, 3, 2, 0, 1, 3, 2], [3, 3, 1, 2, 3, 0, 1, 3, 2, 1, 2, 3]],
+      "sampled_seed": 7
+    }
+  },
+  "combos": [
+    {"name": "carry_x_ragged", "kwargs": {"fill_kv": false}, "exit_mode": "fixed"},
+    {"name": "carry_x_random_exit", "kwargs": {"fill_kv": false}, "exit_mode": "uniform(sampled seed7)"},
+    {"name": "carry_x_random_exit_x_fill", "kwargs": {"fill_kv": true}, "exit_mode": "uniform(sampled seed7)"},
+    {"name": "carry_x_proj_fill", "kwargs": {"fill_kv": true, "proj_fill": true}, "exit_mode": "uniform(sampled seed7)"}
+  ],
+  "smoke": {
+    "run_name": "master",
+    "data_source": "合成多查询关联回忆 tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch（不用 enwik8，SCHEMA §19）",
+    "model": {"d": 256, "layers": 12, "heads": 8, "mlp_mult": 6, "seq_len": 256, "dense": false},
+    "intervention": {"exit_mode": "uniform", "fill_kv": true, "proj_fill": true, "carry_write": "delta", "carry_chunk": 64},
+    "synth": {"task": "assoc-mqar", "pairs": 8, "queries": 8, "gap": 14, "sym_vocab": 64, "filler_token": 64, "cue_token": 205},
+    "steps": 20,
+    "batch_size": 8,
+    "train_tokens": 40960,
+    "note": "20 步冒烟只证明「carry × 随机退出 × fill × proj-fill」共存可训练（活性量落盘），不外推训练时间/质量（SCHEMA §17.5）"
+  },
+  "code_under_test": {
+    "pathlm/depth_ar.py": "① 解耦 carry 的 dense=True 硬校验；② `CarryChannelBlock.forward` 对齐 stock `Block` 调用约定（kv_from / gate_vec / attn_mask）；③ 非 dense 前向把块遥测收进 aux['attn_carry']；④ proj-fill adapter 构造不消耗随机数（RNG 存回）；⑤ `DepthARDecoder` 显式拒绝 carry（解码路径未接入读出）",
+    "train_depth_ar.py": "① `--carry-write` help 文本更新；② `main` 的非 dense 评测电池加 `synth is None` 条件（非 dense + 合成任务此前崩溃）",
+    "tests/test_depth_ar.py": "新增 7 条可失败单测（ENG2 段）+ 把 carry⊕dense=False 的旧负向断言改为正向"
+  },
+  "sha256": {
+    "recorded_in": "results.json::code"
+  }
+}
