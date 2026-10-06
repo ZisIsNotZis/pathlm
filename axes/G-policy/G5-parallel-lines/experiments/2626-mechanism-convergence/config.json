@@ -1,0 +1,109 @@
+{
+  "device": "cuda",
+  "vocab_size": 206,
+  "probe_seed": 11,
+  "eval": {
+    "batch_size": 32,
+    "n_batches": 60
+  },
+  "k_sweep": [
+    1,
+    2,
+    4,
+    8
+  ],
+  "js_k": [
+    2,
+    8
+  ],
+  "selfcheck_k": [
+    1,
+    2
+  ],
+  "determinism_k": [
+    1,
+    8
+  ],
+  "main_k": 8,
+  "battery": {
+    "enabled": true,
+    "n_batches": 200
+  },
+  "gpu_wall_budget_min": 90,
+  "probe_protocol": {
+    "method": "probe_tts.bpc_k（13M 锚点 L1/DIVL1 的同一方法）",
+    "seed": 11,
+    "batch_size": 32,
+    "n_batches": 60,
+    "temperature": 1.0,
+    "note": "本入口的 K 集成与该函数在本检查点上逐位同值（results.json::selfchecks）"
+  },
+  "scales": {
+    "13m": {
+      "steps_full": 24000,
+      "train_dir": "train13m",
+      "config_dir": "configs13m",
+      "arms": [
+        "stock",
+        "l1",
+        "repr01"
+      ],
+      "arms_meta": {
+        "stock": {
+          "role": "阶梯底：单线单模型（p_skip=0, w_repr_decorr=0），主判据的单线对照"
+        },
+        "l1": {
+          "role": "路径机制（p_skip=0.1），无去相关压力；机制判据 ① 的基准"
+        },
+        "repr01": {
+          "role": "路径机制 + 表征级去相关（w_repr_decorr=0.1）——本实验的干预臂"
+        }
+      },
+      "traj_ckpts": [
+        6000,
+        12000,
+        18000
+      ],
+      "midpoint_ckpt": 6000,
+      "repr_arms": [
+        "repr01"
+      ],
+      "primary_repr": "repr01",
+      "det_arms": [
+        "stock",
+        "repr01"
+      ]
+    }
+  },
+  "anchors_13m": {
+    "note": "X1（2622-decorrelation-v2）13M 6000 步 cosine 末点的既有读数；仅用于 @6k 的跨运行对照（调度不同，见 analysis）",
+    "source": "axes/G-policy/G5-parallel-lines/experiments/2622-decorrelation-v2/results_13m.json",
+    "stock_K1": 1.5156,
+    "l1_K1": 1.6827,
+    "l1_K8": 1.6454,
+    "repr01_K1": 1.6785,
+    "repr01_K8": 1.6208
+  },
+  "train_recipe_note": "13M：d256/12L/8H/T512/bs32/24000 步（4× X1 的 token）；每臂 model/path（除 p_skip、w_repr_decorr 外）/train（除 steps 外）段逐字段相同，seed=0",
+  "smoke_protocol": {
+    "steps": 250,
+    "why": "SCHEMA §17.5：短窗口墙钟字段不得外推；250 步的 inner 步时用于预算判定（实测 stock/l1 48.2、repr01 72.3 ms/step）"
+  },
+  "arms": {
+    "13m/stock": {
+      "sha256": "a31bcc51f207e480a0d0c862a70480a11d5a348a14aca495fc45fa85c1a1e5fe",
+      "size_bytes": 52349379,
+      "path": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/train13m/stock/model.pt"
+    },
+    "13m/l1": {
+      "sha256": "a74e86a2c5f40375900c07758dcce03188b442e7c12f5e791f1e11b408a0613d",
+      "size_bytes": 52349379,
+      "path": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/train13m/l1/model.pt"
+    },
+    "13m/repr01": {
+      "sha256": "488732cc65fa99d911cba210a22130b1087bd9189d8053683ee23bbcccdf305b",
+      "size_bytes": 52349379,
+      "path": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/train13m/repr01/model.pt"
+    }
+  }
+}

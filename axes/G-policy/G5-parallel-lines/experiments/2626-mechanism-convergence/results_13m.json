@@ -1,0 +1,6745 @@
+{
+  "scale": "13m",
+  "config": {
+    "device": "cuda",
+    "vocab_size": 206,
+    "probe_seed": 11,
+    "eval": {
+      "batch_size": 32,
+      "n_batches": 60
+    },
+    "k_sweep": [
+      1,
+      2,
+      4,
+      8
+    ],
+    "js_k": [
+      2,
+      8
+    ],
+    "selfcheck_k": [
+      1,
+      2
+    ],
+    "determinism_k": [
+      1,
+      8
+    ],
+    "main_k": 8,
+    "battery": {
+      "enabled": true,
+      "n_batches": 200
+    },
+    "gpu_wall_budget_min": 90,
+    "probe_protocol": {
+      "method": "probe_tts.bpc_k（13M 锚点 L1/DIVL1 的同一方法）",
+      "seed": 11,
+      "batch_size": 32,
+      "n_batches": 60,
+      "temperature": 1.0,
+      "note": "本入口的 K 集成与该函数在本检查点上逐位同值（results.json::selfchecks）"
+    },
+    "scales": {
+      "13m": {
+        "steps_full": 24000,
+        "train_dir": "train13m",
+        "config_dir": "configs13m",
+        "arms": [
+          "stock",
+          "l1",
+          "repr01"
+        ],
+        "arms_meta": {
+          "stock": {
+            "role": "阶梯底：单线单模型（p_skip=0, w_repr_decorr=0），主判据的单线对照"
+          },
+          "l1": {
+            "role": "路径机制（p_skip=0.1），无去相关压力；机制判据 ① 的基准"
+          },
+          "repr01": {
+            "role": "路径机制 + 表征级去相关（w_repr_decorr=0.1）——本实验的干预臂"
+          }
+        },
+        "traj_ckpts": [
+          6000,
+          12000,
+          18000
+        ],
+        "midpoint_ckpt": 6000,
+        "repr_arms": [
+          "repr01"
+        ],
+        "primary_repr": "repr01",
+        "det_arms": [
+          "stock",
+          "repr01"
+        ]
+      }
+    },
+    "anchors_13m": {
+      "note": "X1（2622-decorrelation-v2）13M 6000 步 cosine 末点的既有读数；仅用于 @6k 的跨运行对照（调度不同，见 analysis）",
+      "source": "axes/G-policy/G5-parallel-lines/experiments/2622-decorrelation-v2/results_13m.json",
+      "stock_K1": 1.5156,
+      "l1_K1": 1.6827,
+      "l1_K8": 1.6454,
+      "repr01_K1": 1.6785,
+      "repr01_K8": 1.6208
+    },
+    "train_recipe_note": "13M：d256/12L/8H/T512/bs32/24000 步（4× X1 的 token）；每臂 model/path（除 p_skip、w_repr_decorr 外）/train（除 steps 外）段逐字段相同，seed=0",
+    "smoke_protocol": {
+      "steps": 250,
+      "why": "SCHEMA §17.5：短窗口墙钟字段不得外推；250 步的 inner 步时用于预算判定（实测 stock/l1 48.2、repr01 72.3 ms/step）"
+    },
+    "arms": {
+      "13m/stock": {
+        "sha256": "a31bcc51f207e480a0d0c862a70480a11d5a348a14aca495fc45fa85c1a1e5fe",
+        "size_bytes": 52349379,
+        "path": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/train13m/stock/model.pt"
+      },
+      "13m/l1": {
+        "sha256": "a74e86a2c5f40375900c07758dcce03188b442e7c12f5e791f1e11b408a0613d",
+        "size_bytes": 52349379,
+        "path": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/train13m/l1/model.pt"
+      },
+      "13m/repr01": {
+        "sha256": "488732cc65fa99d911cba210a22130b1087bd9189d8053683ee23bbcccdf305b",
+        "size_bytes": 52349379,
+        "path": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/train13m/repr01/model.pt"
+      }
+    }
+  },
+  "checkpoints": {
+    "stock": {
+      "path": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/train13m/stock/model.pt",
+      "sha256": "a31bcc51f207e480a0d0c862a70480a11d5a348a14aca495fc45fa85c1a1e5fe",
+      "size_bytes": 52349379,
+      "resolved": {
+        "model": {
+          "d_model": 256,
+          "n_layers": 12,
+          "n_heads": 8,
+          "seq_len": 512,
+          "mlp_mult": 6,
+          "dropout": 0.0,
+          "norm_cap": 1.0
+        },
+        "path": {
+          "corrupt_wrong": 0.0,
+          "corrupt_mask": 0.0,
+          "corrupt_spare_anchors": false,
+          "needle_corrupt_free": false,
+          "span_mode": "iid",
+          "perturb_noise": 0.0,
+          "pure_noise": 0.0,
+          "noise_sigma": 0.1,
+          "shuffle_locality": 0.0,
+          "p_skip": 0.0,
+          "p_redo": 0.0,
+          "w_dense_exit": 0.0,
+          "exit_threshold": 0.9,
+          "exit_probe": false,
+          "window": 0,
+          "anchors": 0,
+          "dist_pen": 0.0,
+          "p_needle": 0.0,
+          "n_mtp": 1,
+          "chain_mode": "latent",
+          "transport": "none",
+          "p_retry": 0.0,
+          "max_retries": 4,
+          "retry_gate": 0.0,
+          "p_token_retry": 0.0,
+          "reentry_mix": false,
+          "w_diversity": 0.0,
+          "w_repr_decorr": 0.0,
+          "w_consistency": 0.0,
+          "collect_depth_logits": false
+        },
+        "train": {
+          "steps": 24000,
+          "batch_size": 32,
+          "lr": 0.001,
+          "seed": 0
+        }
+      },
+      "config_file": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/configs13m/stock.json",
+      "params": 13076483,
+      "reused": false
+    },
+    "l1": {
+      "path": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/train13m/l1/model.pt",
+      "sha256": "a74e86a2c5f40375900c07758dcce03188b442e7c12f5e791f1e11b408a0613d",
+      "size_bytes": 52349379,
+      "resolved": {
+        "model": {
+          "d_model": 256,
+          "n_layers": 12,
+          "n_heads": 8,
+          "seq_len": 512,
+          "mlp_mult": 6,
+          "dropout": 0.0,
+          "norm_cap": 1.0
+        },
+        "path": {
+          "corrupt_wrong": 0.0,
+          "corrupt_mask": 0.0,
+          "corrupt_spare_anchors": false,
+          "needle_corrupt_free": false,
+          "span_mode": "iid",
+          "perturb_noise": 0.0,
+          "pure_noise": 0.0,
+          "noise_sigma": 0.1,
+          "shuffle_locality": 0.0,
+          "p_skip": 0.1,
+          "p_redo": 0.0,
+          "w_dense_exit": 0.0,
+          "exit_threshold": 0.9,
+          "exit_probe": false,
+          "window": 0,
+          "anchors": 0,
+          "dist_pen": 0.0,
+          "p_needle": 0.0,
+          "n_mtp": 1,
+          "chain_mode": "latent",
+          "transport": "none",
+          "p_retry": 0.0,
+          "max_retries": 4,
+          "retry_gate": 0.0,
+          "p_token_retry": 0.0,
+          "reentry_mix": false,
+          "w_diversity": 0.0,
+          "w_repr_decorr": 0.0,
+          "w_consistency": 0.0,
+          "collect_depth_logits": false
+        },
+        "train": {
+          "steps": 24000,
+          "batch_size": 32,
+          "lr": 0.001,
+          "seed": 0
+        }
+      },
+      "config_file": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/configs13m/l1.json",
+      "params": 13076483,
+      "reused": false
+    },
+    "repr01": {
+      "path": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/train13m/repr01/model.pt",
+      "sha256": "488732cc65fa99d911cba210a22130b1087bd9189d8053683ee23bbcccdf305b",
+      "size_bytes": 52349379,
+      "resolved": {
+        "model": {
+          "d_model": 256,
+          "n_layers": 12,
+          "n_heads": 8,
+          "seq_len": 512,
+          "mlp_mult": 6,
+          "dropout": 0.0,
+          "norm_cap": 1.0
+        },
+        "path": {
+          "corrupt_wrong": 0.0,
+          "corrupt_mask": 0.0,
+          "corrupt_spare_anchors": false,
+          "needle_corrupt_free": false,
+          "span_mode": "iid",
+          "perturb_noise": 0.0,
+          "pure_noise": 0.0,
+          "noise_sigma": 0.1,
+          "shuffle_locality": 0.0,
+          "p_skip": 0.1,
+          "p_redo": 0.0,
+          "w_dense_exit": 0.0,
+          "exit_threshold": 0.9,
+          "exit_probe": false,
+          "window": 0,
+          "anchors": 0,
+          "dist_pen": 0.0,
+          "p_needle": 0.0,
+          "n_mtp": 1,
+          "chain_mode": "latent",
+          "transport": "none",
+          "p_retry": 0.0,
+          "max_retries": 4,
+          "retry_gate": 0.0,
+          "p_token_retry": 0.0,
+          "reentry_mix": false,
+          "w_diversity": 0.0,
+          "w_repr_decorr": 0.1,
+          "w_consistency": 0.0,
+          "collect_depth_logits": false
+        },
+        "train": {
+          "steps": 24000,
+          "batch_size": 32,
+          "lr": 0.001,
+          "seed": 0
+        }
+      },
+      "config_file": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/configs13m/repr01.json",
+      "params": 13076483,
+      "reused": false
+    }
+  },
+  "scope": {
+    "口径": "matched-step 快照（24000 步、24000 步 cosine 调度；K 曲线 = 60-batch probe 协议，与 13M 锚点同方法）",
+    "单点不外推": true,
+    "算力价签": "K8 集成 = 8× 前向/token；stock 单线 = 1× 前向/token"
+  },
+  "selfchecks": {
+    "probe_tts_method_identity": {
+      "K1": {
+        "mine_bpc": 1.4389,
+        "probe_tts_bpc": 1.4389,
+        "bpc_equal": true,
+        "mine_acc": 0.7057,
+        "probe_tts_acc": 0.7057,
+        "n_batches": 60,
+        "seed": 11
+      },
+      "K2": {
+        "mine_bpc": 1.4229,
+        "probe_tts_bpc": 1.4229,
+        "bpc_equal": true,
+        "mine_acc": 0.7094,
+        "probe_tts_acc": 0.7094,
+        "n_batches": 60,
+        "seed": 11
+      },
+      "all_equal": true
+    }
+  },
+  "k_curve": {
+    "stock": {
+      "1": {
+        "k_paths": 1,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.3599,
+        "acc": 0.7219,
+        "per_batch": [
+          {
+            "nats": 15098.4482421875,
+            "tokens": 16352,
+            "correct": 11881,
+            "bpc": 1.3320973828352858
+          },
+          {
+            "nats": 15728.73046875,
+            "tokens": 16352,
+            "correct": 11783,
+            "bpc": 1.3877055679271506
+          },
+          {
+            "nats": 15496.810546875,
+            "tokens": 16352,
+            "correct": 11723,
+            "bpc": 1.3672438677576044
+          },
+          {
+            "nats": 14782.333984375,
+            "tokens": 16352,
+            "correct": 12029,
+            "bpc": 1.3042074322420625
+          },
+          {
+            "nats": 15044.3828125,
+            "tokens": 16352,
+            "correct": 11914,
+            "bpc": 1.3273273285731964
+          },
+          {
+            "nats": 16372.16015625,
+            "tokens": 16352,
+            "correct": 11524,
+            "bpc": 1.4444737197934048
+          },
+          {
+            "nats": 13849.353515625,
+            "tokens": 16352,
+            "correct": 12265,
+            "bpc": 1.2218929572229893
+          },
+          {
+            "nats": 15013.1728515625,
+            "tokens": 16352,
+            "correct": 11904,
+            "bpc": 1.3245737537278641
+          },
+          {
+            "nats": 14346.8671875,
+            "tokens": 16352,
+            "correct": 12097,
+            "bpc": 1.2657873130931288
+          },
+          {
+            "nats": 14821.1484375,
+            "tokens": 16352,
+            "correct": 11958,
+            "bpc": 1.307631931938629
+          },
+          {
+            "nats": 16057.8046875,
+            "tokens": 16352,
+            "correct": 11600,
+            "bpc": 1.4167389426504282
+          },
+          {
+            "nats": 16757.654296875,
+            "tokens": 16352,
+            "correct": 11428,
+            "bpc": 1.4784848795886247
+          },
+          {
+            "nats": 14945.349609375,
+            "tokens": 16352,
+            "correct": 12033,
+            "bpc": 1.3185898829376907
+          },
+          {
+            "nats": 13923.73046875,
+            "tokens": 16352,
+            "correct": 12257,
+            "bpc": 1.2284550451284362
+          },
+          {
+            "nats": 14155.171875,
+            "tokens": 16352,
+            "correct": 12254,
+            "bpc": 1.2488745270910855
+          },
+          {
+            "nats": 14591.8828125,
+            "tokens": 16352,
+            "correct": 12036,
+            "bpc": 1.2874044135779508
+          },
+          {
+            "nats": 15995.3291015625,
+            "tokens": 16352,
+            "correct": 11666,
+            "bpc": 1.4112268818622271
+          },
+          {
+            "nats": 16031.580078125,
+            "tokens": 16352,
+            "correct": 11635,
+            "bpc": 1.4144252125932755
+          },
+          {
+            "nats": 15192.259765625,
+            "tokens": 16352,
+            "correct": 11819,
+            "bpc": 1.3403741330579815
+          },
+          {
+            "nats": 15957.1455078125,
+            "tokens": 16352,
+            "correct": 11606,
+            "bpc": 1.4078580412710797
+          },
+          {
+            "nats": 16338.41796875,
+            "tokens": 16352,
+            "correct": 11488,
+            "bpc": 1.4414967330899435
+          },
+          {
+            "nats": 14775.4013671875,
+            "tokens": 16352,
+            "correct": 11996,
+            "bpc": 1.3035957851996953
+          },
+          {
+            "nats": 14435.0595703125,
+            "tokens": 16352,
+            "correct": 12046,
+            "bpc": 1.2735683009434084
+          },
+          {
+            "nats": 14667.1181640625,
+            "tokens": 16352,
+            "correct": 12049,
+            "bpc": 1.294042235776994
+          },
+          {
+            "nats": 14442.916015625,
+            "tokens": 16352,
+            "correct": 12109,
+            "bpc": 1.274261454972968
+          },
+          {
+            "nats": 16585.388671875,
+            "tokens": 16352,
+            "correct": 11594,
+            "bpc": 1.4632863251058006
+          },
+          {
+            "nats": 15397.2958984375,
+            "tokens": 16352,
+            "correct": 11844,
+            "bpc": 1.3584639454363843
+          },
+          {
+            "nats": 16477.951171875,
+            "tokens": 16352,
+            "correct": 11514,
+            "bpc": 1.4538073899018191
+          },
+          {
+            "nats": 16095.9755859375,
+            "tokens": 16352,
+            "correct": 11548,
+            "bpc": 1.4201066631666988
+          },
+          {
+            "nats": 16238.0615234375,
+            "tokens": 16352,
+            "correct": 11617,
+            "bpc": 1.4326425411884276
+          },
+          {
+            "nats": 15927.3291015625,
+            "tokens": 16352,
+            "correct": 11677,
+            "bpc": 1.4052274161833835
+          },
+          {
+            "nats": 16240.4716796875,
+            "tokens": 16352,
+            "correct": 11504,
+            "bpc": 1.4328551830958176
+          },
+          {
+            "nats": 15315.396484375,
+            "tokens": 16352,
+            "correct": 11808,
+            "bpc": 1.3512381700865996
+          },
+          {
+            "nats": 14592.6796875,
+            "tokens": 16352,
+            "correct": 12043,
+            "bpc": 1.2874747198163747
+          },
+          {
+            "nats": 13998.5654296875,
+            "tokens": 16352,
+            "correct": 12161,
+            "bpc": 1.2350575418890557
+          },
+          {
+            "nats": 15524.87890625,
+            "tokens": 16352,
+            "correct": 11730,
+            "bpc": 1.3697202671507185
+          },
+          {
+            "nats": 15547.6875,
+            "tokens": 16352,
+            "correct": 11678,
+            "bpc": 1.3717326109063923
+          },
+          {
+            "nats": 15362.64453125,
+            "tokens": 16352,
+            "correct": 11858,
+            "bpc": 1.3554067441398197
+          },
+          {
+            "nats": 15121.611328125,
+            "tokens": 16352,
+            "correct": 11797,
+            "bpc": 1.3341410025279055
+          },
+          {
+            "nats": 15041.265625,
+            "tokens": 16352,
+            "correct": 11894,
+            "bpc": 1.3270523071111262
+          },
+          {
+            "nats": 15826.294921875,
+            "tokens": 16352,
+            "correct": 11659,
+            "bpc": 1.396313429515365
+          },
+          {
+            "nats": 16136.2421875,
+            "tokens": 16352,
+            "correct": 11572,
+            "bpc": 1.423659282197256
+          },
+          {
+            "nats": 15494.267578125,
+            "tokens": 16352,
+            "correct": 11800,
+            "bpc": 1.3670195081438103
+          },
+          {
+            "nats": 15946.560546875,
+            "tokens": 16352,
+            "correct": 11727,
+            "bpc": 1.4069241573026028
+          },
+          {
+            "nats": 15576.2705078125,
+            "tokens": 16352,
+            "correct": 11745,
+            "bpc": 1.3742544164118218
+          },
+          {
+            "nats": 15520.6357421875,
+            "tokens": 16352,
+            "correct": 11821,
+            "bpc": 1.3693459036630322
+          },
+          {
+            "nats": 14911.849609375,
+            "tokens": 16352,
+            "correct": 11861,
+            "bpc": 1.3156342638164957
+          },
+          {
+            "nats": 16526.0546875,
+            "tokens": 16352,
+            "correct": 11476,
+            "bpc": 1.4580514397698179
+          },
+          {
+            "nats": 16244.390625,
+            "tokens": 16352,
+            "correct": 11547,
+            "bpc": 1.4332009415943412
+          },
+          {
+            "nats": 15623.5126953125,
+            "tokens": 16352,
+            "correct": 11675,
+            "bpc": 1.3784224735074062
+          },
+          {
+            "nats": 16042.33984375,
+            "tokens": 16352,
+            "correct": 11636,
+            "bpc": 1.4153745191312106
+          },
+          {
+            "nats": 16072.35546875,
+            "tokens": 16352,
+            "correct": 11617,
+            "bpc": 1.4180227207785125
+          },
+          {
+            "nats": 14416.966796875,
+            "tokens": 16352,
+            "correct": 12098,
+            "bpc": 1.2719720219246824
+          },
+          {
+            "nats": 14001.525390625,
+            "tokens": 16352,
+            "correct": 12297,
+            "bpc": 1.235318691654574
+          },
+          {
+            "nats": 14908.017578125,
+            "tokens": 16352,
+            "correct": 11991,
+            "bpc": 1.3152961735228983
+          },
+          {
+            "nats": 15653.228515625,
+            "tokens": 16352,
+            "correct": 11689,
+            "bpc": 1.3810442241556935
+          },
+          {
+            "nats": 16307.21875,
+            "tokens": 16352,
+            "correct": 11570,
+            "bpc": 1.4387441060002766
+          },
+          {
+            "nats": 15727.2353515625,
+            "tokens": 16352,
+            "correct": 11705,
+            "bpc": 1.3875736575704998
+          },
+          {
+            "nats": 16365.982421875,
+            "tokens": 16352,
+            "correct": 11599,
+            "bpc": 1.4439286741264072
+          },
+          {
+            "nats": 15219.2158203125,
+            "tokens": 16352,
+            "correct": 11855,
+            "bpc": 1.3427523966599622
+          }
+        ]
+      },
+      "2": {
+        "k_paths": 2,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.3599,
+        "acc": 0.7219,
+        "pairwise_js": {
+          "mean_nats": 0.0,
+          "mean_bits": 0.0,
+          "n_batches": 60,
+          "k_paths": 2
+        },
+        "paths_bitwise_identical": true,
+        "n_batches_paths_identical": 60,
+        "per_batch": [
+          {
+            "nats": 15098.4482421875,
+            "tokens": 16352,
+            "correct": 11881,
+            "bpc": 1.3320973828352858
+          },
+          {
+            "nats": 15728.73046875,
+            "tokens": 16352,
+            "correct": 11783,
+            "bpc": 1.3877055679271506
+          },
+          {
+            "nats": 15496.810546875,
+            "tokens": 16352,
+            "correct": 11723,
+            "bpc": 1.3672438677576044
+          },
+          {
+            "nats": 14782.333984375,
+            "tokens": 16352,
+            "correct": 12029,
+            "bpc": 1.3042074322420625
+          },
+          {
+            "nats": 15044.3828125,
+            "tokens": 16352,
+            "correct": 11914,
+            "bpc": 1.3273273285731964
+          },
+          {
+            "nats": 16372.16015625,
+            "tokens": 16352,
+            "correct": 11524,
+            "bpc": 1.4444737197934048
+          },
+          {
+            "nats": 13849.353515625,
+            "tokens": 16352,
+            "correct": 12265,
+            "bpc": 1.2218929572229893
+          },
+          {
+            "nats": 15013.1728515625,
+            "tokens": 16352,
+            "correct": 11904,
+            "bpc": 1.3245737537278641
+          },
+          {
+            "nats": 14346.8671875,
+            "tokens": 16352,
+            "correct": 12097,
+            "bpc": 1.2657873130931288
+          },
+          {
+            "nats": 14821.1484375,
+            "tokens": 16352,
+            "correct": 11958,
+            "bpc": 1.307631931938629
+          },
+          {
+            "nats": 16057.8046875,
+            "tokens": 16352,
+            "correct": 11600,
+            "bpc": 1.4167389426504282
+          },
+          {
+            "nats": 16757.654296875,
+            "tokens": 16352,
+            "correct": 11428,
+            "bpc": 1.4784848795886247
+          },
+          {
+            "nats": 14945.349609375,
+            "tokens": 16352,
+            "correct": 12033,
+            "bpc": 1.3185898829376907
+          },
+          {
+            "nats": 13923.73046875,
+            "tokens": 16352,
+            "correct": 12257,
+            "bpc": 1.2284550451284362
+          },
+          {
+            "nats": 14155.171875,
+            "tokens": 16352,
+            "correct": 12254,
+            "bpc": 1.2488745270910855
+          },
+          {
+            "nats": 14591.8828125,
+            "tokens": 16352,
+            "correct": 12036,
+            "bpc": 1.2874044135779508
+          },
+          {
+            "nats": 15995.3291015625,
+            "tokens": 16352,
+            "correct": 11666,
+            "bpc": 1.4112268818622271
+          },
+          {
+            "nats": 16031.580078125,
+            "tokens": 16352,
+            "correct": 11635,
+            "bpc": 1.4144252125932755
+          },
+          {
+            "nats": 15192.259765625,
+            "tokens": 16352,
+            "correct": 11819,
+            "bpc": 1.3403741330579815
+          },
+          {
+            "nats": 15957.1455078125,
+            "tokens": 16352,
+            "correct": 11606,
+            "bpc": 1.4078580412710797
+          },
+          {
+            "nats": 16338.41796875,
+            "tokens": 16352,
+            "correct": 11488,
+            "bpc": 1.4414967330899435
+          },
+          {
+            "nats": 14775.4013671875,
+            "tokens": 16352,
+            "correct": 11996,
+            "bpc": 1.3035957851996953
+          },
+          {
+            "nats": 14435.0595703125,
+            "tokens": 16352,
+            "correct": 12046,
+            "bpc": 1.2735683009434084
+          },
+          {
+            "nats": 14667.1181640625,
+            "tokens": 16352,
+            "correct": 12049,
+            "bpc": 1.294042235776994
+          },
+          {
+            "nats": 14442.916015625,
+            "tokens": 16352,
+            "correct": 12109,
+            "bpc": 1.274261454972968
+          },
+          {
+            "nats": 16585.388671875,
+            "tokens": 16352,
+            "correct": 11594,
+            "bpc": 1.4632863251058006
+          },
+          {
+            "nats": 15397.2958984375,
+            "tokens": 16352,
+            "correct": 11844,
+            "bpc": 1.3584639454363843
+          },
+          {
+            "nats": 16477.951171875,
+            "tokens": 16352,
+            "correct": 11514,
+            "bpc": 1.4538073899018191
+          },
+          {
+            "nats": 16095.9755859375,
+            "tokens": 16352,
+            "correct": 11548,
+            "bpc": 1.4201066631666988
+          },
+          {
+            "nats": 16238.0615234375,
+            "tokens": 16352,
+            "correct": 11617,
+            "bpc": 1.4326425411884276
+          },
+          {
+            "nats": 15927.3291015625,
+            "tokens": 16352,
+            "correct": 11677,
+            "bpc": 1.4052274161833835
+          },
+          {
+            "nats": 16240.4716796875,
+            "tokens": 16352,
+            "correct": 11504,
+            "bpc": 1.4328551830958176
+          },
+          {
+            "nats": 15315.396484375,
+            "tokens": 16352,
+            "correct": 11808,
+            "bpc": 1.3512381700865996
+          },
+          {
+            "nats": 14592.6796875,
+            "tokens": 16352,
+            "correct": 12043,
+            "bpc": 1.2874747198163747
+          },
+          {
+            "nats": 13998.5654296875,
+            "tokens": 16352,
+            "correct": 12161,
+            "bpc": 1.2350575418890557
+          },
+          {
+            "nats": 15524.87890625,
+            "tokens": 16352,
+            "correct": 11730,
+            "bpc": 1.3697202671507185
+          },
+          {
+            "nats": 15547.6875,
+            "tokens": 16352,
+            "correct": 11678,
+            "bpc": 1.3717326109063923
+          },
+          {
+            "nats": 15362.64453125,
+            "tokens": 16352,
+            "correct": 11858,
+            "bpc": 1.3554067441398197
+          },
+          {
+            "nats": 15121.611328125,
+            "tokens": 16352,
+            "correct": 11797,
+            "bpc": 1.3341410025279055
+          },
+          {
+            "nats": 15041.265625,
+            "tokens": 16352,
+            "correct": 11894,
+            "bpc": 1.3270523071111262
+          },
+          {
+            "nats": 15826.294921875,
+            "tokens": 16352,
+            "correct": 11659,
+            "bpc": 1.396313429515365
+          },
+          {
+            "nats": 16136.2421875,
+            "tokens": 16352,
+            "correct": 11572,
+            "bpc": 1.423659282197256
+          },
+          {
+            "nats": 15494.267578125,
+            "tokens": 16352,
+            "correct": 11800,
+            "bpc": 1.3670195081438103
+          },
+          {
+            "nats": 15946.560546875,
+            "tokens": 16352,
+            "correct": 11727,
+            "bpc": 1.4069241573026028
+          },
+          {
+            "nats": 15576.2705078125,
+            "tokens": 16352,
+            "correct": 11745,
+            "bpc": 1.3742544164118218
+          },
+          {
+            "nats": 15520.6357421875,
+            "tokens": 16352,
+            "correct": 11821,
+            "bpc": 1.3693459036630322
+          },
+          {
+            "nats": 14911.849609375,
+            "tokens": 16352,
+            "correct": 11861,
+            "bpc": 1.3156342638164957
+          },
+          {
+            "nats": 16526.0546875,
+            "tokens": 16352,
+            "correct": 11476,
+            "bpc": 1.4580514397698179
+          },
+          {
+            "nats": 16244.390625,
+            "tokens": 16352,
+            "correct": 11547,
+            "bpc": 1.4332009415943412
+          },
+          {
+            "nats": 15623.5126953125,
+            "tokens": 16352,
+            "correct": 11675,
+            "bpc": 1.3784224735074062
+          },
+          {
+            "nats": 16042.33984375,
+            "tokens": 16352,
+            "correct": 11636,
+            "bpc": 1.4153745191312106
+          },
+          {
+            "nats": 16072.35546875,
+            "tokens": 16352,
+            "correct": 11617,
+            "bpc": 1.4180227207785125
+          },
+          {
+            "nats": 14416.966796875,
+            "tokens": 16352,
+            "correct": 12098,
+            "bpc": 1.2719720219246824
+          },
+          {
+            "nats": 14001.525390625,
+            "tokens": 16352,
+            "correct": 12297,
+            "bpc": 1.235318691654574
+          },
+          {
+            "nats": 14908.017578125,
+            "tokens": 16352,
+            "correct": 11991,
+            "bpc": 1.3152961735228983
+          },
+          {
+            "nats": 15653.228515625,
+            "tokens": 16352,
+            "correct": 11689,
+            "bpc": 1.3810442241556935
+          },
+          {
+            "nats": 16307.21875,
+            "tokens": 16352,
+            "correct": 11570,
+            "bpc": 1.4387441060002766
+          },
+          {
+            "nats": 15727.2353515625,
+            "tokens": 16352,
+            "correct": 11705,
+            "bpc": 1.3875736575704998
+          },
+          {
+            "nats": 16365.982421875,
+            "tokens": 16352,
+            "correct": 11599,
+            "bpc": 1.4439286741264072
+          },
+          {
+            "nats": 15219.2158203125,
+            "tokens": 16352,
+            "correct": 11855,
+            "bpc": 1.3427523966599622
+          }
+        ]
+      },
+      "4": {
+        "k_paths": 4,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.3599,
+        "acc": 0.7219,
+        "paths_bitwise_identical": true,
+        "n_batches_paths_identical": 60,
+        "per_batch": [
+          {
+            "nats": 15098.4482421875,
+            "tokens": 16352,
+            "correct": 11881,
+            "bpc": 1.3320973828352858
+          },
+          {
+            "nats": 15728.73046875,
+            "tokens": 16352,
+            "correct": 11783,
+            "bpc": 1.3877055679271506
+          },
+          {
+            "nats": 15496.810546875,
+            "tokens": 16352,
+            "correct": 11723,
+            "bpc": 1.3672438677576044
+          },
+          {
+            "nats": 14782.333984375,
+            "tokens": 16352,
+            "correct": 12029,
+            "bpc": 1.3042074322420625
+          },
+          {
+            "nats": 15044.3828125,
+            "tokens": 16352,
+            "correct": 11914,
+            "bpc": 1.3273273285731964
+          },
+          {
+            "nats": 16372.16015625,
+            "tokens": 16352,
+            "correct": 11524,
+            "bpc": 1.4444737197934048
+          },
+          {
+            "nats": 13849.353515625,
+            "tokens": 16352,
+            "correct": 12265,
+            "bpc": 1.2218929572229893
+          },
+          {
+            "nats": 15013.1728515625,
+            "tokens": 16352,
+            "correct": 11904,
+            "bpc": 1.3245737537278641
+          },
+          {
+            "nats": 14346.8671875,
+            "tokens": 16352,
+            "correct": 12097,
+            "bpc": 1.2657873130931288
+          },
+          {
+            "nats": 14821.1484375,
+            "tokens": 16352,
+            "correct": 11958,
+            "bpc": 1.307631931938629
+          },
+          {
+            "nats": 16057.8046875,
+            "tokens": 16352,
+            "correct": 11600,
+            "bpc": 1.4167389426504282
+          },
+          {
+            "nats": 16757.654296875,
+            "tokens": 16352,
+            "correct": 11428,
+            "bpc": 1.4784848795886247
+          },
+          {
+            "nats": 14945.349609375,
+            "tokens": 16352,
+            "correct": 12033,
+            "bpc": 1.3185898829376907
+          },
+          {
+            "nats": 13923.73046875,
+            "tokens": 16352,
+            "correct": 12257,
+            "bpc": 1.2284550451284362
+          },
+          {
+            "nats": 14155.171875,
+            "tokens": 16352,
+            "correct": 12254,
+            "bpc": 1.2488745270910855
+          },
+          {
+            "nats": 14591.8828125,
+            "tokens": 16352,
+            "correct": 12036,
+            "bpc": 1.2874044135779508
+          },
+          {
+            "nats": 15995.3291015625,
+            "tokens": 16352,
+            "correct": 11666,
+            "bpc": 1.4112268818622271
+          },
+          {
+            "nats": 16031.580078125,
+            "tokens": 16352,
+            "correct": 11635,
+            "bpc": 1.4144252125932755
+          },
+          {
+            "nats": 15192.259765625,
+            "tokens": 16352,
+            "correct": 11819,
+            "bpc": 1.3403741330579815
+          },
+          {
+            "nats": 15957.1455078125,
+            "tokens": 16352,
+            "correct": 11606,
+            "bpc": 1.4078580412710797
+          },
+          {
+            "nats": 16338.41796875,
+            "tokens": 16352,
+            "correct": 11488,
+            "bpc": 1.4414967330899435
+          },
+          {
+            "nats": 14775.4013671875,
+            "tokens": 16352,
+            "correct": 11996,
+            "bpc": 1.3035957851996953
+          },
+          {
+            "nats": 14435.0595703125,
+            "tokens": 16352,
+            "correct": 12046,
+            "bpc": 1.2735683009434084
+          },
+          {
+            "nats": 14667.1181640625,
+            "tokens": 16352,
+            "correct": 12049,
+            "bpc": 1.294042235776994
+          },
+          {
+            "nats": 14442.916015625,
+            "tokens": 16352,
+            "correct": 12109,
+            "bpc": 1.274261454972968
+          },
+          {
+            "nats": 16585.388671875,
+            "tokens": 16352,
+            "correct": 11594,
+            "bpc": 1.4632863251058006
+          },
+          {
+            "nats": 15397.2958984375,
+            "tokens": 16352,
+            "correct": 11844,
+            "bpc": 1.3584639454363843
+          },
+          {
+            "nats": 16477.951171875,
+            "tokens": 16352,
+            "correct": 11514,
+            "bpc": 1.4538073899018191
+          },
+          {
+            "nats": 16095.9755859375,
+            "tokens": 16352,
+            "correct": 11548,
+            "bpc": 1.4201066631666988
+          },
+          {
+            "nats": 16238.0615234375,
+            "tokens": 16352,
+            "correct": 11617,
+            "bpc": 1.4326425411884276
+          },
+          {
+            "nats": 15927.3291015625,
+            "tokens": 16352,
+            "correct": 11677,
+            "bpc": 1.4052274161833835
+          },
+          {
+            "nats": 16240.4716796875,
+            "tokens": 16352,
+            "correct": 11504,
+            "bpc": 1.4328551830958176
+          },
+          {
+            "nats": 15315.396484375,
+            "tokens": 16352,
+            "correct": 11808,
+            "bpc": 1.3512381700865996
+          },
+          {
+            "nats": 14592.6796875,
+            "tokens": 16352,
+            "correct": 12043,
+            "bpc": 1.2874747198163747
+          },
+          {
+            "nats": 13998.5654296875,
+            "tokens": 16352,
+            "correct": 12161,
+            "bpc": 1.2350575418890557
+          },
+          {
+            "nats": 15524.87890625,
+            "tokens": 16352,
+            "correct": 11730,
+            "bpc": 1.3697202671507185
+          },
+          {
+            "nats": 15547.6875,
+            "tokens": 16352,
+            "correct": 11678,
+            "bpc": 1.3717326109063923
+          },
+          {
+            "nats": 15362.64453125,
+            "tokens": 16352,
+            "correct": 11858,
+            "bpc": 1.3554067441398197
+          },
+          {
+            "nats": 15121.611328125,
+            "tokens": 16352,
+            "correct": 11797,
+            "bpc": 1.3341410025279055
+          },
+          {
+            "nats": 15041.265625,
+            "tokens": 16352,
+            "correct": 11894,
+            "bpc": 1.3270523071111262
+          },
+          {
+            "nats": 15826.294921875,
+            "tokens": 16352,
+            "correct": 11659,
+            "bpc": 1.396313429515365
+          },
+          {
+            "nats": 16136.2421875,
+            "tokens": 16352,
+            "correct": 11572,
+            "bpc": 1.423659282197256
+          },
+          {
+            "nats": 15494.267578125,
+            "tokens": 16352,
+            "correct": 11800,
+            "bpc": 1.3670195081438103
+          },
+          {
+            "nats": 15946.560546875,
+            "tokens": 16352,
+            "correct": 11727,
+            "bpc": 1.4069241573026028
+          },
+          {
+            "nats": 15576.2705078125,
+            "tokens": 16352,
+            "correct": 11745,
+            "bpc": 1.3742544164118218
+          },
+          {
+            "nats": 15520.6357421875,
+            "tokens": 16352,
+            "correct": 11821,
+            "bpc": 1.3693459036630322
+          },
+          {
+            "nats": 14911.849609375,
+            "tokens": 16352,
+            "correct": 11861,
+            "bpc": 1.3156342638164957
+          },
+          {
+            "nats": 16526.0546875,
+            "tokens": 16352,
+            "correct": 11476,
+            "bpc": 1.4580514397698179
+          },
+          {
+            "nats": 16244.390625,
+            "tokens": 16352,
+            "correct": 11547,
+            "bpc": 1.4332009415943412
+          },
+          {
+            "nats": 15623.5126953125,
+            "tokens": 16352,
+            "correct": 11675,
+            "bpc": 1.3784224735074062
+          },
+          {
+            "nats": 16042.33984375,
+            "tokens": 16352,
+            "correct": 11636,
+            "bpc": 1.4153745191312106
+          },
+          {
+            "nats": 16072.35546875,
+            "tokens": 16352,
+            "correct": 11617,
+            "bpc": 1.4180227207785125
+          },
+          {
+            "nats": 14416.966796875,
+            "tokens": 16352,
+            "correct": 12098,
+            "bpc": 1.2719720219246824
+          },
+          {
+            "nats": 14001.525390625,
+            "tokens": 16352,
+            "correct": 12297,
+            "bpc": 1.235318691654574
+          },
+          {
+            "nats": 14908.017578125,
+            "tokens": 16352,
+            "correct": 11991,
+            "bpc": 1.3152961735228983
+          },
+          {
+            "nats": 15653.228515625,
+            "tokens": 16352,
+            "correct": 11689,
+            "bpc": 1.3810442241556935
+          },
+          {
+            "nats": 16307.21875,
+            "tokens": 16352,
+            "correct": 11570,
+            "bpc": 1.4387441060002766
+          },
+          {
+            "nats": 15727.2353515625,
+            "tokens": 16352,
+            "correct": 11705,
+            "bpc": 1.3875736575704998
+          },
+          {
+            "nats": 16365.982421875,
+            "tokens": 16352,
+            "correct": 11599,
+            "bpc": 1.4439286741264072
+          },
+          {
+            "nats": 15219.2158203125,
+            "tokens": 16352,
+            "correct": 11855,
+            "bpc": 1.3427523966599622
+          }
+        ]
+      },
+      "8": {
+        "k_paths": 8,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.3599,
+        "acc": 0.7219,
+        "pairwise_js": {
+          "mean_nats": 0.0,
+          "mean_bits": 0.0,
+          "n_batches": 60,
+          "k_paths": 8
+        },
+        "paths_bitwise_identical": true,
+        "n_batches_paths_identical": 60,
+        "per_batch": [
+          {
+            "nats": 15098.4482421875,
+            "tokens": 16352,
+            "correct": 11881,
+            "bpc": 1.3320973828352858
+          },
+          {
+            "nats": 15728.73046875,
+            "tokens": 16352,
+            "correct": 11783,
+            "bpc": 1.3877055679271506
+          },
+          {
+            "nats": 15496.810546875,
+            "tokens": 16352,
+            "correct": 11723,
+            "bpc": 1.3672438677576044
+          },
+          {
+            "nats": 14782.333984375,
+            "tokens": 16352,
+            "correct": 12029,
+            "bpc": 1.3042074322420625
+          },
+          {
+            "nats": 15044.3828125,
+            "tokens": 16352,
+            "correct": 11914,
+            "bpc": 1.3273273285731964
+          },
+          {
+            "nats": 16372.16015625,
+            "tokens": 16352,
+            "correct": 11524,
+            "bpc": 1.4444737197934048
+          },
+          {
+            "nats": 13849.353515625,
+            "tokens": 16352,
+            "correct": 12265,
+            "bpc": 1.2218929572229893
+          },
+          {
+            "nats": 15013.173828125,
+            "tokens": 16352,
+            "correct": 11904,
+            "bpc": 1.3245738398874702
+          },
+          {
+            "nats": 14346.8671875,
+            "tokens": 16352,
+            "correct": 12097,
+            "bpc": 1.2657873130931288
+          },
+          {
+            "nats": 14821.1484375,
+            "tokens": 16352,
+            "correct": 11958,
+            "bpc": 1.307631931938629
+          },
+          {
+            "nats": 16057.8046875,
+            "tokens": 16352,
+            "correct": 11600,
+            "bpc": 1.4167389426504282
+          },
+          {
+            "nats": 16757.654296875,
+            "tokens": 16352,
+            "correct": 11428,
+            "bpc": 1.4784848795886247
+          },
+          {
+            "nats": 14945.3505859375,
+            "tokens": 16352,
+            "correct": 12033,
+            "bpc": 1.3185899690972966
+          },
+          {
+            "nats": 13923.73046875,
+            "tokens": 16352,
+            "correct": 12257,
+            "bpc": 1.2284550451284362
+          },
+          {
+            "nats": 14155.1708984375,
+            "tokens": 16352,
+            "correct": 12254,
+            "bpc": 1.2488744409314796
+          },
+          {
+            "nats": 14591.8828125,
+            "tokens": 16352,
+            "correct": 12036,
+            "bpc": 1.2874044135779508
+          },
+          {
+            "nats": 15995.3291015625,
+            "tokens": 16352,
+            "correct": 11666,
+            "bpc": 1.4112268818622271
+          },
+          {
+            "nats": 16031.580078125,
+            "tokens": 16352,
+            "correct": 11635,
+            "bpc": 1.4144252125932755
+          },
+          {
+            "nats": 15192.259765625,
+            "tokens": 16352,
+            "correct": 11819,
+            "bpc": 1.3403741330579815
+          },
+          {
+            "nats": 15957.1455078125,
+            "tokens": 16352,
+            "correct": 11606,
+            "bpc": 1.4078580412710797
+          },
+          {
+            "nats": 16338.41796875,
+            "tokens": 16352,
+            "correct": 11488,
+            "bpc": 1.4414967330899435
+          },
+          {
+            "nats": 14775.4013671875,
+            "tokens": 16352,
+            "correct": 11996,
+            "bpc": 1.3035957851996953
+          },
+          {
+            "nats": 14435.0595703125,
+            "tokens": 16352,
+            "correct": 12046,
+            "bpc": 1.2735683009434084
+          },
+          {
+            "nats": 14667.1181640625,
+            "tokens": 16352,
+            "correct": 12049,
+            "bpc": 1.294042235776994
+          },
+          {
+            "nats": 14442.916015625,
+            "tokens": 16352,
+            "correct": 12109,
+            "bpc": 1.274261454972968
+          },
+          {
+            "nats": 16585.388671875,
+            "tokens": 16352,
+            "correct": 11594,
+            "bpc": 1.4632863251058006
+          },
+          {
+            "nats": 15397.2958984375,
+            "tokens": 16352,
+            "correct": 11844,
+            "bpc": 1.3584639454363843
+          },
+          {
+            "nats": 16477.951171875,
+            "tokens": 16352,
+            "correct": 11514,
+            "bpc": 1.4538073899018191
+          },
+          {
+            "nats": 16095.9755859375,
+            "tokens": 16352,
+            "correct": 11548,
+            "bpc": 1.4201066631666988
+          },
+          {
+            "nats": 16238.0615234375,
+            "tokens": 16352,
+            "correct": 11617,
+            "bpc": 1.4326425411884276
+          },
+          {
+            "nats": 15927.3291015625,
+            "tokens": 16352,
+            "correct": 11677,
+            "bpc": 1.4052274161833835
+          },
+          {
+            "nats": 16240.470703125,
+            "tokens": 16352,
+            "correct": 11504,
+            "bpc": 1.4328550969362117
+          },
+          {
+            "nats": 15315.396484375,
+            "tokens": 16352,
+            "correct": 11808,
+            "bpc": 1.3512381700865996
+          },
+          {
+            "nats": 14592.6796875,
+            "tokens": 16352,
+            "correct": 12043,
+            "bpc": 1.2874747198163747
+          },
+          {
+            "nats": 13998.56640625,
+            "tokens": 16352,
+            "correct": 12161,
+            "bpc": 1.2350576280486616
+          },
+          {
+            "nats": 15524.87890625,
+            "tokens": 16352,
+            "correct": 11730,
+            "bpc": 1.3697202671507185
+          },
+          {
+            "nats": 15547.6875,
+            "tokens": 16352,
+            "correct": 11678,
+            "bpc": 1.3717326109063923
+          },
+          {
+            "nats": 15362.64453125,
+            "tokens": 16352,
+            "correct": 11858,
+            "bpc": 1.3554067441398197
+          },
+          {
+            "nats": 15121.611328125,
+            "tokens": 16352,
+            "correct": 11797,
+            "bpc": 1.3341410025279055
+          },
+          {
+            "nats": 15041.265625,
+            "tokens": 16352,
+            "correct": 11894,
+            "bpc": 1.3270523071111262
+          },
+          {
+            "nats": 15826.2939453125,
+            "tokens": 16352,
+            "correct": 11659,
+            "bpc": 1.396313343355759
+          },
+          {
+            "nats": 16136.2421875,
+            "tokens": 16352,
+            "correct": 11572,
+            "bpc": 1.423659282197256
+          },
+          {
+            "nats": 15494.267578125,
+            "tokens": 16352,
+            "correct": 11800,
+            "bpc": 1.3670195081438103
+          },
+          {
+            "nats": 15946.560546875,
+            "tokens": 16352,
+            "correct": 11727,
+            "bpc": 1.4069241573026028
+          },
+          {
+            "nats": 15576.2705078125,
+            "tokens": 16352,
+            "correct": 11745,
+            "bpc": 1.3742544164118218
+          },
+          {
+            "nats": 15520.63671875,
+            "tokens": 16352,
+            "correct": 11821,
+            "bpc": 1.369345989822638
+          },
+          {
+            "nats": 14911.849609375,
+            "tokens": 16352,
+            "correct": 11861,
+            "bpc": 1.3156342638164957
+          },
+          {
+            "nats": 16526.0546875,
+            "tokens": 16352,
+            "correct": 11476,
+            "bpc": 1.4580514397698179
+          },
+          {
+            "nats": 16244.390625,
+            "tokens": 16352,
+            "correct": 11547,
+            "bpc": 1.4332009415943412
+          },
+          {
+            "nats": 15623.5126953125,
+            "tokens": 16352,
+            "correct": 11675,
+            "bpc": 1.3784224735074062
+          },
+          {
+            "nats": 16042.33984375,
+            "tokens": 16352,
+            "correct": 11636,
+            "bpc": 1.4153745191312106
+          },
+          {
+            "nats": 16072.35546875,
+            "tokens": 16352,
+            "correct": 11617,
+            "bpc": 1.4180227207785125
+          },
+          {
+            "nats": 14416.9658203125,
+            "tokens": 16352,
+            "correct": 12098,
+            "bpc": 1.2719719357650765
+          },
+          {
+            "nats": 14001.525390625,
+            "tokens": 16352,
+            "correct": 12297,
+            "bpc": 1.235318691654574
+          },
+          {
+            "nats": 14908.017578125,
+            "tokens": 16352,
+            "correct": 11991,
+            "bpc": 1.3152961735228983
+          },
+          {
+            "nats": 15653.228515625,
+            "tokens": 16352,
+            "correct": 11689,
+            "bpc": 1.3810442241556935
+          },
+          {
+            "nats": 16307.21875,
+            "tokens": 16352,
+            "correct": 11570,
+            "bpc": 1.4387441060002766
+          },
+          {
+            "nats": 15727.2353515625,
+            "tokens": 16352,
+            "correct": 11705,
+            "bpc": 1.3875736575704998
+          },
+          {
+            "nats": 16365.982421875,
+            "tokens": 16352,
+            "correct": 11599,
+            "bpc": 1.4439286741264072
+          },
+          {
+            "nats": 15219.21484375,
+            "tokens": 16352,
+            "correct": 11855,
+            "bpc": 1.3427523105003563
+          }
+        ]
+      }
+    },
+    "l1": {
+      "1": {
+        "k_paths": 1,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.4389,
+        "acc": 0.7057,
+        "per_batch": [
+          {
+            "nats": 15765.19140625,
+            "tokens": 16352,
+            "correct": 11676,
+            "bpc": 1.3909224229734698
+          },
+          {
+            "nats": 16385.04296875,
+            "tokens": 16352,
+            "correct": 11539,
+            "bpc": 1.4456103373145917
+          },
+          {
+            "nats": 15901.005859375,
+            "tokens": 16352,
+            "correct": 11597,
+            "bpc": 1.4029049840060337
+          },
+          {
+            "nats": 15967.19140625,
+            "tokens": 16352,
+            "correct": 11658,
+            "bpc": 1.4087443651370934
+          },
+          {
+            "nats": 15961.375,
+            "tokens": 16352,
+            "correct": 11661,
+            "bpc": 1.4082311985242832
+          },
+          {
+            "nats": 16867.171875,
+            "tokens": 16352,
+            "correct": 11352,
+            "bpc": 1.4881473347531984
+          },
+          {
+            "nats": 14523.689453125,
+            "tokens": 16352,
+            "correct": 12006,
+            "bpc": 1.2813878882971368
+          },
+          {
+            "nats": 15571.1640625,
+            "tokens": 16352,
+            "correct": 11724,
+            "bpc": 1.3738038878325096
+          },
+          {
+            "nats": 15075.203125,
+            "tokens": 16352,
+            "correct": 11913,
+            "bpc": 1.3300465257357696
+          },
+          {
+            "nats": 15195.2421875,
+            "tokens": 16352,
+            "correct": 11863,
+            "bpc": 1.340637264494436
+          },
+          {
+            "nats": 16568.9296875,
+            "tokens": 16352,
+            "correct": 11491,
+            "bpc": 1.4618341911077648
+          },
+          {
+            "nats": 18073.41796875,
+            "tokens": 16352,
+            "correct": 11064,
+            "bpc": 1.5945713353369073
+          },
+          {
+            "nats": 15593.33984375,
+            "tokens": 16352,
+            "correct": 11863,
+            "bpc": 1.3757604001635524
+          },
+          {
+            "nats": 15072.5390625,
+            "tokens": 16352,
+            "correct": 11913,
+            "bpc": 1.3298114823308425
+          },
+          {
+            "nats": 15123.939453125,
+            "tokens": 16352,
+            "correct": 11954,
+            "bpc": 1.3343464070283988
+          },
+          {
+            "nats": 15087.2158203125,
+            "tokens": 16352,
+            "correct": 11853,
+            "bpc": 1.3311063750480894
+          },
+          {
+            "nats": 16444.236328125,
+            "tokens": 16352,
+            "correct": 11565,
+            "bpc": 1.4508328156673236
+          },
+          {
+            "nats": 16500.31640625,
+            "tokens": 16352,
+            "correct": 11485,
+            "bpc": 1.4557806171964087
+          },
+          {
+            "nats": 18207.359375,
+            "tokens": 16352,
+            "correct": 10982,
+            "bpc": 1.6063886422453326
+          },
+          {
+            "nats": 16851.228515625,
+            "tokens": 16352,
+            "correct": 11300,
+            "bpc": 1.486740693027084
+          },
+          {
+            "nats": 17058.6875,
+            "tokens": 16352,
+            "correct": 11275,
+            "bpc": 1.5050442673877538
+          },
+          {
+            "nats": 15994.41015625,
+            "tokens": 16352,
+            "correct": 11686,
+            "bpc": 1.4111458056730644
+          },
+          {
+            "nats": 15294.3427734375,
+            "tokens": 16352,
+            "correct": 11751,
+            "bpc": 1.3493806551427492
+          },
+          {
+            "nats": 15321.29296875,
+            "tokens": 16352,
+            "correct": 11789,
+            "bpc": 1.3517584017870945
+          },
+          {
+            "nats": 15071.951171875,
+            "tokens": 16352,
+            "correct": 11928,
+            "bpc": 1.3297596142480836
+          },
+          {
+            "nats": 17058.2265625,
+            "tokens": 16352,
+            "correct": 11419,
+            "bpc": 1.5050036000537632
+          },
+          {
+            "nats": 16567.4140625,
+            "tokens": 16352,
+            "correct": 11539,
+            "bpc": 1.46170047139939
+          },
+          {
+            "nats": 17973.875,
+            "tokens": 16352,
+            "correct": 11100,
+            "bpc": 1.5857889143871158
+          },
+          {
+            "nats": 17045.453125,
+            "tokens": 16352,
+            "correct": 11253,
+            "bpc": 1.5038766324084383
+          },
+          {
+            "nats": 17047.822265625,
+            "tokens": 16352,
+            "correct": 11432,
+            "bpc": 1.5040856556123803
+          },
+          {
+            "nats": 16942.04296875,
+            "tokens": 16352,
+            "correct": 11385,
+            "bpc": 1.4947530194192367
+          },
+          {
+            "nats": 17326.84375,
+            "tokens": 16352,
+            "correct": 11241,
+            "bpc": 1.5287030058942594
+          },
+          {
+            "nats": 15736.2607421875,
+            "tokens": 16352,
+            "correct": 11715,
+            "bpc": 1.3883699446483357
+          },
+          {
+            "nats": 15971.115234375,
+            "tokens": 16352,
+            "correct": 11659,
+            "bpc": 1.4090905544336465
+          },
+          {
+            "nats": 14678.841796875,
+            "tokens": 16352,
+            "correct": 11970,
+            "bpc": 1.2950765818459642
+          },
+          {
+            "nats": 16752.578125,
+            "tokens": 16352,
+            "correct": 11402,
+            "bpc": 1.4780370219570955
+          },
+          {
+            "nats": 16367.6259765625,
+            "tokens": 16352,
+            "correct": 11404,
+            "bpc": 1.4440736807431567
+          },
+          {
+            "nats": 15952.150390625,
+            "tokens": 16352,
+            "correct": 11677,
+            "bpc": 1.4074173348868413
+          },
+          {
+            "nats": 16059.96484375,
+            "tokens": 16352,
+            "correct": 11525,
+            "bpc": 1.4169295276987048
+          },
+          {
+            "nats": 15909.412109375,
+            "tokens": 16352,
+            "correct": 11632,
+            "bpc": 1.4036466458937216
+          },
+          {
+            "nats": 17164.126953125,
+            "tokens": 16352,
+            "correct": 11307,
+            "bpc": 1.5143469200380402
+          },
+          {
+            "nats": 16689.609375,
+            "tokens": 16352,
+            "correct": 11339,
+            "bpc": 1.4724814505679094
+          },
+          {
+            "nats": 16068.6376953125,
+            "tokens": 16352,
+            "correct": 11600,
+            "bpc": 1.4176947111588067
+          },
+          {
+            "nats": 16342.5419921875,
+            "tokens": 16352,
+            "correct": 11592,
+            "bpc": 1.4418605851057087
+          },
+          {
+            "nats": 17024.11328125,
+            "tokens": 16352,
+            "correct": 11371,
+            "bpc": 1.5019938727000561
+          },
+          {
+            "nats": 15947.95703125,
+            "tokens": 16352,
+            "correct": 11683,
+            "bpc": 1.4070473655390563
+          },
+          {
+            "nats": 16469.859375,
+            "tokens": 16352,
+            "correct": 11420,
+            "bpc": 1.4530934714072348
+          },
+          {
+            "nats": 17326.94140625,
+            "tokens": 16352,
+            "correct": 11206,
+            "bpc": 1.5287116218548504
+          },
+          {
+            "nats": 16752.439453125,
+            "tokens": 16352,
+            "correct": 11404,
+            "bpc": 1.4780247872930563
+          },
+          {
+            "nats": 16148.974609375,
+            "tokens": 16352,
+            "correct": 11477,
+            "bpc": 1.4247826311391327
+          },
+          {
+            "nats": 17707.8046875,
+            "tokens": 16352,
+            "correct": 11112,
+            "bpc": 1.5623142127988376
+          },
+          {
+            "nats": 16949.541015625,
+            "tokens": 16352,
+            "correct": 11364,
+            "bpc": 1.4954145528734266
+          },
+          {
+            "nats": 15013.6904296875,
+            "tokens": 16352,
+            "correct": 11940,
+            "bpc": 1.3246194183189977
+          },
+          {
+            "nats": 14708.158203125,
+            "tokens": 16352,
+            "correct": 12048,
+            "bpc": 1.2976630932154334
+          },
+          {
+            "nats": 15546.79296875,
+            "tokens": 16352,
+            "correct": 11753,
+            "bpc": 1.3716536887073771
+          },
+          {
+            "nats": 18161.7734375,
+            "tokens": 16352,
+            "correct": 10916,
+            "bpc": 1.6023667118413742
+          },
+          {
+            "nats": 17605.025390625,
+            "tokens": 16352,
+            "correct": 11171,
+            "bpc": 1.5532462589150546
+          },
+          {
+            "nats": 16086.72265625,
+            "tokens": 16352,
+            "correct": 11580,
+            "bpc": 1.4192903009006854
+          },
+          {
+            "nats": 17561.79296875,
+            "tokens": 16352,
+            "correct": 11277,
+            "bpc": 1.5494319731613437
+          },
+          {
+            "nats": 16399.53515625,
+            "tokens": 16352,
+            "correct": 11559,
+            "bpc": 1.4468889458663214
+          }
+        ]
+      },
+      "2": {
+        "k_paths": 2,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.4229,
+        "acc": 0.7094,
+        "pairwise_js": {
+          "mean_nats": 0.014598360244417564,
+          "mean_bits": 0.021060981929731815,
+          "n_batches": 60,
+          "k_paths": 2
+        },
+        "paths_bitwise_identical": false,
+        "n_batches_paths_identical": 6,
+        "per_batch": [
+          {
+            "nats": 15784.6884765625,
+            "tokens": 16352,
+            "correct": 11649,
+            "bpc": 1.392642599505497
+          },
+          {
+            "nats": 16266.23046875,
+            "tokens": 16352,
+            "correct": 11587,
+            "bpc": 1.4351278150209508
+          },
+          {
+            "nats": 15973.8583984375,
+            "tokens": 16352,
+            "correct": 11577,
+            "bpc": 1.4093325767666525
+          },
+          {
+            "nats": 15386.224609375,
+            "tokens": 16352,
+            "correct": 11832,
+            "bpc": 1.3574871539841635
+          },
+          {
+            "nats": 15495.8515625,
+            "tokens": 16352,
+            "correct": 11783,
+            "bpc": 1.3671592590245991
+          },
+          {
+            "nats": 17023.22265625,
+            "tokens": 16352,
+            "correct": 11324,
+            "bpc": 1.5019152951394643
+          },
+          {
+            "nats": 14337.4482421875,
+            "tokens": 16352,
+            "correct": 12099,
+            "bpc": 1.2649563036941103
+          },
+          {
+            "nats": 15730.8212890625,
+            "tokens": 16352,
+            "correct": 11669,
+            "bpc": 1.3878900356434076
+          },
+          {
+            "nats": 15002.7802734375,
+            "tokens": 16352,
+            "correct": 11936,
+            "bpc": 1.323656843201752
+          },
+          {
+            "nats": 16050.376953125,
+            "tokens": 16352,
+            "correct": 11702,
+            "bpc": 1.4160836126878638
+          },
+          {
+            "nats": 16687.921875,
+            "tokens": 16352,
+            "correct": 11436,
+            "bpc": 1.4723325667688938
+          },
+          {
+            "nats": 17182.64453125,
+            "tokens": 16352,
+            "correct": 11317,
+            "bpc": 1.5159806784853378
+          },
+          {
+            "nats": 15610.1142578125,
+            "tokens": 16352,
+            "correct": 11879,
+            "bpc": 1.3772403637142976
+          },
+          {
+            "nats": 15210.06640625,
+            "tokens": 16352,
+            "correct": 11920,
+            "bpc": 1.3419451673121756
+          },
+          {
+            "nats": 14799.0048828125,
+            "tokens": 16352,
+            "correct": 12056,
+            "bpc": 1.305678262874581
+          },
+          {
+            "nats": 15410.59765625,
+            "tokens": 16352,
+            "correct": 11750,
+            "bpc": 1.3596375254285078
+          },
+          {
+            "nats": 16627.71484375,
+            "tokens": 16352,
+            "correct": 11482,
+            "bpc": 1.4670206547452258
+          },
+          {
+            "nats": 16694.330078125,
+            "tokens": 16352,
+            "correct": 11416,
+            "bpc": 1.4728979461028864
+          },
+          {
+            "nats": 15923.298828125,
+            "tokens": 16352,
+            "correct": 11645,
+            "bpc": 1.404871835489786
+          },
+          {
+            "nats": 16494.46875,
+            "tokens": 16352,
+            "correct": 11434,
+            "bpc": 1.4552646934762097
+          },
+          {
+            "nats": 17102.5625,
+            "tokens": 16352,
+            "correct": 11259,
+            "bpc": 1.5089152461621547
+          },
+          {
+            "nats": 15229.2021484375,
+            "tokens": 16352,
+            "correct": 11873,
+            "bpc": 1.3436334647900152
+          },
+          {
+            "nats": 15150.1416015625,
+            "tokens": 16352,
+            "correct": 11848,
+            "bpc": 1.3366581554146157
+          },
+          {
+            "nats": 15391.9892578125,
+            "tokens": 16352,
+            "correct": 11788,
+            "bpc": 1.3579957541378602
+          },
+          {
+            "nats": 15037.572265625,
+            "tokens": 16352,
+            "correct": 11914,
+            "bpc": 1.3267264514815682
+          },
+          {
+            "nats": 17087.84375,
+            "tokens": 16352,
+            "correct": 11359,
+            "bpc": 1.5076166485818534
+          },
+          {
+            "nats": 15792.796875,
+            "tokens": 16352,
+            "correct": 11719,
+            "bpc": 1.393357982713382
+          },
+          {
+            "nats": 17395.27734375,
+            "tokens": 16352,
+            "correct": 11251,
+            "bpc": 1.5347407264381276
+          },
+          {
+            "nats": 16943.6875,
+            "tokens": 16352,
+            "correct": 11286,
+            "bpc": 1.4948981121955918
+          },
+          {
+            "nats": 17065.80078125,
+            "tokens": 16352,
+            "correct": 11406,
+            "bpc": 1.5056718539572147
+          },
+          {
+            "nats": 17123.23828125,
+            "tokens": 16352,
+            "correct": 11368,
+            "bpc": 1.5107394173385171
+          },
+          {
+            "nats": 16788.103515625,
+            "tokens": 16352,
+            "correct": 11366,
+            "bpc": 1.4811713361009518
+          },
+          {
+            "nats": 16655.46875,
+            "tokens": 16352,
+            "correct": 11615,
+            "bpc": 1.4694693107452361
+          },
+          {
+            "nats": 15088.330078125,
+            "tokens": 16352,
+            "correct": 11904,
+            "bpc": 1.3312046831584348
+          },
+          {
+            "nats": 14457.4365234375,
+            "tokens": 16352,
+            "correct": 12012,
+            "bpc": 1.2755425621532692
+          },
+          {
+            "nats": 16370.67578125,
+            "tokens": 16352,
+            "correct": 11545,
+            "bpc": 1.4443427571924188
+          },
+          {
+            "nats": 16121.38671875,
+            "tokens": 16352,
+            "correct": 11535,
+            "bpc": 1.422348622272127
+          },
+          {
+            "nats": 16032.01171875,
+            "tokens": 16352,
+            "correct": 11683,
+            "bpc": 1.4144632951390883
+          },
+          {
+            "nats": 15580.4384765625,
+            "tokens": 16352,
+            "correct": 11678,
+            "bpc": 1.3746221456098529
+          },
+          {
+            "nats": 15662.61328125,
+            "tokens": 16352,
+            "correct": 11738,
+            "bpc": 1.3818722179685048
+          },
+          {
+            "nats": 16402.73046875,
+            "tokens": 16352,
+            "correct": 11513,
+            "bpc": 1.4471708600968645
+          },
+          {
+            "nats": 16569.513671875,
+            "tokens": 16352,
+            "correct": 11433,
+            "bpc": 1.4618857145521003
+          },
+          {
+            "nats": 16609.712890625,
+            "tokens": 16352,
+            "correct": 11446,
+            "bpc": 1.4654323885698495
+          },
+          {
+            "nats": 16342.5419921875,
+            "tokens": 16352,
+            "correct": 11592,
+            "bpc": 1.4418605851057087
+          },
+          {
+            "nats": 16313.0224609375,
+            "tokens": 16352,
+            "correct": 11498,
+            "bpc": 1.4392561525382097
+          },
+          {
+            "nats": 15947.95703125,
+            "tokens": 16352,
+            "correct": 11683,
+            "bpc": 1.4070473655390563
+          },
+          {
+            "nats": 15663.7041015625,
+            "tokens": 16352,
+            "correct": 11646,
+            "bpc": 1.3819684582483083
+          },
+          {
+            "nats": 18143.05859375,
+            "tokens": 16352,
+            "correct": 11103,
+            "bpc": 1.6007155491536824
+          },
+          {
+            "nats": 17369.939453125,
+            "tokens": 16352,
+            "correct": 11231,
+            "bpc": 1.532505229303143
+          },
+          {
+            "nats": 16388.654296875,
+            "tokens": 16352,
+            "correct": 11412,
+            "bpc": 1.4459289555372532
+          },
+          {
+            "nats": 16784.990234375,
+            "tokens": 16352,
+            "correct": 11371,
+            "bpc": 1.480896659277305
+          },
+          {
+            "nats": 16758.234375,
+            "tokens": 16352,
+            "correct": 11466,
+            "bpc": 1.4785360583945364
+          },
+          {
+            "nats": 15052.1484375,
+            "tokens": 16352,
+            "correct": 11926,
+            "bpc": 1.3280124697594062
+          },
+          {
+            "nats": 15353.3544921875,
+            "tokens": 16352,
+            "correct": 11948,
+            "bpc": 1.3545871078087814
+          },
+          {
+            "nats": 15871.923828125,
+            "tokens": 16352,
+            "correct": 11671,
+            "bpc": 1.4003391509419834
+          },
+          {
+            "nats": 16364.5390625,
+            "tokens": 16352,
+            "correct": 11460,
+            "bpc": 1.4438013302288697
+          },
+          {
+            "nats": 16809.05078125,
+            "tokens": 16352,
+            "correct": 11347,
+            "bpc": 1.4830194596477577
+          },
+          {
+            "nats": 16436.01171875,
+            "tokens": 16352,
+            "correct": 11474,
+            "bpc": 1.4501071794663354
+          },
+          {
+            "nats": 17062.880859375,
+            "tokens": 16352,
+            "correct": 11382,
+            "bpc": 1.5054142367355385
+          },
+          {
+            "nats": 15650.0205078125,
+            "tokens": 16352,
+            "correct": 11744,
+            "bpc": 1.3807611898502734
+          }
+        ]
+      },
+      "4": {
+        "k_paths": 4,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.4166,
+        "acc": 0.7111,
+        "paths_bitwise_identical": false,
+        "n_batches_paths_identical": 0,
+        "per_batch": [
+          {
+            "nats": 15739.09765625,
+            "tokens": 16352,
+            "correct": 11667,
+            "bpc": 1.3886202383035091
+          },
+          {
+            "nats": 16181.75,
+            "tokens": 16352,
+            "correct": 11588,
+            "bpc": 1.427674319832741
+          },
+          {
+            "nats": 15899.556640625,
+            "tokens": 16352,
+            "correct": 11599,
+            "bpc": 1.4027771231508608
+          },
+          {
+            "nats": 15384.18359375,
+            "tokens": 16352,
+            "correct": 11838,
+            "bpc": 1.357307080407808
+          },
+          {
+            "nats": 15658.39453125,
+            "tokens": 16352,
+            "correct": 11751,
+            "bpc": 1.3815000084709663
+          },
+          {
+            "nats": 16874.052734375,
+            "tokens": 16352,
+            "correct": 11367,
+            "bpc": 1.488754415336452
+          },
+          {
+            "nats": 14410.04296875,
+            "tokens": 16352,
+            "correct": 12053,
+            "bpc": 1.2713611503187685
+          },
+          {
+            "nats": 15680.875,
+            "tokens": 16352,
+            "correct": 11680,
+            "bpc": 1.3834834025990534
+          },
+          {
+            "nats": 15119.71875,
+            "tokens": 16352,
+            "correct": 11887,
+            "bpc": 1.3339740252116485
+          },
+          {
+            "nats": 15230.306640625,
+            "tokens": 16352,
+            "correct": 11873,
+            "bpc": 1.3437309113043014
+          },
+          {
+            "nats": 16557.97265625,
+            "tokens": 16352,
+            "correct": 11501,
+            "bpc": 1.460867480329436
+          },
+          {
+            "nats": 17194.5390625,
+            "tokens": 16352,
+            "correct": 11305,
+            "bpc": 1.5170301024853423
+          },
+          {
+            "nats": 15637.873046875,
+            "tokens": 16352,
+            "correct": 11853,
+            "bpc": 1.3796894505123378
+          },
+          {
+            "nats": 14539.525390625,
+            "tokens": 16352,
+            "correct": 12120,
+            "bpc": 1.282785052466601
+          },
+          {
+            "nats": 14790.052734375,
+            "tokens": 16352,
+            "correct": 12081,
+            "bpc": 1.3048884377671885
+          },
+          {
+            "nats": 15264.7275390625,
+            "tokens": 16352,
+            "correct": 11807,
+            "bpc": 1.346767778933871
+          },
+          {
+            "nats": 16730.501953125,
+            "tokens": 16352,
+            "correct": 11529,
+            "bpc": 1.476089297905856
+          },
+          {
+            "nats": 16508.509765625,
+            "tokens": 16352,
+            "correct": 11460,
+            "bpc": 1.456503496290008
+          },
+          {
+            "nats": 15936.8603515625,
+            "tokens": 16352,
+            "correct": 11648,
+            "bpc": 1.4060683339370816
+          },
+          {
+            "nats": 16395.4609375,
+            "tokens": 16352,
+            "correct": 11465,
+            "bpc": 1.4465294879904578
+          },
+          {
+            "nats": 16943.314453125,
+            "tokens": 16352,
+            "correct": 11317,
+            "bpc": 1.4948651992261337
+          },
+          {
+            "nats": 15342.76953125,
+            "tokens": 16352,
+            "correct": 11856,
+            "bpc": 1.3536532238403045
+          },
+          {
+            "nats": 14972.392578125,
+            "tokens": 16352,
+            "correct": 11861,
+            "bpc": 1.3209758147445976
+          },
+          {
+            "nats": 15600.2880859375,
+            "tokens": 16352,
+            "correct": 11787,
+            "bpc": 1.3763734257596143
+          },
+          {
+            "nats": 15205.4453125,
+            "tokens": 16352,
+            "correct": 11880,
+            "bpc": 1.3415374600570014
+          },
+          {
+            "nats": 16819.43359375,
+            "tokens": 16352,
+            "correct": 11469,
+            "bpc": 1.4839355085778108
+          },
+          {
+            "nats": 15993.6640625,
+            "tokens": 16352,
+            "correct": 11687,
+            "bpc": 1.4110799797341478
+          },
+          {
+            "nats": 17081.658203125,
+            "tokens": 16352,
+            "correct": 11328,
+            "bpc": 1.5070709136380087
+          },
+          {
+            "nats": 16862.912109375,
+            "tokens": 16352,
+            "correct": 11299,
+            "bpc": 1.4877715065522117
+          },
+          {
+            "nats": 16875.41015625,
+            "tokens": 16352,
+            "correct": 11485,
+            "bpc": 1.4888741771886695
+          },
+          {
+            "nats": 16685.115234375,
+            "tokens": 16352,
+            "correct": 11456,
+            "bpc": 1.4720849440615036
+          },
+          {
+            "nats": 16887.8359375,
+            "tokens": 16352,
+            "correct": 11351,
+            "bpc": 1.4899704720142901
+          },
+          {
+            "nats": 15907.05859375,
+            "tokens": 16352,
+            "correct": 11660,
+            "bpc": 1.4034390012434745
+          },
+          {
+            "nats": 14991.248046875,
+            "tokens": 16352,
+            "correct": 11910,
+            "bpc": 1.3226393844155409
+          },
+          {
+            "nats": 14452.7060546875,
+            "tokens": 16352,
+            "correct": 12033,
+            "bpc": 1.275125205022233
+          },
+          {
+            "nats": 16109.8623046875,
+            "tokens": 16352,
+            "correct": 11584,
+            "bpc": 1.4213318527627632
+          },
+          {
+            "nats": 16178.3818359375,
+            "tokens": 16352,
+            "correct": 11483,
+            "bpc": 1.4273771553519516
+          },
+          {
+            "nats": 15908.5458984375,
+            "tokens": 16352,
+            "correct": 11740,
+            "bpc": 1.4035702223232778
+          },
+          {
+            "nats": 15608.8466796875,
+            "tokens": 16352,
+            "correct": 11655,
+            "bpc": 1.3771285285458243
+          },
+          {
+            "nats": 15751.5234375,
+            "tokens": 16352,
+            "correct": 11720,
+            "bpc": 1.3897165331291297
+          },
+          {
+            "nats": 16362.013671875,
+            "tokens": 16352,
+            "correct": 11529,
+            "bpc": 1.443578521487982
+          },
+          {
+            "nats": 16569.796875,
+            "tokens": 16352,
+            "correct": 11397,
+            "bpc": 1.4619107008378147
+          },
+          {
+            "nats": 16070.921875,
+            "tokens": 16352,
+            "correct": 11595,
+            "bpc": 1.4178962384770342
+          },
+          {
+            "nats": 16271.9140625,
+            "tokens": 16352,
+            "correct": 11577,
+            "bpc": 1.4356292639273567
+          },
+          {
+            "nats": 19108.189453125,
+            "tokens": 16352,
+            "correct": 11560,
+            "bpc": 1.6858665707185807
+          },
+          {
+            "nats": 15958.5703125,
+            "tokens": 16352,
+            "correct": 11675,
+            "bpc": 1.4079837481361048
+          },
+          {
+            "nats": 15446.435546875,
+            "tokens": 16352,
+            "correct": 11691,
+            "bpc": 1.3627994106462553
+          },
+          {
+            "nats": 17227.28515625,
+            "tokens": 16352,
+            "correct": 11270,
+            "bpc": 1.5199192063907734
+          },
+          {
+            "nats": 16775.1328125,
+            "tokens": 16352,
+            "correct": 11384,
+            "bpc": 1.4800269642152324
+          },
+          {
+            "nats": 16162.0546875,
+            "tokens": 16352,
+            "correct": 11453,
+            "bpc": 1.425936652900714
+          },
+          {
+            "nats": 16599.3359375,
+            "tokens": 16352,
+            "correct": 11433,
+            "bpc": 1.4645168565974316
+          },
+          {
+            "nats": 16652.986328125,
+            "tokens": 16352,
+            "correct": 11464,
+            "bpc": 1.4692502930270086
+          },
+          {
+            "nats": 15008.388671875,
+            "tokens": 16352,
+            "correct": 11932,
+            "bpc": 1.3241516578185029
+          },
+          {
+            "nats": 14522.599609375,
+            "tokens": 16352,
+            "correct": 12114,
+            "bpc": 1.2812917341769392
+          },
+          {
+            "nats": 16423.36328125,
+            "tokens": 16352,
+            "correct": 11506,
+            "bpc": 1.448991240250567
+          },
+          {
+            "nats": 16331.359375,
+            "tokens": 16352,
+            "correct": 11442,
+            "bpc": 1.4408739714584138
+          },
+          {
+            "nats": 17006.67578125,
+            "tokens": 16352,
+            "correct": 11308,
+            "bpc": 1.5004554067768967
+          },
+          {
+            "nats": 16125.173828125,
+            "tokens": 16352,
+            "correct": 11561,
+            "bpc": 1.4226827492238527
+          },
+          {
+            "nats": 16988.54296875,
+            "tokens": 16352,
+            "correct": 11413,
+            "bpc": 1.498855595214328
+          },
+          {
+            "nats": 15838.392578125,
+            "tokens": 16352,
+            "correct": 11692,
+            "bpc": 1.397380774713399
+          }
+        ]
+      },
+      "8": {
+        "k_paths": 8,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.4089,
+        "acc": 0.7121,
+        "pairwise_js": {
+          "mean_nats": 0.01546657300793976,
+          "mean_bits": 0.02231354817810179,
+          "n_batches": 60,
+          "k_paths": 8
+        },
+        "paths_bitwise_identical": false,
+        "n_batches_paths_identical": 0,
+        "per_batch": [
+          {
+            "nats": 15717.7978515625,
+            "tokens": 16352,
+            "correct": 11680,
+            "bpc": 1.386741011138969
+          },
+          {
+            "nats": 16195.125,
+            "tokens": 16352,
+            "correct": 11611,
+            "bpc": 1.428854361795308
+          },
+          {
+            "nats": 15940.181640625,
+            "tokens": 16352,
+            "correct": 11601,
+            "bpc": 1.4063613627567875
+          },
+          {
+            "nats": 15359.466796875,
+            "tokens": 16352,
+            "correct": 11834,
+            "bpc": 1.355126380782183
+          },
+          {
+            "nats": 15501.291015625,
+            "tokens": 16352,
+            "correct": 11783,
+            "bpc": 1.3676391680295275
+          },
+          {
+            "nats": 16873.4765625,
+            "tokens": 16352,
+            "correct": 11354,
+            "bpc": 1.4887035811689644
+          },
+          {
+            "nats": 14303.72265625,
+            "tokens": 16352,
+            "correct": 12111,
+            "bpc": 1.26198078170395
+          },
+          {
+            "nats": 15677.0654296875,
+            "tokens": 16352,
+            "correct": 11686,
+            "bpc": 1.383147293976392
+          },
+          {
+            "nats": 15165.302734375,
+            "tokens": 16352,
+            "correct": 11922,
+            "bpc": 1.337995783296395
+          },
+          {
+            "nats": 15152.884765625,
+            "tokens": 16352,
+            "correct": 11888,
+            "bpc": 1.3369001777476217
+          },
+          {
+            "nats": 16551.32421875,
+            "tokens": 16352,
+            "correct": 11472,
+            "bpc": 1.460280905732389
+          },
+          {
+            "nats": 17230.59765625,
+            "tokens": 16352,
+            "correct": 11330,
+            "bpc": 1.5202114597740257
+          },
+          {
+            "nats": 15608.28515625,
+            "tokens": 16352,
+            "correct": 11859,
+            "bpc": 1.3770789867724251
+          },
+          {
+            "nats": 14534.4677734375,
+            "tokens": 16352,
+            "correct": 12104,
+            "bpc": 1.2823388318675841
+          },
+          {
+            "nats": 14521.1025390625,
+            "tokens": 16352,
+            "correct": 12137,
+            "bpc": 1.2811596515010766
+          },
+          {
+            "nats": 15274.2265625,
+            "tokens": 16352,
+            "correct": 11806,
+            "bpc": 1.3476058534205742
+          },
+          {
+            "nats": 16436.47265625,
+            "tokens": 16352,
+            "correct": 11537,
+            "bpc": 1.4501478468003257
+          },
+          {
+            "nats": 16465.52734375,
+            "tokens": 16352,
+            "correct": 11485,
+            "bpc": 1.4527112673954106
+          },
+          {
+            "nats": 15887.61328125,
+            "tokens": 16352,
+            "correct": 11659,
+            "bpc": 1.4017233911705607
+          },
+          {
+            "nats": 16403.12890625,
+            "tokens": 16352,
+            "correct": 11472,
+            "bpc": 1.4472060132160764
+          },
+          {
+            "nats": 16927.375,
+            "tokens": 16352,
+            "correct": 11301,
+            "bpc": 1.4934589021384428
+          },
+          {
+            "nats": 15221.96484375,
+            "tokens": 16352,
+            "correct": 11895,
+            "bpc": 1.3429949359506037
+          },
+          {
+            "nats": 16380.689453125,
+            "tokens": 16352,
+            "correct": 11867,
+            "bpc": 1.4452262377914373
+          },
+          {
+            "nats": 15103.5654296875,
+            "tokens": 16352,
+            "correct": 11885,
+            "bpc": 1.3325488591702632
+          },
+          {
+            "nats": 15039.1455078125,
+            "tokens": 16352,
+            "correct": 11919,
+            "bpc": 1.326865254606692
+          },
+          {
+            "nats": 16807.21875,
+            "tokens": 16352,
+            "correct": 11474,
+            "bpc": 1.4828578242270671
+          },
+          {
+            "nats": 15756.400390625,
+            "tokens": 16352,
+            "correct": 11721,
+            "bpc": 1.3901468142010527
+          },
+          {
+            "nats": 17238.90625,
+            "tokens": 16352,
+            "correct": 11250,
+            "bpc": 1.5209445057011228
+          },
+          {
+            "nats": 16879.705078125,
+            "tokens": 16352,
+            "correct": 11290,
+            "bpc": 1.489253107135469
+          },
+          {
+            "nats": 16735.619140625,
+            "tokens": 16352,
+            "correct": 11480,
+            "bpc": 1.476540774240833
+          },
+          {
+            "nats": 16454.67578125,
+            "tokens": 16352,
+            "correct": 11531,
+            "bpc": 1.4517538618545198
+          },
+          {
+            "nats": 16779.32421875,
+            "tokens": 16352,
+            "correct": 11350,
+            "bpc": 1.4803967612438056
+          },
+          {
+            "nats": 16105.32421875,
+            "tokens": 16352,
+            "correct": 11620,
+            "bpc": 1.4209314690740915
+          },
+          {
+            "nats": 14974.734375,
+            "tokens": 16352,
+            "correct": 11914,
+            "bpc": 1.3211824254795739
+          },
+          {
+            "nats": 14360.791015625,
+            "tokens": 16352,
+            "correct": 12041,
+            "bpc": 1.2670157767542176
+          },
+          {
+            "nats": 16106.3662109375,
+            "tokens": 16352,
+            "correct": 11583,
+            "bpc": 1.4210234013735994
+          },
+          {
+            "nats": 16159.6572265625,
+            "tokens": 16352,
+            "correct": 11503,
+            "bpc": 1.4257251310682009
+          },
+          {
+            "nats": 15846.7666015625,
+            "tokens": 16352,
+            "correct": 11757,
+            "bpc": 1.398119593334092
+          },
+          {
+            "nats": 15605.15234375,
+            "tokens": 16352,
+            "correct": 11634,
+            "bpc": 1.3768025867566605
+          },
+          {
+            "nats": 15610.1396484375,
+            "tokens": 16352,
+            "correct": 11749,
+            "bpc": 1.3772426038640515
+          },
+          {
+            "nats": 16474.05859375,
+            "tokens": 16352,
+            "correct": 11538,
+            "bpc": 1.4534639577126551
+          },
+          {
+            "nats": 16532.578125,
+            "tokens": 16352,
+            "correct": 11420,
+            "bpc": 1.458626985937308
+          },
+          {
+            "nats": 16125.142578125,
+            "tokens": 16352,
+            "correct": 11606,
+            "bpc": 1.4226799921164637
+          },
+          {
+            "nats": 16316.5751953125,
+            "tokens": 16352,
+            "correct": 11585,
+            "bpc": 1.4395696011845165
+          },
+          {
+            "nats": 16201.8203125,
+            "tokens": 16352,
+            "correct": 11551,
+            "bpc": 1.4294450720534384
+          },
+          {
+            "nats": 15943.173828125,
+            "tokens": 16352,
+            "correct": 11690,
+            "bpc": 1.406625355789301
+          },
+          {
+            "nats": 15408.49609375,
+            "tokens": 16352,
+            "correct": 11707,
+            "bpc": 1.3594521099565857
+          },
+          {
+            "nats": 16974.40625,
+            "tokens": 16352,
+            "correct": 11309,
+            "bpc": 1.4976083487591503
+          },
+          {
+            "nats": 16708.263671875,
+            "tokens": 16352,
+            "correct": 11424,
+            "bpc": 1.4741272713600346
+          },
+          {
+            "nats": 16195.923828125,
+            "tokens": 16352,
+            "correct": 11448,
+            "bpc": 1.4289248403529438
+          },
+          {
+            "nats": 16554.98828125,
+            "tokens": 16352,
+            "correct": 11446,
+            "bpc": 1.4606041765737696
+          },
+          {
+            "nats": 16879.5390625,
+            "tokens": 16352,
+            "correct": 11407,
+            "bpc": 1.489238460002464
+          },
+          {
+            "nats": 15033.1083984375,
+            "tokens": 16352,
+            "correct": 11908,
+            "bpc": 1.3263326159229458
+          },
+          {
+            "nats": 14410.025390625,
+            "tokens": 16352,
+            "correct": 12162,
+            "bpc": 1.271359599445862
+          },
+          {
+            "nats": 15622.876953125,
+            "tokens": 16352,
+            "correct": 11727,
+            "bpc": 1.3783663836039577
+          },
+          {
+            "nats": 16353.931640625,
+            "tokens": 16352,
+            "correct": 11445,
+            "bpc": 1.442865464589457
+          },
+          {
+            "nats": 16773.3984375,
+            "tokens": 16352,
+            "correct": 11357,
+            "bpc": 1.4798739447551332
+          },
+          {
+            "nats": 16080.39453125,
+            "tokens": 16352,
+            "correct": 11562,
+            "bpc": 1.4187319866543777
+          },
+          {
+            "nats": 17089.72265625,
+            "tokens": 16352,
+            "correct": 11408,
+            "bpc": 1.5077824196636278
+          },
+          {
+            "nats": 15540.865234375,
+            "tokens": 16352,
+            "correct": 11812,
+            "bpc": 1.371130699899493
+          }
+        ]
+      }
+    },
+    "repr01": {
+      "1": {
+        "k_paths": 1,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.4277,
+        "acc": 0.7073,
+        "per_batch": [
+          {
+            "nats": 15662.4599609375,
+            "tokens": 16352,
+            "correct": 11698,
+            "bpc": 1.3818586909103767
+          },
+          {
+            "nats": 16272.642578125,
+            "tokens": 16352,
+            "correct": 11545,
+            "bpc": 1.435693538993367
+          },
+          {
+            "nats": 15674.55859375,
+            "tokens": 16352,
+            "correct": 11686,
+            "bpc": 1.3829261222680167
+          },
+          {
+            "nats": 16510.4296875,
+            "tokens": 16352,
+            "correct": 11500,
+            "bpc": 1.4566728860752305
+          },
+          {
+            "nats": 15775.095703125,
+            "tokens": 16352,
+            "correct": 11700,
+            "bpc": 1.3917962536966264
+          },
+          {
+            "nats": 16610.83984375,
+            "tokens": 16352,
+            "correct": 11436,
+            "bpc": 1.4655318167550715
+          },
+          {
+            "nats": 14394.009765625,
+            "tokens": 16352,
+            "correct": 12035,
+            "bpc": 1.26994658190891
+          },
+          {
+            "nats": 15417.53125,
+            "tokens": 16352,
+            "correct": 11779,
+            "bpc": 1.3602492586304809
+          },
+          {
+            "nats": 14885.66015625,
+            "tokens": 16352,
+            "correct": 11920,
+            "bpc": 1.3133236355051559
+          },
+          {
+            "nats": 14900.7890625,
+            "tokens": 16352,
+            "correct": 11942,
+            "bpc": 1.31465842011994
+          },
+          {
+            "nats": 16242.728515625,
+            "tokens": 16352,
+            "correct": 11535,
+            "bpc": 1.4330542979450795
+          },
+          {
+            "nats": 17895.50390625,
+            "tokens": 16352,
+            "correct": 11056,
+            "bpc": 1.57887443369349
+          },
+          {
+            "nats": 15349.1640625,
+            "tokens": 16352,
+            "correct": 11877,
+            "bpc": 1.3542173969398146
+          },
+          {
+            "nats": 15651.18359375,
+            "tokens": 16352,
+            "correct": 11755,
+            "bpc": 1.3808638059409142
+          },
+          {
+            "nats": 15210.341796875,
+            "tokens": 16352,
+            "correct": 11909,
+            "bpc": 1.3419694643210427
+          },
+          {
+            "nats": 15003.4287109375,
+            "tokens": 16352,
+            "correct": 11891,
+            "bpc": 1.3237140531800773
+          },
+          {
+            "nats": 16235.34375,
+            "tokens": 16352,
+            "correct": 11573,
+            "bpc": 1.4324027590051753
+          },
+          {
+            "nats": 16284.294921875,
+            "tokens": 16352,
+            "correct": 11553,
+            "bpc": 1.4367215954111052
+          },
+          {
+            "nats": 19296.833984375,
+            "tokens": 16352,
+            "correct": 10617,
+            "bpc": 1.7025101941117557
+          },
+          {
+            "nats": 16601.49609375,
+            "tokens": 16352,
+            "correct": 11407,
+            "bpc": 1.4647074416457084
+          },
+          {
+            "nats": 16870.53125,
+            "tokens": 16352,
+            "correct": 11327,
+            "bpc": 1.4884437237975345
+          },
+          {
+            "nats": 15510.087890625,
+            "tokens": 16352,
+            "correct": 11813,
+            "bpc": 1.36841529375958
+          },
+          {
+            "nats": 15750.02734375,
+            "tokens": 16352,
+            "correct": 11639,
+            "bpc": 1.389584536612873
+          },
+          {
+            "nats": 15156.962890625,
+            "tokens": 16352,
+            "correct": 11838,
+            "bpc": 1.337259980261909
+          },
+          {
+            "nats": 14861.34765625,
+            "tokens": 16352,
+            "correct": 11970,
+            "bpc": 1.3111786059563781
+          },
+          {
+            "nats": 16973.9296875,
+            "tokens": 16352,
+            "correct": 11394,
+            "bpc": 1.4975663028714656
+          },
+          {
+            "nats": 15984.0419921875,
+            "tokens": 16352,
+            "correct": 11627,
+            "bpc": 1.4102310491370997
+          },
+          {
+            "nats": 17523.03125,
+            "tokens": 16352,
+            "correct": 11205,
+            "bpc": 1.5460121260834965
+          },
+          {
+            "nats": 16948.4375,
+            "tokens": 16352,
+            "correct": 11279,
+            "bpc": 1.4953171925187463
+          },
+          {
+            "nats": 16877.095703125,
+            "tokens": 16352,
+            "correct": 11406,
+            "bpc": 1.4890228886684729
+          },
+          {
+            "nats": 16777.29296875,
+            "tokens": 16352,
+            "correct": 11406,
+            "bpc": 1.4802175492635092
+          },
+          {
+            "nats": 17155.603515625,
+            "tokens": 16352,
+            "correct": 11281,
+            "bpc": 1.5135949189976428
+          },
+          {
+            "nats": 15520.126953125,
+            "tokens": 16352,
+            "correct": 11698,
+            "bpc": 1.3693010145083522
+          },
+          {
+            "nats": 15727.384765625,
+            "tokens": 16352,
+            "correct": 11707,
+            "bpc": 1.3875868399902043
+          },
+          {
+            "nats": 14993.08984375,
+            "tokens": 16352,
+            "correct": 11840,
+            "bpc": 1.3228018814322902
+          },
+          {
+            "nats": 16704.376953125,
+            "tokens": 16352,
+            "correct": 11465,
+            "bpc": 1.473784356128506
+          },
+          {
+            "nats": 16188.0556640625,
+            "tokens": 16352,
+            "correct": 11494,
+            "bpc": 1.4282306524081132
+          },
+          {
+            "nats": 16005.658203125,
+            "tokens": 16352,
+            "correct": 11669,
+            "bpc": 1.4121381920139553
+          },
+          {
+            "nats": 15793.25390625,
+            "tokens": 16352,
+            "correct": 11635,
+            "bpc": 1.3933983054089485
+          },
+          {
+            "nats": 15567.5947265625,
+            "tokens": 16352,
+            "correct": 11794,
+            "bpc": 1.3734889744729022
+          },
+          {
+            "nats": 17059.60546875,
+            "tokens": 16352,
+            "correct": 11353,
+            "bpc": 1.5051252574173108
+          },
+          {
+            "nats": 16631.41015625,
+            "tokens": 16352,
+            "correct": 11416,
+            "bpc": 1.4673466826939956
+          },
+          {
+            "nats": 15809.0234375,
+            "tokens": 16352,
+            "correct": 11703,
+            "bpc": 1.3947896107252107
+          },
+          {
+            "nats": 16039.443359375,
+            "tokens": 16352,
+            "correct": 11611,
+            "bpc": 1.4151189697400763
+          },
+          {
+            "nats": 17512.693359375,
+            "tokens": 16352,
+            "correct": 11197,
+            "bpc": 1.5451000404953152
+          },
+          {
+            "nats": 15736.857421875,
+            "tokens": 16352,
+            "correct": 11749,
+            "bpc": 1.3884225881675478
+          },
+          {
+            "nats": 16259.83203125,
+            "tokens": 16352,
+            "correct": 11504,
+            "bpc": 1.4345632972830171
+          },
+          {
+            "nats": 17187.345703125,
+            "tokens": 16352,
+            "correct": 11225,
+            "bpc": 1.5163954508281967
+          },
+          {
+            "nats": 16687.419921875,
+            "tokens": 16352,
+            "correct": 11406,
+            "bpc": 1.4722882807314552
+          },
+          {
+            "nats": 15980.4677734375,
+            "tokens": 16352,
+            "correct": 11551,
+            "bpc": 1.4099157049794628
+          },
+          {
+            "nats": 17820.533203125,
+            "tokens": 16352,
+            "correct": 11115,
+            "bpc": 1.5722599607476488
+          },
+          {
+            "nats": 16878.869140625,
+            "tokens": 16352,
+            "correct": 11327,
+            "bpc": 1.489179354512809
+          },
+          {
+            "nats": 14780.3232421875,
+            "tokens": 16352,
+            "correct": 11958,
+            "bpc": 1.3040300296134901
+          },
+          {
+            "nats": 14524.943359375,
+            "tokens": 16352,
+            "correct": 12107,
+            "bpc": 1.2814985172311273
+          },
+          {
+            "nats": 15399.337890625,
+            "tokens": 16352,
+            "correct": 11804,
+            "bpc": 1.358644105172346
+          },
+          {
+            "nats": 17612.0078125,
+            "tokens": 16352,
+            "correct": 11066,
+            "bpc": 1.5538623000973233
+          },
+          {
+            "nats": 17246.578125,
+            "tokens": 16352,
+            "correct": 11272,
+            "bpc": 1.5216213755651649
+          },
+          {
+            "nats": 15877.4150390625,
+            "tokens": 16352,
+            "correct": 11658,
+            "bpc": 1.4008236264060248
+          },
+          {
+            "nats": 17207.236328125,
+            "tokens": 16352,
+            "correct": 11371,
+            "bpc": 1.5181503496814064
+          },
+          {
+            "nats": 15882.892578125,
+            "tokens": 16352,
+            "correct": 11675,
+            "bpc": 1.4013068956355834
+          }
+        ]
+      },
+      "2": {
+        "k_paths": 2,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.4082,
+        "acc": 0.7118,
+        "pairwise_js": {
+          "mean_nats": 0.015047302023352435,
+          "mean_bits": 0.021708668007849024,
+          "n_batches": 60,
+          "k_paths": 2
+        },
+        "paths_bitwise_identical": false,
+        "n_batches_paths_identical": 6,
+        "per_batch": [
+          {
+            "nats": 15625.63671875,
+            "tokens": 16352,
+            "correct": 11751,
+            "bpc": 1.3786098706502643
+          },
+          {
+            "nats": 16249.19921875,
+            "tokens": 16352,
+            "correct": 11597,
+            "bpc": 1.4336251914938505
+          },
+          {
+            "nats": 15754.9189453125,
+            "tokens": 16352,
+            "correct": 11657,
+            "bpc": 1.3900161100788846
+          },
+          {
+            "nats": 15220.01953125,
+            "tokens": 16352,
+            "correct": 11914,
+            "bpc": 1.3428233060156274
+          },
+          {
+            "nats": 15343.015625,
+            "tokens": 16352,
+            "correct": 11815,
+            "bpc": 1.3536749360609943
+          },
+          {
+            "nats": 16781.3984375,
+            "tokens": 16352,
+            "correct": 11410,
+            "bpc": 1.480579764246762
+          },
+          {
+            "nats": 14322.505859375,
+            "tokens": 16352,
+            "correct": 12081,
+            "bpc": 1.2636379755640554
+          },
+          {
+            "nats": 15556.609375,
+            "tokens": 16352,
+            "correct": 11758,
+            "bpc": 1.3725197650660015
+          },
+          {
+            "nats": 14692.576171875,
+            "tokens": 16352,
+            "correct": 11949,
+            "bpc": 1.2962883305435062
+          },
+          {
+            "nats": 16196.50390625,
+            "tokens": 16352,
+            "correct": 11672,
+            "bpc": 1.4289760191588552
+          },
+          {
+            "nats": 16361.333984375,
+            "tokens": 16352,
+            "correct": 11485,
+            "bpc": 1.4435185544022673
+          },
+          {
+            "nats": 17300.65625,
+            "tokens": 16352,
+            "correct": 11278,
+            "bpc": 1.5263925499021314
+          },
+          {
+            "nats": 15384.322265625,
+            "tokens": 16352,
+            "correct": 11876,
+            "bpc": 1.3573193150718474
+          },
+          {
+            "nats": 14752.1806640625,
+            "tokens": 16352,
+            "correct": 12017,
+            "bpc": 1.3015470820903268
+          },
+          {
+            "nats": 14642.68359375,
+            "tokens": 16352,
+            "correct": 12044,
+            "bpc": 1.2918864362774773
+          },
+          {
+            "nats": 15332.7109375,
+            "tokens": 16352,
+            "correct": 11791,
+            "bpc": 1.3527657798994142
+          },
+          {
+            "nats": 16406.83203125,
+            "tokens": 16352,
+            "correct": 11501,
+            "bpc": 1.4475327304416936
+          },
+          {
+            "nats": 16850.34375,
+            "tokens": 16352,
+            "correct": 11392,
+            "bpc": 1.4866626324241279
+          },
+          {
+            "nats": 15779.298828125,
+            "tokens": 16352,
+            "correct": 11629,
+            "bpc": 1.3921670846404701
+          },
+          {
+            "nats": 16321.53515625,
+            "tokens": 16352,
+            "correct": 11465,
+            "bpc": 1.440007205822942
+          },
+          {
+            "nats": 16971.896484375,
+            "tokens": 16352,
+            "correct": 11326,
+            "bpc": 1.497386918571957
+          },
+          {
+            "nats": 15067.0078125,
+            "tokens": 16352,
+            "correct": 11894,
+            "bpc": 1.3293234743229587
+          },
+          {
+            "nats": 15130.607421875,
+            "tokens": 16352,
+            "correct": 11856,
+            "bpc": 1.3349347048175642
+          },
+          {
+            "nats": 15199.607421875,
+            "tokens": 16352,
+            "correct": 11851,
+            "bpc": 1.3410223979328613
+          },
+          {
+            "nats": 14775.8916015625,
+            "tokens": 16352,
+            "correct": 12020,
+            "bpc": 1.303639037321863
+          },
+          {
+            "nats": 17081.966796875,
+            "tokens": 16352,
+            "correct": 11409,
+            "bpc": 1.507098140073477
+          },
+          {
+            "nats": 15479.091796875,
+            "tokens": 16352,
+            "correct": 11758,
+            "bpc": 1.3656805878679426
+          },
+          {
+            "nats": 17119.625,
+            "tokens": 16352,
+            "correct": 11337,
+            "bpc": 1.510420626796644
+          },
+          {
+            "nats": 16696.9921875,
+            "tokens": 16352,
+            "correct": 11377,
+            "bpc": 1.4731328171886018
+          },
+          {
+            "nats": 16739.13671875,
+            "tokens": 16352,
+            "correct": 11440,
+            "bpc": 1.4768511211413273
+          },
+          {
+            "nats": 16801.8671875,
+            "tokens": 16352,
+            "correct": 11382,
+            "bpc": 1.482385669586671
+          },
+          {
+            "nats": 16485.08984375,
+            "tokens": 16352,
+            "correct": 11471,
+            "bpc": 1.4544372166210335
+          },
+          {
+            "nats": 16041.65625,
+            "tokens": 16352,
+            "correct": 11643,
+            "bpc": 1.4153142074070721
+          },
+          {
+            "nats": 14850.4677734375,
+            "tokens": 16352,
+            "correct": 11929,
+            "bpc": 1.3102187017869158
+          },
+          {
+            "nats": 14247.5,
+            "tokens": 16352,
+            "correct": 12057,
+            "bpc": 1.2570204008724013
+          },
+          {
+            "nats": 16080.255859375,
+            "tokens": 16352,
+            "correct": 11639,
+            "bpc": 1.4187197519903383
+          },
+          {
+            "nats": 15945.763671875,
+            "tokens": 16352,
+            "correct": 11550,
+            "bpc": 1.4068538510641788
+          },
+          {
+            "nats": 16058.66015625,
+            "tokens": 16352,
+            "correct": 11687,
+            "bpc": 1.416814418465207
+          },
+          {
+            "nats": 15454.7001953125,
+            "tokens": 16352,
+            "correct": 11698,
+            "bpc": 1.363528579391086
+          },
+          {
+            "nats": 15336.3828125,
+            "tokens": 16352,
+            "correct": 11834,
+            "bpc": 1.353089740017642
+          },
+          {
+            "nats": 16321.0234375,
+            "tokens": 16352,
+            "correct": 11552,
+            "bpc": 1.4399620581894443
+          },
+          {
+            "nats": 16446.19140625,
+            "tokens": 16352,
+            "correct": 11447,
+            "bpc": 1.4510053071983589
+          },
+          {
+            "nats": 16963.3359375,
+            "tokens": 16352,
+            "correct": 11377,
+            "bpc": 1.4966316434665352
+          },
+          {
+            "nats": 16039.443359375,
+            "tokens": 16352,
+            "correct": 11611,
+            "bpc": 1.4151189697400763
+          },
+          {
+            "nats": 16272.2060546875,
+            "tokens": 16352,
+            "correct": 11544,
+            "bpc": 1.4356550256495242
+          },
+          {
+            "nats": 15736.857421875,
+            "tokens": 16352,
+            "correct": 11749,
+            "bpc": 1.3884225881675478
+          },
+          {
+            "nats": 15521.04296875,
+            "tokens": 16352,
+            "correct": 11620,
+            "bpc": 1.3693818322186972
+          },
+          {
+            "nats": 17473.81640625,
+            "tokens": 16352,
+            "correct": 11183,
+            "bpc": 1.5416700265839705
+          },
+          {
+            "nats": 16984.6640625,
+            "tokens": 16352,
+            "correct": 11296,
+            "bpc": 1.498513369259647
+          },
+          {
+            "nats": 16183.9375,
+            "tokens": 16352,
+            "correct": 11506,
+            "bpc": 1.4278673173499834
+          },
+          {
+            "nats": 16798.890625,
+            "tokens": 16352,
+            "correct": 11394,
+            "bpc": 1.4821230551078521
+          },
+          {
+            "nats": 16636.220703125,
+            "tokens": 16352,
+            "correct": 11436,
+            "bpc": 1.4677711049127167
+          },
+          {
+            "nats": 14822.91015625,
+            "tokens": 16352,
+            "correct": 11972,
+            "bpc": 1.3077873638676936
+          },
+          {
+            "nats": 15663.9033203125,
+            "tokens": 16352,
+            "correct": 11960,
+            "bpc": 1.381986034807914
+          },
+          {
+            "nats": 15699.775390625,
+            "tokens": 16352,
+            "correct": 11698,
+            "bpc": 1.3851509356118687
+          },
+          {
+            "nats": 16205.482421875,
+            "tokens": 16352,
+            "correct": 11498,
+            "bpc": 1.4297681705756073
+          },
+          {
+            "nats": 16722.80859375,
+            "tokens": 16352,
+            "correct": 11423,
+            "bpc": 1.4754105325304834
+          },
+          {
+            "nats": 16327.623046875,
+            "tokens": 16352,
+            "correct": 11541,
+            "bpc": 1.4405443248061955
+          },
+          {
+            "nats": 16838.580078125,
+            "tokens": 16352,
+            "correct": 11488,
+            "bpc": 1.4856247538113156
+          },
+          {
+            "nats": 15549.3212890625,
+            "tokens": 16352,
+            "correct": 11792,
+            "bpc": 1.3718767559270826
+          }
+        ]
+      },
+      "4": {
+        "k_paths": 4,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.4023,
+        "acc": 0.7137,
+        "paths_bitwise_identical": false,
+        "n_batches_paths_identical": 0,
+        "per_batch": [
+          {
+            "nats": 15683.1142578125,
+            "tokens": 16352,
+            "correct": 11711,
+            "bpc": 1.383680966575409
+          },
+          {
+            "nats": 15994.158203125,
+            "tokens": 16352,
+            "correct": 11665,
+            "bpc": 1.411123576494739
+          },
+          {
+            "nats": 15702.189453125,
+            "tokens": 16352,
+            "correct": 11686,
+            "bpc": 1.3853639221576823
+          },
+          {
+            "nats": 15248.578125,
+            "tokens": 16352,
+            "correct": 11870,
+            "bpc": 1.3453429575309093
+          },
+          {
+            "nats": 15651.1328125,
+            "tokens": 16352,
+            "correct": 11770,
+            "bpc": 1.3808593256414068
+          },
+          {
+            "nats": 16709.95703125,
+            "tokens": 16352,
+            "correct": 11427,
+            "bpc": 1.4742766721166856
+          },
+          {
+            "nats": 14176.326171875,
+            "tokens": 16352,
+            "correct": 12127,
+            "bpc": 1.2507409164743448
+          },
+          {
+            "nats": 15581.4130859375,
+            "tokens": 16352,
+            "correct": 11720,
+            "bpc": 1.3747081328965527
+          },
+          {
+            "nats": 14995.0126953125,
+            "tokens": 16352,
+            "correct": 11885,
+            "bpc": 1.3229715296963303
+          },
+          {
+            "nats": 14988.1953125,
+            "tokens": 16352,
+            "correct": 11902,
+            "bpc": 1.3223700494874606
+          },
+          {
+            "nats": 16262.9208984375,
+            "tokens": 16352,
+            "correct": 11528,
+            "bpc": 1.434835820116516
+          },
+          {
+            "nats": 17204.107421875,
+            "tokens": 16352,
+            "correct": 11275,
+            "bpc": 1.517874294304065
+          },
+          {
+            "nats": 15402.7421875,
+            "tokens": 16352,
+            "correct": 11886,
+            "bpc": 1.358944457558554
+          },
+          {
+            "nats": 14335.333984375,
+            "tokens": 16352,
+            "correct": 12126,
+            "bpc": 1.2647697681473116
+          },
+          {
+            "nats": 14375.103515625,
+            "tokens": 16352,
+            "correct": 12149,
+            "bpc": 1.2682785319384597
+          },
+          {
+            "nats": 15174.689453125,
+            "tokens": 16352,
+            "correct": 11832,
+            "bpc": 1.3388239494284182
+          },
+          {
+            "nats": 16381.9775390625,
+            "tokens": 16352,
+            "correct": 11544,
+            "bpc": 1.4453398823116348
+          },
+          {
+            "nats": 16334.28125,
+            "tokens": 16352,
+            "correct": 11521,
+            "bpc": 1.4411317609993015
+          },
+          {
+            "nats": 15798.3173828125,
+            "tokens": 16352,
+            "correct": 11651,
+            "bpc": 1.3938450429656006
+          },
+          {
+            "nats": 16183.6806640625,
+            "tokens": 16352,
+            "correct": 11498,
+            "bpc": 1.4278446573736288
+          },
+          {
+            "nats": 16703.33984375,
+            "tokens": 16352,
+            "correct": 11350,
+            "bpc": 1.4736928546270278
+          },
+          {
+            "nats": 15302.08203125,
+            "tokens": 16352,
+            "correct": 11863,
+            "bpc": 1.3500634700195995
+          },
+          {
+            "nats": 14866.4599609375,
+            "tokens": 16352,
+            "correct": 11925,
+            "bpc": 1.3116296514933259
+          },
+          {
+            "nats": 15189.7001953125,
+            "tokens": 16352,
+            "correct": 11878,
+            "bpc": 1.340148308730887
+          },
+          {
+            "nats": 14977.43359375,
+            "tokens": 16352,
+            "correct": 11962,
+            "bpc": 1.3214205706303137
+          },
+          {
+            "nats": 16756.544921875,
+            "tokens": 16352,
+            "correct": 11458,
+            "bpc": 1.478387002276309
+          },
+          {
+            "nats": 15883.7275390625,
+            "tokens": 16352,
+            "correct": 11721,
+            "bpc": 1.401380562098638
+          },
+          {
+            "nats": 16867.111328125,
+            "tokens": 16352,
+            "correct": 11383,
+            "bpc": 1.4881419928576316
+          },
+          {
+            "nats": 16752.9375,
+            "tokens": 16352,
+            "correct": 11338,
+            "bpc": 1.4780687286920713
+          },
+          {
+            "nats": 16650.35546875,
+            "tokens": 16352,
+            "correct": 11480,
+            "bpc": 1.4690181790486827
+          },
+          {
+            "nats": 16454.890625,
+            "tokens": 16352,
+            "correct": 11509,
+            "bpc": 1.4517728169678201
+          },
+          {
+            "nats": 16679.6015625,
+            "tokens": 16352,
+            "correct": 11424,
+            "bpc": 1.4715984869265262
+          },
+          {
+            "nats": 15889.85546875,
+            "tokens": 16352,
+            "correct": 11668,
+            "bpc": 1.401921213625734
+          },
+          {
+            "nats": 14797.283203125,
+            "tokens": 16352,
+            "correct": 11956,
+            "bpc": 1.3055263634893588
+          },
+          {
+            "nats": 14229.4326171875,
+            "tokens": 16352,
+            "correct": 12046,
+            "bpc": 1.255426362003429
+          },
+          {
+            "nats": 15843.28125,
+            "tokens": 16352,
+            "correct": 11671,
+            "bpc": 1.397812089700593
+          },
+          {
+            "nats": 15940.453125,
+            "tokens": 16352,
+            "correct": 11587,
+            "bpc": 1.406385315127231
+          },
+          {
+            "nats": 15799.71484375,
+            "tokens": 16352,
+            "correct": 11732,
+            "bpc": 1.3939683373616603
+          },
+          {
+            "nats": 15435.048828125,
+            "tokens": 16352,
+            "correct": 11725,
+            "bpc": 1.361794789641325
+          },
+          {
+            "nats": 15672.650390625,
+            "tokens": 16352,
+            "correct": 11787,
+            "bpc": 1.3827577663980652
+          },
+          {
+            "nats": 16193.79296875,
+            "tokens": 16352,
+            "correct": 11605,
+            "bpc": 1.4287368400928444
+          },
+          {
+            "nats": 16500.451171875,
+            "tokens": 16352,
+            "correct": 11447,
+            "bpc": 1.4557925072220248
+          },
+          {
+            "nats": 15900.5322265625,
+            "tokens": 16352,
+            "correct": 11676,
+            "bpc": 1.4028631965971665
+          },
+          {
+            "nats": 16101.201171875,
+            "tokens": 16352,
+            "correct": 11591,
+            "bpc": 1.4205677032179325
+          },
+          {
+            "nats": 19238.982421875,
+            "tokens": 16352,
+            "correct": 11650,
+            "bpc": 1.6974060990575468
+          },
+          {
+            "nats": 15793.076171875,
+            "tokens": 16352,
+            "correct": 11748,
+            "bpc": 1.3933826243606726
+          },
+          {
+            "nats": 15301.828125,
+            "tokens": 16352,
+            "correct": 11759,
+            "bpc": 1.3500410685220625
+          },
+          {
+            "nats": 17022.08203125,
+            "tokens": 16352,
+            "correct": 11278,
+            "bpc": 1.5018146607197598
+          },
+          {
+            "nats": 16646.0546875,
+            "tokens": 16352,
+            "correct": 11398,
+            "bpc": 1.4686387321442476
+          },
+          {
+            "nats": 16001.095703125,
+            "tokens": 16352,
+            "correct": 11543,
+            "bpc": 1.4117356543351356
+          },
+          {
+            "nats": 16535.3828125,
+            "tokens": 16352,
+            "correct": 11492,
+            "bpc": 1.4588744363254862
+          },
+          {
+            "nats": 16552.35546875,
+            "tokens": 16352,
+            "correct": 11441,
+            "bpc": 1.4603718902762317
+          },
+          {
+            "nats": 14849.77734375,
+            "tokens": 16352,
+            "correct": 11970,
+            "bpc": 1.3101577869455363
+          },
+          {
+            "nats": 14412.033203125,
+            "tokens": 16352,
+            "correct": 12161,
+            "bpc": 1.2715367435956164
+          },
+          {
+            "nats": 16080.193359375,
+            "tokens": 16352,
+            "correct": 11608,
+            "bpc": 1.4187142377755597
+          },
+          {
+            "nats": 16139.70703125,
+            "tokens": 16352,
+            "correct": 11517,
+            "bpc": 1.4239649764790305
+          },
+          {
+            "nats": 17118.71484375,
+            "tokens": 16352,
+            "correct": 11303,
+            "bpc": 1.5103403260439343
+          },
+          {
+            "nats": 15920.0703125,
+            "tokens": 16352,
+            "correct": 11611,
+            "bpc": 1.404586991832642
+          },
+          {
+            "nats": 16775.65234375,
+            "tokens": 16352,
+            "correct": 11475,
+            "bpc": 1.4800728011255775
+          },
+          {
+            "nats": 15717.451171875,
+            "tokens": 16352,
+            "correct": 11729,
+            "bpc": 1.3867104244788706
+          }
+        ]
+      },
+      "8": {
+        "k_paths": 8,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.3945,
+        "acc": 0.7146,
+        "pairwise_js": {
+          "mean_nats": 0.016403757039266307,
+          "mean_bits": 0.023665618932496923,
+          "n_batches": 60,
+          "k_paths": 8
+        },
+        "paths_bitwise_identical": false,
+        "n_batches_paths_identical": 0,
+        "per_batch": [
+          {
+            "nats": 15596.994140625,
+            "tokens": 16352,
+            "correct": 11713,
+            "bpc": 1.376082809408874
+          },
+          {
+            "nats": 16017.4775390625,
+            "tokens": 16352,
+            "correct": 11668,
+            "bpc": 1.4131809817243046
+          },
+          {
+            "nats": 15823.0673828125,
+            "tokens": 16352,
+            "correct": 11652,
+            "bpc": 1.3960286720178268
+          },
+          {
+            "nats": 15187.259765625,
+            "tokens": 16352,
+            "correct": 11884,
+            "bpc": 1.3399329958757136
+          },
+          {
+            "nats": 15390.736328125,
+            "tokens": 16352,
+            "correct": 11808,
+            "bpc": 1.3578852113634756
+          },
+          {
+            "nats": 16688.318359375,
+            "tokens": 16352,
+            "correct": 11451,
+            "bpc": 1.472367547568894
+          },
+          {
+            "nats": 14147.595703125,
+            "tokens": 16352,
+            "correct": 12168,
+            "bpc": 1.2482061008684224
+          },
+          {
+            "nats": 15513.216796875,
+            "tokens": 16352,
+            "correct": 11764,
+            "bpc": 1.368691349136921
+          },
+          {
+            "nats": 14850.39453125,
+            "tokens": 16352,
+            "correct": 11941,
+            "bpc": 1.3102122398164726
+          },
+          {
+            "nats": 14940.650390625,
+            "tokens": 16352,
+            "correct": 11941,
+            "bpc": 1.3181752829140436
+          },
+          {
+            "nats": 16316.544921875,
+            "tokens": 16352,
+            "correct": 11505,
+            "bpc": 1.4395669302367333
+          },
+          {
+            "nats": 17120.404296875,
+            "tokens": 16352,
+            "correct": 11298,
+            "bpc": 1.5104893821621614
+          },
+          {
+            "nats": 15376.7822265625,
+            "tokens": 16352,
+            "correct": 11895,
+            "bpc": 1.3566540767546034
+          },
+          {
+            "nats": 14429.9794921875,
+            "tokens": 16352,
+            "correct": 12123,
+            "bpc": 1.2731200986734559
+          },
+          {
+            "nats": 14381.3798828125,
+            "tokens": 16352,
+            "correct": 12196,
+            "bpc": 1.2688322797256542
+          },
+          {
+            "nats": 15163.5517578125,
+            "tokens": 16352,
+            "correct": 11851,
+            "bpc": 1.3378412991229953
+          },
+          {
+            "nats": 16338.3037109375,
+            "tokens": 16352,
+            "correct": 11574,
+            "bpc": 1.441486652416052
+          },
+          {
+            "nats": 16262.0,
+            "tokens": 16352,
+            "correct": 11534,
+            "bpc": 1.4347545716081411
+          },
+          {
+            "nats": 15718.375,
+            "tokens": 16352,
+            "correct": 11687,
+            "bpc": 1.3867919314660628
+          },
+          {
+            "nats": 16262.73046875,
+            "tokens": 16352,
+            "correct": 11486,
+            "bpc": 1.434819018993363
+          },
+          {
+            "nats": 16747.51171875,
+            "tokens": 16352,
+            "correct": 11369,
+            "bpc": 1.4775900259216257
+          },
+          {
+            "nats": 15083.046875,
+            "tokens": 16352,
+            "correct": 11910,
+            "bpc": 1.3307385596904524
+          },
+          {
+            "nats": 16385.828125,
+            "tokens": 16352,
+            "correct": 11915,
+            "bpc": 1.445679609637745
+          },
+          {
+            "nats": 14951.640625,
+            "tokens": 16352,
+            "correct": 11928,
+            "bpc": 1.319144923118974
+          },
+          {
+            "nats": 14787.94140625,
+            "tokens": 16352,
+            "correct": 11990,
+            "bpc": 1.3047021606992073
+          },
+          {
+            "nats": 16697.40625,
+            "tokens": 16352,
+            "correct": 11465,
+            "bpc": 1.4731693488615083
+          },
+          {
+            "nats": 15485.009765625,
+            "tokens": 16352,
+            "correct": 11776,
+            "bpc": 1.3662027150797675
+          },
+          {
+            "nats": 16969.951171875,
+            "tokens": 16352,
+            "correct": 11349,
+            "bpc": 1.4972152886369814
+          },
+          {
+            "nats": 16810.53515625,
+            "tokens": 16352,
+            "correct": 11342,
+            "bpc": 1.4831504222487435
+          },
+          {
+            "nats": 16555.2109375,
+            "tokens": 16352,
+            "correct": 11495,
+            "bpc": 1.4606238209639173
+          },
+          {
+            "nats": 16244.3994140625,
+            "tokens": 16352,
+            "correct": 11563,
+            "bpc": 1.4332017170307947
+          },
+          {
+            "nats": 16595.91796875,
+            "tokens": 16352,
+            "correct": 11435,
+            "bpc": 1.4642152979767409
+          },
+          {
+            "nats": 15973.2109375,
+            "tokens": 16352,
+            "correct": 11668,
+            "bpc": 1.409275452947933
+          },
+          {
+            "nats": 14765.6591796875,
+            "tokens": 16352,
+            "correct": 11961,
+            "bpc": 1.30273625697112
+          },
+          {
+            "nats": 14175.78515625,
+            "tokens": 16352,
+            "correct": 12052,
+            "bpc": 1.2506931840526696
+          },
+          {
+            "nats": 15866.990234375,
+            "tokens": 16352,
+            "correct": 11658,
+            "bpc": 1.3999038726129174
+          },
+          {
+            "nats": 15956.1875,
+            "tokens": 16352,
+            "correct": 11558,
+            "bpc": 1.4077735186976803
+          },
+          {
+            "nats": 15648.916015625,
+            "tokens": 16352,
+            "correct": 11723,
+            "bpc": 1.3806637433359872
+          },
+          {
+            "nats": 15464.6513671875,
+            "tokens": 16352,
+            "correct": 11718,
+            "bpc": 1.3644065457753263
+          },
+          {
+            "nats": 15328.5908203125,
+            "tokens": 16352,
+            "correct": 11847,
+            "bpc": 1.3524022725220728
+          },
+          {
+            "nats": 16253.173828125,
+            "tokens": 16352,
+            "correct": 11590,
+            "bpc": 1.4339758610899112
+          },
+          {
+            "nats": 16496.599609375,
+            "tokens": 16352,
+            "correct": 11432,
+            "bpc": 1.455452693736309
+          },
+          {
+            "nats": 16028.18359375,
+            "tokens": 16352,
+            "correct": 11644,
+            "bpc": 1.4141255494839144
+          },
+          {
+            "nats": 16118.046875,
+            "tokens": 16352,
+            "correct": 11591,
+            "bpc": 1.4220539564199093
+          },
+          {
+            "nats": 16160.890625,
+            "tokens": 16352,
+            "correct": 11614,
+            "bpc": 1.4258339506504674
+          },
+          {
+            "nats": 15784.28515625,
+            "tokens": 16352,
+            "correct": 11714,
+            "bpc": 1.3926070155882553
+          },
+          {
+            "nats": 15246.61328125,
+            "tokens": 16352,
+            "correct": 11762,
+            "bpc": 1.345169604403815
+          },
+          {
+            "nats": 16857.51953125,
+            "tokens": 16352,
+            "correct": 11318,
+            "bpc": 1.4872957332083672
+          },
+          {
+            "nats": 16564.375,
+            "tokens": 16352,
+            "correct": 11427,
+            "bpc": 1.4614323427057927
+          },
+          {
+            "nats": 16081.4814453125,
+            "tokens": 16352,
+            "correct": 11485,
+            "bpc": 1.4188278822957574
+          },
+          {
+            "nats": 16329.638671875,
+            "tokens": 16352,
+            "correct": 11522,
+            "bpc": 1.4407221582327974
+          },
+          {
+            "nats": 16784.98046875,
+            "tokens": 16352,
+            "correct": 11396,
+            "bpc": 1.4808957976812458
+          },
+          {
+            "nats": 14844.595703125,
+            "tokens": 16352,
+            "correct": 11980,
+            "bpc": 1.3097006240765687
+          },
+          {
+            "nats": 14244.951171875,
+            "tokens": 16352,
+            "correct": 12194,
+            "bpc": 1.2567955243009719
+          },
+          {
+            "nats": 15555.0537109375,
+            "tokens": 16352,
+            "correct": 11727,
+            "bpc": 1.3723825128137843
+          },
+          {
+            "nats": 16138.2392578125,
+            "tokens": 16352,
+            "correct": 11540,
+            "bpc": 1.4238354785913454
+          },
+          {
+            "nats": 16595.017578125,
+            "tokens": 16352,
+            "correct": 11424,
+            "bpc": 1.4641358588200901
+          },
+          {
+            "nats": 15905.3759765625,
+            "tokens": 16352,
+            "correct": 11644,
+            "bpc": 1.4032905482424887
+          },
+          {
+            "nats": 16914.3515625,
+            "tokens": 16352,
+            "correct": 11462,
+            "bpc": 1.4923098776340045
+          },
+          {
+            "nats": 15389.7587890625,
+            "tokens": 16352,
+            "correct": 11810,
+            "bpc": 1.3577989655979579
+          }
+        ]
+      }
+    }
+  },
+  "deterministic_path_control": {
+    "stock": {
+      "K1": {
+        "k_paths": 1,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.3599,
+        "acc": 0.7219
+      },
+      "K8": {
+        "k_paths": 8,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.3599,
+        "acc": 0.7219,
+        "paths_bitwise_identical": true,
+        "n_batches_paths_identical": 60
+      },
+      "gain_K1_minus_Kmax": 0.0,
+      "paths_bitwise_identical_all": true
+    },
+    "repr01_forced": {
+      "K1": {
+        "k_paths": 1,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.3849,
+        "acc": 0.7157
+      },
+      "K8": {
+        "k_paths": 8,
+        "n_batches": 60,
+        "batch_size": 32,
+        "seed": 11,
+        "temperature": 1.0,
+        "bpc": 1.3849,
+        "acc": 0.7157,
+        "paths_bitwise_identical": true,
+        "n_batches_paths_identical": 60
+      },
+      "gain_K1_minus_Kmax": 0.0,
+      "paths_bitwise_identical_all": true
+    }
+  },
+  "pairwise_js_at_kmax": {
+    "stock": {
+      "mean_nats": 0.0,
+      "mean_bits": 0.0,
+      "n_batches": 60,
+      "k_paths": 8
+    },
+    "l1": {
+      "mean_nats": 0.01546657300793976,
+      "mean_bits": 0.02231354817810179,
+      "n_batches": 60,
+      "k_paths": 8
+    },
+    "repr01": {
+      "mean_nats": 0.016403757039266307,
+      "mean_bits": 0.023665618932496923,
+      "n_batches": 60,
+      "k_paths": 8
+    }
+  },
+  "criteria": {
+    "main_reading_B": {
+      "task_form": "(bpc_repr01@K8) - (bpc_stock@K1) < 0",
+      "value": 0.0346,
+      "baseline": "stock (p_skip=0, w_repr_decorr=0, same tokens/seed/scale)",
+      "cost_term": "bpc_l1@K1 - bpc_stock@K1 (same protocol as the baseline read)",
+      "primary": true,
+      "reading_B_reduced": -0.0346,
+      "task_form_equals_neg_reading_B_reduced": true,
+      "algebra_consistent": true,
+      "ci": {
+        "delta": 0.03456410917006657,
+        "delta_ci": [
+          0.02981996622476042,
+          0.04071981933485824
+        ],
+        "paired_ci_excludes_zero": true,
+        "arm_a_ci": [
+          1.3769827462413229,
+          1.4113870094180143
+        ],
+        "arm_b_ci": [
+          1.3428440815737017,
+          1.3765632795641356
+        ],
+        "arm_cis_overlap": false,
+        "n_batches": 60
+      },
+      "passed_point_estimate": false,
+      "passed": false,
+      "compute_price_tag": "repr01@K8 = 8x forwards/token; stock@K1 = 1x"
+    },
+    "mechanism_net": {
+      "task_form": "(bpc_l1@K8) - (bpc_repr01@K8)   # 正 = repr01 集成更好 = 机制净成立",
+      "baseline": "l1 (p_skip=0.1, w_repr_decorr=0, same tokens/seed/scale)",
+      "value": 0.0144,
+      "primary": false,
+      "variance_floor": 0.014,
+      "passed": true,
+      "ordering": "keep",
+      "ci": {
+        "delta": -0.014408401968928975,
+        "delta_ci": [
+          -0.01579436090214512,
+          -0.013032439775788413
+        ],
+        "paired_ci_excludes_zero": true,
+        "arm_a_ci": [
+          1.3769130935953091,
+          1.4113245549762767
+        ],
+        "arm_b_ci": [
+          1.3916758523247346,
+          1.4254436217519058
+        ],
+        "arm_cis_overlap": true,
+        "n_batches": 60
+      },
+      "js_less_correlated": true
+    },
+    "taxes": {
+      "repr_clean_tax_vs_l1": -0.0112,
+      "repr_clean_tax_vs_l1_ci": {
+        "delta": -0.011241127467831588,
+        "delta_ci": [
+          -0.01705128796344443,
+          -0.004665092153079172
+        ],
+        "paired_ci_excludes_zero": true,
+        "arm_a_ci": [
+          1.4068762427251609,
+          1.4487352986537265
+        ],
+        "arm_b_ci": [
+          1.418580332680433,
+          1.459211572652747
+        ],
+        "arm_cis_overlap": true,
+        "n_batches": 60
+      },
+      "mechanism_clean_tax_vs_stock": 0.079,
+      "mechanism_clean_tax_vs_stock_ci": {
+        "delta": 0.07901289205229384,
+        "delta_ci": [
+          0.06900276963082715,
+          0.09068691370519628
+        ],
+        "paired_ci_excludes_zero": true,
+        "arm_a_ci": [
+          1.4184963246234799,
+          1.459115913411786
+        ],
+        "arm_b_ci": [
+          1.3425499924523454,
+          1.3768406660714883
+        ],
+        "arm_cis_overlap": false,
+        "n_batches": 60
+      }
+    },
+    "variance_floor": {
+      "delta_unorderable_below": 0.014,
+      "note": "docs/methodology.md：Δ < 0.014 不可排序"
+    }
+  },
+  "lambda_arm": {
+    "repr_arms": [
+      "repr01"
+    ],
+    "variance_floor": 0.014,
+    "arms": {
+      "repr01": {
+        "K1": 1.4277,
+        "K8": 1.3945,
+        "ensemble_gain_K1_minus_K8": 0.0332,
+        "gain_increment_vs_l1": 0.0032,
+        "clean_tax_vs_l1": -0.0112,
+        "l1_K8_minus_arm_K8": 0.0144,
+        "js_bits_K8": 0.023665618932496923,
+        "ci_arm_vs_l1_K8": {
+          "delta": -0.014408401968928975,
+          "delta_ci": [
+            -0.01576232762226321,
+            -0.013049626642676818
+          ],
+          "paired_ci_excludes_zero": true,
+          "arm_a_ci": [
+            1.377302894335487,
+            1.4111281303889098
+          ],
+          "arm_b_ci": [
+            1.3918646331190632,
+            1.4253839702975475
+          ],
+          "arm_cis_overlap": true,
+          "n_batches": 60
+        }
+      }
+    }
+  },
+  "battery_clean_bpc": {
+    "stock": {
+      "bpc": 1.3479,
+      "next_token_acc": 0.7244,
+      "ece_node1": 0.0153
+    },
+    "l1": {
+      "bpc": 1.4306,
+      "next_token_acc": 0.708,
+      "ece_node1": 0.0093
+    },
+    "repr01": {
+      "bpc": 1.4169,
+      "next_token_acc": 0.7098,
+      "ece_node1": 0.008
+    }
+  },
+  "train_products": {
+    "stock": {
+      "params": 13076483,
+      "wall_minutes": 22.0,
+      "peak_gpu_mem_mb": 2613.9,
+      "train_tokens": 393216000,
+      "intervention": {
+        "name": "capped_negative_js_diversity_pressure",
+        "w_diversity": 0.0,
+        "w_repr_decorr": 0.0,
+        "p_skip": 0.0,
+        "n_paths_per_step": 1,
+        "alive": false,
+        "diversity_js_first": null,
+        "diversity_js_last": null,
+        "diversity_js_mean": null,
+        "n_diversity_observations": 0,
+        "repr_decorr_first": null,
+        "repr_decorr_last": null,
+        "repr_decorr_mean": null,
+        "n_repr_observations": 0,
+        "skip_frac_mean": 1.0,
+        "gnorm_max": 22.5947,
+        "gate_skips": 0,
+        "params_added": 0,
+        "extra_forward_per_step": 0,
+        "note": "w_diversity>0 每步多采样一条并行路径（额外 1 次前向）并减去 capped −JS；w_diversity=0 与 w_repr_decorr=0 臂是阶梯对照，不是未激活的开关"
+      },
+      "unspecified_path_keys": [],
+      "first_log": {
+        "step": 0,
+        "loss": 11.1119,
+        "lr": 1e-05,
+        "min": 0.0,
+        "gnorm": 22.5947,
+        "n_paths": 1,
+        "skip_frac": 1.0,
+        "diversity_js": null,
+        "repr_decorr": null
+      },
+      "last_log": {
+        "step": 23999,
+        "loss": 1.1273,
+        "lr": 0.0001,
+        "min": 22.0,
+        "gnorm": 0.3715,
+        "n_paths": 1,
+        "skip_frac": 1.0,
+        "diversity_js": null,
+        "repr_decorr": null
+      }
+    },
+    "l1": {
+      "params": 13076483,
+      "wall_minutes": 22.3,
+      "peak_gpu_mem_mb": 2616.2,
+      "train_tokens": 393216000,
+      "intervention": {
+        "name": "capped_negative_js_diversity_pressure",
+        "w_diversity": 0.0,
+        "w_repr_decorr": 0.0,
+        "p_skip": 0.1,
+        "n_paths_per_step": 1,
+        "alive": false,
+        "diversity_js_first": null,
+        "diversity_js_last": null,
+        "diversity_js_mean": null,
+        "n_diversity_observations": 0,
+        "repr_decorr_first": null,
+        "repr_decorr_last": null,
+        "repr_decorr_mean": null,
+        "n_repr_observations": 0,
+        "skip_frac_mean": 0.9,
+        "gnorm_max": 113.9613,
+        "gate_skips": 0,
+        "params_added": 0,
+        "extra_forward_per_step": 0,
+        "note": "w_diversity>0 每步多采样一条并行路径（额外 1 次前向）并减去 capped −JS；w_diversity=0 与 w_repr_decorr=0 臂是阶梯对照，不是未激活的开关"
+      },
+      "unspecified_path_keys": [],
+      "first_log": {
+        "step": 0,
+        "loss": 11.1728,
+        "lr": 1e-05,
+        "min": 0.0,
+        "gnorm": 21.8389,
+        "n_paths": 1,
+        "skip_frac": 0.9167,
+        "diversity_js": null,
+        "repr_decorr": null
+      },
+      "last_log": {
+        "step": 23999,
+        "loss": 1.1953,
+        "lr": 0.0001,
+        "min": 22.3,
+        "gnorm": 0.4016,
+        "n_paths": 1,
+        "skip_frac": 1.0,
+        "diversity_js": null,
+        "repr_decorr": null
+      }
+    },
+    "repr01": {
+      "params": 13076483,
+      "wall_minutes": 28.8,
+      "peak_gpu_mem_mb": 4995.8,
+      "train_tokens": 393216000,
+      "intervention": {
+        "name": "cross_path_hidden_correlation_repr_decorr",
+        "w_diversity": 0.0,
+        "w_repr_decorr": 0.1,
+        "p_skip": 0.1,
+        "n_paths_per_step": 2,
+        "alive": true,
+        "diversity_js_first": null,
+        "diversity_js_last": null,
+        "diversity_js_mean": null,
+        "n_diversity_observations": 0,
+        "repr_decorr_first": 0.79354,
+        "repr_decorr_last": 0.007126,
+        "repr_decorr_mean": 0.080532,
+        "n_repr_observations": 24000,
+        "skip_frac_mean": 0.8993,
+        "gnorm_max": 2294.6606,
+        "gate_skips": 0,
+        "params_added": 0,
+        "extra_forward_per_step": 1,
+        "note": "w_repr_decorr>0 每步多采样一条并行路径（额外 1 次前向），并对两条路径的 trunk 隐状态做跨路 Pearson 相关罚则（无 cap、尺度不变）；"
+      },
+      "unspecified_path_keys": [],
+      "first_log": {
+        "step": 0,
+        "loss": 22.8974,
+        "lr": 1e-05,
+        "min": 0.0,
+        "gnorm": 32.9755,
+        "n_paths": 2,
+        "skip_frac": 0.9583,
+        "diversity_js": null,
+        "repr_decorr": 0.79354
+      },
+      "last_log": {
+        "step": 23999,
+        "loss": 2.3608,
+        "lr": 0.0001,
+        "min": 28.8,
+        "gnorm": 0.6083,
+        "n_paths": 2,
+        "skip_frac": 1.0,
+        "diversity_js": null,
+        "repr_decorr": 0.007126
+      }
+    }
+  },
+  "loss_slope": {
+    "stock": {
+      "n_points": 120,
+      "slope": -0.175971,
+      "first_loss": 11.1119,
+      "last_loss": 1.1273,
+      "window_steps": [
+        200,
+        24000
+      ]
+    },
+    "l1": {
+      "n_points": 120,
+      "slope": -0.21989,
+      "first_loss": 11.1728,
+      "last_loss": 1.1953,
+      "window_steps": [
+        200,
+        24000
+      ]
+    },
+    "repr01": {
+      "n_points": 120,
+      "slope": -0.226211,
+      "first_loss": 22.8974,
+      "last_loss": 2.3608,
+      "window_steps": [
+        200,
+        24000
+      ]
+    }
+  },
+  "trajectory": {
+    "checkpoints": {
+      "6000": {
+        "step": 6000,
+        "arms": {
+          "stock": {
+            "K1_bpc": 1.571,
+            "K1_per_batch": [
+              1.570929656432372,
+              1.5868088718018987,
+              1.565315151872742,
+              1.5085931815552565,
+              1.5326591103593012,
+              1.6480723149469894,
+              1.408876275493744,
+              1.5475824710608432,
+              1.496618374887225,
+              1.510816616345414,
+              1.6221162167084542,
+              1.6730978894416784,
+              1.5293037106666758,
+              1.4464865805067137,
+              1.4447246165658194,
+              1.5083851922665859,
+              1.6119614455557012,
+              1.6163162966769022,
+              1.5639824350885,
+              1.5901513475536369,
+              1.6695239889884612,
+              1.520216112392745,
+              1.4854639799866844,
+              1.4740922905600344,
+              1.5148985138350868,
+              1.6610383017214294,
+              1.5506616430569156,
+              1.6696487480978215,
+              1.654184132751942,
+              1.6526828877785367,
+              1.6183289850709994,
+              1.6522865535913427,
+              1.5723149305762203,
+              1.4907047241758695,
+              1.4227595174327201,
+              1.5786421473959522,
+              1.578686261114179,
+              1.5709699791279388,
+              1.5231069394902945,
+              1.5515465022096286,
+              1.6164503610237009,
+              1.6329799090986488,
+              1.5725460106392757,
+              1.5927071861034017,
+              1.5952209787654816,
+              1.5816215465683787,
+              1.5108591791907344,
+              1.6752268933037566,
+              1.6513224276011906,
+              1.5963150334413483,
+              1.649510146450444,
+              1.6563370889844635,
+              1.4785974040339456,
+              1.4575703245304068,
+              1.5532090379653007,
+              1.5987662742295363,
+              1.649954213059313,
+              1.585746868499431,
+              1.6707717524012746,
+              1.5387502498588346
+            ]
+          },
+          "l1": {
+            "K1_bpc": 1.7515,
+            "K1_per_batch": [
+              1.6972582491738022,
+              1.7144803481610682,
+              1.6443233381745597,
+              1.7434079188882863,
+              1.6584187050632901,
+              1.7408348484173393,
+              1.5172689369129297,
+              1.6225246132404758,
+              1.6070041664699657,
+              1.6048842955261142,
+              1.7160606876527007,
+              1.853420984015853,
+              1.622899062887768,
+              1.6844146090397567,
+              1.5963384688541562,
+              1.6115714871793447,
+              1.7100862082595718,
+              1.695803702706801,
+              4.45591633893542,
+              1.723446806029087,
+              1.7570490523346505,
+              1.694781849780688,
+              1.692126927684125,
+              1.5928460753881315,
+              1.6145415811143329,
+              1.760441328338606,
+              1.7665917456470066,
+              1.858727381824743,
+              1.7686754295563754,
+              1.7652769500607943,
+              1.7563220375799675,
+              1.8065387853319077,
+              1.6733515433214827,
+              1.677517532586525,
+              1.6214078124286482,
+              1.738582291680384,
+              1.7044279346201385,
+              1.6896088270417495,
+              1.6552463083736213,
+              1.669296872267278,
+              1.7792982196884408,
+              1.7336215662104117,
+              1.6568047633253522,
+              1.6799677394594419,
+              1.8466503898640998,
+              1.657771818742105,
+              1.7123840849492367,
+              1.7873796460845346,
+              1.7492009461513653,
+              1.685153858458479,
+              1.822367338853158,
+              1.7709303987622962,
+              1.5714133564599604,
+              1.5597111587850334,
+              1.6661210291933726,
+              1.8372991431960792,
+              1.8447081800276384,
+              1.6797426905688007,
+              1.7968306655762007,
+              1.7661385461199113
+            ],
+            "K8_bpc": 1.6749,
+            "K8_per_batch": [
+              1.686145210884099,
+              1.6922642660959482,
+              1.750181097828217,
+              1.6071080749546953,
+              1.6239786427498417,
+              1.7442388421276989,
+              1.4951178191906667,
+              1.6348511234198393,
+              1.6130629099576765,
+              1.6004079593605776,
+              1.808525108886596,
+              1.7795075875308062,
+              1.6259896079518206,
+              1.5583636225485742,
+              1.5352192568893614,
+              1.6232673090434349,
+              1.7097364002595703,
+              1.6946439944112293,
+              1.6659711114790865,
+              1.6936827978476783,
+              1.754174767881436,
+              1.6091912419064283,
+              1.7252661522675186,
+              1.5744947686057864,
+              1.6108696310295885,
+              1.7439007518341014,
+              1.6563605243972717,
+              1.7695313390815022,
+              1.7577820982617471,
+              1.743910746348387,
+              1.714591838691118,
+              1.7524395134183743,
+              1.705150296756102,
+              1.565550539916093,
+              1.5173292486370675,
+              1.666504267120468,
+              1.6881172319442064,
+              1.6650528223992795,
+              1.622238563348849,
+              1.6466839390573282,
+              1.7202837145768568,
+              1.7159933108408778,
+              1.6699072269155564,
+              1.6855224492525696,
+              1.692064375810233,
+              1.6620331005312863,
+              1.6023062277980245,
+              1.7642526846657158,
+              1.7422301170754735,
+              1.6850396108210404,
+              1.7303978183956195,
+              1.7740896991918667,
+              1.6749796152347902,
+              1.5479879381662636,
+              1.6704946631086623,
+              1.6947697874358605,
+              1.742003172673502,
+              1.6759878549431688,
+              1.7632404816154652,
+              1.649960933508574
+            ]
+          },
+          "repr01": {
+            "K1_bpc": 1.769,
+            "K1_per_batch": [
+              1.6948232063915256,
+              1.7224247807837625,
+              1.648334412468173,
+              2.0666175869487895,
+              1.671786195601279,
+              1.732652442963117,
+              1.5160909627809047,
+              1.6400253523932604,
+              1.6081878271359806,
+              1.5927006379733524,
+              1.7143147493985063,
+              1.859658250207013,
+              1.6182259381823294,
+              2.00758360976627,
+              1.6455150978435302,
+              1.600823248661072,
+              1.7005460997353925,
+              1.7010768429078087,
+              4.294421530721918,
+              1.7214596208783397,
+              1.7650226069041428,
+              1.6311958882986413,
+              2.004123267673644,
+              1.5863641159161823,
+              1.6006635087517118,
+              1.770547160835201,
+              1.678632093248599,
+              1.8103818483939933,
+              1.7780375323347406,
+              1.7662591695681875,
+              1.7697162375957884,
+              1.7903183779229708,
+              1.6614367037391655,
+              1.6447193277233298,
+              1.917594381691006,
+              1.732359500303017,
+              1.7006889523619944,
+              1.6929948995540793,
+              1.6339941799794413,
+              1.6855095253116825,
+              1.760449944299197,
+              1.7331642310222324,
+              1.660322832353939,
+              1.6772294148643565,
+              2.111184332383464,
+              1.6650498929726785,
+              1.7105716314792783,
+              1.7870598216273903,
+              1.7511614218242801,
+              1.6868462054377968,
+              1.918841972784607,
+              1.7774085672115854,
+              1.5688497635456637,
+              1.5707723289919773,
+              1.6613381371500022,
+              1.8002077774895158,
+              1.7781147313416377,
+              1.6830720700604405,
+              1.77123885015146,
+              1.6902147013905207
+            ],
+            "K8_bpc": 1.6812,
+            "K8_per_batch": [
+              1.7008526556132264,
+              1.7062798491896045,
+              1.75534981258686,
+              1.5905962757585652,
+              1.638488954300643,
+              1.7476543812252503,
+              1.485786216912794,
+              1.6429713216385933,
+              1.61146895724831,
+              1.600641968850234,
+              1.8142872910107586,
+              1.760256774462743,
+              1.631659599297658,
+              1.5848618370275058,
+              1.552596098528845,
+              1.6157619457724666,
+              1.734507286959184,
+              1.6982999188092747,
+              1.676629744007211,
+              1.704409841102897,
+              1.7777833614973013,
+              1.6120744869586574,
+              1.7078901722240942,
+              1.568027800905266,
+              1.6036835752581287,
+              1.7683023584627777,
+              1.668453542044614,
+              1.760646043562252,
+              1.785233582620486,
+              1.7568772500804624,
+              1.7180485620802954,
+              1.7641744517435483,
+              1.7269579822892007,
+              1.5694961329092132,
+              1.5290741814765272,
+              1.6653380106948472,
+              1.684191800298869,
+              1.6599806063992575,
+              1.6221265558611637,
+              1.6692403515657999,
+              1.7172524473216713,
+              1.7253119891778637,
+              1.702380093106829,
+              1.6903194714713095,
+              1.7124464645039168,
+              1.6664865182416502,
+              1.6181551149862696,
+              1.7751913359130536,
+              1.7475578824666294,
+              1.6906751383245129,
+              1.7307019618044879,
+              1.7762588534302997,
+              1.661106540129312,
+              1.5546742682234354,
+              1.70007239422209,
+              1.6939928001097486,
+              1.7350256231483487,
+              1.6938659731698467,
+              1.7573816284134696,
+              1.6528884645982418
+            ]
+          }
+        },
+        "main_criterion": 0.1102,
+        "main_criterion_ci": {
+          "delta": 0.11022814535180414,
+          "delta_ci": [
+            0.10358183248259657,
+            0.11781631970739999
+          ],
+          "paired_ci_excludes_zero": true,
+          "arm_a_ci": [
+            1.6633137339055544,
+            1.6990882537862828
+          ],
+          "arm_b_ci": [
+            1.5536146635325963,
+            1.5885799276634067
+          ],
+          "arm_cis_overlap": false,
+          "n_batches": 60
+        },
+        "mechanism_net": -0.0063,
+        "mechanism_net_ci": {
+          "delta": -0.00629597821861491,
+          "delta_ci": [
+            -0.009308488814792067,
+            -0.0032492642692816057
+          ],
+          "paired_ci_excludes_zero": true,
+          "arm_a_ci": [
+            1.6569377625958226,
+            1.6928029826936943
+          ],
+          "arm_b_ci": [
+            1.6629710883535922,
+            1.6993287271131743
+          ],
+          "arm_cis_overlap": true,
+          "n_batches": 60
+        },
+        "repr_tax_vs_l1": 0.0175,
+        "available": true
+      },
+      "12000": {
+        "step": 12000,
+        "arms": {
+          "stock": {
+            "K1_bpc": 1.4515,
+            "K1_per_batch": [
+              1.4370413337086436,
+              1.468917199990554,
+              1.4590462385796743,
+              1.3908741735941592,
+              1.4217521393204005,
+              1.5320313514706283,
+              1.3050487807937903,
+              1.4223701621736051,
+              1.3723277153044244,
+              1.3923148483646088,
+              1.5094919985641275,
+              1.5581347826352727,
+              1.3978836021734997,
+              1.3192163494322748,
+              1.3245728059721993,
+              1.3886349715961201,
+              1.4924665157975519,
+              1.5059737572163294,
+              1.4400526980948634,
+              1.4833461768733749,
+              1.5462242510332511,
+              1.4032100751705672,
+              1.3691453241004699,
+              1.379914499402979,
+              1.3691505798364303,
+              1.549298253452969,
+              1.43430085512341,
+              1.5505501525268657,
+              1.5260859940242975,
+              1.5281651976341588,
+              1.4955325915335256,
+              1.5200922148794442,
+              1.446310642591442,
+              1.3731109922817677,
+              1.3144847223544218,
+              1.4684123046999114,
+              1.4775183411295074,
+              1.4482275215037654,
+              1.424325812908589,
+              1.4164313528573234,
+              1.4814172356162236,
+              1.5084258596005762,
+              1.4618438409836272,
+              1.4775727940004435,
+              1.4674814363176416,
+              1.461371686343231,
+              1.4028040049479051,
+              1.5460884634943344,
+              1.5305930030095385,
+              1.4716188205935214,
+              1.51413617364198,
+              1.5255636944932607,
+              1.3727962512413723,
+              1.328204950319013,
+              1.4286996191430903,
+              1.4810045311039064,
+              1.5343514573386188,
+              1.4817305119433184,
+              1.540189287596772,
+              1.4136435726484444
+            ]
+          },
+          "l1": {
+            "K1_bpc": 1.5724,
+            "K1_per_batch": [
+              1.5107887006330987,
+              1.5592483093820757,
+              1.5021541295670517,
+              1.5351136252125135,
+              1.5283263160972136,
+              1.5940106086216341,
+              1.383198989739939,
+              1.4808015390723785,
+              1.447026111958933,
+              1.4457864475490751,
+              1.5730658977013467,
+              1.714924587089149,
+              1.4679963261225697,
+              1.4724736962033773,
+              1.4466826797697687,
+              1.447055233905731,
+              1.5564936144618666,
+              1.5612115421623796,
+              2.90487524897407,
+              1.5856622597664254,
+              1.6236109135518104,
+              1.5288970373267727,
+              1.4822040451374092,
+              1.463564275994472,
+              1.439523333476142,
+              1.6150270043340396,
+              1.5851697714590343,
+              1.6978412050674005,
+              1.6226190441685548,
+              1.6133803219458553,
+              1.6024025542374336,
+              1.6353901379144227,
+              1.5131367222134045,
+              1.518201183848894,
+              1.4254455431470174,
+              1.5852640300679017,
+              1.5666404589308758,
+              1.5267616576538572,
+              1.5202333443139273,
+              1.5173812890390384,
+              1.6286040350336053,
+              1.5797017382294543,
+              1.5105341851572356,
+              1.5438536556361966,
+              1.632305451703572,
+              1.5201699308439764,
+              1.56723151382743,
+              1.6510837654928152,
+              1.5924304414492134,
+              1.5331981248538846,
+              1.6805706843816122,
+              1.6074599507852387,
+              1.4325415621302993,
+              1.4204622438602963,
+              1.5027170964320788,
+              1.7144203810753535,
+              1.6730575667461116,
+              1.527349266166175,
+              1.6621452803381833,
+              1.567353688148613
+            ],
+            "K8_bpc": 1.5216,
+            "K8_per_batch": [
+              1.5068534467926875,
+              1.537387894170159,
+              1.5546205046293462,
+              1.4633199273521065,
+              1.4836075851177106,
+              1.5959178376580954,
+              1.361928337030488,
+              1.487777882363049,
+              1.4542518011491117,
+              1.4423234345086662,
+              1.6081569819970642,
+              1.62023328468086,
+              1.4715745345560827,
+              1.405335374169591,
+              1.3827718965734348,
+              1.4628989515176218,
+              1.5559066952263962,
+              1.5554783096658031,
+              1.5095959070488572,
+              1.5460212590017233,
+              1.6120874108995442,
+              1.4574576277658744,
+              1.566884118296394,
+              1.4424083017204894,
+              1.4373494404593838,
+              1.5959554032462728,
+              1.4946096498349994,
+              1.6326914467380564,
+              1.6003905551201834,
+              1.5871688466353977,
+              1.5494330070766147,
+              1.5881183254925446,
+              1.5424730341110675,
+              1.4282622729834826,
+              1.3771369721872038,
+              1.5234012607040888,
+              1.5475257780401532,
+              1.5106249973818666,
+              1.4816688216654856,
+              1.496315954670475,
+              1.566420579616589,
+              1.5644919829978619,
+              1.524404330836113,
+              1.5445960068007318,
+              1.5410102163218986,
+              1.5225134721247748,
+              1.4615154005658917,
+              1.6155575751872437,
+              1.5869567216856428,
+              1.5390442264342055,
+              1.5794934043023596,
+              1.6081731800029757,
+              1.4812933381029225,
+              1.400506386737058,
+              1.5076760987099327,
+              1.5462783592657634,
+              1.5980761357861832,
+              1.5252097508321754,
+              1.623662264676934,
+              1.482622091545293
+            ]
+          },
+          "repr01": {
+            "K1_bpc": 1.5662,
+            "K1_per_batch": [
+              1.5006754584103952,
+              1.5401870474470183,
+              1.4797895083413397,
+              1.66510296728992,
+              1.5075577154114097,
+              1.5730276428363221,
+              1.3672713526718903,
+              1.4638954735195966,
+              1.4296045534839812,
+              1.4243344288691802,
+              1.5465049590293114,
+              1.6741318047126188,
+              1.455416506701826,
+              1.6096089436758882,
+              1.4490755043451486,
+              1.4309961172790608,
+              1.5394112663553892,
+              1.5391508920263242,
+              3.2476333253814555,
+              1.565166785031362,
+              1.6000314418827435,
+              1.477721505480247,
+              1.567263909839253,
+              1.4340887301736556,
+              1.423083391391342,
+              1.6045703299221719,
+              1.508941094043928,
+              1.6504453228130096,
+              1.6003843516285579,
+              1.595938688282726,
+              1.5844289711674053,
+              1.6222390803064843,
+              1.4861587710487563,
+              1.4873500137600917,
+              1.521205569307035,
+              1.5773900760028434,
+              1.5381640199002116,
+              1.5140451890981372,
+              1.4894011293384255,
+              1.4885085158211802,
+              1.6124921887281174,
+              1.5751459629072673,
+              1.4956296072497823,
+              1.521598974067628,
+              1.71955066864976,
+              1.4929076529798198,
+              1.544165381090385,
+              1.6293632734808994,
+              1.5801115133151702,
+              1.5167381937405133,
+              1.704443960306838,
+              1.5972026497014506,
+              1.4065050769794483,
+              1.4103268586188735,
+              1.485744515663533,
+              1.654363689370662,
+              1.6186575978079467,
+              1.5064800310606665,
+              1.6233738023163418,
+              1.4992445196754136
+            ],
+            "K8_bpc": 1.5069,
+            "K8_per_batch": [
+              1.4986210687670367,
+              1.5240493532597568,
+              1.559734938836265,
+              1.4432063981500494,
+              1.4733575214408194,
+              1.5804697649565511,
+              1.3399037877693094,
+              1.473682170835895,
+              1.4281094258425953,
+              1.427809245775599,
+              1.6033932173862064,
+              1.5996313166728897,
+              1.4609195207314065,
+              1.41251806971642,
+              1.3690390031467747,
+              1.4483445262485939,
+              1.5523036728263806,
+              1.535349357894288,
+              1.5010683462133525,
+              1.540491880132734,
+              1.5971940337408594,
+              1.4431664200929062,
+              1.5599537842352806,
+              1.419009679064231,
+              1.4167674614799848,
+              1.5842657848738089,
+              1.4813059174053858,
+              1.605120545165524,
+              1.5964792536502161,
+              1.5757361562077623,
+              1.5336223747533937,
+              1.575824383644216,
+              1.5312714237464873,
+              1.405939439166638,
+              1.3617681663230983,
+              1.505627740238988,
+              1.5171758845385448,
+              1.4866357506270835,
+              1.4635418744969348,
+              1.4655221668792093,
+              1.5423041612834805,
+              1.562503763931843,
+              1.5224671182567944,
+              1.5305874887947604,
+              1.538706997736667,
+              1.496551687352249,
+              1.4525279197540304,
+              1.6038269448423659,
+              1.572388510879669,
+              1.5237757103513812,
+              1.5538829784027421,
+              1.5931093791437976,
+              1.4678507163885792,
+              1.3794623337911545,
+              1.5057159676754415,
+              1.526093231431194,
+              1.5737019279121869,
+              1.5105371145838367,
+              1.60303255327586,
+              1.457633565681146
+            ]
+          }
+        },
+        "main_criterion": 0.0554,
+        "main_criterion_ci": {
+          "delta": 0.05538440705541063,
+          "delta_ci": [
+            0.05001420701724795,
+            0.06198796767176417
+          ],
+          "paired_ci_excludes_zero": true,
+          "arm_a_ci": [
+            1.4898467617186326,
+            1.5238543748254754
+          ],
+          "arm_b_ci": [
+            1.4345141354016804,
+            1.4687047651175171
+          ],
+          "arm_cis_overlap": false,
+          "n_batches": 60
+        },
+        "mechanism_net": 0.0147,
+        "mechanism_net_ci": {
+          "delta": 0.014713928239472129,
+          "delta_ci": [
+            0.012630282814727532,
+            0.01678992839928567
+          ],
+          "paired_ci_excludes_zero": true,
+          "arm_a_ci": [
+            1.5045682150662854,
+            1.5388637625548351
+          ],
+          "arm_b_ci": [
+            1.4896321962980406,
+            1.5244461262506435
+          ],
+          "arm_cis_overlap": true,
+          "n_batches": 60
+        },
+        "repr_tax_vs_l1": -0.0062,
+        "available": true
+      },
+      "18000": {
+        "step": 18000,
+        "arms": {
+          "stock": {
+            "K1_bpc": 1.3863,
+            "K1_per_batch": [
+              1.355417083292529,
+              1.4116345029577955,
+              1.3956374212473819,
+              1.3293729299367518,
+              1.357279681653128,
+              1.4673547816969512,
+              1.2477584155561054,
+              1.351348023584137,
+              1.293838382149407,
+              1.3313124688254303,
+              1.4417627939529989,
+              1.5005494930665522,
+              1.347009715107271,
+              1.2556280616408684,
+              1.269758237010387,
+              1.3158164052233932,
+              1.4335117192928648,
+              1.442963686540196,
+              1.369219249042342,
+              1.424730676896768,
+              1.4728109249009156,
+              1.3309427579564632,
+              1.2994689985553427,
+              1.3166423312056628,
+              1.2990017550124833,
+              1.483505055186676,
+              1.387329481247346,
+              1.4758206522546233,
+              1.4529237369835888,
+              1.461884852956041,
+              1.4408316670919112,
+              1.4602795271786944,
+              1.3832238898660476,
+              1.3180598290421222,
+              1.250848960620158,
+              1.3958443766207818,
+              1.4009756981104589,
+              1.3906984079980995,
+              1.3604153743506786,
+              1.3526831528373449,
+              1.4216066157460157,
+              1.447553925704748,
+              1.3945137276670814,
+              1.4259797327036698,
+              1.406484743312453,
+              1.3883513341734588,
+              1.342289116458975,
+              1.488884171702955,
+              1.4562403648535536,
+              1.4003181279981407,
+              1.4428873491293586,
+              1.4558011231826158,
+              1.2960528563405496,
+              1.2607493886162597,
+              1.3482368863742715,
+              1.408683967253349,
+              1.4603777491294334,
+              1.4141181397578062,
+              1.4785624232339452,
+              1.361796598993049
+            ]
+          },
+          "l1": {
+            "K1_bpc": 1.4737,
+            "K1_per_batch": [
+              1.4290770843765896,
+              1.4820644665758322,
+              1.432247068597293,
+              1.4421668825047247,
+              1.4436913905717264,
+              1.5189580098272224,
+              1.3102878879504631,
+              1.4095795963568012,
+              1.36024210738319,
+              1.3713228358206762,
+              1.4977823911630919,
+              1.6325236078257404,
+              1.4035630710759872,
+              1.3771264607152824,
+              1.3702411019684548,
+              1.3680075865044057,
+              1.4824111728300209,
+              1.4868807885462962,
+              1.6659588768150468,
+              1.5198802622489012,
+              1.5336944041839362,
+              1.4445900352613854,
+              1.387291312541927,
+              1.3807714428433768,
+              1.3668709689832186,
+              1.5414110308085998,
+              1.4990682371217183,
+              1.6144688624069437,
+              1.5430468570864395,
+              1.5375336762233613,
+              1.5345949443849254,
+              1.5593010390608935,
+              1.4383548369007675,
+              1.4431556501421674,
+              1.3287691234185228,
+              1.5079475014685544,
+              1.4813071236398685,
+              1.4482814574170664,
+              1.4537817143392575,
+              1.4317258891411329,
+              1.5478073476322727,
+              1.5094671845976249,
+              1.4544703019097038,
+              1.4724438849797317,
+              1.5409397377642629,
+              1.4372042615234226,
+              1.4844490198290445,
+              1.5687349989505894,
+              1.5119990707769462,
+              1.4606672454052967,
+              1.5961087673447958,
+              1.534201022666697,
+              1.3498236016767413,
+              1.332342162275681,
+              1.4078491668316706,
+              1.634681388996193,
+              1.588442802568408,
+              1.4532516604436887,
+              1.5761807397742666,
+              1.4829505319630283
+            ],
+            "K8_bpc": 1.4419,
+            "K8_per_batch": [
+              1.4243459742563722,
+              1.4628053821856017,
+              1.4364851734524835,
+              1.3833676040887084,
+              1.4045887150247602,
+              1.5191453208104746,
+              1.2900013502597352,
+              1.4156089594188963,
+              1.368760621460074,
+              1.3666536744571092,
+              1.4928833559709527,
+              1.5537201367475688,
+              1.4052081164316594,
+              1.3193245658972999,
+              1.314391842299249,
+              1.3819039247034803,
+              1.4819786516083444,
+              1.4821599314191825,
+              1.4313880573263533,
+              1.4802492559984846,
+              1.523480355222316,
+              1.3777088134916395,
+              1.486842878319695,
+              1.3614525636866437,
+              1.3620354334206364,
+              1.5217533720814216,
+              1.427419804356878,
+              1.5473889565859655,
+              1.521086496731665,
+              1.5080736391316092,
+              1.4897349116517273,
+              1.5106132796754623,
+              1.463137785945209,
+              1.3518931554107403,
+              1.2961564201868554,
+              1.4459444642663175,
+              1.4619901399944653,
+              1.432455919482023,
+              1.4131045581538608,
+              1.4078794088533457,
+              1.4874515097758554,
+              1.4942357171453426,
+              1.4556122613264575,
+              1.46985995839844,
+              1.4650693119905374,
+              1.4381073003529832,
+              1.3901950635803633,
+              1.536076372648971,
+              1.5067030121207658,
+              1.4640833014604842,
+              1.499275192495118,
+              1.5270321988164197,
+              1.3514473656097532,
+              1.3065609680371464,
+              1.4139491807706133,
+              1.4756965824221102,
+              1.5118222712656153,
+              1.4527608953284155,
+              1.5400264459415987,
+              1.4043394552848576
+            ]
+          },
+          "repr01": {
+            "K1_bpc": 1.4631,
+            "K1_per_batch": [
+              1.414334745007068,
+              1.4669369076082794,
+              1.4082186192218202,
+              1.505172817519774,
+              1.4237283822011972,
+              1.4971322307768824,
+              1.2966393447779905,
+              1.3953271605064939,
+              1.3457297280018468,
+              1.3466081251841167,
+              1.4643812413777266,
+              1.606191164428583,
+              1.379953615864063,
+              1.43460939267218,
+              1.3768378260354783,
+              1.354840330890556,
+              1.4653563957974352,
+              1.4655183758565493,
+              1.8769880487016686,
+              1.4934583851808074,
+              1.5185792521996346,
+              1.4035704808020957,
+              1.4328063305992658,
+              1.3655735776374003,
+              1.3436388928451877,
+              1.529042991699187,
+              1.4515470788003315,
+              1.5730045520619376,
+              1.5260055209523757,
+              1.5217251117306827,
+              1.5117733326094576,
+              1.5455447963810314,
+              1.4112773713912914,
+              1.418914989657334,
+              1.3657695045812435,
+              1.503190974264593,
+              1.4581689614722813,
+              1.4438114109027615,
+              1.4266856383549045,
+              1.4072744822602397,
+              1.5369472739455265,
+              1.502363842047841,
+              1.4303583638761024,
+              1.4486502205303686,
+              1.5888937619457497,
+              1.415116384951899,
+              1.460753060372785,
+              1.5481402683495156,
+              1.5039715802941533,
+              1.4397932715214632,
+              1.6148122945961079,
+              1.5295727009563322,
+              1.3311634988668088,
+              1.319217038709122,
+              1.3974377262129067,
+              1.586890378789091,
+              1.5466979565465535,
+              1.4320114220751243,
+              1.5488155873406515,
+              1.4295746561007296
+            ],
+            "K8_bpc": 1.4269,
+            "K8_per_batch": [
+              1.4128752874425299,
+              1.4475866663549943,
+              1.429806511600238,
+              1.3696311781182058,
+              1.3914898701380043,
+              1.50329557202617,
+              1.2731314717414361,
+              1.4024615205144062,
+              1.3439043505910018,
+              1.3488778276826487,
+              1.477117698962018,
+              1.53912969676327,
+              1.3849269206364982,
+              1.3095893920253368,
+              1.300118469664705,
+              1.3702803045891445,
+              1.4743476676319567,
+              1.463549456542255,
+              1.4209392234386236,
+              1.4658647374723146,
+              1.5077872446015588,
+              1.3649403045339492,
+              1.4828805703630277,
+              1.3479022424649105,
+              1.3343526966796304,
+              1.508236653105994,
+              1.407809964210981,
+              1.5237853602272433,
+              1.5175439583749997,
+              1.4931464874074072,
+              1.4678452021738004,
+              1.4949239600773656,
+              1.4500132654958913,
+              1.3381120987643758,
+              1.2769566997650978,
+              1.4282207440534331,
+              1.437800916794361,
+              1.4149374314504204,
+              1.3953505959193018,
+              1.3845099081438856,
+              1.464561314954082,
+              1.4877504836083693,
+              1.4468977341461244,
+              1.4566291169954273,
+              1.4608123381816522,
+              1.4186122248021604,
+              1.374384948214778,
+              1.5192349268006227,
+              1.495128330662588,
+              1.4495691988870225,
+              1.476950893964973,
+              1.519048994371065,
+              1.3413453241358182,
+              1.2910786899720552,
+              1.411694125405086,
+              1.453434663446645,
+              1.4926166058310502,
+              1.4352689444554338,
+              1.5242861198568018,
+              1.3894170423389807
+            ]
+          }
+        },
+        "main_criterion": 0.0406,
+        "main_criterion_ci": {
+          "delta": 0.040651977476562344,
+          "delta_ci": [
+            0.035987274226404346,
+            0.04683933212601425
+          ],
+          "paired_ci_excludes_zero": true,
+          "arm_a_ci": [
+            1.409647036603634,
+            1.4439968610539247
+          ],
+          "arm_b_ci": [
+            1.3693075805524193,
+            1.4033371422803704
+          ],
+          "arm_cis_overlap": false,
+          "n_batches": 60
+        },
+        "mechanism_net": 0.015,
+        "mechanism_net_ci": {
+          "delta": 0.015012086427716446,
+          "delta_ci": [
+            0.01361280851182045,
+            0.016413080427563218
+          ],
+          "paired_ci_excludes_zero": true,
+          "arm_a_ci": [
+            1.4248941986384305,
+            1.4590202344618153
+          ],
+          "arm_b_ci": [
+            1.4097063679750563,
+            1.4441726037099896
+          ],
+          "arm_cis_overlap": true,
+          "n_batches": 60
+        },
+        "repr_tax_vs_l1": -0.0106,
+        "available": true
+      }
+    },
+    "full_run_steps": 24000,
+    "full_run": {
+      "repr01@K8": 1.3945,
+      "stock@K1": 1.3599,
+      "l1@K8": 1.4089,
+      "main_criterion_value": 0.0346,
+      "mechanism_net_value": 0.0144
+    }
+  },
+  "convergence_gate": {
+    "quantity": "决定判据的量 = 主判据缺口 `repr01@K8 − stock@K1` 与机制净效应 `l1@K8 − repr01@K8`（评测流直接测），不是训练总 CE",
+    "why": "SCHEMA §17.15：门禁必须落在决定判据的量上；两个量都在 ckpt@6k/12k/18k 与终点各测一次",
+    "per_checkpoint": {
+      "6000": {
+        "main_criterion_at_ckpt": 0.1102,
+        "mechanism_net_at_ckpt": -0.0063,
+        "main_slope_per_1k": -0.0042,
+        "mechanism_slope_per_1k": 0.00115
+      },
+      "12000": {
+        "main_criterion_at_ckpt": 0.0554,
+        "mechanism_net_at_ckpt": 0.0147,
+        "main_slope_per_1k": -0.001733,
+        "mechanism_slope_per_1k": -2.5e-05
+      },
+      "18000": {
+        "main_criterion_at_ckpt": 0.0406,
+        "mechanism_net_at_ckpt": 0.015,
+        "main_slope_per_1k": -0.001,
+        "mechanism_slope_per_1k": -0.0001
+      }
+    },
+    "main_criterion_at_full": 0.0346,
+    "mechanism_net_at_full": 0.0144,
+    "train_loss_slopes": {
+      "stock": -0.175971,
+      "l1": -0.21989,
+      "repr01": -0.226211
+    },
+    "train_loss_note": "训练总 CE 斜率仅作并报，不得代替上面的判据量斜率"
+  },
+  "x1_6k_cross_check": {
+    "schedule_note": "X1 是 6000 步 cosine 的**末点**（lr→0.1×base）；本实验是 24000 步 cosine，其 @6k 处 lr≈0.868×base ⇒ 两者**调度不同、不可作逐位对照**，此处只登记同方法读数的方向",
+    "x1_source": "axes/G-policy/G5-parallel-lines/experiments/2622-decorrelation-v2/results_13m.json",
+    "x1_6000_arm_readings": {
+      "stock_K1": 1.5156,
+      "l1_K1": 1.6827,
+      "l1_K8": 1.6454,
+      "repr01_K8": 1.6208,
+      "l1_K8_minus_repr01_K8": 0.0246
+    },
+    "this_run_6000_arm_readings": {
+      "stock": {
+        "K1_bpc": 1.571,
+        "K1_per_batch": [
+          1.570929656432372,
+          1.5868088718018987,
+          1.565315151872742,
+          1.5085931815552565,
+          1.5326591103593012,
+          1.6480723149469894,
+          1.408876275493744,
+          1.5475824710608432,
+          1.496618374887225,
+          1.510816616345414,
+          1.6221162167084542,
+          1.6730978894416784,
+          1.5293037106666758,
+          1.4464865805067137,
+          1.4447246165658194,
+          1.5083851922665859,
+          1.6119614455557012,
+          1.6163162966769022,
+          1.5639824350885,
+          1.5901513475536369,
+          1.6695239889884612,
+          1.520216112392745,
+          1.4854639799866844,
+          1.4740922905600344,
+          1.5148985138350868,
+          1.6610383017214294,
+          1.5506616430569156,
+          1.6696487480978215,
+          1.654184132751942,
+          1.6526828877785367,
+          1.6183289850709994,
+          1.6522865535913427,
+          1.5723149305762203,
+          1.4907047241758695,
+          1.4227595174327201,
+          1.5786421473959522,
+          1.578686261114179,
+          1.5709699791279388,
+          1.5231069394902945,
+          1.5515465022096286,
+          1.6164503610237009,
+          1.6329799090986488,
+          1.5725460106392757,
+          1.5927071861034017,
+          1.5952209787654816,
+          1.5816215465683787,
+          1.5108591791907344,
+          1.6752268933037566,
+          1.6513224276011906,
+          1.5963150334413483,
+          1.649510146450444,
+          1.6563370889844635,
+          1.4785974040339456,
+          1.4575703245304068,
+          1.5532090379653007,
+          1.5987662742295363,
+          1.649954213059313,
+          1.585746868499431,
+          1.6707717524012746,
+          1.5387502498588346
+        ]
+      },
+      "l1": {
+        "K1_bpc": 1.7515,
+        "K1_per_batch": [
+          1.6972582491738022,
+          1.7144803481610682,
+          1.6443233381745597,
+          1.7434079188882863,
+          1.6584187050632901,
+          1.7408348484173393,
+          1.5172689369129297,
+          1.6225246132404758,
+          1.6070041664699657,
+          1.6048842955261142,
+          1.7160606876527007,
+          1.853420984015853,
+          1.622899062887768,
+          1.6844146090397567,
+          1.5963384688541562,
+          1.6115714871793447,
+          1.7100862082595718,
+          1.695803702706801,
+          4.45591633893542,
+          1.723446806029087,
+          1.7570490523346505,
+          1.694781849780688,
+          1.692126927684125,
+          1.5928460753881315,
+          1.6145415811143329,
+          1.760441328338606,
+          1.7665917456470066,
+          1.858727381824743,
+          1.7686754295563754,
+          1.7652769500607943,
+          1.7563220375799675,
+          1.8065387853319077,
+          1.6733515433214827,
+          1.677517532586525,
+          1.6214078124286482,
+          1.738582291680384,
+          1.7044279346201385,
+          1.6896088270417495,
+          1.6552463083736213,
+          1.669296872267278,
+          1.7792982196884408,
+          1.7336215662104117,
+          1.6568047633253522,
+          1.6799677394594419,
+          1.8466503898640998,
+          1.657771818742105,
+          1.7123840849492367,
+          1.7873796460845346,
+          1.7492009461513653,
+          1.685153858458479,
+          1.822367338853158,
+          1.7709303987622962,
+          1.5714133564599604,
+          1.5597111587850334,
+          1.6661210291933726,
+          1.8372991431960792,
+          1.8447081800276384,
+          1.6797426905688007,
+          1.7968306655762007,
+          1.7661385461199113
+        ],
+        "K8_bpc": 1.6749,
+        "K8_per_batch": [
+          1.686145210884099,
+          1.6922642660959482,
+          1.750181097828217,
+          1.6071080749546953,
+          1.6239786427498417,
+          1.7442388421276989,
+          1.4951178191906667,
+          1.6348511234198393,
+          1.6130629099576765,
+          1.6004079593605776,
+          1.808525108886596,
+          1.7795075875308062,
+          1.6259896079518206,
+          1.5583636225485742,
+          1.5352192568893614,
+          1.6232673090434349,
+          1.7097364002595703,
+          1.6946439944112293,
+          1.6659711114790865,
+          1.6936827978476783,
+          1.754174767881436,
+          1.6091912419064283,
+          1.7252661522675186,
+          1.5744947686057864,
+          1.6108696310295885,
+          1.7439007518341014,
+          1.6563605243972717,
+          1.7695313390815022,
+          1.7577820982617471,
+          1.743910746348387,
+          1.714591838691118,
+          1.7524395134183743,
+          1.705150296756102,
+          1.565550539916093,
+          1.5173292486370675,
+          1.666504267120468,
+          1.6881172319442064,
+          1.6650528223992795,
+          1.622238563348849,
+          1.6466839390573282,
+          1.7202837145768568,
+          1.7159933108408778,
+          1.6699072269155564,
+          1.6855224492525696,
+          1.692064375810233,
+          1.6620331005312863,
+          1.6023062277980245,
+          1.7642526846657158,
+          1.7422301170754735,
+          1.6850396108210404,
+          1.7303978183956195,
+          1.7740896991918667,
+          1.6749796152347902,
+          1.5479879381662636,
+          1.6704946631086623,
+          1.6947697874358605,
+          1.742003172673502,
+          1.6759878549431688,
+          1.7632404816154652,
+          1.649960933508574
+        ]
+      },
+      "repr01": {
+        "K1_bpc": 1.769,
+        "K1_per_batch": [
+          1.6948232063915256,
+          1.7224247807837625,
+          1.648334412468173,
+          2.0666175869487895,
+          1.671786195601279,
+          1.732652442963117,
+          1.5160909627809047,
+          1.6400253523932604,
+          1.6081878271359806,
+          1.5927006379733524,
+          1.7143147493985063,
+          1.859658250207013,
+          1.6182259381823294,
+          2.00758360976627,
+          1.6455150978435302,
+          1.600823248661072,
+          1.7005460997353925,
+          1.7010768429078087,
+          4.294421530721918,
+          1.7214596208783397,
+          1.7650226069041428,
+          1.6311958882986413,
+          2.004123267673644,
+          1.5863641159161823,
+          1.6006635087517118,
+          1.770547160835201,
+          1.678632093248599,
+          1.8103818483939933,
+          1.7780375323347406,
+          1.7662591695681875,
+          1.7697162375957884,
+          1.7903183779229708,
+          1.6614367037391655,
+          1.6447193277233298,
+          1.917594381691006,
+          1.732359500303017,
+          1.7006889523619944,
+          1.6929948995540793,
+          1.6339941799794413,
+          1.6855095253116825,
+          1.760449944299197,
+          1.7331642310222324,
+          1.660322832353939,
+          1.6772294148643565,
+          2.111184332383464,
+          1.6650498929726785,
+          1.7105716314792783,
+          1.7870598216273903,
+          1.7511614218242801,
+          1.6868462054377968,
+          1.918841972784607,
+          1.7774085672115854,
+          1.5688497635456637,
+          1.5707723289919773,
+          1.6613381371500022,
+          1.8002077774895158,
+          1.7781147313416377,
+          1.6830720700604405,
+          1.77123885015146,
+          1.6902147013905207
+        ],
+        "K8_bpc": 1.6812,
+        "K8_per_batch": [
+          1.7008526556132264,
+          1.7062798491896045,
+          1.75534981258686,
+          1.5905962757585652,
+          1.638488954300643,
+          1.7476543812252503,
+          1.485786216912794,
+          1.6429713216385933,
+          1.61146895724831,
+          1.600641968850234,
+          1.8142872910107586,
+          1.760256774462743,
+          1.631659599297658,
+          1.5848618370275058,
+          1.552596098528845,
+          1.6157619457724666,
+          1.734507286959184,
+          1.6982999188092747,
+          1.676629744007211,
+          1.704409841102897,
+          1.7777833614973013,
+          1.6120744869586574,
+          1.7078901722240942,
+          1.568027800905266,
+          1.6036835752581287,
+          1.7683023584627777,
+          1.668453542044614,
+          1.760646043562252,
+          1.785233582620486,
+          1.7568772500804624,
+          1.7180485620802954,
+          1.7641744517435483,
+          1.7269579822892007,
+          1.5694961329092132,
+          1.5290741814765272,
+          1.6653380106948472,
+          1.684191800298869,
+          1.6599806063992575,
+          1.6221265558611637,
+          1.6692403515657999,
+          1.7172524473216713,
+          1.7253119891778637,
+          1.702380093106829,
+          1.6903194714713095,
+          1.7124464645039168,
+          1.6664865182416502,
+          1.6181551149862696,
+          1.7751913359130536,
+          1.7475578824666294,
+          1.6906751383245129,
+          1.7307019618044879,
+          1.7762588534302997,
+          1.661106540129312,
+          1.5546742682234354,
+          1.70007239422209,
+          1.6939928001097486,
+          1.7350256231483487,
+          1.6938659731698467,
+          1.7573816284134696,
+          1.6528884645982418
+        ]
+      }
+    },
+    "this_run_6000_criterion": 0.1102,
+    "this_run_6000_mechanism_net": -0.0063
+  },
+  "memory_measured": {
+    "eval_peak_gpu_mem_mb": 693.4,
+    "note": "本进程净分配（不含共享卡上其他任务的占用），与训练侧 peak_gpu_mem_mb 同口径"
+  },
+  "cost": {
+    "wall_minutes_total_eval": 4.09,
+    "gpu_wall_budget_min": 90,
+    "train_wall_minutes": {
+      "stock": 22.0,
+      "l1": 22.3,
+      "repr01": 28.8
+    },
+    "n_forward_batches": 9300,
+    "note": "每批 = bs×T 个 token 的一次前向（K 路径就是 K 次前向，价签的来源）"
+  },
+  "code": {
+    "run.py": "7267ab067f7545566bde2af3408da208d56e736e074830ac3a472c322c375d79",
+    "train_m1.py": "a253fcaf61fb39e0042bf1086174c32f47b7c78580c3a48fc1c42a9bb3ae5459",
+    "pathlm/model.py": "4dda7c08c4b5d564c5f066a0e8c2a52950f88498a4959ccdf68762430ab8d77f",
+    "pathlm/config.py": "7c6c0fbf16fb115d5580ad2ade42917b32ad9ba2ec810d74e097ad4f934cdb4d",
+    "pathlm/eval.py": "05b6f96663c9194a29c05405dc6b8bbdfcb515e19883b71b5e79e57f33530baf",
+    "tools/evalkit/ensemble_probe.py": "a96324adf8e6049d8153db1b4c918ad1c479889eb6d6dbc5c4bd93ca8764b2c9",
+    "probe_tts.py": "ea36e198e200f134913416b21bd700d69d4f184fca4a8efca101f7dc87b81da8",
+    "reconcile_numbers.py": "fc3c2d34b1e5685a813ecf8e48ccdeae94fb47457156e165c80343856b25a95d",
+    "README.md (本契约)": "83a5eef453a6b5a84cb944a1569df26adeff003a2a51a807e552e987ec8b6ee5"
+  }
+}
