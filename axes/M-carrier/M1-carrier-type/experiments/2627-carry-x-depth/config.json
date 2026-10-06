@@ -1,0 +1,99 @@
+{
+  "experiment": "2627-carry-x-depth",
+  "ticket": ".scratch/44-wave17/issues/01-wave17.md#X2",
+  "device": "cuda",
+  "seed": 0,
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true,
+    "topology": "sequential"
+  },
+  "train": {
+    "steps": 6000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0,
+    "tokens_per_arm": 49152000,
+    "note": "6k×32×256=49.0M token，四臂严格同预算（快照 token 预算）；先测步时后定（SCHEMA §20.3）。"
+  },
+  "arms": [
+    {"name": "base", "carry": false, "depth": false},
+    {"name": "carry", "carry": true, "depth": false},
+    {"name": "depth", "carry": false, "depth": true},
+    {"name": "both", "carry": true, "depth": true}
+  ],
+  "checkpoint": {
+    "dir": "axes/M-carrier/M1-carrier-type/experiments/2627-carry-x-depth/train",
+    "sha256": {
+      "base": "f6615a1a0954d68bd6fe7caa4d05ce0f8542f6afd5ca3841f4c13c0ef92c4f8c",
+      "carry": "343661127099d5e55d4e5feca7ce649680e9af5b24be63a7f3202d87b82f89a5",
+      "depth": "52a18caf4d227dd520819510ce92698ee934a4906625f83d431c500a1b4ee25c",
+      "both": "0330383544864d47e4cbdaeb1f0de27f508ff2ae80f5376b4e01c1884d0efc9a"
+    },
+    "note": "本实验四臂**自己训练**（6k 步合成 assoc-mqar，window16）；权重不入库，运行时 sha256 断言。"
+  },
+  "data": {
+    "train_source": "tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch",
+    "vocab_size": 206,
+    "bpc_name": "enwik8_full",
+    "bpc_path": "data/enwik8_full.npz",
+    "bpc_split": "末 10M 评测尾段（只用词表大小 206 与 LM 质量口径，不用 enwik8 当长程主任务）"
+  },
+  "tokens": {
+    "sym_vocab": 64,
+    "filler_token": 64,
+    "cue_token": 205,
+    "local_k": 8
+  },
+  "eval": {
+    "K_main": 8,
+    "batch_size": 64,
+    "n_batches": 32,
+    "note": "单查询关联回忆（判决行 = T-1，距离 241-255，**训练分布外**）——本仓判决腿口径，本实验仅作**外推参照**，不作主判据（§17.18）。"
+  },
+  "train_task_leg": {
+    "n_queries": 8,
+    "gap": 14,
+    "batch_size": 64,
+    "n_batches": 32,
+    "note": "**主判据**：训练型多查询 assoc-mqar（距离 ≤240，与训练同分布，§17.18）；四臂同一任务/同一批/同可见性。"
+  },
+  "cross_leg": {
+    "batch_size": 64,
+    "n_batches": 32,
+    "note": "交叉口径：所有臂都 keep_mask=None（全因果），与 native 口径并报。"
+  },
+  "distance_leg": {
+    "distances": [16, 32, 64, 128, 192, 255],
+    "batch_size": 64,
+    "n_batches": 3
+  },
+  "bpc_leg": {
+    "batch_size": 16,
+    "n_batches": 16,
+    "window_seed": 2,
+    "note": "clean bpc（enwik8 评测尾段，全因果）；合成训练 ⇒ 此腿是**非退化锚 + 质量代价项**（dense-aux 的税），不作召回判据。"
+  },
+  "tf_leg": {
+    "enwik8_n_batches": 16,
+    "enwik8_batch_size": 16,
+    "synth_n_batches": 16,
+    "synth_batch_size": 32,
+    "depths": [4, 6],
+    "note": "出口资产 tf@4 / tf@6：depth-k 出口 argmax 与全栈 argmax 的一致率。enwik8 口径对齐 100M 的 0.9726；synth 口径 = 训练分布内读数。"
+  },
+  "criteria": {
+    "c1_recall_indist": "主腿 = 训练型多查询关联回忆（native window16，距离 ≤240 = 训练分布内，§17.18）+ 毁源对照臂",
+    "c2_tf_exit": "出口资产 tf@4 / tf@6（enwik8 口径 = 对齐 100M；synth 口径 = 分布内）；depth 因子应抬高它",
+    "c3_increments": "2×2 因子分解（§17.17）：carry@depth_off / depth@carry_off / carry@depth_on / depth@carry_on + 交互项 + 净和",
+    "c4_params_activity": "四臂参数量逐臂声明 + 活性量每 200 步（carry read_share；depth = 出口 CE 条数 13 vs 1 与逐深度 CE）",
+    "c5_nonadditive": "若交互项为负（both < carry + depth − base）⇒ 明确记「两资产不可叠加」",
+    "c6_convergence": "§17.15：答案行 CE（synth_answer_ce）末窗斜率；仍在陡降则结论只读臂间增量"
+  },
+  "variance_band_pp": 1.4,
+  "gpu_wall_budget_min": 40
+}

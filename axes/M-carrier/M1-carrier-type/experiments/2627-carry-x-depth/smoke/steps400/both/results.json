@@ -1,0 +1,931 @@
+{
+  "run": "both",
+  "config": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "gate_bias_init": -2.0,
+    "dense": true,
+    "fill_kv": true,
+    "proj_fill": false,
+    "readout_dims": null,
+    "readout_gated": false,
+    "readout_linear_resid": false,
+    "readout_perdepth": false,
+    "readout_wide_shared": 0,
+    "topology": "sequential",
+    "attn_sparse_k": 0,
+    "train_window": 16,
+    "train_anchors": 0,
+    "attn_linear": false,
+    "linear_chunk": 64,
+    "n_kv_heads": null,
+    "carry_rule": "delta",
+    "carry_chunk": 64,
+    "carry_state_dim": null,
+    "recon_window": 0
+  },
+  "train": {
+    "steps": 400,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0
+  },
+  "topology": "sequential",
+  "attn_sparse_k": 0,
+  "attn_linear": false,
+  "linear_chunk": 64,
+  "train_window": 16,
+  "train_anchors": 0,
+  "n_kv_heads": null,
+  "carry_write": "delta",
+  "carry_chunk": 64,
+  "carry_state_dim": null,
+  "synth": {
+    "task": "assoc-mqar",
+    "pairs": 8,
+    "queries": 8,
+    "gap": 14,
+    "sym_vocab": 64,
+    "filler_token": 64,
+    "cue_token": 205
+  },
+  "recon_window": 0,
+  "recon_lambda": 0.0,
+  "synth_task_config": {
+    "task": "assoc_recall_multi",
+    "seq_len": 256,
+    "n_pairs": 8,
+    "n_queries": 8,
+    "gap": 14,
+    "sym_vocab": 64,
+    "filler_token": 64,
+    "cue_token": 205,
+    "query_base": 120,
+    "query_block": 17,
+    "filler_span": [
+      16,
+      120
+    ],
+    "layout": "[k0 v0 … k{K-1} v{K-1}] filler [cue q_j a_j gap×filler]×Q （target = 下一个 token，答案行 = q_j 行）"
+  },
+  "kv_head_liveness": {
+    "enabled": false,
+    "mha": true,
+    "n_heads": 8,
+    "n_kv_heads": 8,
+    "head_dim": 32,
+    "group_size": 1,
+    "block_python_class": "CarryChannelBlock",
+    "qkv_out_width": 768,
+    "qkv_out_width_mha_equivalent": 768,
+    "k_batch_shape": [
+      2,
+      8,
+      64,
+      32
+    ],
+    "params_per_layer_kv_elems": 512,
+    "params_added": 0,
+    "params_added_note": "MHA（n_kv_heads == n_heads）：无共享，参数与 v1 逐位相同",
+    "kv_qkv_weight_nonzero_frac": 1.0,
+    "kv_qkv_weight_fro": 108.325884,
+    "kv_elems_per_position_per_layer": 512,
+    "kv_elems_per_position": 6144,
+    "kv_bytes_per_position_fp16": 12288,
+    "kv_bytes_per_position_fp32": 24576,
+    "kv_reduction_frac": 0.0,
+    "mha_kv_bytes_per_position_fp16": 12288,
+    "k_proj_per_kv_head_row_norm": [
+      1.844563,
+      2.00657,
+      1.853138,
+      1.873032,
+      1.903933,
+      2.069938,
+      1.915466,
+      1.940408
+    ],
+    "kv_head_pair_max_abs_weight_diff": 0.126261,
+    "kv_rows_fro_mean": 7.319307,
+    "per_layer": [
+      {
+        "layer": 0,
+        "class": "CarryChannelBlock",
+        "qkv_weight_shape": [
+          768,
+          256
+        ],
+        "qkv_out_width": 768,
+        "k_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "v_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "q_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "n_kv_heads": 8,
+        "head_dim": 32,
+        "q_heads": 8,
+        "kv_elems_per_position": 512,
+        "kv_bytes_per_position_fp16": 1024,
+        "kv_bytes_per_position_fp32": 2048,
+        "k_proj_per_kv_head_row_norm": [
+          1.844563,
+          2.00657,
+          1.853138,
+          1.873032,
+          1.903933,
+          2.069938,
+          1.915466,
+          1.940408
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.132751,
+        "k_rows_nonzero_frac": 1.0,
+        "kv_rows_fro": 7.524205
+      },
+      {
+        "layer": 1,
+        "class": "CarryChannelBlock",
+        "qkv_weight_shape": [
+          768,
+          256
+        ],
+        "qkv_out_width": 768,
+        "k_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "v_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "q_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "n_kv_heads": 8,
+        "head_dim": 32,
+        "q_heads": 8,
+        "kv_elems_per_position": 512,
+        "kv_bytes_per_position_fp16": 1024,
+        "kv_bytes_per_position_fp32": 2048,
+        "k_proj_per_kv_head_row_norm": [
+          1.828986,
+          1.822264,
+          1.842058,
+          1.826551,
+          1.853742,
+          1.838994,
+          1.842778,
+          1.858443
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.132432,
+        "k_rows_nonzero_frac": 1.0,
+        "kv_rows_fro": 7.301063
+      },
+      {
+        "layer": 2,
+        "class": "CarryChannelBlock",
+        "qkv_weight_shape": [
+          768,
+          256
+        ],
+        "qkv_out_width": 768,
+        "k_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "v_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "q_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "n_kv_heads": 8,
+        "head_dim": 32,
+        "q_heads": 8,
+        "kv_elems_per_position": 512,
+        "kv_bytes_per_position_fp16": 1024,
+        "kv_bytes_per_position_fp32": 2048,
+        "k_proj_per_kv_head_row_norm": [
+          1.83863,
+          1.828222,
+          1.831472,
+          1.803516,
+          1.840452,
+          1.840522,
+          1.890993,
+          1.839574
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.128932,
+        "k_rows_nonzero_frac": 1.0,
+        "kv_rows_fro": 7.305016
+      },
+      {
+        "layer": 3,
+        "class": "CarryChannelBlock",
+        "qkv_weight_shape": [
+          768,
+          256
+        ],
+        "qkv_out_width": 768,
+        "k_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "v_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "q_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "n_kv_heads": 8,
+        "head_dim": 32,
+        "q_heads": 8,
+        "kv_elems_per_position": 512,
+        "kv_bytes_per_position_fp16": 1024,
+        "kv_bytes_per_position_fp32": 2048,
+        "k_proj_per_kv_head_row_norm": [
+          1.85316,
+          1.84017,
+          1.829262,
+          1.860265,
+          1.833767,
+          1.847266,
+          1.825668,
+          1.784492
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.132047,
+        "k_rows_nonzero_frac": 1.0,
+        "kv_rows_fro": 7.280584
+      },
+      {
+        "layer": 4,
+        "class": "CarryChannelBlock",
+        "qkv_weight_shape": [
+          768,
+          256
+        ],
+        "qkv_out_width": 768,
+        "k_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "v_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "q_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "n_kv_heads": 8,
+        "head_dim": 32,
+        "q_heads": 8,
+        "kv_elems_per_position": 512,
+        "kv_bytes_per_position_fp16": 1024,
+        "kv_bytes_per_position_fp32": 2048,
+        "k_proj_per_kv_head_row_norm": [
+          1.862667,
+          1.831336,
+          1.806157,
+          1.852938,
+          1.811973,
+          1.830028,
+          1.864273,
+          1.824021
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.139337,
+        "k_rows_nonzero_frac": 1.0,
+        "kv_rows_fro": 7.266667
+      },
+      {
+        "layer": 5,
+        "class": "CarryChannelBlock",
+        "qkv_weight_shape": [
+          768,
+          256
+        ],
+        "qkv_out_width": 768,
+        "k_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "v_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "q_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "n_kv_heads": 8,
+        "head_dim": 32,
+        "q_heads": 8,
+        "kv_elems_per_position": 512,
+        "kv_bytes_per_position_fp16": 1024,
+        "kv_bytes_per_position_fp32": 2048,
+        "k_proj_per_kv_head_row_norm": [
+          1.963946,
+          1.846643,
+          1.828227,
+          1.833382,
+          1.900003,
+          1.820205,
+          1.814758,
+          1.844341
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.12871,
+        "k_rows_nonzero_frac": 1.0,
+        "kv_rows_fro": 7.318625
+      },
+      {
+        "layer": 6,
+        "class": "CarryChannelBlock",
+        "qkv_weight_shape": [
+          768,
+          256
+        ],
+        "qkv_out_width": 768,
+        "k_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "v_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "q_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "n_kv_heads": 8,
+        "head_dim": 32,
+        "q_heads": 8,
+        "kv_elems_per_position": 512,
+        "kv_bytes_per_position_fp16": 1024,
+        "kv_bytes_per_position_fp32": 2048,
+        "k_proj_per_kv_head_row_norm": [
+          1.853643,
+          1.855459,
+          1.982409,
+          1.895398,
+          1.818788,
+          1.780698,
+          1.82083,
+          1.841015
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.140315,
+        "k_rows_nonzero_frac": 1.0,
+        "kv_rows_fro": 7.321939
+      },
+      {
+        "layer": 7,
+        "class": "CarryChannelBlock",
+        "qkv_weight_shape": [
+          768,
+          256
+        ],
+        "qkv_out_width": 768,
+        "k_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "v_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "q_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "n_kv_heads": 8,
+        "head_dim": 32,
+        "q_heads": 8,
+        "kv_elems_per_position": 512,
+        "kv_bytes_per_position_fp16": 1024,
+        "kv_bytes_per_position_fp32": 2048,
+        "k_proj_per_kv_head_row_norm": [
+          1.869992,
+          1.797203,
+          1.82702,
+          1.839083,
+          1.885389,
+          1.825446,
+          1.832396,
+          1.827301
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.126261,
+        "k_rows_nonzero_frac": 1.0,
+        "kv_rows_fro": 7.294538
+      },
+      {
+        "layer": 8,
+        "class": "CarryChannelBlock",
+        "qkv_weight_shape": [
+          768,
+          256
+        ],
+        "qkv_out_width": 768,
+        "k_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "v_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "q_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "n_kv_heads": 8,
+        "head_dim": 32,
+        "q_heads": 8,
+        "kv_elems_per_position": 512,
+        "kv_bytes_per_position_fp16": 1024,
+        "kv_bytes_per_position_fp32": 2048,
+        "k_proj_per_kv_head_row_norm": [
+          1.834468,
+          1.851363,
+          1.840218,
+          1.835603,
+          1.843285,
+          1.823215,
+          1.816292,
+          1.842195
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.13509,
+        "k_rows_nonzero_frac": 1.0,
+        "kv_rows_fro": 7.26946
+      },
+      {
+        "layer": 9,
+        "class": "CarryChannelBlock",
+        "qkv_weight_shape": [
+          768,
+          256
+        ],
+        "qkv_out_width": 768,
+        "k_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "v_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "q_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "n_kv_heads": 8,
+        "head_dim": 32,
+        "q_heads": 8,
+        "kv_elems_per_position": 512,
+        "kv_bytes_per_position_fp16": 1024,
+        "kv_bytes_per_position_fp32": 2048,
+        "k_proj_per_kv_head_row_norm": [
+          1.822519,
+          1.826844,
+          1.9181,
+          1.818915,
+          1.805583,
+          1.864359,
+          1.80334,
+          1.843571
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.138252,
+        "k_rows_nonzero_frac": 1.0,
+        "kv_rows_fro": 7.277522
+      },
+      {
+        "layer": 10,
+        "class": "CarryChannelBlock",
+        "qkv_weight_shape": [
+          768,
+          256
+        ],
+        "qkv_out_width": 768,
+        "k_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "v_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "q_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "n_kv_heads": 8,
+        "head_dim": 32,
+        "q_heads": 8,
+        "kv_elems_per_position": 512,
+        "kv_bytes_per_position_fp16": 1024,
+        "kv_bytes_per_position_fp32": 2048,
+        "k_proj_per_kv_head_row_norm": [
+          1.830065,
+          1.864267,
+          1.895111,
+          1.968258,
+          1.853786,
+          1.819274,
+          1.831562,
+          1.848287
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.144133,
+        "k_rows_nonzero_frac": 1.0,
+        "kv_rows_fro": 7.349546
+      },
+      {
+        "layer": 11,
+        "class": "CarryChannelBlock",
+        "qkv_weight_shape": [
+          768,
+          256
+        ],
+        "qkv_out_width": 768,
+        "k_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "v_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "q_shape": [
+          2,
+          8,
+          64,
+          32
+        ],
+        "n_kv_heads": 8,
+        "head_dim": 32,
+        "q_heads": 8,
+        "kv_elems_per_position": 512,
+        "kv_bytes_per_position_fp16": 1024,
+        "kv_bytes_per_position_fp32": 2048,
+        "k_proj_per_kv_head_row_norm": [
+          1.847251,
+          1.833507,
+          1.826595,
+          1.921648,
+          1.852984,
+          1.799707,
+          1.906329,
+          1.867281
+        ],
+        "kv_head_pair_max_abs_weight_diff": 0.146543,
+        "k_rows_nonzero_frac": 1.0,
+        "kv_rows_fro": 7.32252
+      }
+    ],
+    "alive": true,
+    "alive_note": "MHA（n_kv_heads == n_heads）：无共享，KV 形状 = [B, n_heads, T, dh]",
+    "probe_tokens_shape": [
+      2,
+      64
+    ],
+    "probe_seed": 1234
+  },
+  "carry_liveness": {
+    "carry_rule": "delta",
+    "enabled": true,
+    "carry_chunk": 64,
+    "block_python_class": "CarryChannelBlock",
+    "shared_slots": true,
+    "params_added": 264296,
+    "w_fro": 39.018015,
+    "state_fro": 3.06188,
+    "beta_mean": 0.583061,
+    "write_rel": 0.0,
+    "read_norm": 1.785115,
+    "write_rel_chunks": 0,
+    "n_chunks": 1,
+    "read_scale_absmean": 0.016033,
+    "read_share": 0.086474,
+    "mem_write_to_resid_ratio": 0.07803,
+    "n_layers_sampled": 12,
+    "rel_dev_vs_channel_off": 0.381086,
+    "rel_dev_vs_other_rule": 1.315462,
+    "alive": true,
+    "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+  },
+  "carry_read_mass": {
+    "enabled": true,
+    "window": 16,
+    "read_share_per_layer": 0.325061,
+    "read_share_by_layer": [
+      0.452272,
+      0.426576,
+      0.413416,
+      0.351193,
+      0.419393,
+      0.427923,
+      0.162762,
+      0.306666,
+      0.351035,
+      0.248597,
+      0.247606,
+      0.093286
+    ],
+    "slot_score_mass_per_query": 21.691393,
+    "far_read_norm_frac": 0.973739,
+    "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）"
+  },
+  "carry_probe_input": "synth assoc-mqar（seed 1234）",
+  "recon_liveness": {
+    "recon_window": 0,
+    "recon_lambda": 0.0,
+    "enabled": false,
+    "params_added": 0,
+    "w_fro": null,
+    "w_absmax": null,
+    "nonzero_frac": null,
+    "head_gnorm_mean": null,
+    "recon_ce_mean": null,
+    "recon_ce_symbol_mean": null,
+    "recon_acc_symbol_mean": null,
+    "alive": false,
+    "alive_note": "缺省关闭（recon_window=0）：无头、无损失项、逐位还原 v1"
+  },
+  "topology_liveness": {
+    "topology": "sequential",
+    "params_added": 0,
+    "parameterized": false,
+    "params_identical_to_sequential": true,
+    "start_bitwise_equals_sequential": true,
+    "w_fro": null,
+    "w_absmax": null,
+    "nonzero_frac": null,
+    "alive": false
+  },
+  "exit_mode": "uniform",
+  "fill_kv": true,
+  "proj_fill": false,
+  "aux_weight": 1.0,
+  "aux_anneal_to": null,
+  "final_weight": 1.0,
+  "readout_dims": null,
+  "readout_gated": false,
+  "readout_linear_resid": false,
+  "readout_perdepth": false,
+  "readout_wide_shared": 0,
+  "exit_anneal_to": null,
+  "exit_anneal_frac": null,
+  "final_anneal_to": null,
+  "shallow_stopgrad": false,
+  "dense_aux": true,
+  "gnorm_monitor": {
+    "gnorm_max": 31.52,
+    "gnorm_mean": 0.779,
+    "grad_skips": 0,
+    "attn_sparse_mean": null,
+    "attn_sparse_layer_samples": 0,
+    "attn_linear_mean": null,
+    "attn_linear_layer_samples": 0,
+    "attn_carry_mean": {
+      "read_scale_absmean": 0.016033,
+      "read_share": 0.086475,
+      "mem_write_to_resid_ratio": 0.07803,
+      "state_fro": 5.900482,
+      "beta_mean": 0.465863,
+      "write_rel": 0.494147,
+      "read_norm": 6.671871,
+      "rule": "delta",
+      "carry_chunk": 64
+    },
+    "attn_carry_layer_samples": 4800,
+    "attn_carry_layer_stats": [
+      {
+        "read_scale_absmean": 0.037757,
+        "read_share": 0.144896,
+        "mem_write_to_resid_ratio": 0.80751
+      },
+      {
+        "read_scale_absmean": 0.027989,
+        "read_share": 0.115465,
+        "mem_write_to_resid_ratio": 0.032053
+      },
+      {
+        "read_scale_absmean": 0.021318,
+        "read_share": 0.10912,
+        "mem_write_to_resid_ratio": 0.023638
+      },
+      {
+        "read_scale_absmean": 0.019822,
+        "read_share": 0.087801,
+        "mem_write_to_resid_ratio": 0.01397
+      },
+      {
+        "read_scale_absmean": 0.0158,
+        "read_share": 0.099202,
+        "mem_write_to_resid_ratio": 0.012626
+      },
+      {
+        "read_scale_absmean": 0.013562,
+        "read_share": 0.099921,
+        "mem_write_to_resid_ratio": 0.010783
+      },
+      {
+        "read_scale_absmean": 0.008091,
+        "read_share": 0.042548,
+        "mem_write_to_resid_ratio": 0.004599
+      },
+      {
+        "read_scale_absmean": 0.013027,
+        "read_share": 0.088059,
+        "mem_write_to_resid_ratio": 0.009015
+      },
+      {
+        "read_scale_absmean": 0.012035,
+        "read_share": 0.094277,
+        "mem_write_to_resid_ratio": 0.008507
+      },
+      {
+        "read_scale_absmean": 0.0093,
+        "read_share": 0.062961,
+        "mem_write_to_resid_ratio": 0.005492
+      },
+      {
+        "read_scale_absmean": 0.007525,
+        "read_share": 0.057583,
+        "mem_write_to_resid_ratio": 0.005113
+      },
+      {
+        "read_scale_absmean": 0.006173,
+        "read_share": 0.035861,
+        "mem_write_to_resid_ratio": 0.003053
+      }
+    ],
+    "attn_carry_scan_mean": {
+      "state_fro": 5.900482,
+      "beta_mean": 0.465863,
+      "write_rel": 0.494147,
+      "write_rel_chunks": 3.0,
+      "n_chunks": 4.0,
+      "read_norm": 6.671871
+    },
+    "recon_window": 0,
+    "recon_lambda": 0.0,
+    "recon_mean": null,
+    "synth_answer_ce_mean": 4.4869,
+    "synth_answer_ce_n_steps": 400,
+    "synth_chance_ce": 4.1589,
+    "window_mask": {
+      "train_window": 16,
+      "train_anchors": 0,
+      "params_added": 0,
+      "n_visible_pairs": 3976,
+      "causal_pairs": 32896,
+      "visible_frac": 0.120866,
+      "dropped_frac": 0.879134,
+      "alive": true,
+      "max_abs_logit_diff_masked_vs_open": 2.106155
+    },
+    "window_mask_probe": {
+      "max_abs_logit_diff_masked_vs_open": 2.106155,
+      "alive": true
+    },
+    "kv_heads": null,
+    "kv_heads_n_logged_lines": 0
+  },
+  "params": 13801064,
+  "vocab_size": 206,
+  "train_tokens": 3276800,
+  "wall_minutes": 0.58,
+  "peak_gpu_mem_mb": 2361.5,
+  "avg_train_depth_ce": [
+    3.9786,
+    0.6978,
+    0.6398,
+    0.6188,
+    0.6037,
+    0.5925,
+    0.5871,
+    0.5871,
+    0.5856,
+    0.587,
+    0.5856,
+    0.59,
+    0.595
+  ],
+  "avg_train_gate_mean": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "synth_note": "训练用合成多查询关联回忆（契约 U），未在本入口跑 enwik8 电池；机制读数见实验目录 run.py/results.json",
+  "intervention": {
+    "recon_window": 0,
+    "recon_lambda": 0.0,
+    "enabled": false,
+    "params_added": 0,
+    "w_fro": null,
+    "w_absmax": null,
+    "nonzero_frac": null,
+    "head_gnorm_mean": null,
+    "recon_ce_mean": null,
+    "recon_ce_symbol_mean": null,
+    "recon_acc_symbol_mean": null,
+    "alive": false,
+    "alive_note": "缺省关闭（recon_window=0）：无头、无损失项、逐位还原 v1",
+    "name": "reconstruction_sufficiency_loss",
+    "note": "目标 = 位置 i 重建 tokens[i−recon_window]（刚掉出可见窗口的那一格）；λ=0 时整条项不建图（add_recon_term 原样返回 loss 对象）"
+  }
+}
