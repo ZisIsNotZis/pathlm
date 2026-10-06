@@ -1,0 +1,84 @@
+{
+  "experiment": "2629-carry-ragged-projfill",
+  "ticket": "ticket 45 · W1（任务下发文本逐字转录见 README §4）",
+  "device": "cuda",
+  "seed": 0,
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": false,
+    "topology": "sequential",
+    "fill_kv": true,
+    "proj_fill": true
+  },
+  "train": {
+    "steps": 6000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0,
+    "final_weight": 2.0,
+    "exit_mode": "uniform",
+    "tokens_per_arm": 49152000,
+    "note": "6k×32×256=49.0M token，两臂严格同预算（快照 token 预算）；步时先测后定（SCHEMA §20.3）。final_weight=2.0 = 100M 出口资产配方（权重均匀 + 最终深度 2×），两臂同款。"
+  },
+  "arms": [
+    {"name": "projfill", "carry": false},
+    {"name": "projfill_carry", "carry": true}
+  ],
+  "checkpoint": {
+    "dir": "axes/M-carrier/M1-carrier-type/experiments/2629-carry-ragged-projfill/train",
+    "sha256": {
+      "projfill": "64cc88ec6c6aadaa725e2e0a3619ddd8afcdc69064df2a35214db2ce17ba5d37",
+      "projfill_carry": "9860eb95eee80dcc6351b3268a153cbb90cc0c4fcb2534998c03cd4c0af55b00"
+    },
+    "note": "本实验两臂**自己训练**（6k 步合成 assoc-mqar，随机退出 + proj-fill，非 dense）；权重不入库，运行时 sha256 断言。"
+  },
+  "data": {
+    "train_source": "tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch",
+    "vocab_size": 206,
+    "bpc_name": "enwik8_full",
+    "bpc_path": "data/enwik8_full.npz",
+    "bpc_split": "末段评测批（只用词表大小 206 与 LM 质量口径；训练在合成任务上 ⇒ 此腿是跨分布的质量代价项，不作召回判据）"
+  },
+  "tokens": {
+    "sym_vocab": 64,
+    "filler_token": 64,
+    "cue_token": 205,
+    "local_k": 8
+  },
+  "train_task_leg": {
+    "n_queries": 8,
+    "gap": 14,
+    "batch_size": 64,
+    "n_batches": 32,
+    "modes": ["in_distribution_random_exit", "full_depth_deployment"],
+    "note": "**主判据**：训练型多查询 assoc-mqar（K=8/Q=8，与训练同分布，§17.18）。两臂同一批、同一退出模式（成对）。主腿 = in_distribution_random_exit（训练用的就是随机退出）；full_depth_deployment 为并列参考。"
+  },
+  "tf_leg": {
+    "enwik8_n_batches": 16,
+    "enwik8_batch_size": 16,
+    "synth_n_batches": 16,
+    "synth_batch_size": 32,
+    "depths": [4, 6],
+    "note": "出口资产 tf@4 / tf@6 = depth-k 出口 argmax 与全栈 argmax 的一致率。enwik8 口径对齐 100M 的 0.9726；synth 口径 = 训练分布内（真实非 dense 前向的 states）。"
+  },
+  "bpc_leg": {
+    "batch_size": 16,
+    "n_batches": 16,
+    "note": "clean bpc（enwik8 全因果；跨分布 + 合成训练 ⇒ 只作非退化锚与质量代价项）。"
+  },
+  "criteria": {
+    "c1_recall_indist": "主腿 = 训练分布内（随机退出）多查询关联回忆召回 + 毁源对照臂（chance + Wilson CI + two_proportion）",
+    "c2_tf_exit": "出口资产 tf@4 / tf@6（enwik8 口径 = 对齐 100M；synth 口径 = 分布内）",
+    "c3_increment": "单因素增量（§17.17）：carry 对召回 / tf@4 / bpc 的效应（两臂设计下净和 == 单因素增量）",
+    "c4_activity": "参数量逐臂声明 + 活性量每 200 步（carry read_share / read_scale 等；无 carry 臂为 null）",
+    "c5_exit_asset_holds": "若能复现 100M 量级 tf@4≈0.97，明确记录「出口资产在 carry 存在时是否保持」",
+    "c6_no_extrapolation": "13M / 单 seed，禁外推",
+    "c7_convergence": "§17.15：答案行 CE（synth_answer_ce）末窗斜率；仍在陡降则只读臂间增量"
+  },
+  "variance_band_pp": 1.4,
+  "gpu_wall_budget_min": 45
+}

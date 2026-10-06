@@ -1,0 +1,2003 @@
+{
+  "config": {
+    "experiment": "2629-carry-ragged-projfill",
+    "ticket": "ticket 45 · W1（任务下发文本逐字转录见 README §4）",
+    "device": "cuda",
+    "seed": 0,
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": false,
+      "topology": "sequential",
+      "fill_kv": true,
+      "proj_fill": true
+    },
+    "train": {
+      "steps": 6000,
+      "batch_size": 32,
+      "lr": 0.001,
+      "seed": 0,
+      "final_weight": 2.0,
+      "exit_mode": "uniform",
+      "tokens_per_arm": 49152000,
+      "note": "6k×32×256=49.0M token，两臂严格同预算（快照 token 预算）；步时先测后定（SCHEMA §20.3）。final_weight=2.0 = 100M 出口资产配方（权重均匀 + 最终深度 2×），两臂同款。"
+    },
+    "arms": [
+      {
+        "name": "projfill",
+        "carry": false
+      },
+      {
+        "name": "projfill_carry",
+        "carry": true
+      }
+    ],
+    "checkpoint": {
+      "dir": "axes/M-carrier/M1-carrier-type/experiments/2629-carry-ragged-projfill/train",
+      "sha256": {
+        "projfill": "64cc88ec6c6aadaa725e2e0a3619ddd8afcdc69064df2a35214db2ce17ba5d37",
+        "projfill_carry": "9860eb95eee80dcc6351b3268a153cbb90cc0c4fcb2534998c03cd4c0af55b00"
+      },
+      "note": "本实验两臂**自己训练**（6k 步合成 assoc-mqar，随机退出 + proj-fill，非 dense）；权重不入库，运行时 sha256 断言。"
+    },
+    "data": {
+      "train_source": "tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch",
+      "vocab_size": 206,
+      "bpc_name": "enwik8_full",
+      "bpc_path": "data/enwik8_full.npz",
+      "bpc_split": "末段评测批（只用词表大小 206 与 LM 质量口径；训练在合成任务上 ⇒ 此腿是跨分布的质量代价项，不作召回判据）"
+    },
+    "tokens": {
+      "sym_vocab": 64,
+      "filler_token": 64,
+      "cue_token": 205,
+      "local_k": 8
+    },
+    "train_task_leg": {
+      "n_queries": 8,
+      "gap": 14,
+      "batch_size": 64,
+      "n_batches": 32,
+      "modes": [
+        "in_distribution_random_exit",
+        "full_depth_deployment"
+      ],
+      "note": "**主判据**：训练型多查询 assoc-mqar（K=8/Q=8，与训练同分布，§17.18）。两臂同一批、同一退出模式（成对）。主腿 = in_distribution_random_exit（训练用的就是随机退出）；full_depth_deployment 为并列参考。"
+    },
+    "tf_leg": {
+      "enwik8_n_batches": 16,
+      "enwik8_batch_size": 16,
+      "synth_n_batches": 16,
+      "synth_batch_size": 32,
+      "depths": [
+        4,
+        6
+      ],
+      "note": "出口资产 tf@4 / tf@6 = depth-k 出口 argmax 与全栈 argmax 的一致率。enwik8 口径对齐 100M 的 0.9726；synth 口径 = 训练分布内（真实非 dense 前向的 states）。"
+    },
+    "bpc_leg": {
+      "batch_size": 16,
+      "n_batches": 16,
+      "note": "clean bpc（enwik8 全因果；跨分布 + 合成训练 ⇒ 只作非退化锚与质量代价项）。"
+    },
+    "criteria": {
+      "c1_recall_indist": "主腿 = 训练分布内（随机退出）多查询关联回忆召回 + 毁源对照臂（chance + Wilson CI + two_proportion）",
+      "c2_tf_exit": "出口资产 tf@4 / tf@6（enwik8 口径 = 对齐 100M；synth 口径 = 分布内）",
+      "c3_increment": "单因素增量（§17.17）：carry 对召回 / tf@4 / bpc 的效应（两臂设计下净和 == 单因素增量）",
+      "c4_activity": "参数量逐臂声明 + 活性量每 200 步（carry read_share / read_scale 等；无 carry 臂为 null）",
+      "c5_exit_asset_holds": "若能复现 100M 量级 tf@4≈0.97，明确记录「出口资产在 carry 存在时是否保持」",
+      "c6_no_extrapolation": "13M / 单 seed，禁外推",
+      "c7_convergence": "§17.15：答案行 CE（synth_answer_ce）末窗斜率；仍在陡降则只读臂间增量"
+    },
+    "variance_band_pp": 1.4,
+    "gpu_wall_budget_min": 45
+  },
+  "capability_probe": {
+    "probe": "capability",
+    "dense": false,
+    "topology": "sequential",
+    "exit_mode": "uniform",
+    "proj_fill": true,
+    "fill_kv": true,
+    "arms": {
+      "projfill": {
+        "block_class": "Block",
+        "block_class_expected": "Block",
+        "n_params": 45152,
+        "carry_rule": null,
+        "proj_fill": true,
+        "fill_kv": true,
+        "dense": false
+      },
+      "projfill_carry": {
+        "block_class": "CarryChannelBlock",
+        "block_class_expected": "CarryChannelBlock",
+        "n_params": 49392,
+        "carry_rule": "delta",
+        "proj_fill": true,
+        "fill_kv": true,
+        "dense": false
+      }
+    },
+    "trunk_bit_identical": true,
+    "trunk_diff_keys": [],
+    "param_delta": 4240,
+    "carry_only_keys": [
+      "blocks.0.carry_scale",
+      "blocks.1.carry_scale",
+      "blocks.2.carry_scale",
+      "carry.beta_b",
+      "carry.beta_w",
+      "carry.gate_w",
+      "carry.w_k",
+      "carry.w_q",
+      "carry.w_v"
+    ],
+    "all_extra_params_are_carry": true,
+    "combo_buildable": true
+  },
+  "checkpoints": {
+    "projfill": {
+      "path": "axes/M-carrier/M1-carrier-type/experiments/2629-carry-ragged-projfill/train/projfill/model.pt",
+      "sha256": "64cc88ec6c6aadaa725e2e0a3619ddd8afcdc69064df2a35214db2ce17ba5d37",
+      "size_bytes": 57358059,
+      "sha256_verified": true,
+      "block_class": "Block",
+      "block_class_expected": "Block",
+      "n_params": 14326272,
+      "carry_rule": false,
+      "dense": false,
+      "proj_fill": true,
+      "fill_kv": true
+    },
+    "projfill_carry": {
+      "path": "axes/M-carrier/M1-carrier-type/experiments/2629-carry-ragged-projfill/train/projfill_carry/model.pt",
+      "sha256": "9860eb95eee80dcc6351b3268a153cbb90cc0c4fcb2534998c03cd4c0af55b00",
+      "size_bytes": 58420003,
+      "sha256_verified": true,
+      "block_class": "CarryChannelBlock",
+      "block_class_expected": "CarryChannelBlock",
+      "n_params": 14590568,
+      "carry_rule": true,
+      "dense": false,
+      "proj_fill": true,
+      "fill_kv": true
+    }
+  },
+  "param_declaration": {
+    "projfill": {
+      "n_params": 14326272,
+      "delta_vs_base": 0,
+      "delta_pct_vs_base": 0.0
+    },
+    "projfill_carry": {
+      "n_params": 14590568,
+      "delta_vs_base": 264296,
+      "delta_pct_vs_base": 1.845
+    }
+  },
+  "architecture_equality": {
+    "block_class": {
+      "projfill": "Block",
+      "projfill_carry": "CarryChannelBlock"
+    },
+    "block_class_expected": {
+      "projfill": "Block",
+      "projfill_carry": "CarryChannelBlock"
+    },
+    "dense": {
+      "projfill": false,
+      "projfill_carry": false
+    },
+    "proj_fill": {
+      "projfill": true,
+      "projfill_carry": true
+    },
+    "fill_kv": {
+      "projfill": true,
+      "projfill_carry": true
+    }
+  },
+  "train_task_leg": {
+    "in_distribution_random_exit": {
+      "projfill": {
+        "mode": "in_distribution_random_exit",
+        "K": 8,
+        "Q": 8,
+        "n_batches": 32,
+        "n": 16384,
+        "n_hits": 5340,
+        "accuracy": 0.325928,
+        "accuracy_ci": [
+          0.318792,
+          0.333145
+        ],
+        "chance": 0.015625,
+        "local_prior": 0.013672,
+        "by_distance": {
+          "107": {
+            "accuracy": 0.078498,
+            "n": 293
+          },
+          "109": {
+            "accuracy": 0.168675,
+            "n": 249
+          },
+          "111": {
+            "accuracy": 0.135021,
+            "n": 237
+          },
+          "113": {
+            "accuracy": 0.135531,
+            "n": 273
+          },
+          "115": {
+            "accuracy": 0.192029,
+            "n": 276
+          },
+          "117": {
+            "accuracy": 0.147982,
+            "n": 223
+          },
+          "119": {
+            "accuracy": 0.140562,
+            "n": 249
+          },
+          "121": {
+            "accuracy": 0.201613,
+            "n": 248
+          },
+          "124": {
+            "accuracy": 0.136929,
+            "n": 241
+          },
+          "126": {
+            "accuracy": 0.176895,
+            "n": 277
+          },
+          "128": {
+            "accuracy": 0.194553,
+            "n": 257
+          },
+          "130": {
+            "accuracy": 0.15812,
+            "n": 234
+          },
+          "132": {
+            "accuracy": 0.224335,
+            "n": 263
+          },
+          "134": {
+            "accuracy": 0.169611,
+            "n": 283
+          },
+          "136": {
+            "accuracy": 0.163934,
+            "n": 244
+          },
+          "138": {
+            "accuracy": 0.184739,
+            "n": 249
+          },
+          "141": {
+            "accuracy": 0.191882,
+            "n": 271
+          },
+          "143": {
+            "accuracy": 0.203846,
+            "n": 260
+          },
+          "145": {
+            "accuracy": 0.234615,
+            "n": 260
+          },
+          "147": {
+            "accuracy": 0.208835,
+            "n": 249
+          },
+          "149": {
+            "accuracy": 0.190476,
+            "n": 252
+          },
+          "151": {
+            "accuracy": 0.179592,
+            "n": 245
+          },
+          "153": {
+            "accuracy": 0.203252,
+            "n": 246
+          },
+          "155": {
+            "accuracy": 0.211321,
+            "n": 265
+          },
+          "158": {
+            "accuracy": 0.204918,
+            "n": 244
+          },
+          "160": {
+            "accuracy": 0.196721,
+            "n": 244
+          },
+          "162": {
+            "accuracy": 0.206406,
+            "n": 281
+          },
+          "164": {
+            "accuracy": 0.181102,
+            "n": 254
+          },
+          "166": {
+            "accuracy": 0.241525,
+            "n": 236
+          },
+          "168": {
+            "accuracy": 0.218638,
+            "n": 279
+          },
+          "170": {
+            "accuracy": 0.227642,
+            "n": 246
+          },
+          "172": {
+            "accuracy": 0.170455,
+            "n": 264
+          },
+          "175": {
+            "accuracy": 0.239216,
+            "n": 255
+          },
+          "177": {
+            "accuracy": 0.242678,
+            "n": 239
+          },
+          "179": {
+            "accuracy": 0.278884,
+            "n": 251
+          },
+          "181": {
+            "accuracy": 0.224199,
+            "n": 281
+          },
+          "183": {
+            "accuracy": 0.222222,
+            "n": 279
+          },
+          "185": {
+            "accuracy": 0.25,
+            "n": 256
+          },
+          "187": {
+            "accuracy": 0.224,
+            "n": 250
+          },
+          "189": {
+            "accuracy": 0.303797,
+            "n": 237
+          },
+          "192": {
+            "accuracy": 0.301527,
+            "n": 262
+          },
+          "194": {
+            "accuracy": 0.329502,
+            "n": 261
+          },
+          "196": {
+            "accuracy": 0.330544,
+            "n": 239
+          },
+          "198": {
+            "accuracy": 0.263359,
+            "n": 262
+          },
+          "200": {
+            "accuracy": 0.319066,
+            "n": 257
+          },
+          "202": {
+            "accuracy": 0.326271,
+            "n": 236
+          },
+          "204": {
+            "accuracy": 0.309091,
+            "n": 275
+          },
+          "206": {
+            "accuracy": 0.304688,
+            "n": 256
+          },
+          "209": {
+            "accuracy": 0.44358,
+            "n": 257
+          },
+          "211": {
+            "accuracy": 0.409774,
+            "n": 266
+          },
+          "213": {
+            "accuracy": 0.470588,
+            "n": 255
+          },
+          "215": {
+            "accuracy": 0.383459,
+            "n": 266
+          },
+          "217": {
+            "accuracy": 0.538776,
+            "n": 245
+          },
+          "219": {
+            "accuracy": 0.454183,
+            "n": 251
+          },
+          "221": {
+            "accuracy": 0.417004,
+            "n": 247
+          },
+          "223": {
+            "accuracy": 0.494253,
+            "n": 261
+          },
+          "226": {
+            "accuracy": 0.795556,
+            "n": 225
+          },
+          "228": {
+            "accuracy": 0.861111,
+            "n": 252
+          },
+          "230": {
+            "accuracy": 0.884328,
+            "n": 268
+          },
+          "232": {
+            "accuracy": 0.864629,
+            "n": 229
+          },
+          "234": {
+            "accuracy": 0.8875,
+            "n": 240
+          },
+          "236": {
+            "accuracy": 0.88,
+            "n": 275
+          },
+          "238": {
+            "accuracy": 0.852234,
+            "n": 291
+          },
+          "240": {
+            "accuracy": 0.88806,
+            "n": 268
+          }
+        },
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 16384,
+          "n_hits": 234,
+          "accuracy": 0.014282,
+          "accuracy_ci": [
+            0.012576,
+            0.016216
+          ]
+        },
+        "query_key_distance": {
+          "min": 107,
+          "max": 240,
+          "median": 175,
+          "window": 0,
+          "in_train_distribution": true,
+          "frac_outside_window": 0.0,
+          "n": 16384
+        }
+      },
+      "projfill_carry": {
+        "mode": "in_distribution_random_exit",
+        "K": 8,
+        "Q": 8,
+        "n_batches": 32,
+        "n": 16384,
+        "n_hits": 5399,
+        "accuracy": 0.329529,
+        "accuracy_ci": [
+          0.322372,
+          0.336766
+        ],
+        "chance": 0.015625,
+        "local_prior": 0.013672,
+        "by_distance": {
+          "107": {
+            "accuracy": 0.119454,
+            "n": 293
+          },
+          "109": {
+            "accuracy": 0.15261,
+            "n": 249
+          },
+          "111": {
+            "accuracy": 0.147679,
+            "n": 237
+          },
+          "113": {
+            "accuracy": 0.150183,
+            "n": 273
+          },
+          "115": {
+            "accuracy": 0.173913,
+            "n": 276
+          },
+          "117": {
+            "accuracy": 0.165919,
+            "n": 223
+          },
+          "119": {
+            "accuracy": 0.136546,
+            "n": 249
+          },
+          "121": {
+            "accuracy": 0.141129,
+            "n": 248
+          },
+          "124": {
+            "accuracy": 0.186722,
+            "n": 241
+          },
+          "126": {
+            "accuracy": 0.137184,
+            "n": 277
+          },
+          "128": {
+            "accuracy": 0.155642,
+            "n": 257
+          },
+          "130": {
+            "accuracy": 0.15812,
+            "n": 234
+          },
+          "132": {
+            "accuracy": 0.13308,
+            "n": 263
+          },
+          "134": {
+            "accuracy": 0.159011,
+            "n": 283
+          },
+          "136": {
+            "accuracy": 0.155738,
+            "n": 244
+          },
+          "138": {
+            "accuracy": 0.168675,
+            "n": 249
+          },
+          "141": {
+            "accuracy": 0.199262,
+            "n": 271
+          },
+          "143": {
+            "accuracy": 0.2,
+            "n": 260
+          },
+          "145": {
+            "accuracy": 0.211538,
+            "n": 260
+          },
+          "147": {
+            "accuracy": 0.200803,
+            "n": 249
+          },
+          "149": {
+            "accuracy": 0.194444,
+            "n": 252
+          },
+          "151": {
+            "accuracy": 0.15102,
+            "n": 245
+          },
+          "153": {
+            "accuracy": 0.195122,
+            "n": 246
+          },
+          "155": {
+            "accuracy": 0.211321,
+            "n": 265
+          },
+          "158": {
+            "accuracy": 0.237705,
+            "n": 244
+          },
+          "160": {
+            "accuracy": 0.184426,
+            "n": 244
+          },
+          "162": {
+            "accuracy": 0.220641,
+            "n": 281
+          },
+          "164": {
+            "accuracy": 0.251969,
+            "n": 254
+          },
+          "166": {
+            "accuracy": 0.25,
+            "n": 236
+          },
+          "168": {
+            "accuracy": 0.182796,
+            "n": 279
+          },
+          "170": {
+            "accuracy": 0.178862,
+            "n": 246
+          },
+          "172": {
+            "accuracy": 0.200758,
+            "n": 264
+          },
+          "175": {
+            "accuracy": 0.235294,
+            "n": 255
+          },
+          "177": {
+            "accuracy": 0.259414,
+            "n": 239
+          },
+          "179": {
+            "accuracy": 0.231076,
+            "n": 251
+          },
+          "181": {
+            "accuracy": 0.220641,
+            "n": 281
+          },
+          "183": {
+            "accuracy": 0.232975,
+            "n": 279
+          },
+          "185": {
+            "accuracy": 0.25,
+            "n": 256
+          },
+          "187": {
+            "accuracy": 0.228,
+            "n": 250
+          },
+          "189": {
+            "accuracy": 0.227848,
+            "n": 237
+          },
+          "192": {
+            "accuracy": 0.293893,
+            "n": 262
+          },
+          "194": {
+            "accuracy": 0.337165,
+            "n": 261
+          },
+          "196": {
+            "accuracy": 0.317992,
+            "n": 239
+          },
+          "198": {
+            "accuracy": 0.328244,
+            "n": 262
+          },
+          "200": {
+            "accuracy": 0.357977,
+            "n": 257
+          },
+          "202": {
+            "accuracy": 0.292373,
+            "n": 236
+          },
+          "204": {
+            "accuracy": 0.301818,
+            "n": 275
+          },
+          "206": {
+            "accuracy": 0.335938,
+            "n": 256
+          },
+          "209": {
+            "accuracy": 0.51751,
+            "n": 257
+          },
+          "211": {
+            "accuracy": 0.484962,
+            "n": 266
+          },
+          "213": {
+            "accuracy": 0.407843,
+            "n": 255
+          },
+          "215": {
+            "accuracy": 0.424812,
+            "n": 266
+          },
+          "217": {
+            "accuracy": 0.473469,
+            "n": 245
+          },
+          "219": {
+            "accuracy": 0.386454,
+            "n": 251
+          },
+          "221": {
+            "accuracy": 0.352227,
+            "n": 247
+          },
+          "223": {
+            "accuracy": 0.51341,
+            "n": 261
+          },
+          "226": {
+            "accuracy": 0.893333,
+            "n": 225
+          },
+          "228": {
+            "accuracy": 0.924603,
+            "n": 252
+          },
+          "230": {
+            "accuracy": 0.936567,
+            "n": 268
+          },
+          "232": {
+            "accuracy": 0.90393,
+            "n": 229
+          },
+          "234": {
+            "accuracy": 0.920833,
+            "n": 240
+          },
+          "236": {
+            "accuracy": 0.941818,
+            "n": 275
+          },
+          "238": {
+            "accuracy": 0.914089,
+            "n": 291
+          },
+          "240": {
+            "accuracy": 0.929104,
+            "n": 268
+          }
+        },
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 16384,
+          "n_hits": 248,
+          "accuracy": 0.015137,
+          "accuracy_ci": [
+            0.013378,
+            0.017123
+          ]
+        },
+        "query_key_distance": {
+          "min": 107,
+          "max": 240,
+          "median": 175,
+          "window": 0,
+          "in_train_distribution": true,
+          "frac_outside_window": 0.0,
+          "n": 16384
+        }
+      }
+    },
+    "full_depth_deployment": {
+      "projfill": {
+        "mode": "full_depth_deployment",
+        "K": 8,
+        "Q": 8,
+        "n_batches": 32,
+        "n": 16384,
+        "n_hits": 5781,
+        "accuracy": 0.352844,
+        "accuracy_ci": [
+          0.345562,
+          0.360195
+        ],
+        "chance": 0.015625,
+        "local_prior": 0.013672,
+        "by_distance": {
+          "107": {
+            "accuracy": 0.095563,
+            "n": 293
+          },
+          "109": {
+            "accuracy": 0.176707,
+            "n": 249
+          },
+          "111": {
+            "accuracy": 0.160338,
+            "n": 237
+          },
+          "113": {
+            "accuracy": 0.172161,
+            "n": 273
+          },
+          "115": {
+            "accuracy": 0.202899,
+            "n": 276
+          },
+          "117": {
+            "accuracy": 0.156951,
+            "n": 223
+          },
+          "119": {
+            "accuracy": 0.148594,
+            "n": 249
+          },
+          "121": {
+            "accuracy": 0.201613,
+            "n": 248
+          },
+          "124": {
+            "accuracy": 0.145228,
+            "n": 241
+          },
+          "126": {
+            "accuracy": 0.198556,
+            "n": 277
+          },
+          "128": {
+            "accuracy": 0.190661,
+            "n": 257
+          },
+          "130": {
+            "accuracy": 0.183761,
+            "n": 234
+          },
+          "132": {
+            "accuracy": 0.21673,
+            "n": 263
+          },
+          "134": {
+            "accuracy": 0.176678,
+            "n": 283
+          },
+          "136": {
+            "accuracy": 0.180328,
+            "n": 244
+          },
+          "138": {
+            "accuracy": 0.204819,
+            "n": 249
+          },
+          "141": {
+            "accuracy": 0.206642,
+            "n": 271
+          },
+          "143": {
+            "accuracy": 0.203846,
+            "n": 260
+          },
+          "145": {
+            "accuracy": 0.253846,
+            "n": 260
+          },
+          "147": {
+            "accuracy": 0.228916,
+            "n": 249
+          },
+          "149": {
+            "accuracy": 0.210317,
+            "n": 252
+          },
+          "151": {
+            "accuracy": 0.187755,
+            "n": 245
+          },
+          "153": {
+            "accuracy": 0.231707,
+            "n": 246
+          },
+          "155": {
+            "accuracy": 0.233962,
+            "n": 265
+          },
+          "158": {
+            "accuracy": 0.204918,
+            "n": 244
+          },
+          "160": {
+            "accuracy": 0.22541,
+            "n": 244
+          },
+          "162": {
+            "accuracy": 0.224199,
+            "n": 281
+          },
+          "164": {
+            "accuracy": 0.224409,
+            "n": 254
+          },
+          "166": {
+            "accuracy": 0.228814,
+            "n": 236
+          },
+          "168": {
+            "accuracy": 0.243728,
+            "n": 279
+          },
+          "170": {
+            "accuracy": 0.239837,
+            "n": 246
+          },
+          "172": {
+            "accuracy": 0.19697,
+            "n": 264
+          },
+          "175": {
+            "accuracy": 0.247059,
+            "n": 255
+          },
+          "177": {
+            "accuracy": 0.267782,
+            "n": 239
+          },
+          "179": {
+            "accuracy": 0.282869,
+            "n": 251
+          },
+          "181": {
+            "accuracy": 0.238434,
+            "n": 281
+          },
+          "183": {
+            "accuracy": 0.275986,
+            "n": 279
+          },
+          "185": {
+            "accuracy": 0.285156,
+            "n": 256
+          },
+          "187": {
+            "accuracy": 0.232,
+            "n": 250
+          },
+          "189": {
+            "accuracy": 0.320675,
+            "n": 237
+          },
+          "192": {
+            "accuracy": 0.312977,
+            "n": 262
+          },
+          "194": {
+            "accuracy": 0.340996,
+            "n": 261
+          },
+          "196": {
+            "accuracy": 0.376569,
+            "n": 239
+          },
+          "198": {
+            "accuracy": 0.267176,
+            "n": 262
+          },
+          "200": {
+            "accuracy": 0.338521,
+            "n": 257
+          },
+          "202": {
+            "accuracy": 0.355932,
+            "n": 236
+          },
+          "204": {
+            "accuracy": 0.349091,
+            "n": 275
+          },
+          "206": {
+            "accuracy": 0.316406,
+            "n": 256
+          },
+          "209": {
+            "accuracy": 0.447471,
+            "n": 257
+          },
+          "211": {
+            "accuracy": 0.432331,
+            "n": 266
+          },
+          "213": {
+            "accuracy": 0.498039,
+            "n": 255
+          },
+          "215": {
+            "accuracy": 0.43609,
+            "n": 266
+          },
+          "217": {
+            "accuracy": 0.571429,
+            "n": 245
+          },
+          "219": {
+            "accuracy": 0.52988,
+            "n": 251
+          },
+          "221": {
+            "accuracy": 0.453441,
+            "n": 247
+          },
+          "223": {
+            "accuracy": 0.517241,
+            "n": 261
+          },
+          "226": {
+            "accuracy": 0.906667,
+            "n": 225
+          },
+          "228": {
+            "accuracy": 0.936508,
+            "n": 252
+          },
+          "230": {
+            "accuracy": 0.940299,
+            "n": 268
+          },
+          "232": {
+            "accuracy": 0.951965,
+            "n": 229
+          },
+          "234": {
+            "accuracy": 0.966667,
+            "n": 240
+          },
+          "236": {
+            "accuracy": 0.941818,
+            "n": 275
+          },
+          "238": {
+            "accuracy": 0.941581,
+            "n": 291
+          },
+          "240": {
+            "accuracy": 0.962687,
+            "n": 268
+          }
+        },
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 16384,
+          "n_hits": 246,
+          "accuracy": 0.015015,
+          "accuracy_ci": [
+            0.013263,
+            0.016994
+          ]
+        },
+        "query_key_distance": {
+          "min": 107,
+          "max": 240,
+          "median": 175,
+          "window": 0,
+          "in_train_distribution": true,
+          "frac_outside_window": 0.0,
+          "n": 16384
+        }
+      },
+      "projfill_carry": {
+        "mode": "full_depth_deployment",
+        "K": 8,
+        "Q": 8,
+        "n_batches": 32,
+        "n": 16384,
+        "n_hits": 5862,
+        "accuracy": 0.357788,
+        "accuracy_ci": [
+          0.350482,
+          0.365161
+        ],
+        "chance": 0.015625,
+        "local_prior": 0.013672,
+        "by_distance": {
+          "107": {
+            "accuracy": 0.119454,
+            "n": 293
+          },
+          "109": {
+            "accuracy": 0.164659,
+            "n": 249
+          },
+          "111": {
+            "accuracy": 0.14346,
+            "n": 237
+          },
+          "113": {
+            "accuracy": 0.153846,
+            "n": 273
+          },
+          "115": {
+            "accuracy": 0.177536,
+            "n": 276
+          },
+          "117": {
+            "accuracy": 0.179372,
+            "n": 223
+          },
+          "119": {
+            "accuracy": 0.144578,
+            "n": 249
+          },
+          "121": {
+            "accuracy": 0.137097,
+            "n": 248
+          },
+          "124": {
+            "accuracy": 0.190871,
+            "n": 241
+          },
+          "126": {
+            "accuracy": 0.166065,
+            "n": 277
+          },
+          "128": {
+            "accuracy": 0.171206,
+            "n": 257
+          },
+          "130": {
+            "accuracy": 0.183761,
+            "n": 234
+          },
+          "132": {
+            "accuracy": 0.163498,
+            "n": 263
+          },
+          "134": {
+            "accuracy": 0.180212,
+            "n": 283
+          },
+          "136": {
+            "accuracy": 0.17623,
+            "n": 244
+          },
+          "138": {
+            "accuracy": 0.188755,
+            "n": 249
+          },
+          "141": {
+            "accuracy": 0.199262,
+            "n": 271
+          },
+          "143": {
+            "accuracy": 0.188462,
+            "n": 260
+          },
+          "145": {
+            "accuracy": 0.196154,
+            "n": 260
+          },
+          "147": {
+            "accuracy": 0.2249,
+            "n": 249
+          },
+          "149": {
+            "accuracy": 0.178571,
+            "n": 252
+          },
+          "151": {
+            "accuracy": 0.167347,
+            "n": 245
+          },
+          "153": {
+            "accuracy": 0.227642,
+            "n": 246
+          },
+          "155": {
+            "accuracy": 0.196226,
+            "n": 265
+          },
+          "158": {
+            "accuracy": 0.270492,
+            "n": 244
+          },
+          "160": {
+            "accuracy": 0.237705,
+            "n": 244
+          },
+          "162": {
+            "accuracy": 0.213523,
+            "n": 281
+          },
+          "164": {
+            "accuracy": 0.232283,
+            "n": 254
+          },
+          "166": {
+            "accuracy": 0.271186,
+            "n": 236
+          },
+          "168": {
+            "accuracy": 0.218638,
+            "n": 279
+          },
+          "170": {
+            "accuracy": 0.170732,
+            "n": 246
+          },
+          "172": {
+            "accuracy": 0.215909,
+            "n": 264
+          },
+          "175": {
+            "accuracy": 0.258824,
+            "n": 255
+          },
+          "177": {
+            "accuracy": 0.25523,
+            "n": 239
+          },
+          "179": {
+            "accuracy": 0.23506,
+            "n": 251
+          },
+          "181": {
+            "accuracy": 0.241993,
+            "n": 281
+          },
+          "183": {
+            "accuracy": 0.261649,
+            "n": 279
+          },
+          "185": {
+            "accuracy": 0.269531,
+            "n": 256
+          },
+          "187": {
+            "accuracy": 0.28,
+            "n": 250
+          },
+          "189": {
+            "accuracy": 0.240506,
+            "n": 237
+          },
+          "192": {
+            "accuracy": 0.351145,
+            "n": 262
+          },
+          "194": {
+            "accuracy": 0.356322,
+            "n": 261
+          },
+          "196": {
+            "accuracy": 0.355649,
+            "n": 239
+          },
+          "198": {
+            "accuracy": 0.366412,
+            "n": 262
+          },
+          "200": {
+            "accuracy": 0.377432,
+            "n": 257
+          },
+          "202": {
+            "accuracy": 0.347458,
+            "n": 236
+          },
+          "204": {
+            "accuracy": 0.323636,
+            "n": 275
+          },
+          "206": {
+            "accuracy": 0.351562,
+            "n": 256
+          },
+          "209": {
+            "accuracy": 0.529183,
+            "n": 257
+          },
+          "211": {
+            "accuracy": 0.5,
+            "n": 266
+          },
+          "213": {
+            "accuracy": 0.501961,
+            "n": 255
+          },
+          "215": {
+            "accuracy": 0.481203,
+            "n": 266
+          },
+          "217": {
+            "accuracy": 0.55102,
+            "n": 245
+          },
+          "219": {
+            "accuracy": 0.450199,
+            "n": 251
+          },
+          "221": {
+            "accuracy": 0.42915,
+            "n": 247
+          },
+          "223": {
+            "accuracy": 0.547893,
+            "n": 261
+          },
+          "226": {
+            "accuracy": 1.0,
+            "n": 225
+          },
+          "228": {
+            "accuracy": 1.0,
+            "n": 252
+          },
+          "230": {
+            "accuracy": 1.0,
+            "n": 268
+          },
+          "232": {
+            "accuracy": 1.0,
+            "n": 229
+          },
+          "234": {
+            "accuracy": 1.0,
+            "n": 240
+          },
+          "236": {
+            "accuracy": 1.0,
+            "n": 275
+          },
+          "238": {
+            "accuracy": 1.0,
+            "n": 291
+          },
+          "240": {
+            "accuracy": 1.0,
+            "n": 268
+          }
+        },
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 16384,
+          "n_hits": 271,
+          "accuracy": 0.016541,
+          "accuracy_ci": [
+            0.014698,
+            0.01861
+          ]
+        },
+        "query_key_distance": {
+          "min": 107,
+          "max": 240,
+          "median": 175,
+          "window": 0,
+          "in_train_distribution": true,
+          "frac_outside_window": 0.0,
+          "n": 16384
+        }
+      }
+    }
+  },
+  "train_task_leg_no_last_block": {
+    "in_distribution_random_exit": {
+      "projfill": {
+        "n": 14336,
+        "n_hits": 3568,
+        "accuracy": 0.248884,
+        "accuracy_ci": [
+          0.241874,
+          0.256028
+        ],
+        "dropped": "距离 226–240（= Q=K 最后一块，排除法伪影）"
+      },
+      "projfill_carry": {
+        "n": 14336,
+        "n_hits": 3512,
+        "accuracy": 0.244978,
+        "accuracy_ci": [
+          0.238006,
+          0.252086
+        ],
+        "dropped": "距离 226–240（= Q=K 最后一块，排除法伪影）"
+      }
+    },
+    "full_depth_deployment": {
+      "projfill": {
+        "n": 14336,
+        "n_hits": 3848,
+        "accuracy": 0.268415,
+        "accuracy_ci": [
+          0.261224,
+          0.275731
+        ],
+        "dropped": "距离 226–240（= Q=K 最后一块，排除法伪影）"
+      },
+      "projfill_carry": {
+        "n": 14336,
+        "n_hits": 3814,
+        "accuracy": 0.266044,
+        "accuracy_ci": [
+          0.258873,
+          0.273339
+        ],
+        "dropped": "距离 226–240（= Q=K 最后一块，排除法伪影）"
+      }
+    }
+  },
+  "main_leg_single_query_ood": {
+    "in_distribution_random_exit": {
+      "projfill": {
+        "mode": "in_distribution_random_exit",
+        "K": 8,
+        "n_batches": 32,
+        "n": 2048,
+        "n_hits": 56,
+        "accuracy": 0.027344,
+        "accuracy_ci": [
+          0.021117,
+          0.035341
+        ],
+        "chance": 0.015625,
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 2048,
+          "n_hits": 29,
+          "accuracy": 0.01416,
+          "accuracy_ci": [
+            0.009877,
+            0.020262
+          ]
+        },
+        "distance_range": [
+          241,
+          255
+        ],
+        "in_train_distribution": false
+      },
+      "projfill_carry": {
+        "mode": "in_distribution_random_exit",
+        "K": 8,
+        "n_batches": 32,
+        "n": 2048,
+        "n_hits": 177,
+        "accuracy": 0.086426,
+        "accuracy_ci": [
+          0.075017,
+          0.099383
+        ],
+        "chance": 0.015625,
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 2048,
+          "n_hits": 27,
+          "accuracy": 0.013184,
+          "accuracy_ci": [
+            0.009076,
+            0.019114
+          ]
+        },
+        "distance_range": [
+          241,
+          255
+        ],
+        "in_train_distribution": false
+      }
+    },
+    "full_depth_deployment": {
+      "projfill": {
+        "mode": "full_depth_deployment",
+        "K": 8,
+        "n_batches": 32,
+        "n": 2048,
+        "n_hits": 51,
+        "accuracy": 0.024902,
+        "accuracy_ci": [
+          0.018991,
+          0.032593
+        ],
+        "chance": 0.015625,
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 2048,
+          "n_hits": 28,
+          "accuracy": 0.013672,
+          "accuracy_ci": [
+            0.009476,
+            0.019689
+          ]
+        },
+        "distance_range": [
+          241,
+          255
+        ],
+        "in_train_distribution": false
+      },
+      "projfill_carry": {
+        "mode": "full_depth_deployment",
+        "K": 8,
+        "n_batches": 32,
+        "n": 2048,
+        "n_hits": 175,
+        "accuracy": 0.085449,
+        "accuracy_ci": [
+          0.074104,
+          0.098346
+        ],
+        "chance": 0.015625,
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 2048,
+          "n_hits": 28,
+          "accuracy": 0.013672,
+          "accuracy_ci": [
+            0.009476,
+            0.019689
+          ]
+        },
+        "distance_range": [
+          241,
+          255
+        ],
+        "in_train_distribution": false
+      }
+    }
+  },
+  "tf_enwik8": {
+    "projfill": {
+      "by_depth": [
+        {
+          "depth": 0,
+          "accept": 0.0147
+        },
+        {
+          "depth": 1,
+          "accept": 0.8616
+        },
+        {
+          "depth": 2,
+          "accept": 0.9007
+        },
+        {
+          "depth": 3,
+          "accept": 0.9251
+        },
+        {
+          "depth": 4,
+          "accept": 0.9369
+        },
+        {
+          "depth": 5,
+          "accept": 0.9439
+        },
+        {
+          "depth": 6,
+          "accept": 0.9498
+        },
+        {
+          "depth": 7,
+          "accept": 0.9574
+        },
+        {
+          "depth": 8,
+          "accept": 0.9615
+        },
+        {
+          "depth": 9,
+          "accept": 0.9693
+        },
+        {
+          "depth": 10,
+          "accept": 0.9789
+        },
+        {
+          "depth": 11,
+          "accept": 0.9803
+        }
+      ],
+      "tf4": 0.9369,
+      "tf6": 0.9498,
+      "caliber": "enwik8 teacher-forcing 代理（对齐 100M 0.9726）"
+    },
+    "projfill_carry": {
+      "by_depth": [
+        {
+          "depth": 0,
+          "accept": 0.0365
+        },
+        {
+          "depth": 1,
+          "accept": 0.2046
+        },
+        {
+          "depth": 2,
+          "accept": 0.7808
+        },
+        {
+          "depth": 3,
+          "accept": 0.8644
+        },
+        {
+          "depth": 4,
+          "accept": 0.8898
+        },
+        {
+          "depth": 5,
+          "accept": 0.9259
+        },
+        {
+          "depth": 6,
+          "accept": 0.9445
+        },
+        {
+          "depth": 7,
+          "accept": 0.9605
+        },
+        {
+          "depth": 8,
+          "accept": 0.972
+        },
+        {
+          "depth": 9,
+          "accept": 0.9786
+        },
+        {
+          "depth": 10,
+          "accept": 0.986
+        },
+        {
+          "depth": 11,
+          "accept": 0.9934
+        }
+      ],
+      "tf4": 0.8898,
+      "tf6": 0.9445,
+      "caliber": "enwik8 teacher-forcing 代理（对齐 100M 0.9726）"
+    }
+  },
+  "tf_synth_indist": {
+    "projfill": {
+      "depths": [
+        4,
+        6
+      ],
+      "n_tokens": 130560,
+      "accept": {
+        "4": 0.9966,
+        "6": 0.9973
+      },
+      "caliber": "synth-assoc-mqar（训练分布内，真实非 dense 前向的全深度 states），逐位置 argmax 一致率",
+      "n_batches": 16,
+      "batch_size": 32
+    },
+    "projfill_carry": {
+      "depths": [
+        4,
+        6
+      ],
+      "n_tokens": 130560,
+      "accept": {
+        "4": 0.9868,
+        "6": 0.9913
+      },
+      "caliber": "synth-assoc-mqar（训练分布内，真实非 dense 前向的全深度 states），逐位置 argmax 一致率",
+      "n_batches": 16,
+      "batch_size": 32
+    }
+  },
+  "bpc_leg": {
+    "projfill": {
+      "bpc": 15.977669,
+      "n_batches": 16,
+      "batch_size": 16
+    },
+    "projfill_carry": {
+      "bpc": 46.333189,
+      "n_batches": 16,
+      "batch_size": 16
+    }
+  },
+  "bpc_damage_vs_base": {
+    "projfill": 0.0,
+    "projfill_carry": 30.35552
+  },
+  "increments": {
+    "recall_random_exit": {
+      "carry_effect": 0.3601,
+      "net_vs_base": 0.3601
+    },
+    "recall_random_exit_no_last_block": {
+      "carry_effect": -0.3906,
+      "net_vs_base": -0.3906
+    },
+    "recall_full_depth": {
+      "carry_effect": 0.4944,
+      "net_vs_base": 0.4944
+    },
+    "single_query_ood": {
+      "carry_effect": 6.0547,
+      "net_vs_base": 6.0547
+    },
+    "tf4_synth_indist": {
+      "carry_effect": -0.98,
+      "net_vs_base": -0.98
+    },
+    "tf4_enwik8": {
+      "carry_effect": -4.71,
+      "net_vs_base": -4.71
+    },
+    "bpc": {
+      "carry_effect": 30.35552,
+      "net_vs_base": 30.35552
+    },
+    "pairwise_recall_random_exit": {
+      "p_a": 0.325928,
+      "p_b": 0.329529,
+      "delta_pp": 0.36,
+      "ci_a": [
+        0.318792,
+        0.333145
+      ],
+      "ci_b": [
+        0.322372,
+        0.336766
+      ],
+      "ci_overlap": true,
+      "diff_ci_95": [
+        -0.006563,
+        0.013766
+      ],
+      "z": 0.694,
+      "p_value": 0.48744347
+    },
+    "pairwise_recall_full_depth": {
+      "p_a": 0.352844,
+      "p_b": 0.357788,
+      "delta_pp": 0.494,
+      "ci_a": [
+        0.345562,
+        0.360195
+      ],
+      "ci_b": [
+        0.350482,
+        0.365161
+      ],
+      "ci_overlap": true,
+      "diff_ci_95": [
+        -0.00542,
+        0.015308
+      ],
+      "z": 0.935,
+      "p_value": 0.34982428
+    }
+  },
+  "destroy_source_validity": {
+    "in_distribution_random_exit": {
+      "projfill": {
+        "corrupt_accuracy": 0.014282,
+        "corrupt_ci": [
+          0.012576,
+          0.016216
+        ],
+        "chance": 0.015625,
+        "valid": true,
+        "rule": "毁源后 CI 下界 > 4×chance ⇒ 该臂读数作废"
+      },
+      "projfill_carry": {
+        "corrupt_accuracy": 0.015137,
+        "corrupt_ci": [
+          0.013378,
+          0.017123
+        ],
+        "chance": 0.015625,
+        "valid": true,
+        "rule": "毁源后 CI 下界 > 4×chance ⇒ 该臂读数作废"
+      }
+    },
+    "full_depth_deployment": {
+      "projfill": {
+        "corrupt_accuracy": 0.015015,
+        "corrupt_ci": [
+          0.013263,
+          0.016994
+        ],
+        "chance": 0.015625,
+        "valid": true,
+        "rule": "毁源后 CI 下界 > 4×chance ⇒ 该臂读数作废"
+      },
+      "projfill_carry": {
+        "corrupt_accuracy": 0.016541,
+        "corrupt_ci": [
+          0.014698,
+          0.01861
+        ],
+        "chance": 0.015625,
+        "valid": true,
+        "rule": "毁源后 CI 下界 > 4×chance ⇒ 该臂读数作废"
+      }
+    }
+  },
+  "train_activity": {
+    "projfill": {
+      "n_log_lines": 31,
+      "n_rows_step_multiple_of_200": 30,
+      "final_step": 5999,
+      "final_loss": 0.3957,
+      "final_synth_answer_ce": 3.0723,
+      "synth_chance_ce": 4.1589,
+      "answer_ce_slope_nats_per_1k_lastquarter": -0.23881,
+      "last_attn_carry": null,
+      "attn_carry_series_present": 0,
+      "n_exit_ce": 13
+    },
+    "projfill_carry": {
+      "n_log_lines": 31,
+      "n_rows_step_multiple_of_200": 30,
+      "final_step": 5999,
+      "final_loss": 0.3773,
+      "final_synth_answer_ce": 2.6186,
+      "synth_chance_ce": 4.1589,
+      "answer_ce_slope_nats_per_1k_lastquarter": -0.18292,
+      "last_attn_carry": {
+        "read_scale_absmean": 0.059182,
+        "read_share": 0.541741,
+        "mem_write_to_resid_ratio": 0.931485,
+        "state_fro": 7.702084,
+        "beta_mean": 0.230216,
+        "write_rel": 0.303701,
+        "read_norm": 16.666559,
+        "n_layer_samples": 72000,
+        "rule": "delta",
+        "carry_chunk": 64
+      },
+      "attn_carry_series_present": 30,
+      "n_exit_ce": 13
+    }
+  },
+  "exit_asset_holds": {
+    "primary_caliber": "synth_assoc-mqar_in_distribution",
+    "tf4_indist_base": 0.9966,
+    "tf4_indist_carry": 0.9868,
+    "delta_pp_indist": -0.98,
+    "tf4_enwik8_base": 0.9369,
+    "tf4_enwik8_carry": 0.8898,
+    "delta_pp_enwik8": -4.71,
+    "reproduces_100m_magnitude": true,
+    "holds_indist": true,
+    "holds_enwik8_proxy": false,
+    "holds": true,
+    "rule": "主口径 = 训练分布内（synth）tf@4：两臂均 ≥0.90 ⇒ 100M 量级（0.9726）在本尺度/步数下复现；|Δ| ≤ 1.4pp ⇒ 「出口资产在 carry 存在时保持」。enwik8 口径是**跨分布代理**（本线模型在合成任务上训练），单独报、不作主口径。",
+    "note": "两个口径不一致时（本线 enwik8 代理 |Δ| > 1.4pp）必须在报告里分开写、不得只报有利的那个；跨分布口径的下降标为待确认（单 seed）。"
+  },
+  "cost": {
+    "wall_minutes_total_eval": 0.403,
+    "peak_gpu_mem_mb": 786.6,
+    "free_mb_before": 19046,
+    "free_mb_after": 18041,
+    "pure_inference": true
+  },
+  "provenance": {
+    "run_log": [
+      {
+        "t": 0.15,
+        "msg": "CPU 能力面自检（两臂可建 / 块类 / 主干逐位一致）"
+      },
+      {
+        "t": 0.16,
+        "msg": "  combo_buildable=True trunk_bit_identical=True param_delta=4240"
+      },
+      {
+        "t": 0.16,
+        "msg": "加载两臂（sha256 断言）"
+      },
+      {
+        "t": 0.58,
+        "msg": "  projfill         64cc88ec6c6aadaa… block=Block params=14326272"
+      },
+      {
+        "t": 1.09,
+        "msg": "  projfill_carry   9860eb95eee80dcc… block=CarryChannelBlock params=14590568"
+      },
+      {
+        "t": 1.09,
+        "msg": "判据①（主）：多查询 assoc-mqar 召回 —— in_distribution_random_exit + full_depth"
+      },
+      {
+        "t": 3.54,
+        "msg": "  [in_distribution_random_exit ] projfill         acc=0.3259 CI=[0.318792, 0.333145] chance=0.0156 lp=0.0137 corrupt=0.0143 dist=107-240"
+      },
+      {
+        "t": 6.37,
+        "msg": "  [in_distribution_random_exit ] projfill_carry   acc=0.3295 CI=[0.322372, 0.336766] chance=0.0156 lp=0.0137 corrupt=0.0151 dist=107-240"
+      },
+      {
+        "t": 8.43,
+        "msg": "  [full_depth_deployment       ] projfill         acc=0.3528 CI=[0.345562, 0.360195] chance=0.0156 lp=0.0137 corrupt=0.0150 dist=107-240"
+      },
+      {
+        "t": 11.08,
+        "msg": "  [full_depth_deployment       ] projfill_carry   acc=0.3578 CI=[0.350482, 0.365161] chance=0.0156 lp=0.0137 corrupt=0.0165 dist=107-240"
+      },
+      {
+        "t": 11.08,
+        "msg": "单查询关联回忆（判决行 T-1，距离 241–255 = **训练分布外**）——外推参照"
+      },
+      {
+        "t": 13.25,
+        "msg": "  [in_distribution_random_exit ] projfill         acc=0.0273 corrupt=0.0142"
+      },
+      {
+        "t": 15.95,
+        "msg": "  [in_distribution_random_exit ] projfill_carry   acc=0.0864 corrupt=0.0132"
+      },
+      {
+        "t": 18.06,
+        "msg": "  [full_depth_deployment       ] projfill         acc=0.0249 corrupt=0.0137"
+      },
+      {
+        "t": 21.01,
+        "msg": "  [full_depth_deployment       ] projfill_carry   acc=0.0854 corrupt=0.0137"
+      },
+      {
+        "t": 21.01,
+        "msg": "判据②：出口资产 tf@4 / tf@6（enwik8 口径 + synth 训练分布内口径）"
+      },
+      {
+        "t": 22.23,
+        "msg": "  projfill         tf@4(enwik8)=0.9369 tf@6(enwik8)=0.9498 tf@4(synth)=0.9966 tf@6(synth)=0.9973"
+      },
+      {
+        "t": 23.36,
+        "msg": "  projfill_carry   tf@4(enwik8)=0.8898 tf@6(enwik8)=0.9445 tf@4(synth)=0.9868 tf@6(synth)=0.9913"
+      },
+      {
+        "t": 23.36,
+        "msg": "判据⑥：clean bpc（enwik8 全因果；跨分布 + 合成训练 ⇒ 非退化锚，不作召回判据）"
+      },
+      {
+        "t": 23.65,
+        "msg": "  projfill         clean bpc=15.977669"
+      },
+      {
+        "t": 24.16,
+        "msg": "  projfill_carry   clean bpc=46.333189"
+      },
+      {
+        "t": 24.16,
+        "msg": "  enwik8 vocab=206（模型 vocab=206）"
+      },
+      {
+        "t": 24.16,
+        "msg": "  毁源对照有效（CI 下界 ≤ 4×chance）：RAND={'projfill': True, 'projfill_carry': True}"
+      },
+      {
+        "t": 24.16,
+        "msg": "收敛门禁（§17.15，答案行 CE 末窗斜率 nats/1k）： projfill=-0.23881, projfill_carry=-0.18292"
+      },
+      {
+        "t": 24.16,
+        "msg": "  出口资产 tf@4（主口径 in-dist）: base=0.9966 carry=0.9868 ⇒ holds=True；enwik8 代理: base=0.9369 carry=0.8898 (Δ=-4.71pp)"
+      }
+    ]
+  }
+}
