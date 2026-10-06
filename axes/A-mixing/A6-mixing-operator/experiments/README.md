@@ -14,6 +14,7 @@
 | [`2623-longT-1024`](2623-longT-1024/README.md) | 目录内 README |
 | [`2624-longT-1024-seed1`](2624-longT-1024-seed1/README.md) | 目录内 README |
 | [`2625-longT-stability`](2625-longT-stability/README.md) | 目录内 README |
+| [`2626-longT-clean`](2626-longT-clean/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 

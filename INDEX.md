@@ -91,7 +91,7 @@
 | [`G2-currency`](axes/G-policy/G2-currency/README.md) · 记账货币 | ✅ judged | 双货币必须双报——本项目多次出现口径分歧。 |
 | [`G3-signal`](axes/G-policy/G3-signal/README.md) · 观测信号 | ✅ judged | 三信号正交监测栈成形；生成段没有单一信号够用。 |
 | [`G4-calibration`](axes/G-policy/G4-calibration/README.md) · 校准 | ✅ judged | 校准跨规模存活是本项目最稳的资产之一。 |
-| [`G5-parallel-lines`](axes/G-policy/G5-parallel-lines/README.md) · 并行多线机制 | ✅ judged | **收口（两规模、预登记判据）**：多线设想的**机制**在 13M 成立、在 **50M 失效**，而**部署判据两个规模都不过**（8× 推理算力仍输同 token 预算单线：13M 最好 λ… |
+| [`G5-parallel-lines`](axes/G-policy/G5-parallel-lines/README.md) · 并行多线机制 | ✅ judged | **收口（两规模 + 24k 收敛点，预登记判据）**：多线设想的**机制**在 13M 成立、在 **50M 失效**，而**部署判据两个规模都不过**（8× 推理算力仍输同 token 预算单… |
 
 ## R · 参照线（必须打败的基线）（7 格）
 
