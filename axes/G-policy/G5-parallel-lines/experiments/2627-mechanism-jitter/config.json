@@ -1,0 +1,99 @@
+{
+  "device": "cuda",
+  "vocab_size": 206,
+  "probe_seed": 11,
+  "eval": {
+    "batch_size": 32,
+    "n_batches": 60
+  },
+  "k_sweep": [
+    1,
+    8
+  ],
+  "js_k": [
+    8
+  ],
+  "main_k": 8,
+  "selfcheck_k": [
+    1,
+    2
+  ],
+  "battery": {
+    "enabled": true,
+    "n_batches": 200
+  },
+  "variance_floor": 0.014,
+  "effect_v2": 0.0144,
+  "jitter_rule": {
+    "downgrade_if_range_ge": 0.0144,
+    "upgrade_if_range_lt": 0.005,
+    "note": "预登记（README §4）：两次 repr01 的机制净效应极差 ≥ 0.0144（= V2 效应本身）⇒ 降级『不可排序』；极差 < 0.005 ⇒ 升格『稳健』；其余 ⇒ 仍贴门槛/未决"
+  },
+  "gpu_wall_budget_min": 40,
+  "source_v2": {
+    "dir": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence",
+    "results": "results_13m.json",
+    "k8_l1": 1.4089,
+    "k8_repr01": 1.3945,
+    "k1_l1": 1.4389,
+    "k1_repr01": 1.4277,
+    "mechanism_net": 0.0144,
+    "battery_repr01_bpc": 1.4169
+  },
+  "scales": {
+    "13m": {
+      "steps_full": 24000,
+      "train_dir": "train13m",
+      "config_dir": "configs13m",
+      "arms": [
+        "l1_A",
+        "repr01_A",
+        "repr01_B"
+      ],
+      "mechanism_baseline": "l1_A",
+      "repr_pair": [
+        "repr01_A",
+        "repr01_B"
+      ],
+      "det_arm": "repr01_B"
+    }
+  },
+  "train_recipe_note": "13M：d256/12L/8H/T512/bs32/24000 步、seed=0；repr01 = p_skip=0.1 + w_repr_decorr=0.1（纯损失项，0 参数增量）。2627 的 configs13m/repr01.json 与 2626 逐字节相同（单因素 = 只重跑一次，不改配置）。",
+  "arms_meta": {
+    "l1_A": {
+      "role": "路径机制基准（p_skip=0.1, w_repr_decorr=0）——机制净效应的被减数，复用 2626 既有读数",
+      "source": "2626"
+    },
+    "repr01_A": {
+      "role": "去相关臂 run A（2626 既有读数，λ=0.1）",
+      "source": "2626"
+    },
+    "repr01_B": {
+      "role": "去相关臂 run B（本轮同配置同 24k 重跑，λ=0.1）",
+      "source": "2627"
+    }
+  },
+  "arms": {
+    "13m/l1_A": {
+      "config_file": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/configs13m/l1.json",
+      "ckpt_file": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/train13m/l1/model.pt",
+      "sha256": "a74e86a2c5f40375900c07758dcce03188b442e7c12f5e791f1e11b408a0613d",
+      "size_bytes": 52349379,
+      "source": "2626"
+    },
+    "13m/repr01_A": {
+      "config_file": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/configs13m/repr01.json",
+      "ckpt_file": "axes/G-policy/G5-parallel-lines/experiments/2626-mechanism-convergence/train13m/repr01/model.pt",
+      "sha256": "488732cc65fa99d911cba210a22130b1087bd9189d8053683ee23bbcccdf305b",
+      "size_bytes": 52349379,
+      "source": "2626"
+    },
+    "13m/repr01_B": {
+      "config_file": "axes/G-policy/G5-parallel-lines/experiments/2627-mechanism-jitter/configs13m/repr01.json",
+      "ckpt_file": "axes/G-policy/G5-parallel-lines/experiments/2627-mechanism-jitter/train13m/repr01/model.pt",
+      "sha256": "5e81e193bf42b45f840905b16c4c110ad15cf011412049466bf42478e0006f55",
+      "size_bytes": 52349379,
+      "source": "2627"
+    }
+  }
+}
