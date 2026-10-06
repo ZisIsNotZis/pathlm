@@ -22,6 +22,7 @@
 | [`2624-composable-followups-13m`](2624-composable-followups-13m/README.md) | 目录内 README |
 | [`2625-ood-leg-variance`](2625-ood-leg-variance/README.md) | 目录内 README |
 | [`2627-carry-x-depth`](2627-carry-x-depth/README.md) | 目录内 README |
+| [`2628-eng2-carry-ragged`](2628-eng2-carry-ragged/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 

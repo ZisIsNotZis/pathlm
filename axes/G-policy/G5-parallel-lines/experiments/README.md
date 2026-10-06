@@ -13,6 +13,7 @@
 | [`2622-decorrelation-v2`](2622-decorrelation-v2/README.md) | 目录内 README |
 | [`2626-mechanism-convergence`](2626-mechanism-convergence/README.md) | 目录内 README |
 | [`2627-mechanism-jitter`](2627-mechanism-jitter/README.md) | 目录内 README |
+| [`2628-jitter-l1`](2628-jitter-l1/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 
