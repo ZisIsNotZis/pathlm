@@ -74,17 +74,16 @@ stock `Block`、把非 dense 路径的块遥测收进 `aux`，缺省路径逐位
   全部抓红并逐字节还原。
 - **(2) 的「既有 522 测试全绿」**：**如实记账**——本仓库当前 `pytest tests/` 收集
   基线是 **549**（522 是下发时的快照；期间 44 批与在途线又加了用例）。本线新增 7 条
-  （§ENG2 段）。实测：
-  - `pytest tests/ --ignore=tests/test_jitter_l1.py` ⇒ **539 passed, 1 skipped,
-    0 failed**（`pytest_full.txt`）；
-  - **完整收集** `pytest tests/` ⇒ **547 passed, 1 failed, 1 skipped**。
+  （§ENG2 段）。在**本线提交修订**上实测：
+  - `pytest tests/ -q`（完整收集）⇒ **549 passed, 0 failed**（`pytest_full.txt`）；
+  - `pytest tests/test_depth_ar.py -q` ⇒ **134 passed, 0 failed**。
 
-  那 **1 个 fail 是跨线模块名撞车**：另一条在途线的 `tests/test_jitter_l1.py` 与
-  `tests/test_mechanism_jitter.py` 都写 `from jitter import …`，而各自把**不同实验
-  目录**的 `jitter.py` 插进 `sys.path`——先导入者赢；该用例**单独跑恒绿**。
-  **与本线改动无关**（本线不碰那两个文件，也不新增同名模块）。判据线的「全绿」按
-  **本线改动相关**口径成立：`test_depth_ar.py` **134/134** 绿、ENG2 定向用例
-  `pytest_eng2.txt` **33/33** 绿、排除撞车后全量 **539 绿**。
+  **口径注**：这个「全量」含**其它在途线**的未跟踪测试文件（它们不在本线提交里，
+  数字随其变动）。本线提交前的两次跑中，曾因为 `tests/test_jitter_l1.py` 与
+  `tests/test_mechanism_jitter.py` 都写 `from jitter import …`（各自把**不同实验
+  目录**的 `jitter.py` 插进 `sys.path`，先导入者赢）而出现 1 个 fail；那是**跨线
+  模块名撞车**，与该线自身的提交一起消失了，**与本线改动无关**（本线不碰那两个
+  文件，也不新增同名模块）。
 - **(3) 的「20 步冒烟」**：`run.py --smoke` 在 M1 引擎上跑
   `--carry-write delta --proj-fill --exit-mode uniform`（四者齐开，ENG2 前不存在的
   组合）× 20 步；「活性量落盘」= `train_log.jsonl` 的 `attn_carry` 块（step 0 与

@@ -64,6 +64,6 @@ python3 mutate.py
 python3 reconcile_numbers.py
 
 # 回归
-python3 -m pytest tests/ -q --ignore=tests/test_jitter_l1.py   # 539 passed, 1 skipped
-python3 -m pytest tests/test_depth_ar.py -q                    # 134 passed
+python3 -m pytest tests/ -q                                # 549 passed, 0 failed
+python3 -m pytest tests/test_depth_ar.py -q                # 134 passed
 ```
