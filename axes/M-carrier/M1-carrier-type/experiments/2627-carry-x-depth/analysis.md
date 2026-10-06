@@ -199,8 +199,43 @@ carry 26.60% / depth 1.44% / both 27.04%；交互项 **+0.46pp**——结论不�
   加 3×65s 臂间窗口 ≈ **33.7 min**；**评测电池 0.56 min**（纯推理，峰值 **572.4 MB**）。
 - **先测步时**（`smoke/steps400/`，400 步稳态）：base 40.6 / carry 76.7 / depth 48.1 / both 85.7
   ms/step ⇒ 按 6k 推算 25.1 min（与实测 30.4 min 的差来自共享卡其它负载）。
-- **峰值显存**：训练逐臂 **2015 / 2282 / 2095 / 2361 MB**（≪5GB net 礼貌线）；评测 572 MB。
+- **峰值显存**：训练逐臂 **2015 / 2283 / 2095 / 2362 MB**（≪5GB net 礼貌线；源
+  `train/<arm>/results.json` 的 `peak_gpu_mem_mb`，原写 2282/2361 误引 400 步冒烟值 ⇒ P2 修正见文末）；
+  评测 572 MB。
 - **§20.1 锁记账**：`train_arms.sh` 按臂取/放锁、臂间 65s；本波另有 X1 线持锁 ⇒ base 之前等待
   约 0（X1 在其前结束），四臂实际训练在 13:25→14:00 完成。**无违反 §20.1 的整程持锁**。
 - **口径**：四臂**严格同 token 预算**（6k×32×256 = 49.0M）；这是**6k 快照**，**与 2618 的 12k
   不可比**（§20.3）。
+
+---
+
+## P2 修正记录（后于复核）
+
+> 来源：`.scratch/44-wave17/evidence/REVIEW_R1.md`（ticket 45 R1 复核）。**数字结论未改**，只做报告准确性修正。
+
+### P2-a · 「`train_<arm>.log` 不在 git」——经核为**误报**，未做改动
+
+- 复核原文：`README.md §7` / `MODEL.md` 的派生产物表列了 `train_{base,carry,depth,both}.log`，
+  而仓根 `.gitignore` 的 `*.log` 会匹配它们 ⇒ 断言「none are in git」。
+- **实测（2026-10-06）**：这四个文件**是已跟踪文件**（`fb1e491` 提交时随本线入库；blob 在 `HEAD`）：
+
+  ```bash
+  $ git ls-files 'axes/M-carrier/M1-carrier-type/experiments/2627-carry-x-depth/train_*.log'
+  axes/.../train_base.log  axes/.../train_both.log  axes/.../train_carry.log  axes/.../train_depth.log
+  $ git check-ignore -v axes/.../train_base.log        # 退出码 1：.gitignore 不作用于已跟踪文件
+  $ git ls-tree HEAD -- axes/.../train_base.log        # 100644 blob c7be78f8…  → 确在 HEAD
+  ```
+
+- `.gitignore` 只作用于**未跟踪**文件；已跟踪文件不受其影响。因此 `README.md §7` / `MODEL.md`
+  的「（全部入库，不含权重）」声明**成立**，`train_<arm>.log` **保留**在派生产物清单里、**不删**
+  （删掉反而会让清单与实际跟踪状态不符）。
+- 结论：该项复核的**前提不成立**，**无需修正**；如实记录以备追溯。
+
+### P2-b · 「训练峰值显存」误引冒烟口径——**已修正**
+
+- 复核原文：`README.md §6` / `analysis.md §7` 写训练峰值 `2015 / 2282 / 2095 / 2361 MB`，与已跟踪的
+  `train/<arm>/results.json`（`2015.3 / 2283.4 / 2095.3 / 2362.0`）不符；其中 `2282`/`2361` 实为 **400 步冒烟**
+  读数（`smoke/steps400/*/results.json`：`2282.5`/`2361.5`）。
+- 修正（按训练产物四舍五入）：**`2015 / 2283 / 2095 / 2362 MB`**（改动 `README.md §6` 与本节 §7 两处）。
+- 该项**不改变任何结论**：四臂峰值均 ≪ 5GB 礼貌线（§20.2 合规性不受影响）；`reconcile_numbers.py` 的检查项
+  未引用这四个数（`CITED` 只含评测峰值 `572.4`），对账仍全过。
