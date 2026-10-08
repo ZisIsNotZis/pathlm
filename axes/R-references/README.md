@@ -26,7 +26,7 @@ R1 量化 · R2 蒸馏 · R3 剪枝稀疏 · R4 窗口+KV量化+检索 · R5 bes
 
 | 格子 | 状态 | 判读 | 税 |
 |---|---|---|---|
-| [`R1-quantization`](R1-quantization/README.md) | 🏭 reference（含业界结论） | — | **int8 KV：Δbpc +0.00015（近无损）**，每位置 122… |
+| [`R1-quantization`](R1-quantization/README.md) | 🏭 reference（含业界结论） | — | **部署口径（2026-10-02 按 `2631-kv-budget-ca… |
 | [`R2-distillation`](R2-distillation/README.md) | 🏭 reference（含业界结论） | — | — |
 | [`R3-pruning-sparsity`](R3-pruning-sparsity/README.md) | 🏭 reference（含业界结论） | — | 本地侧证：结构化约束（只读前 360 维）→ 恶化 −50.4%（W1） |
 | [`R4-window-kv-quant-retrieval`](R4-window-kv-quant-retrieval/README.md) | 🏭 reference（含业界结论） | — | 窗口部分：+0.058~0.121 bpc（13M）；检索/量化部分零经验 |
