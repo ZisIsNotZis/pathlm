@@ -52,14 +52,15 @@ def main() -> int:
                 sources=("results.json", "cycle_log.jsonl",
                          "train/*/results.json"))
     lg.golden("gamma == 2（预登记：两个投机草稿位 N+2 / N+3）",
-              res["config"]["gamma"], 2,
+              res["config"]["gamma"], 2, abs_tol=0.0,
               why="契约 §2：第一个发出位 N+1 不设接受测试（引擎性质）")
     lg.golden("combined lam == 0.5（预登记，不许事后调）",
-              res["config"]["combined_lam"], 0.5,
+              res["config"]["combined_lam"], 0.5, abs_tol=0.0,
               why="契约 §2：概率混合系数先写死")
-    lg.eq("arms == (chain, direct, combined)",
-          tuple(res["config"]["arms"]), ("chain", "direct", "combined"),
-          why="契约 §2 的三臂")
+    lg.derived("arms == {chain, direct, combined}（三臂集合相等）",
+               int(set(res["config"]["arms"]) == {"chain", "direct", "combined"}),
+               lambda: 1,
+               sources=("results.json::config.arms",), abs_tol=0)
 
     for ck, rec in res["checkpoints"].items():
         src = (f"results.json::checkpoints.{ck}",)
@@ -70,8 +71,11 @@ def main() -> int:
         lg.derived(f"{ck}: w1_range_ms 下界 == w1_ms",
                    micro["w1_ms"], lambda: micro["w1_range_ms"][0],
                    sources=(f"{src[0]}.micro.w1_range_ms",), abs_tol=1e-6)
+        with open(os.path.join(HERE, "train", ck, "results.json"),
+                  encoding="utf-8") as tf:
+            train_params = json.load(tf)["params"]
         lg.derived(f"{ck}: ckpt params == train_m1 记账",
-                   rec["params"], lambda: rec["params"],
+                   rec["params"], lambda: train_params,
                    sources=(f"train/{ck}/results.json::params",), abs_tol=0)
         heads = rec["mtp_head_macs"]
         lg.derived(f"{ck}: head_over_trunk_frac == head/trunk",
@@ -89,37 +93,47 @@ def main() -> int:
         for arm, a in rec["acceptance"].items():
             key = (ck, arm)
             rows = cycles.get(key, [])
-            all_rounds = [x for r in a for x in r["rounds"]]
+            trace = rec["acceptance_trace"][arm]
+            all_rounds = [x for r in trace for x in r["rounds"]]
             n_rounds = len(all_rounds)
-            lg.derived(f"{ck}/{arm}: cycle_log 的 rounds 与 acceptance 逐条一致",
+            lg.derived(f"{ck}/{arm}: cycle_log 的 rounds 与 acceptance_trace 逐条一致",
                        len(all_rounds),
                        lambda: sum(len(r["rounds"]) for r in rows),
                        sources=(f"cycle_log.jsonl[{ck},{arm}].rounds",), abs_tol=0)
             lg.derived(f"{ck}/{arm}: n_rounds == Σlen(rounds)",
                        a["n_rounds"], lambda: n_rounds,
-                       sources=(f"{src[0]}.acceptance.{arm}.rounds",), abs_tol=0)
+                       sources=(f"{src[0]}.acceptance_trace.{arm}[].rounds",), abs_tol=0)
             lg.derived(f"{ck}/{arm}: accepted_total == Σrounds",
                        a["accepted_total"], lambda: sum(all_rounds),
-                       sources=(f"{src[0]}.acceptance.{arm}.rounds",), abs_tol=0)
+                       sources=(f"{src[0]}.acceptance_trace.{arm}[].rounds",), abs_tol=0)
             lg.derived(f"{ck}/{arm}: alpha1 == P(a>=1)",
                        a["alpha1"],
                        lambda: sum(1 for x in all_rounds if x >= 1) / max(n_rounds, 1),
-                       sources=(f"{src[0]}.acceptance.{arm}.rounds",), abs_tol=1e-9)
+                       sources=(f"{src[0]}.acceptance_trace.{arm}[].rounds",), abs_tol=1e-9)
             den = sum(1 for x in all_rounds if x >= 1)
             lg.derived(f"{ck}/{arm}: alpha2|1 == P(a>=2|a>=1)",
                        a["alpha2_given_alpha1"],
                        lambda: (sum(1 for x in all_rounds if x >= 2) / den) if den else 0.0,
-                       sources=(f"{src[0]}.acceptance.{arm}.rounds",), abs_tol=1e-9)
+                       sources=(f"{src[0]}.acceptance_trace.{arm}[].rounds",), abs_tol=1e-9)
             lg.derived(f"{ck}/{arm}: tau == mean(rounds)",
                        a["tau"], lambda: sum(all_rounds) / max(n_rounds, 1),
-                       sources=(f"{src[0]}.acceptance.{arm}.rounds",), abs_tol=1e-9)
+                       sources=(f"{src[0]}.acceptance_trace.{arm}[].rounds",), abs_tol=1e-9)
             lg.derived(f"{ck}/{arm}: tok/fwd == 1 + tau（每轮发出结构恒等式）",
                        a["tokens_per_forward"], lambda: 1.0 + a["tau"],
                        sources=(f"{src[0]}.acceptance.{arm}.tau",), abs_tol=1e-9)
+            lg.derived(f"{ck}/{arm}: 实际发出 tok/fwd == n_prompts·n_acc/n_rounds",
+                       a["tokens_per_forward_actual_emitted"],
+                       lambda: len(trace) * res["config"]["n_acc"] / max(n_rounds, 1),
+                       sources=(f"{src[0]}.acceptance_trace.{arm}",), abs_tol=1e-9)
+            lg.check(f"{ck}/{arm}: |结构 1+τ − 实际发出| ≤ γ·n_prompts/n_rounds（末轮截断）",
+                     abs(a["tokens_per_forward"] - a["tokens_per_forward_actual_emitted"]),
+                     0.0,
+                     abs_tol=res["config"]["gamma"] * len(trace) / max(n_rounds, 1),
+                     derived_from=(f"{src[0]}.acceptance_trace.{arm}",))
             lg.derived(f"{ck}/{arm}: 等效算力净账 == c3/(tok/fwd)",
                        a["equivalent_compute_ratio"],
                        lambda: micro["c3_vs_w1"] / a["tokens_per_forward"],
-                       sources=(f"{src[0]}.micro.c3_vs_w1 nad .acceptance.{arm}.tokens_per_forward",),
+                       sources=(f"{src[0]}.micro.c3_vs_w1 与 .acceptance.{arm}.tokens_per_forward",),
                        rel_tol=1e-3)
             lg.derived(f"{ck}/{arm}: 每轮发出 == 1 + accepted（cycle_log 活动量）",
                        sum(1 + x for x in all_rounds),
@@ -132,15 +146,14 @@ def main() -> int:
             by_prompt: dict[int, list[dict]] = {}
             for r in raw:
                 by_prompt.setdefault(r["prompt"], []).append(r)
-            for arm, w in rec["wall"].items():
-                if arm == "tok_s_median":
-                    continue
-                lg.derived(f"{ck}/wall: {arm} tok_s_median == median(全部 raw)",
-                           rec["wall"]["tok_s_median"][arm] if arm in rec["wall"]["tok_s_median"] else None,
-                           lambda: statistics.median([r[arm] for r in raw]),
-                           sources=(f"{src[0]}.timing_raw[].{arm}",), abs_tol=0.01)
+            for mode in ("native",) + tuple(res["config"]["arms"]):
+                lg.derived(f"{ck}/wall: {mode} tok_s_median == median(全部 raw)",
+                           rec["wall"]["tok_s_median"][mode],
+                           lambda mode=mode: statistics.median([r[mode] for r in raw]),
+                           sources=(f"{src[0]}.timing_raw[].{mode}",), abs_tol=0.01)
             for arm in res["config"]["arms"]:
                 w = rec["wall"][f"{arm}_speedup"]
+
                 def _point(arm=arm):
                     meds = [statistics.median([r[arm] / r["native"] for r in rows])
                             for _, rows in sorted(by_prompt.items())]

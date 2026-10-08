@@ -19,8 +19,9 @@ budget: "GPU ≤120 min（步时冒烟 + 4 臂训练 + 3 臂 × 2 尺度的评�
 >
 > `TODO(主Agent): 结果出后更新 H3 的 catalog verdict`
 >
-> 入口：`smoke_steptime.sh`（先测步时）→ `train_arms.sh`（4 臂训练，**按臂释放锁**）→
-> `run.py`（三臂 × native 对照评测 + 聚类 bootstrap + 算力账）；臂定义与指标
+> 入口：`smoke_steptime.sh`（先测步时）→ `train_arms.sh`（按 (scale, seed) 训练，**按臂释放锁**）→
+> `eval.sh`（取锁整程、驱动 `run.py`：三臂 × native 对照评测 + 聚类 bootstrap + 算力账；
+> 本波实测 `--repeats 6`）；臂定义与指标
 > `spec_arms.py`；本地单测 `test_spec_arms.py`；变异 `mutate.py`；对账
 > `reconcile_numbers.py`；原始结果 `results.json`；判读 `analysis.md`；权重清单 `MODEL.md`；
 > 对照与方差说明 `controls/README.md`。

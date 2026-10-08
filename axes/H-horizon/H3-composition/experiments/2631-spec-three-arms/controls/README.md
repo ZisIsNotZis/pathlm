@@ -26,7 +26,7 @@
   （B=2000，seed=2631，percentile 95%）。**不把每轮草稿当独立二项样本**
   （复核 B2 的同类错误：同一序列的多轮共享同一模型与同一上下文）。
   每 prompt 另报轮数，便于复核重算。
-- **墙钟**：同进程、同硬件、同批量、**交替重复** `--repeats`（默认 5）次；
+- **墙钟**：同进程、同硬件、同批量、**交替重复** `--repeats`（本波实测 6）次；
   报①逐次重复的极差（max/min 之比）、②**按 prompt 聚类的配对** bootstrap CI
   （配对 = 同一 prompt 的 `spec/native` 比值的中位数）。
   单次 tok/s 不作结论。
@@ -41,5 +41,5 @@
 - 三臂**复用已入账的生产解码器** `pathlm/decode.py::decode_spec`
   （只经它自己的 `draft_fn` 钩子注入草稿）⇒ 批量验证、接受前缀、拒绝截断重锚、
   KV 语义都是**同一条代码路径**，本线没有重写解码器。
-- `probe_arms` 抛 `n_mtp <= 2` 时不静默退化（`test_spec_arms.py` 钉住）。
+- `arm_decode` 抛 `n_mtp <= 2` 时不静默退化（`test_spec_arms.py` 钉住）。
 - 逐位等价门禁：三臂发出流与 `decode` 逐位相同（`results.json::bit_identical_all_arms`）。

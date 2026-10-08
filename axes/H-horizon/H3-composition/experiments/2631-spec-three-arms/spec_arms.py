@@ -33,6 +33,7 @@ inputs = [v1, d2, d3]   →  一次 width-3 前向（K = 1 + γ，γ = 2）
 
 from __future__ import annotations
 
+import statistics
 import time
 
 import torch
@@ -130,12 +131,20 @@ def sync() -> None:
         torch.cuda.synchronize()
 
 
-def micro_forward_cost(model, pcap, reps: int = 5, n_inner: int = 30,
+def micro_forward_cost(model, pcap, reps: int = 120,
                        prompt_len: int = 32, device: str = "cuda") -> dict:
-    """实测 width-1 / width-3 前向成本（本实验的算力账单位，SCHEMA §17.8）。
+    """实测 width-1 / width-3 单次前向成本（本实验的算力账单位，SCHEMA §17.8）。
 
-    交替测量（同一循环里的 width-1 与 width-3）以免被时钟/温度漂移污染；
-    取 `reps` 次中的最小值（最接近无干扰的读数）。
+    **逐次交替**：同一循环里先测一次 width-1 `step()` 再一次 width-3 `step_multi()`，
+    两个采样尽量贴在一起以对齐外部占用状况；共 `reps` 对。
+
+    取各自的最小值作为「无干扰成本」的估计。共享卡上有**外部**长驻负载（如
+    llama-server，本仓锁管不到），其占用率在毫秒尺度抖动；若按长块测量，min 会取到
+    「被外部占用」的那一档 ⇒ w1 反而 > w3（物理不可能，本波实测到过 c3=0.46）。
+    改单次前向后每对采样只占 ~10–30 ms，窗内出现干净调度的概率大得多。
+
+    `w1_all_ms` / `w3_all_ms` 保留**全部样本**，供复核判断外部占用是否平稳
+    （§20.2/§20.3 的外因记账）；`c3_vs_w1`（min 比）是算力账用的数。
     """
     g = torch.Generator().manual_seed(7)
     prompt = torch.randint(0, model.n_real_tokens, (prompt_len,), generator=g)
@@ -150,29 +159,36 @@ def micro_forward_cost(model, pcap, reps: int = 5, n_inner: int = 30,
 
     toks = [int(t) for t in torch.randint(0, model.n_real_tokens, (3,),
                                          generator=torch.Generator().manual_seed(9))]
+    # 两个独立解码器各自推进（w1 每对 +1 位、w3 每对 +3 位）；min 通常落在最短
+    # 上下文的那次采样上 ⇒ min-vs-min 天然上下文对齐，后期上下文漂移不污染结论。
+    d1, d3 = prefilled(), prefilled()
     times: dict[str, list[float]] = {"w1": [], "w3": []}
     with torch.no_grad():
         for _ in range(reps):
-            for width in (1, 3):                      # 交替：同一时钟状态
-                d = prefilled()
-                sync()
-                t0 = time.time()
-                for _ in range(n_inner):
-                    if width == 1:
-                        d.step(toks[0])
-                    else:
-                        d.step_multi(toks)
-                sync()
-                times[f"w{width}"].append(time.time() - t0)
-    w1 = min(times["w1"]) / n_inner
-    w3 = min(times["w3"]) / n_inner
-    return {"w1_ms": round(1000 * w1, 4), "w3_ms": round(1000 * w3, 4),
-            "c3_vs_w1": round(w3 / w1, 4),
-            "reps": reps, "n_inner": n_inner,
-            "w1_range_ms": [round(1000 * min(times["w1"]) / n_inner, 4),
-                            round(1000 * max(times["w1"]) / n_inner, 4)],
-            "w3_range_ms": [round(1000 * min(times["w3"]) / n_inner, 4),
-                            round(1000 * max(times["w3"]) / n_inner, 4)]}
+            if d3.n + 3 > model.mcfg.seq_len:          # 位置预算耗尽 ⇒ 重建短上下文
+                d1, d3 = prefilled(), prefilled()
+            sync()
+            t0 = time.time()
+            d1.step(toks[0])
+            sync()
+            times["w1"].append(time.time() - t0)
+            sync()
+            t0 = time.time()
+            d3.step_multi(toks)
+            sync()
+            times["w3"].append(time.time() - t0)
+    ms = lambda xs: [round(1000 * t, 4) for t in xs]
+    w1_ms, w3_ms = min(times["w1"]), min(times["w3"])
+    return {"w1_ms": round(1000 * w1_ms, 4), "w3_ms": round(1000 * w3_ms, 4),
+            "c3_vs_w1": round(w3_ms / w1_ms, 4),
+            "reps": reps,
+            "w1_median_ms": round(1000 * statistics.median(times["w1"]), 4),
+            "w3_median_ms": round(1000 * statistics.median(times["w3"]), 4),
+            "w1_range_ms": [round(1000 * min(times["w1"]), 4),
+                            round(1000 * max(times["w1"]), 4)],
+            "w3_range_ms": [round(1000 * min(times["w3"]), 4),
+                            round(1000 * max(times["w3"]), 4)],
+            "w1_all_ms": ms(times["w1"]), "w3_all_ms": ms(times["w3"])}
 
 
 def mtp_head_macs(cfg, vocab_size: int, n_conditioning_heads: int = 1) -> dict:

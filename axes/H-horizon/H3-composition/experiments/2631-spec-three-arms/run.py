@@ -168,13 +168,20 @@ def summarize_arm(per_prompt: list[dict], n_acc: int) -> dict:
     n_rounds = sum(len(g) for g in groups)
     accepted = sum(a for g in groups for a in g)
     n_tokens = sum(n_acc for _ in per_prompt)
+    # `tokens_per_forward` 用**每轮发出结构恒等式** 1 + τ（契约 §4.3 / spec_arms.round_metrics
+    # 的口径）：每轮恒发出 1 + a 个 token，故 tok/fwd = (n_rounds + Σa) / n_rounds = 1 + τ。
+    # 注意这与「实际截断后落在 gen 里的 token 数 / n_rounds」（= n_tokens / n_rounds）在**末轮**
+    # 相差至多 γ 个/prompt（decode_spec 截断 `gen[:n_new]`）；两者都报出来（见
+    # `tokens_per_forward_actual_emitted`），使契约恒等式与真实发出量都可核。
+    tf_struct = (n_rounds + accepted) / max(n_rounds, 1)
     out = {
         "n_prompts": len(per_prompt), "n_rounds": n_rounds,
         "accepted_total": accepted,
         "alpha1": _acc_alpha1(groups),
         "alpha2_given_alpha1": _acc_alpha2(groups),
         "tau": _acc_tau(groups),
-        "tokens_per_forward": n_tokens / max(n_rounds, 1),
+        "tokens_per_forward": tf_struct,
+        "tokens_per_forward_actual_emitted": n_tokens / max(n_rounds, 1),
         "alpha1_ci": cluster_bootstrap(groups, _acc_alpha1),
         "alpha2_given_alpha1_ci": cluster_bootstrap(groups, _acc_alpha2),
         "tau_ci": cluster_bootstrap(groups, _acc_tau),
@@ -185,7 +192,8 @@ def summarize_arm(per_prompt: list[dict], n_acc: int) -> dict:
         "n_forward_total": sum(row.get("n_forward") or 0 for row in per_prompt),
     }
     out["tokens_per_forward_ci"] = cluster_bootstrap(
-        groups, lambda gs: len(per_prompt) * n_acc / max(sum(len(g) for g in gs), 1))
+        groups, lambda gs: (sum(len(g) for g in gs) + sum(a for g in gs for a in g))
+        / max(sum(len(g) for g in gs), 1))
     return out
 
 
