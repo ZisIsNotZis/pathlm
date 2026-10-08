@@ -33,6 +33,22 @@ def load(rel: str):
     return json.load(open(os.path.join(HERE, rel)))
 
 
+def _eq(ledger, name, got, want, *, derived_from):
+    """`Ledger.eq` 内部 `float(got)` ⇒ 只吃标量；字符串 / `None` / 列表退化为「相等 ⇒ 1」。"""
+    if isinstance(got, (int, float)) and isinstance(want, (int, float)):
+        return ledger.eq(name, got, want, derived_from=derived_from)
+    return ledger.eq(name, int(got == want), 1, derived_from=derived_from)
+
+
+def _seq_close(ledger, name, got, want, *, sources, abs_tol):
+    """逐元素数值核对（CI 列表字段；`Ledger.check` 只吃标量）。"""
+    gf, wf = [float(v) for v in got], [float(v) for v in want]
+    ledger.check(f"{name} (长度)", len(gf), len(wf), abs_tol=0.0,
+                 derived_from=sources)
+    for i, (g, w) in enumerate(zip(gf, wf)):
+        ledger.check(f"{name}[{i}]", g, w, abs_tol=abs_tol, derived_from=sources)
+
+
 def main() -> int:
     cfg = load("config.json")
     res = load("results.json")
@@ -57,29 +73,29 @@ def main() -> int:
                   derived_from=("cluster_hits.json::main",))
         ledger.derived(f"{n} 主腿 accuracy == Σhits/Σn", row["accuracy"],
                        lambda r=row: r["n_hits"] / r["n"],
-                       sources=(f"results.json::main_leg.{n}.n_hits",))
+                       sources=(f"results.json::main_leg.{n}.n_hits",), abs_tol=1e-6)
         ledger.derived(f"{n} 主腿 cluster_hits 总和 == n_hits", row["n_hits"],
                        lambda n=n: sum(raw["main"][n]["cluster_hits"]),
-                       sources=(f"cluster_hits.json::main.{n}.cluster_hits",))
+                       sources=(f"cluster_hits.json::main.{n}.cluster_hits",), abs_tol=0.0)
         ledger.derived(f"{n} 主腿 cluster_n 总和 == n", row["n"],
                        lambda n=n: sum(raw["main"][n]["cluster_n"]),
-                       sources=(f"cluster_hits.json::main.{n}.cluster_n",))
+                       sources=(f"cluster_hits.json::main.{n}.cluster_n",), abs_tol=0.0)
         # 聚类 bootstrap 可复现（同一 n_boot/seed ⇒ 逐位一致）
         recomputed = ra.clustered_bootstrap_ci(raw["main"][n]["cluster_hits"],
                                               raw["main"][n]["cluster_n"],
                                               n_boot=2000, seed=2631)
-        ledger.check(f"{n} 主腿聚类 CI 可复现", row["clustered_ci"], recomputed,
-                     abs_tol=1e-9, derived_from=(f"cluster_hits.json::main.{n}",))
-        ledger.derived(f"{n} 主腿 Wilson 对照 == 由 n_hits/n 重算", row["wilson_ci_naive"],
-                       lambda r=row: ra.wilson_ci(r["n_hits"], r["n"]),
-                       sources=(f"results.json::main_leg.{n}",))
+        _seq_close(ledger, f"{n} 主腿聚类 CI 可复现", row["clustered_ci"], recomputed,
+                   sources=(f"cluster_hits.json::main.{n}",), abs_tol=1e-9)
+        _seq_close(ledger, f"{n} 主腿 Wilson 对照 == 由 n_hits/n 重算",
+                   row["wilson_ci_naive"], ra.wilson_ci(row["n_hits"], row["n"]),
+                   sources=(f"results.json::main_leg.{n}",), abs_tol=1e-9)
         # 毁源腿
         crow = res["corrupt_leg"][n]
         ledger.eq(f"{n} 毁源腿 n == 主腿 n", crow["n"], row["n"],
                   derived_from=("results.json::main_leg",))
         ledger.derived(f"{n} 毁源腿 cluster_hits 总和 == n_hits", crow["n_hits"],
                        lambda n=n: sum(raw["corrupt"][n]["cluster_hits"]),
-                       sources=(f"cluster_hits.json::corrupt.{n}.cluster_hits",))
+                       sources=(f"cluster_hits.json::corrupt.{n}.cluster_hits",), abs_tol=0.0)
         # 辅助腿（分布外）
         orow = res["aux_ood_leg"][n]
         on = cfg["aux_ood"]["n_batches"] * cfg["aux_ood"]["batch_size"]
@@ -87,21 +103,25 @@ def main() -> int:
                   derived_from=("config.json::aux_ood",))
         ledger.derived(f"{n} 辅助腿 cluster_hits 总和 == n_hits", orow["n_hits"],
                        lambda n=n: sum(raw["aux_ood"][n]["cluster_hits"]),
-                       sources=(f"cluster_hits.json::aux_ood.{n}.cluster_hits",))
+                       sources=(f"cluster_hits.json::aux_ood.{n}.cluster_hits",), abs_tol=0.0)
 
-    # ---- 2. 距离口径：主腿分布内、辅助腿分布外（由生成器重算） ----
-    tb = assoc_recall_multi_batch(4, cfg["model"]["seq_len"], K, Q,
-                                  generator=torch.Generator().manual_seed(0))
-    ledger.eq("主腿距离下界 == 生成器重算", leg_def["query_key_distance"][0],
-              int(tb.dists.min()), derived_from=("tools.evalkit.longrange_tasks",))
-    ledger.eq("主腿距离上界 == 生成器重算", leg_def["query_key_distance"][1],
-              int(tb.dists.max()), derived_from=("tools.evalkit.longrange_tasks",))
-    ledger.check("主腿最远距离 ≤ 训练上限 240", leg_def["query_key_distance"][1],
-                 TRAIN_MAX_DIST, abs_tol=0.0,
-                 derived_from=("README §4a 训练分布定义",))
-    ledger.eq("辅助腿最远距离 == 255（T−1，训练外）",
-              res["leg_definitions"]["aux_ood"]["query_key_distance"], [241, 255],
-              derived_from=("tools.evalkit.longrange_tasks::assoc_recall_batch",))
+    # ---- 2. 距离口径：主腿分布内、辅助腿分布外（由生成器**按评测同配置**重算） ----
+    e = cfg["eval"]
+    _mains = [assoc_recall_multi_batch(e["batch_size"], cfg["model"]["seq_len"], K, Q,
+                                       generator=torch.Generator().manual_seed(
+                                           e["gen_seed"] + i))
+              for i in range(e["n_batches"])]
+    _dmin = min(int(t.dists.min()) for t in _mains)
+    _dmax = max(int(t.dists.max()) for t in _mains)
+    ledger.eq("主腿距离下界 == 生成器重算", leg_def["query_key_distance"][0], _dmin,
+              derived_from=("tools.evalkit.longrange_tasks", "config.json::eval"))
+    ledger.eq("主腿距离上界 == 生成器重算", leg_def["query_key_distance"][1], _dmax,
+              derived_from=("tools.evalkit.longrange_tasks", "config.json::eval"))
+    _eq(ledger, "主腿最远距离 ≤ 训练上限 240", _dmax <= TRAIN_MAX_DIST, True,
+        derived_from=("README §4a 训练分布定义",))
+    _eq(ledger, "辅助腿最远距离 == 255（T−1，训练外）",
+        res["leg_definitions"]["aux_ood"]["query_key_distance"], [241, 255],
+        derived_from=("tools.evalkit.longrange_tasks::assoc_recall_batch",))
     ledger.eq("chance == 1/sym_vocab", res["premise_check"]["0"]["chance"], chance,
               derived_from=("config.json::tokens.sym_vocab",))
 
@@ -129,10 +149,10 @@ def main() -> int:
                 raw["main"][b]["cluster_hits"], raw["main"][b]["cluster_n"],
                 raw["main"][t]["cluster_hits"], raw["main"][t]["cluster_n"],
                 n_boot=2000, seed=2631)
-            ledger.check(f"{pname} seed{x['seed']} 配对 CI 可复现",
-                         x["paired_boot_ci_pp"],
-                         [round(100 * recomputed[0], 3), round(100 * recomputed[1], 3)],
-                         abs_tol=1e-9, derived_from=("cluster_hits.json::main",))
+            _seq_close(ledger, f"{pname} seed{x['seed']} 配对 CI 可复现",
+                       x["paired_boot_ci_pp"],
+                       [round(100 * recomputed[0], 3), round(100 * recomputed[1], 3)],
+                       sources=("cluster_hits.json::main",), abs_tol=1e-9)
     # 跨种子判定与预登记阈值一致
     st = res["effects"]["delta_vs_none"]["stability"]
     ledger.eq("delta>none 判定 == 预登记 5pp 阈值", st["min_pp_threshold"],
@@ -148,8 +168,9 @@ def main() -> int:
     for seed in ra.SEEDS:
         accs = {r: res["main_leg"][ra.arm_name(r, seed)]["accuracy"] for r in ra.RULES}
         best = max(accs, key=accs.get)
-        ledger.eq(f"seed{seed} 最好臂 == 由准确率重算", res["best_arm_per_seed"][str(seed)],
-                  best, derived_from=("results.json::main_leg",))
+        _eq(ledger, f"seed{seed} 最好臂 == 由准确率重算",
+            res["best_arm_per_seed"][str(seed)], best,
+            derived_from=("results.json::main_leg",))
         ledger.eq(f"seed{seed} 无通道臂 ≈ chance（前提）",
                   res["premise_check"][str(seed)]["significantly_above_chance"],
                   res["main_leg"][ra.arm_name("none", seed)]["clustered_ci"][0] > chance,
@@ -163,15 +184,19 @@ def main() -> int:
         n = a["name"]
         ledger.eq(f"{n} 训练 seed == 配置", res["train_meta"][n]["seed"], a["seed"],
                   derived_from=("config.json::arms",))
-        ledger.eq(f"{n} 训练 carry_write == 规则标签", res["train_meta"][n]["carry_write"],
-                  a["rule"], derived_from=("config.json::arms",))
-        ledger.eq(f"{n} checkpoint carry_rule == 规则标签", res["checkpoints"][n]["carry_rule"],
-                  None if a["rule"] == "none" else a["rule"],
-                  derived_from=("config.json::arms",))
+        _eq(ledger, f"{n} 训练 carry_write == 规则标签",
+            res["train_meta"][n]["carry_write"], a["rule"],
+            derived_from=("config.json::arms",))
+        _eq(ledger, f"{n} checkpoint carry_rule == 规则标签",
+            res["checkpoints"][n]["carry_rule"],
+            None if a["rule"] == "none" else a["rule"],
+            derived_from=("config.json::arms",))
+        # 训练侧 `train/<arm>/results.json` 不携带 window_mask（真值在 train_log.jsonl
+        # 每行；训练全程同一掩码 ⇒ 读首行）。
+        wm = json.loads(open(os.path.join(ROOT, a["train_log"])).readline())["window_mask"]
         ledger.eq(f"{n} 窗口掩码活性（可见对数 < 因果对数）",
-                  res["train_meta"][n]["window_mask"]["n_visible_pairs"]
-                  < res["train_meta"][n]["window_mask"]["causal_pairs"], True,
-                  derived_from=("train/*/results.json::window_mask",))
+                  wm["n_visible_pairs"] < wm["causal_pairs"], True,
+                  derived_from=(a["train_log"],))
     tr = cfg["train_recipe"]
     ledger.eq("训练 token 预算 == steps×bs×T",
               tr["steps"] * tr["batch_size"] * cfg["model"]["seq_len"], tr["train_tokens"],
@@ -195,9 +220,10 @@ def main() -> int:
         n = a["name"]
         lines = [json.loads(l) for l in
                  open(os.path.join(ROOT, a["train_log"])) if l.strip()]
-        ledger.eq(f"{n} 末行 answer CE == 训练日志末行",
-                  res["train_log_tail"][n]["last_answer_ce"],
-                  lines[-1]["synth_answer_ce"], derived_from=(a["train_log"],), abs_tol=1e-9)
+        ledger.check(f"{n} 末行 answer CE == 训练日志末行",
+                     res["train_log_tail"][n]["last_answer_ce"],
+                     lines[-1]["synth_answer_ce"], abs_tol=1e-9,
+                     derived_from=(a["train_log"],))
         ledger.eq(f"{n} 逃出瞎猜线 == answerCE < chanceCE−0.5",
                   res["train_log_tail"][n]["escaped_chance_line"],
                   lines[-1]["synth_answer_ce"] < lines[-1]["synth_chance_ce"] - 0.5,

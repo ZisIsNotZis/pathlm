@@ -304,11 +304,18 @@ def main():
     read_mass, liveness, slopes, tail, train_meta = {}, {}, {}, {}, {}
     for name, model in arms.items():
         read_mass[name] = carry_read_mass_stats(model, x_probe, window=window)
-        liveness[name] = carry_liveness(model, None, None,
-                                        prob=carry_probe(model, x_probe)
-                                        if ck[name]["carry_rule"] else None)
         spec = next(a for a in cfg["arms"] if a["name"] == name)
         res_p = json.load(open(resolve(spec["train_results_json"])))
+        # 主活性读数 = **训练期**读数（`train_depth_ar.py` 用真实 `_carry_tele` + 逐层读出
+        # 统计算出，同源于 `train/<arm>/results.json`）；评测期探针拿不到 scan_tele/
+        # layer_stats，`alive` 会因缺 telemetry 而恒 False（2618 同样如此）⇒ 评测期只保留
+        # 它的**反事实**（关通道 / 换写入规则）作交叉核对，不叫 `carry_liveness`。
+        liveness[name] = {
+            "carry_liveness": res_p.get("carry_liveness"),
+            "eval_recheck": carry_liveness(
+                model, None, None,
+                prob=carry_probe(model, x_probe) if ck[name]["carry_rule"] else None),
+        }
         lines = [json.loads(l) for l in open(resolve(spec["train_log"]))
                  if l.strip()]
         slopes[name] = loss_slope(lines)
@@ -372,10 +379,14 @@ def main():
             f"配对CI{x['paired_boot_ci_pp']}" for x in per_seed)
             + f" ⇒ 极差 {row['range_pp']}pp，同号={row['sign_consistent']}")
 
+    # 逐臂跨种子散布：`per_seed` 是准确率（分数），`*_pp` 一律 ×100（pp），
+    # 与 `effects.*.range_pp`（本就用 pp）同口径。
     arm_acc_by_seed = {rule: [legs["main"][ra.arm_name(rule, sd)]["accuracy"]
                               for sd in ra.SEEDS] for rule in ra.RULES}
-    acc_spread = {rule: {"per_seed": vals, "range_pp": ra.pp_range(vals),
-                         "mean_pp": ra.pp_mean(vals), "sd_pp": ra.pp_sd(vals)}
+    acc_spread = {rule: {"per_seed": vals, "per_seed_pp": [round(100 * v, 3) for v in vals],
+                         "range_pp": ra.pp_range([100 * v for v in vals]),
+                         "mean_pp": ra.pp_mean([100 * v for v in vals]),
+                         "sd_pp": ra.pp_sd([100 * v for v in vals])}
                   for rule, vals in arm_acc_by_seed.items()}
     best_per_seed = {seed: max(ra.RULES,
                                key=lambda r: legs["main"][ra.arm_name(r, seed)]["accuracy"])
@@ -438,8 +449,7 @@ def main():
         "best_arm_per_seed": {str(k): v for k, v in best_per_seed.items()},
         "premise_check": premise, "corrupt_control": corrupt_ctrl,
         "criteria": criteria,
-        "liveness": {k: {"carry_liveness": liveness[k], "read_mass": read_mass[k]}
-                     for k in arms},
+        "liveness": {k: {**liveness[k], "read_mass": read_mass[k]} for k in arms},
         "loss_slope": slopes, "train_log_tail": tail, "train_meta": train_meta,
         "memory_analytic": analytic_memory(
             {**cfg["model"], "n_params": train_meta["none_s0"]["params"]},
