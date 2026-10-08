@@ -1,0 +1,489 @@
+{
+ "experiment": "2631-kv-budget-causal",
+ "line": "R1 重跑（R1 修复后因果口径）· KV 预算图 27 点因果重测",
+ "contract": "docs/REMEDIATION.md §4 R1 + .scratch/49-adversarial-review/REPORT.md A2",
+ "contract_copy": "README.md（同目录，判据同 V1，逐字抄录）",
+ "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；本实验是**重测**：把 2621 的27 点预算图在 L1 修复后的**逐请求因果/流式** KV 量化口径下重跑，与旧（非因果 batch+token amax）口径并列报差异方向。除量化器口径外，checkpoint / 数据流 / 窗口序 / 任务 / 判据逐字段与 2621 相同。",
+ "axis_definition": {
+  "quantity": "bytes_per_position",
+  "formula": "2(K,V) * n_layers * n_kv_heads_eff * head_dim * value_bytes * (positions_kept / T)",
+  "unit": "字节 / 上下文位置",
+  "seq_len_T": 256,
+  "strictness": "所有点的横轴坐标必须由本公式算出（判据 C1）；无法用本公式表达的点不入图。新组合臂在同一乘式里同时改两个因子（quant_head: n_kv_heads_eff 与 value_bytes；combo_mask: value_bytes 与 positions_kept）。",
+  "per_position_bytes_fp16_full": 12288,
+  "caveats": [
+   "窗口/锚点档的 positions_kept/T 随评测长度 T 变化 —— 本图所有窗口点都在 T=256 上测。",
+   "头共享档是『换模型重训』（架构改动），量化/窗口档是『同一模型改推理』——两者基线不同（trunk 1.483569 vs mha 1.482026）。",
+   "本列是解析（部署口径）KV 占用；评测期实现会把 K/V 立刻反量化/按掩码取子集 ⇒ 实测显存峰值不随档下降，两者必须分列（判据 C2）。",
+   "锚点档占用位置预算（kept = window + anchors），因此可以在同一横轴上与纯窗口档做等字节对照。"
+  ]
+ },
+ "checkpoints": {
+  "trunk": {
+   "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+   "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+   "size_bytes": 54193675,
+   "role": "trunk 族（量化 / 窗口 / 窗口+锚点 / 窗口或锚点×量化）的被测模型：13.5M dense decoder-only，12k 步，clean bpc 1.483569",
+   "train_ref": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/MODEL.md"
+  },
+  "head_family": {
+   "root": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs",
+   "registry": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/model_hashes.json",
+   "arms": {
+    "mha": {
+     "run": "mha-12k-s0",
+     "n_kv_heads": null,
+     "sha256": "557453eb12b56a453b29ea279cdbbc0969cfa6bf0dbe1cdbd9965cd6cec62528"
+    },
+    "gqa": {
+     "run": "gqa-12k-s0",
+     "n_kv_heads": 2,
+     "sha256": "bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00"
+    },
+    "mqa": {
+     "run": "mqa-12k-s0",
+     "n_kv_heads": 1,
+     "sha256": "24bdfe7f1549107175e9343444372a6abe3aba7c6ba2423e8ab069a145b1ea97"
+    }
+   },
+   "role": "head 族（MHA/GQA/MQA）、quant_head 组合臂（GQA/MQA × int8/int4）与 combo_mask 头共享×窗口臂的被测模型：同配方 12k 步（d256/L12/H8/mlp6/seq256/seed0）"
+  }
+ },
+ "model": {
+  "d_model": 256,
+  "n_layers": 12,
+  "n_heads": 8,
+  "seq_len": 256,
+  "mlp_mult": 6,
+  "dense": true
+ },
+ "arms": {
+  "fp16": {
+   "family": "trunk",
+   "kind": "quant",
+   "mode": "fp16",
+   "value_bytes": 2.0,
+   "positions_kept": 256,
+   "role": "本图基线（不压缩、fp16 存储）"
+  },
+  "int8": {
+   "family": "trunk",
+   "kind": "quant",
+   "mode": "int8",
+   "value_bytes": 1.0,
+   "positions_kept": 256,
+   "role": "R1 参照线：KV int8（省 50%）"
+  },
+  "int4": {
+   "family": "trunk",
+   "kind": "quant",
+   "mode": "int4",
+   "value_bytes": 0.5,
+   "positions_kept": 256,
+   "role": "R1 参照线：KV int4（省 75%）——gqa_int4/mqa_int4 的『量化代价』同族锚"
+  },
+  "win16": {
+   "family": "trunk",
+   "kind": "window",
+   "d": 16,
+   "value_bytes": 2.0,
+   "positions_kept": 16,
+   "role": "M2/A3：只保留最近 16 个位置（768 B/位置）"
+  },
+  "win32": {
+   "family": "trunk",
+   "kind": "window",
+   "d": 32,
+   "value_bytes": 2.0,
+   "positions_kept": 32,
+   "role": "M2/A3：只保留最近 32 个位置（1536 B/位置；win32_int8 的 fp16 对照）"
+  },
+  "win64": {
+   "family": "trunk",
+   "kind": "window",
+   "d": 64,
+   "value_bytes": 2.0,
+   "positions_kept": 64,
+   "role": "M2/A3：只保留最近 64 个位置（3072 B/位置；win64_int8 的 fp16 对照）"
+  },
+  "win128": {
+   "family": "trunk",
+   "kind": "window",
+   "d": 128,
+   "value_bytes": 2.0,
+   "positions_kept": 128,
+   "role": "M2/A3：只保留最近 128 个位置（6144 B/位置，窗口长尾）"
+  },
+  "win144": {
+   "family": "trunk",
+   "kind": "window",
+   "d": 144,
+   "value_bytes": 2.0,
+   "positions_kept": 144,
+   "role": "M2/A3：只保留最近 144 个位置（6912 B/位置，窗口长尾）"
+  },
+  "win160": {
+   "family": "trunk",
+   "kind": "window",
+   "d": 160,
+   "value_bytes": 2.0,
+   "positions_kept": 160,
+   "role": "M2/A3：只保留最近 160 个位置（7680 B/位置，窗口长尾）"
+  },
+  "win176": {
+   "family": "trunk",
+   "kind": "window",
+   "d": 176,
+   "value_bytes": 2.0,
+   "positions_kept": 176,
+   "role": "M2/A3：只保留最近 176 个位置（8448 B/位置，窗口长尾）"
+  },
+  "win192": {
+   "family": "trunk",
+   "kind": "window",
+   "d": 192,
+   "value_bytes": 2.0,
+   "positions_kept": 192,
+   "role": "M2/A3：只保留最近 192 个位置（9216 B/位置，窗口长尾）"
+  },
+  "win16_anchor16": {
+   "family": "trunk",
+   "kind": "window_anchor",
+   "window": 16,
+   "anchors": 16,
+   "value_bytes": 2.0,
+   "positions_kept": 32,
+   "role": "2620：窗口 16 + 锚点 16（1536 B/位置；win16_anchor16_int4 的 fp16 对照）"
+  },
+  "win32_anchor32": {
+   "family": "trunk",
+   "kind": "window_anchor",
+   "window": 32,
+   "anchors": 32,
+   "value_bytes": 2.0,
+   "positions_kept": 64,
+   "role": "2620：窗口 32 + 锚点 32（3072 B/位置；win32_anchor32_int4 的 fp16 对照）"
+  },
+  "win32_anchor8": {
+   "family": "trunk",
+   "kind": "window_anchor",
+   "window": 32,
+   "anchors": 8,
+   "value_bytes": 2.0,
+   "positions_kept": 40,
+   "role": "2620：窗口 32 + 锚点 8（1920 B/位置）"
+  },
+  "mha": {
+   "family": "head",
+   "kind": "head",
+   "n_kv_heads": 8,
+   "value_bytes": 2.0,
+   "positions_kept": 256,
+   "role": "head 族全精度基线（MHA）"
+  },
+  "gqa": {
+   "family": "head",
+   "kind": "head",
+   "n_kv_heads": 2,
+   "value_bytes": 2.0,
+   "positions_kept": 256,
+   "role": "W3：GQA（KV −75%）——gqa_int4 的 fp16 对照，也是窗口增量对照"
+  },
+  "mqa": {
+   "family": "head",
+   "kind": "head",
+   "n_kv_heads": 1,
+   "value_bytes": 2.0,
+   "positions_kept": 256,
+   "role": "W3：MQA（KV −87.5%）——mqa_int4 的 fp16 对照"
+  },
+  "gqa_int8": {
+   "family": "quant_head",
+   "kind": "quant_head",
+   "base_arm": "gqa",
+   "n_kv_heads": 2,
+   "mode": "int8",
+   "value_bytes": 1.0,
+   "positions_kept": 256,
+   "role": "2620：GQA × int8（1536 B/位置）"
+  },
+  "mqa_int8": {
+   "family": "quant_head",
+   "kind": "quant_head",
+   "base_arm": "mqa",
+   "n_kv_heads": 1,
+   "mode": "int8",
+   "value_bytes": 1.0,
+   "positions_kept": 256,
+   "role": "2620：MQA × int8（768 B/位置）"
+  },
+  "gqa_int4": {
+   "family": "quant_head",
+   "kind": "quant_head",
+   "base_arm": "gqa",
+   "n_kv_heads": 2,
+   "mode": "int4",
+   "value_bytes": 0.5,
+   "positions_kept": 256,
+   "role": "W1 缺口：GQA × int4（768 B/位置）；fp16 对照 = gqa，量化增量对照 = gqa"
+  },
+  "mqa_int4": {
+   "family": "quant_head",
+   "kind": "quant_head",
+   "base_arm": "mqa",
+   "n_kv_heads": 1,
+   "mode": "int4",
+   "value_bytes": 0.5,
+   "positions_kept": 256,
+   "role": "W1 缺口：MQA × int4（384 B/位置）；fp16 对照 = mqa"
+  },
+  "win32_int8": {
+   "family": "trunk",
+   "kind": "combo_mask",
+   "base_model": "trunk",
+   "window": 32,
+   "anchors": 0,
+   "mode": "int8",
+   "value_bytes": 1.0,
+   "positions_kept": 32,
+   "role": "W1 缺口：窗口 32 × int8（768 B/位置；与 win32 等窗口、量化增量对照 = win32）"
+  },
+  "win64_int8": {
+   "family": "trunk",
+   "kind": "combo_mask",
+   "base_model": "trunk",
+   "window": 64,
+   "anchors": 0,
+   "mode": "int8",
+   "value_bytes": 1.0,
+   "positions_kept": 64,
+   "role": "W1 缺口：窗口 64 × int8（1536 B/位置；量化增量对照 = win64）"
+  },
+  "win16_anchor16_int4": {
+   "family": "trunk",
+   "kind": "combo_mask",
+   "base_model": "trunk",
+   "window": 16,
+   "anchors": 16,
+   "mode": "int4",
+   "value_bytes": 0.5,
+   "positions_kept": 32,
+   "role": "W1 缺口：窗口 16 + 锚点 16 × int4（384 B/位置；量化增量对照 = win16_anchor16）"
+  },
+  "win32_anchor32_int4": {
+   "family": "trunk",
+   "kind": "combo_mask",
+   "base_model": "trunk",
+   "window": 32,
+   "anchors": 32,
+   "mode": "int4",
+   "value_bytes": 0.5,
+   "positions_kept": 64,
+   "role": "W1 缺口：窗口 32 + 锚点 32 × int4（768 B/位置；量化增量对照 = win32_anchor32）"
+  },
+  "gqa_win64": {
+   "family": "head",
+   "kind": "combo_mask",
+   "base_model": "gqa",
+   "n_kv_heads": 2,
+   "window": 64,
+   "anchors": 0,
+   "mode": "fp32",
+   "value_bytes": 2.0,
+   "positions_kept": 64,
+   "role": "W1 缺口：GQA × 窗口 64（768 B/位置）；窗口增量对照 = gqa"
+  },
+  "gqa_win128": {
+   "family": "head",
+   "kind": "combo_mask",
+   "base_model": "gqa",
+   "n_kv_heads": 2,
+   "window": 128,
+   "anchors": 0,
+   "mode": "fp32",
+   "value_bytes": 2.0,
+   "positions_kept": 128,
+   "role": "W1 缺口：GQA × 窗口 128（1536 B/位置）；窗口增量对照 = gqa"
+  }
+ },
+ "family_baseline": {
+  "trunk": "fp16",
+  "head": "mha",
+  "quant_head": "mha"
+ },
+ "quant_increment_ref": {
+  "gqa_int8": "gqa",
+  "mqa_int8": "mqa",
+  "gqa_int4": "gqa",
+  "mqa_int4": "mqa",
+  "win32_int8": "win32",
+  "win64_int8": "win64",
+  "win16_anchor16_int4": "win16_anchor16",
+  "win32_anchor32_int4": "win32_anchor32",
+  "note": "组合臂的量化增量 = bpc(组合) − bpc(同拓扑 fp16 臂)，隔离『再叠一个量化因子』的代价；主 damage 列仍相对全精度族基线。"
+ },
+ "window_increment_ref": {
+  "gqa_win64": "gqa",
+  "gqa_win128": "gqa",
+  "note": "头共享×窗口臂的窗口增量 = bpc(组合) − bpc(同头数全精度臂)，隔离『在 GQA 上再叠一个窗口因子』的代价。"
+ },
+ "data": {
+  "name": "enwik8_full",
+  "path": "data/enwik8_full.npz",
+  "split": "前 90M 训练 / 末 10M 评测（本实验只用评测尾段跑 bpc）",
+  "vocab_size": 206,
+  "n_real_tokens": 205,
+  "mask_token": 205,
+  "bpc_only": true,
+  "note": "合成召回任务不使用 enwik8 文本，只用词表大小（206）；SCHEMA §19 不用 enwik8 当长程主任务。"
+ },
+ "tokens": {
+  "sym_vocab": 64,
+  "filler_token": 64,
+  "cue_token": 205,
+  "local_k": 8
+ },
+ "tasks": {
+  "copy": {
+   "copy_len": 32,
+   "src_positions": [
+    0,
+    96,
+    191
+   ],
+   "batch_size": 16,
+   "n_batches": 2,
+   "role": "合成长程召回主腿（与 2619/2620 同任务同 seed，逐臂同批）：远处随机片段原样复制。src_pos=0 落在锚区可测『锚点通道』；src_pos=96/191 测通用召回"
+  },
+  "induction": {
+   "prefix_len": 192,
+   "copy_len": 32,
+   "src_starts": [
+    0,
+    159
+   ],
+   "batch_size": 16,
+   "n_batches": 16,
+   "role": "副腿：末尾重复段之后的那一项（induction）"
+  },
+  "var_recall": {
+   "distances": [
+    64,
+    192
+   ],
+   "batch_size": 16,
+   "n_batches": 16,
+   "role": "副腿：单 (key,value) 变距离回忆（本主干预期落在地板，用于如实记录不可分辨）"
+  }
+ },
+ "controls": {
+  "chance": "uniform_answer_set = 1/sym_vocab = 1/64",
+  "local_prior": "longrange_tasks.local_prior_accuracy(k=8)",
+  "corrupt_source": "copy 任务源片段整段换随机符号（逐臂，源区间 = [src_pos, src_pos+copy_len)）——测读数是否真来自被搬运的信息",
+  "baseline_anchor_bpc": 1.483569,
+  "baseline_anchor_source": "axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/results.json::instrument.bpc_full_release_path"
+ },
+ "eval": {
+  "bpc_method": "run.py::bpc_of（与 2619/2620 同一统一路径：因果移位 CE token 平均，逐臂同一 logits_fn 接口）",
+  "bpc_cross_path_check": "retention.masked_bpc（独立路径，逐位对照）",
+  "n_batches": 24,
+  "batch_size": 16,
+  "window_seed": 2,
+  "device": "cuda",
+  "note": "window_seed=2 + 24×16 与 2610/2614/2615/2616/2619/2620 同一窗口序 ⇒ clean bpc 与历史基线同口径可比"
+ },
+ "criterion": {
+  "verbatim_contract": [
+   "补齐 V1 之后仍缺的组合：优先 GQA×int4、MQA×int4、窗口×int8、GQA×窗口、锚点×int4。",
+   "判据同 V1：两腿（clean bpc + 合成长程召回）+ 毁源对照臂 + 同横轴同口径 + 解析/实测内存分列 + 单点不外推。",
+   "交付：更新后的总表（含所有已测点，逐点标来源实验路径与口径），并明确列出仍缺的组合。"
+  ],
+  "sign_convention": "SCHEMA §17.3：Δ_schema = bpc_对照 − bpc_实验（正 = 实验臂更好）；damage_bpc = bpc_实验 − bpc_对照（正 = 更差）。本实验的『对照』= 本族基线（quant_head 族 = mha 全精度基线）。",
+  "variance_band_bpc": 0.014,
+  "recall_ci": "Wilson 95%",
+  "recall_at_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（读作『在该任务上不可分辨』，不得写成『机制无效』，SCHEMA §19）",
+  "no_single_point_extrapolation": "SCHEMA §17.11：单点只描述；趋势需 ≥2 个直接测点。窗口×int8 在 win32/win64 两档、GQA×窗口在 win64/win128 两档、锚点×int4 在 (16,16)/(32,32) 两档上读；GQA×int4 / MQA×int4 是单点，只描述该点，不外推。"
+ },
+ "reuse": {
+  "policy": "SCHEMA §9：复用历史 run 只省算力、不省证据",
+  "bpc_recompute": "全部 27 臂在本实验内**同进程重测**（复用 2619 的 bpc_of / synth_accuracy 管线，与 2621 同一条路径）；2621 只作新旧对照。",
+  "checkpoint_sha256_asserted": true,
+  "new_module": "causal_check.py（前缀不变性仪器 + 因果/非因果并列比较的唯一语义层；§22 第 7 条新逻辑进新模块，不改 2619/2620/2621 与 tools/evalkit/*）。",
+  "code_anchors": [
+   "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/run.py",
+   "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/causal_check.py",
+   "axes/R-references/R1-quantization/experiments/2621-kv-budget-rest/rest_arms.py",
+   "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/gaps_arms.py",
+   "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/run.py",
+   "tools/evalkit/kv_quant.py",
+   "tools/evalkit/longrange_tasks.py",
+   "tools/evalkit/retention.py"
+  ]
+ },
+ "cost": {
+  "gpu_wall_budget_min": 20,
+  "gpu_wall_budget_source": "契约 W1「纯 eval ≈20 min」",
+  "budget_cut_rule": "预算不够时砍任务档数（先砍 var_recall，再砍 induction），保 copy 主腿与全部预算点；不砍判据线（SCHEMA §8/§17.7）",
+  "peak_mem_budget_gib": 5,
+  "smoke": "python3 run.py --smoke（缩小批量/档数，实测步时与显存，不外推时间）"
+ },
+ "reproducibility": {
+  "rerun": true,
+  "max_abs_delta_bpc_threshold": 0.005,
+  "nondeterminism_note": "纯推理、无随机采样；同 seed 重跑应逐位相同"
+ },
+ "seed": 7,
+ "causal_caliber": {
+  "why": "复核 A2：旧价签在『沿 batch+token 取 amax』的非因果量化下测得 ⇒ 过去位置的 K/V反量化值会因未来 token 或同批其他请求改变，因果掩码挡不住。本轮用 L1 修复后的逐请求、因果/流式实现（`tools/evalkit/kv_quant.quantize_kv`：位置 t 的 scale = max_{t'<=t}|x|/qmax，batch 轴不参与归约）重测同一 27 点。",
+  "implementation": "tools/evalkit/kv_quant.py::quantize_kv（cummax 沿 token 轴；batch 不归约）",
+  "unchanged_relative_to_2621": [
+   "checkpoints（trunk / mha / gqa / mqa）与 sha256 断言",
+   "数据流：enwik8_full 评测尾段、window_seed=2、24×16",
+   "合成任务电池（copy / induction / var_recall）与 seed",
+   "横轴公式与全部 27 个臂的 (kind, mode, window/anchors, value_bytes, positions_kept)",
+   "判据线、方差带（0.014）、召回地板规则（chance + 2σ_wilson）"
+  ],
+  "changed_relative_to_2621": "唯一改动 = KV int8/int4 量化的 scale 约定（非因果 → 因果/流式）",
+  "scale_overhead_note": "因果/流式的代价：scale 逐 token 变、无法摊薄 ⇒ 每值 +1 个 fp16 scale（int8 净 3 B/值、int4 净 2.5 B/值）。本实验横轴仍是**值字节**旧口径（与 2621 逐位可比）；部署口径见 kv_quant.kv_cache_footprint 的 streaming_* 字段。",
+  "preregistered_criteria": [
+   "① 前缀不变性必须成立：改未来 token / 改同批邻居，不改过去位置的反量化值与过去 logits；",
+   "② 逐臂报 Δbpc_因果 = bpc_新 − bpc_旧，并明确旧（非因果）数字是**夸大了**还是**缩小了** int8/int4 的质量代价；",
+   "③ 头共享 × 量化的 Pareto：在每位置字节轴上，GQA/MQA×int8/int4 相对纯量化/纯头共享的排序，新旧口径是否改变；",
+   "④ 若结论反转（如 int8 不再近无损 / int4 代价跨过方差带），如实报并建议推翻旧价签。"
+  ],
+  "gate": "① 不成立 ⇒ 本实验作废（实现未修好），不得作为新价签。"
+ },
+ "compare_against_2621": {
+  "results": "axes/R-references/R1-quantization/experiments/2621-kv-budget-rest/results.json",
+  "arms": [
+   "fp16",
+   "int8",
+   "int4",
+   "win16",
+   "win32",
+   "win64",
+   "win128",
+   "win144",
+   "win160",
+   "win176",
+   "win192",
+   "win16_anchor16",
+   "win32_anchor32",
+   "win32_anchor8",
+   "mha",
+   "gqa",
+   "mqa",
+   "gqa_int8",
+   "mqa_int8",
+   "gqa_int4",
+   "mqa_int4",
+   "win32_int8",
+   "win64_int8",
+   "win16_anchor16_int4",
+   "win32_anchor32_int4",
+   "gqa_win64",
+   "gqa_win128"
+  ],
+  "note": "旧口径（非因果 batch+token amax）的 27 点全表。本轮在因果口径下重测；非量化臂应逐位不变，量化臂允许变（Δ = 差异方向）。"
+ }
+}

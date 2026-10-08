@@ -1,0 +1,62 @@
+{
+  "target": "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/causal_check.py",
+  "sha256_before": "e992170bb078cddd7697303951620ce5269a0f2d85ee441a944a65891b3f4729",
+  "mutations": [
+    {
+      "id": "M1",
+      "what": "前缀不变性的 peer 检查恒 True（A2 的跨请求旁路不再被验）",
+      "tests": {
+        "test_prefix_invariance_check_flags_noncausal_implementation": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 2.04s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M2",
+      "what": "方向标签符号反转（改善↔变差）",
+      "tests": {
+        "test_direction_label_signs": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.74s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M3",
+      "what": "quantized_arms_of 去掉 mode 过滤（把所有臂当量化臂）",
+      "tests": {
+        "test_quantized_arms_of_selects_only_int_arms": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.72s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M4",
+      "what": "非量化臂漂移不判 False（可控性证据恒真）",
+      "tests": {
+        "test_compare_detects_nonquant_drift": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 2.08s"
+        }
+      },
+      "all_expected_tests_caught": true
+    }
+  ],
+  "restored_sha256_equal": true,
+  "after_restore": {
+    "returncode": 0,
+    "tail": "9 passed in 1.90s"
+  },
+  "green_after_restore": true,
+  "sha256_after": "e992170bb078cddd7697303951620ce5269a0f2d85ee441a944a65891b3f4729",
+  "all_caught": true
+}

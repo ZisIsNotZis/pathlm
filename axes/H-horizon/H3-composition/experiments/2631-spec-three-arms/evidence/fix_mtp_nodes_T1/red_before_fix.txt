@@ -1,0 +1,249 @@
+..........F.FF.                                                          [100%]
+=================================== FAILURES ===================================
+______________ test_arm_decode_stream_is_bit_identical_to_native _______________
+
+    def test_arm_decode_stream_is_bit_identical_to_native():
+        """**门禁**：argmax 路线下三臂的发出流必须与原生贪心流逐位相同。"""
+        m = tiny_model(seed=0)
+        prompt = torch.tensor([3, 11, 7, 2, 19, 5, 23, 1])
+        pcap = m.pcap
+>       native, _ = decode(m, prompt, 24, pcap)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+axes/H-horizon/H3-composition/experiments/2631-spec-three-arms/test_spec_arms.py:163: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+../../.venv/lib/python3.12/site-packages/torch/utils/_contextlib.py:124: in decorate_context
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+pathlm/decode.py:381: in decode
+    h, _ = dec.step(rd(prompt[0]))
+           ^^^^^^^^^^^^^^^^^^^^^^^
+pathlm/decode.py:91: in step
+    self.last_nodes = model._mtp_nodes(h)
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PathLM(
+  (embed): Embedding(41, 32)
+  (pos_embed): Embedding(64, 32)
+  (blocks): ModuleList(
+    (0-2): 3 x Block(
+  ...: Linear(in_features=32, out_features=1, bias=True)
+  (chain_cat): Linear(in_features=64, out_features=32, bias=True)
+)
+h = tensor([[[ 0.0464,  0.1052,  0.0604, -0.1168, -0.3213,  0.2862, -0.0948,
+          -0.0165, -0.2373,  0.0143,  0.2594,...         0.0084,  0.0798,  0.2471,  0.0243,  0.1669,  0.3551,  0.2452,
+           0.0207,  0.0067,  0.0148, -0.0425]]])
+condition = None
+
+    def _mtp_nodes(self, h: torch.Tensor,
+                   condition: torch.Tensor | None = None) -> dict:
+        """One round of MTP node outputs. Node k=0 is the self estimate; node
+        k>=1 is the direct transform estimate; node 1 additionally carries the
+        chained estimate of node 2 with its own head.
+    
+        chain_mode="token" conditions node 2 on the ACTUAL t_{i+1} (design §3:
+        "node-2 CONDITIONED on node-1's sampled token, re-embed + re-predict"):
+        `condition` holds those token ids [B, T-1] — the clean targets under
+        teacher forcing, or node-1's argmax when `deploy_chain` is set. It is
+        right-padded to T rows so row i is conditioned on t_{i+1}.
+        chain_mode="latent" keeps the old T1-on-the-same-latent form, which the
+        B2 probe showed is indistinguishable from the direct head."""
+        nodes = {}
+        for k in range(self.pcap.n_mtp + 1):
+            latent = h if k == 0 else self.transforms[k - 1](h)
+            node = {"latent": latent, "logits": latent @ self.embed.weight.T,
+                    "conf": self.conf[k](latent).squeeze(-1)}
+            if k == 1 and self.pcap.n_mtp >= 2:
+                if self.pcap.chain_mode == "token":
+                    # DeepSeek-style conditional MTP (design §3 "chain-through-
+                    # embedding"): the MAIN model's context latent h (not the
+                    # transform head's output) concatenated with the embedding
+                    # of the conditioning token t_{i+1}, projected back to d,
+                    # then the chain transform predicts t_{i+2}. Concat+proj
+                    # handles the 29x vs 1x norm mismatch; a bare re-embed (the
+                    # first attempt) dropped all context and was falsified by
+                    # the A/B.
+                    cond = condition
+                    if self.deploy_chain or cond is None:
+                        # condition = node-1's own prediction of t_{i+1}: row i's
+                        # argmax predicts t_{i+1}. In batch training that is
+                        # rows 0..T-2 (row i reads row i's argmax); in single-
+                        # position decode T-1 == 0, so keep one row instead.
+                        n_cond = max(h.shape[1] - 1, 1)
+                        cond = node["logits"].argmax(-1)[:, :n_cond]
+                    # Right-pad to T rows (row i is conditioned on t_{i+1}).
+                    # **Only pad when there are too few rows**: at T == 1
+                    # (single-position decode / the last prefill step) `cond` is
+                    # already 1 row == h's row count, so the unconditional pad
+                    # produced 2 rows and crashed the cat below ⇒ the whole
+                    # token-conditioned chain decode path was unusable (F_ENG).
+                    t_next = torch.cat([cond, cond[:, -1:]], dim=1)  # TEMP pre-fix
+>                   h_c = self.chain_cat(torch.cat([h, self.embed(t_next)], dim=-1))
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   RuntimeError: Sizes of tensors must match except in dimension 2. Expected size 1 but got size 2 for tensor number 1 in the list.
+
+pathlm/model.py:353: RuntimeError
+__________ test_arms_read_different_distributions_in_the_real_engine ___________
+
+    def test_arms_read_different_distributions_in_the_real_engine():
+        """活性量（SCHEMA §10）：在**真模型**上，三臂第 N+2 位读到的分布彼此不同，
+        且 chain 臂确实**以第一个草稿 token 为条件**（改 node1 的条件 ⇒ chain2 变）。"""
+        m = tiny_model(seed=1)
+        prompt = torch.tensor([3, 11, 7, 2, 19, 5, 23, 1])
+        with torch.no_grad():
+            for tok in prompt.tolist()[:-1]:
+                pass
+            from pathlm.decode import Decoder
+            d = Decoder(m)
+            for tok in prompt.tolist():
+>               d.step(tok)
+
+axes/H-horizon/H3-composition/experiments/2631-spec-three-arms/test_spec_arms.py:193: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+pathlm/decode.py:91: in step
+    self.last_nodes = model._mtp_nodes(h)
+                      ^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PathLM(
+  (embed): Embedding(41, 32)
+  (pos_embed): Embedding(64, 32)
+  (blocks): ModuleList(
+    (0-2): 3 x Block(
+  ...: Linear(in_features=32, out_features=1, bias=True)
+  (chain_cat): Linear(in_features=64, out_features=32, bias=True)
+)
+h = tensor([[[-0.0687, -0.1044,  0.1019,  0.3247,  0.0126, -0.0249, -0.0733,
+          -0.0590,  0.0375, -0.2711, -0.2535,...         0.0722,  0.0310,  0.0992, -0.2495, -0.1109, -0.0423,  0.1003,
+           0.0211,  0.3672, -0.2829,  0.1779]]])
+condition = None
+
+    def _mtp_nodes(self, h: torch.Tensor,
+                   condition: torch.Tensor | None = None) -> dict:
+        """One round of MTP node outputs. Node k=0 is the self estimate; node
+        k>=1 is the direct transform estimate; node 1 additionally carries the
+        chained estimate of node 2 with its own head.
+    
+        chain_mode="token" conditions node 2 on the ACTUAL t_{i+1} (design §3:
+        "node-2 CONDITIONED on node-1's sampled token, re-embed + re-predict"):
+        `condition` holds those token ids [B, T-1] — the clean targets under
+        teacher forcing, or node-1's argmax when `deploy_chain` is set. It is
+        right-padded to T rows so row i is conditioned on t_{i+1}.
+        chain_mode="latent" keeps the old T1-on-the-same-latent form, which the
+        B2 probe showed is indistinguishable from the direct head."""
+        nodes = {}
+        for k in range(self.pcap.n_mtp + 1):
+            latent = h if k == 0 else self.transforms[k - 1](h)
+            node = {"latent": latent, "logits": latent @ self.embed.weight.T,
+                    "conf": self.conf[k](latent).squeeze(-1)}
+            if k == 1 and self.pcap.n_mtp >= 2:
+                if self.pcap.chain_mode == "token":
+                    # DeepSeek-style conditional MTP (design §3 "chain-through-
+                    # embedding"): the MAIN model's context latent h (not the
+                    # transform head's output) concatenated with the embedding
+                    # of the conditioning token t_{i+1}, projected back to d,
+                    # then the chain transform predicts t_{i+2}. Concat+proj
+                    # handles the 29x vs 1x norm mismatch; a bare re-embed (the
+                    # first attempt) dropped all context and was falsified by
+                    # the A/B.
+                    cond = condition
+                    if self.deploy_chain or cond is None:
+                        # condition = node-1's own prediction of t_{i+1}: row i's
+                        # argmax predicts t_{i+1}. In batch training that is
+                        # rows 0..T-2 (row i reads row i's argmax); in single-
+                        # position decode T-1 == 0, so keep one row instead.
+                        n_cond = max(h.shape[1] - 1, 1)
+                        cond = node["logits"].argmax(-1)[:, :n_cond]
+                    # Right-pad to T rows (row i is conditioned on t_{i+1}).
+                    # **Only pad when there are too few rows**: at T == 1
+                    # (single-position decode / the last prefill step) `cond` is
+                    # already 1 row == h's row count, so the unconditional pad
+                    # produced 2 rows and crashed the cat below ⇒ the whole
+                    # token-conditioned chain decode path was unusable (F_ENG).
+                    t_next = torch.cat([cond, cond[:, -1:]], dim=1)  # TEMP pre-fix
+>                   h_c = self.chain_cat(torch.cat([h, self.embed(t_next)], dim=-1))
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   RuntimeError: Sizes of tensors must match except in dimension 2. Expected size 1 but got size 2 for tensor number 1 in the list.
+
+pathlm/model.py:353: RuntimeError
+________________ test_chain_arm_is_not_the_latent_T_composition ________________
+
+    def test_chain_arm_is_not_the_latent_T_composition():
+        """反例警示的**实现层**钉子：`chain` 臂读的 `chain2` 与 `T1∘T1`（潜在复用）
+        不是同一个张量（后者是 `chain_mode="latent"` 的语义，本实验不训）。"""
+        m = tiny_model(seed=2)
+        with torch.no_grad():
+            h = torch.randn(1, 1, m.mcfg.d_model)
+>           nodes = m._mtp_nodes(h)                       # token 模式 ⇒ chain2 走条件分支
+                    ^^^^^^^^^^^^^^^
+
+axes/H-horizon/H3-composition/experiments/2631-spec-three-arms/test_spec_arms.py:213: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = PathLM(
+  (embed): Embedding(41, 32)
+  (pos_embed): Embedding(64, 32)
+  (blocks): ModuleList(
+    (0-2): 3 x Block(
+  ...: Linear(in_features=32, out_features=1, bias=True)
+  (chain_cat): Linear(in_features=64, out_features=32, bias=True)
+)
+h = tensor([[[ 1.1423, -0.9465,  0.0503,  0.6928, -1.4468, -0.3420,  1.2524,
+          -0.6237,  1.0361,  1.0137,  0.5886,...        -0.7114, -1.5369,  1.4174,  1.7502,  0.5649,  0.4583, -0.7190,
+           1.0665, -0.5377, -0.5982, -0.5322]]])
+condition = None
+
+    def _mtp_nodes(self, h: torch.Tensor,
+                   condition: torch.Tensor | None = None) -> dict:
+        """One round of MTP node outputs. Node k=0 is the self estimate; node
+        k>=1 is the direct transform estimate; node 1 additionally carries the
+        chained estimate of node 2 with its own head.
+    
+        chain_mode="token" conditions node 2 on the ACTUAL t_{i+1} (design §3:
+        "node-2 CONDITIONED on node-1's sampled token, re-embed + re-predict"):
+        `condition` holds those token ids [B, T-1] — the clean targets under
+        teacher forcing, or node-1's argmax when `deploy_chain` is set. It is
+        right-padded to T rows so row i is conditioned on t_{i+1}.
+        chain_mode="latent" keeps the old T1-on-the-same-latent form, which the
+        B2 probe showed is indistinguishable from the direct head."""
+        nodes = {}
+        for k in range(self.pcap.n_mtp + 1):
+            latent = h if k == 0 else self.transforms[k - 1](h)
+            node = {"latent": latent, "logits": latent @ self.embed.weight.T,
+                    "conf": self.conf[k](latent).squeeze(-1)}
+            if k == 1 and self.pcap.n_mtp >= 2:
+                if self.pcap.chain_mode == "token":
+                    # DeepSeek-style conditional MTP (design §3 "chain-through-
+                    # embedding"): the MAIN model's context latent h (not the
+                    # transform head's output) concatenated with the embedding
+                    # of the conditioning token t_{i+1}, projected back to d,
+                    # then the chain transform predicts t_{i+2}. Concat+proj
+                    # handles the 29x vs 1x norm mismatch; a bare re-embed (the
+                    # first attempt) dropped all context and was falsified by
+                    # the A/B.
+                    cond = condition
+                    if self.deploy_chain or cond is None:
+                        # condition = node-1's own prediction of t_{i+1}: row i's
+                        # argmax predicts t_{i+1}. In batch training that is
+                        # rows 0..T-2 (row i reads row i's argmax); in single-
+                        # position decode T-1 == 0, so keep one row instead.
+                        n_cond = max(h.shape[1] - 1, 1)
+                        cond = node["logits"].argmax(-1)[:, :n_cond]
+                    # Right-pad to T rows (row i is conditioned on t_{i+1}).
+                    # **Only pad when there are too few rows**: at T == 1
+                    # (single-position decode / the last prefill step) `cond` is
+                    # already 1 row == h's row count, so the unconditional pad
+                    # produced 2 rows and crashed the cat below ⇒ the whole
+                    # token-conditioned chain decode path was unusable (F_ENG).
+                    t_next = torch.cat([cond, cond[:, -1:]], dim=1)  # TEMP pre-fix
+>                   h_c = self.chain_cat(torch.cat([h, self.embed(t_next)], dim=-1))
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E                   RuntimeError: Sizes of tensors must match except in dimension 2. Expected size 1 but got size 2 for tensor number 1 in the list.
+
+pathlm/model.py:353: RuntimeError
+=========================== short test summary info ============================
+FAILED axes/H-horizon/H3-composition/experiments/2631-spec-three-arms/test_spec_arms.py::test_arm_decode_stream_is_bit_identical_to_native
+FAILED axes/H-horizon/H3-composition/experiments/2631-spec-three-arms/test_spec_arms.py::test_arms_read_different_distributions_in_the_real_engine
+FAILED axes/H-horizon/H3-composition/experiments/2631-spec-three-arms/test_spec_arms.py::test_chain_arm_is_not_the_latent_T_composition
+3 failed, 12 passed in 1.90s

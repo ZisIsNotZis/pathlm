@@ -343,7 +343,14 @@ class PathLM(nn.Module):
                         # position decode T-1 == 0, so keep one row instead.
                         n_cond = max(h.shape[1] - 1, 1)
                         cond = node["logits"].argmax(-1)[:, :n_cond]
-                    t_next = torch.cat([cond, cond[:, -1:]], dim=1)  # right-pad row T-1
+                    # Right-pad to T rows (row i is conditioned on t_{i+1}).
+                    # **Only pad when there are too few rows**: at T == 1
+                    # (single-position decode / the last prefill step) `cond` is
+                    # already 1 row == h's row count, so the unconditional pad
+                    # produced 2 rows and crashed the cat below ⇒ the whole
+                    # token-conditioned chain decode path was unusable (F_ENG).
+                    t_next = (cond if cond.shape[1] >= h.shape[1]
+                              else torch.cat([cond, cond[:, -1:]], dim=1))
                     h_c = self.chain_cat(torch.cat([h, self.embed(t_next)], dim=-1))
                 else:
                     h_c = latent   # latent chain = T1 applied to node-1's own

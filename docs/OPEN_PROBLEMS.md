@@ -137,3 +137,13 @@
 A1 算术判据错误 / A2 量化侧信道 / A3 距离表与原始数据相反 / A5 低绝对 loss 当收敛证据 /
 A6 `T∘T` 与概率条件链语义错配 / B2 非独立样本统计 / B13 bpc 假上界 / A7 无效 git 锚点 /
 A8 beam 否证命题错误。
+
+### 冻结清单追加（2026-10-02 · L5/R6 发现，主 Agent 裁决 ①）
+
+8. **ticket 12 的「token 条件链」全部结论（`chain deploy 0.547 < direct 0.560`、
+   `accept chain-deploy 0.7525`）**
+   —— why：这些读数来自 `probe_chain.py` 的**批量 teacher-forcing 式前向**
+   （B=32/T=512 走 `deploy_chain`），**不是解码口径**。R6 修 `F_ENG` 时发现
+   `chain_mode="token"` 在**单位置解码**下直接崩溃 ⇒ 该模式在此之前**从未**在真解码循环里跑过。
+   冻结至 R6 的解码口径结果（`axes/H-horizon/H3-composition/experiments/2631-spec-three-arms/`）
+   落地后替换。**不是**说「条件链无效」——而是说旧读数的口径不对。

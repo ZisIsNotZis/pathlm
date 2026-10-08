@@ -77,7 +77,7 @@
 
 | 格子 | 状态 | 判读 |
 |---|---|---|
-| [`M1-carrier-type`](axes/M-carrier/M1-carrier-type/README.md) · 状态载体类型 | ✅ judged | **载体类型首验（ticket 35）：在「关联回忆 + 窗口 16（key 100% 落在窗外）」的合成任务上，13M/12k 步测得显式写入通道把命中率抬到 6.08× chance**——但… |
+| [`M1-carrier-type`](axes/M-carrier/M1-carrier-type/README.md) · 状态载体类型 | ✅ judged | **载体类型首验（ticket 35）：在「关联回忆 + 窗口 16（key 100% 落在窗外）」的合成任务上，13M/12k 步测得显式写入通道把命中率抬到 6.08× chance**【20… |
 | [`M2-carrier-compression`](axes/M-carrier/M2-carrier-compression/README.md) · 载体压缩 | ◐ partial | 驱逐已测（价格见 A3）；**KV 量化已有本地实测**（R1/2614、2618/2621；但旧价签在「非因果 scale」下失效，已入冻结清单，待 R1 因果口径重测）；摘要压缩 / 低秩投影… |
 | [`M3-cross-step-assumption`](axes/M-carrier/M3-cross-step-assumption/README.md) · 跨步假设 | ✅ judged | 有界内存的价签已测两档：**窗口 192 的训练税 −0.0028（近零）**、窗口 32 为 +0.0866；但 192 档**本就没有头寸**（未重训限制到 192 只 +0.0029），真正… |
 
