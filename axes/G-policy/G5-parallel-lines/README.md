@@ -10,7 +10,7 @@ tax: "**去相关税（ERRATA 更正）**：battery 口径 **13M −0.0086 / 50M
 benefit: "13M：DIVL1 同时改善 baseline 与集成斜率（−0.062 > −0.047）——**该收益在 50M 反转**（去相关税由 −0.0086 变 +0.0710 且线间更相似，见 failure）；路径随机化**机制税随规模缩小 54%**（+0.1748 → +0.0810）"
 verdict: "**收口（两规模 + 24k 收敛点，预登记判据）**：多线设想的**机制**在 13M 成立、在 **50M 失效**，而**部署判据两个规模都不过**（8× 推理算力仍输同 token 预算单线：13M 最好 λ 下 +0.1052、50M +0.0322，CI 均排除 0）⇒ **该路线在当前形式下无部署价值**；未测项（13M 收敛后、λ 细扫、50M λ=1.0）已列明成本。**【2026-10-02 用户 review：本格的「多线」是执行方**自设命题**（同一主干采 K 条随机跳层路径再集成），**不是**用户要的投机解码；用户判定该类跳层集成**无意义且多花算力** ⇒ 结论在自设命题下保留，但本格**不得**再代表「多线 / 投机」线；真正的投机研究缺口见 `docs/OPEN_PROBLEMS.md` P-02。】"
 deps: ["G1-selector", "C6-depth-supervision", "F1-iteration-object"]
-evidence: [".scratch/08-tts-probe/evidence @aa97bcf", ".scratch/09-m3-interactions/evidence @39b1838", ".scratch/02-engine-m0/evidence/REPORT.md @27418ae", "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/analysis.md @ticket37", "axes/G-policy/PRIOR_ART_ENGINE.md @ticket36"]
+evidence: [".scratch/08-tts-probe/evidence @aa97bcf", ".scratch/09-m3-interactions/evidence @39b1838", ".scratch/02-engine-m0/evidence/REPORT.md @27418ae", "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/analysis.md @ccbeb53", "axes/G-policy/PRIOR_ART_ENGINE.md @0b590e1"]
 ---
 
 <!-- AUTO:begin -->
@@ -60,7 +60,7 @@ evidence: [".scratch/08-tts-probe/evidence @aa97bcf", ".scratch/09-m3-interactio
 11. **确定性路径对照恰好 0.0000**（8 条路径 logits 逐位相同，60/60 批）⇒ 集成增益只来自「路径真的不同」
 12. **未排除的解释（V3 如实声明）**：divl1 臂的 grad-norm 门跳过 5121/12000 步（42.7%）、实际约 6900 次更新 ⇒ 「去相关税为何变贵」三解释未排除（罚则有害/欠训练/权重不适配大规模）；**主判据仍是「快照结论」**：它不依赖 divl1 的训练质量（对照用的是 l1 的 8 路径集成，与 divl1 的 gate 无关），故 `−0.1115 ⇒ 50M 仍不成立` 有效；但**不得**据此声称上述三条未排除解释已被排除——它们只影响「去相关税为何变贵」这一附属问题
 13. 共享 trunk 的 voter 太相关：集成增益仅 +0.0008~+0.0015（可忽略）
-14. 确定性路径 checkpoint 的 K-path 集成恰好得 0——beam search 产出的多线正落在这个死区
+14. 确定性路径 checkpoint 的 K-path 集成恰好得 0（8 条路径 logits 逐位相同）——**【2026-10-02 更正（C9）】不能由此推出「beam search 产出的多线也落在死区」**：beam 的候选**前缀不同**，与「同一路径的确定性重复」不是同一命题；本实验**不否证** beam
 15. 深度集成失败：置信头只排序深度、不排序逐 token 可靠性
 
 ## 6. 判据与判决实验设计
@@ -82,8 +82,8 @@ evidence: [".scratch/08-tts-probe/evidence @aa97bcf", ".scratch/09-m3-interactio
 1. .scratch/08-tts-probe/evidence @aa97bcf
 2. .scratch/09-m3-interactions/evidence @39b1838
 3. .scratch/02-engine-m0/evidence/REPORT.md @27418ae
-4. axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/analysis.md @ticket37
-5. axes/G-policy/PRIOR_ART_ENGINE.md @ticket36
+4. axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/analysis.md @ccbeb53
+5. axes/G-policy/PRIOR_ART_ENGINE.md @0b590e1
 
 ## 备注
 

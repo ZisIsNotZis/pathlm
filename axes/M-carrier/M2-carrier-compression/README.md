@@ -8,7 +8,7 @@ judge: "内存下降 × 质量/保留损失（双边前沿）"
 cost: "13M 单臂 ~25 min"
 tax: "驱逐 +0.058~0.121（13M）"
 benefit: "ring-buffer 解码免重 prefill（内存有界）"
-verdict: "驱逐已测（价格见 A3）；量化/摘要/低秩零经验。"
+verdict: "驱逐已测（价格见 A3）；**KV 量化已有本地实测**（R1/2614、2618/2621；但旧价签在「非因果 scale」下失效，已入冻结清单，待 R1 因果口径重测）；摘要压缩 / 低秩投影（MLA 式）零经验。"
 deps: ["A3-window-anchor", "W3-kv-head-sharing"]
 evidence: [".scratch/07-x1-x3/evidence @7b47555", "axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/analysis.md @c39dc88"]
 ---
@@ -19,7 +19,7 @@ evidence: [".scratch/07-x1-x3/evidence @7b47555", "axes/M-carrier/M2-carrier-com
 
 > 轴：**M 状态载体** ｜ 状态：**◐ partial**
 
-> **判读**：驱逐已测（价格见 A3）；量化/摘要/低秩零经验。
+> **判读**：驱逐已测（价格见 A3）；**KV 量化已有本地实测**（R1/2614、2618/2621；但旧价签在「非因果 scale」下失效，已入冻结清单，待 R1 因果口径重测）；摘要压缩 / 低秩投影（MLA 式）零经验。
 
 ## 1. 命题
 
@@ -43,7 +43,7 @@ evidence: [".scratch/07-x1-x3/evidence @7b47555", "axes/M-carrier/M2-carrier-com
 
 - **税**：驱逐 +0.058~0.121（13M）
 - **收益**：ring-buffer 解码免重 prefill（内存有界）
-- **判读**：驱逐已测（价格见 A3）；量化/摘要/低秩零经验。
+- **判读**：驱逐已测（价格见 A3）；**KV 量化已有本地实测**（R1/2614、2618/2621；但旧价签在「非因果 scale」下失效，已入冻结清单，待 R1 因果口径重测）；摘要压缩 / 低秩投影（MLA 式）零经验。
 
 ## 5. 失败路径与原因
 

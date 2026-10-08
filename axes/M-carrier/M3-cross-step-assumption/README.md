@@ -10,7 +10,7 @@ tax: "窗口 192 训练税 **−0.002813**（1.483569 → 1.480756；重跑 +0.0
 benefit: "有界内存的**两档价签**：限制到 192 几乎免费；限制到 32 要付 +0.087。解析 KV 位置 256 → 200（−21.9%），实测显存不下降（分开报）。步时 1.05×（600 步实测）"
 verdict: "有界内存的价签已测两档：**窗口 192 的训练税 −0.0028（近零）**、窗口 32 为 +0.0866；但 192 档**本就没有头寸**（未重训限制到 192 只 +0.0029），真正的「训练补回」只在 32 档被测到（+0.1495 → +0.0866，补回 42%）。**窗口外信息仍是「丢了」不是「搬了」**。"
 deps: []
-evidence: ["axes/M-carrier/M3-cross-step-assumption/experiments/2616-window192-trained-13m/analysis.md @774fcb9", "axes/A-mixing/A9-old-info-retention/experiments/2615-window-trained-retention-13m/analysis.md @ticket32"]
+evidence: ["axes/M-carrier/M3-cross-step-assumption/experiments/2616-window192-trained-13m/analysis.md @774fcb9", "axes/A-mixing/A9-old-info-retention/experiments/2615-window-trained-retention-13m/analysis.md @4d4ecb0"]
 ---
 
 <!-- AUTO:begin -->
@@ -65,7 +65,7 @@ evidence: ["axes/M-carrier/M3-cross-step-assumption/experiments/2616-window192-t
 ## 9. 复现手段
 
 1. axes/M-carrier/M3-cross-step-assumption/experiments/2616-window192-trained-13m/analysis.md @774fcb9
-2. axes/A-mixing/A9-old-info-retention/experiments/2615-window-trained-retention-13m/analysis.md @ticket32
+2. axes/A-mixing/A9-old-info-retention/experiments/2615-window-trained-retention-13m/analysis.md @4d4ecb0
 
 <!-- AUTO:end -->
 

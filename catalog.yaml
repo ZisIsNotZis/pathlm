@@ -18,7 +18,7 @@ version: 1
 project:
   name: PathLM Research Wiki
   one_liner: LM 算力路径设计空间的完备目录 + 单实验 Playbook
-  scope: 只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明）。
+  scope: 默认只做单轴单格实验，基底恒为 stock 对照；组合默认留白（显式声明）；已发生的少数组合实验按例外登记（C15，2026-10-02；是否继续留白待用户裁决）。
   baseline_13m: B0 = 1.5074 bpc（1.1 epoch 快照；4.4 epoch 渐近 1.3459）
   baseline_100m: B0_100M = 1.4612 bpc（同 token 预算 98.3M = 1.09 epoch）
   variance: nondeterminism 0.0019 / 种子散布 ≤0.0138 → Δ < 0.014 不可排序
@@ -41,9 +41,9 @@ axes:
     local_summary: |
       本地覆盖了「窗口 + 锚点 + 软距离惩罚」这一族（X1/X2/X3）。核心结论：
       丢前缀在 bpc 上很便宜（+0.058~0.121 @13M），但检索当场归零（beyond 0.4%）；
-      软距离惩罚是唯一改善 clean bpc 的元素（−0.007），但它不创造保留——
+      软距离惩罚是唯一**未观察到超带损伤**的 clean bpc 元素（−0.007，落在 Δ<0.014 的不可排序带内），但它不创造保留——
       窗口外 90.3% 的「命中」是局部补全，是最典型的假保留陷阱。
-      压缩/摘要/递归/检索式载体在本项目零经验（M 轴亦然）。
+      压缩/摘要/递归/检索式载体在本项目零经验（M 轴的**显式记忆槽**已有首验，见 M1）。
 
   # ============================================================ C
   - id: C
@@ -63,7 +63,8 @@ axes:
       出口资产 tf@4 0.9726、d6−d12 0.0003、exit-4 3.1× 墙钟，
       代价是同引擎形态税 +0.4362 @100M（96% 干净归属）。
       元素税定律在本轴同样成立：skip +0.175、层序重排 +0.545（最贵）。
-      层间拓扑（C3）与权重共享（C4）本地零经验——这是最便宜的真空白。
+      层间拓扑（C3）已首探（并行子层有害、层间学习加权和中性的快照结论）；
+      权重共享（C4）本地零经验——这是最便宜的真空白。
 
   # ============================================================ H
   - id: H
@@ -100,7 +101,8 @@ axes:
       本地只做了「减通道」这一个方向，且结论是负的：结构切分读出（只读前 360 维）
       使模型把状态能量整体迁出读出子空间（切片能量 0.85→0.026→≈0），
       clean 2.1475、恢复 −50.4%。用户本地独立实验（减宽）同样「效果微妙」。
-      专家化、KV 头共享、非线性读出全是零经验。
+      专家化（W2）与非线性读出仍是零经验；KV 头共享（W3）已有本地实测
+      （GQA/MQA × int8/int4 的组合价签）。
 
   # ============================================================ F
   - id: F
@@ -130,8 +132,9 @@ axes:
       载体选择直接决定部署内存与保留能力。
     subdims: M1 载体类型 · M2 载体压缩 · M3 跨步假设
     local_summary: |
-      本地只有 KV 载体（+ eviction 压缩）。递归状态 / 显式记忆槽 / 外部存储 /
-      权重载体全零经验——这是「右移压缩」主线的落点。
+      本地有 KV 载体（+ eviction 压缩）与**显式记忆槽的旁路写入通道**（M1 ticket 35
+      首验，但跨种子未稳健）；递归状态 / 外部存储 / 权重载体仍零经验——这是
+      「右移压缩」主线的落点。
 
   # ============================================================ G
   - id: G
@@ -162,8 +165,8 @@ axes:
       仅 +0.058~0.121）。
     subdims: R1 量化 · R2 蒸馏 · R3 剪枝稀疏 · R4 窗口+KV量化+检索 · R5 best-of-n+verifier · R6 MoE · R7 既有早退实现
     local_summary: |
-      本地对 R4 的窗口部分与 R5 的集成部分有侧证（X2/X3、TTS），
-      其余为行业口径。这些线本地零经验，但决定所有创新线的判据线。
+      本地实测：R1 的 KV 量化价签（int8/int4）、R4 的窗口部分、R5 的集成部分
+      （X2/X3、TTS）；其余为行业口径（`记忆·未核`）。这些线决定所有创新线的判据线。
 
   # ============================================================ P
   - id: P
@@ -196,17 +199,18 @@ grids:
     judge: bpc + 任务对「序」的依赖度（消融：打乱输入顺序测质量退化）
     cost: 13M 单臂 ~5–25 min
     status: reference
-    prior_art_conclusion: "「并行/非因果 LM 以困惑度与长文本质量为代价换取可并行与可编辑性；AR 因果性仍是同尺寸质量的强先验。」来源类型：业界结论，非本地实测（`记忆·未核`）。本地：无数据。"
-    prior_art_source: "axes/A-mixing/PRIOR_ART.md @ticket36"
-    prior_art_verdict: "(a)"
-    local: {tax: "—（未做本地实验）", benefit: "业界结论（记忆·未核，非本地实测）：「并行/非因果 LM 以困惑度与长文本质量为代价换取可并行与可编辑性；AR 因果性仍是同尺寸质量的强先验。」来源类型：业界结论，非本地实测（`记忆·未核`）。本地：无数据。", failure: [], evidence: ["axes/A-mixing/PRIOR_ART.md @ticket36"]}
+    prior_art_conclusion: "「并行/非因果 LM 以困惑度与长文本质量为代价换取可并行与可编辑性；AR 因果性仍是同尺寸质量的强先验。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：无数据。"
+    prior_art_source: "axes/A-mixing/PRIOR_ART.md @b44c809"
+    prior_art_verdict: "(c)（检索不可用 ⇒ 按 SCHEMA §21 降为待核方向，不判 (a)；2026-10-02 C14 更正）"
+    local: {tax: "—（未做本地实验）", benefit: "待核方向（`记忆·未核`，检索不可用）：「并行/非因果 LM 以困惑度与长文本质量为代价换取可并行与可编辑性；AR 因果性仍是同尺寸质量的强先验。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：无数据。", failure: [], evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]}
     industry: |
       扩散 LM（LLaDA/SEDD 系）报告并行解码与可编辑性优势，但困惑度/长文本质量
       仍普遍逊于 AR；块因果与段内双向在检索/摘要类任务上常见。
-    local: {}          # 见下方 C2：我们的「层序 shuffle」属 C2，不属本格
     notes: |
       重要区分：本项目测过的「序无关」是层的执行顺序（shuffle-locality，
       属 C2），不是注意力因果性。本格本地无数据——不要误引 shuffle 的 +0.545。
+      （原行 `local: {}` 是同文件的**重复 YAML 键**，静默覆盖上方 `local`——F_YAML 修正已删；
+      本地内容以上方 `local` 为准。）
 
   # ==================== A2
   - id: A2-full-attention
@@ -231,7 +235,7 @@ grids:
       与引擎（同引擎税才是干净归属，见 24b）。
 
   # ==================== A3    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a) —— 「无可见性约束的全因果 softmax 注意力是质量锚点。」来源类型：业界标准 + 本地锚（本地数值保留：B0 1.5074 / 1.3459 / 100M 1.4612）。"
-    prior_art_source: "axes/A-mixing/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/A-mixing/PRIOR_ART.md @b44c809"
 
   - id: A3-window-anchor
     axis: A
@@ -263,8 +267,8 @@ grids:
       丢掉整个左前缀只花 +0.06~0.12 bpc。任何压缩/摘要求设计必须打败
       「就用个窗口」——而窗口的 bpc 代价几乎为零。
 
-  # ==================== A4    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a) —— 「滑窗注意力近无损；丢弃首 token 会崩，保留少量 sink 即恢复；全局/锚点 token 提供远距离通路。」来源类型：业界结论，非本地实测（`记忆·未核`）。本地方法学增量另行保留（累计预算代价 +0.212@keep32、检索腿「低损伤≠保住了」）——保留 judged，不改。"
-    prior_art_source: "axes/A-mixing/PRIOR_ART.md @ticket36"
+  # ==================== A4    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a) —— 「滑窗注意力近无损；丢弃首 token 会崩，保留少量 sink 即恢复；全局/锚点 token 提供远距离通路。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地方法学增量另行保留（累计预算代价 +0.212@keep32、检索腿「低损伤≠保住了」）——保留 judged，不改。"
+    prior_art_source: "axes/A-mixing/PRIOR_ART.md @b44c809"
 
   - id: A4-soft-distance-penalty
     axis: A
@@ -278,9 +282,9 @@ grids:
     judge: clean bpc（税）+ per-head 平均注意距离遥测（某些 head 必须保持长程）
     cost: 13M 单臂 ~25 min
     status: judged
-    verdict: 唯一改善 clean bpc 的元素，但不创造保留——它改变使用率，不改变依赖是否为零。
+    verdict: 唯一**未观察到超带损伤**的 clean bpc 元素（−0.0068，落在 Δ<0.014 不可排序带内），但不创造保留——它改变使用率，不改变依赖是否为零。
     local:
-      tax: "−0.0068（1.5006 vs B0 1.5074，唯一负税元素）"
+      tax: "−0.0068（1.5006 vs B0 1.5074；**落在 Δ<0.014 的不可排序带内，不构成「改善」**）"
       benefit: "锚点通道 76.8% → 93.3%；与驱逐组合共 +0.0043"
       failure:
         - "假保留陷阱：X3 的 beyond-window 命中 90.3%（对照 X2v2 0.4%）不是抗驱逐召回，而是被惩罚训成强 local LM 后用局部统计补全——bpc 改善与长程检索退化可以同时发生（enwik8 局部统计极强）"
@@ -294,7 +298,7 @@ grids:
       这与「保住了」在指标上无法区分。任何保留声明必须用 KV 消融判据。
 
   # ==================== A5    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(b) —— 待写入账本 = 本地结论：「软距离惩罚可微地改善 clean bpc（−0.0068，唯一负税），但『改变使用率』不等于『创造保留』——beyond-window 90.3% 命中是局部补全。」来源类型：本地实测。ALiBi 子结论可另立 reference 条目。"
-    prior_art_source: "axes/A-mixing/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/A-mixing/PRIOR_ART.md @b44c809"
 
   - id: A5-dilated-window
     axis: A
@@ -304,10 +308,10 @@ grids:
     judge: bpc + 远程检索保留（KV 消融）
     cost: 13M 单臂 ~25 min
     status: reference
-    prior_art_conclusion: "「固定稀疏模式省算力，但精确回忆/检索上常逊于全注意力。」来源类型：业界结论，非本地实测（`记忆·未核`）。本地：无数据。"
-    prior_art_source: "axes/A-mixing/PRIOR_ART.md @ticket36"
-    prior_art_verdict: "(a)"
-    local: {tax: "—（未做本地实验）", benefit: "业界结论（记忆·未核，非本地实测）：「固定稀疏模式省算力，但精确回忆/检索上常逊于全注意力。」来源类型：业界结论，非本地实测（`记忆·未核`）。本地：无数据。", failure: [], evidence: ["axes/A-mixing/PRIOR_ART.md @ticket36"]}
+    prior_art_conclusion: "「固定稀疏模式省算力，但精确回忆/检索上常逊于全注意力。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：无数据。"
+    prior_art_source: "axes/A-mixing/PRIOR_ART.md @b44c809"
+    prior_art_verdict: "(c)（检索不可用 ⇒ 按 SCHEMA §21 降为待核方向，不判 (a)；2026-10-02 C14 更正）"
+    local: {tax: "—（未做本地实验）", benefit: "待核方向（`记忆·未核`，检索不可用）：「固定稀疏模式省算力，但精确回忆/检索上常逊于全注意力。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：无数据。", failure: [], evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]}
     industry: Longformer/BigBird 式稀疏模式；现代长上下文多用块稀疏 + 学习式选择（NSA/MoBA）。
     notes: 本地零经验。与 A6 学习式 top-k 算子的边界：固定模式 vs 内容选择。
 
@@ -336,7 +340,7 @@ grids:
         - "**成本实测量反方向**：整模型一步 24.34 → 54.02/54.76 ms（**2.22×/2.25× 慢**），进程峰值显存 1.47 → 2.55/2.57 GB（1.7×）；孤岛参考实现（真稀疏 gather）仍 1.63×/2.13× ⇒ 「T=256 净开销」是结论而非实现 bug"
         - "**质量也越界**：k=32 的 Δ 达 −0.0166（>0.014），k=64 仅落在噪声带内（−0.0095）；两臂 loss 斜率同方法可比（0.0025/0.0037/0.0031，极差 0.0012）⇒ 水平差不是收敛差"
         - "交叉点只有公式外推（注意力占比 14.3%@256 → 72.7%@4096），**长 T 端未实测**；2× 训练点未做 ⇒ 限快照口径"
-        - "**第四点同收敛复测（ticket 46-W2，3000→6000 步）**：Δ = +0.0044 → **+0.0042**（两快照都在带内），且 6000 步末 loss **1.1221 低于** T=1024@6000 的 1.2146 ⇒ **45-L1 那条「T=2048 欠训练 ⇒ 可能低估窗口代价」的混杂被直接消掉** ⇒ **「窗口不亏」在同收敛下保持**。仍：n=1、四点属混合口径、禁外推"
+        - "**第四点同 step 第二快照（ticket 46-W2，3000→6000 步）**：Δ = +0.0044 → **+0.0042**（两快照都在带内）⇒ **「窗口不亏」在同 step（6000）的第二快照下保持**。**【2026-10-02 更正（C5）】**原文据「6000 步末 loss 1.1221 低于 T=1024@6000 的 1.2146」宣称「45-L1 那条『T=2048 欠训练 ⇒ 可能低估窗口代价』的混杂被直接消掉」——**该论证撤回**：跨上下文绝对 loss 不可比、两臂末窗斜率仍 −0.16/1k（均未收敛）、token 预算 49.15M vs 98.30M 不同 ⇒ 改称「**同 step 的第二快照**」，**未排除**收敛解释。仍：n=1、四点属混合口径、禁外推"
         - "**第四点 T=2048（ticket 45-L1，`qk-normfrom512`）**：Δ2048 = **+0.004361**（带内）⇒ 四点形状 **更差 → 更差 → 不亏 → 不亏**；稳定性前置通过（full@2048 gnorm_max **7.22**、跳步 0）。**重要限制（执行者自报）**：四点**收敛度不等**（T=2048 是 3000 步快照、loss 1.54，而 T=1024 是 6000 步、loss 1.21）⇒ 「窗口代价随 T 消失」**不得**读作同收敛/渐近结论；窗口臂峰值 **5.91 GiB** 超 5GB 礼貌线（按 §20.2 记账、保持 bs8 以维持四点可比）；注意力占比实测 0.1696/0.2914 vs 公式 0.5714；窗口墙钟仍不省（r_time 1.06–1.27）"
         - "**修复后的干净三点（ticket 43-V1，全部启用长度条件档 `qk-normfrom512`；六臂 49.15M token/臂半预算快照）**：**稳定性前置通过**（full@1024 `gnorm_max` **7.25** <100、跳步 0 ⇒ 三点可信），形状 = **窗口更差 → 窗口更差 → 不亏**（Δbpc = **−0.015752 / −0.015101 / +0.009264**，band 0.014）；⇒ **窗口代价随 T 增大而消失**（256/512 贴边越界、1024 进带内）。但窗口在当前实装下**墙钟不省**（r_time 1.07–1.19；稠密 bool 掩码不兑现 FLOPs 节省）；注意力占比实测远低于公式（已如实标注）。限制：n=1、半预算与旧点（98.3M）**不可比**、T=512 仅超带 8%（贴边）、禁外推"
         - "**长 T 崩溃已定位并修复（ticket 42-W1）**：元凶 = **第 1 层注意力 logits 无界增长**（带探针训练：L1 logits RMS 从 step200 的 0.60 单调涨到 step6800 的 **86.1**，其余层早已平台；炸掉的模型该量达 1.9e5/3.6e5、注意力塌缩成一点（top1 0.95/0.97、熵 0.10/0.07 nats），并留下永久疤：`blocks.1.qkv` 权重范数 **109.5/131.5** vs 健康臂 16.4–25.2）。**修复 = QK-Norm**（逐头 L2 归一 q/k，**零新增参数**）：把 logits 钉在 ±√32≈5.66 ⇒ 两 seed `gnorm_max` **1740.9→7.25 / 29578.6→7.58**、跳步 0/0，末态 clean bpc 从 1.5104/1.6064（差 0.096）变为 **1.5432/1.5437（差 0.0005）**。**诚实限制**：全局 QK-Norm 会波及短 T（T=512 Δbpc=+0.0314 越界、T=256=+0.0103 带内）⇒ 推荐**长度条件档 `qk-normfrom512`**（T≤512 零 hook，T=512 实测 Δ=−0.0016）。另发现本任务训练**非 run-to-run 逐位可复现**（同配方重跑 max|Δloss|=0.032）⇒ 预登记的逐位口径不可用，已改用「结构性零 hook + Δbpc」并交底"
@@ -345,7 +349,7 @@ grids:
         - "**长 T 首探（ticket 39-X3，T=256→512，扩绝对位置表 +0.94% 参数）**：**窗口算子在 T=512 首次进入「不亏」带**（Δ256 = −0.014836 带宽判「亏」、Δ512 = −0.008730 判「不亏」⇒ 记交叉点首个观测点）；但 raw Δ 两点**同号（都略负）**，两种读法都报、主口径=带宽分类；**n=1 单点、不外推**（§17.11/§17.16）。注意力占比**实测** 5.41%@256 → 10.78%@512（+1.99×）与修正后公式 14.29%→25.00%（+1.75×）趋势一致；峰值显存 2.697 GiB；**墙钟测不出方向**（两轮相反）且窗口走稠密 bool 掩码 ⇒ 理论省 12.5% 等效 FLOPs **未兑现**；§19 合成腿四臂全在 chance（enwik8 权重在分布外任务上不会回忆）⇒ **空结果、不能区分两臂**，如实报并列下一步"
         - "**线性注意力（ticket 33-R）：干预在当前实装下不可行**——三次尝试分别在 step 800/~500/400 停摆（faulthandler 栈落在 `loss.backward()`；停摆前 `den_min` 触 clamp 下限 1e-6、`phi_min` 触 0、gnorm 尖峰 5065.9 vs 基线 0.4–0.8）；5 次诊断二分（chunk 32/64/256 × eps × expandable_segments）全部跑完 ⇒ **非确定性运行时停摆**，不是确定性 bug。执行者拒绝削步数/换算子救场，如实记不可行"
         - "线性注意力的**成本交叉点已实测**（理论与实测并报）：理论 MACs/token/层 131072 → 49664（分块 −62.1%）/ 16896（流式 −87.1%）、推理缓存 T=256 时 −93.6%；**实测整模型 ms/step 比值 2.58@256 → 2.35@512 → 1.74@1024 → 1.53@2048（2048 内未回本）**；注意力子层孤岛在 T=1024 首次反超（0.96×）、T=2048 为 0.68×；峰值显存 1.41–1.47×（涨）"
-      evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/analysis.md @ticket31", "axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m/analysis.md @ticket33", "axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/analysis.md @ticket39"]
+      evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/analysis.md @3597039", "axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m/analysis.md @409f4f1", "axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/analysis.md @88c0e92"]
     industry: |
       长上下文吞吐上稀疏/线性/SSM 明显占优；短上下文质量上偏差不一，
       混合架构（注意力 + SSM 层交替，Jamba/Zamba 式）成为主流折中。
@@ -355,7 +359,7 @@ grids:
       也未测长 T（≥2048）质量是否回本。下一步的自然入口是「把 T 拉长到注意力真正成为瓶颈」。
 
   # ==================== A7    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(b) —— 待写入账本 = 本地结论：「内容选择式 Top-K 稀疏在 T=256 上净亏（质量越删越差、成本实测 2.2× 上升）；线性注意力在本实装不可行；成本交叉点在 ≥2048 之外。」来源类型：本地实测。算子家族本身另立 reference 条目。"
-    prior_art_source: "axes/A-mixing/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/A-mixing/PRIOR_ART.md @b44c809"
 
   - id: A7-addressing
     axis: A
@@ -365,10 +369,10 @@ grids:
     judge: bpc + 检索任务（needle）+ 选择器的可解释性/命中率
     cost: 13M 单臂 ~25 min
     status: reference
-    prior_art_conclusion: "「学习式选择与检索式寻址业界已有；检索换召回、把成本转到外部索引。」来源类型：业界结论，非本地实测（`记忆·未核`）。本地：仅内容式+位置式两种。"
-    prior_art_source: "axes/A-mixing/PRIOR_ART.md @ticket36"
-    prior_art_verdict: "(a)"
-    local: {tax: "—（未做本地实验）", benefit: "业界结论（记忆·未核，非本地实测）：「学习式选择与检索式寻址业界已有；检索换召回、把成本转到外部索引。」来源类型：业界结论，非本地实测（`记忆·未核`）。本地：仅内容式+位置式两种。", failure: [], evidence: ["axes/A-mixing/PRIOR_ART.md @ticket36"]}
+    prior_art_conclusion: "「学习式选择与检索式寻址业界已有；检索换召回、把成本转到外部索引。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：仅内容式+位置式两种。"
+    prior_art_source: "axes/A-mixing/PRIOR_ART.md @b44c809"
+    prior_art_verdict: "(c)（检索不可用 ⇒ 按 SCHEMA §21 降为待核方向，不判 (a)；2026-10-02 C14 更正）"
+    local: {tax: "—（未做本地实验）", benefit: "待核方向（`记忆·未核`，检索不可用）：「学习式选择与检索式寻址业界已有；检索换召回、把成本转到外部索引。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：仅内容式+位置式两种。", failure: [], evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]}
     notes: 本地只有内容式 softmax 与位置式窗口两种；学习式选择与检索式空白。
 
   # ==================== A8
@@ -389,8 +393,8 @@ grids:
       evidence: [".scratch/07-x1-x3/evidence @7b47555", ".scratch/03-engine-m1/issues @e38349f"]
     notes: RoPE / 插值外推本地零经验；长上下文线必须处理本格。
 
-  # ==================== A9    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a) —— 「RoPE + 位置插值是长上下文标准件；绝对位置嵌入有硬长度上界。」来源类型：业界结论，非本地实测（`记忆·未核`）。本地局部结论（绝对 PE 硬上界）可作 side note。"
-    prior_art_source: "axes/A-mixing/PRIOR_ART.md @ticket36"
+  # ==================== A9    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a) —— 「RoPE + 位置插值是长上下文标准件；绝对位置嵌入有硬长度上界。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地局部结论（绝对 PE 硬上界）可作 side note。"
+    prior_art_source: "axes/A-mixing/PRIOR_ART.md @b44c809"
 
   - id: A9-old-info-retention
     axis: A
@@ -423,7 +427,7 @@ grids:
       +0.058~0.121（13M）。
 
   # ==================== A10    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(b) —— 待写入账本 = 本地结论：「靠掩码逼不出信息搬运（窗口外 +0.004≈地板）；显式记忆槽 + delta 写入可把关联回忆从 chance 提到 6.08× chance。」来源类型：本地实测。载体家族另立 reference 条目。"
-    prior_art_source: "axes/A-mixing/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/A-mixing/PRIOR_ART.md @b44c809"
 
   - id: A10-compression-trigger
     axis: A
@@ -453,7 +457,7 @@ grids:
         - "**方向修正（ticket 34-B/D）：用户的「LRU 式增量搬运」更严谨的对应物不是「驱逐调度」（本格已测负），而是「写入算子」——delta 规则 `S ← S + β(v − Sk)kᵀ` = 字面意义的「只搬上次没搬的」**（`记忆·未核` + 本地形式化）。本格结论只覆盖「驱逐调度」这一子形式，**不得**推广为「LRU 思想不可能」；delta 写入比 plain 多一次 matvec ⇒ 不得假装同 FLOPs（SCHEMA §15）"
         - "**C 线情报（`记忆·未核`）**：跨层 KV 共享业界已有占位（CLA/YOCO/MLKV，均均匀模式）；**「层特异 KV 头数 / 不等共享」与「同一 KV 字节预算下的最优分配」未找到直接前例**（可能真空白，也可能检索不到）⇒ 要做先核证"
         - "未测：流式（只看过去）LRU、>13.5M/T=256 的规模；本实验统计量含整窗未来查询，**偏向** lru/content ⇒ 负结论偏强"
-      evidence: ["axes/A-mixing/A10-compression-trigger/experiments/2615-priority-shootout-13m/analysis.md @ticket32"]
+      evidence: ["axes/A-mixing/A10-compression-trigger/experiments/2615-priority-shootout-13m/analysis.md @4d4ecb0"]
     notes: |
       本格是用户新提的设计，业界无人占位（访问感知压缩）：每个 token 携带
       自己的「吸收率/剩余率」，下个 token 按它加权读取。理论约束：残差是 d 维
@@ -462,7 +466,7 @@ grids:
       与 A9 的分工：A9 = 压成什么；本格 = 何时压、先压谁。
 
   # ==================== C1    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(b) —— 待写入账本 = 本地结论：「同等删除预算下，LRU/content 优先级相对距离规则无净收益；重对齐可见性对数后 lru 转负。该维度在 13M/256 快照上未测出信息量。」来源类型：本地实测（§19：只表述为「该任务/该尺度不划算」）。"
-    prior_art_source: "axes/A-mixing/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/A-mixing/PRIOR_ART.md @b44c809"
 
   - id: C1-layers-per-token
     axis: C
@@ -492,7 +496,7 @@ grids:
       规模（Q8 剩的唯一候选，但同引擎斜率是正的）。
 
   # ==================== C2    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(b) —— 待写入账本 = 本地结论：「逐 token 变深度成立，出口资产 tf@4 0.9726 / tf@6 0.9946 / d6−d12 0.0003；代价是同引擎形态税 +0.4362 @100M（形态 96% 干净归属）。」来源类型：本地实测。机制子结论可另立 reference 条目。"
-    prior_art_source: "axes/C-vertical/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/C-vertical/PRIOR_ART.md @b44c809"
 
   - id: C2-layer-selection-order
     axis: C
@@ -514,7 +518,7 @@ grids:
     notes: 层序携带 ~0.5 bpc —— 「连层的执行顺序都是先验」。
 
   # ==================== C3    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(b) —— 待写入账本 = 本地结论：「元素税定律：破坏顺序结构最贵（shuffle +0.545 > skip +0.175 > redo +0.044）；层序携带约 0.5 bpc 的先验。」来源类型：本地实测。"
-    prior_art_source: "axes/C-vertical/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/C-vertical/PRIOR_ART.md @b44c809"
 
   - id: C3-inter-layer-topology
     axis: C
@@ -549,7 +553,7 @@ grids:
       跨层跳连、无残差、以及 24k/更大尺寸。
 
   # ==================== C4    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(b) —— 待写入账本 = 本地结论：「13M/12k 上改层间连接无便宜可捡：并行子层 +0.0458（等参数复现 +0.0402），层间学习加权和中性 −0.0008。」来源类型：本地实测（§19：不做「机制不可能」的外推）。"
-    prior_art_source: "axes/C-vertical/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/C-vertical/PRIOR_ART.md @b44c809"
 
   - id: C4-weight-sharing
     axis: C
@@ -559,10 +563,10 @@ grids:
     judge: 同参数量 bpc + 同 FLOPs bpc + 训练稳定性
     cost: 13M 单臂 ~25–40 min
     status: reference
-    prior_art_conclusion: "「深度方向复用权重省参数、以循环次数换推理深度；匹配质量需更多步且更难训练。」来源类型：业界结论，非本地实测（`记忆·未核`）。本地：无数据。"
-    prior_art_source: "axes/C-vertical/PRIOR_ART.md @ticket36"
-    prior_art_verdict: "(a)"
-    local: {tax: "—（未做本地实验）", benefit: "业界结论（记忆·未核，非本地实测）：「深度方向复用权重省参数、以循环次数换推理深度；匹配质量需更多步且更难训练。」来源类型：业界结论，非本地实测（`记忆·未核`）。本地：无数据。", failure: [], evidence: ["axes/C-vertical/PRIOR_ART.md @ticket36"]}
+    prior_art_conclusion: "「深度方向复用权重省参数、以循环次数换推理深度；匹配质量需更多步且更难训练。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：无数据。"
+    prior_art_source: "axes/C-vertical/PRIOR_ART.md @b44c809"
+    prior_art_verdict: "(c)（检索不可用 ⇒ 按 SCHEMA §21 降为待核方向，不判 (a)；2026-10-02 C14 更正）"
+    local: {tax: "—（未做本地实验）", benefit: "待核方向（`记忆·未核`，检索不可用）：「深度方向复用权重省参数、以循环次数换推理深度；匹配质量需更多步且更难训练。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：无数据。", failure: [], evidence: ["axes/C-vertical/PRIOR_ART.md @b44c809"]}
     industry: Universal Transformer / 循环深度：省参数、以循环次数换推理深度；训练更难、易不稳。
     notes: |
       重要区分：回环时代的「重入」（retry）是同一位置的再次前向，
@@ -589,7 +593,7 @@ grids:
     deps: [C1-layers-per-token, H2-training-fill]
 
   # ==================== C6    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(b) —— 待写入账本 = 本地结论：「携带门是形态税承载之一，也是『任意深度可读』的结构来源；浅层开、深层微开，@100M 门从 0.119 收小（渐进开门假设未兑现）。」来源类型：本地实测。通用门控另立 reference 条目。"
-    prior_art_source: "axes/C-vertical/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/C-vertical/PRIOR_ART.md @b44c809"
 
   - id: C6-depth-supervision
     axis: C
@@ -611,7 +615,7 @@ grids:
     deps: [C1-layers-per-token, F1-iteration-object]
 
   # ==================== H1    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(b) —— 待写入账本 = 本地结论：「出口资产只能由深度维监督造出来：纯 dense trunk tf@4 0.120 vs 形态臂 0.97；且深度整形与自适应精炼是同一梯度的两面（两全被证伪）。」来源类型：本地实测。"
-    prior_art_source: "axes/C-vertical/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/C-vertical/PRIOR_ART.md @b44c809"
 
   - id: H1-outputs-per-pass
     axis: H
@@ -641,7 +645,7 @@ grids:
     deps: [H3-composition, H5-verification, C1-layers-per-token]
 
   # ==================== H2    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a)+b —— 参照线句：「MTP/MTP-spec 能减小质量税并加速解码，但墙钟收益随规模由 launch-bound 转 compute-bound（`记忆·未核`，Gloeckle 2024 / Medusa 2024）；本地 13M 复现且 @100M 墙钟收益消失（`本地实测`）。」本地 fp 平局翻转保留 `judged`"
-    prior_art_source: "axes/H-horizon/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/H-horizon/PRIOR_ART.md @575344f"
 
   - id: H2-training-fill
     axis: H
@@ -669,7 +673,7 @@ grids:
     deps: [C1-layers-per-token, H5-verification, P1-precision]
 
   # ==================== H3    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(b) —— （实验结论）「同引擎下 proj-fill（逐层恒等 adapter）优于 fill/nofill/mask/wrong-token/noise；soft 提交有 OOD 污染。」保留 `judged`"
-    prior_art_source: "axes/H-horizon/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/H-horizon/PRIOR_ART.md @575344f"
 
   - id: H3-composition
     axis: H
@@ -685,11 +689,12 @@ grids:
     judge: 同 FLOPs 的质量（等算力对照）+ 草稿接受率 + 组合置信度的校准（ECE）
     cost: 13M 单臂 ~25–30 min
     status: judged
-    verdict: 自门控组合**被实测否决为主张**：门控混合 0.4738 仅比直跳 0.4672 高 +0.0020（<0.014 噪声带），且等参数无门对照 0.4785 更高 ⇒ 增益归容量不归门控；门不是「选择」而是**坍缩到连跳**（96.7% 位置 g≈0.82，被压掉的直跳分支只训到 0.262 vs 单训 0.467）。
+    verdict: "**【命题边界（2026-10-02 更正，C6）】本格测的是「冻结表征上的重复潜在映射与门控」**：direct `T(h)` / composed `T(T(h))` / gated 混合，全部只被 CE(t+2) 监督。它**不回答**用户要的概率路径组合问题（`p(x_{N+2}|h)=Σ_z p(z|h)p(x_{N+2}|h,z)` vs `p_direct`）——`T∘T` 既非「N+1 再加一」、也非「直接 N+2」、更非两者的概率混合（无概率、第一遍不受 N+1 监督）。下述结论**只对该受限命题成立**，不得用作「先 N+1 再 N+2 被否证」。**在该受限命题下被判负**：门控混合 0.4738 仅比直跳 0.4672 高 +0.0020（<0.014 噪声带），且等参数无门对照 0.4785 更高 ⇒ 增益归容量不归门控；门不是「选择」而是**坍缩到连跳**（96.7% 位置 g≈0.82，被压掉的直跳分支只训到 0.262 vs 单训 0.467）。"
     local:
       tax: "（头机制，挂冻结主干：零税；头的税见 H1）"
       benefit: "省算力：等效 1.95×（H4 口径）；门是可观测量（g 分布 + 逐桶命中单调 0.17→0.68）"
       failure:
+        - "**命题边界（C6，2026-10-02）**：本格全部臂只吃 CE(t+2)、`T∘T` 无概率与条件监督 ⇒ **不能**回答用户「N+1 再加一 vs 直接 N+2 vs 概率混合」的问题；该问题列入 REMEDIATION §1.2 的 Spec 三臂（R6）待跑"
         - "**主判据未过**：gated 0.4738 vs 阈值 max(direct 0.4672, composed 0.4718)+0.014 = 0.4858 ⇒ Δ = +0.0020"
         - "草稿接受率 0.6113（< 0.90）⇒ 不可作草稿"
         - "**等参数无门对照 direct_eq（394,496 参数，与 gated 逐位相同）反而最高 0.4785** ⇒ 那 +0.0020 归容量、不归门控结构（SCHEMA §15）"
@@ -713,7 +718,7 @@ grids:
       质量头寸已被花掉（d6−d12 = 0.0003）→ 组合的价值应在成本分配而非质量。
 
   # ==================== H4    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a)+b —— 参照线句：「多位置预测的正确组合是顺序条件头或并行头；朴素概率乘积在数学上不等价于联合概率（业界公认，`记忆·未核`）。」自门控否证保留 `judged`"
-    prior_art_source: "axes/H-horizon/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/H-horizon/PRIOR_ART.md @575344f"
 
   - id: H4-head-trunk-relation
     axis: H
@@ -723,16 +728,16 @@ grids:
     judge: 税（挂头是否扰动主干）+ 头自身质量 + 校准
     cost: 13M 单臂 ~5–25 min；冻结主干可复用已有 checkpoint → 单臂 ~5 min
     status: judged
-    verdict: 挂头零税坐实（Δbpc = 0.0000）。按修正后的诚实口径（vs 1-step AR 两次前向，只替换紧邻位置）**判中性**：对手 54.89%（≥ 算术下界 0.4822 ✓ 对账过），跳跃头 46.67% = 对手的 **85%**（预登记成功线 90% 未过，落 [0.80,0.90) 中性带）；**草稿接受率仅 0.5998**（< 0.90 未过）。等效加速 **1.95×** 真实，但质量缺口使其不足以单独替代两次前向。
+    verdict: 挂头零税坐实（Δbpc = 0.0000）。按修正后的诚实口径（vs 1-step AR 两次前向，只替换紧邻位置）**判中性**：对手 54.89%（该值保留；「≥ 算术下界 0.4822」的推导已于 2026-10-02 撤回，见 C1），跳跃头 46.67% = 对手的 **85%**（预登记成功线 90% 未过，落 [0.80,0.90) 中性带）；**草稿接受率仅 0.5998**（< 0.90 未过）。等效加速 **1.95×** 真实，但质量缺口使其不足以单独替代两次前向。
     local:
       tax: "probe 式头 @100M ≈0（1.5928 vs 1.5871）；停梯度使浅层读出贵（13M depth6 +0.93）；冻结主干挂跳跃头 13M：Δbpc = **0.0000**（1.4836→1.4836，冻结断言通过）"
       benefit: "保 retry（−0.0098）且门控更强（−0.029 @100M）；MTP 头是 d×d 变换、无 vocab 参数（~free 的基础设施）；宽头 ECE 0.0064 ≤0.01 且 10 桶严格单调（0.073→0.982）可作分配信号"
       failure:
         - "probe 式头改善 retry 但浅层读出质量贵 → 「保 retry」与「exit 质量」是同一梯度的两面（与 C6 同一条定律）"
         - "**冻结主干上跳跃头质量不可达**：t+2 0.4667（宽头 0.5081）< 0.81×0.6934；决策树排除 off-by-one（shift 单测 + oracle 恒等式）/ 冻结失败（Δbpc=0 且 grad is None）/ 头映射（直接 t+1 0.6951 ≈ 主干 0.6934）/ 步数与容量（宽头仅 +4.1pp）→ 归因**设计无效**：冻结表征只被 t+1 目标塑形，t+2 映射不可达（回环时代 joint 的 55.97% 是表征可用性差异）"
-        - "对照臂构造错误（已撤回，主 Agent 复核 + ERRATA，2026-09-30）：所谓两次前向 deploy 臂把整段上下文替换为模型自预测（xp[:,1:] = L[:,:-1].argmax(-1)），再用真值打分 → 量的是「假上下文猜真值」这个不可能任务（0.3128），不是 AR 两次前向。正确的 1-step AR 对照只替换紧邻位置，算术下界 = 0.6934×0.6953 = 0.4822，下一批重测（ticket 29）"
+        - "对照臂构造错误（已撤回，主 Agent 复核 + ERRATA，2026-09-30）：所谓两次前向 deploy 臂把整段上下文替换为模型自预测（xp[:,1:] = L[:,:-1].argmax(-1)），再用真值打分 → 量的是「假上下文猜真值」这个不可能任务（0.3128），不是 AR 两次前向。正确的 1-step AR 对照只替换紧邻位置，下一批重测（ticket 29）。**【2026-10-02 更正（C1）】原写「算术下界 = 0.6934×0.6953 = 0.4822」错误（两边际相乘）——正确交集界 = max(0, a+b−1) = 0.3887；构造错误的证据改用输入构造差异，不依赖任何不等式。**"
         - "判据取向被用户否决（2026-09-30）：oracle 是作弊基线、不得作判据；改判口径 = vs 1-step AR 两次前向 + 草稿接受率 vs 主干自身输出（SCHEMA §11）。原预登记判据（0.81×oracle）保留为历史记录、不追溯修改"
-        - "修正后实测（ticket 29）：诚实对手 1-step AR = **0.5489**（只替换紧邻位置，≥ 算术下界 0.4822）；跳跃头 0.4667 = 85%（中性带）；**草稿接受率 0.5998** ⇒ 作草稿质量不足；等效加速 1.95× 但需接受率门控；两 seed 比值 0.8533/0.8469（极差 0.0064）"
+        - "修正后实测（ticket 29）：诚实对手 1-step AR = **0.5489**（只替换紧邻位置；**【2026-10-02 更正（C1）】删「≥ 算术下界 0.4822」的证明，实测值保留**）；跳跃头 0.4667 = 85%（中性带）；**草稿接受率 0.5998** ⇒ 作草稿质量不足；等效加速 1.95× 但需接受率门控；两 seed 比值 0.8533/0.8469（极差 0.0064）"
         - "对照 3（联合臂）口径缺陷：lr 3e-4 把主干改坏（bpc 1.48→1.85），非干净对照，仅记录"
       evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scale/evidence @9fe4cf1", "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/analysis.md @1181cd4", "axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/analysis.md @2f25fec"]
     deps: [C1-layers-per-token, W4-readout-geometry, H3-composition]
@@ -743,7 +748,7 @@ grids:
       为对手**（oracle 作上界附报），并考虑 H3 的联合/自门控组合路线（表征可用性才是瓶颈）。
 
   # ==================== H5    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a)+b —— 参照线句：「在冻结主干上挂头可做到零税（Medusa-1 / EAGLE-1，`记忆·未核`）；本地 13M 逐位坐实 Δbpc=0（`本地实测`）。」质量中性带结论保留 `judged`"
-    prior_art_source: "axes/H-horizon/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/H-horizon/PRIOR_ART.md @575344f"
 
   - id: H5-verification
     axis: H
@@ -764,7 +769,7 @@ grids:
     deps: [H1-outputs-per-pass, C1-layers-per-token]
 
   # ==================== W1    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a)+b —— 参照线句：「投机解码的批量验证与逐步贪心在数学上等价（无损性定理，`记忆·未核`：Leviathan 2023 / Chen 2023）。」fp 平局与 exit×spec 约束保留 `judged`"
-    prior_art_source: "axes/H-horizon/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/H-horizon/PRIOR_ART.md @575344f"
 
   - id: W1-active-width
     axis: W
@@ -787,7 +792,7 @@ grids:
     deps: [W4-readout-geometry, W5-capacity-vs-compute]
 
   # ==================== W2    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a)+b —— 参照线句：「减宽/裁通道等价于减容量，需付质量；它不买每 token 固定成本结构的灵活性（`记忆·未核`，结构化剪枝一系）。」能量迁出机制保留 `judged`"
-    prior_art_source: "axes/W-width/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/W-width/PRIOR_ART.md @b44c809"
 
   - id: W2-expertization
     axis: W
@@ -798,9 +803,9 @@ grids:
     cost: 13M 单臂 ~25–40 min（路由器需要至少 2–4 专家才可判）
     status: reference
     prior_art_conclusion: "参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`"
-    prior_art_source: "axes/W-width/PRIOR_ART.md @ticket36"
-    prior_art_verdict: "(a)"
-    local: {tax: "—（未做本地实验）", benefit: "业界结论（记忆·未核，非本地实测）：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`", failure: [], evidence: ["axes/W-width/PRIOR_ART.md @ticket36"]}
+    prior_art_source: "axes/W-width/PRIOR_ART.md @b44c809"
+    prior_art_verdict: "(c)（检索不可用 ⇒ 按 SCHEMA §21 降为待核方向，不判 (a)；2026-10-02 C14 更正）"
+    local: {tax: "—（未做本地实验）", benefit: "待核方向（`记忆·未核`，检索不可用）：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`", failure: [], evidence: ["axes/W-width/PRIOR_ART.md @b44c809"]}
     industry: |
       MoE 是「同 FLOPs 更多参数」唯一被大规模验证的路线（Mixtral/DeepSeek-MoE 系，
       细粒度专家 + 共享专家成为主流配方）。负载均衡与路由坍缩是主要工程风险。
@@ -823,12 +828,12 @@ grids:
         - "**GQA 跨门槛、判定分裂**：+0.0143 与重跑 +0.0139 分居 0.014 两侧 ⇒ 按预登记规则该臂判读作废，**不写入近无损参照线**（机器可读 verdict 曾与规则相反，已由主 Agent 修正）"
         - "MQA 与 GQA 差异 0.0025 ≪ 0.014 ⇒ 不可相互排序"
         - "缺等参数对照臂（代价混着 −8.75%/−10.25% 容量差）；无 2× 训练点；n=1 种子；长上下文吞吐未测"
-      evidence: ["axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/analysis.md @ticket33"]
+      evidence: ["axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/analysis.md @409f4f1"]
     industry: KV 内存降数倍、质量近无损，GQA/MQA/MLA 已被全行业采纳。
     deps: [M2-carrier-compression, A3-window-anchor]
 
   # ==================== W4    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a)+b —— 参照线句：「GQA/MQA/MLA 可把 KV 降数倍且质量近无损（uptrain；`记忆·未核`，Shazeer 2019 / Ainslie 2023 / DeepSeek-V2 2024）。」同字节 Pareto 与 13M 代价保留 `judged`"
-    prior_art_source: "axes/W-width/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/W-width/PRIOR_ART.md @b44c809"
 
   - id: W4-readout-geometry
     axis: W
@@ -875,7 +880,7 @@ grids:
       linear transport 的投影语义、以及 tied 表的梯度对称。
 
   # ==================== W5    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a)+b —— 参照线句：「输入/输出 embedding 绑定省参数、小模型质量差异小；解绑/门控读出属重参数化+容量手段（`记忆·未核`）。」本地受控归因保留 `judged`"
-    prior_art_source: "axes/W-width/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/W-width/PRIOR_ART.md @b44c809"
 
   - id: W5-capacity-vs-compute
     axis: W
@@ -894,7 +899,7 @@ grids:
       evidence: [".scratch/25-tax-attribution/evidence @2e86924"]
 
   # ==================== F1    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a) —— 参照线句：「减容量付质量、不买灵活性；保容量减计算（稀疏/专家/条件）才是扩容量正路（`记忆·未核`）。」⇒ 建议 `status: reference`"
-    prior_art_source: "axes/W-width/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/W-width/PRIOR_ART.md @b44c809"
 
   - id: F1-iteration-object
     axis: F
@@ -922,7 +927,7 @@ grids:
     deps: [F2-return-channel, F3-stopping, G1-selector]
 
   # ==================== F2    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a)+b —— 参照线句：「循环式重复若无输入注入会退化为固定点；隐式推理步/扩散去噪/权重迭代均为既有路线（`记忆·未核`）。」回传几何不可排序保留 `judged`/`partial`"
-    prior_art_source: "axes/F-iteration/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/F-iteration/PRIOR_ART.md @b44c809"
 
   - id: F2-return-channel
     axis: F
@@ -944,7 +949,7 @@ grids:
       evidence: [".scratch/02-engine-m0/evidence/REPORT.md @27418ae", ".scratch/11-retry-matrix-validity/VERDICTS.md @d6a9898", ".scratch/12-overnight/evidence @216a00a", ".scratch/13-four-experiments/evidence @9abc181"]
 
   # ==================== F3    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a)+b —— 参照线句：「迭代需让每轮有新信息（输入注入/门控），否则固定点（`记忆·未核`）。」软回传 OOD 污染保留 `judged`"
-    prior_art_source: "axes/F-iteration/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/F-iteration/PRIOR_ART.md @b44c809"
 
   - id: F3-stopping
     axis: F
@@ -965,7 +970,7 @@ grids:
     deps: [G1-selector, G2-currency, G3-signal, G4-calibration]
 
   # ==================== F4    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a)+b —— 参照线句：「按模型置信度自适应早退/选择性计算能省算力是行业成熟做法，但生成段置信信号不可靠（`记忆·未核`，ACT / CALM）。」求解器与 100M 杠杆消失保留 `judged`"
-    prior_art_source: "axes/F-iteration/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/F-iteration/PRIOR_ART.md @b44c809"
 
   - id: F4-training-signal
     axis: F
@@ -996,7 +1001,7 @@ grids:
       （业界多数压缩工作不报「可重建性」⇒ 带检索腿的判据仍是我们的增量。）
 
   # ==================== M1    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a)+b —— 参照线句：「重建/充分性类辅助损失是压缩可恢复性的关键信号（`记忆·未核`，Compressive Transformer 2019 / AutoCompressors / ICAE / RECOMP / DMC 2024）。」⇒ 账本措辞改 reference，本地增量保留 `judged`"
-    prior_art_source: "axes/F-iteration/PRIOR_ART.md @ticket36"
+    prior_art_source: "axes/F-iteration/PRIOR_ART.md @b44c809"
 
   - id: M1-carrier-type
     axis: M
@@ -1006,11 +1011,14 @@ grids:
     judge: 保留（needle 消融）+ 内存/步长 + 吞吐
     cost: 13M 单臂 ~25–40 min
     status: judged
-    verdict: "**载体类型首验（ticket 35）：显式写入通道成立**——在「关联回忆 + 窗口 16（key 100% 落在窗外）」的合成任务上，13M/12k 步：无通道 U0 = 0.0137（≈chance，前提校验过）→ **delta 写 U2 = 0.0950（6.08× chance，+8.13pp，CI 不重叠；毁源后掉到 0.0081 ⇒ 读数确来自被搬运的信息）**；plain 写 U1 双稳态（0.0007 / 0.0334）且比 U2 低 9.42pp ⇒ **「只搬增量」的 delta 写是稳定有效的那一支**。绝对水平仅 9.5%（13M/12k）⇒ 按 SCHEMA §19 不得外推为「业界做不到/做得到」。
+    verdict: "**载体类型首验（ticket 35）：在「关联回忆 + 窗口 16（key 100% 落在窗外）」的合成任务上，13M/12k 步测得显式写入通道把命中率抬到 6.08× chance**——但该首验的**主腿（被问 pair 距离 241–255）落在训练分布（107–240）之外**，属 §17.18 同类的越界腿（该腿族同配置三跑极差 10.84pp，已永久降级为辅助腿）⇒ **此首验只能标为「分布外单次观测」，不作入口结论的判据**。具体读数（单次）：无通道 U0 = 0.0137（≈chance，前提校验过）→ delta 写 U2 = 0.0950（6.08× chance，+8.13pp，CI 不重叠；毁源后掉到 0.0081 ⇒ 读数确来自被搬运的信息）；plain 写 U1 双稳态（0.0007 / 0.0334）且比 U2 低 9.42pp ⇒ 在本快照中「只搬增量」的 delta 写处于较优分支（**单次观测**：训练侧种子散布未测，见 `2618-carry-channel-13m/analysis.md` §9.3）。绝对水平仅 9.5%（13M/12k）⇒ 按 SCHEMA §19 不得外推为「业界做不到/做得到」。
+
+    **入口结论改用分布内证据**（不再以越界腿 9.50% 作首判读）：训练分布内多查询关联回忆上 carry 相对 base 的增益在多次测量间**不一致**——ticket 44-X2（seed=0，n=1）base 1.48% → carry 35.78%（×24，CI 不重叠）、ticket 41-Z2 两点 +15.527pp → +14.697pp 保持；但 ticket 47-W2 的 **seed=1 分布内腿为 −3.26pp（显著为负）**、seed=0 仅 +0.36pp（CI 跨 0）⇒ **跨种子不稳健**。故本格入口判读为：「机制在分布内能搬（多次大幅正向，但均为 n=1），**跨种子尚未稳健**，未收口为已证结论」。
+
     同时 ticket 34 造出「不靠语言先验」的长程天平并给出关键诊断：13M 主干长程能力**分任务型**——关联回忆 0.0061、变距离回忆 0.005–0.010（≈或低于 chance）⇒ 检索类彻底缺席；复制 0.1333（距离 223 仍 0.118，毁源→0.0125）、induction 0.0586（毁源→chance）⇒ 真实但弱。"
     local:
       tax: "ticket 35 的通道为**旁路**（`+264,296` 参数，U1/U2 逐位相同；单共享槽在输入流上，每层用自己的 query 读）——为对齐 MQAR/线性注意力标准形态而选择（per-layer-12 实装实测 221/410 ms/step 出局，根因是算子派发/autograd 节点开销而非 FLOPs）；解析状态 8192 floats（与 T 无关）vs 实测峰值 2015/2170/2282 MB（分开报）"
-      benefit: "**delta 写（S ← S·(I−βkkᵀ)+βvkᵀ，「只搬上次没搬的」）在关联回忆上 6.08× chance、且毁源后崩到 chance** ⇒ 「信息被搬到可检索处」首次被直接证实；读取量证据：U2 读分享 →0.7078、U0 为 0；距离腿六档全部 > chance（最远 d=255 为 0.5947，曲线非单调、不外推）；per-layer KV + 位置散点填充仍支持「变深度 + 不重 prefill」（与并行 forward 逐位一致）"
+      benefit: "**delta 写（S ← S·(I−βkkᵀ)+βvkᵀ，「只搬上次没搬的」）在关联回忆上 6.08× chance、且毁源后崩到 chance** ⇒ 「信息被搬到可检索处」在本次快照被直接观测；读取量证据：U2 读分享 →0.7078、U0 为 0；**距离腿六档并非全部 > chance——d=32 = 0.0000、d=192 = 0.00098 均低于 chance 0.015625（最远 d=255 为 0.5947），曲线非单调、不外推**；per-layer KV + 位置散点填充仍支持「变深度 + 不重 prefill」（与并行 forward 逐位一致）"
       failure:
         - "早期缓存 bug：逐位置早退导致 per-layer cache 长度失步（已修为 per-layer 位置列表；持续单测）"
         - "**长程检索能力缺席（ticket 34-A 仪器实测）**：关联回忆 0.0061、变距离回忆六档 0.005–0.010，均≈或低于 chance 且无距离依赖 ⇒ 此前所有「没搬」读数，至少相当部分来自**模型本来就没有该能力**，而非「机制搬不动」（SCHEMA §19）"
@@ -1019,9 +1027,9 @@ grids:
         - "**同口径判决 + 跨种子复现（ticket 47-W1/W2）——修正上一条的两处过度解读**：① **出口资产（同口径：enwik8 训练 + enwik8 评测）**：`base 0.9711 → carry 0.9635`，**Δ = −0.76pp（带内 ⇒ holds）**、tf@6 −0.10pp ⇒ **「carry 不弄坏出口资产」在正确口径下成立**；反口径诊断（enwik8 训练模型评 synth）为 −28.89pp ⇒ 46-W1 的「两口径相反」是**跨分布伪影**（两个内分布口径都保持，两个偏移分布口径都退化）。② **跨种子复现（n=2）⇒ 越界腿与分布内召回结论均不成立**：越界腿 seed=0 **+6.05pp**（CI [4.67,7.44]）vs seed=1 **−2.44pp**（CI [−3.67,−1.22]）⇒ **差 8.50pp > 效应本身**，「通道在搬」**降级为单种子观测**；分布内召回 seed=0 +0.36pp（CI 跨 0）vs seed=1 **−3.26pp**（显著）⇒ 「通道对召回冗余」**在 n=2 下不成立**。**唯一跨种子稳健的 = 出口资产保持**（−0.98 / +0.11pp 均在带内）。附带：46-W1 的「enwik8 红灯」被证为**代理噪声**（同一基准臂换 seed 自身从 93.69→68.88，差 24.81pp）；seed=1 的 carry 臂更欠拟合（答案 CE 3.18 vs 2.56）⇒ 负 Δ 可能部分属收敛问题，**已如实标注、未当纯机制结论**"
         - "**（已被 47-W1/W2 修正）产品级组合实测（ticket 46-W1，ENG2 解锁后的第一次：`carry × 随机退出 × proj-fill` vs 同配方无 carry）**：**召回上冗余、越界腿上有效、出口资产基本保持**——① 训练分布内召回 32.59% → 32.95%（**+0.36pp，CI 几乎重合，p=0.487**）⇒ 在「注意力本来就能看见全部源」的配方里**搬运通道对召回冗余**；② **越界腿（距离 241–255，§17.18 辅助腿）2.49% → 8.54%（+6.05pp ≈5.5× chance）** ⇒ **机制确实在搬，只是被注意力覆盖**（不是「机制无效」）；③ 出口资产 tf@4：**分布内 synth 99.66% → 98.68%（−0.98pp 带内 ⇒ 保持）**⚠️ 口径限定（复核 R3 的 P1）**：这个「保持」**只是 synth 分布内口径**；本线**预登记的 enwik8 ≥0.90 判据未被满足**（enwik8 代理 88.98%）⇒ **不得引用为「复现 100M 的 0.97 量级」**——同口径（enwik8 训练）判决见 ticket 47-W1**，但**enwik8 跨分布代理 93.69% → 88.98%（−4.71pp 超带）** ⇒ **两个口径结论相反，已并列未择优**（本线模型训在合成任务上 ⇒ 分布内口径更忠实，但属**框架性取舍待确认**）；④ 代价 +264,296 参数（+1.845%）、跨分布 clean bpc 15.98→46.33（仅作信号）。单 seed、禁外推"
         - "**ENG2：carry 现可跑非 dense ragged 路径（ticket 45-E1，引擎级）**：解耦 `carry` 的 `dense=True` 硬校验，让写入通道在 **ragged / 随机退出 / fill / proj-fill** 路径可用，并定义**混合填充语义下的写入时机**；缺省路径逐位还原 v1（549 测试绿、变异 M1–M5 抓红且逐字节还原、20 步 GPU 冒烟 `non-dense + carry delta + proj_fill + uniform exit` 通过、峰值 861 MB）。⇒ **产品上真正有意义的那对「carry × 随机退出 × proj-fill」（100M tf@4=0.9726 的配方）从此可测**。**未解**：增量解码（`DepthARDecoder`）显式拒绝 carry ⇒ 解码侧通道是下一步；`carry × GQA × non-dense` 仍不可测"
-        - "**搬运 × 深度监督首次同台（ticket 44-X2，13M 2×2 四格、同数据同步数同 seed；深度因子因引擎互斥降为 `--dense-aux`）**：主腿（训练分布内多查询关联回忆，n=16384/臂、chance 1.56%）= base **1.48%** / carry **35.78%** / depth **1.47%** / both **36.16%** ⇒ ① **carry 一开成绩 ×24（+34.30pp，CI 不重叠）**；② **浅层监督单独对召回毫无作用（−0.006pp）**；③ **2×2 交互项 +0.385pp（落在 1.4pp 带内）⇒ 在召回目标上两资产可加、不打架**（判据⑤「负增量」未触发）；④ **出口资产 tf@4（分布内）**：87.84（base）→ **99.84%**（仅 depth）；两者同开 94.47% ⇒ **tf@4 交互项 −6.06pp（通道在开会吃掉一小块出口）**；⑤ **质量代价**（enwik8 跨分布）55.07 / 52.36 / **125.74** / **1322.98** bpc ⇒ 浅层监督在真实文本上代价极大。**未测因子（禁外推）**：ragged 随机退出 + proj-fill 的冻结/混合 KV 语义（即产出 100M tf@4=0.9726 的那条配方）⇒ 已立 ENG2"
-        - "**近 OOD 判决腿的方差量化（ticket 42-W2，同配置 n=3 独立重训）**：该腿（单查询关联回忆、距离 241–255、**超训练上限 240**）三跑 **0.928 / 6.934 / 11.768%** ⇒ **极差 10.840pp ≥ 结论效应 3pp** ⇒ **永久降级为辅助腿**（已写入账本）；**对照：训练分布内腿（多查询、距离 107–240）三跑 35.718 / 36.939 / 36.206%、极差仅 1.221pp（< 1.4pp 方差带）** ⇒ 任务本身可用，降级只针对超训练距离档——**§17.18 由此获得实证**。n=3 小样本、6k 未收敛、快照口径、禁外推；另设「同 seed 第二跑」参照臂验证方差来自**训练运行本身**而非 seed 标签"
-        - "**三补点（ticket 41-Z2）**：① **容量括号 + 插值**——任务腿上容量是**平的**（±11.6% 参数 ⇒ 变化 0.10–0.45pp ≪ 1.4pp 带），GQA 相对「插值到同参数的 MHA」只高 0.27–0.53pp（不可排序）⇒ **「参数少」不是 GQA 差距的解释**；但 clean bpc 轴上括号**不平**（GQA 差 +16.4 bpc）⇒ 口径分歧**已显式写出**（未读成「等参数下 GQA 更优」）；② **无泄漏 Q=7**：上轮末块 Q=K 消除泄漏被量清——整体读数 35.0–36.2% → **26.1–27.3%**（−8.7~−8.9pp，CI 不重叠），但 Q=7 末块仍有 **+25.5~+30.6pp 残余抬升** ⇒ 报告采最保守口径（**前 6 块 22.1–22.9%**），**未**称「完全无泄漏」；③ **carry 增益保持**：6k 的 +15.527pp → 10k 的 **+14.697pp**（−0.830pp，不可排序 ⇒ 保持），两点均为快照。550 项对账全过；pytest 468"
+        - "**搬运 × 深度监督首次同台（ticket 44-X2，13M 2×2 四格、同数据同步数同 seed；深度因子因引擎互斥降为 `--dense-aux`）**：主腿（训练分布内多查询关联回忆，n=16384/臂、chance 1.56%）= base **1.48%** / carry **35.78%** / depth **1.47%** / both **36.16%** ⇒ ① **carry 一开成绩 ×24（+34.30pp，CI 不重叠）**；② **浅层监督单独对召回毫无作用（−0.006pp）**；③ **2×2 交互项 +0.385pp（落在 1.4pp 预登记阈值内；**C13：1.4pp 为**预登记实用阈值**、非已测准确率方差）⇒ 在召回目标上两资产可加、不打架**（判据⑤「负增量」未触发）；④ **出口资产 tf@4（分布内）**：87.84（base）→ **99.84%**（仅 depth）；两者同开 94.47% ⇒ **tf@4 交互项 −6.06pp（通道在开会吃掉一小块出口）**；⑤ **质量代价**（enwik8 跨分布）55.07 / 52.36 / **125.74** / **1322.98** bpc ⇒ 浅层监督在真实文本上代价极大。**未测因子（禁外推）**：ragged 随机退出 + proj-fill 的冻结/混合 KV 语义（即产出 100M tf@4=0.9726 的那条配方）⇒ 已立 ENG2"
+        - "**近 OOD 判决腿的方差量化（ticket 42-W2，同配置 n=3 独立重训）**：该腿（单查询关联回忆、距离 241–255、**超训练上限 240**）三跑 **0.928 / 6.934 / 11.768%** ⇒ **极差 10.840pp ≥ 结论效应 3pp** ⇒ **永久降级为辅助腿**（已写入账本）；**对照：训练分布内腿（多查询、距离 107–240）三跑 35.718 / 36.939 / 36.206%、极差仅 1.221pp（< 1.4pp 预登记阈值；C13）** ⇒ 任务本身可用，降级只针对超训练距离档——**§17.18 由此获得实证**。n=3 小样本、6k 未收敛、快照口径、禁外推；另设「同 seed 第二跑」参照臂验证方差来自**训练运行本身**而非 seed 标签"
+        - "**三补点（ticket 41-Z2）**：① **容量括号 + 插值**——任务腿上容量是**平的**（±11.6% 参数 ⇒ 变化 0.10–0.45pp ≪ 1.4pp 预登记阈值（C13）），GQA 相对「插值到同参数的 MHA」只高 0.27–0.53pp（不可排序）⇒ **「参数少」不是 GQA 差距的解释**；但 clean bpc 轴上括号**不平**（GQA 差 +16.4 bpc）⇒ 口径分歧**已显式写出**（未读成「等参数下 GQA 更优」）；② **无泄漏 Q=7**：上轮末块 Q=K 消除泄漏被量清——整体读数 35.0–36.2% → **26.1–27.3%**（−8.7~−8.9pp，CI 不重叠），但 Q=7 末块仍有 **+25.5~+30.6pp 残余抬升** ⇒ 报告采最保守口径（**前 6 块 22.1–22.9%**），**未**称「完全无泄漏」；③ **carry 增益保持**：6k 的 +15.527pp → 10k 的 **+14.697pp**（−0.830pp，不可排序 ⇒ 保持），两点均为快照。550 项对账全过；pytest 468"
         - "**搬运 × 压缩的质量腿（ticket 41-Z3）**：**评测期 int8 与 fp16 的召回逐位相同（0.928%→0.928%，命中 19/2048 一致）** ⇒ **int8 不破坏 GQA+carry 通道**（确定性评测、同一权重）；次要项 GQA vs MHA 两条腿相反（近 OOD −3.03pp / 同分布 +0.90pp）⇒ n=1、不可排序、且含 −8.58% 参数混杂。**方法学发现**：该近 OOD 腿（距离 241–255 > 训练上限 240）同配置两次独立训练差 **15×**（0.93% vs 15.33%），四类解释（仪器/配置/能力/接线）逐一排除 ⇒ 该腿**不得作主判据**（已立 §17.18）；下一步 = 两臂 seed=1 复现量化方差"
         - "**ENG1 解锁的四臂阶梯（ticket 40-Y1，6k 步 / 49M token 臂间严格相等；stock / +GQA / +GQA+carry / +GQA+carry+window）**：**GQA 近乎免费**（参数 −8.748%，两腿增量 CI 重叠：判定腿 +0.146pp、分布内腿 +0.91pp）；**carry 通道在「距离外推腿」上贡献 +15.527pp（CI 不重叠）**、净 +15.332pp；**窗口 −0.342pp（CI 重叠 ⇒ 有通道时不额外伤）**。**关键限定（执行者自报）**：判定腿的距离 241–255 **超过训练上限 240** ⇒ carry 的增益是**距离外推效应**而非分布内质量；分布内腿（无泄漏）四臂 25.7–27.1% **增量全部 CI 重叠、净 −0.279pp**；6k 为快照口径（答案 CE 斜率仍降）；clean bpc 对合成训练模型无意义。**未测**：GQA 的 §15 等参数对照、无泄漏 Q=7 任务、carry 双臂 12k 复跑"
         - "**容量轴在收敛后重判（ticket 37-V2，3 臂 × 24k 步）**：**状态 4096→32768 浮点（×8）后答对率一动不动**——K=8 为 0.3686 vs 0.3677（Δ=−0.093pp，CI 重叠），四个难度档全部不可分辨；**U1 里唯一那个「容量效应」（大板 K=4 差 11pp）跑满步数后消失**（0.4218→0.5267，+10.49pp）⇒ 是训练伪影而非容量代价。门禁（答案行 CE 末窗斜率，按裁决口径）S16 −0.006963/1k、S128 −0.005449/1k 两臂都过；重跑散度 +0.22pp（CI 重叠）；毁源对照 12 格全 ≈chance ⇒ 作废 0 格。⇒ U1 的结论**加固**为「该任务/该尺度上状态 16→128 不划算」（§19），**不是**「容量不可能」"
@@ -1030,7 +1038,7 @@ grids:
         - "**训练信号（ticket 36-U2，见 F4）**：重建/充分性损失被完美学会（重建命中 ≈1.00）但**长程回忆一点没长**（有 λ=1.0 0.0137 vs 无 λ 0.0161，−0.244pp、CI 重叠；重跑 4096 次提问 **0 命中**）⇒ 该尺度上「给路径（显式写通道 0.0950）」远优于「给信号（重建损失）」"
         - "**ticket 35 的边界**：绝对水平仅 9.5%（13M/12k 步）⇒ 只能读作「在该任务/该尺度上成立」；**plain 写（U1）双稳态**（同配置同 seed 两次 0.0007 vs 0.0334，答案行 CE 4.184 vs 2.252，重跑散度 +3.271pp）⇒ 判据③只在「两支 plain 读数」上成立，**强表述（delta 优于 plain）不作为结论**；距离曲线受训练位置结构混杂；未做 ④ 训练信号（重建/充分性损失）与 ③ 容量压力（更小状态）"
         - "**因果性护栏（本设计最致命的风险）已钉死**：分块 WY 形与顺序参考在 fp64 下 <1e-12 逐位一致（chunk ∈ {1,2,3,5,8,24}）、扰动 t≥10 时 t<10 输出 `torch.equal`、读后写约定有专测、变异 M1（释放块内 mask 造成未来泄漏）被抓住"
-      evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @ticket34", "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @ticket34", "axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m/analysis.md @ticket35"]
+      evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @88dcc53", "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @88dcc53", "axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m/analysis.md @cc64112"]
     deps: [M2-carrier-compression, A9-old-info-retention, F1-iteration-object]
 
   # ==================== M2
@@ -1042,7 +1050,7 @@ grids:
     judge: 内存下降 × 质量/保留损失（双边前沿）
     cost: 13M 单臂 ~25 min
     status: partial
-    verdict: 驱逐已测（价格见 A3）；量化/摘要/低秩零经验。
+    verdict: 驱逐已测（价格见 A3）；**KV 量化已有本地实测**（R1/2614、2618/2621；但旧价签在「非因果 scale」下失效，已入冻结清单，待 R1 因果口径重测）；摘要压缩 / 低秩投影（MLA 式）零经验。
     local:
       tax: "驱逐 +0.058~0.121（13M）"
       benefit: "ring-buffer 解码免重 prefill（内存有界）"
@@ -1073,7 +1081,7 @@ grids:
         - "**不得用两点定趋势**：训练侧只有 32 与 192 两点，悬崖形状/位置**不可判定**（SCHEMA §17.11）；要定位须再补 64/128 两个训练点"
         - "训练侧 run-to-run 噪声 0.003486 与「税 ≈0」同量级 ⇒ 只能报近零"
         - "无 ring-buffer 实现 ⇒ 不主张实测显存/算力收益；未跑 24k 点"
-      evidence: ["axes/M-carrier/M3-cross-step-assumption/experiments/2616-window192-trained-13m/analysis.md @774fcb9", "axes/A-mixing/A9-old-info-retention/experiments/2615-window-trained-retention-13m/analysis.md @ticket32"]
+      evidence: ["axes/M-carrier/M3-cross-step-assumption/experiments/2616-window192-trained-13m/analysis.md @774fcb9", "axes/A-mixing/A9-old-info-retention/experiments/2615-window-trained-retention-13m/analysis.md @4d4ecb0"]
 
   # ==================== G1
   - id: G1-selector
@@ -1177,9 +1185,9 @@ grids:
         - "**确定性路径对照恰好 0.0000**（8 条路径 logits 逐位相同，60/60 批）⇒ 集成增益只来自「路径真的不同」"
         - "**未排除的解释（V3 如实声明）**：divl1 臂的 grad-norm 门跳过 5121/12000 步（42.7%）、实际约 6900 次更新 ⇒ 「去相关税为何变贵」三解释未排除（罚则有害/欠训练/权重不适配大规模）；**主判据仍是「快照结论」**：它不依赖 divl1 的训练质量（对照用的是 l1 的 8 路径集成，与 divl1 的 gate 无关），故 `−0.1115 ⇒ 50M 仍不成立` 有效；但**不得**据此声称上述三条未排除解释已被排除——它们只影响「去相关税为何变贵」这一附属问题"
         - "共享 trunk 的 voter 太相关：集成增益仅 +0.0008~+0.0015（可忽略）"
-        - "确定性路径 checkpoint 的 K-path 集成恰好得 0——beam search 产出的多线正落在这个死区"
+        - "确定性路径 checkpoint 的 K-path 集成恰好得 0（8 条路径 logits 逐位相同）——**【2026-10-02 更正（C9）】不能由此推出「beam search 产出的多线也落在死区」**：beam 的候选**前缀不同**，与「同一路径的确定性重复」不是同一命题；本实验**不否证** beam"
         - "深度集成失败：置信头只排序深度、不排序逐 token 可靠性"
-      evidence: [".scratch/08-tts-probe/evidence @aa97bcf", ".scratch/09-m3-interactions/evidence @39b1838", ".scratch/02-engine-m0/evidence/REPORT.md @27418ae", "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/analysis.md @ticket37", "axes/G-policy/PRIOR_ART_ENGINE.md @ticket36"]
+      evidence: [".scratch/08-tts-probe/evidence @aa97bcf", ".scratch/09-m3-interactions/evidence @39b1838", ".scratch/02-engine-m0/evidence/REPORT.md @27418ae", "axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale/analysis.md @ccbeb53", "axes/G-policy/PRIOR_ART_ENGINE.md @0b590e1"]
     deps: [G1-selector, C6-depth-supervision, F1-iteration-object]
     notes: |
       「多线并行调度」的第一个问题不是引擎复杂度，是去相关从哪来。
@@ -1204,7 +1212,7 @@ grids:
         - "**组合与锚点（ticket 37-V1，13 臂同进程重测、参考臂与 2619 逐位一致 max|Δ|=0）**：**`GQA×int8`（1536 B/位置、省 87.5%）两腿近无损**——量化增量 **+0.000164**（噪声带的 1/85）、召回 0.1686 ≥ 全量基线 0.1413；同字节下碾压「窗口 32」（bpc 1.695 / 召回 0.014）；**`MQA×int8`（768 B/位置、省 93.75%）同样近无损**（+0.000342，召回 0.2448）。**锚点是靶向杠杆**：同字节下召回更好而 bpc 更差（两腿不一致，已显式标注）——它**只救锚区内的源**（src0 0.0127→0.2471），锚区外仍趴地板 ⇒ 「窗口＋锚点」不是通用的召回救援。局限：头共享族有参数量混杂（−8.75%/−10.25%）未解；「MQA 召回更高」为单 seed 不得外推；等字节 ≠ 等形状"
         - "**跨家族统一预算图（ticket 36-U3）**：同一横轴「每位置 KV 字节」下的实测——**3072 B：GQA +0.0143 比 int4 +0.0457 便宜 3.2×、比窗口留 64（+0.0805）便宜 5.6×**；**6144 B：int8 +0.00015 优于窗口留 128（+0.0201）**；**1536 B：MQA +0.0117 优于窗口留 32（+0.2118）18×**。第二腿（合成长程召回）：**窗口 192 的 bpc 只掉 0.0042（噪声带 30%）但长程召回掉 25%** ⇒ 「低损伤 ≠ 保住了」在合成天平上复现；**int4 是唯一两腿都掉的档位，int8 是唯一两腿都近无损的点**。缺失组合清单（GQA×int8 等 10 项）已交主 Agent 排批。**ERRATA（执行者自纠）**：首轮毁源对照把源区间硬编码为 [0,32)，3 档里 2 档源未被触碰、读数虚高（≈0.10），已定位（同档毁错区间 0.1562 vs 毁对区间 0.0137）并作废，未进任何结论"
         - "内存数字是**解析** KV 占用（部署口径）；评测期实现立即反量化，故 GPU 实测峰值不随档下降——已在 analysis 标注，未当作「实测内存下降」上报"
-      evidence: ["axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/analysis.md @ticket31"]
+      evidence: ["axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/analysis.md @3597039"]
     notes: |
       本地现在有了 KV 量化的价签（int8 近无损 / int4 +0.046）。权重与激活量化仍未测；
       量化与「丢 KV」两条路线可直接比较（丢最远 16–32 个位置 ≈ 免费，见 M2 的保留曲线）。
@@ -1359,7 +1367,7 @@ grids:
       tax: "—"
       benefit: "无 final LayerNorm 使 logits = h·Eᵀ 语义成立（readout scale 由 U 学）"
       failure: []
-      evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @ticket34", "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @ticket34", "axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m/analysis.md @ticket35"]
+      evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @88dcc53", "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @88dcc53", "axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m/analysis.md @cc64112"]
 
   - id: P5-loss-weighting
     axis: P

@@ -7,10 +7,10 @@ status: reference
 judge: "同 FLOPs 的质量（主）+ 负载均衡 + 路由稳定性 + 内存"
 cost: "13M 单臂 ~25–40 min（路由器需要至少 2–4 专家才可判）"
 tax: "—（未做本地实验）"
-benefit: "业界结论（记忆·未核，非本地实测）：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`"
+benefit: "待核方向（`记忆·未核`，检索不可用）：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`"
 verdict: "—"
 deps: []
-evidence: ["axes/W-width/PRIOR_ART.md @ticket36"]
+evidence: ["axes/W-width/PRIOR_ART.md @b44c809"]
 ---
 
 <!-- AUTO:begin -->
@@ -33,7 +33,7 @@ evidence: ["axes/W-width/PRIOR_ART.md @ticket36"]
 
 ## 3. 状态（我们做了什么 / 行业做了什么）
 
-**本地已测**：业界结论（记忆·未核，非本地实测）：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`
+**本地已测**：待核方向（`记忆·未核`，检索不可用）：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`
 
 **行业口径**：MoE 是「同 FLOPs 更多参数」唯一被大规模验证的路线（Mixtral/DeepSeek-MoE 系，
 细粒度专家 + 共享专家成为主流配方）。负载均衡与路由坍缩是主要工程风险。
@@ -42,12 +42,12 @@ evidence: ["axes/W-width/PRIOR_ART.md @ticket36"]
 
 **业界结论（非本地实测）**：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`
 
-来源：`axes/W-width/PRIOR_ART.md @ticket36`（`记忆·未核`，联网不可用，待核）
+来源：`axes/W-width/PRIOR_ART.md @b44c809`（`记忆·未核`，联网不可用，待核）
 
 ## 4. 结论与数字
 
 - **税**：—（未做本地实验）
-- **收益**：业界结论（记忆·未核，非本地实测）：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`
+- **收益**：待核方向（`记忆·未核`，检索不可用）：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: reference`
 
 ## 5. 失败路径与原因
 
@@ -67,7 +67,7 @@ evidence: ["axes/W-width/PRIOR_ART.md @ticket36"]
 
 ## 9. 复现手段
 
-1. axes/W-width/PRIOR_ART.md @ticket36
+1. axes/W-width/PRIOR_ART.md @b44c809
 
 ## 备注
 

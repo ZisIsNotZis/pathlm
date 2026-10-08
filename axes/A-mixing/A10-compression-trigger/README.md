@@ -10,7 +10,7 @@ tax: "依赖腿伤害（N=8/32/64）：distance +0.197/+0.641/+1.248；lru +0.18
 benefit: "（无净收益）注意力质量分布：位置 0 的 mass 9.374 = 第 25 百分位的 12.7 倍，「最少被读」几乎全在中段"
 verdict: "「按访问频率优先压（LRU）」在同等删除预算下没有可见收益**——字面优势经对账后归因于「恰好删掉的可见性对数更少」，重对齐后消失（见 ERRATA）。压缩优先级这一维度在 13M/256 快照上未测出信息量。"
 deps: []
-evidence: ["axes/A-mixing/A10-compression-trigger/experiments/2615-priority-shootout-13m/analysis.md @ticket32"]
+evidence: ["axes/A-mixing/A10-compression-trigger/experiments/2615-priority-shootout-13m/analysis.md @4d4ecb0"]
 ---
 
 <!-- AUTO:begin -->
@@ -70,7 +70,7 @@ evidence: ["axes/A-mixing/A10-compression-trigger/experiments/2615-priority-shoo
 
 ## 9. 复现手段
 
-1. axes/A-mixing/A10-compression-trigger/experiments/2615-priority-shootout-13m/analysis.md @ticket32
+1. axes/A-mixing/A10-compression-trigger/experiments/2615-priority-shootout-13m/analysis.md @4d4ecb0
 
 ## 备注
 

@@ -20,9 +20,9 @@ A9 旧信息处理 · A10 压缩触发与优先级
 
 本地覆盖了「窗口 + 锚点 + 软距离惩罚」这一族（X1/X2/X3）。核心结论：
 丢前缀在 bpc 上很便宜（+0.058~0.121 @13M），但检索当场归零（beyond 0.4%）；
-软距离惩罚是唯一改善 clean bpc 的元素（−0.007），但它不创造保留——
+软距离惩罚是唯一**未观察到超带损伤**的 clean bpc 元素（−0.007，落在 Δ<0.014 的不可排序带内），但它不创造保留——
 窗口外 90.3% 的「命中」是局部补全，是最典型的假保留陷阱。
-压缩/摘要/递归/检索式载体在本项目零经验（M 轴亦然）。
+压缩/摘要/递归/检索式载体在本项目零经验（M 轴的**显式记忆槽**已有首验，见 M1）。
 
 > **既有做法情报**：[PRIOR_ART.md](PRIOR_ART.md)（含机器可读分诊表；来源标 `记忆·未核`，联网不可用）
 
@@ -30,10 +30,10 @@ A9 旧信息处理 · A10 压缩触发与优先级
 
 | 格子 | 状态 | 判读 | 税 |
 |---|---|---|---|
-| [`A1-causality`](A1-causality/README.md) | 🏭 reference（含业界结论） | — | — |
+| [`A1-causality`](A1-causality/README.md) | 🏭 reference（含业界结论） | — | —（未做本地实验） |
 | [`A2-full-attention`](A2-full-attention/README.md) | ✅ judged | 基底成立，外部锚在公开数字范围内。 | —（锚点本身） |
 | [`A3-window-anchor`](A3-window-anchor/README.md) | ✅ judged | 丢前缀的代价**由距离与预算共同决定、并不便宜**（见 ERRATA：只保留最近 32 个 = +0.212 bpc）；锚点通道是真产物（76.8→93.3%）；检索腿显示「低… | +0.121（原 X2 口径）/ +0.058（needle v2 重设计后… |
-| [`A4-soft-distance-penalty`](A4-soft-distance-penalty/README.md) | ✅ judged | 唯一改善 clean bpc 的元素，但不创造保留——它改变使用率，不改变依赖是否为零。 | −0.0068（1.5006 vs B0 1.5074，唯一负税元素） |
+| [`A4-soft-distance-penalty`](A4-soft-distance-penalty/README.md) | ✅ judged | 唯一**未观察到超带损伤**的 clean bpc 元素（−0.0068，落在 Δ<0.014 不可排序带内），但不创造保留——它改变使用率，不改变依赖是否为零。 | −0.0068（1.5006 vs B0 1.5074；**落在 Δ<0.0… |
 | [`A5-dilated-window`](A5-dilated-window/README.md) | 🏭 reference（含业界结论） | — | —（未做本地实验） |
 | [`A6-mixing-operator`](A6-mixing-operator/README.md) | ✅ judged | 内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）——… | k=32 Δ = **−0.0166**（越 0.014 界，配对 20/2… |
 | [`A7-addressing`](A7-addressing/README.md) | 🏭 reference（含业界结论） | — | —（未做本地实验） |

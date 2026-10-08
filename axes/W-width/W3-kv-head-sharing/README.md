@@ -10,7 +10,7 @@ tax: "clean bpc：mha **1.4820** / gqa **1.4963**（damage +0.0143）/ gqa 重�
 benefit: "解析 KV 内存 12288 → **3072 B/位置（−75.00%）** / **1536 B（−87.50%）**（与预登记数值逐位一致）；参照线对照：int8 −50%/+0.00015（近无损）、int4 −75%/+0.0457 ⇒ **同 −75% 档 GQA 便宜 ≈3.2×**"
 verdict: "参考线已补齐**：GQA（KV −75%）实测 damage **+0.0143**、同 seed 重跑 +0.0139（**跨在门槛两侧**，散度仅 0.0004 ⇒ 依预登记规则该臂判读作废、**不写入「近无损」参照线**）；MQA（−87.5%）为 +0.0118（形式进门槛，但与 GQA 只差 0.0025 ≪ 0.014 ⇒ **不可相互排序**）。同 −75% 档位下 **GQA 比 int4 KV 便宜 ≈3.2×**。"
 deps: ["M2-carrier-compression", "A3-window-anchor"]
-evidence: ["axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/analysis.md @ticket33"]
+evidence: ["axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/analysis.md @409f4f1"]
 ---
 
 <!-- AUTO:begin -->
@@ -65,7 +65,7 @@ evidence: ["axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/analysi
 
 ## 9. 复现手段
 
-1. axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/analysis.md @ticket33
+1. axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/analysis.md @409f4f1
 
 <!-- AUTO:end -->
 

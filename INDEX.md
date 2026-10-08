@@ -15,7 +15,7 @@
 | [`A1-causality`](axes/A-mixing/A1-causality/README.md) · 因果性 | 🏭 reference（含业界结论） | — |
 | [`A2-full-attention`](axes/A-mixing/A2-full-attention/README.md) · 全注意力基线 | ✅ judged | 基底成立，外部锚在公开数字范围内。 |
 | [`A3-window-anchor`](axes/A-mixing/A3-window-anchor/README.md) · 窗口 / 锚点 / sink | ✅ judged | 丢前缀的代价**由距离与预算共同决定、并不便宜**（见 ERRATA：只保留最近 32 个 = +0.212 bpc）；锚点通道是真产物（76.8→93.3%）；检索腿显示「低损伤 ≠ 保住了」。 |
-| [`A4-soft-distance-penalty`](axes/A-mixing/A4-soft-distance-penalty/README.md) · 软距离惩罚（ALiBi 式加性偏置） | ✅ judged | 唯一改善 clean bpc 的元素，但不创造保留——它改变使用率，不改变依赖是否为零。 |
+| [`A4-soft-distance-penalty`](axes/A-mixing/A4-soft-distance-penalty/README.md) · 软距离惩罚（ALiBi 式加性偏置） | ✅ judged | 唯一**未观察到超带损伤**的 clean bpc 元素（−0.0068，落在 Δ<0.014 不可排序带内），但不创造保留——它改变使用率，不改变依赖是否为零。 |
 | [`A5-dilated-window`](axes/A-mixing/A5-dilated-window/README.md) · 膨胀 / 跨步窗 | 🏭 reference（含业界结论） | — |
 | [`A6-mixing-operator`](axes/A-mixing/A6-mixing-operator/README.md) · 混合算子 | ✅ judged | 内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）——稀疏的收益要到长上下… |
 | [`A7-addressing`](axes/A-mixing/A7-addressing/README.md) · 寻址方式 | 🏭 reference（含业界结论） | — |
@@ -44,8 +44,8 @@
 |---|---|---|
 | [`H1-outputs-per-pass`](axes/H-horizon/H1-outputs-per-pass/README.md) · 每步输出位置数 | ✅ judged | 全项目税效比最好的机制；但墙钟收益是 13M/launch-bound 现象。 |
 | [`H2-training-fill`](axes/H-horizon/H2-training-fill/README.md) · 训练时未来位置的内容填充 | ✅ judged | 保留式填充（self-fill）胜出；PAD 与错误 token 都更贵；软提交有 OOD 污染。 |
-| [`H3-composition`](axes/H-horizon/H3-composition/README.md) · 多位置预测的组合方式 | ✅ judged | 自门控组合**被实测否决为主张**：门控混合 0.4738 仅比直跳 0.4672 高 +0.0020（<0.014 噪声带），且等参数无门对照 0.4785 更高 ⇒ 增益归容量不归门控；门不是… |
-| [`H4-head-trunk-relation`](axes/H-horizon/H4-head-trunk-relation/README.md) · 头与主干的关系 | ✅ judged | 挂头零税坐实（Δbpc = 0.0000）。按修正后的诚实口径（vs 1-step AR 两次前向，只替换紧邻位置）**判中性**：对手 54.89%（≥ 算术下界 0.4822 ✓ 对账过），跳… |
+| [`H3-composition`](axes/H-horizon/H3-composition/README.md) · 多位置预测的组合方式 | ✅ judged | **【命题边界（2026-10-02 更正，C6）】本格测的是「冻结表征上的重复潜在映射与门控」**：direct `T(h)` / composed `T(T(h))` / gated 混合，全… |
+| [`H4-head-trunk-relation`](axes/H-horizon/H4-head-trunk-relation/README.md) · 头与主干的关系 | ✅ judged | 挂头零税坐实（Δbpc = 0.0000）。按修正后的诚实口径（vs 1-step AR 两次前向，只替换紧邻位置）**判中性**：对手 54.89%（该值保留；「≥ 算术下界 0.4822」的推… |
 | [`H5-verification`](axes/H-horizon/H5-verification/README.md) · 验证机制 | ✅ judged | 批量验证可用且逐位一致；定稿不变量（全深度重打分）是本形态的正确性保障。 |
 
 ## W · 宽度（5 格）
@@ -77,8 +77,8 @@
 
 | 格子 | 状态 | 判读 |
 |---|---|---|
-| [`M1-carrier-type`](axes/M-carrier/M1-carrier-type/README.md) · 状态载体类型 | ✅ judged | **载体类型首验（ticket 35）：显式写入通道成立**——在「关联回忆 + 窗口 16（key 100% 落在窗外）」的合成任务上，13M/12k 步：无通道 U0 = 0.0137（≈ch… |
-| [`M2-carrier-compression`](axes/M-carrier/M2-carrier-compression/README.md) · 载体压缩 | ◐ partial | 驱逐已测（价格见 A3）；量化/摘要/低秩零经验。 |
+| [`M1-carrier-type`](axes/M-carrier/M1-carrier-type/README.md) · 状态载体类型 | ✅ judged | **载体类型首验（ticket 35）：在「关联回忆 + 窗口 16（key 100% 落在窗外）」的合成任务上，13M/12k 步测得显式写入通道把命中率抬到 6.08× chance**——但… |
+| [`M2-carrier-compression`](axes/M-carrier/M2-carrier-compression/README.md) · 载体压缩 | ◐ partial | 驱逐已测（价格见 A3）；**KV 量化已有本地实测**（R1/2614、2618/2621；但旧价签在「非因果 scale」下失效，已入冻结清单，待 R1 因果口径重测）；摘要压缩 / 低秩投影… |
 | [`M3-cross-step-assumption`](axes/M-carrier/M3-cross-step-assumption/README.md) · 跨步假设 | ✅ judged | 有界内存的价签已测两档：**窗口 192 的训练税 −0.0028（近零）**、窗口 32 为 +0.0866；但 192 档**本就没有头寸**（未重训限制到 192 只 +0.0029），真正… |
 
 ## G · 策略与调度（5 格）

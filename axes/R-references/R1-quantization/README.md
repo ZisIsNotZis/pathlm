@@ -10,7 +10,7 @@ tax: "**int8 KV：Δbpc +0.00015（近无损）**，每位置 12288 → 6144 字
 benefit: "参照线数字：**任何「省内存/丢信息」的主张，至少要打败 int8 KV 的近无损 −50%**；int4 的代价 +0.0457 是另一条可比的价签"
 verdict: "—"
 deps: []
-evidence: ["axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/analysis.md @ticket31"]
+evidence: ["axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/analysis.md @3597039"]
 ---
 
 <!-- AUTO:begin -->
@@ -62,7 +62,7 @@ evidence: ["axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m
 
 ## 9. 复现手段
 
-1. axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/analysis.md @ticket31
+1. axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/analysis.md @3597039
 
 ## 备注
 
