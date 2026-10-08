@@ -1,6 +1,7 @@
 """2631 · 因果口径 KV 预算图重测（R1 线，`docs/REMEDIATION.md` §4 R1）—— 实验入口。
 
-契约：同目录 `README.md`（判据线**预登记**，§4）。
+契约：同目录 `README.md`（补录，§1–§9）+ `config.json::causal_caliber`（判据线**预登记**，运行前写入）；
+解析字节口径的语义层：同目录 `budget_caliber.py`（值 + 标尺两套方案）。
 动机：复核 A2——旧的 27 点预算图是在「沿 batch+token 取 amax」的**非因果**量化下测得，
 过去位置的 K/V 反量化值会因未来 token / 同批其他请求改变（因果掩码挡不住）。
 本实验用 L1 修复后的**逐请求、因果/流式**量化实现（`tools/evalkit/kv_quant.quantize_kv`）
@@ -30,6 +31,7 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 
+import budget_caliber as bc                                            # noqa: E402
 import causal_check as cc                                              # noqa: E402
 from pathlm.data import load_enwik8_full                              # noqa: E402
 from tools.evalkit.longrange_tasks import (                           # noqa: E402
@@ -41,6 +43,23 @@ RES_2621_PATH = os.path.join(P2621, "results.json")
 sys.path.insert(0, P2621)   # 让 2621/run.py 里的 `import rest_arms` 能解析
 
 VARIANCE_BAND_BPC = 0.014
+DEPLOY_GROUP = bc.DEFAULT_GROUP      # (b) 分块标尺的块大小（连续可见位置数）
+
+
+def attach_deployment_bytes(cfg, points) -> None:
+    """给每个点挂上**部署口径**（值 + 标尺）的解析字节：方案 (a) 逐值标尺 / (b) 分块标尺。
+
+    `points[*].bytes_per_position`（值字节）不动——它仍是本实验的横轴（与 2621 逐位可比）；
+    部署口径另立字段与另立列（`budget_caliber.deployment_bytes` 会与判据 C1 的乘子对账，
+    对不上直接报错）。
+    """
+    for p in points:
+        spec = cfg["arms"][p["arm"]]
+        p["deployment_bytes"] = {
+            "value_caliber_per_position": p["bytes_per_position"],
+            "group_default": DEPLOY_GROUP,
+            **{s: bc.deployment_bytes(p, spec, cfg, s, DEPLOY_GROUP) for s in bc.SCHEMES},
+        }
 
 
 def _load_module(path: str, name: str):
@@ -57,6 +76,8 @@ b21 = _load_module(os.path.join(P2621, "run.py"), "kv_budget_rest_2621")
 # ----------------------------------------------------------------- 图 / 表
 
 def render_table(cfg, points, controls, rec) -> str:
+    cal = rec["deployment_caliber"]
+    nq = len(cal["quantized_arms"])
     L = []
     L.append("# 2631 · 因果口径 KV 预算图 —— 一张表（27 点）")
     L.append("**口径**：本表是 `2621` 的 27 点预算图在 L1 修复后的**逐请求、因果/流式** "
@@ -64,14 +85,23 @@ def render_table(cfg, points, controls, rec) -> str:
              "任务 / 判据与 `2621` 逐字段相同；横轴公式（判据 C1）与 `2619/2620/2621` "
              "逐字同一式：`bytes_per_position = 2 · n_layers · n_kv_heads_eff · head_dim · "
              f"value_bytes · (positions_kept / T)`，T = {cfg['model']['seq_len']}。"
-             "**本列是解析口径**（值字节）；因果化的 scale 存储开销见文末口径说明。")
+             "第 3 列是**值字节**（旧横轴，与 2621 逐位可比）；第 4/5 列把因果/流式量化多出的"
+             "**标尺**开销算上（定义见 `budget_caliber.py`、逐臂明细见**表 5**）。")
     L.append(f"两腿全部由本实验**同进程、同一路径**重测（复用 2619 的 `bpc_of` / "
              f"`synth_accuracy`）。召回地板：chance = {controls['chance_uniform']:.4f}（1/64）、"
              f"局部先验 = {controls['local_prior_copy']['accuracy']:.4f}（copy）。"
              "『Δbpc(新−旧)』= 本因果口径 bpc − 2621 旧口径 bpc（负 = 因果口径质量代价更小）。")
-    head = ("| 点 | 类别 | 每位置 KV 字节 | bpc（因果） | bpc（旧） | Δbpc(新−旧) | "
+    L.append("**部署口径列（本表新增）：**『值字节』只是 KV 的**值**；因果/流式量化每个值还要配一个 "
+             "fp16 标尺（见 `budget_caliber.py`）。『部署 (a)』= 逐值标尺（严格前缀确定，**与本实验的"
+             "质量数字同源**）；『部署 (b)』= 分块标尺 + 块内回填（每 "
+             f"{cal['group_default']} 个连续可见位置一个标尺，**块内不再严格前缀确定**，"
+             f"违反距离 ≤ {cal['b_violation_distance_positions']} 个位置）。"
+             f"27 点里有 {nq} 个量化臂受影响（值字节列把它们算便宜了），逐臂明细与省幅见**表 5**；"
+             "结论与旧账推翻见同目录 `analysis.md`。")
+    head = ("| 点 | 类别 | 值字节（旧横轴） | 部署字节 (a) 逐值标尺 | 部署字节 (b) 分块标尺 | "
+            "bpc（因果） | bpc（旧） | Δbpc(新−旧) | "
             "方向 | damage_bpc（因果） | copy 召回（因果） | 95% CI | 来源 |\n"
-            "|---|---|---|---|---|---|---|---|---|---|\n")
+            "|---|---|---|---|---|---|---|---|---|---|---|---|\n")
     rows = []
     cmp_rows = {r["arm"]: r for r in rec["causal_vs_old"]["rows"]}
     for p in points:
@@ -79,6 +109,8 @@ def render_table(cfg, points, controls, rec) -> str:
         ci = (f"[{p['recall_copy']['wilson95'][0]:.4f}, {p['recall_copy']['wilson95'][1]:.4f}]")
         rows.append(
             f"| `{p['arm']}` | {b21.CLASSES[p['class']]} | {p['bytes_per_position']:.0f} | "
+            f"{p['deployment_bytes']['a_per_value']['bytes_per_position']:.0f} | "
+            f"{p['deployment_bytes']['b_grouped']['bytes_per_position']:.0f} | "
             f"{p['bpc']:.6f} | {r.get('bpc_old', float('nan')):.6f} | "
             f"{r.get('delta_bpc', float('nan')):+.6f} | {r.get('direction', '—')} | "
             f"{p['damage_bpc']:+.6f}"
@@ -96,12 +128,17 @@ def render_table(cfg, points, controls, rec) -> str:
              f"  逐位不变的：{', '.join(cv['quant_arms_unchanged']) or '（无）'}。\n"
              f"- int8/int4 同族纯量化臂的 Δbpc（新−旧）："
              f"{json.dumps(rec['int8_int4_quality_delta'], ensure_ascii=False)}")
-    L.append("| 量化臂 | 每位置字节 | bpc（因果） | bpc（旧） | Δbpc(新−旧) | 方向 | "
-             "copy 召回 Δ |\n|---|---|---|---|---|---|---|")
+    L.append("| 量化臂 | 值字节（旧横轴） | 部署字节 (a) | 部署字节 (b) | bpc（因果） | bpc（旧） | "
+             "Δbpc(新−旧) | 方向 | copy 召回 Δ |\n|---|---|---|---|---|---|---|---|---|")
+    by_arm = {p["arm"]: p for p in points}
     for r in cv["rows"]:
         if not r["quantized"] or r.get("missing_in_old"):
             continue
-        L.append(f"| `{r['arm']}` | {r['bytes_per_position']:.0f} | {r['bpc_new']:.6f} | "
+        db = by_arm[r["arm"]]["deployment_bytes"]
+        L.append(f"| `{r['arm']}` | {r['bytes_per_position']:.0f} | "
+                 f"{db['a_per_value']['bytes_per_position']:.0f} | "
+                 f"{db['b_grouped']['bytes_per_position']:.0f} | "
+                 f"{r['bpc_new']:.6f} | "
                  f"{r['bpc_old']:.6f} | {r['delta_bpc']:+.6f} | {r['direction']} | "
                  f"{r['delta_recall_copy']:+.6f} |")
 
@@ -112,7 +149,12 @@ def render_table(cfg, points, controls, rec) -> str:
         inv = p["prefix_invariance"]
         L.append(f"| `{p['arm']}` | {inv['future_token_past_logits_equal']} | "
                  f"{inv['peer_request_logits_equal']} |")
-    L.append("> 因果掩码挡不住非因果量化的旁路（复核 A2）——这两条不成立，本实验作废。")
+    ok = sum(1 for p in points
+             if p["prefix_invariance"]["future_token_past_logits_equal"]
+             and p["prefix_invariance"]["peer_request_logits_equal"])
+    L.append(f"> **判据 ① 的读法**：该门禁是**必须成立**的硬门禁（复核 A2：因果掩码挡不住非因果量化的"
+             f"旁路）；任一条为 False 则本实验作废、不得作为新价签。本轮 **{ok}/{len(points)}** 臂两条均 True "
+             f"（崩坏的旧实现会在 `tests/test_kv_budget_causal.py` 的单测里直接被抓红）。")
 
     L.append("## 表 4 · 与来源实验 / 2619 / 2620 的复现性（非量化臂）\n\n"
              "| 点 | 本实验 bpc | 来源 bpc | abs diff | 一致 |\n|---|---|---|---|---|")
@@ -121,16 +163,95 @@ def render_table(cfg, points, controls, rec) -> str:
                  f"{r.get('abs_diff', '—')} | "
                  f"{'✓' if r['match'] else ('—' if r['match'] is None else '✗')} |")
 
+    # ---------- 表 5 · 部署口径（值 + 标尺），judge ②：两套方案的**真实**字节/位置 ----------
+    L.append(f"## 表 5 · 部署口径明细（值 + 标尺；两套方案）\n\n"
+             f"X 轴仍用**值字节**（与 2621 逐位可比）；本表把标尺的钱算上。定义见 `budget_caliber.py`：\n\n"
+             f"- **(a) 逐值标尺（严格前缀确定）**：每值 1 个 fp16 标尺 ⇒ +{bc.SCALE_BYTES:.0f} B/值。"
+             f"与 `tools/evalkit/kv_quant.quantize_kv` 的 `cummax` 实现**同源** ⇒ 这是本实验质量数字的价签。\n"
+             f"- **(b) 分块标尺 + 块内回填**：每 {cal['group_default']} 个连续**可见**位置共享 1 个 fp16 标尺"
+             f"（块内 amax，块关闭时按最终 scale 重编码）⇒ +{bc.SCALE_BYTES / cal['group_default']:.4f} B/值（名义）。三条代价："
+             f"① **违反前缀确定**：块内过去值可被同块后续 **{cal['b_violation_distance_positions']}** 个位置改写（回填后冻结）；"
+             f"② **staging**：块关闭前必须留着原始 fp16 值 ⇒ 平均 "
+             f"{cal['b_staging']['mean_positions_held']:.1f} 个位置的 fp16 缓冲 = "
+             f"{cal['b_staging']['bytes_per_request'] / 2 ** 20:.3f} MiB/请求（与 T 无关：T=256 时折合 "
+             f"{cal['b_staging']['bytes_per_position_at_T']:.0f} B/位置，T=4096 时 "
+             f"{cal['b_staging']['bytes_per_request'] / 4096:.1f} B/位置）；"
+             f"③ **重算 / 写放大**：每值 1 次编码 + 1 次延迟写（块关闭时一次性写一个块 ⇒ 突发写峰值 = 一个块）；"
+             f"不想留 staging 就得先按 running scale 编码、关块时重编码（每值 2 次编码 + 二次取整误差，**未测**）。"
+             f"分母取 `min(G, 段长)` 是**乐观上界**。\n"
+             f"- 非量化臂（fp16 / 窗口 / 头共享）没有标尺 ⇒ 两套方案都等于值字节（见下表的 `—` 行）。\n\n"
+             "| 臂 | 存储精度 | 值字节（旧横轴） | 标尺 B/值 (a) | (a) 字节/位置 | (a) 相对本族基线 | "
+             "量化因子 ×(a) | 标尺 B/值 (b) | (b) 字节/位置 | (b) 相对本族基线 | 量化因子 ×(b) | "
+             "(b) 块分母 | 旧账省幅 |\n"
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|")
+    bench = {p["arm"]: p for p in points}
+    for p in points:
+        db = p["deployment_bytes"]
+        a, b = db["a_per_value"], db["b_grouped"]
+        base = bench[cfg["family_baseline"][p["family"]]]
+        base_b = base["deployment_bytes"]
+        ra = 1 - a["bytes_per_position"] / base_b["a_per_value"]["bytes_per_position"]
+        rb = 1 - b["bytes_per_position"] / base_b["b_grouped"]["bytes_per_position"]
+        # 「量化因子」= 在同一拓扑上再叠量化后的字节倍率（<1 = 省）；对照臂取 quant_increment_ref，
+        # 纯量化臂取本族基线。
+        ref_arm = cfg.get("quant_increment_ref", {}).get(p["arm"]) or base["arm"]
+        ref = bench[ref_arm]["deployment_bytes"]
+        fa = a["bytes_per_position"] / ref["a_per_value"]["bytes_per_position"]
+        fb = b["bytes_per_position"] / ref["b_grouped"]["bytes_per_position"]
+        gmin = min(s["group_used"] for s in b["per_segment"])
+        old = 1 - p["bytes_per_position"] / base["bytes_per_position"]
+        if not a["needs_scale"]:
+            L.append(f"| `{p['arm']}` | {a['value_bytes_per_position'] / a['values_per_position']:.1f} B/值 | "
+                     f"{p['bytes_per_position']:.0f} | — | {a['bytes_per_position']:.0f} | {ra:+.1%} | "
+                     f"— | — | {b['bytes_per_position']:.0f} | {rb:+.1%} | — | — | {old:+.1%} |")
+            continue
+        L.append(f"| `{p['arm']}` | {a['value_bytes_per_position'] / a['values_per_position']:.1f} B/值 | "
+                 f"{p['bytes_per_position']:.0f} | {a['scale_bytes_per_value']:.4f} | "
+                 f"{a['bytes_per_position']:.0f} | {ra:+.1%} | ×{fa:.2f} | "
+                 f"{b['scale_bytes_per_value']:.4f} | {b['bytes_per_position']:.0f} | {rb:+.1%} | "
+                 f"×{fb:.2f} | min({cal['group_default']},{gmin}) | {old:+.1%} |")
+    L.append("> 读法：『旧账省幅』= 只算值字节省了多少（旧口径）；『(a)/(b) 相对本族基线』= 把标尺算上之后"
+             "相对同族全精度基线的**真实**省幅；『量化因子 ×』= 在**同一拓扑**上再叠量化后占用变成几倍"
+             "（对照取 `config.json::quant_increment_ref`；<1 = 省）。\n"
+             f"> **本表最重要的一行**：在 (a)（严格前缀确定）口径下『量化因子』**恒 >1**——"
+             f"int8 ×{bc.bytes_per_value('int8', 'a_per_value') / bc.bytes_per_value('fp16', 'a_per_value'):.2f}、"
+             f"int4 ×{bc.bytes_per_value('int4', 'a_per_value') / bc.bytes_per_value('fp16', 'a_per_value'):.2f}"
+             f"（值 + 逐值 fp16 标尺）⇒ **量化在任何拓扑上都是内存负收益**，图上量化臂的 x 坐标整体右移"
+             f"越过 fp16 基线；组合臂（gqa_int8 / mqa_int4 …）仍省，但那省幅来自**头共享/窗口**，不来自量化。\n"
+             f"> 在 (b) 口径下量化因子回到 <1（int8 ×"
+             f"{bc.bytes_per_value('int8', 'b_grouped', cal['group_default']) / 2:.2f}、int4 ×"
+             f"{bc.bytes_per_value('int4', 'b_grouped', cal['group_default']) / 2:.2f}）——但那是用"
+             f"「块内可被后续 {cal['b_violation_distance_positions']} 个位置改写」换来的，且质量代价未测。\n"
+             f"> (b) 的块大小敏感性（每值标尺字节 = 2/G；违反距离 = G−1）：")
+    L.append("| 块大小 G | 标尺 B/值 | 违反距离（位置） | int8 B/值 | int4 B/值 | "
+             "int8 相对 fp16 | int4 相对 fp16 |\n|---|---|---|---|---|---|---|")
+    for row in cal["b_group_ladder"]:
+        L.append(f"| {row['group']} | {row['scale_bytes_per_value']:.4f} | "
+                 f"{row['violation_distance_positions']} | {row['int8_bytes_per_value']:.4f} | "
+                 f"{row['int4_bytes_per_value']:.4f} | {row['int8_reduction_vs_fp16']:+.1%} | "
+                 f"{row['int4_reduction_vs_fp16']:+.1%} |")
+    L.append(f"> 第三种口径（解析注记，**未测**）：标尺沿非 token 轴共享可以不违反因果——V 按 token 取 "
+             f"`head_dim` 维 amax ⇒ 位置 t 的标尺只由 t 决定、+{bc.SCALE_BYTES:.0f}/"
+             f"{cfg['model']['d_model'] // cfg['model']['n_heads']} B/值且严格因果；K 侧拿不到足够动态范围，"
+             f"只能分块。该设计下违反前缀确定的只有 K 一半的值。\n"
+             f"> (b) 的**质量代价未知**：本实验的质量数字全部在 (a) 口径下测得，没测过 (b)。"
+             f"块内 amax ≥ 位置 amax ⇒ (b) 的每值误差上界只会更大（倍数 = 块内 amax/位置 amax ≥ 1），"
+             f"但**未测**。")
+
     L.append("## 实测显存（与解析列分列，判据 C2）\n\n"
              f"- 本实验评测期 GPU 峰值（`torch.cuda.max_memory_allocated`）："
              f"**{rec['memory_convention']['measured_gpu_peak_mib']} MiB**。\n"
              "- 评测实现把 K/V 立刻反量化、按掩码取子集（SDPA 仍算 T×T 分数矩阵）⇒ 实测峰值"
-             "不随档下降，故只报解析列。\n"
-             "- **部署口径提醒**：严格逐 token 因果 ⇒ 每值一个 fp16 scale（int8 净 3 B/值、"
-             "int4 净 2.5 B/值）；旧的「int8 省一半」在因果口径下不成立，部署价签须用 "
-             "`kv_cache_footprint` 的 `streaming_bytes_by_seq_len`。")
+             "不随档下降，故只报解析列；**实测峰值也不能当部署价签**。\n"
+             "- **部署口径看表 5**：严格逐 token 因果（本实验实现 = 方案 (a)）⇒ 每值 +1 个 fp16 标尺，"
+             "int8 净 3 B/值、int4 净 2.5 B/值（fp16 基线 2 B/值）⇒ **旧的「int8 省一半」在因果口径下不成立**；"
+             "要真省只能走 (b)（放弃块内严格前缀确定）。`kv_cache_footprint` 的 `streaming_bytes_by_seq_len` "
+             "就是 (a) 口径的总量。")
 
-    L.append("## ASCII 图（因果口径）\n\n```\n" + b21.ascii_chart(points) + "\n```")
+    L.append("## ASCII 图（因果口径）\n\n> 图的横轴仍是**值字节**口径（与 2621 逐位可比）。把横轴换成"
+             "**部署口径**后，10 个量化臂的 x 坐标会整体右移越过 `fp16` 基线，Pareto 前沿只剩"
+             "「窗口 / 头共享 + fp16 存储」（逐臂看表 5 与 `analysis.md` §4.1）。\n\n```\n"
+             + b21.ascii_chart(points) + "\n```")
     return "\n\n".join(L) + "\n"
 
 
@@ -172,6 +293,17 @@ def render_png(points, controls, path: str) -> None:
 
 
 def write_charts(cfg, points, controls, rec, out_dir) -> None:
+    # 部署口径（值 + 标尺）：纯解析，重画时重算一次 ⇒ 全跑与 `--charts-only` 两条路径同源。
+    attach_deployment_bytes(cfg, points)
+    rec["deployment_caliber"] = bc.caliber_block(cfg, cfg["arms"], points, DEPLOY_GROUP)
+    # 部署口径的语义层是**运行后**新增的模块（config.json::reuse.code_anchors 在运行前写定、不改），
+    # 故单独把它的 ^256 记进 rec["code"]，保证“分析里的每个数都能追到一份代码”。
+    rec.setdefault("code", {})[os.path.relpath(bc.__file__, ROOT)] = \
+        b21.b19.sha256_file(bc.__file__)[:16]
+    rec["memory_convention"]["deployment_caliber"] = (
+        "部署字节（值 + 标尺）见 points[*].deployment_bytes 与 deployment_caliber："
+        "(a) 逐值标尺（严格前缀确定，与本实验质量数字同源）、(b) 分块标尺 + 块内回填。"
+        "points[*].bytes_per_position 仍是**值字节**（本图横轴，与 2621 逐位可比）。")
     with open(os.path.join(out_dir, "table.md"), "w") as f:
         f.write(render_table(cfg, points, controls, rec))
     with open(os.path.join(out_dir, "chart.txt"), "w") as f:

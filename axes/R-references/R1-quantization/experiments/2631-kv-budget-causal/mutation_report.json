@@ -1,51 +1,125 @@
 {
-  "target": "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/causal_check.py",
-  "sha256_before": "e992170bb078cddd7697303951620ce5269a0f2d85ee441a944a65891b3f4729",
+  "targets": {
+    "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/causal_check.py": {
+      "sha256_before": "e992170bb078cddd7697303951620ce5269a0f2d85ee441a944a65891b3f4729",
+      "sha256_after": "e992170bb078cddd7697303951620ce5269a0f2d85ee441a944a65891b3f4729"
+    },
+    "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/budget_caliber.py": {
+      "sha256_before": "7237f504d38b8d5960a4aacae41ade3a75beb600d30be80a526c67adf1c30173",
+      "sha256_after": "7237f504d38b8d5960a4aacae41ade3a75beb600d30be80a526c67adf1c30173"
+    }
+  },
   "mutations": [
     {
       "id": "M1",
+      "target": "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/causal_check.py",
       "what": "前缀不变性的 peer 检查恒 True（A2 的跨请求旁路不再被验）",
       "tests": {
         "test_prefix_invariance_check_flags_noncausal_implementation": {
           "returncode": 1,
           "verdict": "FAILED（抓红）",
-          "tail": "1 failed in 2.04s"
+          "tail": "1 failed in 1.63s"
         }
       },
       "all_expected_tests_caught": true
     },
     {
       "id": "M2",
+      "target": "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/causal_check.py",
       "what": "方向标签符号反转（改善↔变差）",
       "tests": {
         "test_direction_label_signs": {
           "returncode": 1,
           "verdict": "FAILED（抓红）",
-          "tail": "1 failed in 1.74s"
+          "tail": "1 failed in 1.65s"
         }
       },
       "all_expected_tests_caught": true
     },
     {
       "id": "M3",
+      "target": "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/causal_check.py",
       "what": "quantized_arms_of 去掉 mode 过滤（把所有臂当量化臂）",
       "tests": {
         "test_quantized_arms_of_selects_only_int_arms": {
           "returncode": 1,
           "verdict": "FAILED（抓红）",
-          "tail": "1 failed in 1.72s"
+          "tail": "1 failed in 1.63s"
         }
       },
       "all_expected_tests_caught": true
     },
     {
       "id": "M4",
+      "target": "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/causal_check.py",
       "what": "非量化臂漂移不判 False（可控性证据恒真）",
       "tests": {
         "test_compare_detects_nonquant_drift": {
           "returncode": 1,
           "verdict": "FAILED（抓红）",
-          "tail": "1 failed in 2.08s"
+          "tail": "1 failed in 1.64s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M5",
+      "target": "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/budget_caliber.py",
+      "what": "逐值标尺（方案 a）当免费 ⇒ table.md 与 analysis.md 的矛盾又回来",
+      "tests": {
+        "test_per_value_scale_makes_int8_three_bytes_and_int4_two_and_a_half": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 0.07s"
+        },
+        "test_int8_and_int4_occupy_more_than_the_fp16_baseline_under_scheme_a": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 0.08s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M6",
+      "target": "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/budget_caliber.py",
+      "what": "分块摊薄被架空（分母恒 1 = 方案 b 退化成方案 a）",
+      "tests": {
+        "test_short_segments_amortize_less_than_a_full_group": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 0.08s"
+        },
+        "test_quantization_factor_is_below_one_for_every_quantized_arm_under_scheme_b": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 0.08s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M7",
+      "target": "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/budget_caliber.py",
+      "what": "value_bytes 与 mode 不一致不再报错（标签与事实不符也出数）",
+      "tests": {
+        "test_mode_of_rejects_value_bytes_mode_mismatch": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 0.08s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M8",
+      "target": "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/budget_caliber.py",
+      "what": "段模型吞掉锚点段（与判据 C1 的 positions_kept 对不上也不报错）",
+      "tests": {
+        "test_segments_reproduce_the_recorded_axis_factor_for_every_arm": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 0.08s"
         }
       },
       "all_expected_tests_caught": true
@@ -53,10 +127,15 @@
   ],
   "restored_sha256_equal": true,
   "after_restore": {
-    "returncode": 0,
-    "tail": "9 passed in 1.90s"
+    "causal": {
+      "returncode": 0,
+      "tail": "9 passed in 1.61s"
+    },
+    "caliber": {
+      "returncode": 0,
+      "tail": "15 passed in 0.07s"
+    }
   },
   "green_after_restore": true,
-  "sha256_after": "e992170bb078cddd7697303951620ce5269a0f2d85ee441a944a65891b3f4729",
   "all_caught": true
 }
