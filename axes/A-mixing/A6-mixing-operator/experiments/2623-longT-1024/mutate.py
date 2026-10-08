@@ -19,6 +19,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
 sys.path.insert(0, ROOT)
+from tools.evalkit import mutation                     # noqa: E402
 
 import torch                                                     # noqa: E402
 import pathlm.depth_ar as da                                     # noqa: E402
@@ -88,13 +89,7 @@ def main():
         tmod.window_anchor_keep_mask = broken
         try:
             fn = getattr(tmod, test_name)
-            caught, detail = False, "test 未抓红（不变量未被钉住）"
-            try:
-                fn(*args)
-            except AssertionError as e:
-                caught, detail = True, str(e)[:140]
-            except Exception as e:                       # noqa: BLE001
-                caught, detail = True, f"{type(e).__name__}: {e}"[:140]
+            caught, detail, _status = mutation.inprocess_outcome(fn, args)
         finally:
             da.window_anchor_keep_mask = orig
             tmod.window_anchor_keep_mask = orig

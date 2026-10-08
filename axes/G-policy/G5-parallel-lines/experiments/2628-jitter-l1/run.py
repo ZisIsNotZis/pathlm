@@ -38,6 +38,14 @@ import time
 import torch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+#: 分量分解的公式说明（单一来源：`run.py` 与 `results_13m.json` 必须逐字相同，
+#: F_JITTER 修复：旧文本只写「集成增益 − clean 税（相对 l1）」，漏了「− l1_gain」）。
+COMPONENT_NOTE = (
+    "净效应 net = (repr01_gain − l1_gain) − clean_tax；"
+    "gain(臂) = 该臂 K1 − K8 的 bpc 改善、clean_tax = repr01@K1 − l1@K1（相对 l1，"
+    "可为负）；数值：(0.0332 − 0.0300) − (−0.0112) = 0.0144 = effect_v2。"
+    "两列分开报，用以区分『机制无用』与『机制有效但代价抵消』")
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
@@ -278,8 +286,7 @@ def main() -> None:
             "clean_tax_diff": round(tax(B) - tax(A), 6),
             "ensemble_gain_repr01_A": gain(A), "ensemble_gain_repr01_B": gain(B),
             "ensemble_gain_diff": round(gain(B) - gain(A), 6),
-            "note": ("净效应 = 集成增益 − clean 税（相对 l1）；两列分开报，用以区分"
-                     "『机制无用』与『机制有效但代价抵消』"),
+            "note": COMPONENT_NOTE,
         },
         "effect_v2": EFFECT_V2,
         "variance_floor": cfg["variance_floor"],

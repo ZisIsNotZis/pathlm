@@ -26,6 +26,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
+sys.path.insert(0, ROOT)
+from tools.evalkit import mutation                     # noqa: E402
 TARGET = os.path.join(HERE, "ragged_seed1_arms.py")
 TFILE = "tests/test_carry_ragged_seed1_13m.py"
 
@@ -86,7 +88,7 @@ def main():
         cmd = [sys.executable, "-m", "pytest", TFILE, "-q", "-p", "no:cacheprovider",
                "-k", test]
         env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=1800,
+        r = mutation.pytest_run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=1800,
                            env=env)
         caught = r.returncode != 0
         tail = [ln for ln in r.stdout.strip().splitlines() if ln.strip()][-1:]

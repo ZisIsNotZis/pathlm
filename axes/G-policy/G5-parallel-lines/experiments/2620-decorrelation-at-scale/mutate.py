@@ -22,6 +22,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
 sys.path.insert(0, ROOT)
+from tools.evalkit import mutation                     # noqa: E402
 os.chdir(ROOT)
 
 import pytest                                                    # noqa: E402
@@ -39,7 +40,7 @@ _orig_det_paths = EP.deterministic_paths
 
 
 def _run(test_names) -> int:
-    return pytest.main(["-q", "-x", *[f"{TFILE}::{t}" for t in test_names]])
+    return mutation.pytest_main(["-q", "-x", *[f"{TFILE}::{t}" for t in test_names]])
 
 
 # ------------------------------------------------------------------ 变异体

@@ -24,6 +24,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
+sys.path.insert(0, ROOT)
+from tools.evalkit import mutation                     # noqa: E402
 TFILE = "tests/test_ood_leg_variance.py"
 
 MUTATIONS = [
@@ -80,7 +82,7 @@ def main():
         mut_digest = sha256_bytes(open(path, "rb").read())
         cmd = [sys.executable, "-m", "pytest", TFILE, "-q", "-p", "no:cacheprovider",
                "-k", test]
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=1800)
+        r = mutation.pytest_run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=1800)
         caught = r.returncode != 0
         tail = [ln for ln in r.stdout.strip().splitlines() if ln.strip()][-1:]
         open(path, "wb").write(orig)                            # 逐字节还原

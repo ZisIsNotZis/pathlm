@@ -2,14 +2,16 @@
 
 Run: `python3 -m pytest tests/ -q`
 
-钉住四件事：
+钉住五件事：
 1. **量化-反量化往返有上界**：int 档对称 per-channel，`|x̂ − x| ≤ 0.5·scale`
-   （scale = 该通道 amax / qmax）；fp16 档相对上界 `|x̂ − x| ≤ 2⁻¹⁰·|x|`；
+   （scale = 该通道的因果 running max / qmax）；fp16 档相对上界 `|x̂ − x| ≤ 2⁻¹⁰·|x|`；
    fp32 档逐位恒等；
 2. **per-channel 语义正确**：不同 `(head, channel)` 各自用自己的 scale
    （大通道不会吃掉小通道的分辨率）；
-3. **实现等值**：`fp32` 档前向与释放版 dense 前向**逐位相等**（§9）；
-4. **干预活性**：int8/int4 真的改变数值、改变 logits，且 int4 比 int8 差
+3. **前缀不变性（F2，修复 A2）**：改未来 token 不改过去位置的反量化值/过去 logits；
+   改同批其他请求不改本请求结果（旧的「全序列 batch+token amax」实现三条全红）；
+4. **实现等值**：`fp32` 档前向与释放版 dense 前向**逐位相等**（§9）；
+5. **干预活性**：int8/int4 真的改变数值、改变 logits，且 int4 比 int8 差
    （bit 越少越糙）——不是「只改了个标签」。
 
 破坏这些语义的变异见实验目录 `mutate.py`。
@@ -21,7 +23,8 @@ import sys
 import pytest
 import torch
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
 from pathlm.depth_ar import DepthARConfig, DepthARModel   # noqa: E402
 from tools.evalkit.kv_quant import (KV_MODES, cache_reduction,   # noqa: E402
                                     kv_cache_footprint, kv_quant_logits,
@@ -38,10 +41,76 @@ def tiny_model(d=24, L=2, H=3, T=12, vocab=12):
 
 def per_channel_scale(x, qmax):
     """独立算出参考 scale：[..., H, T, head_dim] 每 (head, channel) 一个，沿
-    batch 与 token 取 amax。"""
+    batch 与 token 取 amax（**旧的非因果口径**，仅 `test_prefix_invariance_*` 用来
+    展示旧实现在改未来 token / 同批邻居时会变，不再作为生产口径）。"""
     reduce = tuple(i for i in range(x.dim())
                    if i not in (x.dim() - 1, x.dim() - 3))
     return (x.abs().amax(dim=reduce, keepdim=True) / qmax).clamp_min(1e-12)
+
+
+def causal_scale(x, qmax):
+    """因果/流式参考 scale：位置 t 只用**同一请求 ≤ t** 的 token（running max），
+    batch 轴不参与归约。这是 `quantize_kv` 的生产口径（修复 A2）。"""
+    return (x.abs().cummax(dim=x.dim() - 2).values / qmax).clamp_min(1e-12)
+
+
+# ------------------------------------------------- 0. 前缀不变性（F2 / 修复 A2）
+#
+# 旧实现沿 batch+token 取全序列 amax ⇒ 过去位置的反量化值随**未来 token**或**同批
+# 其他请求**改变（`is_causal=True` 挡不住）。下面三条测试对旧实现应红、对因果实现应绿。
+
+
+def test_prefix_invariance_future_token_does_not_change_past_values():
+    """① 改未来 token 不改变过去位置的反量化值。
+
+    直接复刻复核报告 A2 的反例：过去值小、未来值 1000；旧实现下过去的 scale 被
+    未来 amax 改变（过去值被重新定量），因果实现下过去 scale 不含未来信息。"""
+    torch.manual_seed(11)
+    x = torch.ones(1, 2, 8, 4)                      # 过去位置幅度 0.5/1
+    x[..., 3:, :] = 0.5
+    dq0, _ = quantize_kv(x, "int4")
+    x2 = x.clone()
+    x2[..., -1, :] = 1000.0                         # 只改最后一个（未来）位置
+    dq1, _ = quantize_kv(x2, "int4")
+    assert torch.equal(dq0[..., :-1, :], dq1[..., :-1, :]), \
+        "过去位置的反量化值被未来 token 改变了（因果性缺陷）"
+    # 旧口径（全序列 amax）就会变——这就是被修复的那条通路
+    s_old, s_old2 = per_channel_scale(x, 7), per_channel_scale(x2, 7)
+    assert not torch.equal(s_old, s_old2)
+    # 过去的反量化值 == 「只拿前缀序列算」的结果（逐位）
+    dq_prefix, _ = quantize_kv(x[..., :-1, :], "int4")
+    assert torch.equal(dq0[..., :-1, :], dq_prefix)
+
+
+def test_prefix_invariance_other_requests_do_not_change_this_request():
+    """② 改同批其他请求不改变本请求的结果（逐请求，batch 轴不参与归约）。"""
+    torch.manual_seed(12)
+    x = torch.randn(3, 2, 6, 4)
+    dq0, _ = quantize_kv(x, "int4")
+    x2 = x.clone()
+    x2[1] = 1000.0                                  # 只改同批的第 2 个请求
+    x2[2] = -500.0
+    dq1, _ = quantize_kv(x2, "int4")
+    assert torch.equal(dq0[0], dq1[0]), "本请求的反量化值被同批其他请求改变了（跨请求耦合）"
+    assert torch.equal(dq0[1], dq1[1]) is False     # 被改的那个请求自己当然会变
+
+
+def test_prefix_invariance_past_logits_unchanged_by_future_token_and_batch_peer():
+    """①/② 的 logits 版：过去位置的 logits 不随未来 token、也不随同批邻居改变。"""
+    model = tiny_model()
+    torch.manual_seed(13)
+    x = torch.randint(0, 12, (3, 12))
+    base, _ = kv_quant_logits(model, x, "int4")
+    future = x.clone()
+    future[:, -1] = (future[:, -1] + 7) % 12        # 改未来（最后）token
+    got_future, _ = kv_quant_logits(model, future, "int4")
+    assert torch.equal(base[:, :-1, :], got_future[:, :-1, :]), \
+        "过去位置的 logits 被未来 token 改变了"
+    peer = x.clone()
+    peer[1] = (peer[1] + 5) % 12                    # 改同批第 2 个请求
+    peer[2] = (peer[2] + 3) % 12
+    got_peer, _ = kv_quant_logits(model, peer, "int4")
+    assert torch.equal(base[0], got_peer[0]), "本请求 logits 被同批其他请求改变了"
 
 
 # --------------------------------------------------------------- 1. 往返误差上界
@@ -56,18 +125,22 @@ def test_fp32_mode_is_bitwise_identity():
 
 @pytest.mark.parametrize("mode,qmax", [("int8", 127), ("int4", 7)])
 def test_int_roundtrip_error_within_half_scale(mode, qmax):
-    """对称 per-channel 取整：逐元素误差 ≤ 0.5·scale，且 scale = amax/qmax。"""
+    """对称 per-channel 取整：逐元素误差 ≤ 0.5·scale，且 scale 取因果 running max。"""
     torch.manual_seed(1)
     x = torch.randn(2, 3, 6, 4) * 3
     dq, _ = quantize_kv(x, mode)
-    scale = per_channel_scale(x, qmax)
+    scale = causal_scale(x, qmax)
     err = (dq - x).abs()
     assert torch.all(err <= 0.5 * scale + 1e-6), err.max().item()
     # 独立重算参考实现，逐位相等
     q = torch.round(x / scale).clamp(-qmax, qmax)
     assert torch.allclose(dq, q * scale, atol=1e-6)
     # amax 元素应被精确用到端点附近（未发生整体缩小 => qmax 正确）
-    assert float((x / scale).abs().max()) <= qmax + 1e-6
+    assert float((x / scale).abs().max()) <= qmax * (1 + 1e-5) + 1e-6
+    # 因果性：位置 t 的 scale 只由 ≤ t 的历史决定（非递减 running max）
+    assert torch.all(scale[..., 1:, :] >= scale[..., :-1, :] - 1e-12)
+    assert torch.allclose(scale[..., 0, :],
+                          x[..., 0, :].abs().clamp_min(1e-12) / qmax, atol=1e-9)
 
 
 def test_fp16_relative_bound_and_actually_changes_values():
@@ -93,7 +166,7 @@ def test_per_channel_scale_is_per_head_channel():
     x[..., 0] = 100.0 + torch.randn(1, 2, 5)        # 通道 0：幅度 ~100
     x[..., 1:] = 0.001 * torch.randn(1, 2, 5, 3)    # 通道 1..3：幅度 ~0.001
     dq, _ = quantize_kv(x, "int4")
-    scale = per_channel_scale(x, 7)
+    scale = causal_scale(x, 7)
     err = (dq - x).abs()
     assert torch.all(err <= 0.5 * scale + 1e-9)
     # 小通道的相对误差应有界（远小于全局 amax/qmax 会造成的量级）
@@ -182,3 +255,22 @@ def test_summarize_stats_fields_are_activity_quantities():
     assert s["mean_abs_err"] == pytest.approx(0.2)
     assert s["rel_err"] == pytest.approx(0.2)
     assert s["changed_frac"] == pytest.approx(0.5)
+
+
+# ------------------------------------------------- 6. 组合入口同源（F1）
+
+#: 窗口 / 锚点 / 头共享等「组合入口」所在的模块（2619 的语义 + 2620/2621 的组合臂）。
+COMBO_MODULES = (
+    "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/gaps_arms.py",
+    "axes/R-references/R1-quantization/experiments/2621-kv-budget-rest/rest_arms.py",
+)
+
+
+def test_combo_entries_route_through_the_same_causal_quantizer():
+    """组合入口必须复用 `quantize_kv`（同一个因果实现），不得残留全序列 amax 的旧路径，
+    也不得自己另起一套量化实现（F1：同文件的组合入口一并走同一实现）。"""
+    for rel in COMBO_MODULES:
+        src = open(os.path.join(ROOT, rel), encoding="utf-8").read()
+        assert "quantize_kv" in src, f"{rel} 未复用 quantize_kv（可能自带旧量化路径）"
+        assert "amax(" not in src, f"{rel} 自带 amax 归约（旧的非因果 scale 路径残留）"
+        assert "cummax" not in src, f"{rel} 自己另起了一套量化实现（应复用 quantize_kv）"

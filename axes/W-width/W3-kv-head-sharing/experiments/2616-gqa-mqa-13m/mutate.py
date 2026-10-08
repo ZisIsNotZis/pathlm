@@ -16,6 +16,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
+sys.path.insert(0, ROOT)
+from tools.evalkit import mutation                     # noqa: E402
 TARGET = os.path.join(ROOT, "pathlm", "depth_ar.py")
 TRAINER = os.path.join(ROOT, "train_depth_ar.py")
 TFILE = "tests/test_depth_ar.py"
@@ -101,7 +103,7 @@ def main():
                              f"{src.count(old)} 次，无法唯一定位")
         open(path, "w").write(src.replace(old, new))
         cmd = [sys.executable, "-m", "pytest", TFILE, "-q", "-k", " or ".join(tests)]
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=1800)
+        r = mutation.pytest_run(cmd, cwd=ROOT, capture_output=True, text=True, timeout=1800)
         caught = r.returncode != 0
         red = sorted({ln.split("::")[1].split(" ")[0] for ln in r.stdout.splitlines()
                       if ln.startswith("FAILED ") and "::" in ln})

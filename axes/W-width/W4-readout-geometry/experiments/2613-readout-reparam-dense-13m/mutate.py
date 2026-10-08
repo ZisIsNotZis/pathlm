@@ -11,6 +11,8 @@ import hashlib, json, os, shutil, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
+sys.path.insert(0, ROOT)
+from tools.evalkit import mutation                     # noqa: E402
 TARGET = os.path.join(ROOT, "pathlm", "depth_ar.py")
 TEST = os.path.join(HERE, "test_dense_readout_reparam.py")
 BACKUP = TARGET + ".mutbak"
@@ -55,7 +57,7 @@ def main():
         for name, desc, old, new, test in MUTATIONS:
             assert src0.count(old) == 1, f"{name}: pattern not unique ({src0.count(old)})"
             open(TARGET, "w").write(src0.replace(old, new))
-            r = subprocess.run([sys.executable, "-m", "pytest", f"{TEST}::{test}", "-q"],
+            r = mutation.pytest_run([sys.executable, "-m", "pytest", f"{TEST}::{test}", "-q"],
                                cwd=ROOT, capture_output=True, text=True)
             report["mutations"].append({
                 "name": name, "desc": desc, "test": test,

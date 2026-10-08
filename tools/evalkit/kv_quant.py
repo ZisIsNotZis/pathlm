@@ -15,12 +15,27 @@
   - `int8` / `int4`：**对称 per-channel** 量化（见下）。
 - **per-channel 定义**：注意力里 K/V 的布局是 `[B, H, T, head_dim]`
   （`pathlm.model.Block` 的 `transpose(1, 2)`）。通道轴 = `head_dim`，
-  **每个 `(head, channel)` 一个 scale**，沿 `batch` 与 `token` 轴取 amax
-  （= KIVI 的 K 侧通道量化：静态、在全序列上取 amax）。
+  **每个 `(batch, head, token, channel)` 一个 scale**（见下「因果/流式口径」）。
 - **对称**：零点固定为 0，`qmax = 2^(bits-1) - 1`（int8 → 127，int4 → 7），
   `scale = amax / qmax`，`q = clamp(round(x/scale), -qmax, qmax)`，
   反量化 `x̂ = q · scale`。往返误差上界 `|x̂ - x| ≤ 0.5 · scale`（取整误差，
-  amax 本身不越界，不触发额外的 clip 误差）；单测钉住。
+  running-max 不越界，不触发额外的 clip 误差）；单测钉住。
+
+**因果/流式口径（2026-10-02 修复 A2；旧实现是缺陷）**：
+旧实现沿 `batch + token` 轴对**全序列**取 amax ⇒ scale 含未来 token 与同批其他请求的
+信息，过去位置的反量化值会随未来 token 或同批邻居改变（`is_causal=True` 挡不住）。
+现在的实现逐请求、因果、流式：位置 `t` 的 scale 只由**同一请求 ≤ t 的位置**决定
+（对 token 轴取 running max，`cummax`），`batch` 轴不参与归约。三条性质明写如下：
+
+| 性质 | 本实现 |
+|---|---|
+| 旧值是否重编码 | **否**。位置 `t` 的 scale 在写入时定为 `max_{t'≤t}|x_{t'}|/qmax`，写入后不再改动；没有分块/回填重编码（因此没有「等待整块到齐再回头重写」的窗口） |
+| scale 存储开销 | **每值一个 fp16 scale**（`[B,H,T,head_dim]` 与 K/V 元素一一对应）⇒ 每值 +2 字节：int8 净 **3 B/值**、int4 净 **2.5 B/值**（fp16 基线 2 B/值）。**这是因果性的代价**：严格逐 token 因果 ⇒ scale 逐 token 变 ⇒ 无法摊薄。`kv_cache_footprint` 的 `scale_bytes_streaming_per_position` / `*_streaming_bytes_by_seq_len` 按此口径给数；`per_position_bytes` / `total_bytes_by_seq_len` 仍是**值字节**旧口径（与已入账 results.json 逐位兼容），部署价签须用 streaming 口径重算（R1） |
+| 是否有残余高精度窗口 | **没有**。所有 K/V 位置都走量化往返，不额外保留 fp16 尾窗/锚点；本文件的组合入口（窗口 / 锚点 / 头共享）只改**可见位置掩码**与头数，量化算子同源 |
+
+口径提醒：真要「省内存」的部署设计需用**分块 scale + 有界重编码窗口**（每 `G` 个 token 摊一个
+scale，块关闭时回填一次），代价是块内过去值会随同块后续 token 变——本参照线**不**采该口径，
+因为评测要的是「过去位置严格前缀确定」的可比价签。
 
 前向实现：按 `DepthARModel.forward` 的 **dense 分支**逐行复刻
 （`_input_states` → 逐层 `Block` → tied fp32 读出），只在 `Block` 的注意力
@@ -104,13 +119,13 @@ def quantize_kv(x: torch.Tensor, mode: str):
     else:
         bits = _INT_BITS[mode]
         qmax = 2 ** (bits - 1) - 1
-        # per-channel：保留 head(-3) 与 channel(-1)，沿 batch 与 token 取 amax。
+        # 因果/流式：token 轴 = -2，只对 **该位置及其之前** 的 token 取 running max
+        # （`cummax`），batch 轴不参与归约（逐请求）。不重编码、无 fp16 尾窗。
         if x.dim() < 3:
             raise ValueError(
                 f"KV 布局至少 3 维 [..., H, T, head_dim]，收到 {tuple(x.shape)}")
-        reduce = tuple(i for i in range(x.dim())
-                       if i not in (x.dim() - 1, x.dim() - 3))
-        scale = (x.abs().amax(dim=reduce, keepdim=True) / qmax).clamp_min(1e-12)
+        running_amax = x.abs().cummax(dim=x.dim() - 2).values
+        scale = (running_amax / qmax).clamp_min(1e-12)
         q = torch.round(x / scale).clamp(-qmax, qmax)
         acc["n_clipped"] = int(((x / scale).abs() > qmax).sum().item())
         acc["scale_min"] = float(scale.min())
@@ -239,8 +254,14 @@ def kv_cache_footprint(cfg, mode: str, seq_lens=(256, 4096, 131072)) -> dict:
     """KV cache 的**解析**占用（部署关心的量；评测期实现会立刻反量化，
     所以 GPU 实测峰值不会下降——见 README §7/§8 的口径标注）。
 
-    `per_position_bytes` = 2(K,V) × n_layers × n_heads × head_dim × 每值字节。
-    scale 开销：int 档每 `(head, channel)` 一个 fp16 scale，与序列长度无关。
+    `per_position_bytes` = 2(K,V) × n_layers × n_heads × head_dim × 每值字节
+    （**只算值**，与已入账 results.json 的旧口径逐位兼容）。
+
+    scale 开销给两套：
+    - `scale_bytes_total`：旧的**非因果**口径（每 `(head, channel)` 一个静态 fp16
+      scale、与序列长度无关），仅为兼容已入账结果保留；
+    - `scale_bytes_streaming_per_position` + `*_streaming_bytes_by_seq_len`：
+      本文件因果/流式实现的真实开销（每值一个 fp16 scale）；**部署价签用这一套**。
     """
     if mode not in _BYTES_PER_VALUE and mode != "fp32":
         raise ValueError(f"unknown mode {mode!r}")
@@ -250,13 +271,20 @@ def kv_cache_footprint(cfg, mode: str, seq_lens=(256, 4096, 131072)) -> dict:
     bpe = {"fp32": 4.0, "fp16": 2.0, "int8": 1.0, "int4": 0.5}[mode]
     per_pos = vals_per_pos * bpe
     scale_bytes = 0 if mode in ("fp32", "fp16") else 2 * n_layers * n_heads * hd * 2
+    streaming = mode not in ("fp32", "fp16")
+    # 因果/流式：每个标量值一个 fp16 scale（token 轴一变，scale 就变，无法摊薄）。
+    scale_stream_per_pos = 2.0 * vals_per_pos if streaming else 0.0
     return {"mode": mode, "dtype_bytes_per_value": bpe,
             "n_layers": n_layers, "n_heads": n_heads, "head_dim": hd,
             "values_per_position": vals_per_pos,
             "per_position_bytes": per_pos,
             "scale_bytes_total": scale_bytes,
+            "scale_bytes_streaming_per_position": scale_stream_per_pos,
+            "streaming_bytes_per_position": per_pos + scale_stream_per_pos,
             "total_bytes_by_seq_len": {str(t): per_pos * t + scale_bytes
-                                       for t in seq_lens}}
+                                       for t in seq_lens},
+            "streaming_bytes_by_seq_len": {
+                str(t): (per_pos + scale_stream_per_pos) * t for t in seq_lens}}
 
 
 def cache_reduction(base: dict, other: dict) -> dict:

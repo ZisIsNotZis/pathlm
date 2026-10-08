@@ -22,7 +22,9 @@ import torch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import evidence_anchor                                      # noqa: E402
 from pathlm.depth_ar import (DepthARConfig, DepthARModel,     # noqa: E402
                              window_anchor_keep_mask)
 
@@ -194,15 +196,25 @@ def test_driver_qknorm_step0_matches_2625_w1():
 
     证据：`runs/full-1024-clean/train_log.jsonl` 首行 vs
     `2625-longT-stability/runs/full-T1024-qknorm-s0/train_log.jsonl` 首行。
+
+    F_KEY（复核 B12）：`runs/` 不入 git ⇒ 比对所需的最小证据已入 git
+    （`tests/evidence/longT_step0_anchors.json`）；本地证据不在时 xfail，不再静默 skip。
     """
-    ours = os.path.join(EXP, "runs", "full-1024-clean", "train_log.jsonl")
-    theirs = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
-                          "experiments", "2625-longT-stability", "runs",
-                          "full-T1024-qknorm-s0", "train_log.jsonl")
-    if not (os.path.exists(ours) and os.path.exists(theirs)):
-        pytest.skip("证据文件缺失（训练尚未落盘）")
-    a = json.loads(open(ours).readline())
-    b = json.loads(open(theirs).readline())
+    anchors = evidence_anchor.load_anchors()
+    ours_a = evidence_anchor.anchor(anchors, "clean_full1024_step0")
+    theirs_a = evidence_anchor.anchor(anchors, "w1_qknorm_2625_step0")
+    assert ours_a["step"] == theirs_a["step"] == 0
+    assert ours_a["loss"] == theirs_a["loss"], "锚点记录的两侧 step0 loss 不一致"
+    assert ours_a["gnorm"] == theirs_a["gnorm"], "锚点记录的两侧 step0 gnorm 不一致"
+    ours = evidence_anchor.local_step0(
+        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+                     "2626-longT-clean", "runs", "full-1024-clean",
+                     "train_log.jsonl"), "clean_full1024_step0", anchors)
+    theirs = evidence_anchor.local_step0(
+        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+                     "2625-longT-stability", "runs", "full-T1024-qknorm-s0",
+                     "train_log.jsonl"), "w1_qknorm_2625_step0", anchors)
+    a, b = ours, theirs
     assert a["step"] == b["step"] == 0
     assert a["loss"] == b["loss"], "step0 loss 与 2625-W1 qk-norm 臂不一致"
     assert a["gnorm"] == b["gnorm"], "step0 gnorm 与 2625-W1 qk-norm 臂不一致"

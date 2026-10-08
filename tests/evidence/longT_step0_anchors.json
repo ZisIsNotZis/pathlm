@@ -1,0 +1,49 @@
+{
+  "note": "F_KEY（复核 B12）：`runs/` 被 .gitignore 忽略 ⇒ 干净检出下这些驱动保真度断言原本静默 `pytest.skip`，让「证据足以复现」成为空头支票。这里把比对所需的**最小证据**（两侧 train_log.jsonl 的 step0 行）入 git：`step/loss/gnorm/depth_ce` + 该行 sha256。测试在锚点缺失时显式失败；本地原始证据在时逐位复算，不在时 xfail（不再静默跳过）。",
+  "anchors": {
+    "stability_preflight_step0": {
+      "source": "axes/A-mixing/A6-mixing-operator/experiments/2625-longT-stability/runs/preflight-20/train_log.jsonl",
+      "why": "2625-longT-stability/runs/preflight-20/train_log.jsonl 首行（驱动器 `none` 候选、seed0、T=1024、bs8、20 步）",
+      "step": 0,
+      "loss": 5.2979,
+      "gnorm": 7.28,
+      "depth_ce": [
+        5.2979
+      ],
+      "first_line_sha256": "610bbf1efe80943b8701021944d5193cf1a55ffeec7ef207a64b54aaf94cea44"
+    },
+    "engine_2623_full1024_step0": {
+      "source": "axes/A-mixing/A6-mixing-operator/experiments/2623-longT-1024/runs/full-1024/train_log.jsonl",
+      "why": "2623-longT-1024/runs/full-1024/train_log.jsonl 首行（引擎基线，同一引擎）",
+      "step": 0,
+      "loss": 5.2979,
+      "gnorm": 7.28,
+      "depth_ce": [
+        5.2979
+      ],
+      "first_line_sha256": "610bbf1efe80943b8701021944d5193cf1a55ffeec7ef207a64b54aaf94cea44"
+    },
+    "clean_full1024_step0": {
+      "source": "axes/A-mixing/A6-mixing-operator/experiments/2626-longT-clean/runs/full-1024-clean/train_log.jsonl",
+      "why": "2626-longT-clean/runs/full-1024-clean/train_log.jsonl 首行（bs8/T=1024/qk-norm、seed0）",
+      "step": 0,
+      "loss": 5.2796,
+      "gnorm": 7.25,
+      "depth_ce": [
+        5.2796
+      ],
+      "first_line_sha256": "3c6e5611ba01d0f7189d77ef0be391b10e914a2c014f941aa25d82c1369e6f04"
+    },
+    "w1_qknorm_2625_step0": {
+      "source": "axes/A-mixing/A6-mixing-operator/experiments/2625-longT-stability/runs/full-T1024-qknorm-s0/train_log.jsonl",
+      "why": "2625-longT-stability/runs/full-T1024-qknorm-s0/train_log.jsonl 首行（2625-W1 的 qk-norm 臂）",
+      "step": 0,
+      "loss": 5.2796,
+      "gnorm": 7.25,
+      "depth_ce": [
+        5.2796
+      ],
+      "first_line_sha256": "66e2f97726e59ddcd1710b5b71d00b8915a43459446eba631813d3f64bae9e77"
+    }
+  }
+}

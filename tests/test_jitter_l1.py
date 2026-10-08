@@ -8,6 +8,7 @@
      `mutate.py` 变异验证（M5 语义猴补丁抓红 + 逐字节还原）。
 """
 
+import ast
 import json
 import os
 import sys
@@ -122,3 +123,31 @@ def test_jitter_verdict_exposes_thresholds_and_ratio():
     assert v["upgrade_lt"] == 0.005
     assert v["effect"] == 0.0144
     assert abs(v["range_over_effect"] - 0.5) < 1e-12
+
+
+# ------------------------------------------------- F_JITTER：分量 note 与数值一致
+
+def test_component_note_formula_matches_recorded_components():
+    """分量 note 必须写明 `net = (repr01_gain − l1_gain) − clean_tax`，且该式用
+    `results_13m.json` 的 K 曲线读数重算后等于 `effect_v2`（净效应）。
+
+    修复前 `run.py` 与 `results_13m.json` 的 note 只写「集成增益 − clean 税（相对 l1）」，
+    漏掉「− l1_gain」⇒ 本测试对旧文本应红（复核 B8）。"""
+    R = json.load(open(os.path.join(HERE, "results_13m.json")))
+    src = open(os.path.join(HERE, "run.py"), encoding="utf-8").read()
+    tree = ast.parse(src)
+    note_run = next(ast.literal_eval(node.value) for node in ast.walk(tree)
+                    if isinstance(node, ast.Assign)
+                    and getattr(node.targets[0], "id", None) == "COMPONENT_NOTE")
+    note_json = R["jitter"]["component_decomposition"]["note"]
+    for text, where in ((note_json, "results_13m.json"), (note_run, "run.py")):
+        assert "net = (repr01_gain − l1_gain) − clean_tax" in text, \
+            f"{where} 的分量 note 未写明正确公式（应为 net = (repr01_gain − l1_gain) − clean_tax）"
+    assert note_json == note_run, "note 在 run.py 与 results_13m.json 两处不一致"
+
+    kc = R["k_curve"]
+    gain = lambda arm: kc[arm]["1"]["bpc"] - kc[arm]["8"]["bpc"]           # noqa: E731
+    clean_tax = lambda arm: kc[arm]["1"]["bpc"] - kc["l1_A"]["1"]["bpc"]   # noqa: E731
+    net = round((gain("repr01_A") - gain("l1_A")) - clean_tax("repr01_A"), 6)
+    assert net == R["jitter"]["effect_v2"] == R["jitter"]["net_combos"]["l1_A__repr01_A"], \
+        f"按 note 的公式重算 net={net}，与 effect_v2={R['jitter']['effect_v2']} 不符"

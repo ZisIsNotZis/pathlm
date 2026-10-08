@@ -25,6 +25,9 @@ import torch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import evidence_anchor                                      # noqa: E402
 
 from pathlm.depth_ar import (DepthARConfig, DepthARModel,     # noqa: E402
                              window_anchor_keep_mask)
@@ -150,9 +153,10 @@ def test_steps_are_6000_and_match_2626_t1024():
     assert run2629.STEPS == 6000, f"本实验步数必须是 6000，得 {run2629.STEPS}"
     assert run2629.steps_for(2048) == 6000
     assert [a["seq_len"] for a in run2629.ARMS] == [2048, 2048]
-    p26 = os.path.join(EXP2626, "config.json")
-    if not os.path.exists(p26):
-        pytest.skip("2626 config.json 缺失")
+    p26 = evidence_anchor.require_tracked(
+        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+                     "2626-longT-clean", "config.json"),
+        "步数匹配的参照配置（入 git）")
     c26 = json.load(open(p26))
     steps1024 = {a["steps"] for a in c26["arms"] if a["seq_len"] == 1024}
     assert steps1024 == {6000}, f"2626 的 T=1024 点步数不是 6000：{steps1024}"
@@ -168,9 +172,10 @@ def test_token_budget_is_double_of_series_steps_matched():
 
 def test_recipe_constants_match_2628():
     """契约常量（bs/lr/seed/d/L/H/mlp/qk-norm 档）必须与 2628 一致：唯一变量是 steps。"""
-    p28 = os.path.join(EXP2628, "config.json")
-    if not os.path.exists(p28):
-        pytest.skip("2628 config.json 缺失")
+    p28 = evidence_anchor.require_tracked(
+        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+                     "2628-longT-2048", "config.json"),
+        "配方常数来源配置（入 git）")
     c28 = json.load(open(p28))
     assert c28["batch_size"] == run2629.BS == 8
     assert c28["lr"] == run2629.LR and c28["seed"] == run2629.SEED == 0
@@ -225,10 +230,14 @@ def test_step_probe_records_all_layer_stats():
 
 def test_results_two_points_match_eval_when_present():
     """落盘后：两点（@3000 只读引用 / @6000 本点）与 eval.json 重算一致；cfg 字段与 2628 对得上。"""
-    rp = os.path.join(EXP, "results.json")
-    ep = os.path.join(EXP, "eval.json")
-    if not (os.path.exists(rp) and os.path.exists(ep)):
-        pytest.skip("证据尚未落盘（训练/评测未完成）")
+    rp = evidence_anchor.require_tracked(
+        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+                     "2629-longT-2048-matched", "results.json"),
+        "本实验的落盘结果（入 git）")
+    ep = evidence_anchor.require_tracked(
+        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+                     "2629-longT-2048-matched", "eval.json"),
+        "本实验的评测落盘（入 git）")
     R = json.load(open(rp))
     EV = json.load(open(ep))
     c1 = R["criteria"]["criterion_1_quality_matched"]

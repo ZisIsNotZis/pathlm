@@ -20,6 +20,8 @@ import hashlib, json, os, shlex, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
+sys.path.insert(0, ROOT)
+from tools.evalkit import mutation                     # noqa: E402
 TARGET = os.path.join(ROOT, "pathlm", "depth_ar.py")
 
 MUTATIONS = [
@@ -85,7 +87,7 @@ def main():
                 src.replace(mut["old"], mut["new"], 1).encode())
             cmd = [sys.executable, "-m", "pytest", "tests/test_depth_ar.py", "-q"] + \
                 shlex.split(mut["tests"])   # 带引号的 -k 表达式必须整体传参
-            p = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+            p = mutation.pytest_run(cmd, cwd=ROOT, capture_output=True, text=True)
             tail = (p.stdout or "").strip().splitlines()[-1:] or [""]
             entry = {"name": mut["name"], "desc": mut["desc"],
                      "pytest_args": mut["tests"], "returncode": p.returncode,
@@ -106,7 +108,7 @@ def main():
             if not entry["restored_byte_identical"]:
                 raise SystemExit(f"还原失败：{mut['name']}")
         # 还原后基线必须全绿
-        p = subprocess.run([sys.executable, "-m", "pytest",
+        p = mutation.pytest_run([sys.executable, "-m", "pytest",
                             "tests/test_depth_ar.py", "-q"],
                            cwd=ROOT, capture_output=True, text=True)
         report["baseline_after_restore_returncode"] = p.returncode

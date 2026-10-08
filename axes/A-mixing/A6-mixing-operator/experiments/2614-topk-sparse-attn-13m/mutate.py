@@ -23,6 +23,8 @@ import hashlib, json, os, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
+sys.path.insert(0, ROOT)
+from tools.evalkit import mutation                     # noqa: E402
 TARGET = os.path.join(ROOT, "pathlm", "depth_ar.py")
 
 T = "tests/test_depth_ar.py"
@@ -69,7 +71,7 @@ def sha256(path: str) -> str:
 
 
 def run_tests(targets: list[str]) -> tuple[int, str]:
-    p = subprocess.run([sys.executable, "-m", "pytest", *targets, "-q",
+    p = mutation.pytest_run([sys.executable, "-m", "pytest", *targets, "-q",
                         "--no-header", "-p", "no:cacheprovider"],
                        cwd=ROOT, capture_output=True, text=True, timeout=900)
     return p.returncode, (p.stdout + p.stderr)

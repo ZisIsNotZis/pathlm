@@ -22,6 +22,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
 sys.path.insert(0, ROOT)
+from tools.evalkit import mutation                     # noqa: E402
 sys.path.insert(0, HERE)
 os.chdir(ROOT)
 
@@ -38,7 +39,7 @@ LFILE = os.path.join("axes", "M-carrier", "M1-carrier-type", "experiments",
 
 
 def _run(f, test_names):
-    return pytest.main(["-q", "-x", *[f"{f}::{t}" for t in test_names]])
+    return mutation.pytest_main(["-q", "-x", *[f"{f}::{t}" for t in test_names]])
 
 
 # ----------------------------------------------------------------- A 类：共享开关

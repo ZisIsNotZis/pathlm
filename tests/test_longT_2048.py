@@ -23,6 +23,9 @@ import torch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import evidence_anchor                                      # noqa: E402
 
 from pathlm.depth_ar import (DepthARConfig, DepthARModel,     # noqa: E402
                              window_anchor_keep_mask)
@@ -140,10 +143,10 @@ def test_window_point_is_same_relative_scale_and_non_degenerate():
 def test_token_budget_matches_2626_clean_three_points():
     """同 token 预算 = 四点并列的前提：本实验与 2626 的 TOKEN_BUDGET 必须相等。"""
     assert run2628.TOKEN_BUDGET == 49_152_000
-    p26 = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
-                       "experiments", "2626-longT-clean", "config.json")
-    if not os.path.exists(p26):
-        pytest.skip("2626 config.json 缺失")
+    p26 = evidence_anchor.require_tracked(
+        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+                     "2626-longT-clean", "config.json"),
+        "四点并列表的 token 预算基准（入 git）")
     cfg26 = json.load(open(p26))
     assert cfg26["token_budget"] == run2628.TOKEN_BUDGET, \
         "本实验与 2626 的 token 预算不同 ⇒ 四点不可并列"
@@ -195,10 +198,14 @@ def test_step_probe_records_all_layer_stats():
 
 def test_results_four_points_include_2048_when_present():
     """落盘后：四点并列应含 T=2048，且 Δ 与 eval.json 重算一致。"""
-    rp = os.path.join(EXP, "results.json")
-    ep = os.path.join(EXP, "eval.json")
-    if not (os.path.exists(rp) and os.path.exists(ep)):
-        pytest.skip("证据尚未落盘（训练/评测未完成）")
+    rp = evidence_anchor.require_tracked(
+        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+                     "2628-longT-2048", "results.json"),
+        "本实验的落盘结果（入 git）")
+    ep = evidence_anchor.require_tracked(
+        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+                     "2628-longT-2048", "eval.json"),
+        "本实验的评测落盘（入 git）")
     R = json.load(open(rp))
     EV = json.load(open(ep))
     four = R["criteria"]["criterion_1_quality"]["four_points_native"]

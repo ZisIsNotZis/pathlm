@@ -16,6 +16,8 @@ import hashlib, json, os, subprocess, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
+sys.path.insert(0, ROOT)
+from tools.evalkit import mutation                     # noqa: E402
 TARGET = os.path.join(ROOT, "pathlm", "depth_ar.py")
 
 MUTATIONS = [
@@ -59,7 +61,7 @@ def sha(path: str) -> str:
 def run_tests(names: list[str]) -> dict:
     out = {}
     for n in names:
-        r = subprocess.run([sys.executable, "-m", "pytest", "-q", "-x",
+        r = mutation.pytest_run([sys.executable, "-m", "pytest", "-q", "-x",
                             f"tests/test_depth_ar.py::{n}"],
                            cwd=ROOT, capture_output=True, text=True)
         out[n] = {"returncode": r.returncode,
@@ -102,12 +104,15 @@ def main():
             v["returncode"] == 0 for v in report["after_restore"].values())
     finally:
         open(TARGET, "w").write(original)             # 任何异常也还原
-    json.dump(report, open(os.path.join(HERE, "mutation_report.json"), "w"),
-              indent=2, ensure_ascii=False)
+    report["all_caught"] = all(m["all_expected_tests_caught"] for m in report["mutations"])
     print(json.dumps({"green_after_restore": report["green_after_restore"],
                       "restored_sha256_equal": report["restored_sha256_equal"],
-                      "all_caught": all(m["all_expected_tests_caught"]
-                                        for m in report["mutations"])}, indent=2))
+                      "all_caught": report["all_caught"]}, indent=2))
+    # F3：未抓到 / 未逐字节还原 ⇒ 非零退出（旧版本此处只打印，退出码恒为 0）
+    mutation.exit_if_uncaught(
+        bool(report["all_caught"] and report["restored_sha256_equal"]),
+        report, os.path.join(HERE, "mutation_report.json"),
+        message="有变异未被抓红，或还原不是逐字节")
 
 
 if __name__ == "__main__":

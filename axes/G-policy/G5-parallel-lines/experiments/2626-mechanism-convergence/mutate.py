@@ -25,6 +25,7 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
 sys.path.insert(0, ROOT)
+from tools.evalkit import mutation                     # noqa: E402
 os.chdir(ROOT)
 
 TFILE = "tests/test_mechanism_convergence.py"
@@ -46,7 +47,7 @@ def _run(tfile: str, node: str | None = None) -> int:
         args.append(f"{tfile}::{node}")
     else:
         args.append(tfile)
-    return subprocess.run([sys.executable, "-m", "pytest", *args],
+    return mutation.pytest_run([sys.executable, "-m", "pytest", *args],
                           capture_output=True, text=True).returncode
 
 

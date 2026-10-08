@@ -18,6 +18,8 @@ import torch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import evidence_anchor                                       # noqa: E402
 from pathlm.depth_ar import DepthARConfig, DepthARModel          # noqa: E402
 
 DRIVER = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
@@ -229,15 +231,28 @@ def test_driver_preflight_step0_matches_engine_2623():
 
     证据文件：本目录 `runs/preflight-20/train_log.jsonl`（20 步、seed0、T=1024、bs8、
     候选 `none`）与 `2623-longT-1024/runs/full-1024/train_log.jsonl` 的首行。
+
+    F_KEY（复核 B12）：`runs/` 不入 git ⇒ 比对所需的**最小证据**（两侧 step0 行）已入
+    git（`tests/evidence/longT_step0_anchors.json`）；本地原始证据不在时 `xfail`，
+    不再静默 `pytest.skip`。
     """
-    ours = os.path.join(EXP, "runs", "preflight-20", "train_log.jsonl")
-    theirs = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
-                          "experiments", "2623-longT-1024", "runs",
-                          "full-1024", "train_log.jsonl")
-    if not (os.path.exists(ours) and os.path.exists(theirs)):
-        pytest.skip("证据文件缺失")
-    a = json.loads(open(ours).readline())
-    b = json.loads(open(theirs).readline())
+    anchors = evidence_anchor.load_anchors()
+    ours_a = evidence_anchor.anchor(anchors, "stability_preflight_step0")
+    theirs_a = evidence_anchor.anchor(anchors, "engine_2623_full1024_step0")
+    # ① 入 git 的锚点自洽（从 git 即可复现该断言）
+    assert ours_a["step"] == theirs_a["step"] == 0
+    assert ours_a["loss"] == theirs_a["loss"], "锚点记录的两侧 step0 loss 不一致"
+    assert ours_a["gnorm"] == theirs_a["gnorm"], "锚点记录的两侧 step0 gnorm 不一致"
+    # ② 本地原始证据在时逐位复算（并与锚点对齐，防证据被换）
+    ours = evidence_anchor.local_step0(
+        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+                     "2625-longT-stability", "runs", "preflight-20",
+                     "train_log.jsonl"), "stability_preflight_step0", anchors)
+    theirs = evidence_anchor.local_step0(
+        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+                     "2623-longT-1024", "runs", "full-1024", "train_log.jsonl"),
+        "engine_2623_full1024_step0", anchors)
+    a, b = ours, theirs
     assert a["step"] == b["step"] == 0
     assert a["loss"] == b["loss"], "驱动器 step0 loss 与引擎不一致"
     assert a["gnorm"] == b["gnorm"], "驱动器 step0 gnorm 与引擎不一致"

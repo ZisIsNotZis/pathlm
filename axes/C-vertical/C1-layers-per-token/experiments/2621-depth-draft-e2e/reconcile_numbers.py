@@ -3,7 +3,13 @@
 读 `results.json` + `cycle_log.jsonl`，**重新推导**分析报告里出现的每个数字，
 逐条打印 PASS/FAIL；任一 FAIL 时非零退出。用法：
 
-    python3 reconcile_numbers.py            # 默认读同目录 results.json
+    python3 reconcile_numbers.py [目录]      # 默认读同目录 results.json
+
+F4（复核 B3）：容差语义已重写——废弃旧的 `tol · max(1, |want|)`（在 FLOPs 量级下等于
+放行 100% 误差，`tol=1.0` 就落在这个坑里），改为**绝对/相对分开**（`abs_tol` + `rel_tol`），
+并整体收紧到「记录值舍入传播」的量级（默认 `rel_tol=1e-3`，比旧语义紧 5×；专门的
+`abs_tol` 站点见各调用处）。期望值的来源由 `tools/evalkit/reconcile.Ledger` 记账：
+`derived`（从 raw 计数/日志重算）与 `golden`（历史记录常数，必须写 why）分开计数。
 """
 
 import json
@@ -12,24 +18,32 @@ import sys
 from statistics import median
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-FAILS = []
-CHECKS = []
+ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
+sys.path.insert(0, ROOT)
+
+from tools.evalkit.reconcile import Ledger                     # noqa: E402
+
+#: 本脚本全部期望值的原始来源（重算用）。
+SOURCES = ("results.json", "cycle_log.jsonl", "MODEL.md",
+           "2614-kv-quant-eval-13m/results.json（外部参照）")
+LEDGER = Ledger("2621-depth-draft-e2e", sources=SOURCES)
 
 
-def check(name, got, want, tol=5e-4):
-    ok = abs(got - want) <= tol * max(1.0, abs(want))
-    CHECKS.append((name, got, want, ok))
-    if not ok:
-        FAILS.append(name)
-    print(f"[{'PASS' if ok else 'FAIL'}] {name}: got={got} want={want}")
+#: 默认相对容差 = 记录值舍入传播的量级（实测 diff/|want| ≤ 4.3e-4，取 ~2× 余量）；
+#: 旧语义的默认 `5e-4 · max(1,|want|)` 在大 want 下松得多。
+def check(name, got, want, tol=None, *, abs_tol=None, rel_tol=None, why=""):
+    if abs_tol is None and rel_tol is None:
+        if tol is not None:            # 兼容旧调用点：显式给的 `tol` 一律按**绝对值**解
+            abs_tol, rel_tol = float(tol), 0.0
+        else:
+            abs_tol, rel_tol = 0.0, 1e-3
+    if why:                            # golden：历史记录常数，单独计数并须写来源
+        return LEDGER.golden(name, got, want, abs_tol=abs_tol, rel_tol=rel_tol, why=why)
+    return LEDGER.check(name, got, want, abs_tol=abs_tol, rel_tol=rel_tol)
 
 
 def check_eq(name, got, want):
-    ok = got == want
-    CHECKS.append((name, got, want, ok))
-    if not ok:
-        FAILS.append(name)
-    print(f"[{'PASS' if ok else 'FAIL'}] {name}: got={got} want={want}")
+    return LEDGER.eq(name, got, want)
 
 
 def main():
@@ -59,18 +73,18 @@ def main():
         by_pos = a["accept_by_pos_pooled"]
         est = sum(b["accept"] * b["n"] for b in by_pos)
         check(f"{name}.Σ_by_pos(accept×n) ≈ Σ accepted（±1 舍入）",
-              round(est), round(a["sum_n_accepted"]), tol=1.0)
+              round(est), round(a["sum_n_accepted"]), abs_tol=1.0)   # ±1：整数舍入
         # 墙钟：pooled tok/s == Σgen / Σwall
         check(f"{name}.tok_s_pooled == Σgen×reps/Σwall",
               a["tok_s_pooled"],
               a["sum_n_gen"] * a["n_repeats_per_prompt"] / a["wall_s_all"],
-              tol=5e-3)
+              rel_tol=1e-3)
         # 每次重测的中位数 == 记录值
         for p in a["per_prompt"]:
             check(f"{name}.prompt{p['prompt_idx']}.wall_median_s",
-                  p["wall_median_s"], median(p["wall_s"]), tol=1e-3)
+                  p["wall_median_s"], median(p["wall_s"]), abs_tol=2e-4)
             check(f"{name}.prompt{p['prompt_idx']}.tok_s",
-                  p["tok_s"], p["n_gen"] / p["wall_median_s"], tol=5e-3)
+                  p["tok_s"], p["n_gen"] / p["wall_median_s"], rel_tol=1e-3)
 
     # ---------- 2. 任务对账（对照臂测的是同一件事）----------
     for name, a in arms.items():
@@ -97,10 +111,10 @@ def main():
                  a["eq_flops"], a["eq_layerpos"] * 2 * ppb)
         check(f"{name}.eq_layerpos_per_token == gen_only/tokens",
               a["eq_layerpos_per_token"],
-              a["eq_layerpos_gen_only"] / a["tokens"], tol=2e-3)
+              a["eq_layerpos_gen_only"] / a["tokens"], rel_tol=1e-3)
         check(f"{name}.eq_flops_per_token == 2×ppb×layerpos_per_token",
               a["eq_flops_per_token"],
-              2 * ppb * a["eq_layerpos_per_token"], tol=2e-3)
+              2 * ppb * a["eq_layerpos_per_token"], rel_tol=1e-3)
 
     # ---------- 预算对账：等效 FLOPs 与墙钟两口径 ----------
     check_eq("single_g4.gamma == 4", arms["single_g4"]["config"]["gamma"], 4)
@@ -112,8 +126,8 @@ def main():
     # ---------- ① 接受率三口径 ----------
     prox = R["proxies"]
     tf4 = [t["accept"] for t in prox["tf_enwik8"] if t["depth"] == 4][0]
-    check("proxy.tf_enwik8.depth4 == 0.9694（历史记录值 23c-H2-w0-12k）",
-          tf4, 0.9694, tol=0.02)
+    check("proxy.tf_enwik8.depth4（历史记录值 23c-H2-w0-12k）",
+          tf4, 0.9694, abs_tol=0.02, why="23c-H2-w0-12k 的历史探针记录值（非本实验可重算量）")
     ss = prox["tf_selfstream_pooled"]
     check("proxy.tf_selfstream.depth4 ∈ (0,1]", min(ss["depth4"], 1.0), ss["depth4"])
     pos1 = [b["accept"] for b in arms["single_g4"]["accept_by_pos_pooled"]
@@ -148,14 +162,14 @@ def main():
     for name, a in w["by_arm"].items():
         ws = [x["wall_s"] for x in rows if x["arm"] == name]
         check(f"wall.{name}.wall_median_s == median(raw)",
-              a["wall_median_s"], median(ws), tol=1e-4)
+              a["wall_median_s"], median(ws), abs_tol=1e-4)
         check(f"wall.{name}.tok_s == n_gen/median",
-              a["tok_s"], a["n_gen"] / a["wall_median_s"], tol=5e-3)
+              a["tok_s"], a["n_gen"] / a["wall_median_s"], rel_tol=1e-3)
         check(f"wall.{name}.speedup_vs_plain_full",
-              a["speedup_vs_plain_full"], base / a["wall_median_s"], tol=5e-3)
+              a["speedup_vs_plain_full"], base / a["wall_median_s"], rel_tol=1e-3)
         check(f"wall.{name}.speedup_vs_plain_cache_full",
               a["speedup_vs_plain_cache_full"],
-              cache_base / a["wall_median_s"], tol=5e-3)
+              cache_base / a["wall_median_s"], rel_tol=1e-3)
         check_eq(f"wall.{name}.n_obs == rounds×prompts",
                  a["n_obs"], w["rounds"] * w["prompts"])
 
@@ -175,11 +189,8 @@ def main():
     assert R["ckpt"]["sha256"] in md, "results.json 的 ckpt sha256 未写入 MODEL.md"
     print(f"[PASS] ckpt.sha256 与 MODEL.md 记录一致：{R['ckpt']['sha256'][:16]}…")
 
-    print(f"\n=== {len(CHECKS) - len(FAILS)}/{len(CHECKS)} PASS ===")
-    if FAILS:
-        print("FAILED:", FAILS)
-        sys.exit(1)
-    print("对账全过。")
+    print(f"\n=== {LEDGER.summary()['n_checks']} 项检查 ===")
+    sys.exit(LEDGER.finish(os.path.join(rdir, "reconcile_report.json")))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 {
   "target": "tools/evalkit/kv_quant.py",
-  "sha256_before": "1630f4519fa765627e9e52ceab14483aee34d90581031753d76a388564cb7da5",
+  "sha256_before": "c5b10b4fc7a4a3c583e7907a710713c5f8c237adb78be41f0eeb342ad25e0043",
   "mutations": [
     {
       "id": "M1",
@@ -9,24 +9,29 @@
         "test_int_roundtrip_error_within_half_scale[int8-127]": {
           "returncode": 1,
           "verdict": "FAILED（抓红）",
-          "tail": "1 failed in 1.76s"
+          "tail": "1 failed in 2.13s"
         },
         "test_int_roundtrip_error_within_half_scale[int4-7]": {
           "returncode": 1,
           "verdict": "FAILED（抓红）",
-          "tail": "1 failed in 1.75s"
+          "tail": "1 failed in 2.16s"
         }
       },
       "all_expected_tests_caught": true
     },
     {
       "id": "M2",
-      "what": "per-channel scale 退化成 per-tensor（沿 head 轴也取 amax）",
+      "what": "因果 running max 退回非因果全序列 amax（A2 的原始缺陷）",
       "tests": {
-        "test_per_channel_scale_is_per_head_channel": {
+        "test_prefix_invariance_future_token_does_not_change_past_values": {
           "returncode": 1,
           "verdict": "FAILED（抓红）",
-          "tail": "1 failed in 1.83s"
+          "tail": "1 failed in 2.10s"
+        },
+        "test_prefix_invariance_other_requests_do_not_change_this_request": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 2.36s"
         }
       },
       "all_expected_tests_caught": true
@@ -38,7 +43,7 @@
         "test_fp16_relative_bound_and_actually_changes_values": {
           "returncode": 1,
           "verdict": "FAILED（抓红）",
-          "tail": "1 failed in 1.72s"
+          "tail": "1 failed in 2.10s"
         }
       },
       "all_expected_tests_caught": true
@@ -50,12 +55,12 @@
         "test_int_roundtrip_error_within_half_scale[int8-127]": {
           "returncode": 1,
           "verdict": "FAILED（抓红）",
-          "tail": "1 failed in 1.81s"
+          "tail": "1 failed in 2.24s"
         },
         "test_int_roundtrip_error_within_half_scale[int4-7]": {
           "returncode": 1,
           "verdict": "FAILED（抓红）",
-          "tail": "1 failed in 1.91s"
+          "tail": "1 failed in 2.20s"
         }
       },
       "all_expected_tests_caught": true
@@ -64,8 +69,9 @@
   "restored_sha256_equal": true,
   "after_restore": {
     "returncode": 0,
-    "tail": "12 passed in 1.68s"
+    "tail": "15 passed in 2.33s"
   },
   "green_after_restore": true,
-  "sha256_after": "1630f4519fa765627e9e52ceab14483aee34d90581031753d76a388564cb7da5"
+  "sha256_after": "c5b10b4fc7a4a3c583e7907a710713c5f8c237adb78be41f0eeb342ad25e0043",
+  "all_caught": true
 }

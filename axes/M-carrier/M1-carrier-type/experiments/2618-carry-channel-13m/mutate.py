@@ -15,6 +15,8 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
+sys.path.insert(0, ROOT)
+from tools.evalkit import mutation                     # noqa: E402
 DA = os.path.join(ROOT, "pathlm", "depth_ar.py")
 TR = os.path.join(ROOT, "train_depth_ar.py")
 LT = os.path.join(ROOT, "tools", "evalkit", "longrange_tasks.py")
@@ -81,7 +83,7 @@ def main():
         mut_digest = sha256_bytes(open(target, "rb").read())
         cmd = [sys.executable, "-m", "pytest", TFILE, "-q", "-k",
                " or ".join(tests)]
-        r = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+        r = mutation.pytest_run(cmd, cwd=ROOT, capture_output=True, text=True,
                            timeout=1800)
         caught = r.returncode != 0
         tail = [ln for ln in r.stdout.strip().splitlines() if ln.strip()][-1:]
