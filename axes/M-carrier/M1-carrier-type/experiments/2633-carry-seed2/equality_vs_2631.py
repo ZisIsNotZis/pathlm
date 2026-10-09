@@ -75,7 +75,8 @@ def _head_sha(rel: str) -> str | None:
     return hashlib.sha256(r.stdout.encode()).hexdigest()
 
 
-def compare(cfg: dict | None = None, with_equivalence: bool = True) -> dict:
+def compare(cfg: dict | None = None, with_equivalence: bool = True,
+            write: bool = True) -> dict:
     """逐项对照；返回报告（同时落盘 `equality_report.json`）。"""
     if cfg is None:
         cfg = json.load(open(os.path.join(HERE, "config.json")))
@@ -99,7 +100,7 @@ def compare(cfg: dict | None = None, with_equivalence: bool = True) -> dict:
     equiv = None
     if with_equivalence and impl_ok:
         import engine_equivalence
-        equiv = engine_equivalence.check()
+        equiv = engine_equivalence.check(write=write)
         impl_ok = impl_ok and equiv["bitwise_equivalent_on_this_experiments_configs"]
     impl_sha = subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"],
                               capture_output=True, text=True).stdout.strip()
@@ -153,9 +154,11 @@ def compare(cfg: dict | None = None, with_equivalence: bool = True) -> dict:
         "verdict": ("reuse_ok" if (impl_ok and not differing and not flag_diff)
                     else "reuse_rejected"),
     }
-    with open(os.path.join(HERE, "equality_report.json"), "w") as f:
-        json.dump(report, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    if write:
+        # `write=False` 供单测使用：测试**不得**改写已入账的产物（只读复核）
+        with open(os.path.join(HERE, "equality_report.json"), "w") as f:
+            json.dump(report, f, indent=2, ensure_ascii=False)
+            f.write("\n")
     return report
 
 

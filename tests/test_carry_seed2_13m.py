@@ -116,7 +116,7 @@ def test_judge_seed3_reuses_effect_stable_semantics():
 # ---------------- ③ 复用证据（SCHEMA §9） ----------------
 
 def test_reuse_equality_report_verdict_ok():
-    rep = eqrep.compare(CFG)
+    rep = eqrep.compare(CFG, write=False)
     assert rep["implementation_identical"] is True
     assert rep["differing_fields"] == []
     assert rep["train_recipe_differing_flags"] == []
@@ -133,7 +133,7 @@ def test_reuse_equality_rejects_recipe_change():
     bad = copy.deepcopy(CFG)
     bad["train_recipe_seed2"]["cmd"] = bad["train_recipe_seed2"]["cmd"].replace(
         "--steps 12000", "--steps 6000")
-    rep = eqrep.compare(bad, with_equivalence=False)
+    rep = eqrep.compare(bad, with_equivalence=False, write=False)
     assert rep["verdict"] == "reuse_rejected"
     assert "--steps" in rep["train_recipe_differing_flags"]
 
@@ -145,7 +145,7 @@ def test_engine_equivalence_per_rule_report_is_complete():
     该档的复用没有实现层证据（本测试会红）。
     """
     import engine_equivalence as ee
-    r = ee.check()
+    r = ee.check(write=False)
     assert set(r["per_rule"]) == {"none", "plain", "delta"}
     for rule, v in r["per_rule"].items():
         assert v["n_params_same"], rule
@@ -160,7 +160,7 @@ def test_engine_files_unchanged_since_2631_run():
     工作树允许被并行线改动（`working_tree_differs_from_head`），但那种情况下必须由
     `engine_equivalence` 在本实验的三档配置上证明语义等价（逐位 logits）。
     """
-    rep = eqrep.compare(CFG)
+    rep = eqrep.compare(CFG, write=False)
     for rel, row in rep["implementation"].items():
         assert row["head_identical_to_2631"], f"{rel} 在 2631 之后被改过 ⇒ §9 复用前提失效"
     for rel in rep["working_tree_drift_files"]:

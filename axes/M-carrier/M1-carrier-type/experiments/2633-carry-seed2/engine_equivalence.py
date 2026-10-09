@@ -58,7 +58,11 @@ def _extract_head_package(dst: str) -> str:
     return pkg
 
 
-def check() -> dict:
+def check(write: bool = True) -> dict:
+    """跑等价测试；`write=False` 时不落盘（单测用，避免测试改写已入账产物）。
+
+    `out` 键名为 "configs" 的历史拼写保留（它就是 `RULES` 的三档）。
+    """
     out: dict = {"configs": [None if r == "none" else r for r in RULES],
                  "probe_seed": PROBE_SEED, "per_rule": {}}
     with tempfile.TemporaryDirectory() as tmp:
@@ -109,16 +113,17 @@ def check() -> dict:
 
 
 def main() -> int:
-    r = check()
+    r = check(write=True)
     for rule, v in r["per_rule"].items():
         print(f"{rule:6s} params {v['n_params_head']}/{v['n_params_working_tree']} "
               f"bitwise_params={v['params_bitwise_same_at_same_seed']} "
               f"max|Δlogit|={v['max_abs_logit_diff_same_weights']:.3e}")
     print("等价:", r["bitwise_equivalent_on_this_experiments_configs"])
-    out = os.path.join(HERE, "engine_equivalence.json")
-    with open(out, "w") as f:
-        json.dump(r, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    if write:
+        out = os.path.join(HERE, "engine_equivalence.json")
+        with open(out, "w") as f:
+            json.dump(r, f, indent=2, ensure_ascii=False)
+            f.write("\n")
     return 0 if r["bitwise_equivalent_on_this_experiments_configs"] else 1
 
 
