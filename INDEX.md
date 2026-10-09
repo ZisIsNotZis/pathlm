@@ -15,7 +15,7 @@
 | [`A2-full-attention`](axes/A-mixing/A2-full-attention/README.md) · 全注意力基线 | ✅ judged | 基底成立，外部锚在公开数字范围内。 |
 | [`A3-window-anchor`](axes/A-mixing/A3-window-anchor/README.md) · 窗口 / 锚点 / sink | ⬜ todo | **已有**：丢前缀的代价**由距离与预算共同决定、并不便宜**（只保留最近 32 个 = +0.212 bpc）；锚点通道是真产物（76.8→93.3%）；检索腿显示「低损伤 ≠ 保住了」。**… |
 | [`A4-soft-distance-penalty`](axes/A-mixing/A4-soft-distance-penalty/README.md) · 软距离惩罚（ALiBi 式加性偏置） | ⬜ todo | **已有**：唯一**未观察到超带损伤**的 clean bpc 元素（−0.0068，落在 Δ<0.014 不可排序带内），但不创造保留——它改变使用率，不改变依赖是否为零。**尚缺**：per… |
-| [`A6-mixing-operator`](axes/A-mixing/A6-mixing-operator/README.md) · 混合算子 | ⬜ todo | **已有**：内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）。**尚缺… |
+| [`A6-mixing-operator`](axes/A-mixing/A6-mixing-operator/README.md) · 混合算子 | ⬜ todo | **已有**：①内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**（质量越删越差、成本实测上升 2.2×）；②**长 T 四点已统一到同一口径**（T=256/512/1024/20… |
 | [`A8-positional-semantics`](axes/A-mixing/A8-positional-semantics/README.md) · 位置语义 | ⬜ todo | **已有**：绝对位置嵌入是硬上界（解码总长 ≤ seq_len）、相对偏置族（dist_pen −0.007，带内）已侧证。**尚缺**：RoPE、插值/外推（YaRN/NTK）、无位置（序无关… |
 | [`A9-old-info-retention`](axes/A-mixing/A9-old-info-retention/README.md) · 旧信息处理策略 | ⬜ todo | **已有**：保留 / 硬丢 / 锚豁免已测（硬丢 +0.058~0.121；锚豁免使 needle 76.8→93.3%）。**尚缺**：压缩（summary 槽）、递归状态（SSM/RNN）、… |
 | [`A10-compression-trigger`](axes/A-mixing/A10-compression-trigger/README.md) · 压缩触发与优先级 | ⬜ todo | **已有**：「按访问频率优先压（LRU）」在同等删除预算下没有可见收益——字面优势经对账后归因于「恰好删掉的可见性对数更少」，重对齐后消失；压缩优先级这一维度在 13M/256 快照上未测出信息… |

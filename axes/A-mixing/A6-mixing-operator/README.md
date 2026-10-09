@@ -8,9 +8,9 @@ judge: "bpc + 长上下文吞吐 + 内存（三段：质量 / 算力 / 内存）
 cost: "13M 单臂 ~25–60 min（内容 top-k 实测步时是全注意力的 2.2×，预算须按实测估）"
 tax: "k=32 Δ = **−0.0166**（越 0.014 界，配对 20/20 批同向，t=−7.7）；k=64 Δ = **−0.0095**（带内但配对可检出，16/20，t=−4.1）；基线 full 1.5304（同配置历史 1.5287 / 重跑 1.5279）；剂量单调（k 越小越差）"
 benefit: "理论：保留键数 −87.5%/−75%、注意力 FLOPs −43.75%/−37.5%（QKᵀ 因内容选择不可省）、整模型每 token FLOPs −6.25%/−5.36%、**KV 缓存 −0%**（结构性）"
-verdict: "**已有**：内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）。**尚缺**：真稀疏核 + T≥2048 + 同 step + n≥2 下内容稀疏是否回本（原 A5 位置稀疏/膨胀作本格同预算对照）（待补做）。"
+verdict: "**已有**：①内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**（质量越删越差、成本实测上升 2.2×）；②**长 T 四点已统一到同一口径**（T=256/512/1024/2048 全部 **S=6000 步**）：窗口 Δ 四点全落 0.014 带内（−0.0035/−0.0045/+0.0093/+0.0042），而同 token(49.152M) 副口径短 T 越界（−0.0158/−0.0151）⇒ 「窗口代价随 T 消失」为**口径敏感、不稳健**；本格自测 seed 噪声 0.0030–**0.0158**（> 0.014 带）⇒ 跨 T 排序不成立。③四腿裁决：解析 FLOPs 省（注意力 −50%、整层 −7.1%…−28.6%）、**实测墙钟不省、峰值显存更费（1.17→3.31×，随 T 恶化）**。④**线性注意力质量腿已补**（T=256/6000 步）：原实装跑完但数值带伤（den 触 clamp、gnorm_max 899385、25 跳步），bpc 2.160 vs full 1.946（Δ=−0.214）；加 QK-Norm 稳定化后数值健康（gnorm 7.51、den 5.97）但质量更差（Δ=−0.624）。**尚缺**：真稀疏核 + T≥2048 + 同 step + n≥2 下内容稀疏是否回本（原 A5 位置稀疏/膨胀作本格同预算对照）（待补做）。"
 deps: []
-evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/analysis.md @3597039", "axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m/analysis.md @409f4f1", "axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/analysis.md @88c0e92"]
+evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/analysis.md @3597039", "axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m/analysis.md @409f4f1", "axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/analysis.md @88c0e92", "axes/A-mixing/A6-mixing-operator/experiments/2626-longT-clean/analysis.md @e663eac", "axes/A-mixing/A6-mixing-operator/experiments/2629-longT-2048-matched/analysis.md @e663eac", "axes/A-mixing/A6-mixing-operator/experiments/2636-longT-unified/analysis.md @e663eac", "axes/A-mixing/A6-mixing-operator/experiments/2637-linear-attn-quality/analysis.md @e663eac"]
 ---
 
 <!-- AUTO:begin -->
@@ -19,7 +19,7 @@ evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-1
 
 > 轴：**A 序列混合机制** ｜ 状态：**⬜ todo**
 
-> **判读**：**已有**：内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）。**尚缺**：真稀疏核 + T≥2048 + 同 step + n≥2 下内容稀疏是否回本（原 A5 位置稀疏/膨胀作本格同预算对照）（待补做）。
+> **判读**：**已有**：①内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**（质量越删越差、成本实测上升 2.2×）；②**长 T 四点已统一到同一口径**（T=256/512/1024/2048 全部 **S=6000 步**）：窗口 Δ 四点全落 0.014 带内（−0.0035/−0.0045/+0.0093/+0.0042），而同 token(49.152M) 副口径短 T 越界（−0.0158/−0.0151）⇒ 「窗口代价随 T 消失」为**口径敏感、不稳健**；本格自测 seed 噪声 0.0030–**0.0158**（> 0.014 带）⇒ 跨 T 排序不成立。③四腿裁决：解析 FLOPs 省（注意力 −50%、整层 −7.1%…−28.6%）、**实测墙钟不省、峰值显存更费（1.17→3.31×，随 T 恶化）**。④**线性注意力质量腿已补**（T=256/6000 步）：原实装跑完但数值带伤（den 触 clamp、gnorm_max 899385、25 跳步），bpc 2.160 vs full 1.946（Δ=−0.214）；加 QK-Norm 稳定化后数值健康（gnorm 7.51、den 5.97）但质量更差（Δ=−0.624）。**尚缺**：真稀疏核 + T≥2048 + 同 step + n≥2 下内容稀疏是否回本（原 A5 位置稀疏/膨胀作本格同预算对照）（待补做）。
 
 ## 1. 命题
 
@@ -50,7 +50,7 @@ evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-1
 
 - **税**：k=32 Δ = **−0.0166**（越 0.014 界，配对 20/20 批同向，t=−7.7）；k=64 Δ = **−0.0095**（带内但配对可检出，16/20，t=−4.1）；基线 full 1.5304（同配置历史 1.5287 / 重跑 1.5279）；剂量单调（k 越小越差）
 - **收益**：理论：保留键数 −87.5%/−75%、注意力 FLOPs −43.75%/−37.5%（QKᵀ 因内容选择不可省）、整模型每 token FLOPs −6.25%/−5.36%、**KV 缓存 −0%**（结构性）
-- **判读**：**已有**：内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）。**尚缺**：真稀疏核 + T≥2048 + 同 step + n≥2 下内容稀疏是否回本（原 A5 位置稀疏/膨胀作本格同预算对照）（待补做）。
+- **判读**：**已有**：①内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**（质量越删越差、成本实测上升 2.2×）；②**长 T 四点已统一到同一口径**（T=256/512/1024/2048 全部 **S=6000 步**）：窗口 Δ 四点全落 0.014 带内（−0.0035/−0.0045/+0.0093/+0.0042），而同 token(49.152M) 副口径短 T 越界（−0.0158/−0.0151）⇒ 「窗口代价随 T 消失」为**口径敏感、不稳健**；本格自测 seed 噪声 0.0030–**0.0158**（> 0.014 带）⇒ 跨 T 排序不成立。③四腿裁决：解析 FLOPs 省（注意力 −50%、整层 −7.1%…−28.6%）、**实测墙钟不省、峰值显存更费（1.17→3.31×，随 T 恶化）**。④**线性注意力质量腿已补**（T=256/6000 步）：原实装跑完但数值带伤（den 触 clamp、gnorm_max 899385、25 跳步），bpc 2.160 vs full 1.946（Δ=−0.214）；加 QK-Norm 稳定化后数值健康（gnorm 7.51、den 5.97）但质量更差（Δ=−0.624）。**尚缺**：真稀疏核 + T≥2048 + 同 step + n≥2 下内容稀疏是否回本（原 A5 位置稀疏/膨胀作本格同预算对照）（待补做）。
 
 ## 5. 失败路径与原因
 
@@ -66,6 +66,8 @@ evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-1
 10. **长 T 首探（ticket 39-X3，T=256→512，扩绝对位置表 +0.94% 参数）**：**窗口算子在 T=512 首次进入「不亏」带**（Δ256 = −0.014836 带宽判「亏」、Δ512 = −0.008730 判「不亏」⇒ 记交叉点首个观测点）；但 raw Δ 两点**同号（都略负）**，两种读法都报、主口径=带宽分类；**n=1 单点、不外推**（§17.11/§17.16）。注意力占比**实测** 5.41%@256 → 10.78%@512（+1.99×）与修正后公式 14.29%→25.00%（+1.75×）趋势一致；峰值显存 2.697 GiB；**墙钟测不出方向**（两轮相反）且窗口走稠密 bool 掩码 ⇒ 理论省 12.5% 等效 FLOPs **未兑现**；§19 合成腿四臂全在 chance（enwik8 权重在分布外任务上不会回忆）⇒ **空结果、不能区分两臂**，如实报并列下一步
 11. **线性注意力（ticket 33-R）：干预在当前实装下不可行**——三次尝试分别在 step 800/~500/400 停摆（faulthandler 栈落在 `loss.backward()`；停摆前 `den_min` 触 clamp 下限 1e-6、`phi_min` 触 0、gnorm 尖峰 5065.9 vs 基线 0.4–0.8）；5 次诊断二分（chunk 32/64/256 × eps × expandable_segments）全部跑完 ⇒ **非确定性运行时停摆**，不是确定性 bug。执行者拒绝削步数/换算子救场，如实记不可行
 12. 线性注意力的**成本交叉点已实测**（理论与实测并报）：理论 MACs/token/层 131072 → 49664（分块 −62.1%）/ 16896（流式 −87.1%）、推理缓存 T=256 时 −93.6%；**实测整模型 ms/step 比值 2.58@256 → 2.35@512 → 1.74@1024 → 1.53@2048（2048 内未回本）**；注意力子层孤岛在 T=1024 首次反超（0.96×）、T=2048 为 0.68×；峰值显存 1.41–1.47×（涨）
+13. **长 T 四点统一到同 step（ticket 52-A6U，`2636-longT-unified`）**：T=256/512 新跑 full/window 各一臂 + 四对 seed1（八臂全齐），T=1024/2048 只读复用 2626/2629 的**同 step(6000)** 点。同 step 四点 Δnative = **−0.003542/−0.004528/+0.009264/+0.004186**（**全落 0.014 带内**）；同 token(49.152M) 副口径 = −0.015752/−0.015101/+0.009264/+0.004361（短 T 越界）⇒ **「窗口代价随 T 消失」是口径敏感的、非稳健现象**（短 T 在同 token 下多训 4× 步数、在同 step 下欠训练，两侧都是训练产物）。**本格 seed 噪声自测**（四对，唯一差别 seed）：单臂极差 0.0030–**0.015791**（T=256 全因果）**> 0.014 带**；Δ 跨 seed 自身摆动 0.0062–0.0095（T=256 Δ −0.0035→−0.0130；T=512 −0.0045→+0.0017 **变号**）⇒ 四点 Δ 全落本格噪声内、**跨 T 排序不成立**。四腿（同会话两轮）：解析 FLOPs 省（注意力 −50%、整层 −7.1%/−12.5%/−20.0%/−28.6%）；**实测墙钟不省**（r_time 两轮无一致 <1；T=2048 1.273/1.799）；**峰值显存更费且随 T 恶化**（r_mem 1.169/1.487/2.036/3.305，T=2048 窗口臂 5.58 GiB 越 5GB 礼貌线、按 §20.2 记账）。稳定性前置通过（八臂 gnorm_max 6.8–7.7、跳步 0）。机制属**位置窗口（A3 族）**，在此作 A6 的同预算成本基线。
+14. **线性注意力质量腿已补（ticket 52-A6L，`2637-linear-attn-quality`）**：原实装（φ=elu+1 + 1e-6 clamp）在 T=256/bs8/6000 步**跑完**（2616 的 `loss.backward()` 停摆**本轮不复现** ⇒ 「当前实装下不可行」应改判为**非确定性运行时停摆 + 数值脆弱**），但数值带伤：`den_min` 从 step 800 起恒贴 clamp 1e-6、`phi_min` 触 0、`gnorm_max` **899385**、**25 次跳步**；clean bpc **2.160450** vs full **1.946343**（Δ=−0.214107，≈15× 带）。**稳定化分母**（QK-Norm 逐头 L2 归一，零参数、把 φ 输入钉在有界区间）彻底消除数值塌陷：`gnorm_max` 899385→**7.51**、跳步 25→0、`den_min` 1e-6→**5.97**、`phi_min` 0→0.0049；但质量**更差**（2.585719 vs full-qk 1.961525，Δ=−0.624194；QK-Norm 本身把 full 也做差 +0.0152）。成本 2.78× 慢、峰值显存 1.27×（T=256）。限制：无 QK-Norm 臂带伤、单点、seed n=1。
 
 ## 6. 判据与判决实验设计
 
@@ -90,6 +92,10 @@ evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-1
 1. axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/analysis.md @3597039
 2. axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m/analysis.md @409f4f1
 3. axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/analysis.md @88c0e92
+4. axes/A-mixing/A6-mixing-operator/experiments/2626-longT-clean/analysis.md @e663eac
+5. axes/A-mixing/A6-mixing-operator/experiments/2629-longT-2048-matched/analysis.md @e663eac
+6. axes/A-mixing/A6-mixing-operator/experiments/2636-longT-unified/analysis.md @e663eac
+7. axes/A-mixing/A6-mixing-operator/experiments/2637-linear-attn-quality/analysis.md @e663eac
 
 ## 备注
 
