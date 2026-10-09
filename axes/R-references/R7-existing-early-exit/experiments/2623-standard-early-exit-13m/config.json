@@ -119,19 +119,20 @@
     "r7-stock-s0": 6.79,
     "r7-c1-legacy-s0": 10.02,
     "r7-c1-fair-s0": 10.36,
-    "r7-c1-fair-l1-s0": 10.12,
+    "r7-c1-fair-l1-s0": 9.62,
     "r7-ls-fair-s0": 9.73,
     "r7-ls-legacy-s0": 8.58,
     "r7-mod-s0": 19.16,
-    "r7-c1-fair-share-s0": 10.4,
+    "r7-c1-fair-share-s0": 9.76,
     "battery+wall(interleaved)+insertions": 16.0,
-    "total_incl_discarded": 113.31,
+    "total_incl_discarded": 112.17,
     "budget": 120,
     "discarded_note": "两笔被丢弃的 GPU 时间（单位=分钟）：① 首版规格事故的 d=256/L=4 玩具 run 269 s（无护栏、rc=0，产物已删）；② 修 SPEC 后在飞的旧进程又跑同款 L=4 280 s（被规格自检判 rc=3）。",
     "discarded_spec_accident_L4_run_min": 4.483333333333333,
     "discarded_spec_accident_second_run_min": 4.666666666666667,
     "units_min": "全部键单位=分钟（含 `discarded_*_min`）",
-    "training_arms_sum_min": 85.16
+    "note": "训练臂墙钟 = `results.json::battery.<arm>.train_wall_minutes`（训练循环口径）；`step_time_probe` / `battery+wall(interleaved)+insertions` / `discarded_*` 见 SCHEMA §20；`total_incl_discarded` = 本表各项之和。驱动脚本的整进程墙钟见 `run_log.txt` 的 `[arm] … wall=`。",
+    "training_arms_sum_min": 84.02
   },
   "peak_gpu_mem_mb": {
     "train_max": 1339.9,
@@ -155,7 +156,7 @@
     "contention": "同卡另有两条外部 llama-server（≈8 GB）与 2–3 条自研线；本波多次排队 10–60 min"
   },
   "lock_ledger": {
-    "note": "机器可读锁台账（SCHEMA §20.1）：每次取锁 arm/开始/结束/持锁分钟由驱动脚本 `run_arms*.sh` 的 `[arm] ... wall=` 行与 `run_log.txt` 派生；本表是汇总，原始行见 `run_log.txt`。",
+    "note": "机器可读台账（SCHEMA §20.1）。`arms` = 各臂**训练循环墙钟**（`results.json::battery.<arm>.train_wall_minutes` = 各臂 run 目录 `results.json::wall_minutes`）；驱动脚本 `run_arms*.sh` 打印的**整进程**墙钟（含进程启停）见 `run_log.txt` 的 `[arm] … wall=` 行，逐臂与此不同。`waiting_observed_min` = 排队等待观测。",
     "path": "/tmp/pathlm_gpu.lock",
     "policy": "按臂释放 + 臂间 ≥60 s；等不到锁就排队（15 s 轮询），不杀他人进程",
     "arms": {
@@ -164,9 +165,9 @@
       "r7-c1-fair-s0": 10.36,
       "r7-ls-fair-s0": 9.73,
       "r7-mod-s0": 19.16,
-      "r7-c1-fair-l1-s0": 10.12,
+      "r7-c1-fair-l1-s0": 9.62,
       "r7-ls-legacy-s0": 8.58,
-      "r7-c1-fair-share-s0": 10.4
+      "r7-c1-fair-share-s0": 9.76
     },
     "waiting_observed_min": {
       "longest_single_wait": "≈60（另一条线整程持锁）",

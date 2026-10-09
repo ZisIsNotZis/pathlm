@@ -16,7 +16,8 @@
    `step_time.json` 整份与 `config.json::step_time_probe` 子树已剔除**——探针的峰值显存
    `1205.0` 曾掩蔽 12k 步实测的 `1203.5`（探针的**计时** 3.0 min 改由派生列入，见下）；
 2. **派生**：按正文声明的算式重算（有向差值 / 交互项 / 比值 / 均值 / SE 公式 / 参数量差 /
-   GPU 分钟求和 / 丢弃 run 的秒数换算）；测量值一律**从 evidence 派生**，不写进 `ANCHORS`；
+   GPU 分钟求和 / 丢弃 run 的秒数换算 / `run_log.txt` 的整进程墙钟秒↔分）；测量值一律
+   **从 evidence 派生**，不写进 `ANCHORS`；
 3. `ANCHORS`：外部可核的历史入账值（23d/23c/2621 等）与仓内口径常数（0.0138 / 0.014 等）。
 
 数值比较按 **token 自身的小数位数**四舍五入；千分位逗号先合并。用法：
@@ -166,6 +167,11 @@ def derived_values() -> list[float]:
             round(used["discarded_spec_accident_L4_run_min"], 1),          # 4.5 min
             round(used["discarded_spec_accident_L4_run_min"] * 60),        # 269 s
             round(used["discarded_spec_accident_second_run_min"] * 60)]     # 280 s
+    # 驱动脚本的**整进程**墙钟（`run_log.txt` 的 `[arm] … wall=<s>s`）：秒与分两个单位
+    for m in re.finditer(r"\[arm\] \S+ rc=\d+ wall=(\d+)s",
+                         open(os.path.join(HERE, "run_log.txt")).read()):
+        sec = int(m.group(1))
+        out += [sec, sec / 60]
     # exit4 / calm 的层×位置与一致率（正文表格）
     for k in arms:
         dec = b[arms[k]].get("decode") or {}

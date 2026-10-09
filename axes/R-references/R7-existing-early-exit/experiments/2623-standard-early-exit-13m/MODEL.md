@@ -11,10 +11,12 @@ checkpoint 落在 `.scratch/52-r7-early-exit/evidence/<run>/model.pt`（日志�
 | `r7-stock-s0` | `06aba87d88c451a5ab1afea995917a1377c00e5c364a8f02fb15440f65497177` | 26.59 | 6,962,688 | 256/8/8/256/4 dense=True gate=True aux=renorm mod=0 | 12000×bs32×seq256, seed 0 | 6.79 | 935.3 |
 | `r7-c1-legacy-s0` | `77e149f5f74fb0126221c1b88f9988d7715b232531c82d4aff4c078986ad15d0` | 26.59 | 6,962,688 | 256/8/8/256/4 dense=False gate=True aux=renorm mod=0 | 同上 | 10.02 | 1339.9 |
 | `r7-c1-fair-s0` | `f772e5836628538548f0c3daa581da299432d8b255c04c1c0c0bb948995e1589` | 26.59 | 6,962,688 | 256/8/8/256/4 dense=False gate=True aux=additive(λ=0.1) | 同上 | 10.36 | 1339.9 |
-| `r7-c1-fair-l1-s0` | `aced9d3d23c871ff896c6c93c832ade567b9f757da403dea6afc09f8de8f0dcf` | 26.59 | 6,962,688 | 256/8/8/256/4 dense=False gate=True aux=additive(λ=1.0) | 同上 | 10.12 | 1339.9 |
+| `r7-c1-fair-l1-s0` | `aced9d3d23c871ff896c6c93c832ade567b9f757da403dea6afc09f8de8f0dcf` | 26.59 | 6,962,688 | 256/8/8/256/4 dense=False gate=True aux=additive(λ=1.0) | 同上 | 9.62 | 1339.9 |
 | `r7-ls-fair-s0` | `818a1186ae9d00ae57156d95cd7dfdb865d237c01b2ba263f31ed3ab4ac230ec` | 24.58 | 6,436,352 | 256/8/8/256/4 dense=False **gate=False** aux=additive(λ=0.1) | 同上 | 9.73 | 1203.5 |
 | `r7-ls-legacy-s0` | `2f3fefd4b37899afa67c585215176553870621b2777746c040c6aca6fa7e7388` | 24.58 | 6,436,352 | 256/8/8/256/4 dense=False **gate=False** aux=renorm | 同上 | 8.58 | 1203.5 |
 | `r7-mod-s0` | `3547296506874ac96bfbb6f1f6151328c007483858a4755fd9d271d0f82f4274` | 52.75 | 13,811,216 | 256/**16**/8/256/4 dense=True **mod_ratio=0.5**（路由器 4112 参数） | 同上 | 19.16 | 1330.4 |
+
+（「墙钟 min」= **训练循环墙钟** `results.json::wall_minutes`，与 `analysis.md` §2 同源；驱动脚本的**整进程**墙钟见 `run_log.txt` 的 `[arm] … wall=` 行，逐臂与本列不同。）
 
 生成命令（逐字）：
 
@@ -67,10 +69,12 @@ python3 axes/R-references/R7-existing-early-exit/experiments/2623-standard-early
 3. **回归接单登记（P0-1，已闭环）**：`tests/test_carry_seed2_13m.py::test_engine_files_unchanged_since_2631_run`
    （按 `pathlm/depth_ar.py` 的 sha256 断言引擎未变的 §9 复用前提）曾由本波改动打红。
    **M1 线已接单**并把该断言改成**行为级等价**口径（`--dense` 三档配置逐位 logits 等价）。
-   本轮全量 `CUDA_VISIBLE_DEVICES="" python3 -m pytest tests/ -q`：
+   本轮全量套件实跑：
    修复后：本波引起的两条引擎哈希断言**已转绿**；M1 线其后已把其剩余一条在飞测试也修好并
-   **提交**（`4e445a5`）⇒ 当前 `tests/test_carry_seed2_13m.py` 单文件 **18 passed**、
-   全量 `CUDA_VISIBLE_DEVICES="" python3 -m pytest tests/ -q` = **820 passed / 0 failed**。
+   **提交**（`4e445a5`）⇒ 当前 `tests/test_carry_seed2_13m.py` 单文件 **23 passed**、
+   全量 `python3 -m pytest tests/ -q` = **826 passed / 0 failed**（无卡口径
+   `CUDA_VISIBLE_DEVICES="" python3 -m pytest tests/ -q` = **825 passed**；按最后一次
+   实跑核数，当前工作树含 M1 线在飞改动）。
    **归属：修复由 M1 线提交，本波未改其文件**；共享套件当前全绿。
 4. 本波与 `axes/M-carrier/**`（2633/2634/2635）、`axes/A-mixing/**`（2636/2637）、
    `axes/H-horizon/H3-composition/**` 并行运行；本线只写自己的路径，未改其目录。
