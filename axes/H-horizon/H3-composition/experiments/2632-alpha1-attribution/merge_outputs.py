@@ -30,9 +30,13 @@ import diag  # noqa: E402  (reuse load_ckpt / cluster_bootstrap / _repo_relative
 
 
 def _rel(p: str) -> str:
-    """仓库相对路径（产物跨 checkout 逐字节一致的前提；越界则原样保留）。"""
-    ap = os.path.abspath(p)
-    rp = os.path.relpath(ap, diag.ROOT)
+    """仓库相对路径（**幂等**：输入可为绝对路径或已是仓库相对路径）。
+
+    产物跨 checkout 逐字节一致的前提。注意：不能直接对已相对路径调 `abspath()`——
+    那会以 cwd（=2632 目录）为基准，把仓库相对路径双重拼接。
+    """
+    ap = p if os.path.isabs(p) else os.path.join(diag.ROOT, p)
+    rp = os.path.relpath(os.path.normpath(ap), diag.ROOT)
     return ap if rp.startswith("..") else rp
 
 #: 早先 `probes.py` 增量侧 off-by-one 时记录的一对**不相等**值（4 offsets, n=256）。
