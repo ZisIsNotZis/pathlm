@@ -6,6 +6,9 @@
 
 映射表同时承担「完备性检查」：primary/also 里的格子 id 不存在 → 直接报错。
 
+**只负责初始回填**：若目标实验目录已被提升为真实实验（含 `analysis.md`），
+该目录自己拥有 `README.md`（契约），映射表不再生成/校验它。
+
 用法：
     python3 tools/backfill_legacy.py [--check]
 """
@@ -67,6 +70,9 @@ def main() -> int:
         if errors:
             continue
         path = ROOT / "axes" / gdirs[e["primary"]] / e["primary"] / "experiments" / e["name"] / "README.md"
+        if (path.parent / "analysis.md").exists():
+            # 已提升为真实实验目录：目录拥有自己的契约 README，映射表只做初始回填
+            continue
         content = render(e, gdirs[e["primary"]])
         if path.exists() and path.read_text(encoding="utf-8") == content:
             continue
