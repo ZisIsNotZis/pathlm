@@ -6,7 +6,9 @@
 
 命名：`YYMM-<干预>-<规模>-<引擎>`，例：`2601-summary-slot-13m-depthar`。
 
-（本格暂无实验目录）
+| 实验 | 来源 |
+|---|---|
+| [`2623-standard-early-exit-13m`](2623-standard-early-exit-13m/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 
