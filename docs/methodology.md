@@ -38,12 +38,13 @@
 | FLOPs（等价 width-1） | 计算量口径 | spec 每 token `R=(1+γ)/(1+τ)` ≈ 1.07–1.27 |
 
 **双货币必须双报**：同一机制在两口径下结论会分歧（spec：forwards 口径占优
-〔2.4 tok/fwd〕、FLOPs 与墙钟口径都亏或持平）。只报一种货币 = 不可比。
+〔2.4 tok/fwd〕、FLOPs 口径**净亏**〔R>1〕、墙钟口径随规模从 13M 1.68–1.90× 塌到 @100M 约 1.0–1.35×）。
+只报一种货币 = 不可比。
 
 **算力（FLOPs）口径的兑换率必须用解析量，不得用墙钟前向比**：一次前向送出
 `1+γ` 个位置、产出 `1+τ` 个 token ⇒ 每 token 算力 `R=(1+γ)/(1+τ)`（以 native
-逐 token 的 1 次 width-1 前向为单位）。`c₃`（实测 width-(1+γ)/width-1 **墙钟**比）
-只描述墙钟，含核回退/启动开销/外部占用，代入算力会得到随环境漂移的假结论。
+逐 token 的 1 次 width-1 前向为单位）。`c_wall`（实测 width-(1+γ)/width-1 **墙钟**比，
+与宽度 `1+γ` 配对）只描述墙钟，含核回退/启动开销/外部占用，代入算力会得到随环境漂移的假结论。
 
 **记账货币清单（原研究格 `G2-currency` 的纪律，非可证伪命题）**：
 
@@ -54,8 +55,8 @@
   （外部占用下不可稳定复现）；深度自适应 C 配方按 FLOPs 口径 122.8 vs 112.9 tok/s。
   证据：`.scratch/15-slider-rung3/evidence`、`.scratch/20-spec-scale/evidence`、`.scratch/25-tax-attribution/evidence`、
   `axes/H-horizon/H1-outputs-per-pass/experiments/2520-spec-at-scale/analysis.md @c3cf43c`。
-- 反例（不得犯）：「逐位相等」只在 13M 成立，@100M fp 平局会翻转（约 1/400 token）⇒
-  规模性质不得当跨规模结论。
+- 反例（不得犯）：「逐位相等」只在 13M 成立，@100M fp 平局会翻转（enwik8 k=2 首错位 169、
+  级联 68 token、gap 0.0079，两轮运行复现）⇒ 规模性质不得当跨规模结论。
 
 ## 4. 对照必须同引擎、同配方、同 token 预算
 

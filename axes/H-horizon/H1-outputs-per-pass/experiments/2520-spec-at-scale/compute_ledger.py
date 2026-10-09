@@ -6,10 +6,13 @@
     τ = 每次前向平均接受位数 = tokens_per_forward − 1
     R = (1+γ)/(1+τ) = (1+γ) / tokens_per_forward        （native = 1.0）
 
-旧判读把**实测 width-(1+γ)/width-1 墙钟比** `c₃` 当成了算力比，写出
-`c₃/(tokens_per_forward)`；`c₃` 在 13M 是 1.28（launch-bound），在 100M 是
-5.28（微基准，疑被核回退/启动开销污染）——两者都不是算力。本脚本并报
-`R`（解析算力）、`c₃/(tokens_per_forward)`（旧口径）、与墙钟 speedup，以量化背离。
+旧判读把**实测 width-(1+γ)/width-1 墙钟比** `c_wall` 当成了算力比，写出
+`c_wall/(tokens_per_forward)`。`c_wall` 必须与宽度配对（γ 草稿 ⇒ 宽度 1+γ：
+k=1 用 `w2_vs_w1`、k=2 用 `w3_vs_w1`），且它含核回退/启动开销/外部占用
+——都不是算力。可追溯实测：13M B3 `1.283`（`.scratch/13-four-experiments/evidence/mtp3/spec_speed.json`）、
+100M INT3 `5.276`（`.scratch/20-spec-scale/evidence/spec_speed.json`）、
+100M 重跑 `2.439`（本目录 `results.json:micro.w3_vs_w1`）。本脚本并报
+`R`（解析算力）、`c_wall/(tokens_per_forward)`（旧口径）、与墙钟 speedup，以量化背离。
 
 输入（只读）：见 SOURCES。输出：`ledger.json`。
 用法：python3 compute_ledger.py
@@ -67,7 +70,6 @@ def rows_from(path: str) -> list[dict]:
     out: list[dict] = []
     for ck, entry in blob.items():
         micro = entry.get("micro") or {}
-        c3 = micro.get("w3_vs_w1")
         for key, r in entry.items():
             if "_k" not in key or not isinstance(r, dict) or "tokens_per_forward" not in r:
                 continue
@@ -82,7 +84,9 @@ def rows_from(path: str) -> list[dict]:
                 speed = r["speedup_ratio_of_best"]
             else:
                 speed = None
-            led = compute_ledger(gamma, tk, speed, c3)
+            # 墙钟前向比必须与宽度配对：γ 草稿 ⇒ 宽度 1+γ（k=1→w2/w1、k=2→w3/w1）
+            c_wall = micro.get(f"w{1 + gamma}_vs_w1")
+            led = compute_ledger(gamma, tk, speed, c_wall)
             row = {
                 "checkpoint": os.path.basename(ck.rstrip("/")),
                 "prompt": src,
@@ -92,8 +96,8 @@ def rows_from(path: str) -> list[dict]:
                 "per_token_compute_ratio_R": led["per_token_compute_ratio__analytic"],
                 "R_verdict": led["verdict"],
                 "wall_speedup": None if speed is None else round(speed, 3),
-                "c3_wall_forward_ratio": c3,
-                "old_ledger_c3_over_tokfwd": led.get(
+                "c_wall_forward_ratio": c_wall,
+                "old_ledger_cwall_over_tokfwd": led.get(
                     "old_wallclock_ledger__c_wall_over_tokfwd"),
             }
             if r.get("speedup_reps"):
@@ -117,7 +121,7 @@ def main() -> None:
                 all_rows.append(r)
 
     hdr = f"{'source_label':22} {'prompt':8} {'k':>2} {'tok/fwd':>8} {'tau':>7} " \
-          f"{'R=(1+k)/fwd':>12} {'verdict':>7} {'wall':>7} {'c3':>6} {'old=c3/fwd':>11}"
+          f"{'R=(1+k)/fwd':>12} {'verdict':>7} {'wall':>7} {'c_wall':>7} {'old=c_wall/fwd':>14}"
     print(hdr)
     print("-" * len(hdr))
     for r in all_rows:
@@ -125,9 +129,9 @@ def main() -> None:
               f"{r['k_drafts']:>2} {r['tokens_per_forward']:>8.4f} "
               f"{r['tau_accepted']:>7.4f} {r['per_token_compute_ratio_R']:>12.4f} "
               f"{r['R_verdict']:>7} "
-              f"{('%.3f' % r['wall_speedup']) if r['wall_speedup'] else '—':>7} "
-              f"{('%.3f' % r['c3_wall_forward_ratio']) if r['c3_wall_forward_ratio'] else '—':>6} "
-              f"{('%.3f' % r['old_ledger_c3_over_tokfwd']) if r['old_ledger_c3_over_tokfwd'] else '—':>11}")
+              f"{('%.3f' % r['wall_speedup']) if r['wall_speedup'] is not None else '—':>7} "
+              f"{('%.3f' % r['c_wall_forward_ratio']) if r['c_wall_forward_ratio'] is not None else '—':>7} "
+              f"{('%.3f' % r['old_ledger_cwall_over_tokfwd']) if r['old_ledger_cwall_over_tokfwd'] is not None else '—':>14}")
 
     # 每 token 算力比 = 每次前向算力(1+γ) / 每次前向产出 token(1+τ)
     # 解析上界：τ<γ ⇒ R>1；τ=0 ⇒ R=1+γ。断言所有行都在 [1, 1+γ]。
@@ -137,7 +141,8 @@ def main() -> None:
 
     summary = {
         "formula": "R = (1+gamma)/(tokens_per_forward); native=1.0",
-        "note": "R>1 = 每 token 比 native 贵；旧口径 c3/tokfwd 把墙钟当算力",
+        "note": "R>1 = 每 token 比 native 贵；旧口径 c_wall/tokfwd 把墙钟当算力"
+                 "（c_wall = w(1+γ)/w1，与宽度配对）",
         "R_by_scale": {},
     }
     for lab, rs in per_source.items():

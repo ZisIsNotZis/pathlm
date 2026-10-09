@@ -58,20 +58,26 @@ def test_R_bounds_tau_lt_gamma_implies_loss():
     assert mod.compute_ledger(2, 2.5, 1.0, None)["verdict"] == "loss"
 
 
-def test_rows_from_parses_rerun_format(tmp_path):
-    """run.py 产物（顶层即单 checkpoint + 各臂）要被 rows_from 正确解析。"""
+def test_rows_from_parses_rerun_and_pairs_width(tmp_path):
+    """run.py 产物（顶层即单 checkpoint + 各臂）要被解析，且墙钟前向比与宽度配对：
+    γ=2 ⇒ width-3（w3_vs_w1），γ=1 ⇒ width-2（w2_vs_w1）——不得用 width-3 比值除
+    width-2 的 tok/fwd（P2.2 的口径瑕疵）。"""
     blob = {
         "checkpoint": "INT3_100M_s0", "n_mtp": 3, "reps": 5,
-        "micro": {"w3_vs_w1": 2.439},
+        "micro": {"w2_vs_w1": 2.3, "w3_vs_w1": 2.439},
+        "enwik8_k1": {"tokens_per_forward": 1.8182,
+                      "speedup_ratio_of_best": 0.931},
         "enwik8_k2": {"tokens_per_forward": 2.3952,
                       "speedup_ratio_of_best": 1.07,
                       "speedup_reps_paired": [1.0, 1.06, 1.045]},
     }
     p = tmp_path / "results.json"
     p.write_text(json.dumps(blob))
-    rows = _mod().rows_from(str(p))
-    assert len(rows) == 1
-    r = rows[0]
-    assert abs(r["per_token_compute_ratio_R"] - 3 / 2.3952) < 1e-4
-    assert r["k_drafts"] == 2 and r["R_verdict"] == "loss"
-    assert r["old_ledger_c3_over_tokfwd"] == round(2.439 / 2.3952, 4)
+    rows = {r["k_drafts"]: r for r in _mod().rows_from(str(p))}
+    assert set(rows) == {1, 2}
+    assert rows[2]["c_wall_forward_ratio"] == 2.439   # 宽度 3 = 1+γ(γ=2)
+    assert rows[1]["c_wall_forward_ratio"] == 2.3     # 宽度 2 = 1+γ(γ=1)，不是 width-3
+    assert abs(rows[2]["per_token_compute_ratio_R"] - 3 / 2.3952) < 1e-4
+    assert rows[2]["R_verdict"] == "loss"
+    assert rows[2]["old_ledger_cwall_over_tokfwd"] == round(2.439 / 2.3952, 4)
+    assert rows[1]["old_ledger_cwall_over_tokfwd"] == round(2.3 / 1.8182, 4)

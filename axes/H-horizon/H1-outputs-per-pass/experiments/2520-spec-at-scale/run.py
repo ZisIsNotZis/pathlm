@@ -6,7 +6,7 @@
 - 墙钟：同进程**逐次交替** plain/spec，报每次重复的 tok/s 与极差（min–max）。
 - 算力：`R = (1+γ)/(1+τ)`，γ=max_drafts、τ=tokens_per_forward−1，
   以 native 逐 token = 1.0 的 width-1 前向为单位（纯解析，与 GPU 负载无关）。
-  `c₃`（实测 width-3/width-1 墙钟比）只作墙钟描述量，**不代入 R**。
+  `c_wall`（实测宽度 `1+γ` / width-1 墙钟比，与宽度配对）只作墙钟描述量，**不代入 R**。
 
 协议与 `probe_spec.py` 的 `micro_forward_cost`/`steady_state` 一致（同
 PROMPT_LEN/N_NEW/REPS/seed/交错方式），本脚本额外记录每次重复以便算极差。
@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 import time
 
@@ -43,6 +44,20 @@ PROMPT_LEN, N_NEW = 32, 400
 def sync() -> None:
     if torch.cuda.is_available():
         torch.cuda.synchronize()
+
+
+def gpu_accounting(phase: str, peak_mb: float | None = None) -> dict:
+    """§20.2 机器可读记账：前后 nvidia-smi free + 本轮 torch 峰值显存。"""
+    free = None
+    try:
+        r = subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=10)
+        free = int(r.stdout.strip().splitlines()[0])
+    except Exception:  # noqa: BLE001 — 无 GPU/无 nvidia-smi 时如实记 null
+        free = None
+    return {"phase": phase, "nvidia_smi_memory_free_mb": free,
+            "peak_gpu_mem_mb": peak_mb}
 
 
 def steady_state_reps(m, prompt, n_new, pcap, max_drafts, reps):
@@ -123,7 +138,8 @@ def main() -> None:
                                 generator=rng).cuda()
     real_prompt = torch.tensor(blob["val"][:PROMPT_LEN].astype(np.int64)).cuda()
 
-    res: dict = {"checkpoint": args.ckpt, "n_mtp": pcap.n_mtp, "reps": args.reps}
+    res: dict = {"checkpoint": args.ckpt, "n_mtp": pcap.n_mtp, "reps": args.reps,
+                 "gpu_accounting": {"before": gpu_accounting("before")}}
     # 先测步时（micro，同 probe_spec 协议）再定预算
     res["micro"] = PS.micro_forward_cost(m, pcap)
     print("micro:", res["micro"], flush=True)
@@ -143,6 +159,9 @@ def main() -> None:
             with open(os.path.join(HERE, "results.partial.json"), "w") as f:
                 json.dump(res, f, indent=2, ensure_ascii=False)
 
+    peak_mb = (round(torch.cuda.max_memory_allocated() / 1e6, 1)
+               if torch.cuda.is_available() else None)
+    res["gpu_accounting"]["after"] = gpu_accounting("after", peak_mb)
     out = os.path.abspath(args.out)
     with open(out, "w") as f:
         json.dump(res, f, indent=2, ensure_ascii=False)
