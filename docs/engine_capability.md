@@ -8,7 +8,7 @@
 > `CAPABILITY:end` 注释标记之间），逐行核对「结果 / 拒绝点行号 / 源码字面片段 / 运行时
 > `str(e)` 片段」。**改代码不改表 ⇒ 该测试红**；改表不改代码同理。
 >
-> **结论（对应复核 B9）**：`axes/G-policy/G5-parallel-lines/CLOSURE.md:75` 称「ENG2 已解锁
+> **结论（对应复核 B9）**：`archive/dropped/axes/G-policy/G5-parallel-lines/CLOSURE.md:75` 称「ENG2 已解锁
 > `carry × GQA × 非稠密`」**与代码不符**。代码现状是：
 > **ENG2 解锁的是「`carry_rule` × 非 dense 前向」**（单开通道 + 随机退出/ragged/填充，
 > 走 `CarryChannelBlock` 的 `kv_from`/`attn_mask`/`gate_vec` 约定）；

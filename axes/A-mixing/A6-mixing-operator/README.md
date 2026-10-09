@@ -3,12 +3,12 @@ id: A6-mixing-operator
 axis: A
 grid_dir: A-mixing/A6-mixing-operator
 title: "混合算子"
-status: judged
+status: todo
 judge: "bpc + 长上下文吞吐 + 内存（三段：质量 / 算力 / 内存）"
 cost: "13M 单臂 ~25–60 min（内容 top-k 实测步时是全注意力的 2.2×，预算须按实测估）"
 tax: "k=32 Δ = **−0.0166**（越 0.014 界，配对 20/20 批同向，t=−7.7）；k=64 Δ = **−0.0095**（带内但配对可检出，16/20，t=−4.1）；基线 full 1.5304（同配置历史 1.5287 / 重跑 1.5279）；剂量单调（k 越小越差）"
 benefit: "理论：保留键数 −87.5%/−75%、注意力 FLOPs −43.75%/−37.5%（QKᵀ 因内容选择不可省）、整模型每 token FLOPs −6.25%/−5.36%、**KV 缓存 −0%**（结构性）"
-verdict: "内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）——稀疏的收益要到长上下文才可能出现。"
+verdict: "**已有**：内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）。**尚缺**：真稀疏核 + T≥2048 + 同 step + n≥2 下内容稀疏是否回本（原 A5 位置稀疏/膨胀作本格同预算对照）（待补做）。"
 deps: []
 evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/analysis.md @3597039", "axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m/analysis.md @409f4f1", "axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/analysis.md @88c0e92"]
 ---
@@ -17,9 +17,9 @@ evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-1
 
 # A6-mixing-operator · 混合算子
 
-> 轴：**A 序列混合机制** ｜ 状态：**✅ judged**
+> 轴：**A 序列混合机制** ｜ 状态：**⬜ todo**
 
-> **判读**：内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）——稀疏的收益要到长上下文才可能出现。
+> **判读**：**已有**：内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）。**尚缺**：真稀疏核 + T≥2048 + 同 step + n≥2 下内容稀疏是否回本（原 A5 位置稀疏/膨胀作本格同预算对照）（待补做）。
 
 ## 1. 命题
 
@@ -35,6 +35,8 @@ evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-1
 6. `池化（PoolFormer 式无参数混合）`
 7. `MLP-Mixer（token 维全连接混合）`
 8. `傅里叶 / 全局变换（FNet 族）`
+9. `位置式稀疏（跨步/膨胀/分层，原 A5-dilated-window，作同预算对照）`
+10. `寻址维：学习式 top-k / 块级选择 / 检索式外部索引（原 A7-addressing）`
 
 ## 3. 状态（我们做了什么 / 行业做了什么）
 
@@ -48,7 +50,7 @@ evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-1
 
 - **税**：k=32 Δ = **−0.0166**（越 0.014 界，配对 20/20 批同向，t=−7.7）；k=64 Δ = **−0.0095**（带内但配对可检出，16/20，t=−4.1）；基线 full 1.5304（同配置历史 1.5287 / 重跑 1.5279）；剂量单调（k 越小越差）
 - **收益**：理论：保留键数 −87.5%/−75%、注意力 FLOPs −43.75%/−37.5%（QKᵀ 因内容选择不可省）、整模型每 token FLOPs −6.25%/−5.36%、**KV 缓存 −0%**（结构性）
-- **判读**：内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）——稀疏的收益要到长上下文才可能出现。
+- **判读**：**已有**：内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）。**尚缺**：真稀疏核 + T≥2048 + 同 step + n≥2 下内容稀疏是否回本（原 A5 位置稀疏/膨胀作本格同预算对照）（待补做）。
 
 ## 5. 失败路径与原因
 
@@ -69,6 +71,12 @@ evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-1
 
 - **判据**：bpc + 长上下文吞吐 + 内存（三段：质量 / 算力 / 内存）
 
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：bpc + 长上下文吞吐 + 内存（三段：质量 / 算力 / 内存）
+- 成本：13M 单臂 ~25–60 min（内容 top-k 实测步时是全注意力的 2.2×，预算须按实测估）
+
 ## 7. 成本估计
 
 - 13M 单臂 ~25–60 min（内容 top-k 实测步时是全注意力的 2.2×，预算须按实测估）
@@ -87,6 +95,8 @@ evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-1
 
 首探只测了「内容选择式 top-k」；未测位置式/块级稀疏、线性注意力、SSM、池化算子，
 也未测长 T（≥2048）质量是否回本。下一步的自然入口是「把 T 拉长到注意力真正成为瓶颈」。
+原 A5-dilated-window 与 A7-addressing 已并入本格（目录见 `archive/dropped/axes/A-mixing/`）：
+位置稀疏作「同预算对照」选项、寻址方式降为本格一个选项维。
 
 <!-- AUTO:end -->
 

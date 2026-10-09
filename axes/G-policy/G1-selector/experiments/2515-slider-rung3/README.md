@@ -9,7 +9,7 @@ budget: "纯推理"
 
 # 2515-slider-rung3（ticket 15-slider-rung3）
 
-> 主格：`G1-selector`｜关联格：`G2-currency`, `F3-stopping`, `G4-calibration`｜引擎：m1（13M，INT2_r3 底座）｜预算：纯推理
+> 主格：`G1-selector`｜关联格：`G4-calibration`｜引擎：m1（13M，INT2_r3 底座）｜预算：纯推理
 
 ## 命题
 

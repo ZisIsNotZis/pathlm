@@ -2,14 +2,14 @@
 name: 2508-tts-probes
 ticket: 08-tts-probe
 date: "2026-09-15"
-grid: G5-parallel-lines
+grid: G1-selector
 engine: "m1（13M）"
 budget: "纯推理"
 ---
 
 # 2508-tts-probes（ticket 08-tts-probe）
 
-> 主格：`G5-parallel-lines`｜关联格：`C2-layer-selection-order`, `C6-depth-supervision`｜引擎：m1（13M）｜预算：纯推理
+> 主格：`G1-selector`｜关联格：`C2-layer-selection-order`, `C6-depth-supervision`｜引擎：m1（13M）｜预算：纯推理
 
 ## 命题
 

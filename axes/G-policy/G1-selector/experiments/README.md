@@ -8,6 +8,8 @@
 
 | 实验 | 来源 |
 |---|---|
+| [`2508-tts-probes`](2508-tts-probes/README.md) | 目录内 README |
+| [`2514-allocator-selectivity`](2514-allocator-selectivity/README.md) | 目录内 README |
 | [`2515-slider-rung3`](2515-slider-rung3/README.md) | 目录内 README |
 | [`2517-slider-at-scale`](2517-slider-at-scale/README.md) | 目录内 README |
 

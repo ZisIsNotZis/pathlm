@@ -3,12 +3,12 @@ id: F4-training-signal
 axis: F
 grid_dir: F-iteration/F4-training-signal
 title: "迭代/重复的训练信号"
-status: judged
+status: todo
 judge: "目标量（组合一致性 / 重建质量）+ 税 + 是否反噬主任务"
 cost: "13M 单臂 ~25 min"
 tax: "consistency loss 中性（IX4 1.6589 ≈ C1 1.6549）；BF16 下 reward 类损失两次发散 → 必须 float32 + pre-step grad-norm gate"
 benefit: "M0 微小模型上 consistency 收紧估计（cosine 0.9525→0.9882）"
-verdict: "consistency loss 中性；**重建/sufficiency 损失是压缩可恢复性的关键信号，但业界已有成熟前例（非空白格）**——我们的增量只能是「13M + 局部先验抗性任务 + 单因素受控」。"
+verdict: "**已有**：consistency loss 中性；**重建/sufficiency 损失是压缩可恢复性的关键信号，但业界已有成熟前例（非空白格）**——我们的增量只能是「13M + 局部先验抗性任务 + 单因素受控」。**尚缺**：接显式载体（carry/摘要槽）× 训练信号是否有效（待补做）。"
 deps: ["H3-composition", "A9-old-info-retention", "C6-depth-supervision"]
 evidence: [".scratch/02-engine-m0/evidence/REPORT.md @27418ae", ".scratch/04-m1-runs/evidence @e38349f"]
 ---
@@ -17,9 +17,9 @@ evidence: [".scratch/02-engine-m0/evidence/REPORT.md @27418ae", ".scratch/04-m1-
 
 # F4-training-signal · 迭代/重复的训练信号
 
-> 轴：**F 迭代** ｜ 状态：**✅ judged**
+> 轴：**F 迭代** ｜ 状态：**⬜ todo**
 
-> **判读**：consistency loss 中性；**重建/sufficiency 损失是压缩可恢复性的关键信号，但业界已有成熟前例（非空白格）**——我们的增量只能是「13M + 局部先验抗性任务 + 单因素受控」。
+> **判读**：**已有**：consistency loss 中性；**重建/sufficiency 损失是压缩可恢复性的关键信号，但业界已有成熟前例（非空白格）**——我们的增量只能是「13M + 局部先验抗性任务 + 单因素受控」。**尚缺**：接显式载体（carry/摘要槽）× 训练信号是否有效（待补做）。
 
 ## 1. 命题
 
@@ -42,7 +42,7 @@ evidence: [".scratch/02-engine-m0/evidence/REPORT.md @27418ae", ".scratch/04-m1-
 
 - **税**：consistency loss 中性（IX4 1.6589 ≈ C1 1.6549）；BF16 下 reward 类损失两次发散 → 必须 float32 + pre-step grad-norm gate
 - **收益**：M0 微小模型上 consistency 收紧估计（cosine 0.9525→0.9882）
-- **判读**：consistency loss 中性；**重建/sufficiency 损失是压缩可恢复性的关键信号，但业界已有成熟前例（非空白格）**——我们的增量只能是「13M + 局部先验抗性任务 + 单因素受控」。
+- **判读**：**已有**：consistency loss 中性；**重建/sufficiency 损失是压缩可恢复性的关键信号，但业界已有成熟前例（非空白格）**——我们的增量只能是「13M + 局部先验抗性任务 + 单因素受控」。**尚缺**：接显式载体（carry/摘要槽）× 训练信号是否有效（待补做）。
 
 ## 5. 失败路径与原因
 
@@ -53,6 +53,12 @@ evidence: [".scratch/02-engine-m0/evidence/REPORT.md @27418ae", ".scratch/04-m1-
 ## 6. 判据与判决实验设计
 
 - **判据**：目标量（组合一致性 / 重建质量）+ 税 + 是否反噬主任务
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：目标量（组合一致性 / 重建质量）+ 税 + 是否反噬主任务
+- 成本：13M 单臂 ~25 min
 
 ## 7. 成本估计
 

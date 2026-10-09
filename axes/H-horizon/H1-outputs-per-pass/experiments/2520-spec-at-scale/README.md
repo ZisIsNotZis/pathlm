@@ -9,7 +9,7 @@ budget: "纯推理"
 
 # 2520-spec-at-scale（ticket 20-spec-scale）
 
-> 主格：`H1-outputs-per-pass`｜关联格：`H5-verification`, `G2-currency`｜引擎：100M｜预算：纯推理
+> 主格：`H1-outputs-per-pass`｜关联格：`H5-verification`｜引擎：100M｜预算：纯推理
 
 ## 命题
 

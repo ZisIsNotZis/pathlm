@@ -13,12 +13,12 @@
 
 ## 子维度
 
-R1 量化 · R2 蒸馏 · R3 剪枝稀疏 · R4 窗口+KV量化+检索 · R5 best-of-n+verifier · R6 MoE · R7 既有早退实现
+R1 量化 · R4 窗口+KV量化+检索 · R7 既有早退实现
 
 ## 本地总体结论
 
-本地实测：R1 的 KV 量化价签（int8/int4）、R4 的窗口部分、R5 的集成部分
-（X2/X3、TTS）；其余为行业口径（`记忆·未核`）。这些线决定所有创新线的判据线。
+本地实测：R1 的 KV 量化价签（int8/int4）、R4 的窗口部分；其余为行业口径
+（`记忆·未核`）。这些线决定所有创新线的判据线。
 
 > **既有做法情报**：[PRIOR_ART.md](PRIOR_ART.md)（含机器可读分诊表；来源标 `记忆·未核`，联网不可用）
 
@@ -26,13 +26,9 @@ R1 量化 · R2 蒸馏 · R3 剪枝稀疏 · R4 窗口+KV量化+检索 · R5 bes
 
 | 格子 | 状态 | 判读 | 税 |
 |---|---|---|---|
-| [`R1-quantization`](R1-quantization/README.md) | ⬜ todo | **尚未核实／待立项**：业界基线结论无核实出处；本地已实测部署口径价签（int8 Δbpc +0.000117、int4 +0.024748，严格因果逐值标尺下量化反占内存）… | **部署口径（源 `2631-kv-budget-causal`）**：严格… |
-| [`R2-distillation`](R2-distillation/README.md) | ⬜ todo | **尚未核实／待立项**：业界基线结论无核实出处、无本地数据。 | — |
-| [`R3-pruning-sparsity`](R3-pruning-sparsity/README.md) | ⬜ todo | **尚未核实／待立项**：业界基线结论无核实出处；本地仅有侧证——结构化约束（只读前 360 维）→ 恶化 −50.4%（W1）。 | 本地侧证：结构化约束（只读前 360 维）→ 恶化 −50.4%（W1） |
-| [`R4-window-kv-quant-retrieval`](R4-window-kv-quant-retrieval/README.md) | ⬜ todo | **尚未核实／待立项**：业界基线结论无核实出处；本地仅覆盖窗口/锚点部分（税 +0.058~0.121 bpc；锚点通道 93.3%），检索/量化部分无本地数据。 | 窗口部分：+0.058~0.121 bpc（13M）；检索/量化部分零经验 |
-| [`R5-bestofn-verifier`](R5-bestofn-verifier/README.md) | ⬜ todo | **尚未核实／待立项**：业界基线结论无核实出处；本地仅有侧证——共享主干的多线增益可忽略（G5）。 | — |
-| [`R6-moe-scale`](R6-moe-scale/README.md) | ⬜ todo | **尚未核实／待立项**：业界基线结论无核实出处、无本地数据。 | — |
-| [`R7-existing-early-exit`](R7-existing-early-exit/README.md) | ⬜ todo | **尚未核实／待立项**：业界实现结论无核实出处；本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 c… | 本地对照：dense 全深度监督（LayerSkip 式）+0.067（13… |
+| [`R1-quantization`](R1-quantization/README.md) | ⬜ todo | **已有**：本地已实测部署口径价签（int8 Δbpc +0.000117、int4 +0.024748，严格因果逐值标尺下量化反占内存）。**尚缺**：head_dim 块… | **部署口径（源 `2631-kv-budget-causal`）**：严格… |
+| [`R4-window-kv-quant-retrieval`](R4-window-kv-quant-retrieval/README.md) | ⬜ todo | **已有**：本地仅覆盖窗口/锚点部分（税 +0.058~0.121 bpc；锚点通道 93.3%）。**尚缺**：按保留预算的窗口曲线 + 检索腿是否显著 >chance；量… | 窗口部分：+0.058~0.121 bpc（13M）；检索/量化部分零经验 |
+| [`R7-existing-early-exit`](R7-existing-early-exit/README.md) | ⬜ todo | **已有**：本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）。**尚缺**：同 F… | 本地对照：dense 全深度监督（LayerSkip 式）+0.067（13… |
 
 <!-- AUTO:end -->
 

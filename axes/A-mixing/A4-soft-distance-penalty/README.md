@@ -3,12 +3,12 @@ id: A4-soft-distance-penalty
 axis: A
 grid_dir: A-mixing/A4-soft-distance-penalty
 title: "软距离惩罚（ALiBi 式加性偏置）"
-status: judged
+status: todo
 judge: "clean bpc（税）+ per-head 平均注意距离遥测（某些 head 必须保持长程）"
 cost: "13M 单臂 ~25 min"
 tax: "−0.0068（1.5006 vs B0 1.5074；**落在 Δ<0.014 的不可排序带内，不构成「改善」**）"
 benefit: "锚点通道 76.8% → 93.3%；与驱逐组合共 +0.0043"
-verdict: "唯一**未观察到超带损伤**的 clean bpc 元素（−0.0068，落在 Δ<0.014 不可排序带内），但不创造保留——它改变使用率，不改变依赖是否为零。"
+verdict: "**已有**：唯一**未观察到超带损伤**的 clean bpc 元素（−0.0068，落在 Δ<0.014 不可排序带内），但不创造保留——它改变使用率，不改变依赖是否为零。**尚缺**：per-head 可学习 slope 与长度外推（训练短测长）的判决，并报 per-head 平均注意距离分布（待补做）。"
 deps: ["A3-window-anchor", "A9-old-info-retention"]
 evidence: [".scratch/07-x1-x3/evidence/attn_dist_telemetry.json @7b47555"]
 ---
@@ -17,9 +17,9 @@ evidence: [".scratch/07-x1-x3/evidence/attn_dist_telemetry.json @7b47555"]
 
 # A4-soft-distance-penalty · 软距离惩罚（ALiBi 式加性偏置）
 
-> 轴：**A 序列混合机制** ｜ 状态：**✅ judged**
+> 轴：**A 序列混合机制** ｜ 状态：**⬜ todo**
 
-> **判读**：唯一**未观察到超带损伤**的 clean bpc 元素（−0.0068，落在 Δ<0.014 不可排序带内），但不创造保留——它改变使用率，不改变依赖是否为零。
+> **判读**：**已有**：唯一**未观察到超带损伤**的 clean bpc 元素（−0.0068，落在 Δ<0.014 不可排序带内），但不创造保留——它改变使用率，不改变依赖是否为零。**尚缺**：per-head 可学习 slope 与长度外推（训练短测长）的判决，并报 per-head 平均注意距离分布（待补做）。
 
 ## 1. 命题
 
@@ -42,7 +42,7 @@ evidence: [".scratch/07-x1-x3/evidence/attn_dist_telemetry.json @7b47555"]
 
 - **税**：−0.0068（1.5006 vs B0 1.5074；**落在 Δ<0.014 的不可排序带内，不构成「改善」**）
 - **收益**：锚点通道 76.8% → 93.3%；与驱逐组合共 +0.0043
-- **判读**：唯一**未观察到超带损伤**的 clean bpc 元素（−0.0068，落在 Δ<0.014 不可排序带内），但不创造保留——它改变使用率，不改变依赖是否为零。
+- **判读**：**已有**：唯一**未观察到超带损伤**的 clean bpc 元素（−0.0068，落在 Δ<0.014 不可排序带内），但不创造保留——它改变使用率，不改变依赖是否为零。**尚缺**：per-head 可学习 slope 与长度外推（训练短测长）的判决，并报 per-head 平均注意距离分布（待补做）。
 
 ## 5. 失败路径与原因
 
@@ -53,6 +53,12 @@ evidence: [".scratch/07-x1-x3/evidence/attn_dist_telemetry.json @7b47555"]
 ## 6. 判据与判决实验设计
 
 - **判据**：clean bpc（税）+ per-head 平均注意距离遥测（某些 head 必须保持长程）
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：clean bpc（税）+ per-head 平均注意距离遥测（某些 head 必须保持长程）
+- 成本：13M 单臂 ~25 min
 
 ## 7. 成本估计
 

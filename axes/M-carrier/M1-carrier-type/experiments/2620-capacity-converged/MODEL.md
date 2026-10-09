@@ -63,7 +63,7 @@ tools/evalkit/retention.py       8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dc
 （`run.py` 加载时逐臂断言完整 sha256；`config.json` 由 `fill_config_hashes.py` 回填。）
 
 **口径重叠声明**：本轮同批还有 V1（`R1-quantization/2620-kv-budget-gaps`）与
-V3（`G5-parallel-lines/2620-decorrelation-at-scale`）两条 GPU 线并行，V3 **改**
+V3（`archive/dropped/axes/G-policy/G5-parallel-lines/experiments/2620-decorrelation-at-scale`）两条 GPU 线并行，V3 **改**
 `train_m1.py` / `pathlm/model.py`（loop-era 引擎），与本实验的 `depth_ar` 面**不相交**；
 本实验全程未对任何共享文件写入，也未执行 `git checkout/stash/reset`。
 

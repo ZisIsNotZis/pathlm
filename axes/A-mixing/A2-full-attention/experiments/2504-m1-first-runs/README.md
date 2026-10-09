@@ -9,7 +9,7 @@ budget: "30–60 min/run"
 
 # 2504-m1-first-runs（ticket 04-m1-runs）
 
-> 主格：`A2-full-attention`｜关联格：`P6-data-construction`, `F1-iteration-object`, `C6-depth-supervision`, `A3-window-anchor`, `H1-outputs-per-pass`｜引擎：m1（13M）｜预算：30–60 min/run
+> 主格：`A2-full-attention`｜关联格：`P6-data-construction`, `F2-return-channel`, `C6-depth-supervision`, `A3-window-anchor`, `H1-outputs-per-pass`｜引擎：m1（13M）｜预算：30–60 min/run
 
 ## 命题
 

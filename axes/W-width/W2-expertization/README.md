@@ -8,7 +8,7 @@ judge: "同 FLOPs 的质量（主）+ 负载均衡 + 路由稳定性 + 内存"
 cost: "13M 单臂 ~25–40 min（路由器需要至少 2–4 专家才可判）"
 tax: "—（未做本地实验）"
 benefit: "待核方向（`记忆·未核`，检索不可用）：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。"
-verdict: "**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/W-width/PRIOR_ART.md`，`记忆·未核`）。"
+verdict: "**已有**：无本地数据（业界结论检索不可用，`记忆·未核`；原 R6-moe-scale 已并入本格——13M 无公开对照）。**尚缺**：13M 同 FLOPs MoE 是否 ≥ dense（「保容量减计算」在本尺度是否成立）（待补做）。"
 deps: []
 evidence: ["axes/W-width/PRIOR_ART.md @b44c809"]
 ---
@@ -19,7 +19,7 @@ evidence: ["axes/W-width/PRIOR_ART.md @b44c809"]
 
 > 轴：**W 宽度** ｜ 状态：**⬜ todo**
 
-> **判读**：**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/W-width/PRIOR_ART.md`，`记忆·未核`）。
+> **判读**：**已有**：无本地数据（业界结论检索不可用，`记忆·未核`；原 R6-moe-scale 已并入本格——13M 无公开对照）。**尚缺**：13M 同 FLOPs MoE 是否 ≥ dense（「保容量减计算」在本尺度是否成立）（待补做）。
 
 ## 1. 命题
 
@@ -50,7 +50,7 @@ evidence: ["axes/W-width/PRIOR_ART.md @b44c809"]
 
 - **税**：—（未做本地实验）
 - **收益**：待核方向（`记忆·未核`，检索不可用）：参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。
-- **判读**：**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/W-width/PRIOR_ART.md`，`记忆·未核`）。
+- **判读**：**已有**：无本地数据（业界结论检索不可用，`记忆·未核`；原 R6-moe-scale 已并入本格——13M 无公开对照）。**尚缺**：13M 同 FLOPs MoE 是否 ≥ dense（「保容量减计算」在本尺度是否成立）（待补做）。
 
 ## 5. 失败路径与原因
 
@@ -81,6 +81,8 @@ evidence: ["axes/W-width/PRIOR_ART.md @b44c809"]
 ## 备注
 
 本地零经验。「激活更小专家而非更大专家」是用户提出的子问题（细粒度专家），与行业趋势一致。
+分类事实：「剪枝=减容量、MoE=保容量减计算」（原 W5-capacity-vs-compute / R3-pruning-sparsity 的保留内容）。
+原 R6-moe-scale 已并入本格（目录见 `archive/dropped/axes/R-references/R6-moe-scale/`）。
 
 <!-- AUTO:end -->
 

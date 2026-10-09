@@ -9,7 +9,7 @@ budget: "~25 min/run"
 
 # 2509-m3-composition-law（ticket 09-m3-interactions）
 
-> 主格：`C2-layer-selection-order`｜关联格：`G5-parallel-lines`, `P1-precision`, `F4-training-signal`｜引擎：m1（13M）｜预算：~25 min/run
+> 主格：`C2-layer-selection-order`｜关联格：`P1-precision`, `F4-training-signal`｜引擎：m1（13M）｜预算：~25 min/run
 
 ## 命题
 

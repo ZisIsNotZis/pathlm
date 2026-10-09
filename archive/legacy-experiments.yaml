@@ -10,7 +10,7 @@ experiments:
     ticket: 02-engine-m0
     date: "2026-09-14"
     primary: A2-full-attention
-    also: [F2-return-channel, G4-calibration, G5-parallel-lines]
+    also: [F2-return-channel, G4-calibration]
     engine: m0（d=64, 2L, ~1M 参数）
     claim: "微型探针四判据：prob0 校准 / 集成增益 / consistency loss / 直接传输 retry"
     intervention: "微型模型 + 四组判据"
@@ -46,7 +46,7 @@ experiments:
     ticket: 04-m1-runs
     date: "2026-09-14"
     primary: A2-full-attention
-    also: [P6-data-construction, F1-iteration-object, C6-depth-supervision, A3-window-anchor, H1-outputs-per-pass]
+    also: [P6-data-construction, F2-return-channel, C6-depth-supervision, A3-window-anchor, H1-outputs-per-pass]
     engine: m1（13M）
     claim: "首个 run 矩阵：B0 锚点 + 损坏修复 + retry + 早退 + token retry + needle"
     intervention: "7 个 run（B0/I1/C1/C3/R1/L2/X2）"
@@ -65,7 +65,7 @@ experiments:
     ticket: 05-m1-followup
     date: "2026-09-14"
     primary: A3-window-anchor
-    also: [F2-return-channel, F1-iteration-object, P6-data-construction]
+    also: [F2-return-channel, P6-data-construction]
     engine: m1（13M）
     claim: "mixture 重入 + 曲线饱和 + needle v2 重设计"
     intervention: "C4（mixture）/ C5（token retry + mixture）/ X2v2（needle v2）"
@@ -116,7 +116,7 @@ experiments:
   - name: 2508-tts-probes
     ticket: 08-tts-probe
     date: "2026-09-15"
-    primary: G5-parallel-lines
+    primary: G1-selector
     also: [C2-layer-selection-order, C6-depth-supervision]
     engine: m1（13M）
     claim: "组合增益是否 ∝ 路径多样性；有什么能打败 B0"
@@ -134,7 +134,7 @@ experiments:
     ticket: 09-m3-interactions
     date: "2026-09-15"
     primary: C2-layer-selection-order
-    also: [G5-parallel-lines, P1-precision, F4-training-signal]
+    also: [P1-precision, F4-training-signal]
     engine: m1（13M）
     claim: "组合律 + 多样性压力"
     intervention: "IX1（retry×corruption）/ 含 shuffle 组合 / DIVL1（capped −JS）"
@@ -151,7 +151,7 @@ experiments:
     ticket: 10-gap-sweep
     date: "2026-09-15"
     primary: H1-outputs-per-pass
-    also: [F1-iteration-object]
+    also: [F2-return-channel]
     engine: m1（13M）
     claim: "补 B2（n_mtp=2）与 C1M/C2M 的缺口"
     intervention: "B2 / C1M / C2M + eval-only 消融"
@@ -168,7 +168,7 @@ experiments:
     ticket: 11-retry-matrix-validity
     date: "2026-09-15"
     primary: F2-return-channel
-    also: [F1-iteration-object]
+    also: []
     engine: m1（13M）
     claim: "retry 矩阵的排序是否成立（四缺陷审计）"
     intervention: "重跑 6 个 latent cell + 缺陷审计 D1–D6"
@@ -186,7 +186,7 @@ experiments:
     ticket: 12-overnight
     date: "2026-09-15"
     primary: H3-composition
-    also: [F2-return-channel, A3-window-anchor, G2-currency]
+    also: [F2-return-channel, A3-window-anchor]
     engine: m1（13M，2 seeds）
     claim: "条件链是否可部署；D1 gauge 因果确认；needle×corruption 拮抗"
     intervention: "DeepSeek 式 concat+proj 条件链 / gauge 修复 / anchor 豁免"
@@ -221,8 +221,8 @@ experiments:
   - name: 2514-allocator-selectivity
     ticket: 14-allocator
     date: "2026-09-16"
-    primary: F3-stopping
-    also: [G1-selector, C6-depth-supervision]
+    primary: G1-selector
+    also: [C6-depth-supervision]
     engine: 3 checkpoint 交叉验证
     claim: "愿景核心命题：低置信位置的每 FLOP 收益是否更高"
     intervention: "按 prob0 只对最低 15% 位置开第二轮 vs 均匀"
@@ -239,7 +239,7 @@ experiments:
     ticket: 15-slider-rung3
     date: "2026-09-16"
     primary: G1-selector
-    also: [G2-currency, F3-stopping, G4-calibration]
+    also: [G4-calibration]
     engine: m1（13M，INT2_r3 底座）
     claim: "分配器端到端：校准 → 双货币成本模型 → 求解器 → 验证解码 → 在线代理"
     intervention: "Slider 全链"
@@ -257,7 +257,7 @@ experiments:
     ticket: 16-rung4-scale
     date: "2026-09-17"
     primary: A2-full-attention
-    also: [F3-stopping, G4-calibration, F1-iteration-object]
+    also: [G1-selector, G4-calibration, F2-return-channel]
     engine: 100M × 2 seeds
     claim: "回环族的税与能力溢价在 100M 是否成立"
     intervention: "100M × B0/C1 × 2 seeds"
@@ -292,7 +292,7 @@ experiments:
     ticket: 18-exit-probe
     date: "2026-09-18"
     primary: C6-depth-supervision
-    also: [H4-head-trunk-relation, F1-iteration-object]
+    also: [H4-head-trunk-relation, F2-return-channel]
     engine: m1（13M）
     claim: "exit 与 retry 能否两全"
     intervention: "probe 式头（trunk stop-grad）vs dense 0.2 整形"
@@ -308,7 +308,7 @@ experiments:
     ticket: 19-asym-100m
     date: "2026-09-18"
     primary: A2-full-attention
-    also: [F3-stopping]
+    also: [G1-selector]
     engine: 100M，4.4 epoch，2 seeds
     claim: "渐近口径下税是否收缩"
     intervention: "4.4-epoch 训练 + 双 seed"
@@ -325,7 +325,7 @@ experiments:
     ticket: 20-spec-scale
     date: "2026-09-18"
     primary: H1-outputs-per-pass
-    also: [H5-verification, G2-currency]
+    also: [H5-verification]
     engine: 100M
     claim: "spec 的收益在 100M 是否保持"
     intervention: "接受级联测量 + 墙钟"
@@ -463,7 +463,7 @@ experiments:
     ticket: 24/24b
     date: "2026-09-28"
     primary: C6-depth-supervision
-    also: [C1-layers-per-token, W4-readout-geometry, G5-parallel-lines]
+    also: [C1-layers-per-token, W4-readout-geometry]
     engine: depth-ar @100M（98.3M tokens = 1.09 ep）
     claim: "形态税随规模如何变化（快照口径）+ 干净归属"
     intervention: "24：主 run；24b：等权臂 + 同引擎 dense 两臂拆混杂"
@@ -482,7 +482,7 @@ experiments:
     ticket: 25
     date: "2026-09-29"
     primary: W1-active-width
-    also: [C1-layers-per-token, W4-readout-geometry, P5-loss-weighting, G2-currency]
+    also: [C1-layers-per-token, W4-readout-geometry, P5-loss-weighting]
     engine: depth-ar @100M（三臂）
     claim: "税能否被两个干预收回（结构切分 / 时长）"
     intervention: "B 臂结构切分 readout 360 / C 臂 48k + 冷却退火 / dense-48k 对照"

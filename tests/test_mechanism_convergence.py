@@ -17,9 +17,9 @@ sys.path.insert(0, ROOT)
 
 from pathlm.config import PathConfig                                  # noqa: E402
 
-HERE = os.path.join(ROOT, "axes", "G-policy", "G5-parallel-lines",
+HERE = os.path.join(ROOT, "archive", "dropped", "axes", "G-policy", "G5-parallel-lines",
                     "experiments", "2626-mechanism-convergence")
-X1 = os.path.join(ROOT, "axes", "G-policy", "G5-parallel-lines",
+X1 = os.path.join(ROOT, "archive", "dropped", "axes", "G-policy", "G5-parallel-lines",
                   "experiments", "2622-decorrelation-v2")
 ARMS = ("stock", "l1", "repr01")
 TOTAL_STEPS = 24000

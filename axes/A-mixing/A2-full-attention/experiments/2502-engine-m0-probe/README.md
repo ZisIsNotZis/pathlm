@@ -9,7 +9,7 @@ budget: "~2.5 min/run"
 
 # 2502-engine-m0-probe（ticket 02-engine-m0）
 
-> 主格：`A2-full-attention`｜关联格：`F2-return-channel`, `G4-calibration`, `G5-parallel-lines`｜引擎：m0（d=64, 2L, ~1M 参数）｜预算：~2.5 min/run
+> 主格：`A2-full-attention`｜关联格：`F2-return-channel`, `G4-calibration`｜引擎：m0（d=64, 2L, ~1M 参数）｜预算：~2.5 min/run
 
 ## 命题
 

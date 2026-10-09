@@ -13,7 +13,7 @@
 
 ## 子维度
 
-W1 激活宽度 · W2 专家化 · W3 KV 头共享 · W4 读出几何 · W5 容量-计算
+W1 激活宽度 · W2 专家化 · W3 KV 头共享 · W4 读出几何
 
 ## 本地总体结论
 
@@ -29,11 +29,10 @@ clean 2.1475、恢复 −50.4%。用户本地独立实验（减宽）同样「�
 
 | 格子 | 状态 | 判读 | 税 |
 |---|---|---|---|
-| [`W1-active-width`](W1-active-width/README.md) | ✅ judged | 减宽 = 减容量，不买灵活性；结构化约束会把状态能量赶出被约束子空间。 | 结构切分读出（只读前 360 维，@100M）clean 2.1475、同引… |
-| [`W2-expertization`](W2-expertization/README.md) | ⬜ todo | **尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/W-width/PRIOR_ART.md`，`记忆·未核`）。 | —（未做本地实验） |
-| [`W3-kv-head-sharing`](W3-kv-head-sharing/README.md) | ✅ judged | 参考线已补齐**：GQA（KV −75%）实测 damage **+0.0143**、同 seed 重跑 +0.0139（**跨在门槛两侧**，散度仅 0.0004 ⇒ 依预登… | clean bpc：mha **1.4820** / gqa **1.496… |
+| [`W1-active-width`](W1-active-width/README.md) | ⬜ todo | **已有**：减宽 = 减容量，不买灵活性；结构化约束会把状态能量赶出被约束子空间。**尚缺**：真正的减宽（推断期确定性裁通道 / 训练期 width dropout）的判决… | 结构切分读出（只读前 360 维，@100M）clean 2.1475、同引… |
+| [`W2-expertization`](W2-expertization/README.md) | ⬜ todo | **已有**：无本地数据（业界结论检索不可用，`记忆·未核`；原 R6-moe-scale 已并入本格——13M 无公开对照）。**尚缺**：13M 同 FLOPs MoE 是… | —（未做本地实验） |
+| [`W3-kv-head-sharing`](W3-kv-head-sharing/README.md) | ⬜ todo | **已有**：GQA（KV −75%）实测 damage **+0.0143**、同 seed 重跑 +0.0139（**跨在门槛两侧**，散度仅 0.0004 ⇒ 依预登记规… | clean bpc：mha **1.4820** / gqa **1.496… |
 | [`W4-readout-geometry`](W4-readout-geometry/README.md) | ✅ judged | 读出几何**可以**解耦（prob0/提交/传输不受损，同空间前提不冲突），但**增量归因于「读出重参数化 + 额外 2d² 参数」，不是非线性本身**：等参数纯线性对照 Δ=… | **读出重参数化 Δ clean bpc −0.0812**（gated，1… |
-| [`W5-capacity-vs-compute`](W5-capacity-vs-compute/README.md) | ✅ judged | 减容量不买灵活性；买灵活性必须走保容量减计算。 | 容量削减：负结果（W1 −50.4%） |
 
 <!-- AUTO:end -->
 

@@ -1,8 +1,8 @@
 # PRIOR_ART — P 修饰符（P1–P6）
 
-> 轴：**P 修饰符（不是轴）**（横切，不改变路径空间） ｜ 格子：`P1-precision`（judged）、
-> `P2-conditioning`（todo）、`P3-param-insertion-init`（judged）、`P4-normalization`（todo）、
-> `P5-loss-weighting`（judged）、`P6-data-construction`（judged）
+> 轴：**P 修饰符（不是轴）**（横切，不改变路径空间） ｜ 格子：`P1-precision`、
+> `P3-param-insertion-init`、`P4-normalization`、`P5-loss-weighting`、`P6-data-construction`
+> （`P2-conditioning` 已删，门控归 `G1-selector`，见 `archive/README.md`）
 > 角色：知识波（无 GPU，不取锁） ｜ 依据：`SCHEMA.md` §18 / §19 / §21
 > 本文件只写情报与分诊，**不是实验证据**。
 
@@ -37,7 +37,7 @@
   以来的既有结论 ⇒ P1 的通用结论应改「业界结论」口径。** 本地的「pre-step grad-norm gate」
   是可复现的本地工程细节，保留本地口径。
 
-### 块②：条件化信号（对标 `P2-conditioning`）
+### 块②：条件化信号（原 `P2-conditioning`，已删）
 
 | 系统 | 既有做法（`记忆·未核`） | 我们的增量 |
 |---|---|---|
@@ -46,10 +46,11 @@
 | **conditional computation / gating** | 门控按信号开合 | 本地的置信度门控 |
 | **task conditioning**（prompt/prefix） | 任务前缀条件化 | 零经验 |
 
-- **本地实测（P2）**：深度索引（逐深度读出，13–17 格单调）与置信度条件（门控）已用；
+- **本地实测（原 P2）**：深度索引（逐深度读出，13–17 格单调）与置信度条件（门控）已用；
   噪声级/任务条件零经验。来源：`.scratch/23-depth-ar/evidence`。
 - **判定**：**AdaLN/FiLM 是成熟既有做法 ⇒ 「深度/噪声级条件化」应改「业界结论」口径**；
-  「逐深度读出给出可观测深度曲线」的本地细节保留。
+  「逐深度读出给出可观测深度曲线」的本地细节保留。原 `P2-conditioning` 已删（重复登记 `G1` 门控，
+  剩余选项在本项目无用例）。
 
 ### 块③：参数插入与初始化（对标 `P3-param-insertion-init`）
 
@@ -121,8 +122,6 @@
 ```
 P1-precision            | (a) | 混合精度需 loss scaling/fp32 主权重/对数损失高精度，是 Micikevicius 2017 以来既有结论 | 结论：低精度训练须配 fp32 主权重与（对数/奖励类损失的）高精度路径。来源类型：业界结论（记忆·未核）+ 本地复核。通用部分改「业界结论」。
 P1-precision            | (b) | 「bf16 下 reward 项发散 ⇒ float32 + pre-step grad-norm gate」是本仓库可复现的失败-修复路径 | 结论（本地）：判据/奖励类损失必须 float32 + pre-step grad-norm gate，否则两次发散。
-P2-conditioning         | (a) | AdaLN/FiLM 是成熟的深度/噪声级条件化技法 | 结论：条件化信号（深度索引/噪声级）有成熟既有实现。来源类型：业界结论（记忆·未核）。通用部分改「业界结论」。
-P2-conditioning         | (b) | 「逐深度读出给出可观测深度曲线」是本地接口细节，噪声级/任务条件本地零经验 | 结论（待测）：噪声级/任务条件在本项目零经验。
 P3-param-insertion-init | (a) | 「输出侧零初始化/单边零=恒等起步」是 LoRA(B=0)/ReZero/ControlNet 已做透的技法 | 结论：恒等初始化起步有效且不消耗随机数（可严格对照）。来源类型：业界结论（记忆·未核）+ 本地复核。通用部分改「业界结论」。
 P3-param-insertion-init | (b) | 「全零初始化是乘性结构上的鞍点 ⇒ 干预死掉但测试全绿」是本仓库可复现诊断 | 结论（本地）：恒等初始化 ≠ 零初始化；须单边零（输出侧置零、输入侧随机）。
 P4-normalization        | (a) | Pre-LN / post-LN / RMSNorm / QK-norm 是既有标准 | 结论：Pre-LN 更易训练、可与省 warmup 组合。来源类型：业界结论（记忆·未核）。status: todo 口径。
@@ -145,7 +144,7 @@ P6-data-construction    | (b) | 「局部先验偏差使长程退化被掩盖」
 | 格 | 关键词 |
 |---|---|
 | P1 | `mixed precision training Micikevicius 2017`, `loss scaling fp16`, `bf16 training stability`, `reward model fp32 loss`, `log-sum-exp numerical stability` |
-| P2 | `AdaLN DiT Peebles`, `FiLM conditioning Perez`, `conditional computation gating`, `depth conditioning` |
+| 原 P2（已删，门控→G1） | `AdaLN DiT Peebles`, `FiLM conditioning Perez`, `conditional computation gating`, `depth conditioning` |
 | P3 | `LoRA B initialized zero`, `ReZero residual scaling`, `Fixup initialization`, `ControlNet zero convolution`, `identity initialization adapter` |
 | P4 | `Pre-LN post-LN Xiong 2020`, `RMSNorm`, `QK-norm`, `final layer norm tied embedding` |
 | P5 | `deep supervision auxiliary loss`, `loss annealing schedule`, `gradient clipping Pascanu`, `uncertainty weighting Kendall` |

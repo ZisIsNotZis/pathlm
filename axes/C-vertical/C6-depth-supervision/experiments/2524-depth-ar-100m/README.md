@@ -9,7 +9,7 @@ budget: "24: 32 min；24b: 51 min 两臂"
 
 # 2524-depth-ar-100m（ticket 24/24b）
 
-> 主格：`C6-depth-supervision`｜关联格：`C1-layers-per-token`, `W4-readout-geometry`, `G5-parallel-lines`｜引擎：depth-ar @100M（98.3M tokens = 1.09 ep）｜预算：24: 32 min；24b: 51 min 两臂
+> 主格：`C6-depth-supervision`｜关联格：`C1-layers-per-token`, `W4-readout-geometry`｜引擎：depth-ar @100M（98.3M tokens = 1.09 ep）｜预算：24: 32 min；24b: 51 min 两臂
 
 ## 命题
 

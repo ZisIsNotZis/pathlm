@@ -3,7 +3,7 @@
 # P · 修饰符（不是轴）
 
 - **原语**：横切（不改变路径空间）
-- **命题**：只改变实现/成本/条件的决策：精度、条件化信号、参数插入与初始化、归一化位置、损失权重、数据构造。
+- **命题**：只改变实现/成本/条件的决策：精度、参数插入与初始化、归一化位置、损失权重、数据构造。
 
 ## 定义
 
@@ -12,7 +12,7 @@
 
 ## 子维度
 
-P1 精度 · P2 条件化信号 · P3 参数插入与初始化 · P4 归一化位置 · P5 损失权重 · P6 数据构造
+P1 精度 · P3 参数插入与初始化 · P4 归一化位置 · P5 损失权重 · P6 数据构造
 
 ## 本地总体结论
 
@@ -29,7 +29,6 @@ adapter（13M 族内最优 1.8356 vs fill 1.8582 vs nofill 1.9438）。
 | 格子 | 状态 | 判读 | 税 |
 |---|---|---|---|
 | [`P1-precision`](P1-precision/README.md) | ✅ judged | reward/判据类损失必须 float32 + pre-step grad-norm gate。 | — |
-| [`P2-conditioning`](P2-conditioning/README.md) | ⬜ todo | **已有**：深度索引（逐深度读出）与置信度条件（门控）已用。**尚缺**：时间步/噪声级条件（AdaLN）、任务条件无经验（待补做）。 | 门控/条件化是本形态结构的一部分（税见 C1） |
 | [`P3-param-insertion-init`](P3-param-insertion-init/README.md) | ✅ judged | 恒等初始化 adapter 在 13M matched-step 族内最优——「从基线出发学 remap」是对的。 | proj-fill 1.8356 < fill 1.8582 < nofil… |
 | [`P4-normalization`](P4-normalization/README.md) | ⬜ todo | **已有**：pre-LN + 无 final LayerNorm 是「同空间」几何的前提，已固定使用。**尚缺**：post-LN、QK-norm、RMSNorm 的对照判决… | — |
 | [`P5-loss-weighting`](P5-loss-weighting/README.md) | ✅ judged | 浅层降权单调反向；退火是当前最优配方的组成部分。 | 浅层降权全败且单调反向（w∈{1,0.1,0.02,退火}：depth-L … |

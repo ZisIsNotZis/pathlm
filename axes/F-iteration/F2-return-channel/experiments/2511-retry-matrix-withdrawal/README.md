@@ -9,7 +9,7 @@ budget: "~25 min/run"
 
 # 2511-retry-matrix-withdrawal（ticket 11-retry-matrix-validity）
 
-> 主格：`F2-return-channel`｜关联格：`F1-iteration-object`｜引擎：m1（13M）｜预算：~25 min/run
+> 主格：`F2-return-channel`｜关联格：（无）｜引擎：m1（13M）｜预算：~25 min/run
 
 ## 命题
 

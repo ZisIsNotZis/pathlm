@@ -3,12 +3,12 @@ id: C1-layers-per-token
 axis: C
 grid_dir: C-vertical/C1-layers-per-token
 title: "每个 token 跑几层"
-status: judged
+status: todo
 judge: "深度-bpc 曲线 + 出口接受率 + 墙钟/FLOPs 加速 + 税"
 cost: "13M 单臂 ~5–25 min；100M 单臂 ~32–70 min"
 tax: "形态税 +0.6786（13M 首验）→ matched-step 真税 +0.3295 @12k → 100M +0.4362（同引擎干净归属：形态 96% / 引擎 4% / 配方 ≈0）"
 benefit: "tf@4 0.9726、tf@6 0.9946；d6−d12 = 0.0003（半栈 ≈ 全栈）；exit-4 3.1× 墙钟、uniform-exit 1.8×；逐 token 变深度 + 不重 prefill 已实现并逐位测试（max|Δlogit| 9.2e-5）"
-verdict: "逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。"
+verdict: "**已有**：逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。**尚缺**：100M 端到端深度草稿 + 交错口径墙钟 + FLOPs 净账（省延迟不省算力）（待补做）。"
 deps: ["C5-refinement-operator", "C6-depth-supervision", "H4-head-trunk-relation", "G1-selector"]
 evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/evidence @7cdcdaa", ".scratch/25-tax-attribution/evidence @2e86924"]
 ---
@@ -17,9 +17,9 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 
 # C1-layers-per-token · 每个 token 跑几层
 
-> 轴：**C 垂直机制（深度）** ｜ 状态：**✅ judged**
+> 轴：**C 垂直机制（深度）** ｜ 状态：**⬜ todo**
 
-> **判读**：逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。
+> **判读**：**已有**：逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。**尚缺**：100M 端到端深度草稿 + 交错口径墙钟 + FLOPs 净账（省延迟不省算力）（待补做）。
 
 ## 1. 命题
 
@@ -42,7 +42,7 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 
 - **税**：形态税 +0.6786（13M 首验）→ matched-step 真税 +0.3295 @12k → 100M +0.4362（同引擎干净归属：形态 96% / 引擎 4% / 配方 ≈0）
 - **收益**：tf@4 0.9726、tf@6 0.9946；d6−d12 = 0.0003（半栈 ≈ 全栈）；exit-4 3.1× 墙钟、uniform-exit 1.8×；逐 token 变深度 + 不重 prefill 已实现并逐位测试（max|Δlogit| 9.2e-5）
-- **判读**：逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。
+- **判读**：**已有**：逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。**尚缺**：100M 端到端深度草稿 + 交错口径墙钟 + FLOPs 净账（省延迟不省算力）（待补做）。
 
 ## 5. 失败路径与原因
 
@@ -55,6 +55,12 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 ## 6. 判据与判决实验设计
 
 - **判据**：深度-bpc 曲线 + 出口接受率 + 墙钟/FLOPs 加速 + 税
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：深度-bpc 曲线 + 出口接受率 + 墙钟/FLOPs 加速 + 税
+- 成本：13M 单臂 ~5–25 min；100M 单臂 ~32–70 min
 
 ## 7. 成本估计
 

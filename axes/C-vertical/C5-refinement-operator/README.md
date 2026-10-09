@@ -3,12 +3,12 @@ id: C5-refinement-operator
 axis: C
 grid_dir: C-vertical/C5-refinement-operator
 title: "精化算子"
-status: judged
+status: todo
 judge: "深度-bpc 曲线单调性 + 出口质量 + 税"
 cost: "13M 单臂 ~25 min"
 tax: "carry 门 + 填充 + 退出堆栈合计是形态税的主体（同引擎 +0.4362 @100M）"
 benefit: "门行为健康（浅层开、深层微开；@100M 全层从 carry 初始化收小）；门=逐通道，天然给出「哪些通道在精化」的可观测性"
-verdict: "携带门是形态税的承载者之一，也是「任意深度可读」的结构来源。"
+verdict: "**已有**：携带门是形态税的承载者之一，也是「任意深度可读」的结构来源。**尚缺**：出口资产是否必须付门堆栈税（补 `23d-H1-12k` 的 tf@4/6 + gate-off 臂）（待补做）。"
 deps: ["C1-layers-per-token", "H2-training-fill"]
 evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/evidence @7725891", ".scratch/25-tax-attribution/evidence @2e86924"]
 ---
@@ -17,9 +17,9 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 
 # C5-refinement-operator · 精化算子
 
-> 轴：**C 垂直机制（深度）** ｜ 状态：**✅ judged**
+> 轴：**C 垂直机制（深度）** ｜ 状态：**⬜ todo**
 
-> **判读**：携带门是形态税的承载者之一，也是「任意深度可读」的结构来源。
+> **判读**：**已有**：携带门是形态税的承载者之一，也是「任意深度可读」的结构来源。**尚缺**：出口资产是否必须付门堆栈税（补 `23d-H1-12k` 的 tf@4/6 + gate-off 臂）（待补做）。
 
 ## 1. 命题
 
@@ -42,7 +42,7 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 
 - **税**：carry 门 + 填充 + 退出堆栈合计是形态税的主体（同引擎 +0.4362 @100M）
 - **收益**：门行为健康（浅层开、深层微开；@100M 全层从 carry 初始化收小）；门=逐通道，天然给出「哪些通道在精化」的可观测性
-- **判读**：携带门是形态税的承载者之一，也是「任意深度可读」的结构来源。
+- **判读**：**已有**：携带门是形态税的承载者之一，也是「任意深度可读」的结构来源。**尚缺**：出口资产是否必须付门堆栈税（补 `23d-H1-12k` 的 tf@4/6 + gate-off 臂）（待补做）。
 
 ## 5. 失败路径与原因
 
@@ -52,6 +52,12 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 ## 6. 判据与判决实验设计
 
 - **判据**：深度-bpc 曲线单调性 + 出口质量 + 税
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：深度-bpc 曲线单调性 + 出口质量 + 税
+- 成本：13M 单臂 ~25 min
 
 ## 7. 成本估计
 

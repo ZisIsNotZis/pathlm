@@ -33,7 +33,7 @@ from tools.evalkit.ensemble_probe import (                           # noqa: E40
 from train_m1 import (activity_line, gate_skip, liveness_record,     # noqa: E402
                       sample_rounds, validate_pcap)
 
-HERE = os.path.join(ROOT, "axes", "G-policy", "G5-parallel-lines",
+HERE = os.path.join(ROOT, "archive", "dropped", "axes", "G-policy", "G5-parallel-lines",
                     "experiments", "2622-decorrelation-v2")
 
 

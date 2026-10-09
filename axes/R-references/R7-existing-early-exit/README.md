@@ -8,7 +8,7 @@ judge: "同 FLOPs 质量 + 出口资产 + 税"
 cost: "13M 单臂 ~25 min"
 tax: "本地对照：dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）"
 benefit: "本地形态的增量 = 逐通道 carry 门 + 随机退出深度 + 定稿不变量（全深度重打分）"
-verdict: "**尚未核实／待立项**：业界实现结论无核实出处；本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）。"
+verdict: "**已有**：本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）。**尚缺**：同 FLOPs dense 早退（CALM/MoD）基线下本形态增量是否成立（业界实现结论须核实出处）（待补做）。"
 deps: []
 evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scale/evidence @9fe4cf1"]
 ---
@@ -19,7 +19,7 @@ evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scal
 
 > 轴：**R 参照线（必须打败的基线）** ｜ 状态：**⬜ todo**
 
-> **判读**：**尚未核实／待立项**：业界实现结论无核实出处；本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）。
+> **判读**：**已有**：本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）。**尚缺**：同 FLOPs dense 早退（CALM/MoD）基线下本形态增量是否成立（业界实现结论须核实出处）（待补做）。
 
 ## 1. 命题
 
@@ -41,7 +41,7 @@ evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scal
 
 - **税**：本地对照：dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）
 - **收益**：本地形态的增量 = 逐通道 carry 门 + 随机退出深度 + 定稿不变量（全深度重打分）
-- **判读**：**尚未核实／待立项**：业界实现结论无核实出处；本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）。
+- **判读**：**已有**：本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）。**尚缺**：同 FLOPs dense 早退（CALM/MoD）基线下本形态增量是否成立（业界实现结论须核实出处）（待补做）。
 
 ## 5. 失败路径与原因
 

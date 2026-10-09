@@ -9,7 +9,7 @@ budget: "~1–2 h/run"
 
 # 2516-rung4-scale-100m（ticket 16-rung4-scale）
 
-> 主格：`A2-full-attention`｜关联格：`F3-stopping`, `G4-calibration`, `F1-iteration-object`｜引擎：100M × 2 seeds｜预算：~1–2 h/run
+> 主格：`A2-full-attention`｜关联格：`G1-selector`, `G4-calibration`, `F2-return-channel`｜引擎：100M × 2 seeds｜预算：~1–2 h/run
 
 ## 命题
 

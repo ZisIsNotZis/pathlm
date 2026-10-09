@@ -9,7 +9,7 @@ budget: "30–60 min/run"
 
 # 2505-m1-followups（ticket 05-m1-followup）
 
-> 主格：`A3-window-anchor`｜关联格：`F2-return-channel`, `F1-iteration-object`, `P6-data-construction`｜引擎：m1（13M）｜预算：30–60 min/run
+> 主格：`A3-window-anchor`｜关联格：`F2-return-channel`, `P6-data-construction`｜引擎：m1（13M）｜预算：30–60 min/run
 
 ## 命题
 

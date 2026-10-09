@@ -1,7 +1,7 @@
-# PRIOR_ART — G 策略与调度（G1–G5）
+# PRIOR_ART — G 策略与调度（G1/G3/G4）
 
-> 轴：**G 策略与调度**（横切轴） ｜ 格子：`G1-selector`、`G2-currency`、`G3-signal`、
-> `G4-calibration`、`G5-parallel-lines`（**五格均 `status: judged`**）
+> 轴：**G 策略与调度**（横切轴） ｜ 格子：`G1-selector`、`G3-signal`、`G4-calibration`
+> （`G2-currency` 归 `docs/methodology.md`、`G5-parallel-lines` 已删，见 `archive/README.md`）
 > 角色：知识波（无 GPU，不取锁） ｜ 依据：`SCHEMA.md` §18 / §19 / §21
 > 本文件只写情报与分诊，**不是实验证据**。
 
@@ -36,16 +36,16 @@
   来源：`.scratch/15-slider-rung3/evidence`、`.scratch/17-slider-at-scale/evidence`。
 - **判定**：**「阈值/门控/学习路由/早退」作为选择器，业界已做透（MoD / CALM / ACT / MoE）**。
   G1 的**通用结论（选择器本身不加税、可校准）应改「业界结论」口径**。真正可能留增量的是
-  **在线多线调度器**——但那与 G5 同题。
+  **在线多线调度器**——但多线调度已随原 `G5-parallel-lines` 删除。
 
-### 块②：记账货币（对标 `G2-currency`）
+### 块②：记账货币（原 `G2-currency`，并入 `docs/methodology.md`）
 
 | 既有做法（`记忆·未核`） | 结果 |
 |---|---|
 | 效率文献习惯报「同 FLOPs」或「同墙钟」 | 同一机制在两口径下可翻转 |
 | speculative decoding 报 wallclock / acceptance | 墙钟收益依赖 batch/硬件 |
 
-- **本地实测（G2）**：同一机制两口径分歧实例——spec 在 forwards 口径 0.55–0.70、
+- **本地实测（原 G2）**：同一机制两口径分歧实例——spec 在 forwards 口径 0.55–0.70、
   FLOPs 口径 ≥1.23；@100M 墙钟 k=2 1.15–1.29× 而 FLOPs 口径有利。
   来源：`.scratch/15-slider-rung3/evidence`、`.scratch/20-spec-scale/evidence`。
 - **判定**：**「单货币记账会得出相反结论、必须双报」是效率研究的通用纪律 ⇒ 改「业界结论」口径。**
@@ -81,7 +81,7 @@
 - **判定**：**「校准可后处理改善、且跨规模存活」是既有结论（温度缩放为代表）⇒ 改
 「业界结论」口径。** 本地的「prob0 校准跨规模存活」作为复核保留。
 
-### 块⑤：并行多线（对标 `G5-parallel-lines`）
+### 块⑤：并行多线（原 `G5-parallel-lines`，已从研究树删除）
 
 | 系统 | 既有做法（`记忆·未核`） | 结果 |
 |---|---|---|
@@ -90,7 +90,7 @@
 | **Best-of-n + Verifier**（Cobbe et al., 2021） | 采样 n 个 + verifier 重排 | 同 FLOPs 提升；见 R5 |
 | **Beam search** | 确定性搜索多条路径 | 常与集成的「多线」混淆 |
 
-- **本地实测（G5）**：共享 trunk 的 voter 太相关 ⇒ 集成增益仅 +0.0008~+0.0015（可忽略）；
+- **本地实测（原 G5）**：共享 trunk 的 voter 太相关 ⇒ 集成增益仅 +0.0008~+0.0015（可忽略）；
   确定性路径 checkpoint 的 K-path 集成恰得 0；去相关来自 transports/depths 而非 trunk，
   且多样性必须练进去（DIVL1）。来源：`.scratch/08-tts-probe/evidence`、`.scratch/09-m3-interactions/evidence`。
 - **判定**：**「集成需要多样性、同主干成员高度相关增益可忽略」是深集成既有共识 ⇒ 改
@@ -102,17 +102,14 @@
 
 ```
 G1-selector        | (a) | 阈值/门控/学习路由/早退作为选择器，业界有 MoD/ACT/CALM/MoE 成熟占位 | 结论：路径选择器本身不加质量税，且校准后阈值策略有效。来源类型：业界结论（记忆·未核）+ 本地复核。口径改为「业界结论」。
-G1-selector        | (b) | 「在线多线调度器」业界少见且依赖去相关来源（与 G5 同题） | 结论（待测）：去相关必须来自 transports/depths 而非共享 trunk。
-G2-currency        | (a) | 同一机制在 forwards/FLOPs/墙钟口径下结论分歧、必须双报 | 结论：效率结论必须双货币并报，单货币会给出相反结论。来源类型：业界方法学（记忆·未核）。
+G1-selector        | (b) | 「在线多线调度器」业界少见且依赖去相关来源（多线调度已随原 G5 删除；证据存 `archive/dropped/`） | 结论（待测）：去相关必须来自 transports/depths 而非共享 trunk。
 G3-signal          | (a) | 自评置信/一致性/重复率各分量的既有做法成熟（P(True)/SemanticEntropy/SelfCheckGPT/distinct-n） | 结论：各信号分量为业界既有，来源类型：业界结论（记忆·未核）。
 G3-signal          | (b) | 「三信号正交组合 + 生成段无单一信号够用」是组合工程结论，业界无相同组合的公开受控对照 | 结论（本地）：prob0 管对错、js 管语义分歧、distinct-2 管塌缩，三者正交。
 G4-calibration     | (a) | 温度缩放等后处理可降 ECE、深网过自信，是 Guo 2017 以来的既有结论 | 结论：置信信号可校准且校准质量决定阈值策略。来源类型：业界结论（记忆·未核）+ 本地跨规模复核。口径改为「业界结论」。
-G5-parallel-lines  | (a) | 集成增益来自成员多样性/去相关（Deep Ensembles、self-consistency） | 结论：共享主干的多线因成员相关而增益可忽略；去相关必须显式训练。来源类型：业界结论（记忆·未核）+ 本地复核。口径改为「业界结论」。
-G5-parallel-lines  | (b) | 「确定性路径 checkpoint 的 K-path 集成恰得 0」是本仓库可复现的量化观察 | 结论（本地）：beam search 产出的确定性多线落在零增益死区。
 ```
 
-**分诊要点**：G 轴**五格主结论全部判 (a)** ⇒ 通用机制级结论应改「业界结论」口径；
-本地数字保留为 13M 复核。G1/G5 的「在线多线调度」与「去相关来源」可留 (b) 追测。
+**分诊要点**：G 轴现存三格（G1/G3/G4）的主结论全部判 (a) ⇒ 通用机制级结论应改「业界结论」口径；
+本地数字保留为 13M 复核。G1 的「在线多线调度」相关待测项已随原 G5 删除。
 
 ---
 

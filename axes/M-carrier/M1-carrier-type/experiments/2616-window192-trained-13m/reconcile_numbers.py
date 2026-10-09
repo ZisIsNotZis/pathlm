@@ -386,7 +386,7 @@ ck("analysis 判据线未改声明", "未改一字" in AN, True)
 
 # ---------------------------------------------------------------- 文件指纹
 code = R["code"]
-FILEMAP = {"run_py_sha256": "axes/M-carrier/M3-cross-step-assumption/experiments/"
+FILEMAP = {"run_py_sha256": "axes/M-carrier/M1-carrier-type/experiments/"
                             "2616-window192-trained-13m/run.py",
            "retention_py_sha256": "tools/evalkit/retention.py",
            "depth_ar_py_sha256": "pathlm/depth_ar.py",

@@ -16,7 +16,7 @@ import sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 sys.path.insert(0, ROOT)
 
-HERE = os.path.join(ROOT, "axes", "G-policy", "G5-parallel-lines",
+HERE = os.path.join(ROOT, "archive", "dropped", "axes", "G-policy", "G5-parallel-lines",
                     "experiments", "2628-jitter-l1")
 sys.path.insert(0, HERE)
 
@@ -24,7 +24,7 @@ from jitter_l1 import (DOWNGRADE_GE, EFFECT_V2, REPR01_JITTER_2627,  # noqa: E40
                        UPGRADE_LT, arm_jitter, combined_range, combos_range,
                        jitter_verdict, mechanism_net, worst_case_additive_range)
 
-V2 = os.path.join(ROOT, "axes", "G-policy", "G5-parallel-lines",
+V2 = os.path.join(ROOT, "archive", "dropped", "axes", "G-policy", "G5-parallel-lines",
                   "experiments", "2626-mechanism-convergence")
 
 

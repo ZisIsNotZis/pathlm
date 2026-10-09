@@ -3,13 +3,13 @@ id: W1-active-width
 axis: W
 grid_dir: W-width/W1-active-width
 title: "激活宽度"
-status: judged
+status: todo
 judge: "同参数量下 clean bpc + 状态能量在保留子空间中的分布（workspace 探针）"
 cost: "13M 单臂 ~25 min；100M ~35 min"
 tax: "结构切分读出（只读前 360 维，@100M）clean 2.1475、同引擎税 +0.6662、恢复 −50.4%"
 benefit: "（无）"
-verdict: "减宽 = 减容量，不买灵活性；结构化约束会把状态能量赶出被约束子空间。"
-deps: ["W4-readout-geometry", "W5-capacity-vs-compute"]
+verdict: "**已有**：减宽 = 减容量，不买灵活性；结构化约束会把状态能量赶出被约束子空间。**尚缺**：真正的减宽（推断期确定性裁通道 / 训练期 width dropout）的判决（待补做）。"
+deps: ["W4-readout-geometry"]
 evidence: [".scratch/25-tax-attribution/evidence @2e86924"]
 ---
 
@@ -17,9 +17,9 @@ evidence: [".scratch/25-tax-attribution/evidence @2e86924"]
 
 # W1-active-width · 激活宽度
 
-> 轴：**W 宽度** ｜ 状态：**✅ judged**
+> 轴：**W 宽度** ｜ 状态：**⬜ todo**
 
-> **判读**：减宽 = 减容量，不买灵活性；结构化约束会把状态能量赶出被约束子空间。
+> **判读**：**已有**：减宽 = 减容量，不买灵活性；结构化约束会把状态能量赶出被约束子空间。**尚缺**：真正的减宽（推断期确定性裁通道 / 训练期 width dropout）的判决（待补做）。
 
 ## 1. 命题
 
@@ -41,7 +41,7 @@ evidence: [".scratch/25-tax-attribution/evidence @2e86924"]
 
 - **税**：结构切分读出（只读前 360 维，@100M）clean 2.1475、同引擎税 +0.6662、恢复 −50.4%
 - **收益**：（无）
-- **判读**：减宽 = 减容量，不买灵活性；结构化约束会把状态能量赶出被约束子空间。
+- **判读**：**已有**：减宽 = 减容量，不买灵活性；结构化约束会把状态能量赶出被约束子空间。**尚缺**：真正的减宽（推断期确定性裁通道 / 训练期 width dropout）的判决（待补做）。
 
 ## 5. 失败路径与原因
 
@@ -54,6 +54,12 @@ evidence: [".scratch/25-tax-attribution/evidence @2e86924"]
 
 - **判据**：同参数量下 clean bpc + 状态能量在保留子空间中的分布（workspace 探针）
 
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：同参数量下 clean bpc + 状态能量在保留子空间中的分布（workspace 探针）
+- 成本：13M 单臂 ~25 min；100M ~35 min
+
 ## 7. 成本估计
 
 - 13M 单臂 ~25 min；100M ~35 min
@@ -61,7 +67,6 @@ evidence: [".scratch/25-tax-attribution/evidence @2e86924"]
 ## 8. 依赖与耦合声明（只记录，不做组合实验）
 
 1. `W4-readout-geometry`
-2. `W5-capacity-vs-compute`
 
 ## 9. 复现手段
 

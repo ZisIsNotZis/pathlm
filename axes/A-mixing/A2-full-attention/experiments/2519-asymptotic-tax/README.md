@@ -9,7 +9,7 @@ budget: "4.4 epoch × 100M"
 
 # 2519-asymptotic-tax（ticket 19-asym-100m）
 
-> 主格：`A2-full-attention`｜关联格：`F3-stopping`｜引擎：100M，4.4 epoch，2 seeds｜预算：4.4 epoch × 100M
+> 主格：`A2-full-attention`｜关联格：`G1-selector`｜引擎：100M，4.4 epoch，2 seeds｜预算：4.4 epoch × 100M
 
 ## 命题
 

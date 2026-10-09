@@ -9,7 +9,7 @@ budget: "~25 min/run"
 
 # 2518-exit-retry-law（ticket 18-exit-probe）
 
-> 主格：`C6-depth-supervision`｜关联格：`H4-head-trunk-relation`, `F1-iteration-object`｜引擎：m1（13M）｜预算：~25 min/run
+> 主格：`C6-depth-supervision`｜关联格：`H4-head-trunk-relation`, `F2-return-channel`｜引擎：m1（13M）｜预算：~25 min/run
 
 ## 命题
 

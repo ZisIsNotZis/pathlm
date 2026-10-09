@@ -9,7 +9,7 @@ budget: "夜间批"
 
 # 2512-overnight-causal-chain（ticket 12-overnight）
 
-> 主格：`H3-composition`｜关联格：`F2-return-channel`, `A3-window-anchor`, `G2-currency`｜引擎：m1（13M，2 seeds）｜预算：夜间批
+> 主格：`H3-composition`｜关联格：`F2-return-channel`, `A3-window-anchor`｜引擎：m1（13M，2 seeds）｜预算：夜间批
 
 ## 命题
 

@@ -2,14 +2,14 @@
 name: 2514-allocator-selectivity
 ticket: 14-allocator
 date: "2026-09-16"
-grid: F3-stopping
+grid: G1-selector
 engine: "3 checkpoint 交叉验证"
 budget: "纯推理"
 ---
 
 # 2514-allocator-selectivity（ticket 14-allocator）
 
-> 主格：`F3-stopping`｜关联格：`G1-selector`, `C6-depth-supervision`｜引擎：3 checkpoint 交叉验证｜预算：纯推理
+> 主格：`G1-selector`｜关联格：`C6-depth-supervision`｜引擎：3 checkpoint 交叉验证｜预算：纯推理
 
 ## 命题
 

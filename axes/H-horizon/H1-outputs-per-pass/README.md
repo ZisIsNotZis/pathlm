@@ -3,12 +3,12 @@ id: H1-outputs-per-pass
 axis: H
 grid_dir: H-horizon/H1-outputs-per-pass
 title: "每步输出位置数"
-status: judged
+status: todo
 judge: "税 + 草稿接受率 + 端到端 tok/s（forwards/FLOPs/墙钟三口径）+ 逐位一致（验证正确性）"
 cost: "13M 单臂 ~25–30 min；100M ~32 min"
 tax: "n_mtp 1→2 +0.041（B2 1.5481）；2→3 +0.0166（B3 1.5604 vs B2fresh 1.5438，递减）"
 benefit: "Medusa 批量验证 1.68–1.90× tok/s @13M；@100M 接受级联稳定（a₂ 0.80、a₃|a₂ 0.767↑、2.4 tok/fwd）"
-verdict: "全项目税效比最好的机制；但墙钟收益是 13M/launch-bound 现象。"
+verdict: "**已有**：全项目税效比最好的机制；但墙钟收益是 13M/launch-bound 现象。**尚缺**：spec 解码的解析算力账（≈1.25× 亏损）+ 干净 c₃ 实测（待补做）。"
 deps: ["H3-composition", "H5-verification", "C1-layers-per-token"]
 evidence: [".scratch/10-gap-sweep/evidence/B2 @57d64a7", ".scratch/13-four-experiments/evidence/mtp3 @9abc181", ".scratch/20-spec-scale/evidence @a864bcf"]
 ---
@@ -17,9 +17,9 @@ evidence: [".scratch/10-gap-sweep/evidence/B2 @57d64a7", ".scratch/13-four-exper
 
 # H1-outputs-per-pass · 每步输出位置数
 
-> 轴：**H 视界（一次前向产生几个位置）** ｜ 状态：**✅ judged**
+> 轴：**H 视界（一次前向产生几个位置）** ｜ 状态：**⬜ todo**
 
-> **判读**：全项目税效比最好的机制；但墙钟收益是 13M/launch-bound 现象。
+> **判读**：**已有**：全项目税效比最好的机制；但墙钟收益是 13M/launch-bound 现象。**尚缺**：spec 解码的解析算力账（≈1.25× 亏损）+ 干净 c₃ 实测（待补做）。
 
 ## 1. 命题
 
@@ -41,7 +41,7 @@ evidence: [".scratch/10-gap-sweep/evidence/B2 @57d64a7", ".scratch/13-four-exper
 
 - **税**：n_mtp 1→2 +0.041（B2 1.5481）；2→3 +0.0166（B3 1.5604 vs B2fresh 1.5438，递减）
 - **收益**：Medusa 批量验证 1.68–1.90× tok/s @13M；@100M 接受级联稳定（a₂ 0.80、a₃|a₂ 0.767↑、2.4 tok/fwd）
-- **判读**：全项目税效比最好的机制；但墙钟收益是 13M/launch-bound 现象。
+- **判读**：**已有**：全项目税效比最好的机制；但墙钟收益是 13M/launch-bound 现象。**尚缺**：spec 解码的解析算力账（≈1.25× 亏损）+ 干净 c₃ 实测（待补做）。
 
 ## 5. 失败路径与原因
 
@@ -52,6 +52,12 @@ evidence: [".scratch/10-gap-sweep/evidence/B2 @57d64a7", ".scratch/13-four-exper
 ## 6. 判据与判决实验设计
 
 - **判据**：税 + 草稿接受率 + 端到端 tok/s（forwards/FLOPs/墙钟三口径）+ 逐位一致（验证正确性）
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：税 + 草稿接受率 + 端到端 tok/s（forwards/FLOPs/墙钟三口径）+ 逐位一致（验证正确性）
+- 成本：13M 单臂 ~25–30 min；100M ~32 min
 
 ## 7. 成本估计
 

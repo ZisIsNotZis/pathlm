@@ -9,7 +9,7 @@ budget: "GPU ~185 min（三臂）"
 
 # 2525-tax-attribution（ticket 25）
 
-> 主格：`W1-active-width`｜关联格：`C1-layers-per-token`, `W4-readout-geometry`, `P5-loss-weighting`, `G2-currency`｜引擎：depth-ar @100M（三臂）｜预算：GPU ~185 min（三臂）
+> 主格：`W1-active-width`｜关联格：`C1-layers-per-token`, `W4-readout-geometry`, `P5-loss-weighting`｜引擎：depth-ar @100M（三臂）｜预算：GPU ~185 min（三臂）
 
 ## 命题
 

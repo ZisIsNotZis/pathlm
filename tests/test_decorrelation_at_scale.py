@@ -33,7 +33,7 @@ from tools.evalkit.ensemble_probe import (                            # noqa: E4
     reading_A, reading_B)
 from train_m1 import activity_line, liveness_record                    # noqa: E402
 
-HERE = os.path.join(ROOT, "axes", "G-policy", "G5-parallel-lines",
+HERE = os.path.join(ROOT, "archive", "dropped", "axes", "G-policy", "G5-parallel-lines",
                     "experiments", "2620-decorrelation-at-scale")
 LN2 = 0.6931471805599453
 

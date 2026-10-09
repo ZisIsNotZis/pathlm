@@ -55,13 +55,13 @@
 python3 train_depth_ar.py window192 --d 256 --layers 12 --heads 8 --mlp-mult 6 --dense \
   --steps 12000 --batch-size 32 --seed 0 --lr 0.001 \
   --train-window 192 --train-anchors 8 --eval-batches 24 \
-  --out-root axes/M-carrier/M3-cross-step-assumption/experiments/2616-window192-trained-13m/train
+  --out-root axes/M-carrier/M1-carrier-type/experiments/2616-window192-trained-13m/train
 
 # arm 2b（重跑）
 python3 train_depth_ar.py window192_rep --d 256 --layers 12 --heads 8 --mlp-mult 6 --dense \
   --steps 12000 --batch-size 32 --seed 0 --lr 0.001 \
   --train-window 192 --train-anchors 8 --eval-batches 24 \
-  --out-root axes/M-carrier/M3-cross-step-assumption/experiments/2616-window192-trained-13m/train
+  --out-root axes/M-carrier/M1-carrier-type/experiments/2616-window192-trained-13m/train
 
 # 电池（主臂 / 重跑臂）
 python3 run.py
