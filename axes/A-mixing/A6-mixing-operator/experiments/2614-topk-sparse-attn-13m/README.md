@@ -162,5 +162,3 @@ norm_cap=1 / bs=32 / lr=1e-3 / 12k 步 / seed=0 / 98.3M token / enwik8 前 90M t
 
 > 契约副本标注（SCHEMA §17.6）：§0 的两段均为**逐字**抄录（统一纪律段 + 契约 J
 > 全文，含「成本」「交付」两行）；其余小节（§1–§9）为执行者实现与执行细节。
-
-> 主 Agent 补注：front-matter 状态由 `planned` 更正为 `judged`（复核 P2）。

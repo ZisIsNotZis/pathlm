@@ -69,7 +69,3 @@ step 400–1000 的危险区），不是某一种 chunk/eps/env 的确定性后�
   需要新契约与新的预登记判据（见 `README.md` §3 与 `analysis.md` §3）；
 - 不削减步数换一条「能跑完」的质量结果（那是不等预算比较）；
 - 不改判据线（逐字副本见 `README.md` §0/§4）。
-
-> 主 Agent 修正（复核 P1，2026-10-01）：上表 step200/400 的 6 个格原混用了**已被覆盖的**
-> attempt A/B 数字。已改为唯一留存的 `runs/linear-12k-s0/train_log.jsonl`（attempt3）逐位值。
-> step 800 那一行属 attempt A 原始日志，**已明确标注来源**，不作为 attempt3 的证据。

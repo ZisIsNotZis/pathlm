@@ -287,7 +287,7 @@ print("step ms  :", {T: round(x["median_ms"],2) for T,x in m.items()})
 print("peak GiB :", {T: round(x["peak_mem_gib"],3) for T,x in m.items()})
 ```
 
-**实测输出**（2026-10，本机 CPU）：
+**实测输出**（本机 CPU）：
 
 ```
 T=  256  attn_share=0.1429
@@ -330,5 +330,3 @@ peak GiB : {256: 0.809, 512: 1.48, 1024: 2.859, 2048: 5.585}
 - **记忆（未核，只可用于设计方向，不得当判据）**
   - 位置：Vaswani 2017（正弦）、GPT-2（可学习绝对）、Shaw 2018 / T5（相对偏置）、
     Press 2022（ALiBi）、Su 2021（RoPE）、Chen 2023（PI）、NTK-aware、Peng 2023（YaRN）、Kazemnejad 2023（NoPE）。
-
-> 主 Agent 修正（复核 X4 P2）：T=512 的注意力占比按本文 §4.1 的公式 `512T/(512T+786432)` 应为 **25.0%**（原 25.7% 有误；§6 的核对片段已补 T=512）。

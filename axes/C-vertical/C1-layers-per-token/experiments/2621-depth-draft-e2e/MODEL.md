@@ -45,7 +45,7 @@ python3 axes/C-vertical/C1-layers-per-token/experiments/2621-depth-draft-e2e/rec
 
 ## 3. 复现资产
 
-- `results.json`：全部臂的逐 prompt 墙钟/接受率账本 + 代理口径 + 等效 FLOPs。
+- `results.json`：全部臂的逐 prompt 墙钟/接受率记录 + 代理口径 + 等效 FLOPs。
 - `run_log.txt`：`[ckpt]` 哈希、`[gpu]`、逐臂一行汇总。
 - `cycle_log.jsonl`：**每 cycle 一行**的活性量（`accepted` / `mid_accepted` /
   `emitted` / `gamma_effective` / `committed`）——SCHEMA §10「活性量周期性落盘」在纯
@@ -69,6 +69,6 @@ python3 axes/C-vertical/C1-layers-per-token/experiments/2621-depth-draft-e2e/rec
 | `results.json` | `32ff8db35f24a76f823aac985ffc8f2db9b2df54acdf2b0d110cd35c81d44ab6` |
 | `cycle_log.jsonl` | `513ed328e6fb5e19ff9a5a764cdd4f4a68f0868e46acb9fe0f94ca9184850c4a` |
 
-注：`results.json` 由 2026-10-03 10:04:24–10:10:54 那次锁内运行写出；`run.py` 在此之后**只**
+注：`results.json` 由那次锁内运行写出；`run.py` 在此之后**只**
 改过日志路径（`log()` 改为 stdout-only，去掉重复写入），功能路径（臂定义/接受/提交/代理）
 未动；对账脚本对 `results.json` 的 1027 条断言全部通过。

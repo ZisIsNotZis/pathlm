@@ -175,8 +175,8 @@
 活性块另外两个可逐位核对的布尔量：`params_identical_to_sequential`
 （sequential/parallel-dual-ln = true）、`start_bitwise_equals_sequential`
 （sequential/dense = true）；`params_added` 与实测参数量增量逐位一致
-（单测 `test_topology_liveness_params_added_matches_param_delta`；字段名修正与
-等价重算见 `MODEL.md` §2 `rederive_liveness.py`）。
+（单测 `test_topology_liveness_params_added_matches_param_delta`；等价重算见
+`MODEL.md` §2 `rederive_liveness.py`）。
 
 ## 4. 判据线判读（预先写下，逐字未改）
 
@@ -223,7 +223,7 @@
   **0**；6,962,724 − 6,962,688 = **+36** = L(L+1)/2 ✓（`params_delta_exact = true`）
 - 阈值与方差界：判据阈值 0.014 **就是**方差界 ⇒ 无「阈值 < 噪声」的错配；
   本轮实测同配置重跑散度 0.0033（§1）也 < 0.014 ✓
-- 边界：clean bpc 下界 0；**均匀预测参考值** log₂(206) ≈ 7.69（每符号等概率时的每字符比特数）——**【2026-10-02 更正（C10）】它是参考值，不是分布数据的理论上界**（同仓已有 1322.98 bpc 的读数）。四臂实测 1.52–1.57，均远低于该参考值。
+- 边界：clean bpc 下界 0；**均匀预测参考值** log₂(206) ≈ 7.69（每符号等概率时的每字符比特数）——**它是参考值，不是分布数据的理论上界**（同仓已有 1322.98 bpc 的读数）。四臂实测 1.52–1.57，均远低于该参考值。
 
 ### 6.2 任务对账
 

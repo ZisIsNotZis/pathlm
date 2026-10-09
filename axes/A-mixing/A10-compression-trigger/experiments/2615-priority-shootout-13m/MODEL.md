@@ -49,7 +49,7 @@ python3 train_jumphead.py \
 **跨契约说明（给复核者）**：契约 M 的 `results.json::code.retention_py_sha256` 记录的是它运行时的
 `f1c6a8f3…`；本实验在其后**追加**了「优先级规则」一节，故当前文件是 `8320f03a…`（只增不改既有函数
 语义）。判据 M 的数字不受影响的证据：本实验在同一进程内重算它的 `prefix:N∈{8,32,64}` 三点，
-最大差 **2.59e-07**；M 的 16 条单测在本实验修订后仍全绿。
+最大差 **2.59e-07**；M 的 16 条单测仍全绿。
 
 **对本仓库既有实验行为零改动**：`masked_bpc(prefix_keep_mask)` 在本进程内复算契约 M 记录的
 `prefix:N∈{8,32,64}`，最大 |Δbpc| = **2.59e-07**（`results.json::reuse_check_contract_M`）。

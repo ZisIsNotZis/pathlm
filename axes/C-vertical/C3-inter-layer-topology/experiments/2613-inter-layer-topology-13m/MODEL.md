@@ -52,19 +52,19 @@ python3 $EXP/smoke.py
 python3 $EXP/mutate.py
 ```
 
-§10 活性块的字段名修正后，从 checkpoint **等价重算**活性块（不重训；`topology_liveness`
+§10 活性块从 checkpoint **等价重算**（不重训；`topology_liveness`
 只是 `cfg.topology` + checkpoint 里 `layer_mix` 的纯函数）：
 
 ```bash
 python3 $EXP/rederive_liveness.py
 ```
 
-（修正内容：原来的 `identity_init` 字段对**无专属参数**的 `parallel-dual-ln` 臂给出 True，
-读起来像「该臂起步与基线逐位等价」——实际不是，见
-`smoke/smoke.json::identity_start_bitwise_vs_sequential`。现拆成两个可逐位核对的布尔量
-`params_identical_to_sequential` / `start_bitwise_equals_sequential`，并有单测
+（活性块用两个可逐位核对的布尔量 `params_identical_to_sequential` /
+`start_bitwise_equals_sequential` 表达起步等价性：对**无专属参数**的 `parallel-dual-ln` 臂
+前者为 True 而后者不是——「与基线参数逐位相同」不等于「起步逐位等价」，见
+`smoke/smoke.json::identity_start_bitwise_vs_sequential`。单测
 `test_topology_liveness_params_added_matches_param_delta` 钉住 `params_added` 与实测
-参数量增量一致。重算只改这四个臂的活性字段，不动任何质量数字。）
+参数量增量一致。重算只动这四个臂的活性字段，不动任何质量数字。）
 
 只重算电池、不训练（复用 `runs/` 下 checkpoint；需从仓库根目录运行）：
 
@@ -84,7 +84,7 @@ python3 $EXP/run.py --skip-train
 | `runs/<arm>/stdout.log` | 四臂训练子进程原始输出 |
 | `smoke/smoke.json` | 20 步冒烟：参数量账 / 恒等起步 / 接线活性 / 步时 / 峰值显存 |
 | `mutation_report.json` | 三处变异抓红记录 + 还原后 sha256 一致性 |
-| `rederive_liveness.py` | §10 活性块字段名修正后的等价重算工具（幂等，<10 s） |
+| `rederive_liveness.py` | §10 活性块的等价重算工具（幂等，<10 s） |
 | `analysis.md` / `stability.md` | 判读（含三道对账）/ 稳定性专报 |
 
 `run.py --skip-train` 用同一 CLI 可重算全部臂的电池与判读，因此本实验**自持**：

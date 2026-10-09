@@ -5,7 +5,7 @@ date: "2026-09-30"
 grid: C3-inter-layer-topology（纯空白格，首次本地探索）
 engine: depth-ar `--dense`（stock decoder-only transformer，13M 档）
 budget: "gpu_wall_budget: 40 min（冒烟 ~1 + 四臂训练 ≈26 + 四臂电池 ≈3 + 余量）；峰值显存 ≤5GB（net）"
-status: planned
+status: judged
 ---
 
 # 2613 · 层间拓扑（C3 纯空白格首探）· 13M · depth-ar/dense
@@ -119,7 +119,7 @@ d=256 / L=8 / h=8 / seq=256 / mlp_mult=4 / dropout=0 / norm_cap=1 / bs=32 / lr=1
 | 代码改动 | `pathlm/depth_ar.py`（新增 `topology` 配置 + `ParallelBlock` + `topology_liveness` + dense 层权 `layer_mix`；缺省 `sequential` 逐位还原 v1）、`train_depth_ar.py`（`--topology` + 落盘活性块）、`tests/test_depth_ar.py`（+9 可失败单测） |
 | 可失败单测 | ① 缺省拓扑逐位还原 v1；② 并行公式逐位钉死 + 非 stock 路径守卫；③ 参数量账 + 初始化逐位一致（等参数臂）；④ 接线活性（并行 ≠ 顺序；两种并行变体可分）；⑤ dense 恒等起步逐位 == sequential + 改 α 必偏离；⑥ dense 层权公式手算对照；⑦ dense 层权非鞍点/一步逃逸；⑧ 拓扑守卫（需 dense、未知值、`_gated_step` 拒绝）；⑨ 活性块 `params_added` 与实测参数量增量逐位一致 |
 | 变异验证 | 三处故意破坏（忽略拓扑开关 / 并行实现成链式 / dense 层权不参与前向）必须抓红——见 `analysis.md` §5 |
-| 落盘 | `results.json` / `train_log.jsonl`（每臂） / `config.json` / `analysis.md` / `stability.md` / `MODEL.md` / `smoke/smoke.json` / `mutation_report.json` / `rederive_liveness.py`（§10 活性块字段名修正后的等价重算，幂等） |
+| 落盘 | `results.json` / `train_log.jsonl`（每臂） / `config.json` / `analysis.md` / `stability.md` / `MODEL.md` / `smoke/smoke.json` / `mutation_report.json` / `rederive_liveness.py`（§10 活性块由 checkpoint 等价重算，幂等） |
 
 ## 8. 失败决策树
 
@@ -140,4 +140,4 @@ d=256 / L=8 / h=8 / seq=256 / mlp_mult=4 / dropout=0 / norm_cap=1 / bs=32 / lr=1
 `config.json` / `results.json` / `mutation_report.json` / `train_log.jsonl`（四臂） /
 `analysis.md` / `stability.md` / `MODEL.md`。
 
-> 主 Agent 补注（复核 P2#1）：§0 为契约摘要，**判据线逐字保留**；原文见 `.scratch/30-batch3/issues/01-batch3.md` 契约 E。
+> 契约副本标注（SCHEMA §17.6）：§0 为契约摘要，**判据线逐字保留**；原文见 `.scratch/30-batch3/issues/01-batch3.md` 契约 E。

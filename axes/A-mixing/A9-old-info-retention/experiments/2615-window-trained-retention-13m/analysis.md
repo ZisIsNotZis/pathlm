@@ -333,8 +333,7 @@
 4. **贴窗带的样本量小**：beyond 的 [0,32) 带只有 54 根针（+0.13 的信号，n 太小不作判据）。
 5. **本实验未做**（契约未要求、也不在授权范围）：更大规模/更长训练；`fill_kv`/depth-ar 形态
    的窗口训练（该形态的掩码语义未定义，见 2614 §3 的同类说明）。
-6. **无 ERRATA**：本实验没有撤回任何先前结论；唯一需要登记的「口径发现」是
-   `window32` 的 release 口径是 OOD 且**不稳定**（两次 12k 重跑差 0.066 bpc），
+6. **口径发现**：`window32` 的 release 口径是 OOD 且**不稳定**（两次 12k 重跑差 0.066 bpc），
    已写进 `results.json::criteria` 的 `secondary_native_reference.note` 与 `stability.md §3.2`。
 
 ---
