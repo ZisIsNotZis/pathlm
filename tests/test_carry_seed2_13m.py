@@ -297,6 +297,28 @@ def test_record_refreshes_both_fields_and_repairs_contradiction(tmp_path):
     assert after2["lock_note"] == mod.derive_note(out2)
     assert "整程持锁" in after2["lock_note"] and "短任务插队例外" not in after2["lock_note"]
     assert out2["headroom_ok"] is True and out2["free_gpu_mem_mib_after"] == 9999
+    # **跨文件读回**断言（复核 P2-2）：直接对磁盘上两份独立产物核不变量
+    mod.assert_cross_file_consistent(str(tmp_path / "lock_accounting.json"),
+                                     str(tmp_path / "results.json"))
+    # 篡改磁盘上的 note ⇒ 跨文件断言必须抓到（可失败），且 record 会把它修好
+    res = json.load(open(tmp_path / "results.json"))
+    res["cost"]["lock_note"] = "伪造的措辞：评测按 **§20.1.2 短任务插队例外** 执行"
+    json.dump(res, open(tmp_path / "results.json", "w"))
+    with pytest.raises(ValueError, match="跨文件不一致"):
+        mod.assert_cross_file_consistent(str(tmp_path / "lock_accounting.json"),
+                                         str(tmp_path / "results.json"))
+    mod.record("section_20_lock", 10000, 9999, 44, 0, base_dir=str(tmp_path))
+    mod.assert_cross_file_consistent(str(tmp_path / "lock_accounting.json"),
+                                     str(tmp_path / "results.json"))   # 已修好
+
+
+def test_record_without_results_file_only_writes_accounting(tmp_path):
+    """`results.json` 不存在（run.py 崩在最终写盘前）时：只写记账、不留「一边新一边旧」。"""
+    mod = _load_exp_module("2633-carry-seed2", "lock_accounting")
+    out = mod.record("section_20_lock", 9000, 9000, 10, 1, base_dir=str(tmp_path))
+    assert (tmp_path / "lock_accounting.json").exists()
+    assert not (tmp_path / "results.json").exists()
+    assert json.load(open(tmp_path / "lock_accounting.json")) == out
 
 
 def test_all_rating_drivers_use_the_single_recorder():

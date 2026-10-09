@@ -82,14 +82,43 @@ def build_accounting(mode: str, free_before: int, free_after: int, wall_s: int,
     }
 
 
+def assert_cross_file_consistent(acct_path: str, results_path: str) -> None:
+    """**跨文件**不变量（读两份独立产物；这是写盘路径真正的护栏，复核 P2-2）：
+
+    ① `results.json::cost.lock_accounting` == `lock_accounting.json` 的全文；
+    ② `results.json::cost.lock_note` == `derive_note(lock_accounting.json)`（逐字）。
+    """
+    acct = json.load(open(acct_path))
+    results = json.load(open(results_path))
+    cost = results.get("cost") or {}
+    if cost.get("lock_accounting") != acct:
+        raise ValueError("跨文件不一致：results.json::cost.lock_accounting != lock_accounting.json")
+    if (cost.get("lock_note") or "") != derive_note(acct):
+        raise ValueError("跨文件不一致：results.json::cost.lock_note != derive_note(lock_accounting.json)")
+
+
+def _write_json_atomic(path: str, obj) -> None:
+    """temp + rename 写盘（避免半写文件）。"""
+    tmp = f"{path}.tmp.{os.getpid()}"
+    with open(tmp, "w") as f:
+        json.dump(obj, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
 def record(mode: str, free_before: int, free_after: int, wall_s: int, returncode: int,
            results_name: str = "results.json", base_dir: str | None = None) -> dict:
-    """写 `lock_accounting.json`，并**同时**刷新 `results.json` 的 accounting 与 note 后自检。
+    """写 `lock_accounting.json`，并**同时**刷新 `results.json` 的 accounting 与 note。
+
+    写入顺序（复核 P2-3）：**先构造两个 payload → 先在内存里断言 → 再 temp+rename 写两个文件 →
+    最后从磁盘读回两份产物做跨文件断言**。`results.json` 不存在时只写记账文件（无可跨文件比对
+    的对象），并打印提示——**不得**留下「一边新一边旧」的产物。
 
     `base_dir` 默认 = 本实验目录（驱动用）；单测传临时目录，避免改写已入账产物。
     """
     d = base_dir or HERE
     res_path = os.path.join(d, results_name)
+    acct_path = os.path.join(d, "lock_accounting.json")
     peak = None
     if os.path.exists(res_path):
         try:
@@ -97,18 +126,24 @@ def record(mode: str, free_before: int, free_after: int, wall_s: int, returncode
         except Exception:
             peak = None
     out = build_accounting(mode, free_before, free_after, wall_s, returncode, peak)
-    with open(os.path.join(d, "lock_accounting.json"), "w") as f:
-        json.dump(out, f, indent=2, ensure_ascii=False)
-        f.write("\n")
+    # ① 先构造两个 payload（内存里）
+    res = None
     if os.path.exists(res_path):
         res = json.load(open(res_path))
         res.setdefault("cost", {})
         res["cost"]["lock_accounting"] = out
         res["cost"]["lock_note"] = derive_note(out)      # **同一处**刷新两个字段
-        assert_consistent(res["cost"])                   # 驱动侧护栏（覆写后立即自检）
-        with open(res_path, "w") as f:
-            json.dump(res, f, indent=2, ensure_ascii=False)
-        print("results.json::cost.{lock_accounting,lock_note} 已同步（口径一致）")
+        assert_consistent(res["cost"])                   # 结构自检（同源，仅防手改）
+    # ② 再写两个文件（temp+rename；每个文件原子）
+    _write_json_atomic(acct_path, out)
+    if res is not None:
+        _write_json_atomic(res_path, res)
+    # ③ 最后**从磁盘读回两份独立产物**做跨文件断言（写盘路径的真护栏）
+    if res is not None:
+        assert_cross_file_consistent(acct_path, res_path)
+        print("results.json::cost.{lock_accounting,lock_note} 已同步（跨文件读回自检通过）")
+    else:
+        print(f"[警告] {res_path} 不存在 ⇒ 只写记账文件（无可跨文件比对的对象）")
     return out
 
 

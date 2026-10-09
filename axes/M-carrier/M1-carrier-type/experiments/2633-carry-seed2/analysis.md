@@ -288,20 +288,17 @@ delta 与 plain 两种写入规则**。不得读成「业界做不到/做得到�
 
 ## §20 记账（GPU 锁 / 显存 / 争用）
 
-> **结构化产物**：`lock_accounting.json`（**权威**，由评测驱动写出；机器可读字段 =
-> `mode/lock_taken/free_gpu_mem_mib_before/after/wall_s/eval_peak_gpu_mem_mb/headroom_ok`）。
-> `results.json::cost.lock_accounting` 是驱动在**同一份数据**上回填的副本（复核 P2-2；
-> 两个驱动都回填：`eval.sh` 记 `mode=section_20_lock`、`eval_concurrent.sh` 记
-> `mode=section_20_1_2_short_job_exception`）。本节只是同一事实的文字口径。
+> **唯一权威 = `lock_accounting.json`**（由评测驱动经 `lock_accounting.py record` 写出；机器可读字段 =
+> `mode/lock_kind/lock_taken/free_gpu_mem_mib_before/after/wall_s/eval_peak_gpu_mem_mb/headroom_ok`）。
+> 驱动在 `run.py` **之后**同时刷新 `results.json::cost.lock_accounting` **与** `cost.lock_note`，
+> 并在**写完从磁盘读回两份产物**做跨文件断言（`lock_accounting.assert_cross_file_consistent`）；
+> `reconcile_numbers.py` 对同样的不变量再核一遍。⇒ **本节不复制任何易变数字**
+> （墙钟/峰值/前后空闲只在产物里；复制必与「以产物为准」的声明冲突）。
 
 - **训练**：按臂取/放 `/tmp/pathlm_gpu.lock`、臂间留 ≥60 s（§20.1）；峰值显存见 `MODEL.md`。
 - **评测口径**：本实验 `eval.sh` 走**整程持锁**（`mode=section_20_lock`，该驱动 <10 min）；
-  **墙钟/峰值/前后空闲一律以 `lock_accounting.json` 为准**（本节不复制数字——复核 P2-3：
-  此处曾写死 231 s 而与产物 270 s 不符；该字段现由 `reconcile_numbers.py` 对账覆盖）。⇒ 墙钟一律以结构化产物为准，**正文不另存一份数字**
-  （复核 P2-3：此处曾写 231 s，与产物不符）。
-- **历史口径（保留）**：评测最初两次因**其它线长时间占锁**（R7/MoD 的 `run_arms.sh all` 连续
-  训练，多次等待 >10 min）等锁超时，改用 **SCHEMA §20.1.2** 的短任务插队例外执行
-  （纯推理、不取锁、不动锁目录；`mode=section_20_1_2_short_job_exception`，墙钟 252 s、
-  峰值 701.6 MB、前后空闲 15,028 → 16,610 MiB）；该例外的字面门槛是「≤2 min」，
-  两次都超门槛，已如实登记为**超门槛的 §20 一次性并发例外**。
+  早期评测曾在**其它线长时间占锁**（R7/MoD 的 `run_arms.sh all`）时改用 SCHEMA §20.1.2 的
+  「短任务插队」例外（`mode=section_20_1_2_short_job_exception`：纯推理、不取锁、不动锁目录），
+  该例外两次都超「≤2 min」的字面门槛。**逐次流水（含当时的读数）在
+  `.scratch/doc-log/2633-lock-caliber.md`**——事实文档只留「以产物为准」的口径。
 - 训练侧无「等锁超时 / 锁泄漏」。

@@ -189,8 +189,7 @@
   `continue` 跳过（那些步同时跳过逐 200 步的 telemetry/日志 CPU 开销），且两次测量的共享卡
   占用不同（冒烟期其它线在跑 pytest/训练）。⇒ **两套数都不作跨臂速度结论**；本格也从未用
   步时做任何判据（只用于定预算与解释墙钟）。数字已回填 `config.json::steptime_measured`。
-- 评测：`eval_concurrent.sh` 写出 `lock_accounting.json`（见 §20 记账），墙钟 **10 s**、峰值
-  286.8 MB（与 `lock_accounting.json` / `results.json::cost.lock_accounting` 同源）。
+- 评测：墙钟/峰值一律以 `lock_accounting.json` 为准（见 §20；**本节不复制该数字**）。
 
 ### 7.2 对账与复现性
 
@@ -259,8 +258,7 @@
 > 驱动在 `run.py` **之后**同时刷新 `results.json::cost.lock_accounting` **与** `cost.lock_note`
 > （复核 P1：只刷一半会造成「同文件两处相反」），并由 `lock_accounting.assert_consistent()` 自检。
 > **本节不复制任何易变数字**（墙钟/峰值/前后空闲只在产物里；`reconcile_numbers.py` 对账覆盖）。
-> `eval_peak_gpu_mem_mb=286.8`、空闲 15804 →
-> 15804 MiB、`headroom_ok=True`（门槛 ≥3,072 MiB）。
+> （具体数值见该文件；本节**不复制**——数字会随每次评测变化，复制必导致声明与做法不一致。）
 
 - **训练**：按臂取/放 `/tmp/pathlm_gpu.lock`、臂间留 ≥60 s（§20.1）；峰值显存见 `MODEL.md`。
 - **评测口径**：本实验的 `eval.sh` 走**整程持锁**（`mode=section_20_lock`，该驱动 <10 min）；
