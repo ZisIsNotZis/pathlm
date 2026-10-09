@@ -43,3 +43,23 @@
 ## C2-layer-selection-order（原 `axes/C-vertical/C2-layer-selection-order/PROBLEMS.md`）
 
 - P-13：「元素税定律」措辞需按证据强度校准。
+
+## H1-outputs-per-pass（原 `axes/H-horizon/H1-outputs-per-pass/PROBLEMS.md`）
+
+- P-02：多 token 预测的税已测；缺「链式 vs 直接 + 概率组合」与 100M（P-02）。
+
+## H3-composition（原 `axes/H-horizon/H3-composition/PROBLEMS.md`）
+
+- P-02：门控坍缩为连跳已实测；缺显式的概率组合变量实验（P-02）。
+
+## H4-head-trunk-relation（原 `axes/H-horizon/H4-head-trunk-relation/PROBLEMS.md`）
+
+- P-02：挂头零税已坐实；缺投机循环内的净账与 100M（P-02）。
+
+## H5-verification（原 `axes/H-horizon/H5-verification/PROBLEMS.md`）
+
+- P-02：验证逐位一致已测；缺树状 / 多候选草稿的验证策略（P-02）。
+
+## W3-kv-head-sharing（原 `axes/W-width/W3-kv-head-sharing/PROBLEMS.md`）
+
+- P-14（同 R1）：量化边界未定位 ⇒ 补 5/6 位与旋转 / 投影类量化边界（P-14）。

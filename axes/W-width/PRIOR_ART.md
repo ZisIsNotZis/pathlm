@@ -1,6 +1,6 @@
 # PRIOR_ART — 宽度（激活宽度 / 专家化 / KV 头共享 / 读出几何）的既有做法
 
-> 轴：**W 宽度** ｜ 格子：`W1-active-width` … `W5-capacity-vs-compute`
+> 轴：**W 宽度** ｜ 格子：`W1-active-width` … `W4-readout-geometry`（`W5` 已从研究树删除，分类事实归 `W2`，见 `archive/README.md`）
 > 角色：researcher（只读 + 本文件）｜ 本波**无 GPU、不跑训练/评测、不取锁**
 > 依据：`SCHEMA.md` §18 / §19 / §21
 
@@ -38,7 +38,7 @@
 
 **「业界是否已有此结论」判定（`W1` 是 `status: judged`）**：
 - 「减宽 = 减容量、要付质量」→ **业界已有**（结构化剪枝一系，`记忆·未核`）⇒
-  **账本该条可标「业界结论」口径**（来源类型 = 业界结论，非本地实测）。
+  **该条标「业界结论」口径**（来源类型 = 业界结论，非本地实测）。
 - 「状态能量迁出被约束子空间」这一**机制解释** → **(b)** 本地增量，保留 `judged`。
 
 **可复现的判据建议**：判据 = Δclean bpc + workspace 探针（null 能量占比 / functional_dirs）。
@@ -87,7 +87,7 @@
 
 **「业界是否已有此结论」判定（`W3` 是 `status: judged`）**：
 - 「GQA/MQA 降 KV、质量近无损」→ **业界已有**（`记忆·未核`）⇒
-  **账本该条可标「业界结论」口径**（来源类型 = 业界结论，非本地实测）。
+  **该条标「业界结论」口径**（来源类型 = 业界结论，非本地实测）。
 - 「从零训练 13M 下 GQA 代价≈1% bpc、不免费」与「同字节跨家族 Pareto」→ **(b)** 本地增量，
   保留 `judged`（本仓库 `R4` 的 `PRIOR_ART.md` 已详述，见 §4）。
 
@@ -132,7 +132,7 @@
 **我们的增量**：本仓库把这条共识**形式化为判据**（W1 负结果 + W4 对照）。
 
 **「业界是否已有此结论」判定（`W5` 是 `status: judged`）**：**(a) 业界已研究透**——
-这是剪枝 vs MoE 的基本分类（`记忆·未核`）⇒ **建议账本标「业界结论」口径**，
+这是剪枝 vs MoE 的基本分类（`记忆·未核`）⇒ **建议标「业界结论」口径**，
 来源类型 = 业界结论，非本地实测。应写入句：
 **「减容量（剪枝/减宽/裁头）付质量而不买灵活性；保容量减计算（稀疏激活/专家路由）才是
 扩容量的正路（业界共识，`记忆·未核`）；本地 W1 负结果与之一致（`本地实测`）。」**
@@ -143,13 +143,14 @@
 
 ## 2. 机器可读分诊表
 
-| grid_id | 判定 | 一句话理由 | 若要写进账本的结论 |
+| grid_id | 判定 | 一句话理由 | 拟写进 `catalog.yaml` 的结论 |
 |---|---|---|---|
 | `W1-active-width` | (a)+b | 减宽=减容量付质量=结构化剪枝已知；能量迁出机制=本地增量 | 参照线句：「减宽/裁通道等价于减容量，需付质量；它不买每 token 固定成本结构的灵活性（`记忆·未核`，结构化剪枝一系）。」能量迁出机制保留 `judged` |
 | `W2-expertization` | (a) | MoE 稀疏宽=保容量减计算，大规模成熟验证；13M 无实质新设定 | 参照线句：「用稀疏路由把参数量与每 token FLOPs 解耦（MoE）是保容量减计算的成熟路线；细粒度专家 + 共享专家为主流配方，负载均衡/路由坍缩是主要风险（`记忆·未核`，Switch/Mixtral/DeepSeek-MoE）。」⇒ 建议 `status: todo` |
 | `W3-kv-head-sharing` | (a)+b | GQA/MQA 降 KV、近无损=业界已知；从零训练 13M 的代价 + 同字节跨家族 Pareto=本地增量 | 参照线句：「GQA/MQA/MLA 可把 KV 降数倍且质量近无损（uptrain；`记忆·未核`，Shazeer 2019 / Ainslie 2023 / DeepSeek-V2 2024）。」同字节 Pareto 与 13M 代价保留 `judged` |
 | `W4-readout-geometry` | (a)+b | tied vs untied 小模型差异小=业界已知；读出重参数化=容量非非线性、只本形态有效=本地增量 | 参照线句：「输入/输出 embedding 绑定省参数、小模型质量差异小；解绑/门控读出属重参数化+容量手段（`记忆·未核`）。」本地受控归因保留 `judged` |
-| `W5-capacity-vs-compute` | (a) | 减容量 vs 保容量减计算是剪枝/MoE 基本分类，业界共识 | 参照线句：「减容量付质量、不买灵活性；保容量减计算（稀疏/专家/条件）才是扩容量正路（`记忆·未核`）。」⇒ 建议 `status: todo` |
+
+`W5-capacity-vs-compute` 已删；其保留内容「剪枝=减容量、MoE=保容量减计算」作为 `W2-expertization` 的分类事实。
 
 ---
 
@@ -161,9 +162,8 @@
 | W2 | `Switch Transformer MoE`, `GShard`, `Mixtral sparse MoE`, `DeepSeekMoE fine-grained shared expert`, `expert choice routing`, `load balancing aux loss MoE`, `MoE small scale 13M` |
 | W3 | `Shazeer MQA 2019`, `Ainslie GQA uptraining`, `DeepSeek-V2 MLA`, `Cross-Layer Attention`, `YOCO you only cache once`, `MLKV multi-layer KV`, `unified KV byte budget benchmark` |
 | W4 | `Press Wolf tying word vectors`, `Inan tying word vectors classifiers`, `Shazeer GLU variants`, `untied output embedding small model`, `readout reparameterization LM`, `weight tying quality` |
-| W5 | `capacity vs compute tradeoff LLM`, `conditional computation`, `pruning vs MoE`, `parameter compute decoupling` |
 
-**核证优先级**：`W3 GQA uptrain 近无损数字`（决定 W3 账本措辞）与
+**核证优先级**：`W3 GQA uptrain 近无损数字`（决定 W3 措辞）与
 `W2 MoE 在极小尺度的意义`（决定 W2 是否真需 (b)）。
 
 ---
@@ -173,15 +173,14 @@
 **来源类型图例**：`官网/论文（含链接）`｜`记忆（未核）`｜`本地实测`。
 （本波无检索工具 ⇒ **无「官网/论文（含链接）」**；外部条目均为 `记忆·未核`。）
 
-**本地实测（路径见 `catalog.yaml` `W1`–`W5` 的 `local.evidence`）**
+**本地实测（路径见 `catalog.yaml` `W1`–`W4` 的 `local.evidence`）
 - `W1-active-width`：结构切分读出只读前 360 维 @100M → clean 2.1475、恢复 −50.4%；
   切片能量 0.85→0.026→≈0。证据 `.scratch/25-tax-attribution`。
-- `W2-expertization`：`stub`，本地零经验（`local: {}`）。
+- `W2-expertization`：本地零经验（原 `R6-moe-scale` 已并入本格）。
 - `W3-kv-head-sharing`：mha 1.4820 / gqa 1.4963（+0.0143）/ mqa 1.4938（+0.0118）；
   解析 KV 12288→3072（−75%）/1536 B（−87.5%）。证据 `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/analysis.md`。
 - `W4-readout-geometry`：gated 12k Δ=−0.0812、等参数纯线性 Δ=−0.0888（不可排序）；
   24k Δ=−0.0463；dense 上 Δ=−0.0055/−0.0026。证据 `axes/W-width/W4-readout-geometry/experiments/2610~2613-*/analysis.md`。
-- `W5-capacity-vs-compute`：减容量负结果（W1 −50.4%）。证据 `.scratch/25-tax-attribution`。
 
 **关联（他轴但同主题，已落盘）**
 - `axes/R-references/R4-window-kv-quant-retrieval/experiments/2617-prior-art-hybrid-kv/PRIOR_ART.md`

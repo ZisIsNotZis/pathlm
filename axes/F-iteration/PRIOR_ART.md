@@ -1,6 +1,6 @@
 # PRIOR_ART — 迭代（重复对象 / 回传通道 / 停止条件 / 训练信号）的既有做法
 
-> 轴：**F 迭代** ｜ 格子：`F1-iteration-object` … `F4-training-signal`
+> 轴：**F 迭代** ｜ 格子：`F2-return-channel` · `F4-training-signal`（`F1-iteration-object` 并入 `F2`、`F3-stopping` 并入 `G1-selector`，见 `archive/README.md`）
 > 角色：researcher（只读 + 本文件）｜ 本波**无 GPU、不跑训练/评测、不取锁**
 > 依据：`SCHEMA.md` §18 / §19 / §21
 
@@ -23,7 +23,7 @@
 
 ## 1. 既有做法（按格）
 
-### F1 — 迭代对象
+### 迭代对象（原 F1，已并入 F2-return-channel）
 
 **谁做过 / 为什么（`记忆·未核`）**
 
@@ -41,7 +41,7 @@
 并给出**「多一遍有价值、回传几何无价值」**的受控结论（6 个 latent 回传 cell 跨度 0.011
 < 种子散布 0.0138 ⇒ 排序撤回）。后四项（整段去噪 / 候选集 / latent CoT / TTT）本地零经验。
 
-**「业界是否已有此结论」判定（`F1` 是 `status: todo`）**：
+**「业界是否已有此结论」判定（迭代对象已并入 `F2`）**：
 - 「无输入注入的循环重入退化为固定点」→ **业界已有**（looped/recurrent 模型的公认教训，
   `记忆·未核`）⇒ 该子条可标「业界结论」口径（来源类型 = 业界结论，非本地实测）。
 - 「回传几何（linear/soft/hard cell）在 13M 上不可排序」→ **(b)** 本地受控结论，保留。
@@ -79,7 +79,7 @@
 
 ---
 
-### F3 — 停止条件
+### 停止条件（原 F3，已并入 G1-selector）
 
 **谁做过 / 为什么（`记忆·未核`）**
 
@@ -93,7 +93,7 @@
 **我们的增量**：**选择性问题获本地证**（低置信 15% 开火 +0.128 vs 均匀 +0.057，
 固定点最优性复现）+ **预算求解器端到端建成**（成本模型预测误差 ≤±13%）。
 
-**「业界是否已有此结论」判定（`F3` 是 `status: judged`）**：
+**「业界是否已有此结论」判定（停止条件已并入 `G1-selector`，在本格预登记重跑）**：
 - 「按置信度选择性计算/早退能省钱」→ **业界已有**（ACT / CALM 系，`记忆·未核`）⇒
   该子条可标「业界结论」口径（来源类型 = 业界结论，非本地实测）。
 - 「门控选择性的质量杠杆在 100M 消失」与「多货币预算求解器」→ **(b)** 本地增量，保留 `judged`。
@@ -122,7 +122,7 @@
 
 **「业界是否已有此结论」判定（`F4` 是 `status: judged`）**：
 - 「重建/充分性损失是激进压缩能成立的关键信号」→ **业界已有成熟前例**（见上，`记忆·未核`）⇒
-  **账本应改「业界结论」口径**（来源类型 = 业界结论，非本地实测）。应写入句：
+  **该条改「业界结论」口径**（来源类型 = 业界结论，非本地实测）。应写入句：
   **「重建/充分性类辅助损失是压缩可恢复性的关键信号（`记忆·未核`，Compressive Transformer
   2019 / AutoCompressors / ICAE / RECOMP / DMC 2024）；本地 F4 是 13M + 局部先验抗性任务 +
   单因素受控的增量检验，非首创。」**
@@ -138,12 +138,10 @@
 
 ## 2. 机器可读分诊表
 
-| grid_id | 判定 | 一句话理由 | 若要写进账本的结论 |
+| grid_id | 判定 | 一句话理由 | 拟写进 `catalog.yaml` 的结论 |
 |---|---|---|---|
-| `F1-iteration-object` | (a)+b | 无注入循环=固定点、去噪/隐式步/TTT 均业界成熟；回传几何不可排序=本地增量 | 参照线句：「循环式重复若无输入注入会退化为固定点；隐式推理步/扩散去噪/权重迭代均为既有路线（`记忆·未核`）。」回传几何不可排序保留 `judged`/`todo` |
-| `F2-return-channel` | (a)+b | 需输入注入才不 no-op=业界教训；软回传 OOD 污染与通道组对照=本地增量 | 参照线句：「迭代需让每轮有新信息（输入注入/门控），否则固定点（`记忆·未核`）。」软回传 OOD 污染保留 `judged` |
-| `F3-stopping` | (a)+b | 置信门控早退/自适应计算=业界成熟（ACT/CALM）；多货币预算求解器=本地增量 | 参照线句：「按模型置信度自适应早退/选择性计算能省算力是行业成熟做法，但生成段置信信号不可靠（`记忆·未核`，ACT / CALM）。」求解器与 100M 杠杆消失保留 `judged` |
-| `F4-training-signal` | (a)+b | 重建/充分性损失=2019 起成熟路线（非空白格）；一致性中性=本地增量 | 参照线句：「重建/充分性类辅助损失是压缩可恢复性的关键信号（`记忆·未核`，Compressive Transformer 2019 / AutoCompressors / ICAE / RECOMP / DMC 2024）。」⇒ 账本措辞改「业界结论」，本地增量保留 `judged` |
+| `F2-return-channel` | (a)+b | 需输入注入才不 no-op=业界教训；软回传 OOD 污染与通道组对照=本地增量 | 参照线句：「循环式重复若无输入注入会退化为固定点；隐式推理步/扩散去噪/权重迭代均为既有路线（`记忆·未核`）。」回传几何不可排序保留 `judged`/`todo` |
+| `F4-training-signal` | (a)+b | 重建/充分性损失=2019 起成熟路线（非空白格）；一致性中性=本地增量 | 参照线句：「重建/充分性类辅助损失是压缩可恢复性的关键信号（`记忆·未核`，Compressive Transformer 2019 / AutoCompressors / ICAE / RECOMP / DMC 2024）。」⇒ 措辞改「业界结论」，本地增量保留 `judged` |
 
 ---
 
@@ -151,13 +149,13 @@
 
 | 格 | 关键词 |
 |---|---|
-| F1 | `Universal Transformer adaptive computation`, `recurrent depth Huginn input injection`, `looped transformer fixed point collapse`, `Diffusion-LM SEDD Plaid`, `pause token Goyal 2024`, `latent chain of thought`, `test-time training TTT Sun 2024`, `fast weights Schmidhuber` |
+| 迭代对象（原 F1→F2） | `Universal Transformer adaptive computation`, `recurrent depth Huginn input injection`, `looped transformer fixed point collapse`, `Diffusion-LM SEDD Plaid`, `pause token Goyal 2024`, `latent chain of thought`, `test-time training TTT Sun 2024`, `fast weights Schmidhuber` |
 | F2 | `deep equilibrium model input injection`, `gated recurrence state update`, `soft vs hard latent quantization OOD`, `vector quantization straight-through`, `verifier feedback loop LM` |
-| F3 | `adaptive computation time Graves 2016`, `PonderNet`, `PABEE early exit`, `CALM confident adaptive language modeling`, `early exit calibration generation`, `compute allocation budget solver transformer` |
+| 停止条件（原 F3→G1） | `adaptive computation time Graves 2016`, `PonderNet`, `PABEE early exit`, `CALM confident adaptive language modeling`, `early exit calibration generation`, `compute allocation budget solver transformer` |
 | F4 | `Compressive Transformer compression loss reconstruction`, `AutoCompressors summary reconstruction`, `ICAE in-context autoencoder`, `RECOMP reconstruction vs distillation`, `500xCompressor`, `DMC dynamic memory compression`, `consistency loss self-distillation`, `sufficiency loss memory` |
 
 **核证优先级**：`F4 Compressive Transformer compression loss`（决定 F4 措辞）与
-`F1 looped model 固定点/输入注入`（决定 F1/F2 参照线措辞）。
+`迭代对象 looped model 固定点/输入注入`（决定 `F2` 参照线措辞）。
 
 ---
 
@@ -166,14 +164,11 @@
 **来源类型图例**：`官网/论文（含链接）`｜`记忆（未核）`｜`本地实测`。
 （本波无检索工具 ⇒ **无「官网/论文（含链接）」**；外部条目均为 `记忆·未核`。）
 
-**本地实测（路径见 `catalog.yaml` `F1`–`F4` 的 `local.evidence`）**
-- `F1-iteration-object`：latent retry C 族 1.6535–1.6856 vs B0 1.5074（+0.146…+0.178）；
-  6 个 latent 回传 cell 跨度仅 0.011 < 种子散布 0.0138（排序撤回）。证据
+**本地实测（路径见 `catalog.yaml` `F2`/`F4` 的 `local.evidence`）**
+- `F2-return-channel`（并 `F1`）：latent retry C 族 1.6535–1.6856 vs B0 1.5074（+0.146…+0.178）；
+  6 个 latent 回传 cell 跨度仅 0.011 < 种子散布 0.0138（排序撤回）；direct 重入 = 固定点（结构性 no-op）。证据
   `.scratch/11-retry-matrix-validity/VERDICTS.md`、`.scratch/12-overnight`、`.scratch/14-allocator`。
-- `F2-return-channel`：direct 重入 = 固定点（结构性 no-op）；软回传 OOD 污染三度复现；
-  D1 gauge bug（~30× rescale）。证据 `.scratch/02-engine-m0`、`.scratch/11-retry-matrix-validity`、
-  `.scratch/13-four-experiments`。
-- `F3-stopping`：低置信 15% 开火 +0.0211 vs 均匀 −0.0193；C1M +0.1284 vs +0.0570；
+- `G1-selector`（并 `F3`）：低置信 15% 开火 +0.0211 vs 均匀 −0.0193；C1M +0.1284 vs +0.0570；
   成本模型预测误差 ≤±13%。证据 `.scratch/14-allocator`、`.scratch/15-slider-rung3`、
   `.scratch/22-gen-quality`。
 - `F4-training-signal`：consistency loss 中性（IX4 1.6589 ≈ C1 1.6549）；bf16 下 reward 类
@@ -184,11 +179,11 @@
   — 已详述重建/充分性类损失的前例；本文 F4 不重复展开，只引用其结论与措辞修正。
 
 **记忆·未核（仅作设计方向，不得当判据）**
-- F1：Universal Transformer（Dehghani 2018）、recurrent depth / Huginn（Geiping 2024）、
+- 迭代对象（原 F1）：Universal Transformer（Dehghani 2018）、recurrent depth / Huginn（Geiping 2024）、
   Diffusion-LM / SEDD / Plaid、pause token（Goyal 2024）、fast weights（Schmidhuber 1992 /
   Schlag 2021）、TTT（Sun 2024）。
 - F2：DEQ、gated recurrence、VQ 软提交。
-- F3：ACT（Graves 2016）、PonderNet、BranchyNet、PABEE、CALM（Schuster 2022）。
+- 停止条件（原 F3）：ACT（Graves 2016）、PonderNet、BranchyNet、PABEE、CALM（Schuster 2022）。
 - F4：Compressive Transformer（Rae 2019）、AutoCompressors（Chevalier 2023）、ICAE（Ge 2024）、
   RECOMP（Xu 2023）、500xCompressor、DMC（Nawrot 2024）、Born-Again Networks。
 

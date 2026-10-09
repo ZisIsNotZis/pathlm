@@ -1,7 +1,7 @@
 # 步时实测与预算（SCHEMA §17.8 / §20.3 / §8）
 
 > 先测后定，**不借用**任何其它实验的步时。数据来源：`smoke_steptime.runlog`
-> （脚本 `smoke_steptime.sh`，2026-10-08 16:27–16:29，共享卡上另有 llama-server 常驻）。
+> （脚本 `smoke_steptime.sh`；共享卡上另有 llama-server 常驻）。
 
 ## 1. 实测（300 步稳态）
 

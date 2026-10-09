@@ -144,4 +144,4 @@ vocab=206 / 数据切分（前 90M train、末 10M eval，词表来自全文件�
 `results-seed1.json` / `analysis.md` / `stability.md` / `stability.json` /
 `MODEL.md` / `mutation_report.json` / `smoke/` / `runs/`（权重不入库，见 `MODEL.md`）。
 
-> 主 Agent 补注（复核 P2#2/#3）：契约原文在 Δ 符号上自冲突（同一段既写「Δbpc ≥0.014 可迁移」又写「Δ ≥ +0.014 负迁移」）；本处统一按 **Δ = bpc_baseline − bpc_arm**（正=改善）执行，两种读法下本实验结论相同（实测 |Δ| = 0.0055）。实测 GPU 墙钟 ≈27.5 min（含 seed1 复现，契约预算 26 min，+6%，属 n=1 负结果必须复现的硬纪律）。
+> （口径）契约原文在 Δ 符号上自冲突（同一段既写「Δbpc ≥0.014 可迁移」又写「Δ ≥ +0.014 负迁移」）；本处统一按 **Δ = bpc_baseline − bpc_arm**（正=改善）执行，两种读法下本实验结论相同（实测 |Δ| = 0.0055）。实测 GPU 墙钟 ≈27.5 min（含 seed1 复现，契约预算 26 min，+6%，属 n=1 负结果必须复现的硬纪律）。
