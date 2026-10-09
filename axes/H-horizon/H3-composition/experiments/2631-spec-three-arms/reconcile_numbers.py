@@ -130,11 +130,15 @@ def main() -> int:
                      0.0,
                      abs_tol=res["config"]["gamma"] * len(trace) / max(n_rounds, 1),
                      derived_from=(f"{src[0]}.acceptance_trace.{arm}",))
-            lg.derived(f"{ck}/{arm}: 等效算力净账 == c3/(tok/fwd)",
-                       a["equivalent_compute_ratio"],
-                       lambda: micro["c3_vs_w1"] / a["tokens_per_forward"],
-                       sources=(f"{src[0]}.micro.c3_vs_w1 与 .acceptance.{arm}.tokens_per_forward",),
+            lg.derived(f"{ck}/{arm}: 每 token 算力 R == (1+gamma)/(1+tau)",
+                       a["equivalent_compute_R"],
+                       lambda: (1 + res["config"]["gamma"]) / a["tokens_per_forward"],
+                       sources=(f"{src[0]}.acceptance.{arm}.tokens_per_forward 与 config.gamma",),
                        rel_tol=1e-3)
+            if "equivalent_compute_ratio_withdrawn" in a:
+                lg.check(f"{ck}/{arm}: 旧口径 c3/(tok/fwd) 已撤回（不得当算力）",
+                         1.0, 1.0, abs_tol=0.0,
+                         derived_from=(f"{src[0]}.acceptance.{arm}.equivalent_compute_ratio_withdrawn",))
             lg.derived(f"{ck}/{arm}: 每轮发出 == 1 + accepted（cycle_log 活动量）",
                        sum(1 + x for x in all_rounds),
                        lambda: sum(1 + x for r in rows for x in r["rounds"]),

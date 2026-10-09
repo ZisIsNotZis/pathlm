@@ -412,7 +412,13 @@
             2.035512,
             2.117443
           ],
-          "equivalent_compute_ratio": 0.6029
+          "equivalent_compute_R": 1.4458,
+          "R_numerator": 3,
+          "equivalent_compute_ratio_withdrawn": {
+            "value": 0.6029,
+            "reason": "c3 is a WALL-CLOCK ratio, not a compute ratio",
+            "c3_vs_w1": 1.2509
+          }
         },
         "direct": {
           "n_prompts": 12,
@@ -442,7 +448,13 @@
             2.345996,
             2.551919
           ],
-          "equivalent_compute_ratio": 0.5098
+          "equivalent_compute_R": 1.2227,
+          "R_numerator": 3,
+          "equivalent_compute_ratio_withdrawn": {
+            "value": 0.5098,
+            "reason": "c3 is a WALL-CLOCK ratio, not a compute ratio",
+            "c3_vs_w1": 1.2509
+          }
         },
         "combined": {
           "n_prompts": 12,
@@ -472,7 +484,13 @@
             2.343369,
             2.497422
           ],
-          "equivalent_compute_ratio": 0.5164
+          "equivalent_compute_R": 1.2384,
+          "R_numerator": 3,
+          "equivalent_compute_ratio_withdrawn": {
+            "value": 0.5164,
+            "reason": "c3 is a WALL-CLOCK ratio, not a compute ratio",
+            "c3_vs_w1": 1.2509
+          }
         }
       },
       "wall": {
@@ -5060,7 +5078,13 @@
             2.150096,
             2.263653
           ],
-          "equivalent_compute_ratio": 0.4767
+          "equivalent_compute_R": 1.3615,
+          "R_numerator": 3,
+          "equivalent_compute_ratio_withdrawn": {
+            "value": 0.4767,
+            "reason": "c3 is a WALL-CLOCK ratio, not a compute ratio",
+            "c3_vs_w1": 1.0503
+          }
         },
         "direct": {
           "n_prompts": 12,
@@ -5090,7 +5114,13 @@
             2.442308,
             2.610394
           ],
-          "equivalent_compute_ratio": 0.4167
+          "equivalent_compute_R": 1.1903,
+          "R_numerator": 3,
+          "equivalent_compute_ratio_withdrawn": {
+            "value": 0.4167,
+            "reason": "c3 is a WALL-CLOCK ratio, not a compute ratio",
+            "c3_vs_w1": 1.0503
+          }
         },
         "combined": {
           "n_prompts": 12,
@@ -5120,7 +5150,13 @@
             2.417832,
             2.561441
           ],
-          "equivalent_compute_ratio": 0.4225
+          "equivalent_compute_R": 1.2067,
+          "R_numerator": 3,
+          "equivalent_compute_ratio_withdrawn": {
+            "value": 0.4225,
+            "reason": "c3 is a WALL-CLOCK ratio, not a compute ratio",
+            "c3_vs_w1": 1.0503
+          }
         }
       },
       "wall": {
@@ -9591,7 +9627,13 @@
             2.127742,
             2.277358
           ],
-          "equivalent_compute_ratio": 0.5625
+          "equivalent_compute_R": 1.3637,
+          "R_numerator": 3,
+          "equivalent_compute_ratio_withdrawn": {
+            "value": 0.5625,
+            "reason": "c3 is a WALL-CLOCK ratio, not a compute ratio",
+            "c3_vs_w1": 1.2373
+          }
         },
         "direct": {
           "n_prompts": 12,
@@ -9621,7 +9663,13 @@
             2.505711,
             2.654195
           ],
-          "equivalent_compute_ratio": 0.4796
+          "equivalent_compute_R": 1.1629,
+          "R_numerator": 3,
+          "equivalent_compute_ratio_withdrawn": {
+            "value": 0.4796,
+            "reason": "c3 is a WALL-CLOCK ratio, not a compute ratio",
+            "c3_vs_w1": 1.2373
+          }
         },
         "combined": {
           "n_prompts": 12,
@@ -9651,7 +9699,13 @@
             2.45112,
             2.631318
           ],
-          "equivalent_compute_ratio": 0.4878
+          "equivalent_compute_R": 1.1828,
+          "R_numerator": 3,
+          "equivalent_compute_ratio_withdrawn": {
+            "value": 0.4878,
+            "reason": "c3 is a WALL-CLOCK ratio, not a compute ratio",
+            "c3_vs_w1": 1.2373
+          }
         }
       },
       "wall": {
@@ -13687,5 +13741,13 @@
       },
       "bit_identical_all_arms": true
     }
+  },
+  "compute_ledger_correction": {
+    "date": "2026-10-09",
+    "rule": "每 token 算力 R = (1+gamma)/(1+tau)（gamma=草稿位数, tau=平均接受长度）; R<1 才省。",
+    "why": "旧口径 net = c3/(tok/fwd) 把【墙钟】width-3/width-1 前向成本比 c3 当【算力】比; 一次宽度-(1+gamma) 前向按层-位置 FLOPs ≈ (1+gamma)x 一次逐 token 前向, 故算力比是解析量 (1+gamma), 与墙钟无关。H1 独立复核判为符号级错误。",
+    "old_field": "equivalent_compute_ratio (WITHDRAWN, kept under equivalent_compute_ratio_withdrawn)",
+    "new_field": "equivalent_compute_R",
+    "arms_R_ordering": "direct < combined < chain (unchanged from the withdrawn ordering; net LOSS all arms)"
   }
 }
