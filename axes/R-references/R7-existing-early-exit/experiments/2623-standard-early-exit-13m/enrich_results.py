@@ -13,12 +13,17 @@
 `accept_rate_window = n_accepts / (γ × n_cycles)`。本脚本对每个数字做整数/比值断言，
 任何不整除或对不上就非零退出。
 
+**`--check` 的含义**：本脚本会**先记录落盘现值、再用重算值比对**（不是「先无条件覆盖内存里的
+派生字段、再只做内部自洽」——那样磁盘漂移根本查不出来）。落盘现值缺字段、或与重算值有任何
+一处不等，`--check` 都非零退出；`--check` 不写回。
+
 用法：python3 enrich_results.py [--check]
 """
 
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 import sys
@@ -126,11 +131,45 @@ def add_intervention(res: dict) -> None:
     }
 
 
+#: `derive()` / `add_intervention()` 会写回的字段（`--check` 用它比「落盘现值 vs 重算值」）。
+DERIVED_POOLED_KEYS = ("n_accepts", "accept_rate_window", "binom_se_window", "n_cycles",
+                       "n_drafts_tested", "truncation_note", "note")
+
+
+def _derived_view(res: dict) -> dict:
+    """抽出派生脚本会写回的字段现值。"""
+    view: dict = {}
+    for name, a in (res.get("battery") or {}).items():
+        dec = a.get("decode") or {}
+        for g_str, rows in (dec.get("spec") or {}).items():
+            for i, r in enumerate(rows or []):
+                view[f"{name}.spec[{g_str}][{i}].n_accepts"] = r.get("n_accepts")
+                view[f"{name}.spec[{g_str}][{i}].accept_rate_window"] = \
+                    r.get("accept_rate_window")
+        for g in ("1", "2", "4", "8"):
+            p = dec.get(f"spec_g{g}_pooled")
+            if p is not None:
+                for k in DERIVED_POOLED_KEYS:
+                    view[f"{name}.spec_g{g}_pooled.{k}"] = p.get(k)
+    view["intervention"] = res.get("intervention")
+    return view
+
+
+def _disk_drift(disk_res: dict, new_res: dict) -> list[str]:
+    """落盘现值 vs 重算值的差异清单（空 = 逐条一致）。"""
+    disk, new = _derived_view(disk_res), _derived_view(new_res)
+    drift = [f"{k}: 落盘={disk.get(k, '<缺>')!r} != 重算={v!r}"
+             for k, v in new.items() if disk.get(k, "<缺>") != v]
+    drift += [f"{k}: 落盘有现值但重算没有" for k in disk if k not in new]
+    return drift
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true", help="只校验，不写回")
     args = ap.parse_args()
     res = json.load(open(RES))
+    disk = copy.deepcopy(res)          # 落盘现值快照（derive 会就地改写 res）
     for a in res["battery"].values():
         derive(a)
     add_intervention(res)
@@ -139,12 +178,19 @@ def main() -> int:
         for x in F:
             print("  -", x)
         return 1
-    if not args.check:
-        with open(RES, "w") as f:
-            json.dump(res, f, indent=2, ensure_ascii=False)
-        print(f"OK：补齐 n_accepts/accept_rate_window/intervention（{len(res['battery'])} 臂）")
-    else:
-        print("OK（--check：只校验不写回）")
+    drift = _disk_drift(disk, res)
+    if args.check:
+        if drift:
+            print(f"FAIL（--check）：落盘派生字段与重算值不一致 {len(drift)} 处")
+            for x in drift:
+                print("  -", x)
+            return 1
+        print(f"OK（--check：落盘派生字段与重算值逐条一致，{len(res['battery'])} 臂）")
+        return 0
+    with open(RES, "w") as f:
+        json.dump(res, f, indent=2, ensure_ascii=False)
+    print(f"OK：补齐 n_accepts/accept_rate_window/intervention（{len(res['battery'])} 臂）"
+          + (f"；写回前与落盘现值差 {len(drift)} 处" if drift else "；落盘现值本就一致"))
     return 0
 
 
