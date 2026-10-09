@@ -23,43 +23,8 @@ python3 "$EXP/run.py" $SMOKE 2>&1 | tee "$EXP/run_log.txt"
 RC=$?
 T1=$(date +%s)
 FREE_AFTER=$(free_mib)
-python3 - "$EXP" "$FREE_BEFORE" "$FREE_AFTER" "$((T1 - T0))" "$RC" <<'PY'
-import json, os, sys
-exp, fb, fa, wall, rc = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), int(sys.argv[4]), int(sys.argv[5])
-res_path = os.path.join(exp, "results.json")
-peak = None
-if os.path.exists(res_path):
-    try:
-        peak = json.load(open(res_path))["cost"]["eval_peak_gpu_mem_mb"]
-    except Exception:
-        peak = None
-out = {
-    "mode": "section_20_1_2_short_job_exception",
-    "lock_taken": False,
-    "lock_dir_touched": False,
-    "why": ("训练按臂取/放锁（§20.1）；评测为纯推理、峰值 <1 GB、墙钟 <2.5 min，"
-            "在外部线长时间占锁（等锁多次超时）时按 §20.1.2 插队执行"),
-    "free_gpu_mem_mib_before": fb,
-    "free_gpu_mem_mib_after": fa,
-    "free_headroom_gate_mib": 3072,
-    "headroom_ok": bool(min(fb, fa) >= 3072),
-    "wall_s": wall,
-    "eval_peak_gpu_mem_mb": peak,
-    "returncode": rc,
-    "note": ("若 wall_s > 120 或 eval_peak_gpu_mem_mb > 1024 ⇒ 已越过 §20.1.2 的字面门槛，"
-             "必须在 analysis §20 显式登记为偏离（本文件即证据）"),
-}
-with open(os.path.join(exp, "lock_accounting.json"), "w") as f:
-    json.dump(out, f, indent=2, ensure_ascii=False)
-    f.write("\n")
-# 同一份记账**同步回** results.json::cost.lock_accounting（否则该字段会是 null：
-# run.py 在 lock_accounting.json 写出之前就落盘了 results.json）——复核 P2-2。
-if os.path.exists(res_path) and peak is not None:
-    res = json.load(open(res_path))
-    res.setdefault("cost", {})["lock_accounting"] = out
-    with open(res_path, "w") as f:
-        json.dump(res, f, indent=2, ensure_ascii=False)
-    print("results.json::cost.lock_accounting 已同步")
-print(json.dumps(out, ensure_ascii=False))
-PY
+# 记账：**同一处**写 lock_accounting.json + 刷新 results.json 的 accounting **与 note**，
+# 并在覆写后自检口径一致（复核 P1：驱动事后覆写不得只改一半）
+python3 "$EXP/lock_accounting.py" record --mode section_20_1_2_short_job_exception \
+  --free-before "$FREE_BEFORE" --free-after "$FREE_AFTER" --wall-s "$((T1 - T0))" --rc "$RC"
 echo "=== DONE $(date -Is) rc=$RC ==="

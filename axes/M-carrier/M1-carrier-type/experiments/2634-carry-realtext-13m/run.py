@@ -81,6 +81,11 @@ def load_arm(name: str, spec: dict, mcfg: dict, vocab: int, device: str):
                    "n_params": sum(p.numel() for p in model.parameters())}
 
 
+# §20 记账的**唯一实现**在本目录 `lock_accounting.py`（驱动事后覆写 accounting 与 note 时
+# 必须走同一处，否则会造出「同文件两处相反」的产物——复核 P1）。这里只做导入。
+from lock_accounting import derive_note as _lock_note, assert_consistent as _assert_lock_consistency  # noqa: E402
+
+
 def _lock_accounting() -> dict | None:
     """读评测驱动写的 `lock_accounting.json`（§20 记账的结构化产物；缺则 None）。"""
     p = os.path.join(HERE, "lock_accounting.json")
@@ -88,45 +93,6 @@ def _lock_accounting() -> dict | None:
         return None
     with open(p) as f:
         return json.load(f)
-
-
-def _lock_note(acct: dict | None) -> str:
-    """按**实际记账**拼装评测口径说明（复核 P1：硬编码文案与回填的记账会自相矛盾）。
-
-    `acct` = `lock_accounting.json` 的内容（`mode` / `lock_taken`）。缺文件时如实说「未记账」，
-    **不得**默认写成某一种模式。
-    """
-    base = "训练按臂取/放 /tmp/pathlm_gpu.lock、臂间 ≥60 s（§20.1）"
-    if not acct:
-        return base + "；评测口径**未记账**（缺 `lock_accounting.json`，见 `analysis.md` §20）"
-    mode, taken = acct.get("mode"), acct.get("lock_taken")
-    if taken is True or mode == "section_20_lock":
-        how = "评测由 `eval.sh` **整程持锁**（该驱动 <10 min）"
-    elif taken is False or mode == "section_20_1_2_short_job_exception":
-        how = "评测按 **§20.1.2 短任务插队例外** 执行（纯推理、**不取锁、不动锁目录**）"
-    else:
-        how = f"评测口径未知（mode={mode!r}）"
-    return f"{base}；{how}；前后空闲读数与自身峰值见 `lock_accounting.json`（文本口径见 analysis §20）"
-
-
-def _assert_lock_consistency(cost: dict) -> None:
-    """**可失败的**自相矛盾检查：`lock_note` 与 `lock_accounting.mode/lock_taken` 必须同口径。
-
-    落盘前调用 ⇒ 不一致的结果文件根本写不出来（复核 P1 的同类事故护栏）。
-    """
-    acct = cost.get("lock_accounting")
-    note = cost.get("lock_note") or ""
-    if acct is None:
-        if "整程持锁" in note or "短任务插队例外" in note:
-            raise ValueError("lock_note 声称了某种评测口径，但 lock_accounting 为 None（未记账）")
-        return
-    mode, taken = acct.get("mode"), acct.get("lock_taken")
-    is_lock = (taken is True or mode == "section_20_lock")
-    is_exc = (taken is False or mode == "section_20_1_2_short_job_exception")
-    if is_lock and "短任务插队例外" in note:
-        raise ValueError("lock_note 说「§20.1.2 短任务插队例外」但 lock_accounting 是整程持锁口径")
-    if is_exc and "整程持锁" in note:
-        raise ValueError("lock_note 说「整程持锁」但 lock_accounting 是 §20.1.2 插队例外口径")
 
 
 def main():

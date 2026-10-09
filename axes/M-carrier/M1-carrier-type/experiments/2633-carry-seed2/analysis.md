@@ -295,9 +295,10 @@ delta 与 plain 两种写入规则**。不得读成「业界做不到/做得到�
 > `mode=section_20_1_2_short_job_exception`）。本节只是同一事实的文字口径。
 
 - **训练**：按臂取/放 `/tmp/pathlm_gpu.lock`、臂间留 ≥60 s（§20.1）；峰值显存见 `MODEL.md`。
-- **评测（当前权威记录 = `eval.sh` 整程持锁口径）**：`mode=section_20_lock`，墙钟 **231 s**
-  （含 §9 前置门 `equality_vs_2631.py` ≈45 s + 冒烟 + 全电池），峰值 **701.6 MB**，
-  前后空闲 **16,6xx MiB**（门槛 ≥3,072 MiB ✅，未与任何训练进程争锁）。
+- **评测口径**：本实验 `eval.sh` 走**整程持锁**（`mode=section_20_lock`，该驱动 <10 min）；
+  **墙钟/峰值/前后空闲一律以 `lock_accounting.json` 为准**（本节不复制数字——复核 P2-3：
+  此处曾写死 231 s 而与产物 270 s 不符；该字段现由 `reconcile_numbers.py` 对账覆盖）。⇒ 墙钟一律以结构化产物为准，**正文不另存一份数字**
+  （复核 P2-3：此处曾写 231 s，与产物不符）。
 - **历史口径（保留）**：评测最初两次因**其它线长时间占锁**（R7/MoD 的 `run_arms.sh all` 连续
   训练，多次等待 >10 min）等锁超时，改用 **SCHEMA §20.1.2** 的短任务插队例外执行
   （纯推理、不取锁、不动锁目录；`mode=section_20_1_2_short_job_exception`，墙钟 252 s、

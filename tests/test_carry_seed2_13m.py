@@ -243,21 +243,77 @@ def test_lock_note_consistency_is_enforced(monkeypatch):
 
 
 def test_committed_lock_notes_match_their_accounting():
-    """三个实验的**已入账** results.json 都要满足该不变量（跨实验护栏）。"""
+    """三个实验的**已入账** results.json 都要满足该不变量（跨实验护栏）。
+
+    判据加强为**逐字**：`cost.lock_note == lock_accounting.derive_note(cost.lock_accounting)`
+    ——「由记账派生」不再只对某一格成立（复核 P2-2）。
+    """
     for exp in ("2633-carry-seed2", "2634-carry-realtext-13m",
                 "2635-recursive-carrier-13m"):
         p = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type", "experiments",
                          exp, "results.json")
         if not os.path.exists(p):
             continue
+        mod = _load_exp_module(exp, "lock_accounting")
         cost = json.load(open(p))["cost"]
         acct = cost.get("lock_accounting")
         note = cost.get("lock_note") or ""
         if acct is None:
             assert "整程持锁" not in note and "短任务插队例外" not in note, exp
-        else:
-            is_lock = acct.get("lock_taken") is True or acct.get("mode") == "section_20_lock"
-            assert ("短任务插队例外" in note) != is_lock, (exp, acct.get("mode"), note)
+            continue
+        assert note == mod.derive_note(acct), (exp, note, mod.derive_note(acct))
+        mod.assert_consistent(cost)                  # 同口径（派生即一致，仍显式核）
+
+
+def test_record_refreshes_both_fields_and_repairs_contradiction(tmp_path):
+    """驱动路径护栏：`record()` 必须**同时**刷新 accounting 与 note，并**修好**矛盾产物。
+
+    （复核 P1 的可复现路径：驱动在 run.py 之后只覆写 accounting ⇒ 若不同时刷 note，就造出
+    「note 说例外 / accounting 说持锁」；`record()` 是唯一实现，单测在**临时目录**上验证它。）
+    """
+    import shutil
+    exp_src = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type", "experiments",
+                           "2633-carry-seed2")
+    shutil.copy(os.path.join(exp_src, "results.json"), tmp_path / "results.json")
+    shutil.copy(os.path.join(exp_src, "lock_accounting.json"), tmp_path / "lock_accounting.json")
+    mod = _load_exp_module("2633-carry-seed2", "lock_accounting")
+    # 先人为制造矛盾：note 说「短任务插队例外」，accounting 说「整程持锁」
+    res = json.load(open(tmp_path / "results.json"))
+    res["cost"]["lock_accounting"] = {"mode": "section_20_lock", "lock_taken": True}
+    res["cost"]["lock_note"] = "评测按 **§20.1.2 短任务插队例外** 执行（纯推理）"
+    with pytest.raises(ValueError):
+        mod.assert_consistent(res["cost"])            # 矛盾可被抓住（可失败）
+    json.dump(res, open(tmp_path / "results.json", "w"))
+    # 驱动口径记账 ⇒ 两个字段一起刷新、自检通过
+    out = mod.record("section_20_1_2_short_job_exception", 10000, 10000, 42, 0,
+                     base_dir=str(tmp_path))
+    after = json.load(open(tmp_path / "results.json"))["cost"]
+    assert after["lock_accounting"] == out
+    assert after["lock_note"] == mod.derive_note(out)
+    mod.assert_consistent(after)
+    # 反向：整程持锁口径也要一起刷
+    out2 = mod.record("section_20_lock", 10000, 9999, 43, 0, base_dir=str(tmp_path))
+    after2 = json.load(open(tmp_path / "results.json"))["cost"]
+    assert after2["lock_note"] == mod.derive_note(out2)
+    assert "整程持锁" in after2["lock_note"] and "短任务插队例外" not in after2["lock_note"]
+    assert out2["headroom_ok"] is True and out2["free_gpu_mem_mib_after"] == 9999
+
+
+def test_all_rating_drivers_use_the_single_recorder():
+    """六个驱动（每格 `eval.sh` + `eval_concurrent.sh`）都必须走 `lock_accounting.py record`。
+
+    防的是复核 P1 的形态：驱动自己内联覆写 accounting（只改一半 ⇒ 造出矛盾产物）。
+    """
+    for exp in ("2633-carry-seed2", "2634-carry-realtext-13m",
+                "2635-recursive-carrier-13m"):
+        for drv in ("eval.sh", "eval_concurrent.sh"):
+            p = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type", "experiments",
+                             exp, drv)
+            if not os.path.exists(p):
+                continue
+            src = open(p).read()
+            assert 'lock_accounting.py" record' in src, (exp, drv)
+            assert 'cost"]["lock_accounting"] =' not in src, (exp, drv)   # 不得内联覆写
 
 
 def test_runtime_version_ledger_covers_every_arm():
@@ -323,6 +379,17 @@ def test_engine_files_behaviorally_unchanged_since_2631_run():
     assert ee["forward_layer_ok"] is True and ee["trainer_layer_ok"] is True
     assert ee["trainer"]["verified"] is True
     assert ee["trainer"]["n_log_points_compared"] >= 2, ee["trainer"]["n_lines"]
+
+
+def _load_exp_module(exp: str, mod_name: str):
+    """按路径加载某个实验目录里的模块（测试用；避免与仓库其它同名模块冲突）。"""
+    import importlib.util
+    p = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type", "experiments",
+                     exp, f"{mod_name}.py")
+    spec = importlib.util.spec_from_file_location(f"{exp.replace('-', '_')}_{mod_name}", p)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+    return m
 
 
 RESULTS = os.path.join(EXP, "results.json")

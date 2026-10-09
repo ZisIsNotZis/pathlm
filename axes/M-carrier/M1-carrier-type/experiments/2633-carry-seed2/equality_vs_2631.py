@@ -4,12 +4,16 @@
 复用 2631 的 seed0/seed1 六臂作对照，必须同时满足 §9 四项；本模块把它们变成可核对的
 产物 `equality_report.json`：
 
-1. **实现层 equality**（两级）：① **`HEAD` 提交版**的引擎/仪器文件 sha256 逐文件等于
-   2631 运行时记录在 `2631/results.json::code_hashes` 的值（证明**提交历史里**那份实现没变）；
-   ② **工作树**可能与 HEAD 不同（其它并行线可能有未提交改动）⇒ 另跑
-   `engine_equivalence.check(...)`：把 `HEAD` 版的 `pathlm/` 整包解到临时目录、与本实验
+1. **实现层 equality**（两级，**基准 = 2631 运行时版本**，不是 `HEAD`）：
+   ① 基准版本**按 2631 `results.json::code_hashes` 记录的 sha256 在 `git log --all` 里反查**
+   （`engine_equivalence.resolve_recorded_commit`；`pathlm/depth_ar.py` 与
+   `train_depth_ar.py` 都落在 `9f125cf`）；逐文件记录 `runtime_version_commit` 与
+   `bytes_unchanged_since_2631_run`（**字节是否未变只是信息项**——并行线的默认关闭加性改动
+   会推动字节，判据是行为）；
+   ② `engine_equivalence.check(...)`：把**基准版本**的 `pathlm/` 整包解到临时目录、与本实验
    三档配置（none/plain/delta，dense+sequential+窗口 16）各建一个模型，**同权重下比
-   logits 逐位**——不等 ⇒ 复用拒绝（这是比文件哈希更硬的语义等价证据）；
+   logits 逐位**，并让基准版本的 `train_depth_ar.py` 与工作树版各跑 1,001 步比日志字段
+   ——不等 ⇒ 复用拒绝（这是比文件哈希更硬的语义等价证据）；
 2. **配置层 equality**：本实验 `config.json` 与 2631 `config.json` 的共享字段逐字段对照
    （`model`/`data`/`tokens`/`task`/`visibility`/`eval`/`aux_ood`/`sensitivity_K4`），
    以及 2631 `train_arms.sh` 的 `BASE` 与本实验 `train_recipe_seed2.cmd` 的逐 flag 对照；
@@ -104,22 +108,40 @@ def assert_pointer_consistent(emb: dict, artifact_path: str | None = None) -> No
     art = json.load(open(art_p))
     ee = json.load(open(ee_p))
     tr = ee.get("trainer") or {}
+    pe = emb["engine_equivalence"]
+    # **全部**标量逐项核对（复核 P2-1：原先只核 6 个 ⇒ 伪造 `coverage` 之类不会被抓）
     pairs = (
         (emb.get("verdict"), art.get("verdict"), "verdict"),
         (emb.get("reuse_scope"), art.get("reuse_scope"), "reuse_scope"),
         (emb.get("implementation_equivalent_to_2631_runtime"),
          art.get("implementation_equivalent_to_2631_runtime"),
          "implementation_equivalent_to_2631_runtime"),
-        (emb["engine_equivalence"].get("forward_layer_ok"), ee.get("forward_layer_ok"),
+        (emb.get("differing_fields"), art.get("differing_fields"), "differing_fields"),
+        (emb.get("train_recipe_differing_flags"), art.get("train_recipe_differing_flags"),
+         "train_recipe_differing_flags"),
+        (emb.get("git_head"), art.get("git_head"), "git_head"),
+        (emb.get("runtime_version_ledger"), art.get("runtime_version_ledger"),
+         "runtime_version_ledger"),
+        (pe.get("comparison_base"), ee.get("comparison_base"),
+         "engine_equivalence.comparison_base"),
+        (pe.get("forward_layer_ok"), ee.get("forward_layer_ok"),
          "engine_equivalence.forward_layer_ok"),
-        (emb["engine_equivalence"].get("trainer_layer_ok"), ee.get("trainer_layer_ok"),
+        (pe.get("trainer_layer_ok"), ee.get("trainer_layer_ok"),
          "engine_equivalence.trainer_layer_ok"),
-        (emb["engine_equivalence"].get("trainer_n_log_points_compared"),
-         tr.get("n_log_points_compared"), "engine_equivalence.trainer_n_log_points_compared"),
+        (pe.get("all_layers_ok"), ee.get("all_layers_ok"),
+         "engine_equivalence.all_layers_ok"),
+        (pe.get("coverage"), ee.get("coverage"), "engine_equivalence.coverage"),
+        (pe.get("trainer_n_log_points_compared"), tr.get("n_log_points_compared"),
+         "engine_equivalence.trainer_n_log_points_compared"),
+        (pe.get("trainer_n_field_diffs"), tr.get("n_field_diffs"),
+         "engine_equivalence.trainer_n_field_diffs"),
     )
     bad = [name for got, want, name in pairs if got != want]
     if bad:
         raise ValueError(f"内嵌指针块与权威产物不一致：{bad}")
+    # `note` 是**指针自己的**文字（不要求与权威产物的 note 相同），但必须非空且提到指针语义
+    if not (pe.get("note") or "").strip():
+        raise ValueError("内嵌指针块的 note 为空（应说明细节去哪读）")
 
 
 def pointer_block(report: dict) -> dict:

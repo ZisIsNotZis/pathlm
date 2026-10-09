@@ -21,8 +21,17 @@ done
 echo $$ > "$LOCK/holder_pid"; touch "$LOCK/heartbeat"
 trap 'rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/null' EXIT
 
-echo "=== 冒烟 $(date -Is) | GPU free $(nvidia-smi --query-gpu=memory.free --format=csv,noheader) ==="
+FREE_BEFORE=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits)
+T0=$(date +%s)
+echo "=== 冒烟 $(date -Is) | GPU free ${FREE_BEFORE} MiB ==="
 python3 "$EXP/run.py" --smoke --out-dir "$EXP/smoke/eval"
 echo "=== 全电池 $(date -Is) ==="
 python3 "$EXP/run.py" 2>&1 | tee "$EXP/run_log.txt"
-echo "=== DONE $(date -Is) ==="
+RC=${PIPESTATUS[0]}
+T1=$(date +%s)
+FREE_AFTER=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits)
+# 记账：**同一处**写 lock_accounting.json + 刷新 results.json 的 accounting **与 note**，
+# 覆写后自检口径一致（复核 P1：驱动事后覆写不得只改一半）
+python3 "$EXP/lock_accounting.py" record --mode section_20_lock \
+  --free-before "$FREE_BEFORE" --free-after "$FREE_AFTER" --wall-s "$((T1 - T0))" --rc "$RC"
+echo "=== DONE $(date -Is) rc=$RC ==="

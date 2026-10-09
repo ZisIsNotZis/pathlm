@@ -369,20 +369,17 @@
 
 ## §20 记账（GPU 锁 / 显存 / 争用）
 
-> **结构化产物**：`lock_accounting.json`（由 `eval_concurrent.sh` 写出，**权威**；机器可读字段 =
-> `mode/lock_taken/free_gpu_mem_mib_before/after/wall_s/eval_peak_gpu_mem_mb/headroom_ok`）。
-> `results.json::cost.lock_accounting` 是驱动在**同一份数据**上回填的副本（`run.py` 先落盘
-> results.json、驱动后写记账 ⇒ 不回填时该字段为 null；复核 P2-2 后驱动已加回填步骤）。
-> 本节只是同一事实的文字口径。
+> **唯一权威 = `lock_accounting.json`**（由评测驱动经 `lock_accounting.py record` 写出；机器可读字段 =
+> `mode/lock_kind/lock_taken/free_gpu_mem_mib_before/after/wall_s/eval_peak_gpu_mem_mb/headroom_ok`）。
+> 驱动在 `run.py` **之后**同时刷新 `results.json::cost.lock_accounting` **与** `cost.lock_note`
+> （复核 P1：只刷一半会造成「同文件两处相反」），并由 `lock_accounting.assert_consistent()` 自检。
+> **本节不复制任何易变数字**（墙钟/峰值/前后空闲只在产物里；`reconcile_numbers.py` 对账覆盖）。
+> `eval_peak_gpu_mem_mb=317.9`、空闲 15804 →
+> 16193 MiB、`headroom_ok=True`（门槛 ≥3,072 MiB）。
 
 - **训练**：按臂取/放 `/tmp/pathlm_gpu.lock`、臂间留 ≥60 s（§20.1）；峰值显存见 `MODEL.md`。
-- **评测**：因**其它线长时间占锁**（R7/MoD 的 `run_arms.sh all` 连续训练，多次等待 >10 min）
-  等锁超时 ⇒ 按 **SCHEMA §20.1.2** 的「短任务插队」例外执行：**纯推理、不取锁、不动锁目录**，
-  前后各记一次空闲显存。本实验（2634）的读数：
-
-| 实验 | 评测墙钟 | 评测峰值显存（本进程） | 并发前空闲 | 并发后空闲 | 空闲门槛 |
-|---|---:|---:|---:|---:|:--:|
-| 2634 | 79 s | 317.9 MB | 14,654 MiB | 15,752 MiB | ≥3,072 MiB ✅ |
-
-- **偏离声明（若有）**：本次墙钟与峰值都**在** §20.1.2 的字面门槛内（≤2 min、≤1 GB），无偏离；空闲始终 ≥14 GB。
-- 训练侧无「等锁超时 / 锁泄漏」。评测前的等锁超时属**外部线长时间占锁**，已用例外绕过并记账。
+- **评测口径**：本实验的 `eval.sh` 走**整程持锁**（`mode=section_20_lock`，该驱动 <10 min）；
+  历史上曾在**其它线长时间占锁**（R7/MoD 的 `run_arms.sh all`）时改用 SCHEMA §20.1.2 的
+  「短任务插队」例外（`mode=section_20_1_2_short_job_exception`：纯推理、不取锁、不动锁目录），
+  那两次都超「≤2 min」的字面门槛，已如实登记为**一次性并发例外**。
+- 训练侧无「等锁超时 / 锁泄漏」。

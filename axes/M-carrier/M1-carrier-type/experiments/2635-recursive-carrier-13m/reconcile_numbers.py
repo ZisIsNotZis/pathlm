@@ -64,6 +64,31 @@ def main() -> int:
                            lambda v=v: round(v["n_hits"] / v["n"], 6),
                            sources=("results.json::battery",), abs_tol=5e-7)
 
+    # ---- §20 记账（锁口径 / 墙钟 / 峰值；复核 P2-3：此前 70 项对账不覆盖这一条）----
+    import lock_accounting as _la
+    la_path = os.path.join(HERE, "lock_accounting.json")
+    if os.path.exists(la_path):
+        la = json.load(open(la_path))
+        cost = R["cost"]
+        ledger.eq("§20：内嵌记账与权威产物逐字段相等",
+                  cost.get("lock_accounting") == la, True,
+                  derived_from=("lock_accounting.json", "results.json::cost"))
+        ledger.derived("§20：评测墙钟 == lock_accounting.json::wall_s",
+                       cost.get("lock_accounting", {}).get("wall_s"),
+                       lambda: la["wall_s"], sources=("lock_accounting.json",), abs_tol=1e-9)
+        ledger.eq("§20：lock_note 与记账同口径（口径一致性）",
+                  (lambda: (_la.assert_consistent({"lock_note": cost.get("lock_note"),
+                                                   "lock_accounting": la}), True)[1])(), True,
+                  derived_from=("lock_accounting.json", "results.json::cost.lock_note"))
+        ledger.eq("§20：lock_note 逐字 == 由记账派生",
+                  cost.get("lock_note") == _la.derive_note(la), True,
+                  derived_from=("lock_accounting.derive_note",))
+        ledger.eq("§20：空闲余量门槛判定自洽",
+                  la.get("headroom_ok") == (min(la.get("free_gpu_mem_mib_before", 0),
+                                               la.get("free_gpu_mem_mib_after", 0))
+                                            >= la.get("free_headroom_gate_mib", 0)), True,
+                  derived_from=("lock_accounting.json",))
+
     # ---- 训练侧 ----
     for spec in cfg["arms"]:
         lines = [json.loads(l) for l in open(os.path.join(ROOT, spec["train_log"]))
