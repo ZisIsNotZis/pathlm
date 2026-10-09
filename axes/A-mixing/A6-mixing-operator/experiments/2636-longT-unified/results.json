@@ -312,13 +312,26 @@
         "sha256_verified": true
       }
     },
-    "code_fingerprints": {
+    "code_fingerprints_at_report": {
       "pathlm/depth_ar.py": "b304c234b82b51a49ba477285169b41ebf3fc4e24b087ec2bafdd9caa4423192",
       "pathlm/model.py": "75bd84a013c71f2e6eef479517cc99b96d8cebff672383f2728f2752812655d3",
       "train_depth_ar.py": "218b63179e623d6a938e7cabe85a71c5c4a36f1831c6930e9c65b2e0a6673022",
       "tools/evalkit/retention.py": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502",
       "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20",
-      "note": "本实验未改这些文件（只读）；qk-norm hook 从 2625 的 stability_driver.py 只读引用（单一实现来源）"
+      "note": "**report 阶段**重算 ⇒ 记的是报告时 HEAD/工作树，**不是运行版本**；本实验未改这些文件（只读）"
+    },
+    "code_fingerprints_at_run": {
+      "_what": "运行期引擎/仪器指纹（**历史补记**；本次运行未自动落盘，由会话内证据反推，修复核 P1-5）",
+      "_source": "pathlm/depth_ar.py 的运行期值由 2637/config.json（在 run 窗口内写下）与 2636 首轮 report 佐证；train_depth_ar.py 在运行窗口内由 3288b3d 变为 218b631（两次 report 指纹之差），两版的 train() 逐行相同（工作树 vs HEAD 的 diff hunk 均在 line ≥ 475）。",
+      "_caveat": "model.py / retention.py 无运行期直接证据，标为 report 值（窗口内未见改动）。运行后他线（M-carrier/R7）把 depth_ar.py 提交为 b304c234 ⇒ report 阶段指纹与此不同。",
+      "pathlm/depth_ar.py": "f2e72361eecc022e7ccf8a7951f6a6f9a411e12d6da9348a4d8fb70023b9440e",
+      "train_depth_ar.py": [
+        "3288b3d5b86be1c4fad04957dae104bfdf8c001f99a9fa4f845a219661454bb9",
+        "218b63179e623d6a938e7cabe85a71c5c4a36f1831c6930e9c65b2e0a6673022"
+      ],
+      "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20",
+      "pathlm/model.py": "75bd84a013c71f2e6eef479517cc99b96d8cebff672383f2728f2752812655d3",
+      "tools/evalkit/retention.py": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502"
     }
   },
   "arms": {
@@ -998,7 +1011,8 @@
       ],
       "four_point_shape": "不亏（噪声带内）@256 → 不亏（噪声带内）@512 → 不亏（噪声带内）@1024 → 不亏（噪声带内）@2048",
       "variance_band_project": 0.014,
-      "variance_band_cell": 0.015791,
+      "variance_band_cell_delta": 0.009459,
+      "variance_band_cell_single_arm_reference": 0.015791,
       "note": "同 step S=6000；T=1024/2048 只读复用 2626/2629（同 step 6000、同 bs8/seed0/qk-normfrom512）。token 预算随 T 线性（见 tokens）。"
     },
     "criterion_1b_quality_matched_token": {
@@ -1699,7 +1713,10 @@
           "abs_spread": 0.006231
         }
       },
-      "sigma_cell_single_arm_max": 0.015791
+      "sigma_cell_single_arm_max": 0.015791,
+      "cell_threshold_for_delta": 0.009459,
+      "cell_threshold_basis": "判据量 Δ 的跨 seed 实测极差最大值（T=256/512）；单臂 bpc 极差仅作参考（极值估计 + 另一随机变量）；评测批内配对差共模抵消≈0",
+      "seed_replicate_scope": "seed 复本仅在 T=256/512 测得；T=1024/2048 无复本，其判读用工程带 0.014"
     }
   },
   "cost": {
@@ -2212,7 +2229,7 @@
         }
       }
     },
-    "disclaimer": "距离档均 ≤ T−2（训练分布内，§17.18）；本腿在 enwik8 权重上是分布外任务，预期接近 chance（辅助腿，不构成判据）"
+    "disclaimer": "⚠️ var_recall 系列用**末位查询布局**，已由 A-AUDIT §2-P1-1 判为**位置外推伪影**（2623 §9：同权重末位布局 full=0.0000 vs 同族多查询0.3665）⇒ 本腿读数**不可解释**，只作流水记录，不得当长程/机制判据"
   },
   "liveness": {
     "full-256-s6k": {

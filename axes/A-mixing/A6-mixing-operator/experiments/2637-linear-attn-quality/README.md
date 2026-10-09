@@ -11,7 +11,8 @@ status: judged
 # 2637 · 线性注意力质量腿（A6 · 7.16M · depth-ar/dense × LinearAttnBlock）
 
 > 本文件即本实验的本地契约（判据线预登记，不得事后调整）。原始结果：`runs/<arm>/`、
-> `eval.json`、`diag_matrix.json`；判读：`analysis.md`；权重清单：`MODEL.md`。
+> `eval.json`（**preflight 冒烟与诊断矩阵未跑 ⇒ 无 `smoke/smoke.json` / `diag_matrix.json`**，见 §8）；
+> 判读：`analysis.md`；权重清单：`MODEL.md`。
 
 ## 0. 要解决的问题（承接 `50-critical-audit` 的 A 轴缺口与 `51-tree` WI-12）
 
@@ -86,8 +87,9 @@ enwik8 前 90M/末 10M，**共同步数 S=6000**）上，把注意力算子从**
 - 数据集：`enwik8_full`（`data/enwik8_full.npz`；前 90M train / 末 10M eval；vocab 206）。
 - 入口脚本：`run.py`（阶段 `preflight/train/train-all/diag/eval/report/all`）；
   训练子进程 `linear_driver.py`（复用 2625 的 QK-Norm hook，单一实现来源）。
-- resolved config：`config.json`；原始结果：`results.json` / `eval.json` / `smoke/smoke.json` /
-  `diag_matrix.json`；对账：`reconcile_numbers.py` → `reconcile_report.json`；权重：`MODEL.md`。
+- resolved config：`config.json`；原始结果：`results.json` / `eval.json`；对账：`reconcile_numbers.py` →
+  `reconcile_report.json`；变异：`mutate.py` → `mutation_report.json`；权重：`MODEL.md`。
+  （**未产出**：`smoke/smoke.json`（preflight 未单独跑）、`diag_matrix.json`（停摆未复现，边际信息低）。）
 
 ## 7. 失败决策树（SCHEMA §6，测量 → 实现 → 规模 → 设计）
 
@@ -98,5 +100,7 @@ enwik8 前 90M/末 10M，**共同步数 S=6000**）上，把注意力算子从**
 
 ## 8. 产出（SCHEMA §6）
 
-`results.json` / 逐臂日志 / `analysis.md`（先人话后数据）/ `MODEL.md` / `eval.json` /
-`smoke/smoke.json` / `diag_matrix.json` / `reconcile_report.json`。
+`results.json` / 逐臂 `train_log.jsonl` / `analysis.md`（先人话后数据）/ `MODEL.md` / `eval.json` /
+`reconcile_report.json` / `mutation_report.json`。
+**未产出**：`smoke/smoke.json`（preflight 未单独跑；四臂的 6000 步训练与 `gnorm_monitor` 已充当步时/活性面证据）、
+`diag_matrix.json`（停摆未复现，边际信息低）——`run.py --stage preflight/diag` 可补。

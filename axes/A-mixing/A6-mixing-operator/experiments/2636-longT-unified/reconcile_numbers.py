@@ -116,6 +116,33 @@ for arm, f in fields.items():
     ck(f"{arm} seq_len in cfg field", f["seq_len"], next(
         a["seq_len"] for a in R["config"]["arms"] if a["arm"] == arm))
 
+# ---- SCHEMA §9 跨 run 复用：与引用臂逐字段对照（只允许差 seq_len/train_window/steps） ----
+# 修 P1-6：README/analysis 宣称的「逐字段对照 + 不等字段列出」必须机器可读地存在。
+ALL_KEYS = ("d_model", "n_layers", "n_heads", "mlp_mult", "dense", "topology",
+            "batch_size", "lr", "seed", "exit_mode", "qk_norm", "qk_norm_min_t",
+            "data", "vocab_size", "seq_len", "train_window", "steps")
+ALLOWED_DIFF = {"seq_len", "train_window", "steps"}
+REF_FIELD = {
+    "2626-longT-clean": ("full-1024-clean", "win512-1024-clean"),
+    "2629-longT-2048-matched": ("full-2048-clean", "win1024-2048-clean"),
+}
+cross_ref = {}
+for exp, arms in REF_FIELD.items():
+    ev_ref = json.load(open(os.path.join(EXP_ROOT, exp, "eval.json")))
+    for arm in arms:
+        rf = ev_ref["field_by_field"][arm]
+        diffs = {k: {"this_exp_base": base[k], "ref": rf[k]}
+                 for k in ALL_KEYS if base[k] != rf[k]}
+        cross_ref[f"{exp}:{arm}"] = {"differing_fields": sorted(diffs),
+                                     "diff_values": diffs}
+        ck(f"ref {exp}:{arm} 不等字段 ⊆ {sorted(ALLOWED_DIFF)}",
+           set(diffs) <= ALLOWED_DIFF, True)
+# 基准臂自身必须与引用臂在「只读复用允许的字段」上不同、其余相同：
+# （按 §9：不等字段显式列出，等字段逐条断言）
+for key, row in cross_ref.items():
+    for f in KEYS:
+        ck(f"cross-run {key} 等值字段 {f}", f not in row["differing_fields"], True)
+
 # ------------------------------------------------------------ ③ 口径
 gate = R["criteria"]["criterion_2_stability_gate"]
 for T in (256, 512):
@@ -155,7 +182,7 @@ for T in (256, 512, 1024, 2048):
 # ------------------------------------------------------------ 汇总
 n_ok = sum(1 for c in checks if c["ok"])
 report = {"n_checks": len(checks), "n_ok": n_ok, "n_fail": len(checks) - n_ok,
-          "band": BAND, "checks": checks}
+          "band": BAND, "cross_run_field_compare": cross_ref, "checks": checks}
 json.dump(report, open(os.path.join(HERE, "reconcile_report.json"), "w"),
           indent=2, ensure_ascii=False)
 print(f"reconcile: {n_ok}/{len(checks)} OK")

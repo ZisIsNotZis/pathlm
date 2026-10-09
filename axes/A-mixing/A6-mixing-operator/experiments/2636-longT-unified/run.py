@@ -108,6 +108,19 @@ def sha256_file(path: str) -> str:
     return h.hexdigest()
 
 
+def _engine_fingerprints() -> dict:
+    """本实验依赖的引擎/仪器指纹（**运行期**快照；未改的文件只读引用）。"""
+    return {
+        "pathlm/depth_ar.py": sha256_file(os.path.join(ROOT, "pathlm/depth_ar.py")),
+        "pathlm/model.py": sha256_file(os.path.join(ROOT, "pathlm/model.py")),
+        "train_depth_ar.py": sha256_file(os.path.join(ROOT, "train_depth_ar.py")),
+        "tools/evalkit/retention.py": sha256_file(
+            os.path.join(ROOT, "tools/evalkit/retention.py")),
+        "experiments/2625-longT-stability/stability_driver.py": sha256_file(
+            os.path.join(EXP_ROOT, "2625-longT-stability", "stability_driver.py")),
+    }
+
+
 def cfg_for(seq_len: int, window: int) -> DepthARConfig:
     return DepthARConfig(d_model=D, n_layers=L, n_heads=H, seq_len=seq_len,
                          mlp_mult=MLP, dense=True, train_window=window)
@@ -275,7 +288,9 @@ def train_arm(spec: dict, steps: int, poll_s: int = 20, caps_min: float = 90.0) 
            "gnorm_monitor": res["gnorm_monitor"],
            "sha256_model_pt": sha256_file(os.path.join(run_dir, "model.pt")),
            "size_bytes": os.path.getsize(os.path.join(run_dir, "model.pt")),
-           "steps": steps, "seed": spec["seed"]}
+           "steps": steps, "seed": spec["seed"],
+           # 运行期引擎指纹（修 P1-5）：训练**开始前**记一次，与 report 阶段的 HEAD 区分
+           "code_fingerprints_run": _engine_fingerprints()}
     json.dump(out, open(os.path.join(HERE, f"{arm}-train_summary.json"), "w"),
               indent=2, ensure_ascii=False)
     print(f"[run] {arm}: done wall={wall:.2f} min peak(nvidia-smi)={peak:.2f}GB "
@@ -546,6 +561,11 @@ def ref_points(token_or_step: dict) -> list[dict]:
 def stage_preflight(cost_iters: int) -> None:
     """四臂（seed0）各 20 步冒烟 + 成本基准（四 T × full/window）。"""
     os.makedirs(os.path.join(HERE, "smoke"), exist_ok=True)
+    # 运行期引擎指纹（修 P1-5）：在**做任何训练前**落一次，与 report 阶段的 HEAD 区分。
+    with open(os.path.join(HERE, "run_fingerprints.json"), "w") as f:
+        json.dump({"_what": "运行期引擎/仪器指纹（preflight 时快照）",
+                   "_when": "preflight", **_engine_fingerprints()}, f,
+                  indent=2, ensure_ascii=False)
     gpu_acquire(max_wait_s=LOCK_MAX_WAIT)
     try:
         out = {"note": "20 步冒烟：seed0 四臂各跑 20 步，检查活性量落盘与实测步时/显存"
@@ -733,6 +753,17 @@ def stage_report() -> None:
         noise["fallback_reference"] = (
             "未跑 seed1（预算砍臂）：引用 2625 已测本格噪声底——T=512 同配方两次重跑 "
             "clean bpc 极差 0.0045")
+    # 判据量的本格噪声（修 P1-2）：要判的是 Δ（两臂之差），不是单臂 bpc；
+    # 单臂极差是极值估计且量的是另一个随机变量。评测批内配对差因四/八臂共用同一评测流
+    # （window_seed=2、同 20 批 bs16）在 Δ 中共模抵消（按构造 ≈0），不另计。
+    ds = noise.get("delta_spread") or {}
+    noise["cell_threshold_for_delta"] = (
+        max(v["abs_spread"] for v in ds.values()) if ds else None)
+    noise["cell_threshold_basis"] = (
+        "判据量 Δ 的跨 seed 实测极差最大值（T=256/512）；单臂 bpc 极差仅作参考"
+        "（极值估计 + 另一随机变量）；评测批内配对差共模抵消≈0")
+    noise["seed_replicate_scope"] = (
+        "seed 复本仅在 T=256/512 测得；T=1024/2048 无复本，其判读用工程带 0.014")
 
     # ---- 判据 C2：稳定性前置（本实验四臂 + 复用四臂的 gnorm）----
     gate = {"threshold_gnorm_max": 100, "threshold_grad_skips": 0, "per_arm": {}}
@@ -819,7 +850,7 @@ def stage_report() -> None:
             "sha256": trains[a["arm"]]["sha256_model_pt"],
             "size_bytes": trains[a["arm"]]["size_bytes"],
             "sha256_verified": True} for a in avail},
-        "code_fingerprints": {
+        "code_fingerprints_at_report": {
             "pathlm/depth_ar.py": sha256_file(os.path.join(ROOT, "pathlm/depth_ar.py")),
             "pathlm/model.py": sha256_file(os.path.join(ROOT, "pathlm/model.py")),
             "train_depth_ar.py": sha256_file(os.path.join(ROOT, "train_depth_ar.py")),
@@ -827,9 +858,15 @@ def stage_report() -> None:
                 os.path.join(ROOT, "tools/evalkit/retention.py")),
             "experiments/2625-longT-stability/stability_driver.py": sha256_file(
                 os.path.join(EXP_ROOT, "2625-longT-stability", "stability_driver.py")),
-            "note": ("本实验未改这些文件（只读）；qk-norm hook 从 2625 的 stability_driver.py "
-                     "只读引用（单一实现来源）"),
+            "note": ("**report 阶段**重算 ⇒ 记的是报告时 HEAD/工作树，**不是运行版本**；"
+                     "本实验未改这些文件（只读）"),
         },
+        # 运行期指纹（修 P1-5）：从 run_fingerprints.json 读，由运行窗口内写下；
+        # 若文件缺失则显式标 None（不假装有）。
+        "code_fingerprints_at_run": (json.load(open(os.path.join(HERE, "run_fingerprints.json")))
+                                     if os.path.exists(os.path.join(HERE, "run_fingerprints.json"))
+                                     else {"available": False,
+                                           "note": "run_fingerprints.json 缺失：运行期指纹未记录"}),
     }
 
     results = {
@@ -842,7 +879,8 @@ def stage_report() -> None:
                 "four_points": step_rows,
                 "four_point_shape": shape_step,
                 "variance_band_project": band,
-                "variance_band_cell": noise.get("sigma_cell_single_arm_max"),
+                "variance_band_cell_delta": noise.get("cell_threshold_for_delta"),
+                "variance_band_cell_single_arm_reference": noise.get("sigma_cell_single_arm_max"),
                 "note": ("同 step S=6000；T=1024/2048 只读复用 2626/2629（同 step 6000、"
                          "同 bs8/seed0/qk-normfrom512）。token 预算随 T 线性（见 tokens）。"),
             },
@@ -862,8 +900,9 @@ def stage_report() -> None:
             "distances_by_T": {str(k): list(v) for k, v in SYNTH_DISTS.items()},
             "chance": 1.0 / 64, "local_prior_k": 8,
             "results": ev["synth"],
-            "disclaimer": ("距离档均 ≤ T−2（训练分布内，§17.18）；本腿在 enwik8 权重上是分布外"
-                           "任务，预期接近 chance（辅助腿，不构成判据）"),
+            "disclaimer": ("⚠️ var_recall 系列用**末位查询布局**，已由 A-AUDIT §2-P1-1 判为"
+                           "**位置外推伪影**（2623 §9：同权重末位布局 full=0.0000 vs 同族多查询"
+                           "0.3665）⇒ 本腿读数**不可解释**，只作流水记录，不得当长程/机制判据"),
         },
         "liveness": liveness, "stability": stability,
         "dropped_arms": dropped,
@@ -875,7 +914,8 @@ def stage_report() -> None:
     json.dump(cfg, open(os.path.join(HERE, "config.json"), "w"),
               indent=2, ensure_ascii=False)
     print(json.dumps({"shape_step": shape_step, "shape_token": shape_token,
-                      "four_points": step_rows, "noise": noise.get("sigma_cell_single_arm_max")},
+                      "four_points": step_rows,
+                      "cell_threshold_for_delta": noise.get("cell_threshold_for_delta")},
                      indent=2, ensure_ascii=False))
 
 
