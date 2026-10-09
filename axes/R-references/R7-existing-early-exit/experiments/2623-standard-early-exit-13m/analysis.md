@@ -2,7 +2,7 @@
 
 > 主格 `R7-existing-early-exit`｜引擎 depth-ar 13M（d=256 / L=8 / h=8 / mlp=4 / seq=256）
 > ｜12k 步 = 98.3M tokens（≈1 epoch，**快照口径**）｜数据 enwik8｜单卡 RTX 4090（共享）
-> ｜训练臂 6 条 + 推断电池 + 交错墙钟｜`results.json` / `run_log.txt` / `cycle_log.jsonl`
+> ｜训练臂 7 条 + 推断电池 + 交错墙钟｜`results.json` / `run_log.txt` / `cycle_log.jsonl`
 
 ---
 
@@ -80,7 +80,7 @@ C1 形态的**增量仍在**（tf@4 0.97 vs stock 0.444，这正是 CALM 能退�
 | 墙钟口径 | **同一进程内交错轮次**（3 轮 × 4 prompt × 每臂策略，n_new=100，batch 1）；比值 = 同轮同 prompt 对 `stock/full`；报中位与极差 |
 | 噪声门限 | 同配置跨 run 实测漂移 0.0003–0.0007 bpc（两条臂各自复现历史值）；仓内种子带 ≤0.0138 ⇒ 本波所有结论差异（0.211–0.590 bpc）≫ 两者；seed-1 重复**未跑**（预算，见 §6） |
 | 快照声明 | 12k 步单点，**不是渐近**；不做收敛对账（未测项 #7） |
-| GPU 记账 | 自测步时（`step_time.json`）→ 训练臂逐臂实测墙钟：stock 6.8 / c1-legacy 10.0 / c1-fair 10.4 / c1-fair-l1 10.1 / ls-fair 9.7 / mod 19.2 min；推断电池 + 交错墙钟 ≈10 min；锁按臂释放、臂间 ≥60 s（`SCHEMA` §20.1）；峰值显存 ≤1.34 GB（礼貌线 5 GB 内） |
+| GPU 记账 | 自测步时（`step_time.json`）→ 训练臂逐臂实测墙钟：stock 6.8 / c1-legacy 10.0 / c1-fair 10.4 / c1-fair-l1 10.1 / ls-fair 9.7 / ls-legacy 8.6 / mod 19.2 min（≈75 min）；步时探针 3 min + 推断电池/交错墙钟/逐臂插入 ≈16 min ⇒ **合计 ≈94 min ≤ 120 min 预算**；锁按臂释放、臂间 ≥60 s（`SCHEMA` §20.1）；峰值显存 ≤1.34 GB（礼貌线 5 GB 内） |
 
 ## 2. 训练臂与配方拆解（唯一变量逐条）
 

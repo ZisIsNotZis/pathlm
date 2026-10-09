@@ -69,3 +69,16 @@
 
 环境：同卡有两条外部 `llama-server`（≈8 GB）与 2–3 条自研线并行；本波多次排队 10–60 min
 （最长一次被单线整程持锁 >60 min）。GPU 记账见 `config.json::gpu_wall_used_min`。
+
+## 2026-10-10 · 收尾（全量回归与提交）
+
+- 全量 `pytest tests/ -q`（CPU）：**808 passed / 2 failed**；两条红都属**另一条线在飞**的
+  `tests/test_carry_seed2_13m.py`（按 `pathlm/depth_ar.py` 的 sha256 断言引擎未变 —— 本波的
+  已授权、默认全关的引擎改动使其 §9 复用前提失效）。本波新增 37 条测试全绿；
+  `tools/check_schema.py` 全绿；`reconcile_numbers.py`（24 条数字表 + 结构不变量）全绿。
+- 提交：`b8b78fc`（引擎 + 单测 + 实验产物）→ `7f49131`（catalog SSOT + 重生成页）
+  → `a78999c`（能力面事实表行号更正 + 如实说明上一提交的跨线越界内容）。
+- 跨线重叠如实记账（也写进 `MODEL.md` 与提交信息）：`docs/engine_capability.md` 与
+  `tests/test_engine_capability.py` 当时是**他人未跟踪**文件（被我纳入提交以恢复 CI 绿、
+  并同步行号 + 补 C13–C16 四条能力行）；`pathlm/depth_ar.py::carry_liveness` 的 5 行措辞
+  改动（他人）也随 `b8b78fc` 入账，未回滚。已上报主 Agent。
