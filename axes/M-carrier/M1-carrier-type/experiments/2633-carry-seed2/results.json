@@ -325,120 +325,20 @@
     "authoritative_artifact": "axes/M-carrier/M1-carrier-type/experiments/2633-carry-seed2/equality_report.json",
     "runtime_version_ledger": "axes/M-carrier/M1-carrier-type/experiments/2633-carry-seed2/runtime_version_ledger.json",
     "generated_by": "2633-carry-seed2/equality_vs_2631.py",
-    "git_head": "d3eede5c662ffa5c3eff0a0d980318ef67500da1",
+    "git_head": "6675c810a365a3663b7df4282f591401c24d78ed",
     "verdict": "reuse_ok",
     "reuse_scope": "pathlm/** + train_depth_ar.py（两层行为等价）",
     "implementation_equivalent_to_2631_runtime": true,
-    "engine_equivalence_working_tree_vs_head": {
-      "configs": [
-        null,
-        "plain",
-        "delta"
-      ],
-      "probe_seed": 1234,
-      "per_rule": {
-        "none": {
-          "n_params_base": 13536768,
-          "n_params_working_tree": 13536768,
-          "n_params_same": true,
-          "params_bitwise_same_at_same_seed": true,
-          "state_dict_keys_same": true,
-          "max_abs_logit_diff_same_weights": 0.0,
-          "bitwise_equal_forward": true
-        },
-        "plain": {
-          "n_params_base": 13801064,
-          "n_params_working_tree": 13801064,
-          "n_params_same": true,
-          "params_bitwise_same_at_same_seed": true,
-          "state_dict_keys_same": true,
-          "max_abs_logit_diff_same_weights": 0.0,
-          "bitwise_equal_forward": true
-        },
-        "delta": {
-          "n_params_base": 13801064,
-          "n_params_working_tree": 13801064,
-          "n_params_same": true,
-          "params_bitwise_same_at_same_seed": true,
-          "state_dict_keys_same": true,
-          "max_abs_logit_diff_same_weights": 0.0,
-          "bitwise_equal_forward": true
-        }
-      },
+    "engine_equivalence": {
+      "authoritative_artifact": "axes/M-carrier/M1-carrier-type/experiments/2633-carry-seed2/engine_equivalence.json",
       "comparison_base": "2631 运行时版本（按 2631/results.json::code_hashes 定位）",
-      "base_resolution": {
-        "rel": "pathlm/depth_ar.py",
-        "recorded_sha256": "45f946793835f2afadf3a10f727b02ee879682ef6024b23fa179d3351c28c585",
-        "commit": "9f125cf5edf577e82500afec9d4c6dbcd3b32e20",
-        "n_matching_commits": 1,
-        "commit_subject": "9f125cf ENG2：写入通道支持非 dense ragged/随机退出/填充路径（引擎 + 单测 + 冒烟）"
-      },
-      "bitwise_equivalent_on_this_experiments_configs": true,
       "forward_layer_ok": true,
-      "trainer": {
-        "verified": true,
-        "base_resolution": {
-          "rel": "train_depth_ar.py",
-          "recorded_sha256": "2d1863bbc4403e026d12b597d98a1da2b85f3606110073f2117a7dd1db2a1f35",
-          "commit": "9f125cf5edf577e82500afec9d4c6dbcd3b32e20",
-          "n_matching_commits": 1,
-          "commit_subject": "9f125cf ENG2：写入通道支持非 dense ragged/随机退出/填充路径（引擎 + 单测 + 冒烟）"
-        },
-        "steps": 1001,
-        "compared_fields": [
-          "step",
-          "loss",
-          "gnorm",
-          "aux_w",
-          "final_w",
-          "window_mask",
-          "synth_answer_ce",
-          "synth_chance_ce"
-        ],
-        "n_lines": {
-          "base": 6,
-          "working_tree": 6
-        },
-        "n_log_points_compared": 6,
-        "log_points_note": "训练器每 200 步写一行 ⇒ 1001 步 = 6 个日志点（step 0/200/400/600/800/1000）；实际点数以 n_lines 为准",
-        "loss_sequence_base": [
-          4.5637,
-          0.5217,
-          0.4717,
-          0.4665,
-          0.4661,
-          0.4639
-        ],
-        "loss_sequence_working_tree": [
-          4.5637,
-          0.5217,
-          0.4717,
-          0.4665,
-          0.4661,
-          0.4639
-        ],
-        "n_field_diffs": 0,
-        "field_diffs": [],
-        "runs": {
-          "base": {
-            "returncode": 0,
-            "wall_s": 19.9,
-            "n_log_lines": 6,
-            "stderr_tail": null
-          },
-          "working_tree": {
-            "returncode": 0,
-            "wall_s": 18.9,
-            "n_log_lines": 6,
-            "stderr_tail": null
-          }
-        },
-        "note": "训练脚本层的行为等价证据；需要 GPU（§20.1.2 短任务例外，~1 min、<1 GB）。`working_tree.returncode != 0` ⇒ 只能降级声明（reuse_ok_pathlm_only）"
-      },
       "trainer_layer_ok": true,
-      "coverage": "pathlm/**（逐位 logits）+ train_depth_ar.py（逐字段 loss 序列）",
       "all_layers_ok": true,
-      "note": "**2631 运行时版本**（按记录 sha256 定位）与**当前工作树**在**本实验用到的**配置上逐位等价（前向三档逐位 logits + 训练脚本同一 run 的 6 个日志点逐字段相同，见 trainer.n_lines）；字节允许变（并行线的默认关闭加性改动），**开关关闭时行为必须逐位不变**；这只覆盖本实验的配置，不代表两版在所有配置上等价"
+      "coverage": "pathlm/**（逐位 logits）+ train_depth_ar.py（逐字段 loss 序列）",
+      "trainer_n_log_points_compared": 6,
+      "trainer_n_field_diffs": 0,
+      "note": "逐档细节（`per_rule` 的三档 logits 对照、训练脚本层的字段级差异、两次 run 的墙钟）在 `engine_equivalence.json`；本块只留标量 + 指针"
     },
     "differing_fields": [],
     "train_recipe_differing_flags": [],
@@ -2712,7 +2612,7 @@
     }
   },
   "cost": {
-    "wall_minutes_total_eval": 2.93,
+    "wall_minutes_total_eval": 3.57,
     "train_wall_minutes": {
       "none_s0": 9.07,
       "plain_s0": 13.08,
@@ -2742,7 +2642,7 @@
       "delta_s2": 2283.4
     },
     "n_forward_batches": 1440,
-    "lock_note": "训练按臂取/放 /tmp/pathlm_gpu.lock、臂间 ≥60 s（§20.1）；评测因外部线长时间占锁，按 **§20.1.2 短任务插队例外** 执行：纯推理、**不取锁、不动锁目录**；前后空闲读数与自身峰值见 `lock_accounting.json`（文本口径见 analysis §20）",
+    "lock_note": "训练按臂取/放 /tmp/pathlm_gpu.lock、臂间 ≥60 s（§20.1）；评测由 `eval.sh` **整程持锁**（该驱动 <10 min）；前后空闲读数与自身峰值见 `lock_accounting.json`（文本口径见 analysis §20）",
     "lock_accounting": {
       "mode": "section_20_lock",
       "lock_taken": true,
@@ -2752,7 +2652,7 @@
       "free_gpu_mem_mib_after": 16611,
       "free_headroom_gate_mib": 3072,
       "headroom_ok": true,
-      "wall_s": 231,
+      "wall_s": 270,
       "eval_peak_gpu_mem_mb": 701.6,
       "returncode": 0,
       "note": "wall_s 含 §9 前置门 + 冒烟 + 全电池；若 >120 s 属超 §20.1.2 字面门槛的整程持锁，已登记"
@@ -2766,7 +2666,7 @@
     "tools/evalkit/retention.py": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502",
     "run.py": "46033e75ed390b745509cefc1ec40243c89f207fad9e21f3c143360d70928523",
     "seed3_stats.py": "895005796f1a4b7f337799337070b00bd18c02b2eb8e242cc075e9f008ceba6d",
-    "equality_vs_2631.py": "e5b6f3bc17fabd53f77d6fff6f44e45fc62b6270230889a800806c6d8c168b6d",
+    "equality_vs_2631.py": "fdacafaba3e77d6a9d5010eb1c1f6640d4306a79e42f6020842bc1e76cd0359d",
     "config.json": "29e7881bd9eda91ed7830db68289ae1bd67f7f5cf3c4d4eca73ab60620ebf0f0",
     "reseed_arms.py": "a53fb6a02d3a88bd25f81e69569efe89039d8bf0cef67a645b3e4d03d7f7e24e"
   }

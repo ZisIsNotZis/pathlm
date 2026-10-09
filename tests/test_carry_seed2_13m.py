@@ -181,10 +181,83 @@ def test_embedded_pointer_matches_authoritative_artifact():
     for k in ("verdict", "reuse_scope", "implementation_equivalent_to_2631_runtime",
               "differing_fields", "train_recipe_differing_flags"):
         assert emb[k] == art[k], k
+    # `engine_equivalence` 必须是**指针 + 标量**（不得整块内嵌 `per_rule` 等细节）
+    pe = emb["engine_equivalence"]
+    assert pe["authoritative_artifact"].endswith("engine_equivalence.json")
+    # 逐档细节不得内嵌：每个值都必须是标量（结构判据，而不是 grep 文本）
+    assert all(isinstance(v, (str, bool, int, float)) for v in pe.values()), pe
+    assert set(pe) == {"authoritative_artifact", "comparison_base", "forward_layer_ok",
+                       "trainer_layer_ok", "all_layers_ok", "coverage",
+                       "trainer_n_log_points_compared", "trainer_n_field_diffs", "note"}
+    eqrep.assert_pointer_consistent(emb)          # 标量 == 权威产物（逐项）
     # 旧 schema 的痕迹必须消失
     for retired in ("implementation_identical", "head_identical_to_2631",
-                    "loss_sequence_head", "n_params_head"):
+                    "loss_sequence_head", "n_params_head",
+                    "engine_equivalence_working_tree_vs_head"):
         assert retired not in json.dumps(emb)
+
+
+def test_pointer_consistency_check_is_fail_able():
+    """指针块与权威产物不一致时必须报错（不是「只校验 5 个标量」的弱护栏）。"""
+    if not os.path.exists(RESULTS):
+        pytest.skip("results.json 尚未生成")
+    emb = json.load(open(RESULTS))["reuse_equality_vs_2631"]
+    eqrep.assert_pointer_consistent(emb)          # 原样应通过
+    for mutate in (lambda e: e["engine_equivalence"].__setitem__("forward_layer_ok", False),
+                   lambda e: e["engine_equivalence"].__setitem__(
+                       "trainer_n_log_points_compared", 0),
+                   lambda e: e.__setitem__("reuse_scope", "伪造的范围")):
+        bad = json.loads(json.dumps(emb))
+        mutate(bad)
+        with pytest.raises(ValueError, match="不一致"):
+            eqrep.assert_pointer_consistent(bad)
+
+
+def test_lock_note_consistency_is_enforced(monkeypatch):
+    """`lock_note` 必须与 `lock_accounting.mode/lock_taken` 同口径（复核 P1 护栏）。
+
+    两种模式各验一次「构造不出矛盾的结果文件」：派生文案随模式变，且人为制造矛盾时
+    落盘前的一致性检查必须报错。
+    """
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "carry_seed2_run", os.path.join(EXP, "run.py"))
+    run_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(run_mod)
+    lock = {"mode": "section_20_lock", "lock_taken": True}
+    exc = {"mode": "section_20_1_2_short_job_exception", "lock_taken": False}
+    for acct, must, must_not in ((lock, "整程持锁", "短任务插队例外"),
+                                 (exc, "§20.1.2 短任务插队例外", "整程持锁")):
+        note = run_mod._lock_note(acct)
+        assert must in note and must_not not in note
+        run_mod._assert_lock_consistency({"lock_note": note, "lock_accounting": acct})
+        # 制造矛盾 ⇒ 必须报错（两种方向各一条）
+        with pytest.raises(ValueError):
+            run_mod._assert_lock_consistency({"lock_note": note,
+                                              "lock_accounting": exc if acct is lock else lock})
+    # 未记账时必须如实说「未记账」，且不得声称任何口径
+    assert "未记账" in run_mod._lock_note(None)
+    with pytest.raises(ValueError):
+        run_mod._assert_lock_consistency(
+            {"lock_note": "评测由 `eval.sh` **整程持锁**", "lock_accounting": None})
+
+
+def test_committed_lock_notes_match_their_accounting():
+    """三个实验的**已入账** results.json 都要满足该不变量（跨实验护栏）。"""
+    for exp in ("2633-carry-seed2", "2634-carry-realtext-13m",
+                "2635-recursive-carrier-13m"):
+        p = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type", "experiments",
+                         exp, "results.json")
+        if not os.path.exists(p):
+            continue
+        cost = json.load(open(p))["cost"]
+        acct = cost.get("lock_accounting")
+        note = cost.get("lock_note") or ""
+        if acct is None:
+            assert "整程持锁" not in note and "短任务插队例外" not in note, exp
+        else:
+            is_lock = acct.get("lock_taken") is True or acct.get("mode") == "section_20_lock"
+            assert ("短任务插队例外" in note) != is_lock, (exp, acct.get("mode"), note)
 
 
 def test_runtime_version_ledger_covers_every_arm():
@@ -217,7 +290,9 @@ def test_engine_equivalence_per_rule_report_is_complete():
     该档的复用没有实现层证据（本测试会红）。
     """
     import engine_equivalence as ee
-    r = ee.check(write=False)
+    # **只用 CPU 路径**（`with_trainer=False`）：前向层不需要 GPU；训练脚本层的证据由已入账的
+    # `engine_equivalence.json::trainer` 提供（生成它才需要 GPU 跑 2×1001 步，≈41 s）。
+    r = ee.check(write=False, with_trainer=False)
     assert set(r["per_rule"]) == {"none", "plain", "delta"}
     for rule, v in r["per_rule"].items():
         assert v["n_params_same"], rule

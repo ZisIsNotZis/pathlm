@@ -80,6 +80,45 @@ def _lock_accounting() -> dict | None:
         return json.load(f)
 
 
+def _lock_note(acct: dict | None) -> str:
+    """按**实际记账**拼装评测口径说明（复核 P1：硬编码文案与回填的记账会自相矛盾）。
+
+    `acct` = `lock_accounting.json` 的内容（`mode` / `lock_taken`）。缺文件时如实说「未记账」，
+    **不得**默认写成某一种模式。
+    """
+    base = "训练按臂取/放 /tmp/pathlm_gpu.lock、臂间 ≥60 s（§20.1）"
+    if not acct:
+        return base + "；评测口径**未记账**（缺 `lock_accounting.json`，见 `analysis.md` §20）"
+    mode, taken = acct.get("mode"), acct.get("lock_taken")
+    if taken is True or mode == "section_20_lock":
+        how = "评测由 `eval.sh` **整程持锁**（该驱动 <10 min）"
+    elif taken is False or mode == "section_20_1_2_short_job_exception":
+        how = "评测按 **§20.1.2 短任务插队例外** 执行（纯推理、**不取锁、不动锁目录**）"
+    else:
+        how = f"评测口径未知（mode={mode!r}）"
+    return f"{base}；{how}；前后空闲读数与自身峰值见 `lock_accounting.json`（文本口径见 analysis §20）"
+
+
+def _assert_lock_consistency(cost: dict) -> None:
+    """**可失败的**自相矛盾检查：`lock_note` 与 `lock_accounting.mode/lock_taken` 必须同口径。
+
+    落盘前调用 ⇒ 不一致的结果文件根本写不出来（复核 P1 的同类事故护栏）。
+    """
+    acct = cost.get("lock_accounting")
+    note = cost.get("lock_note") or ""
+    if acct is None:
+        if "整程持锁" in note or "短任务插队例外" in note:
+            raise ValueError("lock_note 声称了某种评测口径，但 lock_accounting 为 None（未记账）")
+        return
+    mode, taken = acct.get("mode"), acct.get("lock_taken")
+    is_lock = (taken is True or mode == "section_20_lock")
+    is_exc = (taken is False or mode == "section_20_1_2_short_job_exception")
+    if is_lock and "短任务插队例外" in note:
+        raise ValueError("lock_note 说「§20.1.2 短任务插队例外」但 lock_accounting 是整程持锁口径")
+    if is_exc and "整程持锁" in note:
+        raise ValueError("lock_note 说「整程持锁」但 lock_accounting 是 §20.1.2 插队例外口径")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=os.path.join(HERE, "config.json"))
@@ -292,14 +331,16 @@ def main():
                          "质量腿读数只能作「发散步」参考、不构成线性载体质量结论（见 stall_diagnosis）"),
         },
     })
+    acct = _lock_accounting()
     results["cost"] = {
         "wall_minutes_total_eval": round((time.time() - t0) / 60, 2),
         "train_wall_minutes": {n: train_meta[n]["wall_minutes"] for n in arms},
         "eval_peak_gpu_mem_mb": round(torch.cuda.max_memory_allocated() / 2 ** 20, 1),
         "train_peak_gpu_mem_mb": {n: train_meta[n]["peak_gpu_mem_mb"] for n in arms},
-        "lock_note": ("训练按臂取/放 /tmp/pathlm_gpu.lock、臂间 ≥60 s（§20.1）；评测因外部线长时间占锁，按 **§20.1.2 短任务插队例外** 执行：纯推理、**不取锁、不动锁目录**；前后空闲读数与自身峰值见 `lock_accounting.json`（文本口径见 analysis §20）"),
-        "lock_accounting": _lock_accounting(),
+        "lock_note": _lock_note(acct),
+        "lock_accounting": acct,
     }
+    _assert_lock_consistency(results["cost"])      # 不一致 ⇒ 落盘前就炸（复核 P1 护栏）
     results["code_hashes"] = {
         rel: sha256_file(os.path.join(ROOT, rel)) for rel in
         ("pathlm/depth_ar.py", "train_depth_ar.py", "tools/evalkit/longrange_tasks.py",

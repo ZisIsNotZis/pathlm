@@ -114,12 +114,19 @@ plain 跨种子极差 34.2pp。
 
 复用 2631 的 seed0/seed1 六臂作对照，逐条满足 §9：
 
-1. **实现层 equality**：本次**未改**任何引擎/仪器文件 ⇒ 与 2631 运行时是**同一份代码**。
-   逐文件 sha256（本文件写入时记录，`analysis.md` §9 复核）：
+1. **实现层 equality**：本次**未改**任何引擎/仪器文件，预登记时的判定是「与 2631 运行时是
+   **同一份代码**」。逐文件 sha256（本文件写入时记录）：
    `pathlm/depth_ar.py` `45f94679…c585`、`train_depth_ar.py` `2d1863bb…1f35`、
    `tools/evalkit/longrange_tasks.py` `4a02b93f…465b`、`tools/evalkit/carry_channel.py`
-   `4dcd91fa…6753`——与 2631 运行时相同（2631 提交 `a25261b` 之后**只有**
+   `4dcd91fa…6753`——登记时刻与 2631 运行时相同（2631 提交 `a25261b` 之后**只有**
    `tools/evalkit/kv_quant.py` 变动，本线不导入它）。
+   > **当前判读以 `analysis.md` §9 为准**（本节是实现层口径的**预登记**原文）：此后**其它并行线**
+   > 对 `pathlm/depth_ar.py` / `train_depth_ar.py` 做了**默认关闭的加性改动**并入库
+   > ⇒ 工作树的**字节**已不再等于 2631 运行时记录（`equality_report.json::working_tree_drift_files`、
+   > `bytes_unchanged_since_2631_run = false`），§9 的判据因此落在**行为等价**上：
+   > 基准 = 「2631 运行时版本」（按记录 sha256 定位到 commit `9f125cf`），与当前工作树比
+   > **前向三档逐位 logits** + **训练脚本 1,001 步（6 个日志点）逐字段**，见
+   > `engine_equivalence.json`。
 2. **配置层 equality**：`config.json::equality_vs_2631` 逐字段对照 2631 的
    `config.json`+`train_arms.sh`（d/layers/heads/mlp/seq/batch/steps/lr/优化器/seed/token 预算/
    数据生成器/可见性掩码/退火），不等字段 = **无**（除 `seed`，这正是本实验新增的档）。

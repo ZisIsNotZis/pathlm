@@ -74,13 +74,63 @@ def assert_report_schema(report: dict) -> None:
             f"`REQUIRED_REPORT_KEYS` / 消费方（复核 P1 的同类事故）")
 
 
+def engine_equivalence_pointer(report: dict) -> dict:
+    """把 `engine_equivalence_working_tree_vs_head` 降为**指针 + 判据级标量**。
+
+    `assert_pointer_consistent()` 会核对标量与权威产物 `engine_equivalence.json` 一致；
+    需要逐档细节（`per_rule` / `trainer.field_diffs`）时读那个文件。
+    """
+    ee = report.get("engine_equivalence_working_tree_vs_head") or {}
+    tr = ee.get("trainer") or {}
+    return {
+        "authoritative_artifact": os.path.relpath(
+            os.path.join(HERE, "engine_equivalence.json"), ROOT),
+        "comparison_base": ee.get("comparison_base"),
+        "forward_layer_ok": ee.get("forward_layer_ok"),
+        "trainer_layer_ok": ee.get("trainer_layer_ok"),
+        "all_layers_ok": ee.get("all_layers_ok"),
+        "coverage": ee.get("coverage"),
+        "trainer_n_log_points_compared": tr.get("n_log_points_compared"),
+        "trainer_n_field_diffs": tr.get("n_field_diffs"),
+        "note": ("逐档细节（`per_rule` 的三档 logits 对照、训练脚本层的字段级差异、两次 run 的墙钟）"
+                 "在 `engine_equivalence.json`；本块只留标量 + 指针"),
+    }
+
+
+def assert_pointer_consistent(emb: dict, artifact_path: str | None = None) -> None:
+    """核对指针块的标量与权威产物**逐项相等**（可失败；缺字段即报错）。"""
+    art_p = artifact_path or os.path.join(ROOT, emb["authoritative_artifact"])
+    ee_p = os.path.join(ROOT, emb["engine_equivalence"]["authoritative_artifact"])
+    art = json.load(open(art_p))
+    ee = json.load(open(ee_p))
+    tr = ee.get("trainer") or {}
+    pairs = (
+        (emb.get("verdict"), art.get("verdict"), "verdict"),
+        (emb.get("reuse_scope"), art.get("reuse_scope"), "reuse_scope"),
+        (emb.get("implementation_equivalent_to_2631_runtime"),
+         art.get("implementation_equivalent_to_2631_runtime"),
+         "implementation_equivalent_to_2631_runtime"),
+        (emb["engine_equivalence"].get("forward_layer_ok"), ee.get("forward_layer_ok"),
+         "engine_equivalence.forward_layer_ok"),
+        (emb["engine_equivalence"].get("trainer_layer_ok"), ee.get("trainer_layer_ok"),
+         "engine_equivalence.trainer_layer_ok"),
+        (emb["engine_equivalence"].get("trainer_n_log_points_compared"),
+         tr.get("n_log_points_compared"), "engine_equivalence.trainer_n_log_points_compared"),
+    )
+    bad = [name for got, want, name in pairs if got != want]
+    if bad:
+        raise ValueError(f"内嵌指针块与权威产物不一致：{bad}")
+
+
 def pointer_block(report: dict) -> dict:
     """`results.json` 里内嵌的**指针块**：只放判据级标量 + 指向权威产物。
 
     为什么不整块内嵌（复核 P2-1）：整块内嵌会让同一份证据在
     `equality_report.json` 与 `results.json` 两处各存一份 schema，重构后必然出现
-    「同一证据两处相反说法」。⇒ 权威产物 = `equality_report.json`（+ `runtime_version_ledger.json`），
-    内嵌块只留**判据级标量**与指针，并由单测核对两处标量一致。
+    「同一证据两处相反说法」。⇒ 权威产物 = `equality_report.json`（+ `engine_equivalence.json`
+    + `runtime_version_ledger.json`），内嵌块只留**判据级标量**与指针（连
+    `engine_equivalence_working_tree_vs_head` 也降为 `engine_equivalence_pointer()`），
+    并由 `assert_pointer_consistent()` 逐项核对。
     """
     return {
         "authoritative_artifact": os.path.relpath(
@@ -92,8 +142,9 @@ def pointer_block(report: dict) -> dict:
         "reuse_scope": report.get("reuse_scope"),
         "implementation_equivalent_to_2631_runtime":
             report.get("implementation_equivalent_to_2631_runtime"),
-        "engine_equivalence_working_tree_vs_head":
-            report.get("engine_equivalence_working_tree_vs_head"),
+        # 后向兼容键：**只留判据级标量 + 指针**（复核 P2-1：不再整块内嵌嵌套对象，
+        # 否则同一份证据有两份 schema，重构后必然漂移）
+        "engine_equivalence": engine_equivalence_pointer(report),
         "differing_fields": report.get("differing_fields"),
         "train_recipe_differing_flags": report.get("train_recipe_differing_flags"),
         "note": ("完整证据（逐文件台账、配置层对照、训练配方 flag 对照、复用臂 checkpoint 哈希）"
