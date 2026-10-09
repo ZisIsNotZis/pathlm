@@ -2,7 +2,7 @@
 
 # INDEX · 设计空间状态灯
 
-共 **37** 个格子 ｜ ✅ judged 14 ｜ ⬜ todo 23
+共 **37** 个格子 ｜ ✅ judged 15 ｜ ⬜ todo 22
 
 > 全部内容由 `tools/build_wiki.py` 从 `catalog.yaml` 生成；**不要手改本文件**。
 
@@ -71,7 +71,7 @@
 
 | 格子 | 状态 | 判读 |
 |---|---|---|
-| [`M1-carrier-type`](axes/M-carrier/M1-carrier-type/README.md) · 状态载体类型 | ⬜ todo | **已有**：载体类型首验（ticket 35）：在「关联回忆 + 窗口 16（key 100% 落在窗外）」的合成任务上，13M/12k 步测得显式写入通道把命中率抬到 6.08× chance… |
+| [`M1-carrier-type`](axes/M-carrier/M1-carrier-type/README.md) · 状态载体类型 | ✅ judged | **入口判读（本格当前结论，本地实测）**： 1. **通道活着且被读**：真实文本口径下 `read_share` 0.30–0.42、读出增益已逃离单边零、同权重关掉通道前向偏差 0.46、且… |
 | [`M2-carrier-compression`](axes/M-carrier/M2-carrier-compression/README.md) · 载体压缩 | ⬜ todo | **已有**：驱逐已测（价格见 A3）；KV 量化有本地实测（R1/2614、2618/2621），但价签须按因果/流式量化口径重测（见 R1）。**尚缺**：摘要压缩、低秩投影（MLA 式）无经… |
 
 ## G · 策略与调度（3 格）

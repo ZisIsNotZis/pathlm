@@ -860,7 +860,7 @@ grids:
       原 F1-iteration-object 已并入本格（目录见 `archive/dropped/axes/F-iteration/F1-iteration-object/`）：
       迭代对象降为本格「重复施加在什么之上」的选项维；F1 的负结果「direct 重入无新信息」即本格固定点结论。
 
-  # ==================== F4
+  # ==================== F4    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a)+b —— 参照线句：「重建/充分性类辅助损失是压缩可恢复性的关键信号（`记忆·未核`，Compressive Transformer 2019 / AutoCompressors / ICAE / RECOMP / DMC 2024）。」⇒ 账本措辞改「业界结论」，本地增量保留 `judged`"
     prior_art_source: "axes/F-iteration/PRIOR_ART.md @b44c809"
 
   - id: F4-training-signal
@@ -891,8 +891,9 @@ grids:
       **不得**再声称「无人占位」。
       （业界多数压缩工作不报「可重建性」⇒ 带检索腿的判据仍是我们的增量。）
 
-  # ==================== M1    prior_art_note: "既有做法（ticket 36 分诊，来源 `记忆·未核`）：(a)+b —— 参照线句：「重建/充分性类辅助损失是压缩可恢复性的关键信号（`记忆·未核`，Compressive Transformer 2019 / AutoCompressors / ICAE / RECOMP / DMC 2024）。」⇒ 账本措辞改「业界结论」，本地增量保留 `judged`"
-    prior_art_source: "axes/F-iteration/PRIOR_ART.md @b44c809"
+  # ==================== M1    prior_art_note: "既有做法（ticket 36 分诊 + 本轮复核）：(a) —— 「显式记忆槽 + delta 规则（写之前扣掉同键旧分量）优于累加写」是 DeltaNet / Gated DeltaNet 一系的已证机制，多查询关联回忆（MQAR）是线性注意力一族的标注基准 ⇒ 该**机制排序本身不是本地增量**。来源类型：业界结论（`记忆·未核`——本环境检索不可用、未核原文）。本地增量 = 13M / 局部先验抗性任务 / **真实文本口径** / 窗口 16 上的受控读数、跨种子稳定性量化，以及「可检索性未证」这类边界/否定结论。"
+    prior_art_source: "axes/M-carrier/PRIOR_ART.md @e3b00ba"
+
 
   - id: M1-carrier-type
     axis: M
@@ -901,15 +902,34 @@ grids:
     options: [KV cache（本项目唯一）, 递归状态（SSM/RNN）, 显式记忆槽, 外部存储（检索）, 权重（fast-weight）, 无]
     judge: 保留（needle 消融）+ 内存/步长 + 吞吐
     cost: 13M 单臂 ~25–40 min
-    status: todo
-    verdict: "**已有**：载体类型首验（ticket 35）：在「关联回忆 + 窗口 16（key 100% 落在窗外）」的合成任务上，13M/12k 步测得显式写入通道把命中率抬到 6.08× chance。但该首验的**主腿（被问 pair 距离 241–255）落在训练分布（107–240）之外**，属 §17.18 同类的越界腿（该腿族同配置三跑极差 10.84pp，已永久降级为辅助腿）⇒ **此首验只能标为「分布外单次观测」，不作入口结论的判据**。具体读数（单次）：无通道 U0 = 0.0137（≈chance，前提校验过）→ delta 写 U2 = 0.0950（6.08× chance，+8.13pp，CI 不重叠；毁源后掉到 0.0081 ⇒ 读数确来自被搬运的信息）；plain 写 U1 双稳态（0.0007 / 0.0334）且比 U2 低 9.42pp ⇒ 在本快照中「只搬增量」的 delta 写处于较优分支（**单次观测**：训练侧种子散布未测，见 `2618-carry-channel-13m/analysis.md` §9.3）。绝对水平仅 9.5%（13M/12k）⇒ 按 SCHEMA §19 不得外推为「业界做不到/做得到」。
+    status: judged
+    verdict: |-
+      **入口判读（本格当前结论，本地实测）**：
+      1. **通道活着且被读**：真实文本口径下 `read_share` 0.30–0.42、读出增益已逃离单边零、同权重关掉通道前向偏差 0.46、且关掉后 bpc 从 1.625 崩到 4.51。
+      2. **敏感度（必要条件）成立**：把被评行 ≥180 个位置之前的前缀毁掉，无通道臂被评行 logits **逐位不变**（前提①），带通道臂 `Δbpc_far = +0.0158 / +0.0141`（配对聚类 CI 排除 0、> 本格自测 `σ_far=0.0017`），通道消融后恰好归零 ⇒ 「信息被搬到现在」在**真实文本**口径上成立——注意这是**敏感度（必要条件）**，不是收益、也不是可检索。
+      3. **质量收益 ≈0.2%，且一个种子的配对 CI 跨 0**：窗口 16 口径 clean bpc 1.6281/1.6291 → 1.6249/1.6266（Δ = +0.0031 / +0.0025 bpc，两种子同号、> 本格 `σ_cell=0.0017`；seed1 配对 CI [−0.0004, +0.0054]）。
+      4. **可检索性未证**：真实文本短语针（needle v3）整体 `beyond` 桶「植入 vs 配对无针地板」差 ±0.05~0.16pp（CI 跨 0）；仅在「四臂无针地板**全部**答不出」的**同索引硬子集**（n=2974）上通道臂高 **+1.379pp [0.717, 2.041] / +1.042pp [0.380, 1.705]**（绝对水平 2.42%/2.53% vs 1.04%/1.21%，约 2.2×）。⇒ 措辞是「**弱证据、未证**」，**不写**「通道能检索」、也**不写**「可检索性不成立」。
 
-    **入口判读用分布内证据**：训练分布内多查询关联回忆上 carry 相对 base 的增益在多次测量间**不一致**——ticket 44-X2（seed=0，n=1）base 1.48% → carry 35.78%（×24，CI 不重叠）、ticket 41-Z2 两点 +15.527pp → +14.697pp 保持；但 ticket 47-W2 的 **seed=1 分布内腿为 −3.26pp（显著为负）**、seed=0 仅 +0.36pp（CI 跨 0）⇒ **跨种子不稳健**。故本格入口判读为：「机制在分布内能搬（多次大幅正向，但均为 n=1），**跨种子尚未稳健**，未收口为已证结论」。
+      **适用域与禁外推**：enwik8 真实文本 / 13M 稠密主干 / 窗口 16 + 锚点 0 / 12k 步（98.3M token）快照 / delta 写这一种写入规则。真实文本的局部先验本来就能补全绝大部分（窗口 16 模型训练末 loss 1.055 nat ≈ 1.52 bit/byte）⇒ 搬运的价值本来就小（SCHEMA §19 的局部先验抗性在真实文本上被直接量到）。
 
-    同时 ticket 34 造出「不靠语言先验」的长程天平并给出关键诊断：13M 主干长程能力**分任务型**——关联回忆 0.0061、变距离回忆 0.005–0.010（≈或低于 chance）⇒ 检索类彻底缺席；复制 0.1333（距离 223 仍 0.118，毁源→0.0125）、induction 0.0586（毁源→chance）⇒ 真实但弱。**尚缺**：显式通道能否跨 seed 稳健把信息搬过窗（3 臂×3 seed，分布内多查询腿）（待补做）。"
+      **感受野边界（对本格此前说法的更正）**：窗口 16 的 **12 层**模型，其跨层多跳感受野是 `L·(w−1) = 180`（`rf_scan.json` 实测：首个逐位不敏感行 243，公式上界 244）⇒ 合成腿的距离档 107–240 里 **107–180 可达（74/134 ≈ 55%）、181–240 不可达**；越界辅助腿 **241–255 仍不可达**。**可达 ≠ 可检索**（多跳只是传播：12 层无通道臂在 2631 上仍是 chance 1.55–1.65%）。因此「窗口 16 ⇒ 窗外内容 100% 看不见」不准确，机制解释应写成「**信息可达（需学习中转）但用不上**」。
+
+      **合成口径三种子判决**：`delta − none` 跨种子稳健（+34.927 / +34.323 / +35.080pp，配对 CI 下界 > 0，极差 0.757pp）；**`delta − plain` 不成立**（+0.369 [−0.150, +0.900] / +34.064 / +35.187，极差 **34.818pp**）——机制是 **plain 双稳态**（三跑 36.108 / 1.907 / 1.498%，塌回地板 2/3，Wilson [0.208, 0.939]；仅 seed0 学到），delta 稳定（36.478 / 35.971 / 36.685%，极差 0.714pp），逐种子最好臂 3/3 = delta。**判据的正确形式是「方向一致性 / 塌回地板比例」**：把「delta 比 plain 高 3pp」当**均值**问题需 ≈689 个种子（超出一个批次的预算），把「塌回比例」估到 ±20pp 约需 **≈20 个种子**；而方向一致性 **n=3 已足以证伪**「一贯优于」。
+
+      **递归/线性载体（载体枚举里的第 2 类）**：该**实现**在该**配置**下**不可训练（数值发散）**——3000 步里 **1854 步被梯度门跳过**（`gnorm_max` 5.7e8、`den_min` 触 clamp 1e-6、`state_norm` 476），质量腿读数（stock 1.7704 vs linear 5.9238 bpc）只能作**发散步**参考。**可复用教训**：「**日志停写 ≠ 进程停摆**」——训练器只在**未被跳过的步**写日志，步数对账（1854+1146=3000）与终点产物证明进程其实跑完；这条同时是 2616「实现层停摆」判定的**待复核假设**。另：「窗口 + 线性载体」组合因引擎硬互斥（`attn_linear ⊕ train_window`）**不可测**；「线性注意力这一族可不可行」的权威叙事在 A 轴（A6 / `2637-linear-attn-quality`）。
+
+      **历史本地读数（保留，明细见 §9 复现手段）**：ticket 35 首验「delta 写 6.08× chance」主腿在训练分布外（已永久降级为辅助腿）、绝对水平仅 9.5%；ticket 47-W1/W2 唯一跨种子稳健的是**出口资产保持**（−0.98 / +0.11pp 带内），而越界腿与分布内召回在 n=2 下均不稳健；ticket 44-X2 的 carry×depth 2×2 在召回目标上可加、但 tf@4 交互项 −6.06pp；ticket 41-Z2 无泄漏 Q=7 口径下 6k→10k 的 carry 增益保持（+15.527 → +14.697pp）；ticket 36-U1/U2 里难度曲线成立、容量与重建信号不成立；ticket 41-Z3 评测期 int8 不破坏搬运通道。**这些读数都是快照口径、只在各自的任务/尺度上成立。**
+
     local:
-      tax: "ticket 35 的通道为**旁路**（`+264,296` 参数，U1/U2 逐位相同；单共享槽在输入流上，每层用自己的 query 读）——为对齐 MQAR/线性注意力标准形态而选择（per-layer-12 实装实测 221/410 ms/step 出局，根因是算子派发/autograd 节点开销而非 FLOPs）；解析状态 8192 floats（与 T 无关）vs 实测峰值 2015/2170/2282 MB（分开报）"
-      benefit: "**delta 写（S ← S·(I−βkkᵀ)+βvkᵀ，「只搬上次没搬的」）在关联回忆上 6.08× chance、且毁源后崩到 chance** ⇒ 「信息被搬到可检索处」在本次快照被直接观测；读取量证据：U2 读分享 →0.7078、U0 为 0；**距离腿六档实测读数：d=32 = 0.0000、d=192 = 0.00098 低于 chance 0.015625，最远 d=255 = 0.5947，曲线非单调、不外推**；per-layer KV + 位置散点填充仍支持「变深度 + 不重 prefill」（与并行 forward 逐位一致）"
+      tax: |-
+        真实文本腿（2634）：通道臂 +264,296 参数（13,536,768 → 13,801,064，+1.95%），计算量只多一个与 T 无关的状态更新；**质量收益 +0.0031/+0.0025 bpc（≈0.2%）**，一个种子的配对 CI 跨 0；窗口 16 下把通道关掉 bpc 从 1.625 崩到 4.51（说明模型把质量压在通道上）。
+        合成腿（2631/2633）：三臂逐位等参数（plain/delta 同一组张量、只改更新式），12k 步 × bs32 × T256 快照；训练峰值显存 2015/2170/2283 MB（none/plain/delta），解析状态 8192 floats（与 T 无关）。
+        递推/线性载体（2635）：参数量与 stock 臂逐位相同（不新增参数），但该实现该配置**数值发散**（见 verdict）。
+      benefit: |-
+        1. **真实文本口径（新）**：显式写入通道**确实把 ≥180 个位置之前的真实文本内容搬进了当前预测**——无通道臂对被毁前缀逐位不敏感（前提①）、带通道臂 Δbpc_far +0.0158/+0.0141（配对 CI 排除 0、> 本格 σ_far）、消融后恰好归零；质量收益小而一致为正（+0.0031/+0.0025 bpc）。这是本主线第一次在**真实文本**上拿到「信息被搬动」的直接证据。
+        2. **合成口径（跨种子稳健的那一半）**：`delta 写优于无通道` 在三种子上稳健（+34.3~+35.1pp，极差 0.757pp），且 delta 是三种子里最稳的一支（跨种子极差 0.714pp vs plain 的 34.6pp）；毁源对照全部掉回 chance（作废臂 ∅）。
+        3. **可检索性的弱证据**：同索引硬子集（n=2974，四臂无针地板全失败）上通道臂高 +1.0~1.4pp（约 2.2×，两种子同向、CI 排除 0）。
+        4. **仪器与护栏（可复用）**：毁源式敏感度探针（含 rf 必填/布局不变式/消融对照）、needle 同索引硬子集与**方向固化**的判据、**两层**实现等价证据（前向逐位 logits + 训练脚本 20 步逐字段 loss 序列）、运行期版本台账、以及「日志停写 ≠ 进程停摆」的停摆门两级语义。
       failure:
         - "早期缓存 bug：逐位置早退导致 per-layer cache 长度失步（已修为 per-layer 位置列表；持续单测）"
         - "**长程检索能力缺席（ticket 34-A 仪器实测）**：关联回忆 0.0061、变距离回忆六档 0.005–0.010，均≈或低于 chance 且无距离依赖 ⇒ 此前所有「没搬」读数，至少相当部分来自**模型本来就没有该能力**，而非「机制搬不动」（SCHEMA §19）"
@@ -928,7 +948,19 @@ grids:
         - "**训练信号（ticket 36-U2，见 F4）**：重建/充分性损失被完美学会（重建命中 ≈1.00）但**长程回忆一点没长**（有 λ=1.0 0.0137 vs 无 λ 0.0161，−0.244pp、CI 重叠；重跑 4096 次提问 **0 命中**）⇒ 该尺度上「给路径（显式写通道 0.0950）」远优于「给信号（重建损失）」"
         - "**ticket 35 的边界**：绝对水平仅 9.5%（13M/12k 步）⇒ 只能读作「在该任务/该尺度上成立」；**plain 写（U1）双稳态**（同配置同 seed 两次 0.0007 vs 0.0334，答案行 CE 4.184 vs 2.252，重跑散度 +3.271pp）⇒ 判据③只在「两支 plain 读数」上成立，**强表述（delta 优于 plain）不作为结论**；距离曲线受训练位置结构混杂；未做 ④ 训练信号（重建/充分性损失）与 ③ 容量压力（更小状态）"
         - "**因果性护栏（本设计最致命的风险）已钉死**：分块 WY 形与顺序参考在 fp64 下 <1e-12 逐位一致（chunk ∈ {1,2,3,5,8,24}）、扰动 t≥10 时 t<10 输出 `torch.equal`、读后写约定有专测、变异 M1（释放块内 mask 造成未来泄漏）被抓住"
-      evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @88dcc53", "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @88dcc53", "axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m/analysis.md @cc64112", "axes/M-carrier/M1-carrier-type/experiments/2616-window192-trained-13m/analysis.md @774fcb9"]
+      evidence:
+      evidence:
+        - "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/analysis.md @6cde724"
+        - "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/results.json @6cde724"
+        - "axes/M-carrier/M1-carrier-type/experiments/2633-carry-seed2/analysis.md @6cde724"
+        - "axes/M-carrier/M1-carrier-type/experiments/2633-carry-seed2/engine_equivalence.json @6cde724"
+        - "axes/M-carrier/M1-carrier-type/experiments/2635-recursive-carrier-13m/analysis.md @6cde724"
+        - "axes/M-carrier/M1-carrier-type/experiments/2635-recursive-carrier-13m/stall_report_linear_v2.json @6cde724"
+        - "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @88dcc53"
+        - "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @88dcc53"
+        - "axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m/analysis.md @cc64112"
+        - "axes/M-carrier/M1-carrier-type/experiments/2616-window192-trained-13m/analysis.md @774fcb9"
+        - ".scratch/03-engine-m1/issues @e38349f"
     deps: [M2-carrier-compression, A9-old-info-retention, F2-return-channel, A3-window-anchor]
     notes: |
       原 M3-cross-step-assumption 已并入本格（目录见 `archive/dropped/axes/M-carrier/M3-cross-step-assumption/`）。
