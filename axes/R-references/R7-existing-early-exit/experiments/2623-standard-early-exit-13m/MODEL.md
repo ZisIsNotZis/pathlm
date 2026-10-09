@@ -14,6 +14,7 @@ checkpoint 落在 `.scratch/52-r7-early-exit/evidence/<run>/model.pt`（日志�
 | `r7-c1-fair-l1-s0` | `aced9d3d23c871ff896c6c93c832ade567b9f757da403dea6afc09f8de8f0dcf` | 26.59 | 6,962,688 | 256/8/8/256/4 dense=False gate=True aux=additive(λ=1.0) | 同上 | 9.62 | 1339.9 |
 | `r7-ls-fair-s0` | `818a1186ae9d00ae57156d95cd7dfdb865d237c01b2ba263f31ed3ab4ac230ec` | 24.58 | 6,436,352 | 256/8/8/256/4 dense=False **gate=False** aux=additive(λ=0.1) | 同上 | 9.73 | 1203.5 |
 | `r7-ls-legacy-s0` | `2f3fefd4b37899afa67c585215176553870621b2777746c040c6aca6fa7e7388` | 24.58 | 6,436,352 | 256/8/8/256/4 dense=False **gate=False** aux=renorm | 同上 | 8.58 | 1203.5 |
+| `r7-c1-fair-share-s0` | `b1c5d2f7bd9c61fd02a45d5f8ce591ed1457153a0478229423ad20d2a9849a91` | 26.59 | 6,962,688 | 256/8/8/256/4 dense=False gate=True **aux=additive(λ=8)** mod=0 | 12000×bs32×seq256, seed 0 | 9.76 | 1339.9 |
 | `r7-mod-s0` | `3547296506874ac96bfbb6f1f6151328c007483858a4755fd9d271d0f82f4274` | 52.75 | 13,811,216 | 256/**16**/8/256/4 dense=True **mod_ratio=0.5**（路由器 4112 参数） | 同上 | 19.16 | 1330.4 |
 
 （「墙钟 min」= **训练循环墙钟** `results.json::wall_minutes`，与 `analysis.md` §2 同源；驱动脚本的**整进程**墙钟见 `run_log.txt` 的 `[arm] … wall=` 行，逐臂与本列不同。）
@@ -30,6 +31,8 @@ python3 train_depth_ar.py <run> --out-root .scratch/52-r7-early-exit/evidence \
 #          c1-fair-l1 = 同上但 --aux-weight 1.0
 #          ls-fair = c1-fair + --no-carry-gate
 #          ls-legacy = c1-legacy + --no-carry-gate
+#          c1-fair-share = c1-fair 但 --aux-weight 8（与 C1 现配方**同份额** 1/9；由
+#                          `run_arms_share.sh` 驱动，非 `run_arms.sh`）
 #          mod = --dense --layers 16 --mod-ratio 0.5 --mod-router-weight 0.01 --exit-mode full
 ```
 
@@ -38,6 +41,8 @@ python3 train_depth_ar.py <run> --out-root .scratch/52-r7-early-exit/evidence \
 ```bash
 # 全部训练臂（按臂取/放 GPU 锁，臂间 ≥60 s）：
 bash axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/run_arms.sh all
+# 同份额控制臂（λ=8，承载 headline 结论 1.8550 vs 1.8575）：
+bash axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/run_arms_share.sh
 # 推断电池 + 交错墙钟（锁内、无训练）：
 bash axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/run_eval.sh all
 # 对账（analysis.md 的数字 ⇔ results.json）：

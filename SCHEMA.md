@@ -511,7 +511,7 @@ rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/nul
    `cost.measured.ratio_by_T` 的实测 0.992/0.915/1.069/1.784（`.scratch/52-a6-longt/issues/01-a6-longt.md` P0-1）。
 4. **数据反驳结论**：表里列了与结论相反的分量，却没算、没解释。
    反例：2634 的毁源对照整体桶判「无区分力」，但同索引硬子集上通道臂比无通道臂高 1.0–1.4pp
-   （绝对水平 2.42%/2.53% vs 1.04%/1.21%，约 2.2×）、CI 排除 0 ⇒ 结论必须写成「整体无区分力 +
+   （绝对水平 **2.421% / 2.253%** vs **1.042% / 1.210%**，即 **2.32× / 1.86×**）、CI 排除 0 ⇒ 结论必须写成「整体无区分力 +
    硬子集弱证据、可检索性未证」（`2634-carry-realtext-13m/analysis.md:18,44-48,92,212-236`）。
 5. **等价范围小于声称**：证据只覆盖了声称范围的一部分 ⇒ 复用/等价结论越界。
    反例：2633 的「语义等价」只覆盖 `pathlm/**`，而运行期漂移还含训练脚本 `train_depth_ar.py`；
@@ -562,9 +562,19 @@ rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/nul
      `audit_numbers.py` 对**每个数字 token** 做可失败审计
      （`2623-standard-early-exit-13m/` 下的 `fill_share.py` / `audit_numbers.py`）。
 
+   - **只改了实验文档、漏了账本与生成页**：2634 的硬子集召回从产物 `0.022529` 誊写进正文时
+     误成 `2.53%`（真值 **2.253%**）；发现后只改了 `2634/analysis.md`，**账本**
+     `catalog.yaml` 的 M1 `verdict` 与**生成页** `axes/M-carrier/M1-carrier-type/README.md`
+     仍留 `2.53%` ⇒ 账本与它自己引用的证据矛盾。现由
+     `tools/check_catalog_strict.py` 的 **跨表面一致性**机检（`local.key_numbers` 声明的关键数字
+     必须在**账本 verdict / 生成页 / 实验产物**三类表面逐字出现；注入 `2.53%` 即红）。
+
    **强制动作**：改动后必须 `grep` 回扫**所有**引用点，并对**同一产物内互相关联的字段加
    一致性断言**——改定义处就回扫引用处、改一个字段就扫兄弟字段、改门限就扫下游比较句，
    让「两处相反」在写盘前就失败（如 2633 的 `_assert_lock_consistency`）。
+   **三类表面（实验文档 / `catalog.yaml` verdict / 生成页）必须逐字一致**：关键数字用
+   `local.key_numbers` 声明，`tools/check_catalog_strict.py` 会在三类表面上机检
+   （改数字后必须 `python3 tools/build_wiki.py` 重生成页面，否则页面这一面必红）。
 
 **两条强制动作**（每个契约 / 对账脚本 / 门限或口径修改收口前必做）：
 

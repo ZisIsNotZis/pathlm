@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """`catalog.yaml` 的**严格结构审计**（补充 `check_schema.py` 不覆盖的三件事）。
 
+0. **跨表面一致性（`local.key_numbers` 声明式）**：一个格子的**关键数字**必须在**三类表面**
+   逐字出现——① `catalog.yaml` 的该格 `verdict`、② 由它生成的课题页
+   `axes/<grid_dir>/README.md`、③ 该格的**实验产物文本**（`experiments/**` 下的
+   md/json/jsonl/log）。这是「只改了实验文档、漏了账本与生成页」那类事故（`2.53%` vs 产物
+   `2.253%`）的机检：三表面任一缺失即失败。**未声明 `key_numbers` 的格子跳过本条。**
 1. **重复键**：默认 `yaml.SafeLoader` 会静默取后一个值 ⇒ 用自定义 loader 让重复键直接报错；
 2. **`prior_art_source` 的归属**：每格的 `prior_art_source` 必须指向**与本格轴同名**的
    `axes/<X>-*/PRIOR_ART.md`（`A-mixing→A`、`C-vertical→C`、`H-horizon→H`、`W-width→W`、
@@ -85,6 +90,54 @@ def check_prior_art_axis() -> tuple[list[str], list[dict]]:
     return errors, rows
 
 
+def _iter_text_files(root: Path):
+    for p in sorted(root.rglob("*")):
+        if not p.is_file():
+            continue
+        if any(part in ("__pycache__", ".git") for part in p.parts):
+            continue
+        if p.suffix in (".pt", ".npz", ".png", ".pyc"):
+            continue
+        yield p
+
+
+def check_key_numbers() -> tuple[list[str], list[dict]]:
+    """跨表面一致性（三类表面：账本 verdict / 生成页 / 实验产物文本）。
+
+    `local.key_numbers: ["2.253%", "2.32×", …]` 声明的每个**关键数字**都必须在
+    ① 该格 catalog `verdict`、② 生成的课题页、③ 该格实验产物的**至少一个**文本文件里出现。
+    """
+    cfg = yaml.safe_load(CATALOG.read_text())
+    # 轴目录名（与 `tools/build_wiki.py` 同一来源：`axes.<axis>.dir`）
+    axis_dir = {a["id"]: a["dir"] for a in (cfg.get("axes") or [])}
+    rows, errors = [], []
+    for g in cfg["grids"]:
+        toks = (g.get("local") or {}).get("key_numbers") or []
+        if not toks:
+            continue
+        grid_dir = f"{axis_dir[g['axis']]}/{g['id']}"
+        page = ROOT / "axes" / grid_dir / "README.md"
+        page_text = page.read_text() if page.exists() else ""
+        exp_dir = ROOT / "axes" / grid_dir / "experiments"
+        prod_text = ""
+        if exp_dir.exists():
+            prod_text = "\n".join(
+                p.read_text(errors="ignore") for p in _iter_text_files(exp_dir))
+        for tok in toks:
+            in_verdict = tok in (g.get("verdict") or "")
+            in_page = tok in page_text
+            in_prod = tok in prod_text
+            rows.append({"grid": g["id"], "token": tok, "verdict": in_verdict,
+                         "page": in_page, "products": in_prod})
+            if not (in_verdict and in_page and in_prod):
+                missing = [n for n, v in (("账本 verdict", in_verdict),
+                                          ("生成页", in_page),
+                                          ("实验产物", in_prod)) if not v]
+                errors.append(f"{g['id']}: 关键数字 {tok!r} 缺表面 {missing}"
+                              f"（三类表面必须逐字一致；见 SCHEMA §24 第 13 类）")
+    return errors, rows
+
+
 def check_stray_keys() -> list[str]:
     """结构检查：**注释块之后、下一个 `- id:` 之前**不得出现格内键。
 
@@ -116,6 +169,8 @@ def main() -> int:
     axis_errors, rows = check_prior_art_axis()
     errors += axis_errors
     errors += check_stray_keys()
+    kn_errors, kn_rows = check_key_numbers()
+    errors += kn_errors
     print("== 每格 prior_art_source 归属核对 ==")
     for r in rows:
         print(f"  [{'OK ' if r['ok'] else 'BAD'}] {r['grid']:28s} axis={r['axis']} "
@@ -124,6 +179,13 @@ def main() -> int:
     print(f"\n共 {n_src} 格带 prior_art_source；轴不匹配 {len(axis_errors)} 条；"
           f"重复键 {len([e for e in errors if e.startswith('重复键')])} 条；"
           f"游离键 {len([e for e in errors if '游离键' in e])} 条")
+    if kn_rows:
+        print("== 跨表面一致性（local.key_numbers：账本 verdict / 生成页 / 实验产物）==")
+        for r in kn_rows:
+            mark = "OK " if (r["verdict"] and r["page"] and r["products"]) else "BAD"
+            print(f"  [{mark}] {r['grid']:22s} {r['token']:10s} verdict={r['verdict']} "
+                  f"page={r['page']} products={r['products']}")
+        print(f"  共 {len(kn_rows)} 个声明数字，缺表面 {len(kn_errors)} 条")
     for e in errors:
         print("  ✗", e)
     print("\n=== catalog 严格审计：" + ("全过 ===" if not errors else f"{len(errors)} 条问题 ==="))
