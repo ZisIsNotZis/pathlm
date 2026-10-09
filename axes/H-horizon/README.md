@@ -21,7 +21,9 @@ H4 头与主干关系 · H5 验证机制
 换 Medusa 批量验证 1.68–1.90× tok/s @13M；@100M 墙钟塌到约 1.0–1.35×。
 算力账须用解析比 R=(1+γ)/(1+τ)：R≈1.07–1.27（两规模都 >1）⇒ spec 是
 算力亏损，买到的是顺序前向次数（tokens/forward≈2.4），不是算力；
-「只剩 FLOPs 口径」是把墙钟前向比 c₃ 当算力比的符号错误（c₃ 非算力）。
+「只剩 FLOPs 口径」是把墙钟前向比 `c_wall` 当算力比的符号错误（与宽度配对，非算力）；
+正确性门禁上 100M enwik8 k=2 有 gap 0.0079 的平局翻转（级联 68 token，两轮复现）
+⇒ 逐位相等不是跨规模判据。
 否证：朴素概率复合是
 数学错误（CE 3.96 vs 1.58）；条件链 deploy 0.547 < direct 0.560
 （草稿质量瓶颈，~31% 草稿错误）；consistency loss 中性。
@@ -33,7 +35,7 @@ H4 头与主干关系 · H5 验证机制
 
 | 格子 | 状态 | 判读 | 税 |
 |---|---|---|---|
-| [`H1-outputs-per-pass`](H1-outputs-per-pass/README.md) | ⬜ todo | **已有（本地实测）**：n_mtp 1→2 税 +0.041、2→3 +0.017（递减）；13M/100M 接受级联稳定（2.37–2.40 tok/fwd）。**算力账（… | n_mtp 1→2 +0.041（B2 1.5481）；2→3 +0.016… |
+| [`H1-outputs-per-pass`](H1-outputs-per-pass/README.md) | ✅ judged | **已有（本地实测）**：n_mtp 1→2 税 +0.041、2→3 +0.017（递减）；13M/100M 接受级联稳定（2.37–2.40 tok/fwd）。**算力账*… | n_mtp 1→2 +0.041（B2 1.5481）；2→3 +0.016… |
 | [`H2-training-fill`](H2-training-fill/README.md) | ✅ judged | 保留式填充（self-fill）胜出；PAD 与错误 token 都更贵；软提交有 OOD 污染。 | mask/wrong-token 替换 +0.059 / +0.127；em… |
 | [`H3-composition`](H3-composition/README.md) | ⬜ todo | **已有**：**本格命题限于「冻结表征上的重复潜在映射与门控」**：direct `T(h)` / composed `T(T(h))` / gated 混合，全部只被 CE… | （头机制，挂冻结主干：零税；头的税见 H1） |
 | [`H4-head-trunk-relation`](H4-head-trunk-relation/README.md) | ✅ judged | 挂头零税坐实（Δbpc = 0.0000）。按修正后的诚实口径（vs 1-step AR 两次前向，只替换紧邻位置）**判中性**：对手 54.89%，跳跃头 46.67% =… | probe 式头 @100M ≈0（1.5928 vs 1.5871）；停梯… |
