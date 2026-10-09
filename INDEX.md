@@ -39,7 +39,7 @@
 
 | 格子 | 状态 | 判读 |
 |---|---|---|
-| [`H1-outputs-per-pass`](axes/H-horizon/H1-outputs-per-pass/README.md) · 每步输出位置数 | ⬜ todo | **已有**：全项目税效比最好的机制；但墙钟收益是 13M/launch-bound 现象。**尚缺**：spec 解码的解析算力账（≈1.25× 亏损）+ 干净 c₃ 实测（待补做）。 |
+| [`H1-outputs-per-pass`](axes/H-horizon/H1-outputs-per-pass/README.md) · 每步输出位置数 | ⬜ todo | **已有（本地实测）**：n_mtp 1→2 税 +0.041、2→3 +0.017（递减）；13M/100M 接受级联稳定（2.37–2.40 tok/fwd）。**算力账（口径纠正）**：sp… |
 | [`H2-training-fill`](axes/H-horizon/H2-training-fill/README.md) · 训练时未来位置的内容填充 | ✅ judged | 保留式填充（self-fill）胜出；PAD 与错误 token 都更贵；软提交有 OOD 污染。 |
 | [`H3-composition`](axes/H-horizon/H3-composition/README.md) · 多位置预测的组合方式 | ⬜ todo | **已有**：**本格命题限于「冻结表征上的重复潜在映射与门控」**：direct `T(h)` / composed `T(T(h))` / gated 混合，全部只被 CE(t+2) 监督。它… |
 | [`H4-head-trunk-relation`](axes/H-horizon/H4-head-trunk-relation/README.md) · 头与主干的关系 | ✅ judged | 挂头零税坐实（Δbpc = 0.0000）。按修正后的诚实口径（vs 1-step AR 两次前向，只替换紧邻位置）**判中性**：对手 54.89%，跳跃头 46.67% = 对手的 **85%… |

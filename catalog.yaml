@@ -76,8 +76,11 @@ axes:
       H4 头与主干关系 · H5 验证机制
     local_summary: |
       税效比全项目最好的一条：n_mtp 1→2 税 +0.041、2→3 +0.0166（递减），
-      换 Medusa 批量验证 1.68–1.90× @13M；@100M 墙钟塌到 1.15–1.29×
-      （前向 compute-bound），只剩 FLOPs 口径。否证：朴素概率复合是
+      换 Medusa 批量验证 1.68–1.90× tok/s @13M；@100M 墙钟塌到约 1.0–1.35×。
+      算力账须用解析比 R=(1+γ)/(1+τ)：R≈1.07–1.27（两规模都 >1）⇒ spec 是
+      算力亏损，买到的是顺序前向次数（tokens/forward≈2.4），不是算力；
+      「只剩 FLOPs 口径」是把墙钟前向比 c₃ 当算力比的符号错误（c₃ 非算力）。
+      否证：朴素概率复合是
       数学错误（CE 3.96 vs 1.58）；条件链 deploy 0.547 < direct 0.560
       （草稿质量瓶颈，~31% 草稿错误）；consistency loss 中性。
       冻结主干只训头（H4）实测 @100M 零税 → 最便宜的真空白。
@@ -568,20 +571,20 @@ grids:
     judge: 税 + 草稿接受率 + 端到端 tok/s（forwards/FLOPs/墙钟三口径）+ 逐位一致（验证正确性）
     cost: 13M 单臂 ~25–30 min；100M ~32 min
     status: todo
-    verdict: "**已有**：全项目税效比最好的机制；但墙钟收益是 13M/launch-bound 现象。**尚缺**：spec 解码的解析算力账（≈1.25× 亏损）+ 干净 c₃ 实测（待补做）。"
+    verdict: "**已有（本地实测）**：n_mtp 1→2 税 +0.041、2→3 +0.017（递减）；13M/100M 接受级联稳定（2.37–2.40 tok/fwd）。**算力账（口径纠正）**：spec 的每 token 算力 = `(1+γ)/(1+τ)`（γ=草稿位数、τ=平均接受位数），R = **1.07–1.27×**，**两个规模都 >1 ⇒ 恒为算力亏损**——「@100M 只剩 FLOPs 口径」不成立（那是把墙钟前向比 c₃ 当成了算力比）。spec 买的是**顺序前向次数**（tokens/forward≈2.4），不是算力；墙钟收益是 13M/launch-bound 现象（13M 1.68–1.90× → 100M 约 1.0–1.35×，本机外部占用下不可稳定复现）。**尚缺**：采样/T>0 与树状草稿、更大规模（待补做）。"
     local:
       tax: "n_mtp 1→2 +0.041（B2 1.5481）；2→3 +0.0166（B3 1.5604 vs B2fresh 1.5438，递减）"
-      benefit: "Medusa 批量验证 1.68–1.90× tok/s @13M；@100M 接受级联稳定（a₂ 0.80、a₃|a₂ 0.767↑、2.4 tok/fwd）"
+      benefit: "forwards 口径 2.37–2.40 tok/fwd（两规模）；墙钟 13M 1.68–1.90×、100M 约 1.0–1.35×；@100M 接受级联稳定（a₂ 0.80、a₃|a₂ 0.767↑）"
       failure:
-        - "@100M 墙钟收益消失（前向 compute-bound）：k=2 仅 1.15–1.29×、k=1 转负——「spec 逐位 == 贪心」是 13M 规模性质"
+        - "@100M 墙钟与算力**都不是收益**：k=2 墙钟仅约 1.0–1.35×（外部占用下不可稳定复现）、算力 R=(1+γ)/(1+τ)=1.25（亏损）——「只剩 FLOPs 口径」是把墙钟前向比当算力比的符号错误（c₃ 非算力）"
         - "fp 平局翻转首现（top-2 gap 0.008，1/400 token）→ 逐位相等不能作为跨规模的正确性判据"
         - "node-k 概率朴素复合是数学错误（CE 3.96 vs 1.58，见 H3）"
-      evidence: [".scratch/10-gap-sweep/evidence/B2 @57d64a7", ".scratch/13-four-experiments/evidence/mtp3 @9abc181", ".scratch/20-spec-scale/evidence @a864bcf"]
+      evidence: [".scratch/10-gap-sweep/evidence/B2 @57d64a7", ".scratch/13-four-experiments/evidence/mtp3 @9abc181", ".scratch/20-spec-scale/evidence @a864bcf", "axes/H-horizon/H1-outputs-per-pass/experiments/2510-gap-sweep-b2-c1m/analysis.md @c3cf43c", "axes/H-horizon/H1-outputs-per-pass/experiments/2520-spec-at-scale/analysis.md @c3cf43c"]
     metrics:
       - "解决什么：草稿从哪来（视界轴的成本问题）"
       - "代价：Δ clean bpc（同尺寸同 token 预算）"
       - "有效性：vs 冻结主干直接头 / vs 同尺寸 dense"
-      - "收益（用法 1）：spec 草稿——等效验证吞吐（FLOPs 口径）与墙钟 tok/s"
+      - "收益（用法 1）：spec 草稿——顺序前向次数（tokens/forward≈2.4）；算力口径 R=(1+γ)/(1+τ)≈1.25（净亏）、墙钟口径 13M 1.68–1.90× / 100M ≈1.0–1.35×"
       - "收益（用法 2）：逐 token 算力分配信号——门控后每 FLOP 边际收益"
       - "可控性：头置信度的 ECE（能否用置信决定是否验证）"
       - "副产品：多位置的互验能力（位置 i 与 i+1 互相校验）"

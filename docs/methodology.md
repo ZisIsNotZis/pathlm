@@ -35,18 +35,25 @@
 | 4.4-epoch 渐近 | 收敛附近 | 回环族税 +0.126 → +0.082 |
 | matched-step | 同训练步数对照 | 形态真税 @12k = +0.3295 |
 | 墙钟 | 部署真实收益 | spec k=2 1.15–1.29× @100M |
-| FLOPs（等价 width-1） | 计算量口径 | spec 0.55–0.70 fwd/tok |
+| FLOPs（等价 width-1） | 计算量口径 | spec 每 token `R=(1+γ)/(1+τ)` ≈ 1.07–1.27 |
 
-**双货币必须双报**：同一机制在两口径下结论会分歧（spec：forwards 占优而
-FLOPs 仍有利；@100M 墙钟收益消失）。只报一种货币 = 不可比。
+**双货币必须双报**：同一机制在两口径下结论会分歧（spec：forwards 口径占优
+〔2.4 tok/fwd〕、FLOPs 与墙钟口径都亏或持平）。只报一种货币 = 不可比。
+
+**算力（FLOPs）口径的兑换率必须用解析量，不得用墙钟前向比**：一次前向送出
+`1+γ` 个位置、产出 `1+τ` 个 token ⇒ 每 token 算力 `R=(1+γ)/(1+τ)`（以 native
+逐 token 的 1 次 width-1 前向为单位）。`c₃`（实测 width-(1+γ)/width-1 **墙钟**比）
+只描述墙钟，含核回退/启动开销/外部占用，代入算力会得到随环境漂移的假结论。
 
 **记账货币清单（原研究格 `G2-currency` 的纪律，非可证伪命题）**：
 
 - 货币 = `forwards`（每 token 前向次数）/ `FLOPs`（等价 width-1 单位）/ `墙钟` / `内存` / `延迟分位`；
   同一机制在不同货币下可能给出**相反**结论，因此**多货币并报并解释分歧**是硬纪律。
-- 本地实例：spec 在 forwards 口径 0.55–0.70、FLOPs 口径 ≥1.23；@100M 墙钟 k=2 1.15–1.29×
-  而 FLOPs 口径仍有利；深度自适应 C 配方按 FLOPs 口径 122.8 vs 112.9 tok/s。
-  证据：`.scratch/15-slider-rung3/evidence`、`.scratch/20-spec-scale/evidence`、`.scratch/25-tax-attribution/evidence`。
+- 本地实例：spec 的 forwards 口径 = 2.37–2.40 tok/fwd；FLOPs 口径 `R=(1+γ)/(1+τ)` =
+  1.07–1.27（**两规模都 >1，净亏**）；墙钟口径 13M k=2 1.68–1.90×、@100M 约 1.0–1.35×
+  （外部占用下不可稳定复现）；深度自适应 C 配方按 FLOPs 口径 122.8 vs 112.9 tok/s。
+  证据：`.scratch/15-slider-rung3/evidence`、`.scratch/20-spec-scale/evidence`、`.scratch/25-tax-attribution/evidence`、
+  `axes/H-horizon/H1-outputs-per-pass/experiments/2520-spec-at-scale/analysis.md @c3cf43c`。
 - 反例（不得犯）：「逐位相等」只在 13M 成立，@100M fp 平局会翻转（约 1/400 token）⇒
   规模性质不得当跨规模结论。
 
