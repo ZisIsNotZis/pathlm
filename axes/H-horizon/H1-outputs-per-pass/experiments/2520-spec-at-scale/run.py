@@ -28,12 +28,14 @@ import torch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
-sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(ROOT, "tests"))
+sys.path.insert(0, HERE)   # compute_ledger.py 与本脚本同目录
+sys.path.insert(0, ROOT)
 
 import probe_tts as P                                    # noqa: E402
 import probe_spec as PS                                 # noqa: E402
 from pathlm.decode import Decoder, decode, decode_spec  # noqa: E402
+from compute_ledger import compute_ledger               # noqa: E402
 
 PROMPT_LEN, N_NEW = 32, 400
 
@@ -101,27 +103,6 @@ def steady_state_reps(m, prompt, n_new, pcap, max_drafts, reps):
         "seq_len": n_new,
         "greedy_divergence": divergence,
     }
-
-
-def compute_ledger(gamma: int, tok_per_fwd: float, speedup: float,
-                   c_wall: float | None) -> dict:
-    """每 token 解析算力比 R=(1+γ)/(1+τ)；c_wall 只作对照，不进 R。"""
-    tau = tok_per_fwd - 1.0
-    R = (1 + gamma) / (1 + tau)
-    out = {
-        "gamma_drafts": gamma,
-        "tau_accepted": round(tau, 4),
-        "tokens_per_forward": round(tok_per_fwd, 4),
-        "per_token_compute_ratio__analytic": round(R, 4),
-        "native_reference": 1.0,
-        "verdict": "loss" if R > 1.05 else ("gain" if R < 0.95 else "flat"),
-        "wall_speedup": round(speedup, 4),
-    }
-    if c_wall is not None:
-        # 旧口径：把墙钟 c_wall 当 width-(1+γ)/width-1 算力比 ⇒ c_wall/(tok/fwd)
-        out["old_wallclock_ledger__c_wall_over_tokfwd"] = round(
-            c_wall / (1 + tau), 4)
-    return out
 
 
 def main() -> None:

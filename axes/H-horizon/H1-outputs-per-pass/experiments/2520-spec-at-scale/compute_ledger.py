@@ -22,6 +22,30 @@ import os
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
 
+def compute_ledger(gamma: int, tok_per_fwd: float, speedup: float | None = None,
+                   c_wall: float | None = None) -> dict:
+    """每 token 解析算力比 R=(1+γ)/(1+τ)（τ=tok/fwd−1）；c_wall 只作对照，不进 R。
+
+    这是 H1 算力账的**唯一定义**（run.py 与 rows_from 都调用它）。
+    """
+    tau = tok_per_fwd - 1.0
+    R = (1 + gamma) / (1 + tau)
+    out = {
+        "gamma_drafts": gamma,
+        "tau_accepted": round(tau, 4),
+        "tokens_per_forward": round(tok_per_fwd, 4),
+        "per_token_compute_ratio__analytic": round(R, 4),
+        "native_reference": 1.0,
+        "verdict": "loss" if R > 1.05 else ("gain" if R < 0.95 else "flat"),
+        "wall_speedup": None if speedup is None else round(speedup, 4),
+    }
+    if c_wall is not None:
+        # 旧口径：把墙钟 c_wall 当 width-(1+γ)/width-1 算力比 ⇒ c_wall/(tok/fwd)
+        out["old_wallclock_ledger__c_wall_over_tokfwd"] = round(
+            c_wall / (1 + tau), 4)
+    return out
+
+
 SOURCES = [
     ("13M B3", ".scratch/13-four-experiments/evidence/mtp3/spec_speed.json"),
     ("13M B3 (indep repro)", ".scratch/13-four-experiments/evidence/mtp3/spec_speed_independent_repro.json"),
@@ -50,7 +74,6 @@ def rows_from(path: str) -> list[dict]:
             src, k = key.rsplit("_k", 1)
             gamma = int(k)
             tk = float(r["tokens_per_forward"])
-            R = (1 + gamma) / tk
             if "speedup_best" in r:
                 speed = r["speedup_best"]
             elif "speedup" in r:
@@ -59,17 +82,19 @@ def rows_from(path: str) -> list[dict]:
                 speed = r["speedup_ratio_of_best"]
             else:
                 speed = None
+            led = compute_ledger(gamma, tk, speed, c3)
             row = {
                 "checkpoint": os.path.basename(ck.rstrip("/")),
                 "prompt": src,
                 "k_drafts": gamma,
-                "tokens_per_forward": round(tk, 4),
-                "tau_accepted": round(tk - 1, 4),
-                "per_token_compute_ratio_R": round(R, 4),
-                "R_verdict": "loss" if R > 1.05 else ("gain" if R < 0.95 else "flat"),
+                "tokens_per_forward": led["tokens_per_forward"],
+                "tau_accepted": led["tau_accepted"],
+                "per_token_compute_ratio_R": led["per_token_compute_ratio__analytic"],
+                "R_verdict": led["verdict"],
                 "wall_speedup": None if speed is None else round(speed, 3),
                 "c3_wall_forward_ratio": c3,
-                "old_ledger_c3_over_tokfwd": None if c3 is None else round(c3 / tk, 4),
+                "old_ledger_c3_over_tokfwd": led.get(
+                    "old_wallclock_ledger__c_wall_over_tokfwd"),
             }
             if r.get("speedup_reps"):
                 row["wall_speedup_reps"] = r["speedup_reps"]
