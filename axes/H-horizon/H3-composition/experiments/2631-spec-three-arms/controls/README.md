@@ -8,7 +8,7 @@
 
 - 对照物是**模型自身的贪心输出**，不是真值、不是 oracle。
 - **明确不用**：批量 teacher-forcing 前向（那是 ticket 12 旧结论出错的地方——见
-  `docs/REMEDIATION.md` 的 F_ENG 条目）。
+  `evidence/fix_mtp_nodes_T1/` 的引擎修复记录）。
 - `results.json::checkpoints.*.native_is_plain_decoder_path` 就是这条口径的机器可核标记；
   `reconcile_numbers.py` 逐条核对它为 `True`。
 

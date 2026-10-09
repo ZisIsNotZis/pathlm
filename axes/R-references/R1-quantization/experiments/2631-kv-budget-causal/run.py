@@ -1,4 +1,4 @@
-"""2631 · 因果口径 KV 预算图重测（R1 线，`docs/REMEDIATION.md` §4 R1）—— 实验入口。
+"""2631 · 因果口径 KV 预算图重测（R1 线：KV 量化的因果口径）—— 实验入口。
 
 契约：同目录 `README.md`（补录，§1–§9）+ `config.json::causal_caliber`（判据线**预登记**，运行前写入）；
 解析字节口径的语义层：同目录 `budget_caliber.py`（值 + 标尺两套方案）。

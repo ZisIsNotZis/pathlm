@@ -20,9 +20,9 @@
 3. **全深度并行监督**：每个深度都有读出与监督 ⇒ 出口资产（浅层截断质量）
    只能由此产生。纯 dense trunk 没有浅层截断资产（实测 tf@4 0.12 vs 0.97）。
 4. **主干不动，判断头可动**：挂在主干外的头（MTP / probe 式判断头）实测零税；
-   **当前证据支持的倾向**是：「侵入主干本体」的结构付结构性税（见 `docs/playbook.md`
-   定律 7）。**【2026-10-02 更正（C8）】**原文作「任何……都会带来结构性税」——那是**禁令式**表述，
-   以小样本推向普遍；降级为**倾向**（同仓已有反证方向：读出改动有 −0.0812/−0.0888 快照改善）。
+   **当前证据支持的倾向**是：「侵入主干本体」的结构会付结构性税（见 `docs/playbook.md`
+   定律 7）——这是**倾向**，不是普遍禁令（同仓已有反证方向：读出改动有 −0.0812/−0.0888
+   快照改善）。
 
 ## 2. 共享底座（所有研究线继承，只有三处必须偏离 stock Transformer）
 
@@ -32,12 +32,12 @@
 | 2 | **变深度增量解码的填充语义** | stock KV cache 无法表达「某些位置只跑到第 k 层」；已退出位置的 KV 用冻结表征经本层投影填充 | `DepthARDecoder._layer_kv`（与并行 forward 逐位一致，单测钉死） |
 | 3 | **全深度重打分的定稿不变量** | 变路径下必须有一个与路径无关的正确性判据 | `depth_ar.tf_acceptance` / `spec_cost_model` |
 
-**引擎能力（ENG1，ticket 39-X2）**：`KVHeadProjectionMixin`（KV 头投影从 block 类解耦）
-+ 窗口掩码作为**正交装饰层** + `ComposableBlock` 承载 `GQA × carry` ⇒
-`GQA × carry × window` **可组合**（此前三者互斥、块类二选一，导致该组合在引擎里不存在）。
-缺省（全关）与 stock `Block` 逐位相同。
-
 **其余部件一律用 stock 设计**（这是 scope 声明的一部分：基底恒为 stock 对照）。
+
+**引擎能力**：`KVHeadProjectionMixin`（KV 头投影从 block 类解耦）+ 窗口掩码作为
+**正交装饰层** + `ComposableBlock` 承载 `GQA × carry` ⇒ `GQA × carry × window`
+**可组合**，缺省（全关）与 stock `Block` 逐位相同。**完整的接受/拒绝矩阵与拒绝点见
+`docs/engine_capability.md`**（由 `tests/test_engine_capability.py` 机器核对）。
 
 ## 3. 评测套件（eval kit，唯一不解耦的东西）
 
@@ -57,15 +57,17 @@
 ## 4. 仓库布局
 
 ```
-README.md            门面（本仓库是什么、怎么用、怎么提 PR）
+README.md            门面（本仓库是什么、怎么用）
 INDEX.md             状态灯总表（自动生成）
-SCHEMA.md            课题页与实验的格式契约
+SCHEMA.md            课题页/实验的格式契约与分析纪律
+AGENTS.md            协作制度与文档地图（写给 agent）
 CONTRIBUTING.md      贡献流程与硬性规则
 catalog.yaml         目录枚举 = 完备性依据（唯一的「应有哪些格子」来源）
-docs/                设计 / 方法学 / 定律（不随课题变）
+docs/                设计 / 方法学 / 定律 / 引擎能力（不随课题变）
   design.md          本文
   methodology.md     天平
   playbook.md        已测定律
+  engine_capability.md 引擎能力面事实表
 axes/                大类 = 轴；小类 = 格子（课题）；格子内 = 实验目录
   A-mixing/A3-window-anchor/README.md
   A-mixing/A3-window-anchor/experiments/2507-x2-eviction-13m/
@@ -78,13 +80,10 @@ pathlm/ tests/ configs/ train_*.py probe_*.py slider.py
                      ↑ 共享底座与历史引擎（原地保留，见 §5）
 ```
 
-## 5. 代码布局：现状与迁移计划（本 ticket 未做）
+## 5. 代码布局：现状与迁移计划
 
-本 ticket 只整理**文档/目录树**，不动 Python 代码。理由：代码搬迁会同时触碰
-导入路径、测试与历史复现命令，与内容重构混在一次改动里违反「先拆混杂再判读」
-的项目纪律。
-
-**迁移计划（后续 ticket，可选）**：
+Python 代码**当前原地保留**（`pathlm/`、`train_*.py`、`probe_*.py` 等，见 §4）。
+迁移为可安装包的计划如下（**尚未执行**）：
 
 1. 把 `pathlm/` 变成可安装包（`pyproject.toml` + `pip install -e .`），
    测试与探针改为包内导入；
@@ -97,8 +96,4 @@ pathlm/ tests/ configs/ train_*.py probe_*.py slider.py
 
 ## 6. 阅读路径
 
-- 想快速看**哪里是空白** → `INDEX.md`（状态灯）。
-- 想读**一条轴的完整故事** → `axes/<轴>/README.md`（含格子表）。
-- 想复现/接手**一格** → `axes/<轴>/<格子>/README.md` → 其中 §9 与 `experiments/`。
-- 想知道**方法论** → `docs/methodology.md`；想知道**已验证的约束** → `docs/playbook.md`。
-- 想知道**旧项目发生了什么** → `archive/README.md` → `archive/legacy-docs/retrospective.md`。
+导航见 `README.md` 的「怎么读」表；本文只覆盖**设计契约与共享底座**。

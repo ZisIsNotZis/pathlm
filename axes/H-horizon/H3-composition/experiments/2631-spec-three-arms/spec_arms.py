@@ -61,7 +61,7 @@ def second_slot_logits(nodes: dict, arm: str, lam: float = COMBINED_LAM):
     - `combined`：`λ·softmax(chain2) + (1−λ)·softmax(node2)`，**两条分布按概率混合**。
 
     注意 `T∘T`（把 `T1` 再套一次在同一 latent 上）**不是**这三者中的任何一个：
-    它既无概率、也不以 token d1 为条件（`docs/REMEDIATION.md` §1.2 的反例警示）。
+    它既无概率、也不以 token d1 为条件。
     本引擎里 `T∘T` 对应 `chain_mode="latent"`，本实验**不训**该模式。
     """
     if arm == "chain":

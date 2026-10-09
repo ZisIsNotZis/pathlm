@@ -6,7 +6,10 @@
 > ① `config.json`（运行前写入，mtime 早于 `results.json`）的 `causal_caliber` /
 > `criterion` / `eval` / `controls` / `checkpoints` / `cost` / `reproducibility` 字段；
 > ② `2621-kv-budget-rest/README.md` §4 的 V1 判据线（本实验逐字沿用，`config.json::contract_copy` 记明）；
-> ③ `docs/REMEDIATION.md` §4 R1 与 `.scratch/49-adversarial-review/REPORT.md` A2（外部依据）。
+> ③ `.scratch/49-adversarial-review/REPORT.md` A2（复核依据）。
+> **口径定义以 `config.json::causal_caliber.preregistered_criteria` 为准**（下同）。
+> **注**：`config.json` / `results.json` / `smoke/results.json` 的 `contract` 字段是**运行期产物**，
+> 其中仍含已删除的旧台账名 `docs/REMEDIATION.md`；口径以 `config.json::causal_caliber` 为准。
 > **判据线在 `config.json::causal_caliber.preregistered_criteria`，以那份为准**；本文件只是它的落盘副本。
 >
 > 入口：`run.py`（纯推理 + 汇总，**不训练**；`--charts-only` 可纯 CPU 重画表/图）；
