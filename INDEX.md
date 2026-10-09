@@ -90,7 +90,7 @@
 
 | 格子 | 状态 | 判读 |
 |---|---|---|
-| [`R1-quantization`](axes/R-references/R1-quantization/README.md) · 量化 | ⬜ todo | **已有**：本地已实测部署口径价签（int8 Δbpc +0.000117、int4 +0.024748，严格因果逐值标尺下量化反占内存）。**尚缺**：head_dim 块标尺 / KIVI … |
+| [`R1-quantization`](axes/R-references/R1-quantization/README.md) · 量化 | ⬜ todo | **已有**：本地已实测 KV 量化的部署口径价签与质量——**块标尺（沿 head_dim，G=32）** 下 int8 每位置 6528 B = fp16 的 ×0.53（省 46.875%）… |
 | [`R4-window-kv-quant-retrieval`](axes/R-references/R4-window-kv-quant-retrieval/README.md) · 窗口注意力 + KV 量化 + 检索 | ⬜ todo | **已有**：本地仅覆盖窗口/锚点部分（税 +0.058~0.121 bpc；锚点通道 93.3%）。**尚缺**：按保留预算的窗口曲线 + 检索腿是否显著 >chance；量化部分按 R1 口径… |
 | [`R7-existing-early-exit`](axes/R-references/R7-existing-early-exit/README.md) · 既有早退实现（CALM / LayerSkip / MoD） | ⬜ todo | **已有**：本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）。**尚缺**：同 FLOPs dense… |
 

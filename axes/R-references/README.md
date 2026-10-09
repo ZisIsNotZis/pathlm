@@ -26,7 +26,7 @@ R1 量化 · R4 窗口+KV量化+检索 · R7 既有早退实现
 
 | 格子 | 状态 | 判读 | 税 |
 |---|---|---|---|
-| [`R1-quantization`](R1-quantization/README.md) | ⬜ todo | **已有**：本地已实测部署口径价签（int8 Δbpc +0.000117、int4 +0.024748，严格因果逐值标尺下量化反占内存）。**尚缺**：head_dim 块… | **部署口径（源 `2631-kv-budget-causal`）**：严格… |
+| [`R1-quantization`](R1-quantization/README.md) | ⬜ todo | **已有**：本地已实测 KV 量化的部署口径价签与质量——**块标尺（沿 head_dim，G=32）** 下 int8 每位置 6528 B = fp16 的 ×0.53（… | **部署口径（源 `2632-kv-block-scale`）**：**块标… |
 | [`R4-window-kv-quant-retrieval`](R4-window-kv-quant-retrieval/README.md) | ⬜ todo | **已有**：本地仅覆盖窗口/锚点部分（税 +0.058~0.121 bpc；锚点通道 93.3%）。**尚缺**：按保留预算的窗口曲线 + 检索腿是否显著 >chance；量… | 窗口部分：+0.058~0.121 bpc（13M）；检索/量化部分零经验 |
 | [`R7-existing-early-exit`](R7-existing-early-exit/README.md) | ⬜ todo | **已有**：本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）。**尚缺**：同 F… | 本地对照：dense 全深度监督（LayerSkip 式）+0.067（13… |
 
