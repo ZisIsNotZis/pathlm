@@ -184,7 +184,8 @@
 - **§20 GPU 记账（机器可读）**：`results.json::gpu_lock` 记录取锁/释放与前后空闲显存——
   `holder_pid`、`wait_seconds`、`free_mib_before`、`free_mib_after`、`release_ok=true`、
   `held_whole_run=true`（整程 3–5 min < 10 min，SCHEMA §20.1 允许整程持锁）。峰值 1798.6 MiB > 1 GiB
-  ⇒ 不满足免锁例外，故必须有此记录（本行即其证据）。
+  ⇒ 不满足免锁例外，故必须有此记录（本行即其证据）。**读法**：`free_mib_before/after` 是
+  **全卡**空闲（含**外部占用**），差值 ≠ 本 run 足迹；本 run 足迹 = `peak_mem_mib_this_run`。
 
 ## 7. 失败与局限（「以为会怎样 / 实际怎样 / 为什么 / 排除了什么」）
 

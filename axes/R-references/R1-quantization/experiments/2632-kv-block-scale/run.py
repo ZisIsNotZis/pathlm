@@ -679,6 +679,9 @@ def main() -> int:
 
     # GPU 工作已完成：先释放并补全 §20 记账，再落盘。
     lock.ev["held_whole_run"] = True                 # 整程持锁（<10 min，§20.1）
+    lock.ev["peak_mem_mib_this_run"] = rec["cost"]["peak_mem_mib"]
+    lock.ev["free_delta_note"] = ("free_mib_before/after 是 nvidia-smi 的**全卡**空闲读数，含**外部占用**；"
+                                   "两者之差 ≠ 本 run 足迹（本 run 足迹看 peak_mem_mib_this_run）。")
     lock.release()
     rec["gpu_lock"] = dict(lock.ev)
 

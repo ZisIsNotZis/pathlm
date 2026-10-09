@@ -107,6 +107,8 @@ K 沿 `head_dim` 分块（`block`）可摊到 `2/G` B/值**且保持严格因果
 - **§20 共享卡记账（机器可读）**：`results.json::gpu_lock` = `holder_pid` / `wait_seconds` /
   `free_mib_before` / `free_mib_after` / `release_ok` / `held_whole_run`。本实验整程 <10 min ⇒
   SCHEMA §20.1 允许整程持锁；峰值 > 1 GiB 不满足免锁例外，故必须留此记录。
+  **读法**：`free_mib_before/after` 是 **nvidia-smi 的全卡空闲**读数（含**外部占用**），
+  差值**不等于**本 run 足迹——本 run 足迹看 `peak_mem_mib_this_run`（= `cost.peak_mem_mib`）。
 - **预算不够时砍什么**（预登记）：先砍 scheme 比较臂（保留 `per_value`/`block g16`/`block g32`/
   `block_tok g32`/`kivi`），再砍自测方差到 2 个 seed，保全部 27 点与判据线；**不砍判据线**。
 - **可中断性**：`--charts-only` 只从 `results.json` 重画表（纯 CPU，不取 GPU 锁）。
