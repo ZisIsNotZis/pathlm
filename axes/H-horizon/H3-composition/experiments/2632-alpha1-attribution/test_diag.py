@@ -9,9 +9,12 @@
 
 from __future__ import annotations
 
+import collections
+import json
 import os
 import sys
 
+import numpy as np
 import pytest
 import torch
 
@@ -22,6 +25,7 @@ if HERE not in sys.path:
 import diag  # noqa: E402
 from pathlm.config import ModelConfig, PathConfig  # noqa: E402
 from pathlm.model import PathLM  # noqa: E402
+from pathlm.decode import Decoder  # noqa: E402
 
 
 def tiny_model(n_mtp: int = 3):
@@ -81,3 +85,80 @@ def test_strata_split_is_by_v1_correctness():
     e1 = [r for r in rows if r["v1"] == r["true_next"]]
     e0 = [r for r in rows if r["v1"] != r["true_next"]]
     assert len(e1) == 1 and len(e0) == 1
+
+
+def test_teacher_anchor_reconstructs_four_drafts_and_targets():
+    """从微型模型独立重推四种草稿 + t2dep/t2teacher，钉住 claim-critical 接线。"""
+    m = tiny_model()
+    val = np.random.RandomState(0).randint(0, 19, size=32).astype(np.int64)
+    rows = diag.teacher_anchor_pass(m, m.pcap, val, offsets=[0], length=4)
+    dec = Decoder(m)
+    h, _ = dec.step(int(val[0]))
+    nodes = dec.last_nodes
+    v1 = int(nodes[1]["logits"][0, 0].argmax())
+    dd = int(nodes[2]["logits"][0, 0].argmax())
+    lc = nodes[1]["chain2"]["logits"][0, 0].float()
+    dc = int(lc.argmax())
+    pc, pd = lc.softmax(-1), nodes[2]["logits"][0, 0].float().softmax(-1)
+    dm = int((0.5 * pc + 0.5 * pd).argmax())
+    do = int(m._mtp_nodes(h, condition=torch.tensor([[int(val[1])]]))[1]["chain2"]
+             ["logits"][0, 0].float().argmax())
+    _, fn = dec.step_multi([v1])
+    t2dep = int(fn[1]["logits"][0, 0].float().argmax())
+    r0 = rows[0]
+    assert (r0["v1"], r0["d_direct"], r0["d_chain"], r0["d_oracle"],
+            r0["d_comb"]) == (v1, dd, dc, do, dm)
+    assert r0["t2dep"] == t2dep
+    assert r0["true_next"] == int(val[1]) and r0["true_t2"] == int(val[2])
+    # t2teacher == 下一位置的 v1（同一 teacher 前缀）
+    assert rows[0]["t2teacher"] == rows[1]["v1"]
+    # 四种草稿 + 两个目标都必须落盘（否则下游聚合会 KeyError）
+    for key in ("v1", "true_next", "true_t2", "d_direct", "d_chain", "d_oracle",
+                "d_comb", "t2dep", "t2teacher", "topk_direct", "topk_chain"):
+        assert key in rows[0], key
+
+
+def test_free_gen_pass_and_summarize_aggregation():
+    """free_gen_pass 的臂结构 + summarize_free_gen 聚合成有效。"""
+    m = tiny_model()
+    val = np.random.RandomState(1).randint(0, 19, size=64).astype(np.int64)
+    per = diag.free_gen_pass(m, m.pcap, val, n_prompts=1, prompt_len=8, n_new=6)
+    assert set(per) == {"native", "chain", "direct", "combined"}
+    s = diag.summarize_free_gen(per, 6)
+    assert s["n_prompts"] == 1 and isinstance(s["bit_identical_all_arms"], bool)
+    for arm in ("chain", "direct", "combined"):
+        assert 0.0 <= s[arm]["alpha1"] <= 1.0 and s[arm]["n_rounds"] >= 1
+
+
+def test_cluster_bootstrap_shape_and_degeneracy():
+    rows = [{"seg": 0, "x": 1}, {"seg": 0, "x": 1}, {"seg": 1, "x": 1}]
+    assert diag.cluster_bootstrap(rows, lambda rs: 0.5, B=50, seed=1) == [0.5, 0.5]
+    ci = diag.cluster_bootstrap(rows, lambda rs: float(np.mean([r["x"] for r in rs])), B=50)
+    assert ci[0] <= ci[1]
+    assert diag.cluster_bootstrap([], lambda rs: 0.0, B=10) == [None, None]
+
+
+def test_wilson_ci_properties():
+    """准确率走二项/Wilson：k=0 下界恰为 0，对称，且 n 越大越窄。"""
+    assert diag.wilson_ci(0, 0) == [None, None]
+    lo, hi = diag.wilson_ci(0, 10)
+    assert lo == 0.0 and 0.27 < hi < 0.29
+    lo, hi = diag.wilson_ci(5, 10)
+    assert abs((lo + hi) / 2 - 0.5) < 1e-9
+    w10, w1000 = diag.wilson_ci(5, 10), diag.wilson_ci(500, 1000)
+    assert (w1000[1] - w1000[0]) < (w10[1] - w10[0])
+
+
+def test_committed_wilson_ci_recomputes_from_raw_records():
+    """results.json 的 wilson_ci_95 必须能由 diag_records.jsonl 逐条重算。"""
+    res = json.load(open(os.path.join(HERE, "results.json"), encoding="utf-8"))
+    rows_by: dict = collections.defaultdict(list)
+    for line in open(os.path.join(HERE, "diag_records.jsonl"), encoding="utf-8"):
+        row = json.loads(line)
+        rows_by[row["ckpt"]].append(row)
+    assert set(rows_by) == set(res["checkpoints"])
+    for ck, rows in rows_by.items():
+        w = res["checkpoints"][ck]["teacher_anchor"]["wilson_ci_95"]
+        assert w["quality_vs_true_t2"]["direct"] == diag._wilson_eq(rows, "d_direct", "true_t2")
+        assert w["quality_vs_true_t2"]["chain_oracle"] == diag._wilson_eq(rows, "d_oracle", "true_t2")
+        assert w["accept_vs_deploy_target"]["chain_deploy"] == diag._wilson_eq(rows, "d_chain", "t2dep")

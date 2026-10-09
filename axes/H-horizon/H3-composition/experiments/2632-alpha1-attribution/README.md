@@ -65,8 +65,11 @@ d3 = 草稿                     位置 N+3；2631 里三臂固定为 node3
      逐位置读出 `node1/node2/chain2(deploy)/chain2(oracle)`
      与两个验证器目标（`T2*_deploy` = 前缀含 `v1`；`T2*_teacher` = 前缀含真 `t_{N+1}`），
      并用 `combined` 的 λ=0.5 概率混合读 `d2`。
-- **不写共享文件**：不改 `pathlm/**`、`tools/**`、`tests/**`、`catalog.yaml`、`axes/**/README.md`；
+- **实验本身不写共享文件**：`diag.py`/`probes.py` 不改 `pathlm/**`、`tools/**`、`axes/**/README.md`，
   只新增本目录内文件。
+- **复核驱动的后续同步（超出实验本体，已记入本目录）**：为把「R=(1+γ)/(1+τ)」口径落到**生成器**，
+  同步了 `2631-spec-three-arms/run.py::arm_ledger` 与 `controls/README.md`，并在
+  `tests/test_h3_spec_three_arms_ledger.py` 加了一条可失败断言（该测试读 `2631/results.json`）。
 
 ## 4. 判据线（预登记，事后不得改）
 
@@ -114,9 +117,12 @@ d3 = 草稿                     位置 N+3；2631 里三臂固定为 node3
 |---|---|
 | 数据 | `data/enwik8_full.npz` 的 val 段（真实文本前缀 + free-gen prompt） |
 | checkpoint | `.../2631-spec-three-arms/train/{13m_s0,13m_s1,53m_s0}/model.pt`（复用，不改） |
-| 入口 | `python3 diag.py --ckpts <dir...> --out . [--smoke]` |
-| resolved config | `results.json::resolved` |
-| 落盘 | `results.json` / `run_log.txt` / `diag_records.jsonl` / `analysis.md` / `MODEL.md` / `test_diag.py` |
+| 入口 | **一键：`bash run_all.sh`**（分 checkpoint 跑 `diag.py` → `merge_outputs.py` 合并 → `p1_only.py` → `probes.py` → 合并探针）；单跑 `python3 diag.py --ckpts <dir...> --out . [--smoke]` |
+| 聚合 | `merge_outputs.py --mode {diag,probes} --dirs <...>`（固定合并步；从 `diag_records.jsonl` 重算 `wilson_ci_95`）|
+| resolved config | `results.json::config`（每 checkpoint 的 resolved 见 `2631/train/*/results.json`）|
+| 落盘 | `results.json` / `run_log.txt` / `diag_records.jsonl` / `probes_output.json` / `probes_p1.json` / `analysis.md` / `MODEL.md` / `test_diag.py` / `mutation_report.json` |
+| 单测 | `test_diag.py`（含接线重推、聚合、Wilson、聚类 bootstrap 四类可失败断言）|
+| 变异 | `mutate.py`（复用 `tools/evalkit/mutation.py`；未抓到 ⇒ 非零退出）|
 
 ## 8. 既有做法（prior art，SCHEMA §18）
 
@@ -142,7 +148,8 @@ d3 = 草稿                     位置 N+3；2631 里三臂固定为 node3
 ## 10. scope 声明
 
 本研究**只做单轴单格**（H3-composition 内的「多位置预测的组合方式」），基底恒为 stock 对照；
-组合默认留白。`deps` 只记录耦合方向。**不引入新机制、不训练、不写共享文件。**
+组合默认留白。`deps` 只记录耦合方向。**不引入新机制、不训练；实验本体不写共享文件**（唯一
+超出的共享改动是复核驱动的 `2631/run.py` 算力口径同步 + `tests/` 断言，见 §3）。
 
 ## 11. 产出与复核
 

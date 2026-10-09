@@ -9,8 +9,9 @@
 - **门禁**：argmax 路线 ⇒ 声明**非分布保持**；给出更强的**逐位等价**（发出流 == native 贪心流）。
 - **墙钟**：同进程、同硬件、同批量（B=1）、native 与 spec **交替**测量；报逐次重复极差 +
   按 prompt 聚类的配对 bootstrap CI。单次 tok/s 不作结论。
-- **等效算力净账**：`c₃ / (tok/fwd)`（c₃ = 实测 width-3/width-1 前向成本比），
-  另报解析的 MTP 头成本占比。
+- **每 token 算力 R**：`R = (1+γ)/(1+τ)`（γ = 草稿位数、τ = 平均接受长度；**解析量**，与墙钟无关）。
+  **`c₃`（实测 width-3/width-1 的墙钟成本比）不得当代算力比**——旧口径 `c₃/(tok/fwd)` 作为
+  `equivalent_compute_ratio_withdrawn` **保留但标注已撤回**；另报解析的 MTP 头成本占比。
 
 跑法：`python3 run.py --ckpts <ckpt 目录...> --out . [--smoke]`
 """
@@ -58,6 +59,27 @@ REPEATS = 5
 BOOT = 2000
 BOOT_SEED = 2631
 ALL_MODES = ("native",) + S.ARMS
+
+
+def arm_ledger(gamma: int, tokens_per_forward: float, c3_vs_w1: float) -> dict:
+    """每 token 算力账（单一公式，H1 复核裁定）。
+
+    spec 一轮把 `1+γ` 个位置送进主干、产出 `1+τ` 个 token ⇒ 以 native 逐 token 的
+    1 次 width-1 前向为单位，每 token 算力 `R = (1+γ)/(1+τ) = (1+γ)/tokens_per_forward`
+    （`R<1` 才省，>1 即净亏）。
+
+    **`c₃`（实测 width-3/width-1 的墙钟比）不是算力比**：旧口径 `c₃/(tok/fwd)` 作为
+    `equivalent_compute_ratio_withdrawn` **保留但标注已撤回**（只留作历史对照，不得再当算力）。
+    """
+    return {
+        "equivalent_compute_R": round((1 + gamma) / tokens_per_forward, 4),
+        "R_numerator": 1 + gamma,
+        "equivalent_compute_ratio_withdrawn": {
+            "value": round(c3_vs_w1 / tokens_per_forward, 4),
+            "reason": "c3 is a WALL-CLOCK ratio, not a compute ratio",
+            "c3_vs_w1": c3_vs_w1,
+        },
+    }
 
 
 def load_ckpt(root: str) -> PathLM:
@@ -270,6 +292,18 @@ def main() -> int:
                                 "combined_lam": S.COMBINED_LAM,
                                 "arms": list(S.ARMS),
                                 "tail_decay": "第一个发出位（N+1）不设接受测试（引擎性质）"},
+                "compute_ledger_correction": {
+                    "rule": "每 token 算力 R = (1+gamma)/(1+tau)（gamma=草稿位数, tau=平均接受长度）; "
+                            "R<1 才省。",
+                    "why": "旧口径 net = c3/(tok/fwd) 把【墙钟】width-3/width-1 前向成本比 c3 "
+                           "当【算力】比; 一次宽度-(1+gamma) 前向按层-位置 FLOPs ≈ (1+gamma)x "
+                           "一次逐 token 前向, 故算力比是解析量 (1+gamma), 与墙钟无关。"
+                           "H1 独立复核判为符号级错误。",
+                    "old_field": "equivalent_compute_ratio (WITHDRAWN, kept under "
+                                 "equivalent_compute_ratio_withdrawn)",
+                    "new_field": "equivalent_compute_R",
+                    "arms_R_ordering": "direct < combined < chain (net LOSS all arms)",
+                },
                 "checkpoints": {}}
 
     for ck in ckpt_dirs:
@@ -289,8 +323,7 @@ def main() -> int:
                     for row in acc["native"])
         for a in S.ARMS:
             s = arm_summary[a]
-            s["equivalent_compute_ratio"] = round(
-                micro["c3_vs_w1"] / s["tokens_per_forward"], 4)
+            s.update(arm_ledger(S.GAMMA, s["tokens_per_forward"], micro["c3_vs_w1"]))
             log(f"[{name}] {a:8s} a1={s['alpha1']:.4f} a2|1="
                 f"{s['alpha2_given_alpha1']:.4f} tau={s['tau']:.4f} "
                 f"tok/fwd={s['tokens_per_forward']:.4f} "

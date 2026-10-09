@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import sys
 import time
@@ -157,6 +158,26 @@ def _pct_ci(samples: list[float]) -> list:
             round(float(np.percentile(samples, 97.5)), 6)]
 
 
+def wilson_ci(k: int, n: int, z: float = 1.959963984540054) -> list:
+    """二项比例的 Wilson 95% CI（准确率口径）。
+
+    准确率的可排序性必须用二项/Wilson CI，**不得**借用 bpc 的 0.014 方差带
+    （methodology §2：0.014 是 bpc 口径的带，从未在准确率口径上被测量过）。
+    """
+    if n == 0:
+        return [None, None]
+    p = k / n
+    d = 1.0 + z * z / n
+    c = (p + z * z / (2.0 * n)) / d
+    h = z * math.sqrt(p * (1.0 - p) / n + z * z / (4.0 * n * n)) / d
+    return [round(c - h, 6), round(c + h, 6)]
+
+
+def _wilson_eq(rows, a, b) -> list:
+    """P(rows[a] == rows[b]) 的 Wilson CI（不聚类；聚类 bootstrap 见 cluster_bootstrap）。"""
+    return wilson_ci(sum(1 for r in rows if r[a] == r[b]), len(rows))
+
+
 def cluster_bootstrap(rows: list[dict], stat, B: int = BOOT, seed: int = BOOT_SEED) -> list:
     """按 segment 聚类的 percentile bootstrap（不把同段位置当独立样本）。"""
     by_seg: dict[int, list[dict]] = {}
@@ -239,6 +260,27 @@ def summarize(rows: list[dict]) -> dict:
         },
     }
     # Q2 top-k 召回探针（对部署目标 T2*）
+    out["wilson_ci_95"] = {
+        "quality_vs_true_t2": {
+            name: _wilson_eq(rows, a, b) for name, (a, b) in
+            {"direct": ("d_direct", "true_t2"), "chain_deploy": ("d_chain", "true_t2"),
+             "chain_oracle": ("d_oracle", "true_t2"),
+             "combined": ("d_comb", "true_t2")}.items()},
+        "accept_vs_deploy_target": {
+            name: _wilson_eq(rows, a, b) for name, (a, b) in
+            {"direct": ("d_direct", "t2dep"), "chain_deploy": ("d_chain", "t2dep"),
+             "chain_oracle": ("d_oracle", "t2dep"),
+             "combined": ("d_comb", "t2dep")}.items()},
+        "acc_next_token": _wilson_eq(rows, "v1", "true_next"),
+        "strata": {
+            "e1": {name: _wilson_eq(e1, a, b) for name, (a, b) in
+                   {"q_direct": ("d_direct", "true_t2"),
+                    "q_chain": ("d_chain", "true_t2")}.items()},
+            "e0": {name: _wilson_eq(e0, a, b) for name, (a, b) in
+                   {"q_direct": ("d_direct", "true_t2"),
+                    "q_chain": ("d_chain", "true_t2")}.items()},
+        },
+    }
     out["topk_recall_vs_deploy_target"] = {
         "direct": {k: _topk_recall(rows, "topk_direct", k) for k in TOPKS},
         "chain": {k: _topk_recall(rows, "topk_chain", k) for k in TOPKS},
