@@ -5,7 +5,10 @@
   * catalog.yaml 是「目录完备」的唯一来源（枚举了哪些格子必须存在）。
   * 课题页 = front-matter（生成）+ 九节正文（生成）+ 手写块（保留）。
   * 自动内容一律夹在 `<!-- AUTO:begin --> ... <!-- AUTO:end -->` 之间；
-    手写内容夹在 `<!-- MANUAL:begin --> ... <!-- MANUAL:end -->` 之间，重跑不丢。
+    手写内容夹在 `<!-- MANUAL:begin --> ... <!-- MANUAL:end -->` 之间，重跑不丢——
+    `--check` 也是先嫁接 MANUAL 再比对，故「只手写块有差异」不算不一致。
+  * 既有页面的 MANUAL 区块缺失 / 畸形 / 内含 AUTO 标记 ⇒ 直接报错（不静默覆盖手写内容、
+    不许手写内容伪装成自动块）。
   * 索引（根 INDEX.md、各轴 README 的格子表、各格子 experiments/ 清单）全部生成，
     人永远不手改自动块。
 
@@ -30,6 +33,15 @@ STATUS_BADGE = {
     "judged": "✅ judged",
     "todo": "⬜ todo",
 }
+
+AUTO_BEGIN = "<!-- AUTO:begin -->"
+AUTO_END = "<!-- AUTO:end -->"
+MANUAL_BEGIN = "<!-- MANUAL:begin -->"
+MANUAL_END = "<!-- MANUAL:end -->"
+
+
+class WikiError(Exception):
+    """既有页面违反生成契约（MANUAL 区块缺失/畸形/越界），必须报错而不是静默覆盖。"""
 
 
 def badge(status: str) -> str:
@@ -144,7 +156,7 @@ def page(grid: dict, axis: dict) -> str:
     body += [bullets(ev, "（本地未做；复现命令待本格实验目录建立后补）"), ""]
     if notes:
         body += ["## 备注", "", notes, ""]
-    body += ["<!-- AUTO:end -->", "", "<!-- MANUAL:begin -->", "<!-- MANUAL:end -->", ""]
+    body += [AUTO_END, "", MANUAL_BEGIN, MANUAL_END, ""]
     return "\n".join(body)
 
 
@@ -167,7 +179,7 @@ def axis_page(axis: dict) -> str:
         if len(tax) > 40:
             tax = tax[:38] + "…"
         out += [f"| [`{g['id']}`]({g['id']}/README.md) | {badge(g['status'])} | {v} | {tax} |"]
-    out += ["", "<!-- AUTO:end -->", "", "<!-- MANUAL:begin -->", "<!-- MANUAL:end -->", ""]
+    out += ["", AUTO_END, "", MANUAL_BEGIN, MANUAL_END, ""]
     return "\n".join(out)
 
 
@@ -181,31 +193,49 @@ def experiments_page(grid: dict, existing: list[str]) -> str:
         out += [f"| [`{n}`]({n}/README.md) | 目录内 README |" for n in sorted(existing)]
     else:
         out += ["（本格暂无实验目录）"]
-    out += ["", "<!-- AUTO:end -->", "", "<!-- MANUAL:begin -->", "<!-- MANUAL:end -->", ""]
+    out += ["", AUTO_END, "", MANUAL_BEGIN, MANUAL_END, ""]
     return "\n".join(out)
+
+
+def manual_region(old: str, path: Path) -> str:
+    """取出既有页面里唯一的 MANUAL 区块（含标记）。
+
+    缺失 / 重复 / 顺序颠倒 / 区块内含 AUTO 标记 ⇒ 报错；绝不静默丢弃手写内容，
+    也绝不允许手写内容伪装成 AUTO 块（见 SCHEMA：MANUAL 只能存在于自己的区间内）。
+    """
+    nb, ne = old.count(MANUAL_BEGIN), old.count(MANUAL_END)
+    if nb == 0 and ne == 0:
+        raise WikiError(f"{path}：既有页面没有 MANUAL 区块，拒绝整页覆盖（会丢手写内容）")
+    if nb != 1 or ne != 1:
+        raise WikiError(f"{path}：MANUAL 区块畸形（begin×{nb} / end×{ne}，必须各恰好 1 个）")
+    s, e = old.index(MANUAL_BEGIN), old.index(MANUAL_END)
+    if e < s:
+        raise WikiError(f"{path}：MANUAL 区块顺序颠倒（end 在 begin 之前）")
+    region = old[s:e + len(MANUAL_END)]
+    if AUTO_BEGIN in region or AUTO_END in region:
+        raise WikiError(f"{path}：MANUAL 区块里出现 AUTO 标记，手写内容不得越界篡改自动块")
+    return region
+
+
+def graft(path: Path, old: str, content: str) -> str:
+    """生成内容（AUTO）保留，手工内容（MANUAL）从既有页嫁接过来。"""
+    region = manual_region(old, path)
+    s, e = content.index(MANUAL_BEGIN), content.index(MANUAL_END) + len(MANUAL_END)
+    return content[:s] + region + content[e:]
 
 
 def write(path: Path, content: str, check: bool, changed: list[Path]) -> None:
     if path.exists():
         old = path.read_text(encoding="utf-8")
-        if old == content:
+        # --check 也必须嫁接后再比对，否则手写块永远报「不一致」
+        new = graft(path, old, content)
+        if old == new:
             return
         if check:
             changed.append(path)
             return
-        # 保留手写块
-        new = content
-        if "<!-- MANUAL:begin -->" in old and "<!-- MANUAL:end -->" in old:
-            s = old.index("<!-- MANUAL:begin -->")
-            e = old.index("<!-- MANUAL:end -->") + len("<!-- MANUAL:end -->")
-            manual = old[s:e]
-            if manual.strip() != "<!-- MANUAL:begin -->\n<!-- MANUAL:end -->".strip():
-                ns = new.index("<!-- MANUAL:begin -->")
-                ne = new.index("<!-- MANUAL:end -->") + len("<!-- MANUAL:end -->")
-                new = new[:ns] + manual + new[ne:]
-        if new != old:
-            path.write_text(new, encoding="utf-8")
-            changed.append(path)
+        path.write_text(new, encoding="utf-8")
+        changed.append(path)
     else:
         if check:
             changed.append(path)
@@ -246,18 +276,22 @@ def main() -> int:
 
     cat = load()
     changed: list[Path] = []
-    for a in cat["axes"]:
-        adir = ROOT / "axes" / a["dir"]
-        for g in a["grids"]:
-            g["axis_dir"] = a["dir"]
-            gdir = adir / g["id"]
-            write(gdir / "README.md", page(g, a), args.check, changed)
-            expdir = gdir / "experiments"
-            existing = ([d.name for d in expdir.iterdir() if d.is_dir()]
-                        if expdir.exists() else [])
-            write(expdir / "README.md", experiments_page(g, existing), args.check, changed)
-        write(adir / "README.md", axis_page(a), args.check, changed)
-    write(ROOT / "INDEX.md", index_page(cat), args.check, changed)
+    try:
+        for a in cat["axes"]:
+            adir = ROOT / "axes" / a["dir"]
+            for g in a["grids"]:
+                g["axis_dir"] = a["dir"]
+                gdir = adir / g["id"]
+                write(gdir / "README.md", page(g, a), args.check, changed)
+                expdir = gdir / "experiments"
+                existing = ([d.name for d in expdir.iterdir() if d.is_dir()]
+                            if expdir.exists() else [])
+                write(expdir / "README.md", experiments_page(g, existing), args.check, changed)
+            write(adir / "README.md", axis_page(a), args.check, changed)
+        write(ROOT / "INDEX.md", index_page(cat), args.check, changed)
+    except WikiError as e:
+        print(f"FAIL：{e}", file=sys.stderr)
+        return 1
 
     if args.check:
         if changed:
