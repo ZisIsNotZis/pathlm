@@ -36,6 +36,10 @@ def rows_from(path: str) -> list[dict]:
     full = path if os.path.isabs(path) else os.path.join(ROOT, path)
     with open(full) as f:
         blob = json.load(f)
+    # rerun 格式（run.py 产物）：顶层直接是 checkpoint 元数据 + 各臂；包一层以统一处理
+    if "checkpoint" in blob and any(k.endswith("_k1") or k.endswith("_k2")
+                                    for k in blob):
+        blob = {blob["checkpoint"]: blob}
     out: list[dict] = []
     for ck, entry in blob.items():
         micro = entry.get("micro") or {}
@@ -51,6 +55,8 @@ def rows_from(path: str) -> list[dict]:
                 speed = r["speedup_best"]
             elif "speedup" in r:
                 speed = r["speedup"]
+            elif "speedup_ratio_of_best" in r:
+                speed = r["speedup_ratio_of_best"]
             else:
                 speed = None
             row = {
@@ -67,6 +73,8 @@ def rows_from(path: str) -> list[dict]:
             }
             if r.get("speedup_reps"):
                 row["wall_speedup_reps"] = r["speedup_reps"]
+            elif r.get("speedup_reps_paired"):
+                row["wall_speedup_reps"] = r["speedup_reps_paired"]
             out.append(row)
     return out
 
