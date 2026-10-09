@@ -15,10 +15,12 @@ fp16 标尺、int8 净 3 B/值）下测的。业界标准是**标尺按块/通�
 """
 
 import argparse
+import atexit
 import importlib.util
 import json
 import math
 import os
+import subprocess
 import sys
 import time
 
@@ -58,6 +60,104 @@ cc2631 = _load_module(os.path.join(P2631, "causal_check.py"), "causal_check_2631
 #: 主臂的标尺方案：块标尺沿 head_dim、G = 32（= head_dim ⇒ per-token 标尺，仍严格前缀确定）。
 PRIMARY_SCHEME, PRIMARY_GROUP = "block", 32
 VARIANCE_SELF_SEEDS = (2, 3, 4)
+
+#: SCHEMA §20 的 GPU 互斥锁（本实验整程 <10 min ⇒ 允许整程持锁，但必须留机器可读的取/释记录）。
+GPU_LOCK_DIR = "/tmp/pathlm_gpu.lock"
+
+
+def _gpu_free_mib():
+    """`nvidia-smi` 的空闲显存（MiB）；不可用时 None（如实记 null，不拦跑）。"""
+    try:
+        out = subprocess.run(["nvidia-smi", "--query-gpu=memory.free",
+                              "--format=csv,noheader,nounits"],
+                             capture_output=True, text=True, timeout=30)
+        return int(out.stdout.strip().splitlines()[0])
+    except Exception:                                              # pragma: no cover
+        return None
+
+
+class GpuLock:
+    """SCHEMA §20 的互斥锁：`mkdir` 抢锁，陈旧锁（holder 死 / 无 pid 且年龄 >15 min）自愈回收。
+
+    `evidence()` 把取锁/开跑/收尾/释放与前后空闲显存落成**机器可读**记录
+    （`results.json::gpu_lock`），供 §20 记账核查。
+    """
+
+    def __init__(self, lock_dir: str = GPU_LOCK_DIR, timeout_s: int = 600, poll_s: int = 15):
+        self.lock_dir = lock_dir
+        self.timeout_s = timeout_s
+        self.poll_s = poll_s
+        self.ev = {"lock_path": lock_dir, "holder_pid": None, "acquired_at": None,
+                   "wait_seconds": None, "reclaimed": [], "release_ok": None,
+                   "free_mib_before": None, "free_mib_after": None}
+
+    def _holder_pid(self):
+        try:
+            return int(open(os.path.join(self.lock_dir, "holder_pid")).read().strip())
+        except Exception:
+            return None
+
+    def _stale(self) -> str | None:
+        hp = self._holder_pid()
+        if hp is not None:
+            try:
+                os.kill(hp, 0)
+                return None
+            except OSError:
+                return f"holder_pid {hp} 已死"
+        try:
+            age = time.time() - os.stat(self.lock_dir).st_mtime
+        except OSError:
+            return None
+        if age > 900:
+            return f"无 holder_pid 且锁龄 {age:.0f}s >15min"
+        return None
+
+    def acquire(self) -> None:
+        t0 = time.time()
+        while True:
+            try:
+                os.mkdir(self.lock_dir)
+                break
+            except FileExistsError:
+                reason = self._stale()
+                if reason:
+                    for f in ("holder_pid", "heartbeat"):
+                        try:
+                            os.remove(os.path.join(self.lock_dir, f))
+                        except OSError:
+                            pass
+                    try:
+                        os.rmdir(self.lock_dir)
+                    except OSError:
+                        pass
+                    self.ev["reclaimed"].append(reason)
+                    continue
+                if time.time() - t0 > self.timeout_s:
+                    raise TimeoutError(f"等锁超时 {self.timeout_s}s：{self.lock_dir} 被占")
+                time.sleep(self.poll_s)
+        with open(os.path.join(self.lock_dir, "holder_pid"), "w") as f:
+            f.write(str(os.getpid()))
+        open(os.path.join(self.lock_dir, "heartbeat"), "w").close()
+        self.ev["holder_pid"] = os.getpid()
+        self.ev["acquired_at"] = round(time.time(), 3)
+        self.ev["wait_seconds"] = round(time.time() - t0, 3)
+        self.ev["free_mib_before"] = _gpu_free_mib()
+
+    def release(self) -> None:
+        if self.ev.get("release_ok") is not None:
+            return
+        self.ev["free_mib_after"] = _gpu_free_mib()
+        for f in ("holder_pid", "heartbeat"):
+            try:
+                os.remove(os.path.join(self.lock_dir, f))
+            except OSError:
+                pass
+        try:
+            os.rmdir(self.lock_dir)
+            self.ev["release_ok"] = True
+        except OSError:
+            self.ev["release_ok"] = False
 
 
 def quantized(spec: dict) -> bool:
@@ -113,8 +213,10 @@ def render_table(cfg, points, scheme_rows, controls, rec) -> str:
         f"『部署字节』= 值 + 标尺（`scale_caliber.py`，与 `kv_quant.quantize_kv(scheme=...)` 一一对应）；"
         f"『×fp16』= 部署字节 / 12288。")
     L.append(
-        "**『0.014 不可排序』不适用本格**：本格的噪声带由**自测**给出（同臂 3 个评测窗口 seed），"
-        f"见本表后『自测方差』一节；主判据 Δ 必须超过该自测带宽才可排序（契约 §4）。"
+        "**『0.014 不可排序』不适用本格**：本格的排序带由**自测**给出，且**预登记了口径**："
+        f"**在力带 = 单臂跨窗口 bpc 极差 {rec['ranking_band']['in_force_band_bpc']:.6f}**"
+        f"（标准口径应为配对 Δ、≥5 窗口，本批只跑了 {rec['ranking_band']['this_batch_windows']} 个 ⇒ 不满足，"
+        f"退用更保守的单臂带；见本表后『自测方差』一节与 `results.json::ranking_band`）。"
         f"召回地板：chance = {controls['chance_uniform']:.4f}（1/64）、"
         f"局部先验 = {controls['local_prior_copy']['accuracy']:.4f}（copy）。")
     L.append("## 表 1 · 27 点（量化臂 = 块标尺 block G=32；非量化臂 = fp16 分派）\n\n"
@@ -144,7 +246,11 @@ def render_table(cfg, points, scheme_rows, controls, rec) -> str:
     L[-1] += "\n" + "\n".join(rows)
     L.append("> 读法：非量化臂的『部署字节』= 值字节（没有标尺）；量化臂的『部署字节(block)』把标尺"
              "按 `2/G` 摊进去（G=32 ⇒ +0.0625 B/值）。第 3 列仍可与 `2631` 逐位并列；"
-             "『×fp16』是把标尺算上后相对 fp16 基线的**真实**倍率（<1 = 省）。")
+             "『×fp16』是把标尺算上后相对 fp16 基线的**真实**倍率（<1 = 省）。"
+             "两个质量量**不得混用**：`damage_bpc` = 本臂 − 本族基线（头共享族含头共享本身的开销）；"
+             "`量化增量` = 本臂 − 同拓扑 fp16 臂（纯量化因子）。"
+             f"本表排序带 = **在力带 {rec['ranking_band']['in_force_band_bpc']:.6f}**（单臂跨窗口极差；"
+             f"{rec['ranking_band']['declaration']}）")
 
     L.append("## 表 2 · 标尺方案对照（同一臂 × 不同方案；回答『在什么实现下不成立』）\n\n"
              "| 臂 | 方案 | G | 标尺 B/值 | 部署字节/位置 | ×fp16(同拓扑) | 前缀不变 | bpc | "
@@ -187,6 +293,21 @@ def render_table(cfg, points, scheme_rows, controls, rec) -> str:
     L.append(f"> **head_dim = 32 ⇒ 沿 head_dim 的块上限 = G=32（int8 1.0625 B/值，省 46.9%）**。"
              f"G=64 要求块跨 token，无法同时保持前缀确定（`{cal['head_dim_g64_note']}`）。"
              f"沿 token 轴要摊得更薄就必须放弃块内前缀确定（block_tok / kivi 的 K 侧）。")
+    fp8 = cal["fp8_reference"]
+    L.append(f"> **同价诚实对手（未测）**：fp8（E4M3/E5M2 式）解析 **1.0 B/值、无显式标尺 ⇒ "
+             f"{fp8['bytes_per_position']:.0f} B/位置 = fp16 的 ×{fp8['ratio_vs_fp16']:.2f}"
+             f"（省 {fp8['reduction_vs_fp16']:.1%}）**，比 int8+块标尺（1.0625 B/值、×0.53）**更省**。"
+             f"fp8 质量本实验**未测**（`quality_measured={fp8['quality_measured']}`）⇒ **不得据此断言 "
+             f"int8+块标尺是所有 8 位方案里最优的**。")
+    st = cal["token_ladder_staging"]
+    if st:
+        L.append(f"> **staging 两套口径（不得混用）**：回填需帧内留住 fp16 原值——"
+                 f"**持整块（最坏）**= {st['worst_positions_held']:.0f} 个位置 = "
+                 f"{st['worst_bytes_per_request']:.0f} B/请求（T=256 时 "
+                 f"{st['worst_bytes_per_position_at_T']:.0f} B/位置）；**平均半块**= "
+                 f"{st['mean_positions_held']:.1f} 个位置 = {st['mean_bytes_per_request']:.0f} B/请求"
+                 f"（T=256 时 {st['mean_bytes_per_position_at_T']:.0f} B/位置）。"
+                 f"**block（主臂）无需 staging**（严格前缀确定）。")
 
     L.append("## 表 4 · 非量化臂与 2631 的逐位对照（可控性）\n\n"
              f"- 非量化臂 max |Δbpc| = {rec['reuse']['nonquant_max_abs_delta_bpc']:.2e}"
@@ -201,10 +322,16 @@ def render_table(cfg, points, scheme_rows, controls, rec) -> str:
              + "\n".join(f"| `{a}` | {d['scheme']} | {d['bpc_by_seed']} | {d['range']:.6f} | "
                          f"{d['std']:.6f} |" for a, d in v.items()))
     if pv:
-        L.append(f"> **单臂 bpc 的跨窗口极差 {rec['variance_band_bpc_self_measured']:.6f} 不能当成对照的噪声带**："
-                 f"它主要来自窗口数据本身的差异（同一窗口下两臂共享同一批数据 ⇒ 比较是**配对**的）。"
-                 f"配对量 `{pv['comparison']}` 逐 seed = {pv['delta_by_seed']}，max|·| = "
-                 f"**{pv['max_abs']}**。即『int8 块标尺 vs fp16』的差在本格噪声下**不可分辨**（近无损）。")
+        L.append(
+            f"> **排序带的预登记口径与在力声明**：标准口径 = **配对 Δ**（同一对照臂对在多个评测窗口"
+            f"重测）的**区间，≥5 个窗口**；本批只跑了 **{rec['ranking_band']['this_batch_windows']}"
+            f" 个窗口**（<5）⇒ **不满足**标准，故**在力排序带 = 单臂跨窗口 bpc 极差 "
+            f"{rec['ranking_band']['in_force_band_bpc']:.6f}**（更保守；所有『可排序/不可排序』判断用它）。"
+            f"\n> **不用 `max|Δ|` 当带**（主表用的那个窗口的 Δ 恰为该 3 点 max ⇒ 会循环、不可证伪）。"
+            f"配对量 `{pv['comparison']}` 逐 seed = {pv['delta_by_seed']}，**均值 = {pv['mean']}**、"
+            f"区间 = {pv['interval']}（只作描述，不当带）。按在力带读：int8 块标尺 vs fp16 = "
+            f"**略差、正号（+{abs(rec['answer']['int8_block_g32']['paired_delta_bpc_vs_fp16']):.6f}）、"
+            f"远低于任何可排序线**（不写『不可分辨』）。")
     return "\n\n".join(L) + "\n"
 
 
@@ -252,6 +379,11 @@ def main() -> int:
     rec = {"experiment": cfg["experiment"], "contract": cfg["contract"],
            "scope": cfg["scope"], "config": cfg, "smoke": bool(args.smoke),
            "criterion": cfg["criterion"], "schemes": cfg["schemes"]}
+    # SCHEMA §20：整程 <10 min ⇒ 允许整程持锁；但必须留机器可读的取/释与前后空闲显存记录。
+    lock = GpuLock()
+    lock.acquire()
+    atexit.register(lock.release)                     # 异常退出也释放
+    rec["gpu_lock"] = lock.ev
     t0 = time.time()
     torch.cuda.reset_peak_memory_stats()
     _, eval_arr, _ = load_enwik8_full(".tmp/enwik8", os.path.join(ROOT, cfg["data"]["path"]))
@@ -442,19 +574,37 @@ def main() -> int:
                                        / max(len(bpcs) - 1, 1)) ** 0.5, 6)}
     rec["variance_self_measured"] = variance
     # 关键对照是**配对 Δ**（同窗口同 batched 数据上 int8_block − fp16），不是单臂 bpc 的
-    # 跨窗口散度（后者含窗口数据本身的方差；不扣除会高估噪声）。两者都报。
+    # 跨窗口散度（后者含窗口数据本身的方差）。两者都报；但**排序带**另有预登记口径（见下）。
     paired = {}
     if "fp16" in variance and "int8" in variance:
         d = [round(i - f, 9) for i, f in zip(variance["int8"]["bpc_by_seed"],
                                              variance["fp16"]["bpc_by_seed"])]
         paired = {"comparison": "int8(block g32) − fp16", "delta_by_seed": d,
-                  "range": round(max(d) - min(d), 9), "max_abs": round(max(abs(x) for x in d), 9)}
+                  "mean": round(sum(d) / len(d), 9),
+                  "interval": [min(d), max(d)],
+                  "max_abs": round(max(abs(x) for x in d), 9),
+                  "note": "3 个窗口；**不以 max|Δ| 当带**（主表用的那个窗口的 Δ 恰为这三点 max ⇒ "
+                          "当带会循环、不可证伪）；只报均值与区间，且只作描述。"}
     rec["variance_self_measured_paired"] = paired
-    band = max(v["range"] for v in variance.values())
-    rec["variance_band_bpc_self_measured"] = round(band, 6)
-    rec["variance_band_paired_delta"] = paired.get("max_abs")
-    print(f"[自测方差] 单臂带宽 = {band:.6f}；配对 Δ(int8_block−fp16) max|·| = "
-          f"{paired.get('max_abs')}（窗 seed {VARIANCE_SELF_SEEDS}）", flush=True)
+    single_arm_band = max(v["range"] for v in variance.values())
+    rec["variance_band_bpc_self_measured"] = round(single_arm_band, 6)
+    # 预登记里本格噪声带的口径与在力（in force）声明：标准口径 = 配对 Δ、≥5 窗口；
+    # 本批只跑了 3 个窗口（<5）⇒ 不满足标准，退用**单臂跨窗口极差**（更保守）作排序带。
+    n_windows = len(VARIANCE_SELF_SEEDS)
+    rec["ranking_band"] = {
+        "in_force_band_bpc": round(single_arm_band, 6),
+        "in_force_caliber": "单臂跨窗口 bpc 极差（同臂在多个评测窗口重测）",
+        "standard_caliber": "配对 Δ（同一对照臂对在多个评测窗口重测）的区间，≥5 个窗口",
+        "this_batch_windows": n_windows,
+        "standard_met": n_windows >= 5,
+        "declaration": (f"本批 variance 只跑了 {n_windows} 个窗口（<5）⇒ **不满足**标准配对口径；"
+                        f"故本批所有『可排序/不可排序』判断用**单臂跨窗口极差 "
+                        f"{single_arm_band:.6f}**。3 点配对量（均值 "
+                        f"{paired.get('mean')}）只作描述，不当带。"),
+    }
+    print(f"[自测方差] 在力排序带（单臂跨窗口极差）= {single_arm_band:.6f}；"
+          f"配对 Δ(int8_block−fp16) 3 点均值 = {paired.get('mean')}、区间 = {paired.get('interval')}"
+          f"（窗 seed {VARIANCE_SELF_SEEDS}；<5 窗口，不当带）", flush=True)
 
     # ---------- ⑧ 一句话答案（契约 ⑤） ----------
     int8_pt = by_arm["int8"]
@@ -464,17 +614,26 @@ def main() -> int:
     fp16_pt = by_arm["fp16"]
     rec["answer"] = {
         "q": "『8 位近无损且省约一半』这条参照线成立吗？成立到什么程度？在什么实现下不成立？",
+        "ranking_band_bpc_in_force": rec["ranking_band"]["in_force_band_bpc"],
         "int8_block_g32": {
             "paired_delta_bpc_vs_fp16": round(int8_pt["bpc"] - fp16_pt["bpc"], 6),
+            "delta_sign": "positive（略差，正号）",
+            "vs_ranking_band": (f"远低于任何可排序线（{int8_pt['bpc'] - fp16_pt['bpc']:+.6f} "
+                                f"<< 在力带 {rec['ranking_band']['in_force_band_bpc']:.6f}）"),
             "deployment_bytes_per_position": int8_dep["bytes_per_position"],
             "fp16_deployment_bytes_per_position": 12288.0,
             "reduction_frac": round(1 - int8_dep["bytes_per_position"] / 12288.0, 6),
             "ratio_vs_fp16": round(int8_dep["bytes_per_position"] / 12288.0, 4),
             "prefix_invariant": bool(int8_pt["prefix_invariance"]["future_token_past_logits_equal"]
                                      and int8_pt["prefix_invariance"]["peer_request_logits_equal"]),
+            "staging_bytes_per_request": 0,
+            "note": "沿 head_dim 摊薄严格因果 ⇒ 无需 staging；结论表述为『略差、正号、远低于可排序线』，"
+                    "不写『不可分辨』。",
         },
         "int4_block_g32": {
-            "paired_delta_bpc_vs_fp16": round(int4_pt["bpc"] - fp16_pt["bpc"], 6),
+            "damage_bpc_vs_fp16": round(int4_pt["bpc"] - fp16_pt["bpc"], 6),
+            "damage_bpc_vs_ranking_band": ("< 带" if abs(int4_pt["bpc"] - fp16_pt["bpc"])
+                                           < rec["ranking_band"]["in_force_band_bpc"] else "> 带"),
             "deployment_bytes_per_position": int4_dep["bytes_per_position"],
             "reduction_frac": round(1 - int4_dep["bytes_per_position"] / 12288.0, 6),
         },
@@ -484,6 +643,16 @@ def main() -> int:
             "note": "逐值标尺（旧『因果化修复』的口径）⇒ int8 = 3 B/值 = fp16 的 1.5×；"
                     "『省一半』只在这个实现下不成立。",
         },
+        "fp8_same_price_opponent": sc.fp8_reference(cfg),
+        "combined_arm_scheme_delta": {
+            "gqa_int4_block_minus_per_value": round(by_arm["gqa_int4"]["bpc"]
+                                                    - old_by["gqa_int4"]["bpc"], 6),
+            "mqa_int4_block_minus_per_value": round(by_arm["mqa_int4"]["bpc"]
+                                                    - old_by["mqa_int4"]["bpc"], 6),
+            "note": "头共享×4 位换块标尺后变差；归因待核（见 analysis §7）。",
+        },
+        "cannot_claim": "不能声称 int8+块标尺是所有 8 位方案里最优的：fp8 解析为 1 B/值、"
+                        "无标尺、×0.50，比 1.0625 B/值 更省（fp8 质量本实验未测）。",
         "verified": True,
     }
 
@@ -497,6 +666,9 @@ def main() -> int:
     }
     rec["cost"] = {"device": dev, "wall_seconds": round(time.time() - t0, 2),
                    "wall_minutes": round((time.time() - t0) / 60, 3),
+                   "lock_wait_seconds": lock.ev.get("wait_seconds"),
+                   "gpu_work_only": True,
+                   "contention_note": "wall 从取锁成功后开始计（不含等锁）；共享卡被外部占用时同代码步时会更长。",
                    "peak_mem_mib": round(torch.cuda.max_memory_allocated() / 2 ** 20, 1),
                    "smoke": bool(args.smoke)}
     codes = ["tools/evalkit/kv_quant.py",
@@ -504,6 +676,11 @@ def main() -> int:
              "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/block_arms.py",
              "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/scale_caliber.py"]
     rec["code"] = {c: b21.b19.sha256_file(os.path.join(ROOT, c))[:16] for c in codes}
+
+    # GPU 工作已完成：先释放并补全 §20 记账，再落盘。
+    lock.ev["held_whole_run"] = True                 # 整程持锁（<10 min，§20.1）
+    lock.release()
+    rec["gpu_lock"] = dict(lock.ev)
 
     if not args.smoke:
         write_table(cfg, points, scheme_rows, controls, rec, args.out_dir)

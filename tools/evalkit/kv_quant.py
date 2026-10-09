@@ -89,7 +89,7 @@ SCALE_BYTES = 2.0
 
 
 def _new_stats() -> dict:
-    return {"n_values": 0, "sum_abs_err": 0.0, "max_abs_err": 0.0,
+    return {"n_values": 0, "n_scales": 0, "sum_abs_err": 0.0, "max_abs_err": 0.0,
             "sum_abs_x": 0.0, "n_changed": 0, "n_clipped": 0,
             "scale_min": None, "scale_max": None}
 
@@ -192,7 +192,7 @@ def scheme_scale_bytes_per_value(mode: str, scheme: str, head_dim: int,
 
 
 def _merge(dst: dict, src: dict) -> None:
-    for k in ("n_values", "n_changed", "n_clipped"):
+    for k in ("n_values", "n_scales", "n_changed", "n_clipped"):
         dst[k] += src[k]
     for k in ("sum_abs_err", "sum_abs_x"):
         dst[k] += src[k]
@@ -209,6 +209,7 @@ def summarize_stats(acc: dict) -> dict:
     n = max(acc["n_values"], 1)
     out = {
         "n_values": acc["n_values"],
+        "n_scales": acc.get("n_scales", 0),
         "mean_abs_err": round(acc["sum_abs_err"] / n, 9),
         "max_abs_err": round(acc["max_abs_err"], 9),
         "rel_err": round(acc["sum_abs_err"] / max(acc["sum_abs_x"], 1e-12), 9),
@@ -252,6 +253,7 @@ def quantize_kv(x: torch.Tensor, mode: str, scheme: str = "per_value",
             raise ValueError(
                 f"KV 布局至少 3 维 [..., H, T, head_dim]，收到 {tuple(x.shape)}")
         dq, scale, ratio = _int_quantize_schemed(x, qmax, scheme, group, kivi_group, is_key)
+        acc["n_scales"] = int(scale.numel())
         acc["n_clipped"] = int((ratio.abs() > qmax).sum().item())
         acc["scale_min"] = float(scale.min())
         acc["scale_max"] = float(scale.max())

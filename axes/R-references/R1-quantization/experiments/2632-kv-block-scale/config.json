@@ -60,7 +60,7 @@
    "⑤ 结论必须回答：『8 位近无损且省约一半』这条参照线成立吗？成立到什么程度？在什么实现下不成立？"
   ],
   "sign_convention": "damage_bpc = bpc_臂 − 本族基线 bpc（正 = 更差）；量化增量 = bpc_量化臂 − 同拓扑不量化臂 bpc（正 = 更差）。",
-  "variance_band_self_measured": "本格自测（不得套用全局 0.014）：同一臂在 window_seed ∈ {2,3,4} 三个独立评测窗口下重测 bpc，报极差与半宽；主判据 Δ 必须大于该自测带宽才可排序。",
+  "variance_band_self_measured": "本格自测（不得套用全局 0.014）。**标准口径**：同一对照臂对在多个评测窗口上重测，取**配对 Δ** 的区间，要求 **≥5 个窗口**。**本批**因预算只跑了 **3 个窗口**（<5）⇒ 不满足标准，**在力（in force）排序带退用更保守的单臂跨窗口 bpc 极差 = 0.036324**。**声明：本批所有『可排序 / 不可排序』判断一律用 0.036324**；3 点配对量（均值 ≈+4.1e-5）只作描述，**不得当带**（主表那个窗口的 Δ 恰为该 3 点 max ⇒ 当带会循环、不可证伪）。",
   "no_single_point_extrapolation": "SCHEMA §17.11：单点只描述；G 阶梯与 scheme 比较各点单独测，不外推。",
   "recall_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（不可分辨，不得写成机制无效，SCHEMA §19）。",
   "gate": "① 主臂 block(G=32) 前缀不变性不成立 ⇒ 本实验作废，不得作为新价签。"
@@ -78,6 +78,8 @@
   "batch_size": 16,
   "window_seed": 2,
   "self_measured_seeds": [2, 3, 4],
+  "self_measured_windows": 3,
+  "self_measured_standard_windows": 5,
   "device": "cuda",
   "note": "与 2610/2614/2619/2620/2621/2631 同一窗口序 ⇒ clean bpc 同口径可比。"
  },

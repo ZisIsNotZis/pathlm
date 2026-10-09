@@ -109,15 +109,60 @@ def deployment_bytes(point: dict, spec: dict, cfg: dict, scheme: str,
 
 
 def staging_bytes_per_request(cfg: dict, point: dict, group: int) -> dict:
-    """非因果方案的回填 staging：每请求留住最近 `group` 个位置的 fp16 KV（与 T 无关）。"""
+    """非因果方案的回填 staging：帧内留住最近 `group` 个位置的 fp16 原值（与 T 无关）。
+
+    **两套口径，不得混用**（防入 SSOT 后两数打架）：
+    - `worst_bytes_per_request` = 持**整块**（回填窗口最坏时刻）：`group` 个位置；
+    - `mean_bytes_per_request` = **平均半块**（块内平均已填一半）：`(group − 1) / 2` 个位置
+      （与 `2631/budget_caliber.staging_bytes_per_request` 同式）。
+    两者都随 T 变小、与目标精度无关（int4 也要留 fp16 原值）。
+    """
     nkv, _ = _factors(point)
     hd = cfg["model"]["d_model"] // cfg["model"]["n_heads"]
     vals_per_position = 2.0 * cfg["model"]["n_layers"] * nkv * hd
     T = cfg["model"]["seq_len"]
-    b = group * vals_per_position * VALUE_BYTES["fp16"]
-    return {"group": group, "positions_held": group, "bytes_per_request": b,
-            "bytes_per_position_at_T": b / T, "T": T,
-            "note": "fp16 原值帧内缓冲（回填用）；与目标精度无关，int4 也要留"}
+    worst_positions = float(group)
+    mean_positions = (group - 1) / 2.0
+    return {"group": group,
+            "worst_positions_held": worst_positions,
+            "mean_positions_held": mean_positions,
+            "worst_bytes_per_request": worst_positions * vals_per_position * VALUE_BYTES["fp16"],
+            "mean_bytes_per_request": mean_positions * vals_per_position * VALUE_BYTES["fp16"],
+            "worst_bytes_per_position_at_T": worst_positions * vals_per_position
+            * VALUE_BYTES["fp16"] / T,
+            "mean_bytes_per_position_at_T": mean_positions * vals_per_position
+            * VALUE_BYTES["fp16"] / T,
+            "T": T,
+            "note": "fp16 原值帧内缓冲（回填用）；两套口径：持整块（最坏）vs 平均半块；"
+                    "与目标精度无关，int4 也要留"}
+
+
+def fp8_reference(cfg: dict) -> dict:
+    """fp8（E4M3/E5M2 式）的**解析**价签：1 B/值、无显式标尺 ⇒ fp16 的 ×0.50。
+
+    它是 int8+块标尺（1.0625 B/值、×0.53）的**同价诚实对手**，而且比它更省。
+    **本实验未测 fp8 的质量**（`quality_measured = False`）——本行只用于界定
+    「不能声称 int8+块标尺是所有 8 位方案里最优的」。
+    """
+    n_layers, n_heads = cfg["model"]["n_layers"], cfg["model"]["n_heads"]
+    hd = cfg["model"]["d_model"] // n_heads
+    vals_per_pos = 2 * n_layers * n_heads * hd
+    bytes_per_position = vals_per_pos * 1.0            # fp8 = 1 B/值，无标尺
+    return {"mode": "fp8", "scheme": "none", "value_bytes_per_value": 1.0,
+            "scale_bytes_per_value": 0.0,
+            "bytes_per_position": bytes_per_position,
+            "ratio_vs_fp16": bytes_per_position / 12288.0,
+            "reduction_vs_fp16": 1 - bytes_per_position / 12288.0,
+            "quality_measured": False,
+            "note": "fp8 是浮点格式，不需要显式标尺；解析 1 B/值 = fp16 的 ×0.50，"
+                    "比 int8+块标尺（1.0625 B/值）更省。质量未测。"}
+
+
+def analytic_scale_count(values: int, group: int) -> int:
+    """解析的标尺个数 = `values / group`（供与量化器实际产出的 `n_scales` 对账）。"""
+    if group < 1 or values % group:
+        raise ValueError(f"标尺个数需要 group 整除 values，收到 values={values}, group={group}")
+    return values // group
 
 
 def caliber_block(cfg: dict, specs: dict, points: list[dict]) -> dict:
@@ -166,6 +211,7 @@ def caliber_block(cfg: dict, specs: dict, points: list[dict]) -> dict:
         "group_default": DEFAULT_GROUP, "kivi_group_default": DEFAULT_KIVI_GROUP,
         "head_dim_ladder": head_ladder, "token_ladder": token_ladder,
         "token_ladder_staging": staging,
+        "fp8_reference": fp8_reference(cfg),
         "head_dim_g64_note": ("head_dim = 32 ⇒ 沿 head_dim 的块只能整除到 G = 32；G = 64 要求"
                               "块跨 token，无法同时保持前缀确定。非因果的 token 轴块见 token_ladder。"),
         "per_arm": per_arm,

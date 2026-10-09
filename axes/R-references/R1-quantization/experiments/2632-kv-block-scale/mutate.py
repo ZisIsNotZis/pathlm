@@ -66,6 +66,12 @@ MUTATIONS = [
         "new": '        if False:  # 变异：不校验标签',
         "tests": ["test_deployment_bytes_reject_mode_value_bytes_mismatch"],
     },
+    {
+        "id": "M8", "target": KVQ, "what": "标尺个数报成逐值（与 values/G 对账被架空）",
+        "old": '        acc["n_scales"] = int(scale.numel())',
+        "new": '        acc["n_scales"] = int(x.numel())  # 变异：标尺个数报成逐值',
+        "tests": ["test_quantizer_scale_count_equals_values_over_group"],
+    },
 ]
 
 

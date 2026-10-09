@@ -46,10 +46,10 @@
 | 代价（质量腿 1） | clean bpc + `damage_bpc` = 本臂 − 本族基线；量化增量 = 本臂 − 同拓扑 fp16 | 同进程、同一路径重测（`b21.b19.bpc_of`） |
 | 代价（质量腿 2） | 合成长程召回 copy/induction/var_recall + Wilson 95% + 逐源簇 | `tools/evalkit/longrange_tasks.py` |
 | 参照系 | chance = 1/64 = 0.0156；局部先验（最近 8 token）= 0.0146；逐臂毁源对照 | 同仪器内置 |
-| 收益（内存） | 每位置部署字节对 fp16 的倍率（**解析**）；实测显存单列 | `scale_caliber` / `results.json::memory_convention` |
-| **本格自测方差** | 同臂 3 个评测窗口 seed 的单臂 bpc 极差 + **配对 Δ** 的 max\|·\| | `results.json::variance_self_measured[_paired]` |
-| 活性 | 量化：`n_values` / `changed_frac` / `rel_err` / `scale_min` / `scale_max`；掩码：挡掉的因果对数；头共享：真实 K/V 形状 | `results.json::points[*].activity` |
-| 可控性 | ① 仪器自检（本路径 vs 既有仪器逐位）；② 非量化臂与 `2631` 逐位；③ `--charts-only` 可重画 | `results.json::instrument` / `reuse` |
+| 收益（内存） | 每位置部署字节对 fp16 的倍率（**解析**）；实测显存单列；同价对手 fp8 解析（未测质量） | `scale_caliber` / `results.json::memory_convention` |
+| **本格自测方差 / 排序带** | **在力带 = 单臂跨窗口 bpc 极差 0.036324**（标准口径 = 配对 Δ、≥5 窗口；本批 3 窗口 ⇒ 不满足）。3 点配对量（均值 +4.1e-05）只作描述 | `results.json::ranking_band` / `variance_self_measured[_paired]` |
+| 活性 | 量化：`n_values` / **`n_scales`（== values/G）** / `changed_frac` / `rel_err` / `scale_min` / `scale_max`；掩码：挡掉的因果对数；头共享：真实 K/V 形状 | `results.json::points[*].activity` |
+| 可控性 | ① 仪器自检（本路径 vs 既有仪器逐位）；② 非量化臂与 `2631` 逐位；③ `--charts-only` 可重画；④ §20 取锁/释放与前后空闲显存（机器可读） | `results.json::instrument` / `reuse` / `gpu_lock` |
 
 ## 4. 判据线（预先写下，不许事后调整）
 
@@ -63,8 +63,10 @@
 5. **⑤ 结论必须回答**：『8 位近无损且省约一半』这条参照线成立吗？成立到什么程度？在什么实现下不成立？
 
 **门禁**：①（主臂 `block G=32`）不成立 ⇒ 本实验作废，不得作为新价签。
-**方差带**：**本格自测**（不套用全局 0.014）——同臂 3 个评测窗口 seed，报单臂极差与**配对 Δ**；主判据
-Δ 必须超过自测带宽才可排序。
+**方差带（预登记口径 + 在力声明）**：**标准口径** = 同一对照臂对在多个评测窗口重测的**配对 Δ** 区间，
+要求 **≥5 个窗口**；**本批只跑了 3 个（<5）⇒ 不满足**，故**在力排序带 = 单臂跨窗口 bpc 极差 0.036324**
+（更保守）。本批所有「可排序 / 不可排序」判断一律用它；3 点配对量（均值 +4.1e-05、区间
+[+9e-06, +1.01e-04]）只作描述，**不当带**（主表窗口的 Δ 恰为该 3 点 max ⇒ 当带会循环、不可证伪）。
 **禁外推**：单点只描述；G 阶梯与 scheme 比较各点单独测（`config.json::criterion.no_single_point_extrapolation`）。
 **召回地板规则**：`recall ≤ chance + 2σ_wilson(chance)` ⇒ `at_floor = true`（读作「该任务上不可分辨」，
 不得写成「机制无效」，SCHEMA §19）。
@@ -77,6 +79,10 @@
 | 1 | **llama.cpp 的 `q8_0` / `q4_0` 块量化**（KV cache 量化用）：每个 32 个连续值的块共享 1 个 fp16 scale，`scale = 块内 amax / qmax` | 省存储/带宽；块沿行的连续维摊薄 scale，使每值开销从 2 B 降到 `2/32` B | 生产系统默认做法；`memory（未核）` | **本地实测**：在本仓 13.5M 模型上量它对 bpc/召回的实际影响，并**证明它沿 head_dim 摊薄仍严格前缀确定** |
 | 2 | **KIVI**（Liu et al., 2024, "KIVI: A Tuning-Free Asymmetric 2bit Quantization for KV Cache"）：**K cache per-channel、V cache per-token** 量化；沿 token 分组 + 残差 fp16 窗口 | K 有通道离群值（per-channel 保留分辨率）、V 的离群值在 token 上（per-token 更合适） | 论文口径 2-bit 近无损；`记忆·未核`（本机联网不可用，未核对原文/代码） | **本地实测**：KIVI 式在本仓的质量与**前缀不变性的代价**（K 侧沿 token 分组 ⇒ 块内过去值被后续位置改写） |
 | 3 | `tools/evalkit/kv_quant.py`（本仓）的**逐值标尺**（`cummax` 沿 token 轴） | 「过去位置严格前缀确定」——位置 t 的 scale 只由 ≤ t 决定 | **本地实测**（`2631`）：每值 +2 B 标尺 ⇒ int8 净 3 B/值 = fp16 的 1.5× ⇒ 内存负收益 | **降为对照臂**：本实验证明可与「前缀确定」兼容的摊薄方式是沿 `head_dim`，不是沿 token |
+| 4 | **fp8（E4M3/E5M2 式 KV 量化）**：1 B/值、浮点格式无显式标尺 | 8 位里存储最省的通用做法 | `记忆·未核`；本实验**未测质量** | **本地解析对照**：fp8 = 1.0 B/值 = fp16 的 ×0.50，**比 int8+块标尺（1.0625 B/值、×0.53）更省** ⇒ 界定「不能声称 int8+块标尺是最优 8 位方案」 |
+
+**撤回**：`2631/budget_caliber.py::mixed_axis_note` 的「K 侧做不到非 token 轴摊薄」——本实验证明
+K 沿 `head_dim` 分块（`block`）可摊到 `2/G` B/值**且保持严格因果**（详见 `analysis.md` §9）。
 
 **检索说明**：本机联网不可用 ⇒ 第 1/2 条为 `记忆·未核`，本文件**只把它们当作设计方向与对照口径**，
 不当判据；未核对的量化边界值（如 2-bit）不进入本实验的结论句。
@@ -87,21 +93,23 @@
   `2619/2621/2631` 的窗口 / 头共享族。
 - **seed**：`config.json::seed = 7`（评测窗口序）；模型是冻结 checkpoint（单 seed 训练）⇒ 训练侧散布
   未知，本实验**不**据此宣称结构优劣。
-- **自测方差**：同臂在 `window_seed ∈ {2,3,4}` 重测 bpc，报单臂极差与配对 Δ（见 `table.md` 表 5）。
-  召回的 Wilson CI 按池化计数（`2631` 复核 B2 已指出其偏窄，本文件沿用并把配对读法写进判读）。
+- **自测方差与排序带**：标准口径 = 配对 Δ、**≥5 个窗口**；**本批只跑了 3 个（<5）⇒ 不满足**，
+  故在力排序带 = **单臂跨窗口 bpc 极差 0.036324**（见 `table.md` 表 5 与 `results.json::ranking_band`）。
+  3 点配对量只作描述（均值 +4.1e-05；**不以 max|Δ| 当带**）。召回的 Wilson CI 按池化计数
+  （`2631` 复核 B2 已指出其偏窄，本文件沿用并把配对读法写进判读）。
 - **重跑**：纯推理无随机采样，同 seed 重跑应逐位相同；`--charts-only` 可纯 CPU 重生成表。
 
 ## 7. 成本
 
 - **GPU 墙钟预算：40 min**（`config.json::cost.gpu_wall_budget_min`，来源契约 WI-08）；
-  **实测 1.425 min**（`run_log.txt`，27 点 + 13 个方案行 + 自测方差全跑）。
-- **显存预算 ≤ 5 GiB**；实测**峰值 1798.6 MiB**（`torch.cuda.max_memory_allocated`）；跑前后
-  `nvidia-smi memory.free` = 16134 → 16526 MiB（余量 ≫ 8 GB）。
+  GPU 工作实测见 `results.json::cost`（共享卡被外部占用时同代码步时变长；wall 从取锁成功后起算）。
+- **显存预算 ≤ 5 GiB**；实测**峰值 1798.6 MiB**（`torch.cuda.max_memory_allocated`）。
+- **§20 共享卡记账（机器可读）**：`results.json::gpu_lock` = `holder_pid` / `wait_seconds` /
+  `free_mib_before` / `free_mib_after` / `release_ok` / `held_whole_run`。本实验整程 <10 min ⇒
+  SCHEMA §20.1 允许整程持锁；峰值 > 1 GiB 不满足免锁例外，故必须留此记录。
 - **预算不够时砍什么**（预登记）：先砍 scheme 比较臂（保留 `per_value`/`block g16`/`block g32`/
   `block_tok g32`/`kivi`），再砍自测方差到 2 个 seed，保全部 27 点与判据线；**不砍判据线**。
 - **可中断性**：`--charts-only` 只从 `results.json` 重画表（纯 CPU，不取 GPU 锁）。
-- **共享卡纪律**：GPU 任务串行（`/tmp/pathlm_gpu.lock`），本实验整程 1.4 min < 10 min（SCHEMA §20.1
-  允许整程持锁）；纯解析/单测部分不取锁。
 
 ## 8. 数据与脚本清单
 
@@ -115,7 +123,7 @@
 | 表 | `table.md`（表 1–5） |
 | 判读 | `analysis.md`（人话摘要 + 正面对照表 + 三道对账 + 失败与局限） |
 | 权重清单 | `MODEL.md`（冻结 checkpoint 哈希/体积/生成命令；权重不入库） |
-| 单测 / 变异 | `tests/test_kv_block_scale.py`、`mutate.py` → `mutation_report.json`（7/7 抓红 + 逐字节还原） |
+| 单测 / 变异 | `tests/test_kv_block_scale.py`、`mutate.py` → `mutation_report.json`（8/8 抓红 + 逐字节还原） |
 | 日志 | `run_log.txt`（逐行读数） |
 
 ## 9. 失败决策树

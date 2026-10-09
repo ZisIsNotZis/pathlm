@@ -80,7 +80,7 @@
     "⑤ 结论必须回答：『8 位近无损且省约一半』这条参照线成立吗？成立到什么程度？在什么实现下不成立？"
    ],
    "sign_convention": "damage_bpc = bpc_臂 − 本族基线 bpc（正 = 更差）；量化增量 = bpc_量化臂 − 同拓扑不量化臂 bpc（正 = 更差）。",
-   "variance_band_self_measured": "本格自测（不得套用全局 0.014）：同一臂在 window_seed ∈ {2,3,4} 三个独立评测窗口下重测 bpc，报极差与半宽；主判据 Δ 必须大于该自测带宽才可排序。",
+   "variance_band_self_measured": "本格自测（不得套用全局 0.014）。**标准口径**：同一对照臂对在多个评测窗口上重测，取**配对 Δ** 的区间，要求 **≥5 个窗口**。**本批**因预算只跑了 **3 个窗口**（<5）⇒ 不满足标准，**在力（in force）排序带退用更保守的单臂跨窗口 bpc 极差 = 0.036324**。**声明：本批所有『可排序 / 不可排序』判断一律用 0.036324**；3 点配对量（均值 ≈+4.1e-5）只作描述，**不得当带**（主表那个窗口的 Δ 恰为该 3 点 max ⇒ 当带会循环、不可证伪）。",
    "no_single_point_extrapolation": "SCHEMA §17.11：单点只描述；G 阶梯与 scheme 比较各点单独测，不外推。",
    "recall_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（不可分辨，不得写成机制无效，SCHEMA §19）。",
    "gate": "① 主臂 block(G=32) 前缀不变性不成立 ⇒ 本实验作废，不得作为新价签。"
@@ -102,6 +102,8 @@
     3,
     4
    ],
+   "self_measured_windows": 3,
+   "self_measured_standard_windows": 5,
    "device": "cuda",
    "note": "与 2610/2614/2619/2620/2621/2631 同一窗口序 ⇒ clean bpc 同口径可比。"
   },
@@ -497,7 +499,7 @@
    "⑤ 结论必须回答：『8 位近无损且省约一半』这条参照线成立吗？成立到什么程度？在什么实现下不成立？"
   ],
   "sign_convention": "damage_bpc = bpc_臂 − 本族基线 bpc（正 = 更差）；量化增量 = bpc_量化臂 − 同拓扑不量化臂 bpc（正 = 更差）。",
-  "variance_band_self_measured": "本格自测（不得套用全局 0.014）：同一臂在 window_seed ∈ {2,3,4} 三个独立评测窗口下重测 bpc，报极差与半宽；主判据 Δ 必须大于该自测带宽才可排序。",
+  "variance_band_self_measured": "本格自测（不得套用全局 0.014）。**标准口径**：同一对照臂对在多个评测窗口上重测，取**配对 Δ** 的区间，要求 **≥5 个窗口**。**本批**因预算只跑了 **3 个窗口**（<5）⇒ 不满足标准，**在力（in force）排序带退用更保守的单臂跨窗口 bpc 极差 = 0.036324**。**声明：本批所有『可排序 / 不可排序』判断一律用 0.036324**；3 点配对量（均值 ≈+4.1e-5）只作描述，**不得当带**（主表那个窗口的 Δ 恰为该 3 点 max ⇒ 当带会循环、不可证伪）。",
   "no_single_point_extrapolation": "SCHEMA §17.11：单点只描述；G 阶梯与 scheme 比较各点单独测，不外推。",
   "recall_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（不可分辨，不得写成机制无效，SCHEMA §19）。",
   "gate": "① 主臂 block(G=32) 前缀不变性不成立 ⇒ 本实验作废，不得作为新价签。"
@@ -532,6 +534,17 @@
    "kivi_group_default": 32,
    "role": "KIVI 式标准：K per-channel（token 组）/ V per-token；K 侧违反前缀确定 ≤ kivi_group−1，V 侧严格因果"
   }
+ },
+ "gpu_lock": {
+  "lock_path": "/tmp/pathlm_gpu.lock",
+  "holder_pid": 1971801,
+  "acquired_at": 1791548850.15,
+  "wait_seconds": 0.001,
+  "reclaimed": [],
+  "release_ok": true,
+  "free_mib_before": 16274,
+  "free_mib_after": 13372,
+  "held_whole_run": true
  },
  "instrument": {
   "bpc_path": {
@@ -690,6 +703,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 6291456,
      "mean_abs_err": 0.003516857,
      "max_abs_err": 0.054554462,
      "rel_err": 0.003703028,
@@ -906,6 +920,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 393216,
      "mean_abs_err": 0.004051119,
      "max_abs_err": 0.052871227,
      "rel_err": 0.004265726,
@@ -1122,6 +1137,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 196608,
      "mean_abs_err": 0.004626168,
      "max_abs_err": 0.054387093,
      "rel_err": 0.004871036,
@@ -1338,6 +1354,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 196608,
      "mean_abs_err": 0.002377828,
      "max_abs_err": 0.053146362,
      "rel_err": 0.002503765,
@@ -1554,6 +1571,7 @@
     "kivi_group": 32,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 196608,
      "mean_abs_err": 0.003038957,
      "max_abs_err": 0.053165436,
      "rel_err": 0.003199911,
@@ -1770,6 +1788,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 786432,
      "mean_abs_err": 0.003335722,
      "max_abs_err": 0.052712113,
      "rel_err": 0.003512371,
@@ -1986,6 +2005,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 393216,
      "mean_abs_err": 0.002048169,
      "max_abs_err": 0.053572655,
      "rel_err": 0.002156667,
@@ -2202,6 +2222,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 98304,
      "mean_abs_err": 0.002865268,
      "max_abs_err": 0.053915977,
      "rel_err": 0.003016989,
@@ -2418,6 +2439,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 6291456,
      "mean_abs_err": 0.063077015,
      "max_abs_err": 0.988842964,
      "rel_err": 0.066350234,
@@ -2634,6 +2656,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 393216,
      "mean_abs_err": 0.074061008,
      "max_abs_err": 0.969714165,
      "rel_err": 0.077870992,
@@ -2850,6 +2873,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 196608,
      "mean_abs_err": 0.084639252,
      "max_abs_err": 0.97764343,
      "rel_err": 0.088960355,
@@ -3066,6 +3090,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 196608,
      "mean_abs_err": 0.044325644,
      "max_abs_err": 0.961325169,
      "rel_err": 0.046672931,
@@ -3282,6 +3307,7 @@
     "kivi_group": 32,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 196608,
      "mean_abs_err": 0.055937676,
      "max_abs_err": 0.981277466,
      "rel_err": 0.058764525,
@@ -3555,23 +3581,41 @@
    1.3e-05,
    9e-06
   ],
-  "range": 9.2e-05,
-  "max_abs": 0.000101
+  "mean": 4.1e-05,
+  "interval": [
+   9e-06,
+   0.000101
+  ],
+  "max_abs": 0.000101,
+  "note": "3 个窗口；**不以 max|Δ| 当带**（主表用的那个窗口的 Δ 恰为这三点 max ⇒ 当带会循环、不可证伪）；只报均值与区间，且只作描述。"
  },
  "variance_band_bpc_self_measured": 0.036324,
- "variance_band_paired_delta": 0.000101,
+ "ranking_band": {
+  "in_force_band_bpc": 0.036324,
+  "in_force_caliber": "单臂跨窗口 bpc 极差（同臂在多个评测窗口重测）",
+  "standard_caliber": "配对 Δ（同一对照臂对在多个评测窗口重测）的区间，≥5 个窗口",
+  "this_batch_windows": 3,
+  "standard_met": false,
+  "declaration": "本批 variance 只跑了 3 个窗口（<5）⇒ **不满足**标准配对口径；故本批所有『可排序/不可排序』判断用**单臂跨窗口极差 0.036324**。3 点配对量（均值 4.1e-05）只作描述，不当带。"
+ },
  "answer": {
   "q": "『8 位近无损且省约一半』这条参照线成立吗？成立到什么程度？在什么实现下不成立？",
+  "ranking_band_bpc_in_force": 0.036324,
   "int8_block_g32": {
    "paired_delta_bpc_vs_fp16": 0.000101,
+   "delta_sign": "positive（略差，正号）",
+   "vs_ranking_band": "远低于任何可排序线（+0.000101 << 在力带 0.036324）",
    "deployment_bytes_per_position": 6528.0,
    "fp16_deployment_bytes_per_position": 12288.0,
    "reduction_frac": 0.46875,
    "ratio_vs_fp16": 0.5312,
-   "prefix_invariant": true
+   "prefix_invariant": true,
+   "staging_bytes_per_request": 0,
+   "note": "沿 head_dim 摊薄严格因果 ⇒ 无需 staging；结论表述为『略差、正号、远低于可排序线』，不写『不可分辨』。"
   },
   "int4_block_g32": {
-   "paired_delta_bpc_vs_fp16": 0.022522,
+   "damage_bpc_vs_fp16": 0.022522,
+   "damage_bpc_vs_ranking_band": "< 带",
    "deployment_bytes_per_position": 3456.0,
    "reduction_frac": 0.71875
   },
@@ -3580,6 +3624,23 @@
    "ratio_vs_fp16": 1.5,
    "note": "逐值标尺（旧『因果化修复』的口径）⇒ int8 = 3 B/值 = fp16 的 1.5×；『省一半』只在这个实现下不成立。"
   },
+  "fp8_same_price_opponent": {
+   "mode": "fp8",
+   "scheme": "none",
+   "value_bytes_per_value": 1.0,
+   "scale_bytes_per_value": 0.0,
+   "bytes_per_position": 6144.0,
+   "ratio_vs_fp16": 0.5,
+   "reduction_vs_fp16": 0.5,
+   "quality_measured": false,
+   "note": "fp8 是浮点格式，不需要显式标尺；解析 1 B/值 = fp16 的 ×0.50，比 int8+块标尺（1.0625 B/值）更省。质量未测。"
+  },
+  "combined_arm_scheme_delta": {
+   "gqa_int4_block_minus_per_value": 0.009642,
+   "mqa_int4_block_minus_per_value": 0.054794,
+   "note": "头共享×4 位换块标尺后变差；归因待核（见 analysis §7）。"
+  },
+  "cannot_claim": "不能声称 int8+块标尺是所有 8 位方案里最优的：fp8 解析为 1 B/值、无标尺、×0.50，比 1.0625 B/值 更省（fp8 质量本实验未测）。",
   "verified": true
  },
  "points": [
@@ -3598,6 +3659,7 @@
     "kind": "quant",
     "mode": "fp16",
     "n_values": 6291456,
+    "n_scales": 0,
     "mean_abs_err": 0.000167348,
     "max_abs_err": 0.00390625,
     "rel_err": 0.000176208,
@@ -3799,6 +3861,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 196608,
      "mean_abs_err": 0.004626168,
      "max_abs_err": 0.054387093,
      "rel_err": 0.004871036,
@@ -4003,6 +4066,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 196608,
      "mean_abs_err": 0.084639252,
      "max_abs_err": 0.97764343,
      "rel_err": 0.088960355,
@@ -8552,6 +8616,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 1572864,
+     "n_scales": 49152,
      "mean_abs_err": 0.005047695,
      "max_abs_err": 0.044499636,
      "rel_err": 0.004986457,
@@ -9274,6 +9339,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 786432,
+     "n_scales": 24576,
      "mean_abs_err": 0.005354316,
      "max_abs_err": 0.045798779,
      "rel_err": 0.005026723,
@@ -9983,6 +10049,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 1572864,
+     "n_scales": 49152,
      "mean_abs_err": 0.091390724,
      "max_abs_err": 0.831288338,
      "rel_err": 0.090467245,
@@ -10705,6 +10772,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 786432,
+     "n_scales": 24576,
      "mean_abs_err": 0.096944133,
      "max_abs_err": 0.835763931,
      "rel_err": 0.091154972,
@@ -11414,6 +11482,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 196608,
      "mean_abs_err": 0.005149778,
      "max_abs_err": 0.055613041,
      "rel_err": 0.00474538,
@@ -11627,6 +11696,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 196608,
      "mean_abs_err": 0.005041453,
      "max_abs_err": 0.05711621,
      "rel_err": 0.004762626,
@@ -11840,6 +11910,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 196608,
      "mean_abs_err": 0.088686671,
      "max_abs_err": 0.97764343,
      "rel_err": 0.087594052,
@@ -12053,6 +12124,7 @@
     "kivi_group": null,
     "quant": {
      "n_values": 6291456,
+     "n_scales": 196608,
      "mean_abs_err": 0.088125713,
      "max_abs_err": 0.97764343,
      "rel_err": 0.087863755,
@@ -12272,6 +12344,7 @@
     "diagonal_kept": true,
     "quant": {
      "n_values": 0,
+     "n_scales": 0,
      "mean_abs_err": 0.0,
      "max_abs_err": 0.0,
      "rel_err": 0.0,
@@ -13001,6 +13074,7 @@
     "diagonal_kept": true,
     "quant": {
      "n_values": 0,
+     "n_scales": 0,
      "mean_abs_err": 0.0,
      "max_abs_err": 0.0,
      "rel_err": 0.0,
@@ -13714,16 +13788,19 @@
  },
  "cost": {
   "device": "cuda",
-  "wall_seconds": 85.84,
-  "wall_minutes": 1.431,
+  "wall_seconds": 111.32,
+  "wall_minutes": 1.855,
+  "lock_wait_seconds": 0.001,
+  "gpu_work_only": true,
+  "contention_note": "wall 从取锁成功后开始计（不含等锁）；共享卡被外部占用时同代码步时会更长。",
   "peak_mem_mib": 1798.6,
   "smoke": false
  },
  "code": {
-  "tools/evalkit/kv_quant.py": "a4f2865ac175764b",
-  "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/run.py": "5d64009903821127",
+  "tools/evalkit/kv_quant.py": "d7d4451c0da89fc0",
+  "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/run.py": "649cb1c429049ba2",
   "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/block_arms.py": "4dd13d86c4a7ca7c",
-  "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/scale_caliber.py": "077df15587c2bae1"
+  "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/scale_caliber.py": "9c97fa22224e5740"
  },
  "deployment_caliber": {
   "value_bytes": {
@@ -13804,11 +13881,25 @@
   ],
   "token_ladder_staging": {
    "group": 32,
-   "positions_held": 32,
-   "bytes_per_request": 393216.0,
-   "bytes_per_position_at_T": 1536.0,
+   "worst_positions_held": 32.0,
+   "mean_positions_held": 15.5,
+   "worst_bytes_per_request": 393216.0,
+   "mean_bytes_per_request": 190464.0,
+   "worst_bytes_per_position_at_T": 1536.0,
+   "mean_bytes_per_position_at_T": 744.0,
    "T": 256,
-   "note": "fp16 原值帧内缓冲（回填用）；与目标精度无关，int4 也要留"
+   "note": "fp16 原值帧内缓冲（回填用）；两套口径：持整块（最坏）vs 平均半块；与目标精度无关，int4 也要留"
+  },
+  "fp8_reference": {
+   "mode": "fp8",
+   "scheme": "none",
+   "value_bytes_per_value": 1.0,
+   "scale_bytes_per_value": 0.0,
+   "bytes_per_position": 6144.0,
+   "ratio_vs_fp16": 0.5,
+   "reduction_vs_fp16": 0.5,
+   "quality_measured": false,
+   "note": "fp8 是浮点格式，不需要显式标尺；解析 1 B/值 = fp16 的 ×0.50，比 int8+块标尺（1.0625 B/值）更省。质量未测。"
   },
   "head_dim_g64_note": "head_dim = 32 ⇒ 沿 head_dim 的块只能整除到 G = 32；G = 64 要求块跨 token，无法同时保持前缀确定。非因果的 token 轴块见 token_ladder。",
   "per_arm": {

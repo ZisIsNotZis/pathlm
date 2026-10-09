@@ -260,6 +260,47 @@ def test_all_schemes_have_bytes_defined():
         assert dep["bytes_per_position"] > dep["value_bytes_per_position"]
 
 
+def test_quantizer_scale_count_equals_values_over_group():
+    """P2-4：量化器**实际产出**的标尺个数 == `values / G`（与解析字节账对账）。
+
+    block 沿 head_dim：标尺数 = `n_values / group`；kivi 的 V 侧 = `n_values / head_dim`。
+    """
+    torch.manual_seed(7)
+    x = torch.randn(2, 3, 32, 32) * 2          # B=2,H=3,T=32,head_dim=32
+    for group in (8, 16, 32):
+        st = quantize_kv(x, "int8", "block", group=group)[1]
+        assert st["n_scales"] == sc.analytic_scale_count(st["n_values"], group)
+        assert st["n_scales"] * group == st["n_values"]
+    # kivi 的 V 侧：整条 head_dim 共享一把 ⇒ 标尺数 = values/head_dim
+    st_v = quantize_kv(x, "int8", "kivi", kivi_group=32, is_key=False)[1]
+    assert st_v["n_scales"] * 32 == st_v["n_values"]
+    # per_value（对照）：逐值一把 ⇒ 标尺数 == 值数
+    st_pv = quantize_kv(x, "int8")[1]
+    assert st_pv["n_scales"] == st_pv["n_values"]
+
+
+def test_fp8_reference_is_cheaper_than_int8_block():
+    """P2-5：fp8 解析为 1 B/值、无标尺 ⇒ 比 int8+块标尺（1.0625 B/值）更省。"""
+    cfg = _cfg()
+    fp8 = sc.fp8_reference(cfg)
+    assert fp8["bytes_per_position"] == 6144.0            # 2·12·8·32·1.0
+    assert fp8["ratio_vs_fp16"] == pytest.approx(0.5)
+    assert fp8["quality_measured"] is False
+    int8_block = sc.deployment_bytes(_point(), {"mode": "int8", "value_bytes": 1.0},
+                                     cfg, "block", 32)
+    assert int8_block["bytes_per_position"] > fp8["bytes_per_position"]
+
+
+def test_staging_reports_worst_and_mean_calibers():
+    """P2-2：staging 两套口径均给（持整块最坏 vs 平均半块），不得只给一个。"""
+    cfg = _cfg()
+    st = sc.staging_bytes_per_request(cfg, _point(), group=32)
+    # 每位置 2·12·8·32 = 6144 个 fp16 值 × 2 B = 12288 B/位置
+    assert st["worst_bytes_per_request"] == 32 * 12288
+    assert st["mean_bytes_per_request"] == pytest.approx(15.5 * 12288)
+    assert st["worst_bytes_per_request"] > st["mean_bytes_per_request"]
+
+
 # ---------------------------------------------------------- 6. 落盘证据（若存在）
 
 def test_recorded_result_prefix_invariance_holds_for_primary_scheme():
