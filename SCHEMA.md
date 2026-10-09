@@ -567,7 +567,9 @@ rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/nul
      `catalog.yaml` 的 M1 `verdict` 与**生成页** `axes/M-carrier/M1-carrier-type/README.md`
      仍留 `2.53%` ⇒ 账本与它自己引用的证据矛盾。现由
      `tools/check_catalog_strict.py` 的 **跨表面一致性**机检（`local.key_numbers` 声明的关键数字
-     必须在**账本 verdict / 生成页 / 实验产物**三类表面逐字出现；注入 `2.53%` 即红）。
+     必须在**账本 verdict / 生成页 / 实验产物**三类表面逐字出现；注入 `2.53%` 即红）；
+     另有 `local.key_numbers_forbidden` 的**已废止数字黑名单**（同一检查器 0b）——被替换掉的旧值
+     出现在三类表面任何一处即失败（本轮 `2.53%`、`约 2.2×` 均已入黑名单）。
 
    **强制动作**：改动后必须 `grep` 回扫**所有**引用点，并对**同一产物内互相关联的字段加
    一致性断言**——改定义处就回扫引用处、改一个字段就扫兄弟字段、改门限就扫下游比较句，

@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """`catalog.yaml` 的**严格结构审计**（补充 `check_schema.py` 不覆盖的三件事）。
 
+0b. **已废止数字黑名单（`local.key_numbers_forbidden`）**：声明过的**废弃值**不得出现在
+   三类表面（账本 verdict+benefit、生成页、实验产物）任何一处——「改数字只改一半」会立刻红。
 0. **跨表面一致性（`local.key_numbers` 声明式）**：一个格子的**关键数字**必须在**三类表面**
    逐字出现——① `catalog.yaml` 的该格 `verdict`、② 由它生成的课题页
    `axes/<grid_dir>/README.md`、③ 该格的**实验产物文本**（`experiments/**` 下的
@@ -138,6 +140,34 @@ def check_key_numbers() -> tuple[list[str], list[dict]]:
     return errors, rows
 
 
+def check_forbidden_numbers() -> tuple[list[str], list[dict]]:
+    """已废止数字不得出现在三类表面（账本 / 生成页 / 实验产物）。"""
+    cfg = yaml.safe_load(CATALOG.read_text())
+    axis_dir = {a["id"]: a["dir"] for a in (cfg.get("axes") or [])}
+    rows, errors = [], []
+    for g in cfg["grids"]:
+        toks = (g.get("local") or {}).get("key_numbers_forbidden") or []
+        if not toks:
+            continue
+        grid_dir = f"{axis_dir[g['axis']]}/{g['id']}"
+        page = ROOT / "axes" / grid_dir / "README.md"
+        page_text = page.read_text() if page.exists() else ""
+        exp_dir = ROOT / "axes" / grid_dir / "experiments"
+        prod_text = ""
+        if exp_dir.exists():
+            prod_text = "\n".join(p.read_text(errors="ignore") for p in _iter_text_files(exp_dir))
+        ledger_text = "\n".join(str((g.get("local") or {}).get(k) or "")
+                                for k in ("tax", "benefit")) + "\n" + (g.get("verdict") or "")
+        for tok in toks:
+            hits = [n for n, t in (("账本", ledger_text), ("生成页", page_text),
+                                   ("实验产物", prod_text)) if tok in t]
+            rows.append({"grid": g["id"], "token": tok, "hits": hits})
+            if hits:
+                errors.append(f"{g['id']}: 已废止数字 {tok!r} 仍出现在 {hits}"
+                              f"（改数字必须扫全部表面；见 SCHEMA §24 第 13 类）")
+    return errors, rows
+
+
 def check_stray_keys() -> list[str]:
     """结构检查：**注释块之后、下一个 `- id:` 之前**不得出现格内键。
 
@@ -171,6 +201,8 @@ def main() -> int:
     errors += check_stray_keys()
     kn_errors, kn_rows = check_key_numbers()
     errors += kn_errors
+    fb_errors, fb_rows = check_forbidden_numbers()
+    errors += fb_errors
     print("== 每格 prior_art_source 归属核对 ==")
     for r in rows:
         print(f"  [{'OK ' if r['ok'] else 'BAD'}] {r['grid']:28s} axis={r['axis']} "
@@ -186,6 +218,12 @@ def main() -> int:
             print(f"  [{mark}] {r['grid']:22s} {r['token']:10s} verdict={r['verdict']} "
                   f"page={r['page']} products={r['products']}")
         print(f"  共 {len(kn_rows)} 个声明数字，缺表面 {len(kn_errors)} 条")
+    if fb_rows:
+        print("== 已废止数字黑名单（local.key_numbers_forbidden）==")
+        for r in fb_rows:
+            print(f"  [{'BAD' if r['hits'] else 'OK '}] {r['grid']:22s} {r['token']:10s} "
+                  f"仍出现于={r['hits'] or '—'}")
+        print(f"  共 {len(fb_rows)} 个废弃值，命中 {len(fb_errors)} 条")
     for e in errors:
         print("  ✗", e)
     print("\n=== catalog 严格审计：" + ("全过 ===" if not errors else f"{len(errors)} 条问题 ==="))
