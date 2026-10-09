@@ -42,17 +42,35 @@ bash axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-ex
 python3 axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/reconcile_numbers.py
 ```
 
-## 共享文件指纹（`SCHEMA` §22.6；本波改过的引擎文件在该时点的哈希）
+## 共享文件指纹（`SCHEMA` §22.6；本波改过/新引入的文件在其**当前 HEAD** 的 sha256）
 
-| 文件 | sha256（本波结束时刻） |
-|---|---|
-| `pathlm/depth_ar.py` | 见 `git log -1 -- pathlm/depth_ar.py` 对应提交（新增 `aux_mode` / `carry_gate` / `mod_ratio` / `FrozenOpenGate`） |
-| `train_depth_ar.py` | 同上（新增 4 个 CLI 开关 + `_r7_intervention` + 规格自检） |
-| `pathlm/mod_router.py` | 新文件（MoD 路由，`mod_ratio>0` 才激活） |
-| `docs/engine_capability.md` | 行号漂移同步 + 新增 C13–C16 四条能力行 |
+| 文件 | 当前 HEAD 提交 | sha256（前 32 位） | 本波改动 |
+|---|---|---|---|
+| `pathlm/depth_ar.py` | `b8b78fc` | `b304c234b82b51a49ba477285169b41e` | 新增 `aux_mode` / `carry_gate` / `mod_ratio` 配置与校验、`FrozenOpenGate`、非 dense 前向与解码器的门分支、additive 归一化 |
+| `train_depth_ar.py` | `b8b78fc` | `218b63179e623d6a938e7cabe85a71c5` | 新增 4 个 CLI 开关 + `_r7_intervention` 活性块 + 规格自检 |
+| `pathlm/mod_router.py` | `b8b78fc` | `33c46e9614580b9da230ffe4de91e8a0` | 新文件（MoD 式路由，`mod_ratio>0` 才激活） |
+| `docs/engine_capability.md` | `a78999c` | `6d7a4537dc6cb0da0548a7bc2c4816f0` | 拒绝点行号同步 + 新增 C13–C16 四条能力行 |
+| `tests/test_engine_capability.py` | `b8b78fc` | `6d0adb594a2a9dc4eec6e2f8004ebe0d` | 新增 C13–C16 四个可执行用例 |
 
-> 声明：本波与 `axes/M-carrier/**`（2633/2634/2635）、`axes/A-mixing/**`（2636/2637）、
-> `axes/H-horizon/H3-composition/**` 并行运行；`pathlm/depth_ar.py` 的改动使
-> `tests/test_carry_seed2_13m.py::test_engine_files_unchanged_since_2631_run`（按文件哈希
-> 断言引擎未变的 §9 复用前提）变红——该线应把复用证据换成「开关关闭时逐位等价」的
-> 单测口径（`SCHEMA` §9 第 1 条），本波未改其目录。
+## 跨线重叠与归属（复核 P0-1 要求如实登记；**本轮不宣布回归绿**）
+
+1. **`docs/engine_capability.md` 与 `tests/test_engine_capability.py` 的**真实归属**：
+   这两个文件在 `b8b78fc` 之前是**未跟踪**状态（F_CLOSURE / M-carrier 方向的在飞工作，
+   由**对方线**撰写）；我的引擎改动使表中「拒绝点行号」实例失效、其机器核对变红，
+   为恢复共享 CI 绿我把它们**纳入 `b8b78fc`** 并同步行号 + 补本波新开关的四条能力行。
+   现在它们随 `b8b78fc`（内容）与 `a78999c`（行号更正）在库里。**归属 = 对方线撰写、
+   本线代为入库与同步**；今后遵守「一文件一写入者」，本线不再动他人未跟踪文件。
+2. **`pathlm/depth_ar.py::carry_liveness` 里 `write_rel_note` 的 5 行措辞改动**：
+   同样是**对方线（M-carrier 方向）**的工作树改动，因我先 `git add` 了整文件而随
+   `b8b78fc` 入账（`git log -S write_rel_note -- pathlm/depth_ar.py` 只指到 `b8b78fc`，
+   这正是归属被合并的痕迹）。**未回滚**（内容有效），归属如实记为对方线。
+3. **回归接单登记（P0-1，已闭环）**：`tests/test_carry_seed2_13m.py::test_engine_files_unchanged_since_2631_run`
+   （按 `pathlm/depth_ar.py` 的 sha256 断言引擎未变的 §9 复用前提）曾由本波改动打红。
+   **M1 线已接单**并把该断言改成**行为级等价**口径（`--dense` 三档配置逐位 logits 等价）。
+   本轮全量 `CUDA_VISIBLE_DEVICES="" python3 -m pytest tests/ -q`：
+   **812 passed / 1 failed**，两条引擎哈希断言**已转绿**；唯一红是 M1 线**在飞未提交**的
+   `test_embedded_pointer_matches_authoritative_artifact`（其工作树改动中的 `KeyError`，
+   与本波无关）。⇒ 本波**不宣布该套件全绿**，只宣布「本波引起的两条红已由 M1 线修掉、
+   剩余 1 红属他人在飞工作」。
+4. 本波与 `axes/M-carrier/**`（2633/2634/2635）、`axes/A-mixing/**`（2636/2637）、
+   `axes/H-horizon/H3-composition/**` 并行运行；本线只写自己的路径，未改其目录。

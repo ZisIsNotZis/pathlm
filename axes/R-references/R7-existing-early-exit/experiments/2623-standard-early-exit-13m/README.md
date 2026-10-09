@@ -71,8 +71,13 @@ budget: "GPU 墙钟 ≤120 min（含冒烟 + 全部训练臂 + 推断电池 + �
 
 **该跌**：
 4. `D1`（否证「C1 形态是独有资产」）：若 `bpc(ls-fair) ≤ bpc(c1-fair) + σ_cell` **且**
-   `tf@4(ls-fair) ≥ tf@4(c1-fair) − σ_tf`（σ_tf = 接受率的二项 SE×2），则 C1 的门
-   必须降级为「不必要」。反向（门更好）则写「门有增量」并给差值。
+   `tf@4(ls-fair) ≥ tf@4(c1-fair) − σ_tf`（σ_tf = 接受率的二项 SE×2；`tf@4` 的 n = 81600
+   个位置 ⇒ 2×SE ≈ 0.0033），则 C1 的门必须降级为「不必要」。反向（门更好）则写「门有
+   增量」并给差值。
+   **实测（预登记判据的合取未满足，如实登记、不事后改判据）**：第一条成立
+   （bpc 好 0.2110），**第二条不成立**（0.8402 < 0.9102 − 0.0033）⇒
+   **不得据 D1 判「门必须降级」**；「门买的出口资产可否由配方替代」降级为**待测**
+   （判读见 `analysis.md` §3 D1 与 §7 未测项 #5）。
 5. `D2`：若 `bpc(mod) − bpc(stock) > σ_cell`（MoD isoFLOP 更差）⇒ 「逐 token 路由在
    13M/enwik8 无头寸」；落在 ±σ_cell 内 ⇒ 写「不可分辨」，不得写「有效」。
 6. `D3`：墙钟一律报**比值中位与极差**；极差 > 效应 ⇒ 写「不可分辨」。单次抽样倍率
@@ -93,6 +98,12 @@ budget: "GPU 墙钟 ≤120 min（含冒烟 + 全部训练臂 + 推断电池 + �
 **主判据（primary）**：`Z1`（配方拆分的点估计 + 余项）+ `D1`（门是否有增量）。
 其余为并列判据。
 
+**复核后追加的对照臂（不改判据、不改口径）**：复核指出配方轴（`renorm` 除分母 vs
+`additive` 不除）同时改了「主目标份额」与「全局损失尺度」⇒ 追加
+`r7-c1-fair-share-s0`（`--aux-mode additive --aux-weight 8`：主目标份额 = 1/9，与 C1 现配方
+同份额）作为**同份额控制臂**。它只回答「方向是否由份额造成」，**不替换**任何预登记判据；
+「损失尺度」这一残余混淆如实记为未隔离（`analysis.md` §2 末段、§7 未测项 #4）。
+
 ## 5. 对照与方差（本格自测噪声门限）
 
 - 对照臂见 §2；**同一数据**（enwik8_full，`data/enwik8_full.npz`，train 段训练、val 段
@@ -110,7 +121,8 @@ budget: "GPU 墙钟 ≤120 min（含冒烟 + 全部训练臂 + 推断电池 + �
 - `gpu_wall_budget: 120 min`（含冒烟 + 全部训练臂 + 推断电池 + 对账；无 100M）。
 - 先测步时再定预算：`SCHEMA` §17.8 要求成本 = 臂数 × **本实验实测步时**；冒烟结果写
   `run_log.txt` 的 `[smoke]` 行与 `config.json`，`analysis.md` 附表引用同一批数字。
-- 峰值显存：13M 级别，预计 < 300 MB（`SCHEMA` §20.2 的 5 GB 礼貌线不构成约束）；
+- 峰值显存：**实测训练 935–1340 MB、解码 ≤190 MB**（13M 级别；`SCHEMA` §20.2 的 5 GB
+  礼貌线不构成约束）；
   实测（训练 peak + 解码 peak + `nvidia-smi` 前后）逐臂落盘。
 - 可中断性：高（每臂独立 run 目录、独立落盘；臂间释放 GPU 锁 ≥60 s，`SCHEMA` §20.1）。
 - **预算不够时砍什么**：先砍 seed-1 重复（先 `ls-fair` 后 `c1-fair`），再砍推断电池的
@@ -127,7 +139,7 @@ budget: "GPU 墙钟 ≤120 min（含冒烟 + 全部训练臂 + 推断电池 + �
 | 共用解码机械 | `exit_policies.py`（与 `DepthARDecoder` 同 fill 语义；**所有臂共用同一套**，唯一差别 = 策略） |
 | 引擎新代码 | `pathlm/mod_router.py`（MoD 式路由）+ `DepthARConfig.carry_gate/aux_mode/mod_ratio` |
 | 单测 | `tests/test_r7_early_exit_arms.py`（19 条） |
-| 落盘 | `results.json` / `run_log.txt` / `cycle_log.jsonl` / `analysis.md` / `MODEL.md` / `config.json` / `controls/` |
+| 落盘 | `results.json`（含 `intervention` 活性块与 `accept_rate_window`/`n_accepts` 派生字段）/ `run_log.txt` / `cycle_log.jsonl`（spec 每轮一行；由 `run.py --stage cyclelog` 生成）/ `analysis.md` / `MODEL.md` / `config.json` / `controls/` / `enrich_results.py`（派生可复算） |
 | 对账 | `reconcile_numbers.py` |
 
 ## 8. 失败决策树
@@ -144,7 +156,8 @@ budget: "GPU 墙钟 ≤120 min（含冒烟 + 全部训练臂 + 推断电池 + �
 ## 9. 产出
 
 - `results.json`（机读：各臂训练结果 + 推断电池 + 交错墙钟原始行 + 内存）
-- `run_log.txt`（`[smoke]` 步时 / 逐臂一行）、`cycle_log.jsonl`（spec 每轮一行活性量）
+- `run_log.txt`（`[smoke]` 步时 / 逐臂一行）、`cycle_log.jsonl`（spec 每轮一行活性量；
+  `run.py --stage cyclelog` 生成，`SCHEMA` §17.4 的周期活性量要求）
 - `analysis.md`（人话摘要 + 四腿表格 + 判据逐条判读 + 未测项）
 - `MODEL.md`（各臂权重 sha256、体积、生成命令；权重不入库）
 - `config.json`（resolved config：数据/参数/seed/步时/预算）

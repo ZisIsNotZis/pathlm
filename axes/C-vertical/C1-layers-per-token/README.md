@@ -6,11 +6,11 @@ title: "每个 token 跑几层"
 status: todo
 judge: "深度-bpc 曲线 + 出口接受率 + 墙钟/FLOPs 加速 + 税"
 cost: "13M 单臂 ~5–25 min；100M 单臂 ~32–70 min"
-tax: "形态税 +0.6786（13M 首验）→ matched-step 真税 +0.3295 @12k → 100M +0.4362（同引擎干净归属：形态 96% / 引擎 4% / 配方 ≈0）"
+tax: "13M matched-step 真税 **+0.3291**（本波 2623 复现历史 +0.3295）；**2×2（门×配方）+ 交互重拆**：配方轴**反向**（保权更差 0.1218–0.2610；**同份额控制臂 additive λ=8 与 renorm 打平**（1.8550 vs 1.8575）⇒ 驱动量是份额、不是归一化形式，尺度未单独隔离）、门 +0.0718/+0.2110、**交互 −0.1392（两轴不独立 ⇒ 三项相加只是记账恒等式）**；形态税**按配方分列**（现配方 +0.3291 / λ=0.1 条件值 +0.5901 / 最好形态臂 无门×等权 +0.2573）。**100M 的 +0.4362 归属未重拆**：原记录「形态 96% / 引擎 4% / 配方 ≈0」是**同引擎三列拆混杂**口径，本波只覆盖 13M，**原样保留并标注**"
 benefit: "tf@4 0.9726、tf@6 0.9946；d6−d12 = 0.0003（半栈 ≈ 全栈）；exit-4 3.1× 墙钟、uniform-exit 1.8×；逐 token 变深度 + 不重 prefill 已实现并逐位测试（max|Δlogit| 9.2e-5）"
 verdict: "**已有**：逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。**尚缺**：100M 端到端深度草稿 + 交错口径墙钟 + FLOPs 净账（省延迟不省算力）（待补做）。"
 deps: ["C5-refinement-operator", "C6-depth-supervision", "H4-head-trunk-relation", "G1-selector"]
-evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/evidence @7cdcdaa", ".scratch/25-tax-attribution/evidence @2e86924"]
+evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/evidence @7cdcdaa", ".scratch/25-tax-attribution/evidence @2e86924", "axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/analysis.md @FINAL"]
 ---
 
 <!-- AUTO:begin -->
@@ -40,7 +40,7 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 
 ## 4. 结论与数字
 
-- **税**：形态税 +0.6786（13M 首验）→ matched-step 真税 +0.3295 @12k → 100M +0.4362（同引擎干净归属：形态 96% / 引擎 4% / 配方 ≈0）
+- **税**：13M matched-step 真税 **+0.3291**（本波 2623 复现历史 +0.3295）；**2×2（门×配方）+ 交互重拆**：配方轴**反向**（保权更差 0.1218–0.2610；**同份额控制臂 additive λ=8 与 renorm 打平**（1.8550 vs 1.8575）⇒ 驱动量是份额、不是归一化形式，尺度未单独隔离）、门 +0.0718/+0.2110、**交互 −0.1392（两轴不独立 ⇒ 三项相加只是记账恒等式）**；形态税**按配方分列**（现配方 +0.3291 / λ=0.1 条件值 +0.5901 / 最好形态臂 无门×等权 +0.2573）。**100M 的 +0.4362 归属未重拆**：原记录「形态 96% / 引擎 4% / 配方 ≈0」是**同引擎三列拆混杂**口径，本波只覆盖 13M，**原样保留并标注**
 - **收益**：tf@4 0.9726、tf@6 0.9946；d6−d12 = 0.0003（半栈 ≈ 全栈）；exit-4 3.1× 墙钟、uniform-exit 1.8×；逐 token 变深度 + 不重 prefill 已实现并逐位测试（max|Δlogit| 9.2e-5）
 - **判读**：**已有**：逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。**尚缺**：100M 端到端深度草稿 + 交错口径墙钟 + FLOPs 净账（省延迟不省算力）（待补做）。
 
@@ -48,9 +48,10 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 
 1. **端到端实测（ticket 38-W2，真 checkpoint、800/800 token 与贪心逐位相同）**：**深度草稿台提速是真的，但省的是延迟不是算力**——同缓存机械下普通全栈 88.21 tok/s → 深度草稿 **163.83 tok/s（1.86×）**；对仓库原解码器路径 43.77 → **3.74×**（其中 2.02× 属实现层差异，已用 `plain_cache_full` 臂剥离）。**接受率代理是准的但它只量链子第一环**：实测汇总 0.9423 vs TF 代理 0.9694（高估 2.7pp），而**第 1 位真实 0.9704 ≈ 代理 0.9694**，偏差全在链的第 2/3/4 位（0.953/0.935/0.911）。**分级验证（d4→d6→全栈）不值得**：发出流与单级逐 token 相同、只省 0.9% 算力、墙钟反而慢 13%。**双口径分歧**：等效 layer-position/token 8.45 vs 8.00（+5.6%）⇒ **墙钟正收益、FLOPs 负收益**；真 FLOP 杠杆是「直接退 4 层」（4.00/token 半价），用 2.11× FLOPs 把质量买回全栈
 2. 浅层监督加权 sweep 全败且单调反向（w 越低 depth-L 越差 2.45→2.73）→「监督稀释」不是主因，浅层全深度监督是表示正则
-3. 结构切分读出（readout 360）恶化 −50.4%：模型把状态能量整体迁出读出子空间
-4. 2× 训练 + 冷却退火：名义恢复 +16.4%，拆解后形态特异收回 ≈0（与 dense 侧训练收益逐位镜像）
-5. dense 全深度监督（LayerSkip 式）在 100M 上剂量响应恶化（corrupt 崩溃 +1.73）
+3. **13M 的 2×2 重拆（2623，n=1）**：把「+0.329 的税」拆成「配方（目标降权）→ 反向」+「形态」是**记账恒等式**；配方轴同时改了主目标份额与全局损失尺度，同份额控制臂（additive λ=8）只排除了份额 ⇒ 尺度未隔离；「浅层监督越重越好、越轻越差」与 23b 的 sweep 同向
+4. 结构切分读出（readout 360）恶化 −50.4%：模型把状态能量整体迁出读出子空间
+5. 2× 训练 + 冷却退火：名义恢复 +16.4%，拆解后形态特异收回 ≈0（与 dense 侧训练收益逐位镜像）
+6. dense 全深度监督（LayerSkip 式）在 100M 上剂量响应恶化（corrupt 崩溃 +1.73）
 
 ## 6. 判据与判决实验设计
 
@@ -78,6 +79,7 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 1. .scratch/23-depth-ar/evidence @1586745
 2. .scratch/24-depth-ar-100m/evidence @7cdcdaa
 3. .scratch/25-tax-attribution/evidence @2e86924
+4. axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/analysis.md @FINAL
 
 ## 备注
 

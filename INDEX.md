@@ -92,7 +92,7 @@
 |---|---|---|
 | [`R1-quantization`](axes/R-references/R1-quantization/README.md) · 量化 | ⬜ todo | **已有**：本地已实测 KV 量化的部署口径价签与质量——**块标尺（沿 head_dim，G=32）** 下 int8 每位置 6528 B = fp16 的 ×0.53（省 46.875%）… |
 | [`R4-window-kv-quant-retrieval`](axes/R-references/R4-window-kv-quant-retrieval/README.md) · 窗口注意力 + KV 量化 + 检索 | ⬜ todo | **已有**：本地仅覆盖窗口/锚点部分（税 +0.058~0.121 bpc；锚点通道 93.3%）。**尚缺**：按保留预算的窗口曲线 + 检索腿是否显著 >chance；量化部分按 R1 口径… |
-| [`R7-existing-early-exit`](axes/R-references/R7-existing-early-exit/README.md) · 既有早退实现（CALM / LayerSkip / MoD） | ✅ judged | **本地实测（13M/enwik8/12k 步快照）**：三种标准实现都装好并跑通。① **CALM 式置信门控是真对手**：按 CALM 原式（全局阈值、退出流不一致率 ≤ ε）在形态臂上 ε=… |
+| [`R7-existing-early-exit`](axes/R-references/R7-existing-early-exit/README.md) · 既有早退实现（CALM / LayerSkip / MoD） | ✅ judged | **本地实测（13M/enwik8/12k 步＝1 epoch 快照、每臂单 seed、n=1）**：三种标准实现都装好并跑通。① **CALM 式置信门控**：两套标定口径**并报** —— 保… |
 
 ## P · 修饰符（不是轴）（5 格）
 

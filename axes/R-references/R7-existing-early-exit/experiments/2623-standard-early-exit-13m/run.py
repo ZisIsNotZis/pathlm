@@ -45,6 +45,7 @@ PROMPT_LEN = 16
 N_PROMPTS = 4
 GAMMAS = (1, 2, 4, 8)
 DRAFT_DEPTH = 4
+CYCLE_ROWS: list = []          # spec 每轮一行（活性量；P2-2 落盘到 cycle_log.jsonl）
 
 
 def log(msg: str) -> None:
@@ -153,6 +154,13 @@ def run_battery(arms, out_root, n_batches_eval=20, n_new=150):
                 gs, ss = EP.spec_decode(model, pr, n_new, gamma=g,
                                         draft_depth=DRAFT_DEPTH,
                                         cycle_log=log_cyc)
+                for c in log_cyc:                 # P2-2：活性量落盘（每轮一行）
+                    c.update({"arm": name, "prompt": PROMPT_OFFSETS[pi],
+                              "gamma": g})
+                    CYCLE_ROWS.append(c)
+                # 接受率两口径（P1-6）：窗口口径为主，条件口径留作对照
+                n_acc = sum(c["accepted"] for c in log_cyc)
+                n_cyc = len(log_cyc)
                 arm["decode"]["spec"][str(g)].append({
                     "prompt": PROMPT_OFFSETS[pi],
                     "accept_rate": round(ss["accept_rate"], 4),
@@ -163,7 +171,9 @@ def run_battery(arms, out_root, n_batches_eval=20, n_new=150):
                         ss["layerpos_per_emitted_token_analytic"],
                     "match_full_frac": round(sum(a == b for a, b in zip(gs, g_full))
                                              / max(len(g_full), 1), 4),
-                    "n_drafts": ss["n_drafts"], "n_cycles": ss["n_cycles"]})
+                    "n_drafts": ss["n_drafts"], "n_cycles": ss["n_cycles"],
+                    "n_accepts": n_acc,
+                    "accept_rate_window": round(n_acc / (g * max(n_cyc, 1)), 4)})
         # 汇总：γ 维接受率（池化，二项 SE）
         for g in (GAMMAS if not cfg.dense else ()):
             rows = arm["decode"]["spec"][str(g)]
@@ -172,7 +182,12 @@ def run_battery(arms, out_root, n_batches_eval=20, n_new=150):
             arm["decode"][f"spec_g{g}_pooled"] = {
                 "n_drafts": n, "accept_rate": round(acc / max(n, 1), 4),
                 "binom_se": round((acc / max(n, 1) * (1 - acc / max(n, 1))
-                                   / max(n, 1)) ** 0.5, 5)}
+                                   / max(n, 1)) ** 0.5, 5),
+                "n_accepts": sum(r["n_accepts"] for r in rows),
+                "n_cycles": sum(r["n_cycles"] for r in rows),
+                "accept_rate_window": round(
+                    sum(r["n_accepts"] for r in rows)
+                    / (g * max(sum(r["n_cycles"] for r in rows), 1)), 4)}
         out[name] = arm
         del model
         torch.cuda.empty_cache()
@@ -370,9 +385,26 @@ def main():
         res["mod_forward_throughput"] = run_mod_forward(
             [a for a in present if "mod" in a or "stock" in a], args.out_root,
             rounds=args.rounds)
+    # SCHEMA §10：主交付也要有干预/活性块（逐臂从各自 run 目录抽）
+    iv = {}
+    for name in res["battery"]:
+        p_ev = os.path.join(args.out_root, name, "results.json")
+        if os.path.exists(p_ev):
+            e = json.load(open(p_ev))
+            iv[name] = {"name": (e.get("intervention") or {}).get("name"),
+                        "alive": (e.get("intervention") or {}).get("alive"),
+                        "params_added": (e.get("intervention") or {}).get("params_added"),
+                        "gate_mean": e.get("avg_train_gate_mean"),
+                        "source": f"{args.out_root}/{name}/results.json"}
+    res["intervention"] = {"note": "逐臂干预/活性量（SCHEMA §10）", "by_arm": iv}
     res["free_mb_after"] = smi_free()
     res["peak_torch_mb"] = round(torch.cuda.max_memory_allocated() / 2 ** 20, 1)
     res["finished"] = time.strftime("%Y-%m-%dT%H:%M:%S")
+    if CYCLE_ROWS:
+        with open(os.path.join(HERE, "cycle_log.jsonl"), "w") as f:
+            for c in CYCLE_ROWS:
+                f.write(json.dumps(c, ensure_ascii=False) + "\n")
+        log(f"[run] wrote cycle_log.jsonl ({len(CYCLE_ROWS)} rows)")
     out_path = os.path.join(HERE, args.out)
     with open(out_path, "w") as f:
         json.dump(res, f, indent=2, ensure_ascii=False)

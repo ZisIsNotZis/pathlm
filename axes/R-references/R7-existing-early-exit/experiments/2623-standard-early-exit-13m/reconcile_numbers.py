@@ -97,28 +97,51 @@ def check_structure(res):
                round(a["mod_eval"]["capacity_frac"]
                      * len(a["mod_eval"]["routed_frac_per_layer"]), 4), 1e-6)
             continue
-        L = len(a["tf_acceptance"]) + 1
-        for g_key, rows_g in a["decode"].items():
-            if not g_key.startswith("spec_g") or g_key.endswith("_pooled"):
-                continue
-            g = int(g_key[6:])
+        L = int(a["config"]["n_layers"])      # tf_acceptance 是 0..L−1 共 L 条
+        # 行存放在 `decode["spec"][str(γ)]`（键 = "1"/"2"/"4"/"8"），pooled 在
+        # `decode["spec_g{γ}_pooled"]`。2026-10-10 复核抓到：此前这里遍历的是
+        # `decode.items()` 里 `spec_g*` 前缀的键——那样的键**不存在** ⇒ 四条 spec
+        # 断言是**死代码**（docstring 却写已断言）。现在按真实键遍历，并用
+        # `--selftest` 证明它们会红。
+        for g_str, rows_g in a["decode"].get("spec", {}).items():
+            g = int(g_str)
+            if not rows_g:
+                continue        # dense 臂按设计不跑 spec 腿（列表为空）
+            tot_acc = tot_cyc = tot_draft = 0
             for r in rows_g:
-                tau = r["n_drafts"] / max(r["n_cycles"], 1)
-                eq(f"{name}.{g_key} 解析算力", r["layerpos_per_token_analytic"],
-                   round(L * (g + 1) / (tau + 1), 3), 0.02)
-                if r["n_drafts"] != g * r["n_cycles"]:
-                    F.append(f"{name}.{g_key} n_drafts != γ×cycles")
+                # τ = 每轮接受数 = n_accepts/n_cycles（**窗口口径**，与 2621 同定义）
+                tau = r["n_accepts"] / r["n_cycles"]
+                eq(f"{name}.spec_g{g} 解析算力恒等式",
+                   r["layerpos_per_token_analytic"],
+                   round(L * (g + 1) / (tau + 1), 3), 0.05)
+                eq(f"{name}.spec_g{g} 实测≈解析（±20%）",
+                   r["layerpos_per_token"] / (L * (g + 1) / (tau + 1)), 1.0, 0.2)
+                eq(f"{name}.spec_g{g} 窗口接受率==接受数/(γ×轮数)",
+                   r["accept_rate_window"],
+                   round(r["n_accepts"] / (g * r["n_cycles"]), 4), 5e-5)
+                if r["n_drafts"] > g * r["n_cycles"]:
+                    F.append(f"{name}.spec_g{g} n_drafts > γ×cycles")
+                if r["n_accepts"] > r["n_drafts"] + 1:
+                    F.append(f"{name}.spec_g{g} n_accepts 反推 > n_drafts+1")
+                if r["accept_rate"] < r["accept_rate_window"] - 1e-9:
+                    F.append(f"{name}.spec_g{g} 条件口径 < 窗口口径（定义混了）")
+                tot_acc += r["n_accepts"]
+                tot_cyc += r["n_cycles"]
+                tot_draft += r["n_drafts"]
             pooled = a["decode"][f"spec_g{g}_pooled"]
-            tot_d = sum(r["n_drafts"] for r in rows_g)
-            tot_a = sum(r["accept_rate"] * r["n_drafts"] for r in rows_g)
-            eq(f"{name}.{g_key}_pooled n", pooled["n_drafts"], tot_d)
-            eq(f"{name}.{g_key}_pooled acc", pooled["accept_rate"],
-               round(tot_a / tot_d, 4), 5e-5)
-            eq(f"{name}.{g_key}_pooled se", pooled["binom_se"],
-               round(((tot_a / tot_d) * (1 - tot_a / tot_d) / tot_d) ** 0.5, 5),
-               5e-5)
+            eq(f"{name}.spec_g{g}_pooled n_drafts", pooled["n_drafts"], tot_draft)
+            eq(f"{name}.spec_g{g}_pooled n_accepts", pooled["n_accepts"], tot_acc)
+            eq(f"{name}.spec_g{g}_pooled 窗口接受率", pooled["accept_rate_window"],
+               round(tot_acc / (g * tot_cyc), 4), 5e-5)
+            p_win = tot_acc / (g * tot_cyc)
+            eq(f"{name}.spec_g{g}_pooled 窗口 SE", pooled["binom_se_window"],
+               round((p_win * (1 - p_win) / (g * tot_cyc)) ** 0.5, 5), 5e-5)
+            # 容差 2e-4：pooled 的条件接受率在 run.py 里用精确 A 算、这里用 analytic
+            # 逆解得到的 A（analytic 落盘保留 4 位小数）⇒ 末位舍入差 ≤1e-4
+            eq(f"{name}.spec_g{g}_pooled 条件接受率", pooled["accept_rate"],
+               round(tot_acc / tot_draft, 4), 2e-4)
             for r in rows_g:
-                eq(f"{name}.{g_key} 流一致率（spec 必须 == 全深度贪心）",
+                eq(f"{name}.spec_g{g} 流一致率（spec 必须 == 全深度贪心）",
                    r["match_full_frac"], 1.0)
         # 层×位置按**发出** token 归一；末位 token 由上一次前向的 argmax 免费给出 ⇒
         # layerpos/token = 深度 × (n_new − 1)/n_new（分母口径已在分析里写明）
@@ -158,13 +181,36 @@ CLAIMS: list[tuple[str, str, object, float]] = [
     ("calm 原式 legacy ε=0.05 深度", "battery.r7-c1-legacy-s0.calm_calibration.calm_joint[0.05].mean_exit_depth_holdout", 3.6434, 1e-4),
     ("calm 原式 ls-legacy ε=0.05 深度", "battery.r7-ls-legacy-s0.calm_calibration.calm_joint[0.05].mean_exit_depth_holdout", 3.432, 1e-4),
     ("calm 原式 stock ε=0.05 深度", "battery.r7-stock-s0.calm_calibration.calm_joint[0.05].mean_exit_depth_holdout", 6.5895, 1e-4),
-    ("spec legacy γ=4 接受率", "battery.r7-c1-legacy-s0.decode.spec_g4_pooled.accept_rate", 0.952, 1e-4),
-    ("spec ls-legacy γ=4 接受率", "battery.r7-ls-legacy-s0.decode.spec_g4_pooled.accept_rate", 0.9784, 1e-4),
+    ("spec legacy γ=4 窗口接受率（主口径）", "battery.r7-c1-legacy-s0.decode.spec_g4_pooled.accept_rate_window", 0.9109, 1e-4),
+    ("spec ls-legacy γ=4 窗口接受率", "battery.r7-ls-legacy-s0.decode.spec_g4_pooled.accept_rate_window", 0.9324, 1e-4),
+    ("spec legacy γ=4 条件接受率（对照口径）", "battery.r7-c1-legacy-s0.decode.spec_g4_pooled.accept_rate", 0.952, 1e-4),
+    ("同份额臂 d8 bpc", "battery.r7-c1-fair-share-s0.depth_curve.8.bpc", 1.855, 1e-4),
+    ("同份额臂 tf@4", "battery.r7-c1-fair-share-s0.tf_acceptance.4.accept", 0.9705, 1e-4),
     ("wall stock|full 中位 tok/s", "wall_clock_interleaved.summary.r7-stock-s0|full.tok_s_median", 34.473, 1e-3),
     ("wall legacy|spec_g4 比值中位", "wall_clock_interleaved.summary.r7-c1-legacy-s0|spec_g4.ratio_median", 2.432, 1e-3),
     ("wall ls-fair|full 比值中位（门墙钟）", "wall_clock_interleaved.summary.r7-ls-fair-s0|full.ratio_median", 1.1732, 1e-4),
     ("moD 前向吞吐比值", "mod_forward_throughput.summary.r7-mod-s0.tok_per_s_median", 101685.4, 1e-1),
     ("moD 前向吞吐 stock", "mod_forward_throughput.summary.r7-stock-s0.tok_per_s_median", 337776.8, 1e-1),
+    # —— 复核后补的关键数字（analysis.md 逐处引用）——
+    ("c1-fair γ=4 窗口接受率", "battery.r7-c1-fair-s0.decode.spec_g4_pooled.accept_rate_window", 0.882, 1e-4),
+    ("c1-fair-l1 γ=4 窗口接受率", "battery.r7-c1-fair-l1-s0.decode.spec_g4_pooled.accept_rate_window", 0.8994, 1e-4),
+    ("ls-fair γ=4 窗口接受率", "battery.r7-ls-fair-s0.decode.spec_g4_pooled.accept_rate_window", 0.6682, 1e-4),
+    ("share 臂 γ=4 窗口接受率", "battery.r7-c1-fair-share-s0.decode.spec_g4_pooled.accept_rate_window", 0.9548, 1e-4),
+    ("dose λ=1.0 bpc", "battery.r7-c1-fair-l1-s0.depth_curve.8.bpc", 1.9842, 1e-4),
+    ("ls-legacy tf@4", "battery.r7-ls-legacy-s0.tf_acceptance.4.accept", 0.9645, 1e-4),
+    ("share 臂 tf@4", "battery.r7-c1-fair-share-s0.tf_acceptance.4.accept", 0.9705, 1e-4),
+    ("CALM 原式 legacy ε=0.05 holdout 深度",
+     "battery.r7-c1-legacy-s0.calm_calibration.calm_joint[0.05].mean_exit_depth_holdout", 3.6434, 1e-4),
+    ("CALM 原式 ls-legacy ε=0.05 holdout 深度",
+     "battery.r7-ls-legacy-s0.calm_calibration.calm_joint[0.05].mean_exit_depth_holdout", 3.432, 1e-4),
+    ("CALM 原式 c1-fair ε=0.05 holdout 深度",
+     "battery.r7-c1-fair-s0.calm_calibration.calm_joint[0.05].mean_exit_depth_holdout", 4.3118, 1e-4),
+    ("CALM 原式 c1-fair-l1 ε=0.05 holdout 深度",
+     "battery.r7-c1-fair-l1-s0.calm_calibration.calm_joint[0.05].mean_exit_depth_holdout", 3.8849, 1e-4),
+    ("CALM 原式 ls-fair ε=0.05 holdout 深度",
+     "battery.r7-ls-fair-s0.calm_calibration.calm_joint[0.05].mean_exit_depth_holdout", 4.3293, 1e-4),
+    ("CALM 原式 share 臂 ε=0.05 holdout 深度",
+     "battery.r7-c1-fair-share-s0.calm_calibration.calm_joint[0.05].mean_exit_depth_holdout", 3.6458, 1e-4),
 ]
 
 
@@ -188,7 +234,51 @@ def check_liveness(res):
     return
 
 
+def selftest() -> int:
+    """**证明 spec 支路不是死代码**：对真实 results.json 做 5 处定向破坏，
+    每处都必须让 `check_structure` 报出至少一条对应失败。"""
+    import copy
+    base = load_results()
+    muts = [
+        ("解析算力恒等式", lambda r: _first_spec_row(r).update(
+            {"layerpos_per_token_analytic": 99.0})),
+        ("窗口接受率", lambda r: _first_spec_row(r).update(
+            {"accept_rate_window": 0.5})),
+        ("n_drafts ≤ γ×轮数", lambda r: _first_spec_row(r).update(
+            {"n_drafts": 10 ** 5})),
+        ("pooled 接受率一致性", lambda r: r["battery"]["r7-c1-legacy-s0"]["decode"]
+            ["spec_g4_pooled"].update({"n_accepts": 1})),
+        ("流一致率 == 1.0", lambda r: _first_spec_row(r).update(
+            {"match_full_frac": 0.5})),
+    ]
+    bad = 0
+    for label, mutate in muts:
+        r = copy.deepcopy(base)
+        mutate(r)
+        before = len(F)
+        check_structure(r)
+        fired = [x for x in F[before:]]
+        if not fired:
+            print(f"FAIL(selftest)：{label} 的破坏没有被抓到 ⇒ 该断言是死代码")
+            bad += 1
+        else:
+            print(f"OK(selftest) {label} ⇒ {fired[0]}")
+        del F[before:]
+    if bad:
+        print(f"FAIL(selftest)：{bad} 处断言抓不到破坏")
+        return 1
+    print(f"OK(selftest)：{len(muts)} 处定向破坏全部被抓到（spec 支路不是死代码）")
+    return 0
+
+
+def _first_spec_row(res):
+    a = res["battery"]["r7-c1-legacy-s0"]["decode"]["spec"]
+    return a["4"][0]
+
+
 def main() -> int:
+    if "--selftest" in sys.argv:
+        return selftest()
     res = load_results()
     check_structure(res)
     check_claims(res)

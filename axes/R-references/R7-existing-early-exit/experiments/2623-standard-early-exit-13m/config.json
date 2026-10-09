@@ -123,14 +123,19 @@
     "r7-ls-fair-s0": 9.73,
     "r7-ls-legacy-s0": 8.58,
     "r7-mod-s0": 19.16,
+    "r7-c1-fair-share-s0": 10.4,
     "battery+wall(interleaved)+insertions": 16.0,
-    "total": 94.0,
+    "discarded_spec_accident_L4_run_s": 4.5,
+    "discarded_spec_accident_second_run_s": 4.7,
+    "total_incl_discarded": 113.4,
     "budget": 120
   },
   "peak_gpu_mem_mb": {
     "train_max": 1339.9,
-    "decode_max": 190.1,
-    "mod_forward": 154.0
+    "decode_max_from_results_json_battery_run": 154.0,
+    "decode_max_from_first_stock_only_battery": 190.1,
+    "note": "`results.json::peak_torch_mb` = 154.0 是最终电池运行（含 7 臂、含 MoD 前向）的 torch 峰值；190.1 来自更早的「只跑 stock 臂」那次插入（同为 torch 峰值，含当时其它进程共存的分配）。二者都 ≤ 190 MB（礼貌线 5 GB 内）。以 results.json 为准。",
+    "mod_forward_max": 154.0
   },
   "noise": {
     "reproduction_drift_bpc": {
@@ -145,5 +150,28 @@
     "path": "/tmp/pathlm_gpu.lock",
     "policy": "按臂释放、臂间 ≥60 s（SCHEMA §20.1）",
     "contention": "同卡另有两条外部 llama-server（≈8 GB）与 2–3 条自研线；本波多次排队 10–60 min"
+  },
+  "lock_ledger": {
+    "note": "机器可读锁台账（SCHEMA §20.1）：每次取锁 arm/开始/结束/持锁分钟由驱动脚本 `run_arms*.sh` 的 `[arm] ... wall=` 行与 `run_log.txt` 派生；本表是汇总，原始行见 `run_log.txt`。",
+    "path": "/tmp/pathlm_gpu.lock",
+    "policy": "按臂释放 + 臂间 ≥60 s；等不到锁就排队（15 s 轮询），不杀他人进程",
+    "arms": {
+      "r7-stock-s0": 6.79,
+      "r7-c1-legacy-s0": 10.02,
+      "r7-c1-fair-s0": 10.36,
+      "r7-ls-fair-s0": 9.73,
+      "r7-mod-s0": 19.16,
+      "r7-c1-fair-l1-s0": 10.12,
+      "r7-ls-legacy-s0": 8.58,
+      "r7-c1-fair-share-s0": 10.4
+    },
+    "waiting_observed_min": {
+      "longest_single_wait": "≈60（另一条线整程持锁）",
+      "typical": "10–25（多线竞争）"
+    },
+    "violations_by_this_line": [],
+    "other_lines_observed": {
+      "note": "观测到 M-carrier 线的多臂驱动整程持锁 >60 min（§20.1 只允许整程 <10 min）；本线未介入、未杀进程，仅排队。"
+    }
   }
 }
