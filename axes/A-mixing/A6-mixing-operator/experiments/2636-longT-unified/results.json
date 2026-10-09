@@ -1719,6 +1719,33 @@
       "cell_threshold_for_delta": 0.009459,
       "cell_threshold_basis": "判据量 Δ 的跨 seed 实测极差最大值（T=256/512）；单臂 bpc 极差仅作参考（极值估计 + 另一随机变量）；评测批内配对差共模抵消≈0",
       "seed_replicate_scope": "seed 复本仅在 T=256/512 测得；T=1024/2048 无复本，其判读用工程带 0.014"
+    },
+    "criterion_5_cross_reading": {
+      "delta_convention": "cross(T) = Δ_step(T) − Δ_token(T)；两口径的 Δ 都是 Δ = bpc_full − bpc_window（正 = 窗口更好），差值为正的幅度语义 = 两口径分歧大小",
+      "per_T": {
+        "256": {
+          "delta_step": -0.003542,
+          "delta_token": -0.015752,
+          "cross_diff": 0.012210,
+          "abs_cross_diff": 0.012210,
+          "cell_criterion_noise": 0.009459,
+          "engineering_band": 0.014,
+          "exceeds_cell_criterion_noise": true,
+          "within_engineering_band": true
+        },
+        "512": {
+          "delta_step": -0.004528,
+          "delta_token": -0.015101,
+          "cross_diff": 0.010573,
+          "abs_cross_diff": 0.010573,
+          "cell_criterion_noise": 0.006231,
+          "engineering_band": 0.014,
+          "exceeds_cell_criterion_noise": true,
+          "within_engineering_band": true
+        }
+      },
+      "conclusion": "两口径之差（T=256 = 0.012210、T=512 = 0.010573）超过本格判据量噪声（0.009459 / 0.006231）但 ≤ 工程带 0.014 ⇒ 短 T 两口径可测地不同；本 n 下不得择优、不得把两条口径合并成一条曲线。",
+      "note": "只陈述差值与其相对两个门限的比较；判读与 §2 / §5 一致，未改任何结论。cell_criterion_noise 来自 criterion_4_cell_noise.delta_spread，engineering_band 来自 criterion_1_quality_matched_step.variance_band_project；三者由 reconcile_numbers.py 交叉断言。"
     }
   },
   "cost": {

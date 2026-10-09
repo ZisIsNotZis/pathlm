@@ -5,6 +5,10 @@
 2. 真实提交锚点（HEAD）⇒ 通过；
 3. git 不可用 ⇒ **显式报错**（不得静默跳过、不得当作通过）；
 4. `main()` 确实把 `catalog.yaml` / 课题页里的锚点交给 `check_anchors`。
+
+G1b（锚点形态不可绕过）：非十六进制锚点不得被 `ANCHOR_RE.findall` 静默吞掉——
+`@FINAL` / `@HEAD~1` / `@ticketNN` / 裸 `@` 必须**报错并逐条列出**（`check_anchor_syntax`），
+`main()` 必须把它接在可达性校验前面。
 """
 
 import os
@@ -36,6 +40,56 @@ def test_git_unavailable_is_explicit_error(monkeypatch):
     monkeypatch.setattr(check_schema, "reachable_commits", boom)
     errs = check_schema.check_anchors({"deadbeef1234": ["catalog:X"]})
     assert len(errs) == 1 and "git 不可用" in errs[0], errs
+
+
+def test_invalid_non_hex_anchors_are_listed_and_fail():
+    """`@FINAL` / `@HEAD~1` / `@ticketNN` ⇒ 报错并逐条列出（此前静默跳过）。"""
+    evidences = {"axes/X/X-g/README.md @FINAL": ["axes/X/X-g"],
+                 "axes/X/X-g/analysis.md @HEAD~1": ["axes/X/X-g"],
+                 "axes/X/X-g/results.json @ticketNN": ["catalog:X-g"]}
+    errs = check_schema.check_anchor_syntax(evidences)
+    assert len(errs) == 3, errs
+    for token in ("@FINAL", "@HEAD~1", "@ticketNN"):
+        hit = [e for e in errs if token in e]
+        assert len(hit) == 1, (token, errs)
+    assert "catalog:X-g" in [e for e in errs if "@ticketNN" in e][0]
+
+
+def test_valid_commit_prefix_passes_syntax_check():
+    """真实 sha 前缀（HEAD 缩写）⇒ 形态校验通过。"""
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT,
+                          capture_output=True, text=True, check=True).stdout.strip()
+    assert check_schema.check_anchor_syntax({f"axes/X/X-g/analysis.md @{head[:9]}": ["axes/X/X-g"]}) == []
+
+
+def test_bare_at_sign_is_flagged():
+    """裸 `@`（其后没有任何提交前缀）也必须报错，不得静默跳过。"""
+    errs = check_schema.check_anchor_syntax({"axes/X/X-g/analysis.md @": ["axes/X/X-g"]})
+    assert len(errs) == 1 and "@" in errs[0], errs
+
+
+def test_main_feeds_evidence_into_syntax_check(monkeypatch):
+    """`main()` 必须把 catalog/课题页的 evidence 串交给 `check_anchor_syntax`。"""
+    real_run = check_schema.subprocess.run
+    seen: dict = {}
+
+    def fake_syntax(evidences):
+        seen["evidences"] = evidences
+        return []
+
+    def fake_run(cmd, *a, **kw):
+        if isinstance(cmd, (list, tuple)) and len(cmd) > 1 and \
+                os.path.basename(str(cmd[1])) in ("build_wiki.py", "backfill_legacy.py"):
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+        return real_run(cmd, *a, **kw)
+
+    monkeypatch.setattr(check_schema, "check_anchor_syntax", fake_syntax)
+    monkeypatch.setattr(check_schema.subprocess, "run", fake_run)
+    check_schema.main()
+    ev = seen.get("evidences")
+    assert ev, "main() 没有把任何 evidence 串交给 check_anchor_syntax"
+    assert ".scratch/04-m1-runs/evidence/B0 @e38349f" in ev      # A2 的证据串确实被收集
+    assert "axes/A-mixing/A2-full-attention" in ev[".scratch/04-m1-runs/evidence/B0 @e38349f"]
 
 
 def test_main_feeds_anchors_into_check(monkeypatch):

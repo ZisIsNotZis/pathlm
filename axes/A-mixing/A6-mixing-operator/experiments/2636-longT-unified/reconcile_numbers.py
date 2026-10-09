@@ -4,13 +4,14 @@
 三道对账（SCHEMA §12）：
 ① **算术**：token 计数 = steps × bs × T（同 step 四点）；同 token 副口径 49.152M；
    Δ = bpc_full − bpc_window 从 `eval.json` 或引用点重算；带宽分类逐点一致；
-   注意力占比公式 / 窗口 visible_frac 闭式复算。
+   注意力占比公式 / 窗口 visible_frac 闭式复算；**跨口径差（判据 C5）** = 两口径 Δ 之差，
+   且其两个门限（本格判据量噪声 / 工程带）必须与 `criterion_4` / `criterion_1` 一致。
 ② **任务**：八臂同一数据切分与同一评测流（`window_seed=2`、20 批 × bs16）；
    逐字段对照只允许差 `seq_len` / `train_window` / `seed`。
 ③ **口径**：判据 C1 读数来自 `eval.json::batteries`（新臂）或引用点 `eval.json`；
    C2 来自 `runs/<arm>/results.json::gnorm_monitor`；C3 来自 `results.json::cost`。
 
-用法：python3 reconcile_numbers.py   # 任一 mismatch 非零退出；写 reconcile_report.json
+用法：python3 reconcile_numbers.py [目录]   # 默认读同目录；任一 mismatch 非零退出；写 reconcile_report.json
 """
 
 import json
@@ -19,6 +20,9 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
+#: 读入目录：默认本目录；给了参数就读该目录（默认行为不变）。这条口子是给「构造不一致
+#: 输入 ⇒ 对账必须红」的可失败自测用的（`tests/test_longT_unified_cross_reading.py`）。
+DATA_DIR = sys.argv[1] if len(sys.argv) > 1 else HERE
 sys.path.insert(0, ROOT)
 
 from pathlm.depth_ar import window_mask_liveness            # noqa: E402
@@ -39,7 +43,7 @@ def ck(label, got, want, tol=0.0):
 
 
 def load(path):
-    with open(os.path.join(HERE, path)) as f:
+    with open(os.path.join(DATA_DIR, path)) as f:
         return json.load(f)
 
 
@@ -88,6 +92,32 @@ for T, (exp, fa, wa, steps) in REF_TOKEN.items():
     dn = round(b[fa]["bpc_native"] - b[wa]["bpc_native"], 6)
     ck(f"token Δ@{T}", tp[str(T)]["delta_native"], dn, 1e-6)
     ck(f"token-check tokens@{T}=49.152M", steps * BS * T, 49_152_000)
+
+# ------------------------------------------------------------ 判据 C5：跨口径差
+# 这个差值此前只存在于 analysis.md 的两个分量手算 ⇒ 不被对账覆盖，改门限时会静默失配
+# （SCHEMA §24 第 11 类）。此处的断言把「块 ↔ 两个分量 ↔ 两个门限」全部钉住。
+cr = (R["criteria"].get("criterion_5_cross_reading") or {}).get("per_T") or {}
+for T in (256, 512):
+    ck(f"cross_reading per_T 含 {T}", str(T) in cr, True)
+    if str(T) not in cr:
+        continue
+    row = cr[str(T)]
+    dn_step, dn_token = sp[str(T)]["delta_native"], tp[str(T)]["delta_native"]
+    ck(f"cross@{T} delta_step == 同 step 分量", row["delta_step"], dn_step, 1e-6)
+    ck(f"cross@{T} delta_token == 同 token 分量", row["delta_token"], dn_token, 1e-6)
+    ck(f"cross@{T} cross_diff == Δ_step − Δ_token", row["cross_diff"],
+       round(dn_step - dn_token, 6), 1e-6)
+    ck(f"cross@{T} abs_cross_diff == |cross_diff|", row["abs_cross_diff"],
+       abs(row["cross_diff"]), 1e-9)
+    ck(f"cross@{T} cell_criterion_noise == C4 Δ 跨 seed 极差", row["cell_criterion_noise"],
+       R["criteria"]["criterion_4_cell_noise"]["delta_spread"][str(T)]["abs_spread"], 1e-6)
+    ck(f"cross@{T} engineering_band == C1 工程带", row["engineering_band"],
+       R["criteria"]["criterion_1_quality_matched_step"]["variance_band_project"], 1e-9)
+    ck(f"cross@{T} exceeds_cell_criterion_noise 与门限一致",
+       row["exceeds_cell_criterion_noise"],
+       bool(row["abs_cross_diff"] > row["cell_criterion_noise"]))
+    ck(f"cross@{T} within_engineering_band 与门限一致", row["within_engineering_band"],
+       bool(row["abs_cross_diff"] <= row["engineering_band"]))
 
 # 注意力占比公式闭式复算
 OTHER = 786432
@@ -171,7 +201,7 @@ ck("本实验训练臂峰值 ≤5GB", mx <= 5.0, True)
 
 # ------------------------------------------------------------ 报告文本读数（若已写）
 REP = ""
-p = os.path.join(HERE, "analysis.md")
+p = os.path.join(DATA_DIR, "analysis.md")
 if os.path.exists(p):
     REP = open(p).read().replace("\u2212", "-")
 for T in (256, 512, 1024, 2048):
@@ -183,7 +213,7 @@ for T in (256, 512, 1024, 2048):
 n_ok = sum(1 for c in checks if c["ok"])
 report = {"n_checks": len(checks), "n_ok": n_ok, "n_fail": len(checks) - n_ok,
           "band": BAND, "cross_run_field_compare": cross_ref, "checks": checks}
-json.dump(report, open(os.path.join(HERE, "reconcile_report.json"), "w"),
+json.dump(report, open(os.path.join(DATA_DIR, "reconcile_report.json"), "w"),
           indent=2, ensure_ascii=False)
 print(f"reconcile: {n_ok}/{len(checks)} OK")
 if n_ok != len(checks):

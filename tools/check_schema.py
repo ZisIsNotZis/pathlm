@@ -7,8 +7,10 @@
   3. 证据完备：status=judged 必须有 judge 与 evidence；status=todo 无本地证据，
      但 verdict 必须写明「待立项」或「尚缺什么」（待补做）。
      evidence 里 `path @commit` 的 path 必须在磁盘上存在（归档/证据锚点不悬空）。
-     并且所有 `@<sha>` 锚点必须是**真实提交**（refs 可达历史中的 commit）——「路径存在」
-     不等于「锚点有效」；无效锚点逐条列出并 fail。git 不可用 ⇒ 显式报错，不得静默跳过。
+     并且 evidence 里每个 `@…` 都必须是**合法提交前缀**（`@<7–40 位十六进制>`）：形态
+     不合法的（`@FINAL` / `@HEAD~1` / `@ticketNN` / 裸 `@`）逐条报错，不得静默跳过；
+     合法锚点还必须是**真实提交**（refs 可达历史中的 commit）——「路径存在」不等于
+     「锚点有效」。git 不可用 ⇒ 显式报错，不得静默跳过。
   4. 无孤儿：axes/ 下的格子目录若不在 catalog 中 → fail（防止绕开枚举加内容）。
   5. 生成一致：INDEX.md / 轴 README / 课题页自动块与 catalog 一致
      （等价于 `build_wiki.py --check`）。
@@ -36,7 +38,11 @@ REQUIRED = ("id", "axis", "grid_dir", "title", "status", "judge", "cost",
 VALID_STATUS = ("judged", "todo")
 
 
+#: 合法提交前缀锚点：`@<7–40 位十六进制>`。
 ANCHOR_RE = re.compile(r"@([0-9a-f]{7,40})")
+#: evidence 里任何 `@` 之后到空白为止的片段。只用 ANCHOR_RE 匹配会让 `@FINAL` 这类锚点**整段
+#: 逃过校验**（findall 找不到就不报错）——所以先按 `@` 切出全部片段，再要求它整段合法。
+AT_TOKEN_RE = re.compile(r"@(\S*)")
 
 
 class GitUnavailable(RuntimeError):
@@ -82,6 +88,24 @@ def check_anchors(anchors: dict[str, list[str]]) -> list[str]:
             f"{'、'.join(anchors[a])}）" for a in bad]
 
 
+def check_anchor_syntax(evidences: dict[str, list[str]]) -> list[str]:
+    """凡 evidence 里出现 `@` 且其后**不是合法提交前缀** ⇒ 逐条报错。
+
+    evidences：{证据串 -> [出现位置,...]}。返回错误清单（空 = 全绿）。
+    与 `check_anchors` 互补：那条只管「收集到的 hex 锚点是否可达」，对 `@FINAL` /
+    `@HEAD~1` / `@ticketNN` / 裸 `@` 这类片段**找不到就不报**（静默跳过）；这条把它们
+    全部抓出来，使锚点校验无法被非十六进制锚点绕过。
+    """
+    errors = []
+    for ev, locs in evidences.items():
+        for m in AT_TOKEN_RE.finditer(ev):
+            if not ANCHOR_RE.fullmatch(m.group(0)):
+                errors.append(
+                    f"证据锚点非法：`{m.group(0)}` 不是合法提交前缀"
+                    f"（须形如 @<7–40 位十六进制 sha>；出现于 {'、'.join(locs)}）")
+    return errors
+
+
 def main() -> int:
     errors: list[str] = []
     with CATALOG.open(encoding="utf-8") as f:
@@ -90,6 +114,7 @@ def main() -> int:
     expected: set[str] = set()
     n_judged = 0
     anchors: dict[str, list[str]] = {}      # 收集全部 `@<sha>` 锚点 -> 出现位置
+    evidences: dict[str, list[str]] = {}    # 收集全部 evidence 串 -> 出现位置（查非法锚点）
     for a in cat["axes"]:
         for g in [x for x in cat["grids"] if x["axis"] == a["id"]]:
             for k in ("id", "axis", "title", "claim", "options", "judge", "cost", "status"):
@@ -134,10 +159,12 @@ def main() -> int:
                     errors.append(f"{rel}: evidence 路径不存在：{p}")
                 for anc in ANCHOR_RE.findall(str(ev)):
                     anchors.setdefault(anc, []).append(f"axes/{rel}")
+                evidences.setdefault(str(ev), []).append(f"axes/{rel}")
             # catalog 是 SSOT：即使页面未重生成，也校验 catalog 里的证据锚点。
             for ev in ((g.get("local") or {}).get("evidence") or []):
                 for anc in ANCHOR_RE.findall(str(ev)):
                     anchors.setdefault(anc, []).append(f"catalog:{g.get('id', '?')}")
+                evidences.setdefault(str(ev), []).append(f"catalog:{g.get('id', '?')}")
             for anc in ANCHOR_RE.findall(str(g.get("prior_art_source") or "")):
                 anchors.setdefault(anc, []).append(f"catalog:{g.get('id', '?')}")
 
@@ -151,7 +178,8 @@ def main() -> int:
             if f"{ax.name}/{gd.name}" not in expected:
                 errors.append(f"孤儿格子目录（不在 catalog 中）：axes/{ax.name}/{gd.name}")
 
-    # 证据锚点必须是真实提交（批处理；不逐个 spawn git）
+    # 证据锚点必须先合法（形态）再可达（真实提交）：形态不合法的锚点不得静默跳过
+    errors.extend(check_anchor_syntax(evidences))
     errors.extend(check_anchors(anchors))
 
     # 生成一致性（课题页/索引/轴页）
