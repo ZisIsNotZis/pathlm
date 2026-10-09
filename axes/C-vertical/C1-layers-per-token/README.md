@@ -10,7 +10,7 @@ tax: "13M matched-step 真税 **+0.3291**（本波 2623 复现历史 +0.3295）�
 benefit: "tf@4 0.9726、tf@6 0.9946；d6−d12 = 0.0003（半栈 ≈ 全栈）；exit-4 3.1× 墙钟、uniform-exit 1.8×；逐 token 变深度 + 不重 prefill 已实现并逐位测试（max|Δlogit| 9.2e-5）"
 verdict: "**已有**：逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。**尚缺**：100M 端到端深度草稿 + 交错口径墙钟 + FLOPs 净账（省延迟不省算力）（待补做）。"
 deps: ["C5-refinement-operator", "C6-depth-supervision", "H4-head-trunk-relation", "G1-selector"]
-evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/evidence @7cdcdaa", ".scratch/25-tax-attribution/evidence @2e86924", "axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/analysis.md @FINAL"]
+evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/evidence @7cdcdaa", ".scratch/25-tax-attribution/evidence @2e86924", "axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/analysis.md @901c796"]
 ---
 
 <!-- AUTO:begin -->
@@ -79,7 +79,7 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 1. .scratch/23-depth-ar/evidence @1586745
 2. .scratch/24-depth-ar-100m/evidence @7cdcdaa
 3. .scratch/25-tax-attribution/evidence @2e86924
-4. axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/analysis.md @FINAL
+4. axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/analysis.md @901c796
 
 ## 备注
 

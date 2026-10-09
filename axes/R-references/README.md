@@ -28,7 +28,7 @@ R1 量化 · R4 窗口+KV量化+检索 · R7 既有早退实现
 |---|---|---|---|
 | [`R1-quantization`](R1-quantization/README.md) | ⬜ todo | **已有**：本地已实测 KV 量化的部署口径价签与质量——**块标尺（沿 head_dim，G=32）** 下 int8 每位置 6528 B = fp16 的 ×0.53（… | **部署口径（源 `2632-kv-block-scale`）**：**块标… |
 | [`R4-window-kv-quant-retrieval`](R4-window-kv-quant-retrieval/README.md) | ⬜ todo | **已有**：本地仅覆盖窗口/锚点部分（税 +0.058~0.121 bpc；锚点通道 93.3%）。**尚缺**：按保留预算的窗口曲线 + 检索腿是否显著 >chance；量… | 窗口部分：+0.058~0.121 bpc（13M）；检索/量化部分零经验 |
-| [`R7-existing-early-exit`](R7-existing-early-exit/README.md) | ✅ judged | **本地实测（13M/enwik8/12k 步快照）**：三种标准实现都装好并跑通。① **CALM 式置信门控是真对手**：按 CALM 原式（全局阈值、退出流不一致率 ≤ … | 13M matched 税：C1 现配方 +0.3291（历史 +0.329… |
+| [`R7-existing-early-exit`](R7-existing-early-exit/README.md) | ✅ judged | **本地实测（13M/enwik8/12k 步＝1 epoch 快照、每臂单 seed、n=1）**：三种标准实现都装好并跑通。① **CALM 式置信门控**：两套标定口径*… | 13M matched 税：C1 现配方 +0.3291（历史 +0.329… |
 
 <!-- AUTO:end -->
 

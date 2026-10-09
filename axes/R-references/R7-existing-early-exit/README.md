@@ -10,7 +10,7 @@ tax: "13M matched 税：C1 现配方 +0.3291（历史 +0.3295 复现）；配方
 benefit: "CALM 原式口径在形态臂上省算力 2.3×（3.43/8 层，一致率 0.959）；出口资产 tf@4：stock 0.4441 → 无门 0.8402 → C1 现配方 0.9719（等权配方下 0.9719/0.9645，贴天花板）；LayerSkip 自草稿窗口接受率 0.9109（条件口径 0.9520 一并落盘）、发出流与贪心逐 token 相同"
 verdict: "**本地实测（13M/enwik8/12k 步＝1 epoch 快照、每臂单 seed、n=1）**：三种标准实现都装好并跑通。① **CALM 式置信门控**：两套标定口径**并报** —— 保守口径（逐深度条件一致率 ≥1−ε）在本尺度几乎不退（平均深度 7.97–7.996，θ_k≈1.0）；**CALM 原式口径（待核：无联网按机制描述实现；全局 θ 且 θ 常被网格下界 0.50 截断）** 在形态臂 ε=0.05 退到 **3.43/8 层**（一致率 0.959；该臂未测门控墙钟），普通主干只能退到 6.59/8；门控墙钟在测过的三条臂（c1-legacy/c1-fair/ls-fair）上是 **1.76–2.01×**（第二次调用、参考臂取自第一次）。② **LayerSkip 式自草稿只省延迟不省算力**：γ=4、草稿深度 4，窗口接受率 0.9109±0.0153（=Σ接受/(γ×轮数)，与 C1 的 2621 同定义；条件口径 0.9520 一并落盘）、每 token 8.70 层×位置（全深度 7.92）、墙钟 1.99–2.43×；发出流与全深度贪心流逐 token 相同。③ **MoD 式单点 isoFLOP（L=16/放行 0.5）质量差 +0.398 bpc、前向吞吐 0.301×（batch 8×256，与单流解码不可比）**；**质量差与吞吐差都未与参数 ×2 分离**（无等参数/等深度对照）⇒ 只报现象。④ **「C1 的税主要来自主目标降权」在本尺度被否证（n=1）**：2×2 与剂量的方向都相反（详见 C1 格的重拆）。"
 deps: []
-evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scale/evidence @9fe4cf1", "axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/analysis.md @FINAL"]
+evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scale/evidence @9fe4cf1", "axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/analysis.md @901c796"]
 ---
 
 <!-- AUTO:begin -->
@@ -66,7 +66,7 @@ evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scal
 
 1. .scratch/18-exit-probe/evidence @83bf1ac
 2. .scratch/21-exit-at-scale/evidence @9fe4cf1
-3. axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/analysis.md @FINAL
+3. axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/analysis.md @901c796
 
 <!-- AUTO:end -->
 
