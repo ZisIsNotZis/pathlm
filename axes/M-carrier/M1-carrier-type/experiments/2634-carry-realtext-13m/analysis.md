@@ -369,9 +369,11 @@
 
 ## §20 记账（GPU 锁 / 显存 / 争用）
 
-> **结构化产物**：`lock_accounting.json`（由 `eval_concurrent.sh` 写出，`results.json::cost.lock_accounting`
-> 直接引用它；机器可读字段 = `mode/lock_taken/free_gpu_mem_mib_before/after/wall_s/eval_peak_gpu_mem_mb/
-> headroom_ok`）。本节只是同一事实的文字口径。
+> **结构化产物**：`lock_accounting.json`（由 `eval_concurrent.sh` 写出，**权威**；机器可读字段 =
+> `mode/lock_taken/free_gpu_mem_mib_before/after/wall_s/eval_peak_gpu_mem_mb/headroom_ok`）。
+> `results.json::cost.lock_accounting` 是驱动在**同一份数据**上回填的副本（`run.py` 先落盘
+> results.json、驱动后写记账 ⇒ 不回填时该字段为 null；复核 P2-2 后驱动已加回填步骤）。
+> 本节只是同一事实的文字口径。
 
 - **训练**：按臂取/放 `/tmp/pathlm_gpu.lock`、臂间留 ≥60 s（§20.1）；峰值显存见 `MODEL.md`。
 - **评测**：因**其它线长时间占锁**（R7/MoD 的 `run_arms.sh all` 连续训练，多次等待 >10 min）

@@ -33,8 +33,12 @@ def main() -> int:
                              "equality_report.json", "train/*/train_log.jsonl"))
 
     # ---- §9 复用证据 ----
-    ledger.eq("采复用前：实现层逐文件 sha256 与 2631 运行时记录相同",
-              eq["implementation_identical"], True)
+    # 实现层判据 = **行为等价**（基准 = 2631 运行时版本，按记录 sha256 定位）
+    ledger.eq("复用时：实现层与 2631 运行时版本**行为等价**（两层）",
+              eq["implementation_equivalent_to_2631_runtime"], True)
+    for rel, row in eq["implementation"].items():
+        ledger.eq(f"{rel}: 2631 运行时版本可在 git 历史里定位",
+                  bool(row.get("runtime_version_commit")), True)
     ledger.eq("采复用前：配置层共享字段无差异", eq["differing_fields"] == [], True)
     ledger.eq("采复用前：训练配方无（除 seed/out-root 之外的）差异",
               eq["train_recipe_differing_flags"] == [], True)

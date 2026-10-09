@@ -52,6 +52,14 @@ out = {
 with open(os.path.join(exp, "lock_accounting.json"), "w") as f:
     json.dump(out, f, indent=2, ensure_ascii=False)
     f.write("\n")
+# 同一份记账**同步回** results.json::cost.lock_accounting（否则该字段会是 null：
+# run.py 在 lock_accounting.json 写出之前就落盘了 results.json）——复核 P2-2。
+if os.path.exists(res_path) and peak is not None:
+    res = json.load(open(res_path))
+    res.setdefault("cost", {})["lock_accounting"] = out
+    with open(res_path, "w") as f:
+        json.dump(res, f, indent=2, ensure_ascii=False)
+    print("results.json::cost.lock_accounting 已同步")
 print(json.dumps(out, ensure_ascii=False))
 PY
 echo "=== DONE $(date -Is) rc=$RC ==="

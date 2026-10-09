@@ -18,6 +18,10 @@ SMOKE=""
 free_mib() { nvidia-smi --query-gpu=memory.free --format=csv,noheader,nounits; }
 FREE_BEFORE=$(free_mib)
 T0=$(date +%s)
+# **§9 复用前置门**（与 eval.sh 一致）：verdict 非 reuse_ok 系 ⇒ 不评测，回退自包含双跑。
+# 注意：`run.py` 本身**不**读 verdict（它是评测入口，不是门）；门在这里与 equality_vs_2631.py
+# 的返回码处。
+python3 "$EXP/equality_vs_2631.py" || { echo "§9 复用证据不通过 ⇒ 回退自包含双跑"; exit 1; }
 python3 "$EXP/fill_config_hashes.py" || { echo "权重未齐（先训练）"; exit 1; }
 python3 "$EXP/run.py" $SMOKE 2>&1 | tee "$EXP/run_log.txt"
 RC=$?
@@ -52,6 +56,14 @@ out = {
 with open(os.path.join(exp, "lock_accounting.json"), "w") as f:
     json.dump(out, f, indent=2, ensure_ascii=False)
     f.write("\n")
+# 同一份记账**同步回** results.json::cost.lock_accounting（否则该字段会是 null：
+# run.py 在 lock_accounting.json 写出之前就落盘了 results.json）——复核 P2-2。
+if os.path.exists(res_path) and peak is not None:
+    res = json.load(open(res_path))
+    res.setdefault("cost", {})["lock_accounting"] = out
+    with open(res_path, "w") as f:
+        json.dump(res, f, indent=2, ensure_ascii=False)
+    print("results.json::cost.lock_accounting 已同步")
 print(json.dumps(out, ensure_ascii=False))
 PY
 echo "=== DONE $(date -Is) rc=$RC ==="

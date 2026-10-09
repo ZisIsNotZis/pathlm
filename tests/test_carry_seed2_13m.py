@@ -117,12 +117,14 @@ def test_judge_seed3_reuses_effect_stable_semantics():
 
 def test_reuse_equality_report_verdict_ok():
     rep = eqrep.compare(CFG, write=False, recompute_trainer=False)
-    assert rep["implementation_identical"] is True
+    assert rep["implementation_equivalent_to_2631_runtime"] is True
     assert rep["differing_fields"] == []
     assert rep["train_recipe_differing_flags"] == []
     assert rep["verdict"] == "reuse_ok"
-    # 行为等价必须**两层**成立（复核 P1-3）：前向（三档逐位 logits）+ 训练脚本（loss 序列）
+    # 行为等价必须**两层**成立（复核 P1-3 + 追加要求）：基准是 **2631 运行时版本**
+    # （不是 HEAD——HEAD 的字节会被并行线的默认关闭加性改动推动）
     ee = rep["engine_equivalence_working_tree_vs_head"]
+    assert "2631 运行时版本" in ee["comparison_base"]
     assert ee["forward_layer_ok"] is True
     assert ee["trainer_layer_ok"] is True, "训练脚本层未证等价 ⇒ 复用声明必须降级"
     assert rep["reuse_scope"].startswith("pathlm/** + train_depth_ar.py")
@@ -150,10 +152,16 @@ def test_runtime_version_ledger_covers_every_arm():
     for name, row in led["per_arm"].items():
         for rel, cell in row["files"].items():
             assert cell.get("version") in (
-                "head", "head(==working_tree)", "working_tree_at_run_time"), (name, rel)
+                "runtime_version", "runtime_version(==working_tree)",
+                "working_tree_at_run_time"), (name, rel)
         assert row["started_at"], f"{name} 缺启动时刻（无法判断跑的是哪一版）"
     assert led["verdict"] == "all_arms_behaviorally_equivalent"
+    assert "2631 运行时版本" in led["comparison_base"]
     assert "train_depth_ar.py" in led["engine_equivalence_coverage"]
+    # 漂移落地上界必须有据（历史观测 mtime 或漂移提交）
+    for rel, f in led["code_files"].items():
+        if f["drifted_now"]:
+            assert f["drift_landed_no_later_than"] or f["drift_commits_after_runtime_version"]
     assert led["drift_snapshot"]["n_bytes"] >= 0
 
 
@@ -173,23 +181,29 @@ def test_engine_equivalence_per_rule_report_is_complete():
         assert v["max_abs_logit_diff_same_weights"] == 0.0, rule
 
 
-def test_engine_files_unchanged_since_2631_run():
-    """HEAD 提交版的引擎/仪器必须与 2631 运行时记录逐文件相同。
+def test_engine_files_behaviorally_unchanged_since_2631_run():
+    """§9 实现层判据 = **行为等价**，不是「字节未变」。
 
-    工作树允许被并行线改动（`working_tree_differs_from_head`），但那种情况下必须由
-    `engine_equivalence` 在本实验的三档配置上证明语义等价（逐位 logits）。
+    背景（复核追加要求）：并行线对引擎做**默认关闭的加性改动**并入库，`HEAD` 的字节因此
+    会前进；「2631 运行时版本」与「当前工作树」的**字节**不必相同，但**开关关闭时行为必须
+    逐位不变**。⇒ 判据两件：
+      ① 按 2631 记录的 sha256 能在 git 历史里**定位到当时的版本**（否则基准不存在）；
+      ② 该版本与当前工作树**两层行为等价**：`pathlm/**` 三档配置逐位 logits +
+         `train_depth_ar.py` 同一 run 的日志点逐字段相同（点数 > 1，避免「单点假等价」）。
     """
     rep = eqrep.compare(CFG, write=False, recompute_trainer=False)
     for rel, row in rep["implementation"].items():
-        assert row["head_identical_to_2631"], f"{rel} 在 2631 之后被改过 ⇒ §9 复用前提失效"
-    for rel in rep["working_tree_drift_files"]:
-        assert rep["engine_equivalence_working_tree_vs_head"]["per_rule"], rel
-    # 漂移文件若含训练脚本，训练脚本层证据必须存在
-    if "train_depth_ar.py" in rep["working_tree_drift_files"]:
-        assert rep["engine_equivalence_working_tree_vs_head"]["trainer"]["verified"] is True
+        assert row["runtime_version_commit"], f"{rel}: 按记录哈希定位不到 2631 运行时版本"
+        assert row["n_matching_commits"] >= 1, rel
+        # 字节是否未变只是信息项：允许变，但必须有行为等价证据（下面断言）
+        assert "bytes_unchanged_since_2631_run" in row
+    assert rep["implementation_equivalent_to_2631_runtime"] is True
+    ee = rep["engine_equivalence_working_tree_vs_head"]
+    assert "2631 运行时版本" in ee["comparison_base"]
+    assert ee["forward_layer_ok"] is True and ee["trainer_layer_ok"] is True
+    assert ee["trainer"]["verified"] is True
+    assert ee["trainer"]["n_log_points_compared"] >= 2, ee["trainer"]["n_lines"]
 
-
-# ---------------- ④ results.json（跑完之后） ----------------
 
 RESULTS = os.path.join(EXP, "results.json")
 

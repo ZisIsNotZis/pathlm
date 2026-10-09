@@ -289,6 +289,47 @@ def test_judge_aggregation_rule_is_per_intervention_arm():
     assert j["any_arm_passes"] is True
 
 
+# ---------------- ⑧ 引擎活性注解与实际口径一致（复核 P2-6） ----------------
+
+def _tiny_carry_model(rule: str = "delta"):
+    """最小 carry 模型（CPU）——只用来跑 `carry_liveness` 的口径判定。"""
+    torch.manual_seed(0)
+    m = DepthARModel(DepthARConfig(d_model=32, n_layers=2, n_heads=2, seq_len=32,
+                                   mlp_mult=2, dense=True, topology="sequential",
+                                   carry_rule=rule), VOCAB)
+    m.eval()
+    return m
+
+
+def _tele(write_rel: float, chunks: int) -> dict:
+    return {"state_fro": 1.0, "beta_mean": 0.5, "write_rel": write_rel,
+            "read_norm": 1.0, "write_rel_chunks": chunks, "n_chunks": max(chunks, 1)}
+
+
+def test_carry_liveness_note_does_not_assert_undefined_write_rel():
+    """`write_rel` 单块时**无定义**：注解不得断言 `write_rel>0`，也不得因此判死。
+
+    引擎口径：`write_rel_ok = (write_rel_chunks == 0 or write_rel > 0)`
+    ⇒ 单块（chunks=0）不算死；但固定注解若写「每次写入真的改动状态（write_rel>0）」，
+    就与落盘值（0.0）自相矛盾（2634 的 `alive_note` 曾原样带出这个矛盾）。
+    """
+    from pathlm.depth_ar import carry_liveness
+    m = _tiny_carry_model()
+    layers = [{"read_scale_absmean": 0.1, "read_share": 0.4,
+               "mem_write_to_resid_ratio": 0.3}] * 2
+    single = carry_liveness(m, _tele(0.0, 0), layers)
+    assert single["write_rel_chunks"] == 0
+    assert single["alive"] is True, "单块时 write_rel 无定义，不得因此判死"
+    assert "write_rel>0" not in single["alive_note"], single["alive_note"]
+    assert "无定义" in single["alive_note"], single["alive_note"]
+    # ≥2 块且 write_rel>0 ⇒ 注解可以断言它
+    multi = carry_liveness(m, _tele(0.05, 3), layers)
+    assert multi["alive"] is True and "write_rel>0" in multi["alive_note"]
+    # ≥2 块但 write_rel==0 ⇒ 这次是真的「没有改动状态」⇒ 判死
+    dead = carry_liveness(m, _tele(0.0, 3), layers)
+    assert dead["alive"] is False
+
+
 # ---------------- ⑤ bpc 仪器对齐与配置不变量 ----------------
 
 def test_win16_bpc_matches_repo_instrument():

@@ -200,17 +200,22 @@ plain 只有 seed0 部分学到（3.68）、seed1/seed2 完全掉回瞎猜（4.2
 复用 2631 的 seed0/seed1 六臂，§9 四项逐条落成三个产物：`equality_report.json`、
 `engine_equivalence.json`、`runtime_version_ledger.json`（+ `evidence/drift_snapshot/`）。
 
-1. **实现层 equality（两层，复核 P1-3 后补强）**：
-   - ① `HEAD` 提交版的五个引擎/仪器文件 sha256 **逐文件等于** 2631 运行时记录
-     （`2631/results.json::code_hashes`）⇒ 提交历史里那份实现没变；
-   - ② **工作树**在本次执行期间被**其它并行线**改动过（`pathlm/depth_ar.py` 23:06、
-     `train_depth_ar.py` 次日 00:09，均为未提交改动）⇒ 文件哈希不再等于 HEAD，因此改用
-     **行为等价**（这才是「换了字节之后，本实验用到的那条路径是否一样」的答案）：
-     - **前向层**：把 `HEAD` 版 `pathlm/` 整包解到临时目录，与本实验三档配置
-       （none/plain/delta）各建一个模型 ⇒ 参数量逐位相同、**同权重下 `max|Δlogit| = 0.000e+00`**；
-     - **训练脚本层**：`HEAD` 版 `train_depth_ar.py` 与工作树版各跑 **20 步**
-       （同 seed / 同合成数据 / 同配方）⇒ `train_log.jsonl` 的 `step/loss/gnorm/...`
-       **逐字段 0 处不同**（排除墙钟字段 `min`）。
+1. **实现层 equality（基准 = 2631 运行时版本；判据 = 行为等价；两层，复核 P1-3 + 追加要求）**：
+   - ① **基准定位**：`2631 运行时版本` = 按 2631 `results.json::code_hashes` 记录的 sha256
+     在 `git log --all` 的历史里**反查到的那个 commit**（五个引擎/仪器文件逐个定位；
+     `pathlm/depth_ar.py` 与 `train_depth_ar.py` 都落在 `9f125cf`）。
+     **字节是否仍等于当时记录只是信息项**——并行线对引擎做过**默认关闭的加性改动**并入库
+     （`pathlm/depth_ar.py`、`train_depth_ar.py` 的字节都已前进），§9 要判的是
+     「**开关关闭时行为是否逐位不变**」；
+   - ② **行为等价**（判据）——把基准版本的 `pathlm/` 整包解到临时目录，与本实验三档配置
+     （none/plain/delta）逐条比：
+     - **前向层**：参数量逐位相同、**同权重下 `max|Δlogit| = 0.000e+00`**（三档全过）；
+     - **训练脚本层**：基准版 `train_depth_ar.py`（`9f125cf`）与工作树版各跑 **1,001 步**
+       （同 seed / 同合成数据 / 同配方；训练器每 200 步写一行 ⇒ 该 run 产生
+       **6 个日志点**：step 0/200/400/600/800/1000）⇒ `train_log.jsonl` 的
+       `step/loss/gnorm/...` **逐字段 0 处不同**（排除墙钟字段 `min`）。
+       **点数以产物为准**：`engine_equivalence.json::trainer.n_lines`（不在文字里硬编码；
+       之所以不用 20 步：那只有 step 0 与 19 两个点，容易被误读成「20 个点的序列」）。
    - **运行期版本台账**（`runtime_version_ledger.py`）：从波级驱动日志与 2631 的驱动日志取九臂
      启动时刻、与漂移文件的 mtime 比 ⇒ **九臂里只有 `delta_s2`（启动 23:19）跑的是
      `pathlm/depth_ar.py` 的工作树版**（其余八臂跑 HEAD 版）；`train_depth_ar.py` 的漂移发生在
@@ -224,9 +229,12 @@ plain 只有 seed0 部分学到（3.68）、seed1/seed2 完全掉回瞎猜（4.2
    （唯一差别 `--seed` 与输出目录）。
 3. **口径标注**：seed0/1 = 历史同配置对照（**两层行为等价** + 同 token 预算）；seed2 = 本次
    新训；九臂同快照口径（12k 步）。**复用范围** = `pathlm/**` + `train_depth_ar.py`。
-4. **不等即回退**：`equality_vs_2631.compare()` 的 `verdict` 是评测脚本的**前置门**
-   （`reuse_ok` / `reuse_ok_pathlm_only`（训练脚本层未证时**必须降级声明**）/ `reuse_rejected`；
-   非 `reuse_ok` 时退出，回退自包含双跑）。
+4. **不等即回退（门在驱动层，不在 `run.py`）**：`verdict` 有三分支
+   （`reuse_ok` / `reuse_ok_pathlm_only`（训练脚本层未证时**必须降级声明**）/ `reuse_rejected`），
+   其**执行点**有两处：① `equality_vs_2631.py` 的**脚本入口返回码**（非 `reuse_ok` 系返回 1）；
+   ② 评测驱动 `eval.sh` 与 `eval_concurrent.sh` 在 `run.py` **之前**调用它、非零即 `exit 1`
+   （回退自包含双跑）。**`run.py` 本身不读 verdict**——它是评测入口而不是门
+   （复核 P2-5 指出的措辞与代码不符，此处已按实际执行点改写）。
 
 ---
 
@@ -280,9 +288,11 @@ delta 与 plain 两种写入规则**。不得读成「业界做不到/做得到�
 
 ## §20 记账（GPU 锁 / 显存 / 争用）
 
-> **结构化产物**：`lock_accounting.json`（由 `eval_concurrent.sh` 写出，`results.json::cost.lock_accounting`
-> 直接引用它；机器可读字段 = `mode/lock_taken/free_gpu_mem_mib_before/after/wall_s/eval_peak_gpu_mem_mb/
-> headroom_ok`）。本节只是同一事实的文字口径。
+> **结构化产物**：`lock_accounting.json`（由 `eval_concurrent.sh` 写出，**权威**；机器可读字段 =
+> `mode/lock_taken/free_gpu_mem_mib_before/after/wall_s/eval_peak_gpu_mem_mb/headroom_ok`）。
+> `results.json::cost.lock_accounting` 是驱动在**同一份数据**上回填的副本（`run.py` 先落盘
+> results.json、驱动后写记账 ⇒ 不回填时该字段为 null；复核 P2-2 后驱动已加回填步骤）。
+> 本节只是同一事实的文字口径。
 
 - **训练**：按臂取/放 `/tmp/pathlm_gpu.lock`、臂间留 ≥60 s（§20.1）；峰值显存见 `MODEL.md`。
 - **评测**：因**其它线长时间占锁**（R7/MoD 的 `run_arms.sh all` 连续训练，多次等待 >10 min）
@@ -291,7 +301,7 @@ delta 与 plain 两种写入规则**。不得读成「业界做不到/做得到�
 
 | 实验 | 评测墙钟 | 评测峰值显存（本进程） | 并发前空闲 | 并发后空闲 | 空闲门槛 |
 |---|---:|---:|---:|---:|:--:|
-| 2633 | 174 s | 701.6 MB | 15,752 MiB | 15,286 MiB | ≥3,072 MiB ✅ |
+| 2633 | 252 s | 701.6 MB | 15,028 MiB | 16,610 MiB | ≥3,072 MiB ✅ |
 
-- **偏离声明（若有）**：§20.1.2 的字面门槛是「≤2 min」；本次实测 **174 s**（含 `fill_config_hashes.py`）⇒ 略超门槛，如实登记为**超门槛的 §20 一次性并发例外**；峰值仍 <1 GB、空闲始终 ≥14 GB。
+- **偏离声明（若有）**：§20.1.2 的字面门槛是「≤2 min」；本次实测 **252 s**（含 `fill_config_hashes.py` 与为修复 P2-5 而加的 **§9 复用前置门**：`equality_vs_2631.py`，其中训练脚本层等价要跑 2×1,001 步 ≈ 45 s）⇒ 超门槛，如实登记为**超门槛的 §20 一次性并发例外**（评测本身约 200 s，门与对账约 50 s）；峰值仍 <1 GB、空闲始终 ≥15 GB。
 - 训练侧无「等锁超时 / 锁泄漏」。评测前的等锁超时属**外部线长时间占锁**，已用例外绕过并记账。

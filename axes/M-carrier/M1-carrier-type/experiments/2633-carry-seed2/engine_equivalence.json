@@ -7,7 +7,7 @@
   "probe_seed": 1234,
   "per_rule": {
     "none": {
-      "n_params_head": 13536768,
+      "n_params_base": 13536768,
       "n_params_working_tree": 13536768,
       "n_params_same": true,
       "params_bitwise_same_at_same_seed": true,
@@ -16,7 +16,7 @@
       "bitwise_equal_forward": true
     },
     "plain": {
-      "n_params_head": 13801064,
+      "n_params_base": 13801064,
       "n_params_working_tree": 13801064,
       "n_params_same": true,
       "params_bitwise_same_at_same_seed": true,
@@ -25,7 +25,7 @@
       "bitwise_equal_forward": true
     },
     "delta": {
-      "n_params_head": 13801064,
+      "n_params_base": 13801064,
       "n_params_working_tree": 13801064,
       "n_params_same": true,
       "params_bitwise_same_at_same_seed": true,
@@ -34,11 +34,26 @@
       "bitwise_equal_forward": true
     }
   },
+  "comparison_base": "2631 运行时版本（按 2631/results.json::code_hashes 定位）",
+  "base_resolution": {
+    "rel": "pathlm/depth_ar.py",
+    "recorded_sha256": "45f946793835f2afadf3a10f727b02ee879682ef6024b23fa179d3351c28c585",
+    "commit": "9f125cf5edf577e82500afec9d4c6dbcd3b32e20",
+    "n_matching_commits": 1,
+    "commit_subject": "9f125cf ENG2：写入通道支持非 dense ragged/随机退出/填充路径（引擎 + 单测 + 冒烟）"
+  },
   "bitwise_equivalent_on_this_experiments_configs": true,
   "forward_layer_ok": true,
   "trainer": {
     "verified": true,
-    "steps": 20,
+    "base_resolution": {
+      "rel": "train_depth_ar.py",
+      "recorded_sha256": "2d1863bbc4403e026d12b597d98a1da2b85f3606110073f2117a7dd1db2a1f35",
+      "commit": "9f125cf5edf577e82500afec9d4c6dbcd3b32e20",
+      "n_matching_commits": 1,
+      "commit_subject": "9f125cf ENG2：写入通道支持非 dense ragged/随机退出/填充路径（引擎 + 单测 + 冒烟）"
+    },
+    "steps": 1001,
     "compared_fields": [
       "step",
       "loss",
@@ -50,30 +65,40 @@
       "synth_chance_ce"
     ],
     "n_lines": {
-      "head": 2,
-      "working_tree": 2
+      "base": 6,
+      "working_tree": 6
     },
-    "loss_sequence_head": [
+    "n_log_points_compared": 6,
+    "log_points_note": "训练器每 200 步写一行 ⇒ 1001 步 = 6 个日志点（step 0/200/400/600/800/1000）；实际点数以 n_lines 为准",
+    "loss_sequence_base": [
       4.5637,
-      4.4647
+      0.5217,
+      0.4717,
+      0.4665,
+      0.4661,
+      0.4639
     ],
     "loss_sequence_working_tree": [
       4.5637,
-      4.4647
+      0.5217,
+      0.4717,
+      0.4665,
+      0.4661,
+      0.4639
     ],
     "n_field_diffs": 0,
     "field_diffs": [],
     "runs": {
-      "head": {
+      "base": {
         "returncode": 0,
-        "wall_s": 5.7,
-        "n_log_lines": 2,
+        "wall_s": 19.6,
+        "n_log_lines": 6,
         "stderr_tail": null
       },
       "working_tree": {
         "returncode": 0,
-        "wall_s": 5.9,
-        "n_log_lines": 2,
+        "wall_s": 19.7,
+        "n_log_lines": 6,
         "stderr_tail": null
       }
     },
@@ -82,5 +107,5 @@
   "trainer_layer_ok": true,
   "coverage": "pathlm/**（逐位 logits）+ train_depth_ar.py（逐字段 loss 序列）",
   "all_layers_ok": true,
-  "note": "工作树与 HEAD 提交版在**本实验用到的**配置上逐位等价（前向三档 + 训练脚本 20 步 loss 序列）；这只覆盖本实验的配置，不代表两版在所有配置上等价"
+  "note": "**2631 运行时版本**（按记录 sha256 定位）与**当前工作树**在**本实验用到的**配置上逐位等价（前向三档逐位 logits + 训练脚本同一 run 的 6 个日志点逐字段相同，见 trainer.n_lines）；字节允许变（并行线的默认关闭加性改动），**开关关闭时行为必须逐位不变**；这只覆盖本实验的配置，不代表两版在所有配置上等价"
 }

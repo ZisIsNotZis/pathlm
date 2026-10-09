@@ -83,20 +83,25 @@ def compare(cfg: dict | None = None, with_equivalence: bool = True,
     rep2631 = json.load(open(os.path.join(RES, "results.json")))
     cfg2631 = json.load(open(os.path.join(RES, "config.json")))
 
-    # ① 实现层：HEAD 提交版 == 2631 记录（工作树的并行改动单独报 + 做语义等价测试）
+    # ① 实现层：**基准 = 2631 运行时版本**（按记录 sha256 定位），判据是**行为等价**。
+    #    字节是否还等于当时记录是**信息项**（并行线做过默认关闭的加性改动 ⇒ 预期会变），
+    #    不是 §9 的判据；判据是下面 `engine_equivalence` 的两层逐位等价。
     impl, impl_ok, tree_drift = {}, True, []
     for rel in CODE_FILES:
-        head = _head_sha(rel)
         work = sha256_file(os.path.join(ROOT, rel))
         then = rep2631.get("code_hashes", {}).get(rel)
-        same = (head == then)
-        impl_ok = impl_ok and same
-        drift = (work != head)
+        import engine_equivalence as _ee
+        located = _ee.resolve_recorded_commit(rel, then) if then else None
+        drift = (then is not None and work != then)
         if drift:
             tree_drift.append(rel)
-        impl[rel] = {"head": head, "working_tree": work, "at_2631_run": then,
-                     "head_identical_to_2631": bool(same),
-                     "working_tree_differs_from_head": bool(drift)}
+        impl[rel] = {"recorded_at_2631_run": then, "working_tree_now": work,
+                     "runtime_version_commit": (located or {}).get("commit"),
+                     "runtime_version_subject": (located or {}).get("commit_subject"),
+                     "n_matching_commits": (located or {}).get("n_matching_commits"),
+                     "bytes_unchanged_since_2631_run": bool(then == work),
+                     "note": ("字节不变只是信息项；判据见 `implementation_equivalent_"
+                              "to_2631_runtime`（两层行为等价）")}
     if recompute_trainer is None:
         recompute_trainer = write          # 生成证据（脚本入口）时重算；测试（write=False）引用已入账产物
     equiv = None
@@ -147,11 +152,15 @@ def compare(cfg: dict | None = None, with_equivalence: bool = True,
         "generated_by": "2633-carry-seed2/equality_vs_2631.py",
         "target": os.path.relpath(RES, ROOT),
         "implementation": impl,
-        "implementation_identical": bool(impl_ok),
-        "implementation_note": ("① = HEAD 提交版哈希 == 2631 运行时记录（五个引擎/仪器文件）；"
-                                "② = 工作树 vs HEAD 的**行为**等价，两层覆盖："
-                                "`pathlm/**`（三档配置逐位 logits）+ `train_depth_ar.py`"
-                                "（20 步逐字段 loss 序列）。只覆盖本实验用到的配置。"),
+        "implementation_equivalent_to_2631_runtime": bool(impl_ok),
+        "implementation_note": ("① 基准 = **2631 运行时版本**：按 2631 `results.json::code_hashes`"
+                                " 记录的 sha256 在 git 历史里定位到对应 commit"
+                                "（见每条的 `runtime_version_commit`）；② 判据 = 该版本与**当前"
+                                "工作树**的**行为**等价（两层）：`pathlm/**` 三档配置逐位 logits +"
+                                " `train_depth_ar.py` 同一 run 的若干日志点逐字段 loss 序列"
+                                "（点数见 `engine_equivalence.json::trainer.n_lines`）。"
+                                "**字节允许变**（并行线的默认关闭加性改动），开关关闭时行为必须"
+                                "逐位不变；只覆盖本实验用到的配置。"),
         "working_tree_drift_files": tree_drift,
         "engine_equivalence_working_tree_vs_head": equiv,
         "git_head": impl_sha,
@@ -183,7 +192,9 @@ def compare(cfg: dict | None = None, with_equivalence: bool = True,
 
 def main() -> int:
     r = compare(recompute_trainer=True)
-    print("实现层逐文件相同:", r["implementation_identical"])
+    print("行为等价（vs 2631 运行时版本）:", r["implementation_equivalent_to_2631_runtime"])
+    print("字节未变（信息项）:", {k: v["bytes_unchanged_since_2631_run"]
+                                for k, v in r["implementation"].items()})
     print("配置层不同字段:", r["differing_fields"] or "无")
     print("训练配方不同的 flag:", r["train_recipe_differing_flags"] or "无")
     print("verdict:", r["verdict"], "| 复用范围:", r["reuse_scope"])

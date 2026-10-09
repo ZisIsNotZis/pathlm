@@ -13,7 +13,7 @@
   有两种完全不同的原因：① 进程真的卡住（栈在 `backward` 内）；② 数值发散后**几乎所有步
   都被梯度门跳过**，步在推进而日志不写。因此本门分两级：
 
-  - 无日志推进 ≥ `--no-log-secs`（缺省 = `--stall-secs`）⇒ **记录** `no_log_progress` 事件与
+  - 无日志推进 ≥ `--stall-secs`（缺省 180 s）⇒ **记录** `no_log_progress` 事件与
     诊断（非致命），继续监控；
   - 无日志推进 ≥ `--kill-secs`（缺省 900 s）且进程仍活着 ⇒ 终止该臂，`status=killed_after_no_log_progress`，
     返回码 3；进程若在此期间正常退出，则按 `finished` 处理。
