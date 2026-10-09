@@ -1,0 +1,97 @@
+{
+ "experiment": "2632-kv-block-scale",
+ "line": "R1 重跑（WI-08）：KV 量化的标尺口径——逐值标尺（坏天平）→ 块标尺 / KIVI 式",
+ "contract": ".scratch/51-tree/WORK_ITEMS.md::WI-08 + 独立批判性审计（KV 量化把标尺做成逐值，据此得出与业界相反的内存结论）",
+ "contract_copy": "README.md（同目录，§4 判据线**运行前**写入）",
+ "scope": "单轴单格实验（R1-quantization），基底恒为 stock 对照。本实验是**换标尺口径的重测**：把 2631 的 27 点预算图在**块标尺（沿 head_dim，G=32 为主）**下重测，并在同一张表里并列『值字节 / 部署字节 / 对 fp16 倍率』；另跑 KIVI 式（K per-channel / V per-token）与逐值标尺对照臂。除标尺方案外，checkpoint / 数据流 / 任务 / 判据与 2631 逐字段相同。",
+ "axis_definition": {
+  "quantity": "deployment_bytes_per_position",
+  "formula": "2(K,V) * n_layers * n_kv_heads_eff * head_dim * (value_bytes + scale_bytes_per_value) * (positions_kept / T)",
+  "value_caliber_formula": "2(K,V) * n_layers * n_kv_heads_eff * head_dim * value_bytes * (positions_kept / T)  ← 2631 的旧横轴，逐位保留作对照",
+  "unit": "字节 / 上下文位置",
+  "seq_len_T": 256,
+  "to_fp16_multiple": "deployment_bytes_per_position / fp16_value_bytes_per_position(12288)",
+  "caveats": [
+   "块标尺沿 head_dim（非 token 轴）⇒ 标尺只由当前 token 自己的值决定 ⇒ 严格前缀确定（本实验的硬门禁）。",
+   "head_dim = 32 ⇒ 沿 head_dim 的块只能整除到 G ∈ {8,16,32}；G = 64 无法在不违反前缀确定的前提下做到（分块跨 token）。",
+   "沿 token 轴的块（block_tok / kivi 的 K 侧）能摊薄到 2/G，但块内过去值会被后续位置改写 ⇒ 违反前缀确定 ≤ G−1 个位置。",
+   "所有窗口/锚点臂的 positions_kept/T 与 T 有关 ⇒ 禁外推到别的 T；量化臂的每位置字节与 T 无关。",
+   "本列是解析（部署口径）KV 占用；评测实现会把 K/V 立刻反量化 ⇒ 实测显存峰值不随档下降，两者分列（判据 C2）。"
+  ]
+ },
+ "parent": {
+  "experiment": "2631-kv-budget-causal",
+  "config": "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/config.json",
+  "results": "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/results.json",
+  "role": "27 点预算图、checkpoint、arm 定义、评测流、判据线的唯一来源（本实验只读取、不改）。"
+ },
+ "schemes": {
+  "per_value": {
+   "axis": "token(running)",
+   "group_default": 1,
+   "role": "对照臂（2631 的生产实现）：每值一把 fp16 标尺 ⇒ +2 B/值；严格前缀确定"
+  },
+  "block": {
+   "axis": "head_dim",
+   "group_default": 32,
+   "group_ladder": [8, 16, 32],
+   "role": "**主臂**：沿 head_dim 每 G 个相邻值共享一把标尺 ⇒ +2/G B/值；严格前缀确定。G=32=head_dim ⇒ per-token 标尺"
+  },
+  "block_tok": {
+   "axis": "token",
+   "group_ladder": [16, 32, 64],
+   "role": "2631 方案 (b) 的实现（解析 → 实测质量）：沿 token 每 G 个位置共享一把标尺；违反前缀确定 ≤ G−1"
+  },
+  "kivi": {
+   "axis": "K: token(per-channel) / V: head_dim(per-token)",
+   "kivi_group_default": 32,
+   "role": "KIVI 式标准：K per-channel（token 组）/ V per-token；K 侧违反前缀确定 ≤ kivi_group−1，V 侧严格因果"
+  }
+ },
+ "value_bytes": {"fp32": 2.0, "fp16": 2.0, "int8": 1.0, "int4": 0.5},
+ "scale_bytes": 2.0,
+ "primary_arm_scheme": {"int8": "block", "int4": "block"},
+ "criterion": {
+  "verbatim_contract": [
+   "① 前缀不变性必须成立（改未来 token / 改同批邻居，不改过去位置的读数）——**主臂 block(G=32)** 与 V per-token；对违反的实现（block_tok / kivi 的 K 侧）如实报 False",
+   "② 诚实对照：逐值标尺臂（per_value）与不量化臂（fp16 / 同拓扑 fp16）必须同场",
+   "③ 部署字节账：值 + 标尺（+ 非因果方案的 staging），不得再把标尺当免费",
+   "④ 质量腿：clean bpc + 合成长程召回（Wilson CI）；内存腿：解析字节账 + 实测峰值",
+   "⑤ 结论必须回答：『8 位近无损且省约一半』这条参照线成立吗？成立到什么程度？在什么实现下不成立？"
+  ],
+  "sign_convention": "damage_bpc = bpc_臂 − 本族基线 bpc（正 = 更差）；量化增量 = bpc_量化臂 − 同拓扑不量化臂 bpc（正 = 更差）。",
+  "variance_band_self_measured": "本格自测（不得套用全局 0.014）：同一臂在 window_seed ∈ {2,3,4} 三个独立评测窗口下重测 bpc，报极差与半宽；主判据 Δ 必须大于该自测带宽才可排序。",
+  "no_single_point_extrapolation": "SCHEMA §17.11：单点只描述；G 阶梯与 scheme 比较各点单独测，不外推。",
+  "recall_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（不可分辨，不得写成机制无效，SCHEMA §19）。",
+  "gate": "① 主臂 block(G=32) 前缀不变性不成立 ⇒ 本实验作废，不得作为新价签。"
+ },
+ "cost": {
+  "gpu_wall_budget_min": 40,
+  "gpu_wall_budget_source": "契约 WI-08「≈40 GPU 分钟」",
+  "budget_cut_rule": "预算不够时先砍 scheme 比较臂（保留 per_value / block g16 / block g32 / block_tok g32 / kivi），再砍 window_seed 自测（保留 2 个 seed），保全部 27 点与判据线；不砍判据线（SCHEMA §8/§17.7）",
+  "peak_mem_budget_gib": 5,
+  "smoke": "python3 run.py --smoke（缩小批量/档数，实测步时与显存，不外推时间）"
+ },
+ "seed": 7,
+ "eval": {
+  "n_batches": 24,
+  "batch_size": 16,
+  "window_seed": 2,
+  "self_measured_seeds": [2, 3, 4],
+  "device": "cuda",
+  "note": "与 2610/2614/2619/2620/2621/2631 同一窗口序 ⇒ clean bpc 同口径可比。"
+ },
+ "reuse": {
+  "policy": "SCHEMA §9：复用历史 run 只省算力、不省证据",
+  "non_quant_arms": "非量化臂（fp16 / 窗口 / 锚点 / 头共享 / 头共享×窗口）沿用 2631 的分派（b21.make_logits_fn），须与 2631 逐位一致（max|Δbpc| = 0）——这是『唯一改动只有标尺方案』的可控性证据。",
+  "quant_arms": "10 个量化臂由本实验的 scheme-aware 前向（block_arms.py）重测；scheme=per_value 时必须与 2631 的生产前向逐位一致（实现层 equality）。",
+  "new_modules": ["block_arms.py", "scale_caliber.py"],
+  "shared_change": "tools/evalkit/kv_quant.py 增 scheme 参数与 block/block_tok/kivi 标尺（默认 per_value，向后兼容）；新逻辑集中在 kv_quant.py 的 scheme 分支。",
+  "code_anchors": [
+   "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/run.py",
+   "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/block_arms.py",
+   "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/scale_caliber.py",
+   "tools/evalkit/kv_quant.py"
+  ]
+ }
+}

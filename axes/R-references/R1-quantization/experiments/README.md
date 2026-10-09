@@ -13,6 +13,7 @@
 | [`2620-kv-budget-gaps`](2620-kv-budget-gaps/README.md) | 目录内 README |
 | [`2621-kv-budget-rest`](2621-kv-budget-rest/README.md) | 目录内 README |
 | [`2631-kv-budget-causal`](2631-kv-budget-causal/README.md) | 目录内 README |
+| [`2632-kv-block-scale`](2632-kv-block-scale/README.md) | 目录内 README |
 
 <!-- AUTO:end -->
 

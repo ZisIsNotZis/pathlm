@@ -37,6 +37,13 @@
 scale，块关闭时回填一次），代价是块内过去值会随同块后续 token 变——本参照线**不**采该口径，
 因为评测要的是「过去位置严格前缀确定」的可比价签。
 
+**标尺方案（`SCALE_SCHEMES`，`quantize_kv(scheme=...)`）**：上表里的「每值 +2 字节标尺」是
+**逐值标尺**（`per_value`）的价钱——严格前缀确定的**最贵**存法。它可以更便宜而不损伤因果：
+把标尺沿**非 token 轴**（`head_dim`）摊薄（`block`：每 `group` 个相邻通道共享一把 ⇒ `2/group`
+B/值，`group = head_dim` 时 int8 净 **1.0625 B/值**），或 KIVI 式（`kivi`：K per-channel 沿
+token 分组、V per-token）。`per_value` 保留为**对照臂**。沿 token 轴摊薄（`kivi` 的 K 侧 /
+块式 token 分组）只能用「块内过去值可被改写」换，违反前缀确定 ≤ `group − 1` 个位置。
+
 前向实现：按 `DepthARModel.forward` 的 **dense 分支**逐行复刻
 （`_input_states` → 逐层 `Block` → tied fp32 读出），只在 `Block` 的注意力
 之前对 K/V 做一次量化-反量化往返。`fp32` 档必须与释放版前向**逐位相等**
@@ -60,6 +67,23 @@ KV_MODES = ("fp32", "fp16", "int8", "int4")
 _INT_BITS = {"int8": 8, "int4": 4}
 _BYTES_PER_VALUE = {"fp16": 2.0, "int8": 1.0, "int4": 0.5}
 
+#: 标尺（scale）方案。标尺是每值存储精度的**元数据**；它存哪、摊多薄决定量化能不能省内存。
+#:
+#: - `per_value`：位置 t 的标尺 = 同请求 ≤ t 的 running max / qmax（逐值一个 fp16 标尺）。
+#:   严格前缀确定，但**标尺 2 B/值** ⇒ int8 净 3 B/值（比 fp16 的 2 B/值更费）。本文件原实现。
+#: - `block`：沿 `head_dim` 每 `group` 个**相邻**值共享一把标尺（`amax/qmax`）。标尺只由当前
+#:   token 自己的值决定 ⇒ **严格前缀确定**，且摊薄到 `2/group` B/值（`group = head_dim` 时
+#:   即 per-token 标尺，int8 = 1 + 2/32 = 1.0625 B/值）。这是 llama.cpp `q8_0` 式块量化。
+#: - `kivi`：KIVI 式 = **K per-channel**（token 轴每 `kivi_group` 个位置共享一把通道标尺）、
+#:   **V per-token**（每 token 沿 `head_dim` 一把标尺）。K 侧沿 token 分组 ⇒ 块内过去值会随
+#:   同组后续位置改写（违反前缀确定 ≤ `kivi_group − 1` 个位置）；V 侧严格因果。
+#: - `block_tok`：沿 **token** 轴每 `group` 个相邻位置共享一把标尺（每通道一把，K/V 同）。
+#:   这就是 `2631/budget_caliber` 里只做过**解析**的方案 (b)；块内不前缀确定（≤ `group − 1`）。
+SCALE_SCHEMES = ("per_value", "block", "block_tok", "kivi")
+
+#: 每把标尺的存储字节数（fp16 标尺 = 2 B；与 `2631/budget_caliber.SCALE_BYTES` 同口径）。
+SCALE_BYTES = 2.0
+
 
 # --------------------------------------------------------------- 量化 / 反量化
 
@@ -68,6 +92,103 @@ def _new_stats() -> dict:
     return {"n_values": 0, "sum_abs_err": 0.0, "max_abs_err": 0.0,
             "sum_abs_x": 0.0, "n_changed": 0, "n_clipped": 0,
             "scale_min": None, "scale_max": None}
+
+
+def _require_group(group: int, span: int, axis: str) -> None:
+    """块标尺必须整除它所在的那条轴（否则块不整齐，每值摊到的标尺字节不是 `2/group`）。"""
+    if group < 1 or span % group:
+        raise ValueError(f"{axis} 块标尺要求 group 整除 {axis}={span}，收到 group={group}")
+
+
+def _head_dim_block_quant(x: torch.Tensor, qmax: int, group: int):
+    """沿 `head_dim`（最后一维）每 `group` 个相邻值共享一把标尺。
+
+    `x` 布局 `[..., H, T, head_dim]`：标尺只对该 token 的 `group` 个通道取 amax，
+    **token 轴不参与归约** ⇒ 严格前缀确定。返回 `(dq, scale, ratio)`，后两者在
+    块视图 `[..., H, T, head_dim/group, group]` 里（供活性量统计用）。
+    """
+    hd = x.shape[-1]
+    _require_group(group, hd, "head_dim")
+    xr = x.reshape(*x.shape[:-1], hd // group, group)
+    s = (xr.abs().amax(dim=-1, keepdim=True) / qmax).clamp_min(1e-12)
+    ratio = xr / s
+    q = torch.round(ratio).clamp(-qmax, qmax)
+    return (q * s).reshape(x.shape), s, ratio
+
+
+def _token_block_quant(x: torch.Tensor, qmax: int, group: int):
+    """沿 **token** 轴每 `group` 个相邻位置共享一把标尺（每通道一把，= KIVI 的 K 侧）。
+
+    `x` 布局 `[..., H, T, head_dim]`：标尺 = 该 token 块在**同一通道**上的 amax。
+    块内过去值会被同块（最多 `group − 1` 个）后续位置改写 ⇒ 违反前缀确定。
+    """
+    T = x.shape[-2]
+    hd = x.shape[-1]
+    _require_group(group, T, "T")
+    xr = x.reshape(*x.shape[:-2], T // group, group, hd)
+    s = (xr.abs().amax(dim=-2, keepdim=True) / qmax).clamp_min(1e-12)
+    ratio = xr / s
+    q = torch.round(ratio).clamp(-qmax, qmax)
+    return (q * s).reshape(x.shape), s, ratio
+
+
+def _int_quantize_schemed(x: torch.Tensor, qmax: int, scheme: str,
+                          group: int, kivi_group: int, is_key: bool | None):
+    """按 `scheme` 选标尺轴，做一次对称取整往返。返回 `(dq, scale, ratio)`。
+
+    `dq` 与 `x` 同形；`scale` / `ratio` 在各自的块视图里（`ratio = x/scale`，
+    供 `n_clipped` 统计）。`kivi` 需要 `is_key`：K 走 token 块（per-channel）、
+    V 走 `head_dim` 整块（per-token）。
+    """
+    if scheme == "per_value":
+        # 因果/流式：token 轴 = -2，只对 **该位置及其之前** 的 token 取 running max
+        # （`cummax`），batch 轴不参与归约（逐请求）。不重编码、无 fp16 尾窗。
+        scale = (x.abs().cummax(dim=x.dim() - 2).values / qmax).clamp_min(1e-12)
+        ratio = x / scale
+        q = torch.round(ratio).clamp(-qmax, qmax)
+        return q * scale, scale, ratio
+    if scheme == "block":
+        return _head_dim_block_quant(x, qmax, group)
+    if scheme == "block_tok":
+        # 沿 token 轴分组（= 2631/budget_caliber 解析里的方案 (b)），块内不前缀确定。
+        return _token_block_quant(x, qmax, group)
+    if scheme == "kivi":
+        if is_key is None:
+            raise ValueError("kivi 标尺需要 is_key 区分 K（per-channel）/ V（per-token）")
+        if is_key:
+            return _token_block_quant(x, qmax, kivi_group)
+        # V per-token：整条 head_dim 共享一把标尺（= block，group = head_dim）。
+        return _head_dim_block_quant(x, qmax, x.shape[-1])
+    raise ValueError(f"unknown scale scheme {scheme!r}; expected one of {SCALE_SCHEMES}")
+
+
+def scheme_scale_bytes_per_value(mode: str, scheme: str, head_dim: int,
+                                 group: int = 32, kivi_group: int = 32) -> float:
+    """每值摊到的标尺字节数（解析口径）——量化能不能省内存全看这一个数字。
+
+    - `per_value`：每值一把 fp16 标尺 ⇒ 2.0（严格前缀确定的最贵存法）。
+    - `block`：每 `group` 个相邻 `head_dim` 值一把 ⇒ `2/group`（需 `group | head_dim`）。
+    - `kivi`：K 侧 `2/kivi_group`（沿 token 分组）、V 侧 `2/head_dim`（沿通道）；半边各占
+      一半值 ⇒ 取两者的平均。
+
+    非量化档（fp32 / fp16）没有标尺 ⇒ 0。
+    """
+    if mode not in _BYTES_PER_VALUE and mode != "fp32":
+        raise ValueError(f"unknown mode {mode!r}")
+    if scheme not in SCALE_SCHEMES:
+        raise ValueError(f"unknown scale scheme {scheme!r}; expected one of {SCALE_SCHEMES}")
+    if mode in ("fp32", "fp16"):
+        return 0.0
+    if scheme == "per_value":
+        return SCALE_BYTES
+    if scheme == "block":
+        _require_group(group, head_dim, "head_dim")
+        return SCALE_BYTES / group
+    if scheme == "block_tok":
+        return SCALE_BYTES / group
+    if kivi_group < 1 or head_dim < 1:
+        raise ValueError(f"kivi 参数非法：kivi_group={kivi_group}, head_dim={head_dim}")
+    return (SCALE_BYTES / kivi_group + SCALE_BYTES / head_dim) / 2.0
 
 
 def _merge(dst: dict, src: dict) -> None:
@@ -101,12 +222,18 @@ def summarize_stats(acc: dict) -> dict:
 
 
 @torch.no_grad()
-def quantize_kv(x: torch.Tensor, mode: str):
+def quantize_kv(x: torch.Tensor, mode: str, scheme: str = "per_value",
+                group: int = 32, kivi_group: int = 32, is_key: bool | None = None):
     """评测期 KV cache 往返：`x` (fp32, 布局 `[..., H, T, head_dim]`) →
     存储（`mode` 精度）→ 反量化回 fp32。
 
+    `scheme` 选标尺的共享方案（见 `SCALE_SCHEMES`）：默认 `"per_value"`（逐值标尺，本文件
+    原实现、与既有 `2619/2620/2621/2631` 逐位一致）；`"block"` = 沿 `head_dim` 每 `group`
+    个值共享一把（严格前缀确定且摊薄）；`"kivi"` = K per-channel（`kivi_group` 个 token
+    一把）/ V per-token（需 `is_key` 区分）。
+
     返回 `(dequantized, stats)`；`stats` 用 `summarize_stats` 折成活性量。
-    `"fp32"` 档是逐位恒等（不改数值）。
+    `"fp32"` 档是逐位恒等（不改数值）；`"fp16"` 档没有标尺（`scheme` 必须为默认值）。
     """
     if mode not in KV_MODES:
         raise ValueError(f"unknown mode {mode!r}; expected one of {KV_MODES}")
@@ -115,22 +242,19 @@ def quantize_kv(x: torch.Tensor, mode: str):
     if mode == "fp32":
         return x, acc
     if mode == "fp16":
+        if scheme != "per_value":
+            raise ValueError(f"fp16 档没有标尺，scheme 必须为 'per_value'，收到 {scheme!r}")
         dq = x.to(torch.float16).to(x.dtype)
     else:
         bits = _INT_BITS[mode]
         qmax = 2 ** (bits - 1) - 1
-        # 因果/流式：token 轴 = -2，只对 **该位置及其之前** 的 token 取 running max
-        # （`cummax`），batch 轴不参与归约（逐请求）。不重编码、无 fp16 尾窗。
         if x.dim() < 3:
             raise ValueError(
                 f"KV 布局至少 3 维 [..., H, T, head_dim]，收到 {tuple(x.shape)}")
-        running_amax = x.abs().cummax(dim=x.dim() - 2).values
-        scale = (running_amax / qmax).clamp_min(1e-12)
-        q = torch.round(x / scale).clamp(-qmax, qmax)
-        acc["n_clipped"] = int(((x / scale).abs() > qmax).sum().item())
+        dq, scale, ratio = _int_quantize_schemed(x, qmax, scheme, group, kivi_group, is_key)
+        acc["n_clipped"] = int((ratio.abs() > qmax).sum().item())
         acc["scale_min"] = float(scale.min())
         acc["scale_max"] = float(scale.max())
-        dq = q * scale
     err = (dq.float() - x.float()).abs()
     acc["n_values"] = n
     acc["sum_abs_err"] = float(err.sum())
@@ -144,10 +268,11 @@ def quantize_kv(x: torch.Tensor, mode: str):
 
 
 def _block_forward_quant(blk: Block, x: torch.Tensor, mode: str,
-                         acc: dict) -> torch.Tensor:
+                         acc: dict, scheme: str = "per_value", group: int = 32,
+                         kivi_group: int = 32) -> torch.Tensor:
     """`pathlm.model.Block.forward` 的 dense 注意力分支（`attn_mask=None`、
     `dist_pen=0`、`kv_from=None`、`gate_vec=None`），在 SDPA 之前对 K/V 做
-    量化-反量化往返。"""
+    量化-反量化往返。`scheme` / `group` / `kivi_group` 透传给 `quantize_kv`。"""
     B, T, d = x.shape
     q, k, v = blk.qkv(blk.ln1(x)).chunk(3, dim=-1)
 
@@ -155,9 +280,9 @@ def _block_forward_quant(blk: Block, x: torch.Tensor, mode: str,
         return t.view(B, T, blk.n_heads, d // blk.n_heads).transpose(1, 2)
 
     qs, ks, vs = shape(q), shape(k), shape(v)
-    ks, ki = quantize_kv(ks, mode)
+    ks, ki = quantize_kv(ks, mode, scheme, group, kivi_group, is_key=True)
     _merge(acc, ki)
-    vs, vi = quantize_kv(vs, mode)
+    vs, vi = quantize_kv(vs, mode, scheme, group, kivi_group, is_key=False)
     _merge(acc, vi)
     a = F.scaled_dot_product_attention(qs, ks, vs, is_causal=True)
     a = a.transpose(1, 2).reshape(B, T, d)
@@ -167,12 +292,13 @@ def _block_forward_quant(blk: Block, x: torch.Tensor, mode: str,
 
 
 @torch.no_grad()
-def kv_quant_logits(model, tokens: torch.Tensor, mode: str):
+def kv_quant_logits(model, tokens: torch.Tensor, mode: str, scheme: str = "per_value",
+                    group: int = 32, kivi_group: int = 32):
     """dense 主干在全深度前向下的 logits `[B,T,V]`，KV 走 `mode` 精度的往返。
 
     返回 `(logits, stats)`。与 `DepthARModel.forward` 的 dense 分支逐位一致
     （`mode="fp32"` 时，单测钉住）。只接受 stock `Block` 层——内容 top-k 等
-    自定义层会让「唯一因素 = KV 精度」不成立。
+    自定义层会让「唯一因素 = KV 精度」不成立。`scheme` 见 `SCALE_SCHEMES`。
     """
     h = model._input_states(tokens)
     acc = _new_stats()
@@ -180,7 +306,7 @@ def kv_quant_logits(model, tokens: torch.Tensor, mode: str):
         if type(blk) is not Block:
             raise ValueError(
                 f"KV 量化参照线只定义在 stock dense 注意力上，遇到 {type(blk).__name__}")
-        h = _block_forward_quant(blk, h, mode, acc)
+        h = _block_forward_quant(blk, h, mode, acc, scheme, group, kivi_group)
     return model.readout(h), acc
 
 
@@ -295,3 +421,35 @@ def cache_reduction(base: dict, other: dict) -> dict:
             "per_position_bytes": o, "base_per_position_bytes": b,
             "reduction_frac": round(1 - o / b, 6),
             "ratio": round(b / o, 4)}
+
+
+def scheme_footprint(cfg, mode: str, scheme: str, group: int = 32,
+                     kivi_group: int = 32, seq_lens=(256,)) -> dict:
+    """**部署口径**的 KV 占用（值 + 标尺），按标尺方案逐项算清。
+
+    `per_position_bytes` = `2(K,V)·L·H·head_dim·(每值字节)` 只算值；
+    `deployment_bytes_per_position` = 值 + 标尺（标尺字节由
+    `scheme_scale_bytes_per_value` 给，与 `quantize_kv` 的实际标尺轴一一对应）。
+    这个函数就是「不得再把标尺当免费」的那个计算。
+    """
+    if mode not in _BYTES_PER_VALUE and mode != "fp32":
+        raise ValueError(f"unknown mode {mode!r}")
+    n_layers, n_heads = cfg.n_layers, cfg.n_heads
+    hd = cfg.d_model // n_heads
+    vals_per_pos = 2 * n_layers * n_heads * hd
+    bpe = {"fp32": 4.0, "fp16": 2.0, "int8": 1.0, "int4": 0.5}[mode]
+    scale_bpe = scheme_scale_bytes_per_value(mode, scheme, hd, group, kivi_group)
+    value_bytes = vals_per_pos * bpe
+    scale_bytes = vals_per_pos * scale_bpe
+    total = value_bytes + scale_bytes
+    fp16_total = kv_cache_footprint(cfg, "fp16", seq_lens)  # 基线（无标尺）
+    return {"mode": mode, "scheme": scheme, "group": group, "kivi_group": kivi_group,
+            "head_dim": hd, "values_per_position": vals_per_pos,
+            "value_bytes_per_position": value_bytes,
+            "scale_bytes_per_value": scale_bpe,
+            "scale_bytes_per_position": scale_bytes,
+            "per_position_bytes": total,
+            "fp16_value_bytes_per_position": fp16_total["per_position_bytes"],
+            "reduction_vs_fp16": round(1 - total / fp16_total["per_position_bytes"], 6),
+            "ratio_vs_value_caliber": round(total / value_bytes, 6),
+            "total_bytes_by_seq_len": {str(t): total * t for t in seq_lens}}

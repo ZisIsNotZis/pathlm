@@ -1,0 +1,121 @@
+{
+  "targets": {
+    "tools/evalkit/kv_quant.py": {
+      "sha256_before": "a4f2865ac175764b1b8fbb3ea4bd56fa33ee53d8e54de5699eeb6a023ca62e49",
+      "sha256_after": "a4f2865ac175764b1b8fbb3ea4bd56fa33ee53d8e54de5699eeb6a023ca62e49"
+    },
+    "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/block_arms.py": {
+      "sha256_before": "4dd13d86c4a7ca7c7d7c5eaeda3de7809c9dbc00aded3552cb1c998ff7c8af42",
+      "sha256_after": "4dd13d86c4a7ca7c7d7c5eaeda3de7809c9dbc00aded3552cb1c998ff7c8af42"
+    },
+    "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/scale_caliber.py": {
+      "sha256_before": "077df15587c2bae18b71a33f4384cf30eafeaa49eb1d4b628a082623a25624f4",
+      "sha256_after": "077df15587c2bae18b71a33f4384cf30eafeaa49eb1d4b628a082623a25624f4"
+    }
+  },
+  "mutations": [
+    {
+      "id": "M1",
+      "target": "tools/evalkit/kv_quant.py",
+      "what": "块标尺的 amax 归约轴写错（head_dim 块 → 块内错配）",
+      "tests": {
+        "test_block_error_bound_is_half_of_the_block_scale": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "2 failed, 1 passed in 2.17s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M2",
+      "target": "tools/evalkit/kv_quant.py",
+      "what": "block 路由到 token 轴块（前缀确定被破坏）",
+      "tests": {
+        "test_block_prefix_invariance_future_token_and_peer_request": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 2.02s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M3",
+      "target": "tools/evalkit/kv_quant.py",
+      "what": "块标尺当免费（摊薄被架空）",
+      "tests": {
+        "test_block_scale_bytes_per_value_is_two_over_group": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.87s"
+        },
+        "test_deployment_bytes_reconcile_and_shrink": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 2.02s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M4",
+      "target": "tools/evalkit/kv_quant.py",
+      "what": "kivi 的 K 也走 per-token（K per-channel 语义丢失）",
+      "tests": {
+        "test_kivi_k_per_channel_is_not_prefix_invariant": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.94s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M5",
+      "target": "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/block_arms.py",
+      "what": "前向忽略 scheme（标尺方案接不进去）",
+      "tests": {
+        "test_make_logits_fn_honours_scheme_prefix_invariance": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 3.35s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M6",
+      "target": "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/scale_caliber.py",
+      "what": "值字节与判据 C1 对账被绕过（口径漂移也出数）",
+      "tests": {
+        "test_deployment_bytes_rejects_value_caliber_mismatch": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 2.14s"
+        }
+      },
+      "all_expected_tests_caught": true
+    },
+    {
+      "id": "M7",
+      "target": "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/scale_caliber.py",
+      "what": "mode 与 value_bytes 标签不符不再报错",
+      "tests": {
+        "test_deployment_bytes_reject_mode_value_bytes_mismatch": {
+          "returncode": 1,
+          "verdict": "FAILED（抓红）",
+          "tail": "1 failed in 1.90s"
+        }
+      },
+      "all_expected_tests_caught": true
+    }
+  ],
+  "restored_sha256_equal": true,
+  "after_restore": {
+    "returncode": 0,
+    "tail": "21 passed in 2.01s"
+  },
+  "green_after_restore": true,
+  "all_caught": true
+}
