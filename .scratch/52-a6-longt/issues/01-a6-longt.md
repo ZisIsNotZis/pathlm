@@ -18,8 +18,10 @@
   `2626`/`2629` 的同 step(6000) 点（逐字段等价见 `reconcile_report.json::cross_run_field_compare`）。
 - 预登记判据：C1 质量形状（同 step 主口径 + 同 token 副口径）；C2 稳定性前置；C3 四腿；
   C4 噪声门限本格自测；C5 口径对照（不得混用）。
-- 结果（见 `analysis.md`）：同 step 四点 Δ 全带内；同 token 副口径短 T 越界；两口径之差（0.0123）
-  落本格判据量噪声（0.0095）内 ⇒ **旧结论「窗口代价随 T 消失」不可判定**。
+- 结果（见 `analysis.md`）：同 step 四点 Δ 全带内；同 token 副口径短 T 越界；两口径之差
+  （T=256 **0.012210**、T=512 **0.010573**）**超过**本格判据量噪声（**0.009459 / 0.006231**）
+  但 **≤ 工程带 0.014** ⇒ 两口径在短 T **可测地不同**、不得择优/合并；旧结论「窗口代价随 T 消失」
+  在本 n 下**不可判定**。
   四腿：**解析 FLOPs 省；实测墙钟无稳定收益（T≥1024 两轮一致更慢，T≤512 测不出方向）；峰值显存更费（1.169→3.305×）**。
 - 成本：训练 ≈ 4 臂 seed0（≈16 min）+ 4 臂 seed1（≈16 min）+ 冒烟/成本探针/评测（≈5 min）；
   峰值 ≤0.77 GiB（训练臂）；T=2048 窗口复用点 5.58 GiB（§20.2 记账，非本实验新跑）。
@@ -45,7 +47,8 @@
     删去跨 T 绝对 loss 论证（`2629` 已撤回过同一论证）。
   - **P1-2**：噪声门限改用**判据量 Δ 的跨 seed 极差** 0.009459（单臂 0.0158 降为参考）；
     并标 T=1024/2048 无 seed 复本。
-  - **P1-3**：「口径敏感」降级为**未排除解释**；两口径之差落本格噪声内 ⇒ 本 n 下不可判定。
+  - **P1-3**：「口径敏感」降级为**未排除解释**；两口径之差（0.0122/0.0106）**超过**本格判据量噪声
+    （0.0095/0.0062）但 ≤ 工程带 0.014 ⇒ 短 T 可测地不同、不得择优/合并。
   - **P1-4**：合成腿更正为「**用的正是** `var_recall_batch`（末位布局，已判伪影）⇒ 读数不可解释」。
   - **P1-5**：运行期指纹与报告期指纹分列（`code_fingerprints_at_run` / `_at_report`；新增 `run_fingerprints.json`）。
   - **P1-6**：跨 run 逐字段对照落成机器可读（`reconcile_report.json::cross_run_field_compare`）。
@@ -68,7 +71,7 @@
 ## 2 红 pytest 的归属（登记）
 
 本批结束时 `pytest tests/ -q` = 808 passed / **2 failed**：`tests/test_carry_seed2_13m.py::
-test_reuse_equality_report_verdict_ok` 与 `::test_engine_files_unchanged_since_2631_run`。
+test_reuse_equality_report_verdict_ok` 与 `::test_engine_files_behaviorally_unchanged_since_2631_run`。
 根因 = **他线（R7）在 2026-10-10 01:56 的提交 `b8b78fc`** 改了 `pathlm/depth_ar.py`（+127），
 使该测试「引擎自 2631 未变」的前提失效；**与本批改动无关**（本批提交未触及任何引擎文件或他人测试）。
 开工基线（HEAD `e4fc8dd`）= **692 passed 全绿**。

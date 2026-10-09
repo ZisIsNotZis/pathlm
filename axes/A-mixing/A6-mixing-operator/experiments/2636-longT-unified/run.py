@@ -121,6 +121,19 @@ def _engine_fingerprints() -> dict:
     }
 
 
+def _load_run_fingerprints() -> dict:
+    """运行期指纹：优先 preflight 快照 `run_fingerprints.json`，否则回退到人工补记
+    `run_fingerprints_backfill.json`（两者形状兼容：同名键 + `_what/_kind` 标记）。"""
+    for name in ("run_fingerprints.json", "run_fingerprints_backfill.json"):
+        p = os.path.join(HERE, name)
+        if os.path.exists(p):
+            d = json.load(open(p))
+            d["_file"] = name
+            return d
+    return {"available": False,
+            "note": "run_fingerprints.json / run_fingerprints_backfill.json 均缺失：运行期指纹未记录"}
+
+
 def cfg_for(seq_len: int, window: int) -> DepthARConfig:
     return DepthARConfig(d_model=D, n_layers=L, n_heads=H, seq_len=seq_len,
                          mlp_mult=MLP, dense=True, train_window=window)
@@ -562,9 +575,13 @@ def stage_preflight(cost_iters: int) -> None:
     """四臂（seed0）各 20 步冒烟 + 成本基准（四 T × full/window）。"""
     os.makedirs(os.path.join(HERE, "smoke"), exist_ok=True)
     # 运行期引擎指纹（修 P1-5）：在**做任何训练前**落一次，与 report 阶段的 HEAD 区分。
+    # 形状与人工补记（`run_fingerprints_backfill.json`）**同名键、可共存**：本写入器只写
+    # `run_fingerprints.json`（preflight 快照），**不覆盖**人工补记文件。report 优先读本文件，
+    # 缺失时回退到人工补记。
     with open(os.path.join(HERE, "run_fingerprints.json"), "w") as f:
         json.dump({"_what": "运行期引擎/仪器指纹（preflight 时快照）",
-                   "_when": "preflight", **_engine_fingerprints()}, f,
+                   "_kind": "preflight_snapshot", "_when": "preflight",
+                   **_engine_fingerprints()}, f,
                   indent=2, ensure_ascii=False)
     gpu_acquire(max_wait_s=LOCK_MAX_WAIT)
     try:
@@ -861,12 +878,9 @@ def stage_report() -> None:
             "note": ("**report 阶段**重算 ⇒ 记的是报告时 HEAD/工作树，**不是运行版本**；"
                      "本实验未改这些文件（只读）"),
         },
-        # 运行期指纹（修 P1-5）：从 run_fingerprints.json 读，由运行窗口内写下；
-        # 若文件缺失则显式标 None（不假装有）。
-        "code_fingerprints_at_run": (json.load(open(os.path.join(HERE, "run_fingerprints.json")))
-                                     if os.path.exists(os.path.join(HERE, "run_fingerprints.json"))
-                                     else {"available": False,
-                                           "note": "run_fingerprints.json 缺失：运行期指纹未记录"}),
+        # 运行期指纹（修 P1-5）：优先读 preflight 快照 `run_fingerprints.json`；
+        # 缺失时回退到人工补记 `run_fingerprints_backfill.json`（即本次运行的来源）。
+        "code_fingerprints_at_run": _load_run_fingerprints(),
     }
 
     results = {
