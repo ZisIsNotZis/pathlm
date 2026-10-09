@@ -136,9 +136,21 @@ def main() -> int:
                        sources=(f"{src[0]}.acceptance.{arm}.tokens_per_forward 与 config.gamma",),
                        rel_tol=1e-3)
             if "equivalent_compute_ratio_withdrawn" in a:
-                lg.check(f"{ck}/{arm}: 旧口径 c3/(tok/fwd) 已撤回（不得当算力）",
-                         1.0, 1.0, abs_tol=0.0,
-                         derived_from=(f"{src[0]}.acceptance.{arm}.equivalent_compute_ratio_withdrawn",))
+                w = a["equivalent_compute_ratio_withdrawn"]["value"]
+                # 真检查（可失败）：旧字段必须已移出前台、旧值<1<新值
+                lg.eq(f"{ck}/{arm}: 旧字段 equivalent_compute_ratio 已移出前台",
+                      1 if "equivalent_compute_ratio" in a else 0, 0,
+                      derived_from=(f"{src[0]}.acceptance.{arm}",))
+                lg.eq(f"{ck}/{arm}: 旧口径 c3/(tok/fwd) < 1（看着像省）",
+                      1 if w < 1.0 else 0, 1,
+                      derived_from=(f"{src[0]}.acceptance.{arm}.equivalent_compute_ratio_withdrawn",))
+                lg.eq(f"{ck}/{arm}: 新口径 R=(1+gamma)/(1+tau) > 1（实为亏）",
+                      1 if a["equivalent_compute_R"] > 1.0 else 0, 1,
+                      derived_from=(f"{src[0]}.acceptance.{arm}.equivalent_compute_R",))
+                lg.derived(f"{ck}/{arm}: withdrawn == c3/(tok/fwd)（旧口径原式）",
+                           w, lambda: micro["c3_vs_w1"] / a["tokens_per_forward"],
+                           sources=(f"{src[0]}.micro.c3_vs_w1 与 .acceptance.{arm}.tokens_per_forward",),
+                           rel_tol=1e-3)
             lg.derived(f"{ck}/{arm}: 每轮发出 == 1 + accepted（cycle_log 活动量）",
                        sum(1 + x for x in all_rounds),
                        lambda: sum(1 + x for r in rows for x in r["rounds"]),

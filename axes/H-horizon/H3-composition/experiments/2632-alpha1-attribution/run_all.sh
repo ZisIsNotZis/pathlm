@@ -3,8 +3,10 @@
 #
 # 步骤：分 checkpoint 跑 diag.py → merge_outputs.py 合并 → 跑 p1_only.py（P1 门禁）→
 #       分 checkpoint 跑 probes.py → merge_outputs.py 合并探针。
-# 产物与本目录已提交的 results.json / diag_records.jsonl / probes_output.json 逐字节一致
-# （acceptance 确定性；墙钟字段本实验不涉及）。
+# 产物与本目录已提交的 results.json / diag_records.jsonl / probes_output.json **逐字节一致**：
+#   - acceptance 为 argmax 确定量，墙钟字段本实验不涉及；
+#   - `probes_output.json` 的 P1 数值来自 `p1_only.py`（12 offsets, n=768），`P1_note` 为
+#     冻结常量（`merge_outputs.py::P1_HISTORICAL_PREFIX`，不嵌本次运行值）⇒ 对输入确定。
 #
 # 用法：bash run_all.sh
 set -euo pipefail

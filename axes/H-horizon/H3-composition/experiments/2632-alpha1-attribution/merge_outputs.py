@@ -28,6 +28,15 @@ if HERE not in sys.path:
 
 import diag  # noqa: E402
 
+#: 早先 `probes.py` 增量侧 off-by-one 时记录的一对**不相等**值（4 offsets, n=256）。
+#: 冻结为常量供 `P1_note` 引用（复核选项②），使 merge 输出**对输入确定**——`probes.py` 已
+#: 修复，重跑不会再产生这对值，若在 note 里嵌本次运行值，输出会随修复与否而变。
+P1_HISTORICAL_PREFIX = {
+    "13m_s0": {"batched": 0.59765625, "incremental": 0.58984375, "n": 256},
+    "13m_s1": {"batched": 0.609375, "incremental": 0.59765625, "n": 256},
+    "53m_s0": {"batched": 0.6171875, "incremental": 0.609375, "n": 256},
+}
+
 
 def merge_diag(dirs: list[str], out: str) -> None:
     merged = {"config": None, "checkpoints": {}}
@@ -75,12 +84,13 @@ def merge_probes(dirs: list[str], out: str) -> None:
         corrected = json.load(open(p1, encoding="utf-8"))
         for ck in merged:
             if ck in corrected:
-                old = merged[ck].get("P1_inc_vs_batched_next_token_acc")
                 merged[ck]["P1_inc_vs_batched_next_token_acc"] = corrected[ck]
                 merged[ck]["P1_note"] = (
-                    "corrected by p1_only.py: incremental loop must score positions 1..L; "
-                    "the first probes.py pass scored 1..L-1 while dividing by L (off-by-one). "
-                    f"buggy values were {old}; corrected pair equals exactly.")
+                    "P1 values come from probes_p1.json (p1_only.py, 12 offsets, n=768). "
+                    "The earlier probes.py pass had an off-by-one (incremental scored "
+                    "positions 1..L-1 while dividing by L); probes.py is now fixed so both "
+                    "sides agree exactly. Historical pre-fix pair (4 offsets, n=256): "
+                    f"{P1_HISTORICAL_PREFIX.get(ck)}.")
     with open(os.path.join(out, "probes_output.json"), "w", encoding="utf-8") as f:
         json.dump(merged, f, indent=2, ensure_ascii=False)
     print(f"[merge probes] {len(merged)} ckpts -> {out}")

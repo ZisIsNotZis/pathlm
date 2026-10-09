@@ -73,7 +73,7 @@ d3                             位置 N+3；2631 三臂固定为 node3
 ## 3. 主归因（D1）：同一 checkpoint 换头/换条件
 
 teacher-anchored（enwik8 val 真实文本前缀，逐 token `Decoder.step`，每 checkpoint 768 位置；
-**增量解码与批量前向逐位一致**，见 §5 的 P1）：
+**增量解码与批量前向逐位一致**，见 `probes_p1.json`（增量==批量门禁，12 offsets × 64 位置））：
 
 **质量口径 `q_*`（vs 真 t_{N+2}）**
 
