@@ -475,7 +475,11 @@ def build_depthar_config(args) -> DepthARConfig:
                          # 「CLI 开关不是死的」由 `tests/test_recon_signal.py::
                          # test_recon_cli_plumbed_to_config` 单独钉住。
                          recon_window=getattr(args, "recon_window", 0),
-                         carry_state_dim=args.carry_state_dim)
+                         carry_state_dim=args.carry_state_dim,
+                         # R7 新开关：历史单测用不带这些字段的 Namespace ⇒ getattr。
+                         carry_gate=getattr(args, "carry_gate", True),
+                         aux_mode=getattr(args, "aux_mode", "renorm"),
+                         mod_ratio=getattr(args, "mod_ratio", 0.0))
 
 
 def _kv_head_liveness(model: DepthARModel, vocab_size: int,
@@ -516,6 +520,65 @@ def _probe_tokens(model: DepthARModel, vocab_size: int, args, synth) -> torch.Te
     return x.cuda() if torch.cuda.is_available() else x
 
 
+def _r7_intervention(args, cfg, results) -> dict:
+    """R7 早退对照臂的 `intervention:` 活性块（SCHEMA §10）。
+
+    三件必须能回读的事：① 真正的干预是什么；② 它是否活着（活性量非零）；
+    ③ 与基线的差异在哪里（无门「无门」用结构证据：参数少 L·(d²+d)）。
+    """
+    gate_means = results.get("avg_train_gate_mean") or [None]
+    if cfg.mod_ratio > 0:
+        me = results.get("mod_eval") or {}
+        return {
+            "name": "mod_token_routing",
+            "alive": True,
+            "params_added": me.get("router_params"),
+            "mod_ratio": cfg.mod_ratio,
+            "router_weight": getattr(args, "mod_router_weight", None),
+            "routed_frac_mean": me.get("routed_frac_mean"),
+            "layer_apps_per_token_measured": me.get(
+                "layer_apps_per_token_measured"),
+            "layer_apps_per_token_analytic": me.get("layer_apps_per_token_analytic"),
+            "note": "每块放行每序列 top-k（k = round(ratio·T)）个 token，其余残差"
+                    "旁路；活性量 = 逐层放行比例与逐 token 块作用次数（解析账并报）",
+        }
+    if not cfg.carry_gate:
+        return {
+            "name": "no_carry_gate",
+            "alive": True,
+            "params_added": 0,
+            "params_removed": cfg.n_layers
+            * (cfg.d_model * cfg.d_model + cfg.d_model),
+            "w_fro": None, "w_absmax": None, "nonzero_frac": None,
+            "gate_mean": gate_means,
+            "note": "无门变体：参数里没有门（−L·(d²+d)），块输出原样写入；"
+                    "avg_train_gate_mean 全 0 是「本臂无门」，不从门开度读机制",
+        }
+    if not cfg.dense:
+        return {
+            "name": "variable_depth_form",
+            "alive": True,
+            "params_added": 0,
+            "carry_gate": cfg.carry_gate,
+            "fill_kv": cfg.fill_kv, "proj_fill": cfg.proj_fill,
+            "w_fro": None, "w_absmax": None, "nonzero_frac": None,
+            "gate_mean": gate_means,
+            "note": ("本臂的干预 = 深度形态本身（非 dense：随机退出深度 + 混合填充）"
+                     "＋损失配方；活性量 = 逐层门均值（每 200 步另落 gate_log.jsonl，"
+                     "SCHEMA §17.4）。`avg_train_gate_mean` 全 0 只在无门臂出现。"),
+        }
+    return {
+        "name": "aux_mode_additive",
+        "alive": True,
+        "params_added": 0,
+        "aux_mode": cfg.aux_mode,
+        "aux_weight": args.aux_weight, "final_weight": args.final_weight,
+        "gate_mean": gate_means,
+        "note": "公平配方：主目标保持绝对权重，浅层项是轻量加法项（不除分母）；"
+                "唯一变量 = 损失归一，形态与 c1-legacy 臂逐字段相同",
+    }
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("run_name")
@@ -526,6 +589,21 @@ def main():
     ap.add_argument("--mlp-mult", type=int, default=4,
                     help="MLP 隐层倍数（ticket 24：100M 规格用 6）")
     ap.add_argument("--dense", action="store_true")
+    # ---- R7「既有早退实现」对照开关（默认全为历史行为，逐位还原 v1）----
+    ap.add_argument("--no-carry-gate", dest="carry_gate", action="store_false",
+                    help="R7 无门变体（LayerSkip 式形态）：不建 carry 门，块输出"
+                         "原样写入（参数 −L·(d²+d)）；只对非 dense 的变深度路径有意义")
+    ap.add_argument("--aux-mode", choices=("renorm", "additive"),
+                    default="renorm",
+                    help="R7 损失归一：renorm（缺省，逐位还原 v1）= 加权平均，主目标"
+                         "被摊薄到 f/(w(n−1)+f)；additive = 公平配方，主目标保持权重 f"
+                         "再加 w·mean(浅层 CE)")
+    ap.add_argument("--mod-ratio", type=float, default=0.0,
+                    help="R7 MoD 式路由（需 --dense）：每块放行每序列 top-k 个 token，"
+                         "k = round(ratio·T)；0 = 关闭（缺省）。"
+                         "isoFLOP 设计点 = --layers 2n --mod-ratio 0.5")
+    ap.add_argument("--mod-router-weight", type=float, default=0.01,
+                    help="MoD 路由器辅助损失的系数 α（缺省 0.01；论文系数记记忆·未核）")
     ap.add_argument("--topology", choices=("sequential", "parallel",
                                           "parallel-dual-ln", "dense"),
                     default="sequential",
@@ -704,7 +782,12 @@ def main():
         # 既有 needle 约定），不加载 enwik8
         train_arr, eval_arr, vocab_size = None, None, 206
     cfg = build_depthar_config(args)
-    model = DepthARModel(cfg, vocab_size).cuda()
+    if cfg.mod_ratio > 0:
+        from pathlm.mod_router import MoDModel, mod_eval
+        model = MoDModel(cfg, vocab_size,
+                         router_weight=args.mod_router_weight).cuda()
+    else:
+        model = DepthARModel(cfg, vocab_size).cuda()
     n_params = sum(p.numel() for p in model.parameters())
     print(f"{args.run_name}: {n_params/1e6:.2f}M params, vocab {vocab_size}, "
           f"topology {args.topology}, attn_sparse_k {args.attn_sparse_k}, "
@@ -773,6 +856,10 @@ def main():
             train_stats.get("recon_mean")),
         "topology_liveness": topology_liveness(model),
         "exit_mode": args.exit_mode,
+        "carry_gate": cfg.carry_gate, "aux_mode": cfg.aux_mode,
+        "mod_ratio": cfg.mod_ratio,
+        "mod_router_weight": (args.mod_router_weight
+                              if cfg.mod_ratio > 0 else None),
         "fill_kv": args.fill_kv, "proj_fill": args.proj_fill,
         "aux_weight": args.aux_weight, "aux_anneal_to": args.aux_anneal_to,
         "final_weight": args.final_weight,
@@ -809,6 +896,10 @@ def main():
                                                n_batches=4, batch_size=8)
         results["generation"] = generation_quality(model, eval_arr, device="cuda",
                                                    prompt_len=64, n_new=128)
+    elif cfg.mod_ratio > 0:
+        # R7 MoD 臂：enwik8 电池（最终深度 bpc + 路由活性量 + 解析算力账）。
+        results["mod_eval"] = mod_eval(model, eval_arr, device="cuda",
+                                       n_batches=args.eval_batches)
     else:
         # 合成任务（契约 U）或 dense 臂：enwik8 电池不适用（bpc/生成段都定义在
         # 真实文本上，且 dense 臂不走变深度解码）；本臂的评测在实验目录的
@@ -825,6 +916,13 @@ def main():
                                "note": ("目标 = 位置 i 重建 tokens[i−recon_window]"
                                         "（刚掉出可见窗口的那一格）；λ=0 时整条项不建图"
                                         "（add_recon_term 原样返回 loss 对象）")}
+    r7_arm = (cfg.mod_ratio > 0 or not cfg.carry_gate
+              or cfg.aux_mode != "renorm"
+              or (not cfg.dense and getattr(args, "recon_lambda", 0.0) <= 0))
+    if r7_arm:
+        # R7 早退对照臂：干预不是重建项 ⇒ 活性块必须换成该臂真正的干预
+        # （SCHEMA §10 不允许交一个「看起来活着、其实没接线」的活性量）。
+        results["intervention"] = _r7_intervention(args, cfg, results)
     with open(os.path.join(run_dir, "results.json"), "w") as f:
         json.dump(results, f, indent=2, ensure_ascii=False)
     print(json.dumps({k: v for k, v in results.items()

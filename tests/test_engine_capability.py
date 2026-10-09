@@ -63,6 +63,11 @@ CASES = {
     "C10": {"kind": "decoder", "cfg": {"carry_rule": "plain"}},
     "C11": {"kind": "decoder", "cfg": {"n_kv_heads": 2, "dense": True}},
     "C12": {"kind": "model", "cfg": {"attn_sparse_k": 4}},
+    # R7（2623）新增开关的能力面：
+    "C13": {"kind": "model", "cfg": {"carry_gate": False, "dense": True}},
+    "C14": {"kind": "model", "cfg": {"mod_ratio": 0.5}},
+    "C15": {"kind": "model", "cfg": {"mod_ratio": 0.5, "dense": True}},
+    "C16": {"kind": "model", "cfg": {"aux_mode": "mean"}},
 }
 
 

@@ -1,0 +1,146 @@
+{
+  "experiment": "2623-standard-early-exit-13m",
+  "ticket": "WI-16 / R7-existing-early-exit",
+  "grid": "R7-existing-early-exit",
+  "date": "2026-10-10",
+  "engine": "depth-ar（pathlm/depth_ar.py + 新模块 pathlm/mod_router.py）",
+  "data": {
+    "name": "enwik8 (data/enwik8_full.npz)",
+    "vocab": 206,
+    "train": "train 段（~90M bytes）",
+    "eval": "val 段 10M bytes",
+    "decode_prompts": [
+      1000,
+      40000,
+      90000,
+      160000
+    ],
+    "prompt_len": 16
+  },
+  "model": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "mlp_mult": 4,
+    "seq_len": 256,
+    "batch_size": 32,
+    "lr": 0.001,
+    "steps": 12000,
+    "tokens": 98304000,
+    "seed": 0,
+    "optimizer": "AdamW(wd 0.01) + warmup200-cosine, bf16 autocast, clip 1.0",
+    "mod_arm": {
+      "n_layers": 16,
+      "mod_ratio": 0.5,
+      "mod_router_weight": 0.01
+    }
+  },
+  "arms": {
+    "r7-stock-s0": {
+      "cmd": "python3 train_depth_ar.py r7-stock-s0 --d 256 --layers 8 --heads 8 --mlp-mult 4 --seq-len 256 --batch-size 32 --lr 1e-3 --dense --exit-mode full --seed 0",
+      "role": "诚实对手（普通 transformer，全深度）"
+    },
+    "r7-c1-legacy-s0": {
+      "cmd": "... --exit-mode uniform --aux-weight 1.0 --final-weight 1.0 --seed 0",
+      "role": "C1 现配方（等权平均，主目标份额 1/9）"
+    },
+    "r7-c1-fair-s0": {
+      "cmd": "... --exit-mode uniform --aux-mode additive --aux-weight 0.1 --final-weight 1.0 --seed 0",
+      "role": "公平配方 λ=0.1"
+    },
+    "r7-c1-fair-l1-s0": {
+      "cmd": "... --exit-mode uniform --aux-mode additive --aux-weight 1.0 --final-weight 1.0 --seed 0",
+      "role": "公平配方剂量点 λ=1.0"
+    },
+    "r7-ls-fair-s0": {
+      "cmd": "... --exit-mode uniform --no-carry-gate --aux-mode additive --aux-weight 0.1 --final-weight 1.0 --seed 0",
+      "role": "LayerSkip 式（无门普通主干 + layer dropout）"
+    },
+    "r7-ls-legacy-s0": {
+      "cmd": "... --exit-mode uniform --no-carry-gate --aux-mode renorm --aux-weight 1.0 --final-weight 1.0 --seed 0",
+      "role": "2×2 缺格（无门 × 等权配方）"
+    },
+    "r7-mod-s0": {
+      "cmd": "... --dense --layers 16 --mod-ratio 0.5 --mod-router-weight 0.01 --exit-mode full --seed 0",
+      "role": "MoD 式（isoFLOP with stock）"
+    }
+  },
+  "step_time_probe": {
+    "stock_dense_L8": {
+      "ms_per_step_median": 29.91,
+      "ms_per_step_mean": 29.63,
+      "params": 6962688,
+      "peak_gpu_mem_mb": 935.3,
+      "est_12k_min": 5.98,
+      "loss": 2.7085,
+      "gnorm": 2.523
+    },
+    "c1_legacy_L8": {
+      "ms_per_step_median": 50.43,
+      "ms_per_step_mean": 50.57,
+      "params": 6962688,
+      "peak_gpu_mem_mb": 1339.8,
+      "est_12k_min": 10.09,
+      "loss": 3.4002,
+      "gnorm": 0.451
+    },
+    "c1_fair_L8": {
+      "ms_per_step_median": 47.5,
+      "ms_per_step_mean": 45.95,
+      "params": 6962688,
+      "peak_gpu_mem_mb": 1341.3,
+      "est_12k_min": 9.5,
+      "loss": 3.4517,
+      "gnorm": 1.217
+    },
+    "ls_fair_L8_nogate": {
+      "ms_per_step_median": 42.65,
+      "ms_per_step_mean": 42.76,
+      "params": 6436352,
+      "peak_gpu_mem_mb": 1205.0,
+      "est_12k_min": 8.53,
+      "loss": 3.1592,
+      "gnorm": 2.795
+    },
+    "mod_L16_r0.5": {
+      "ms_per_step_median": 69.41,
+      "ms_per_step_mean": 69.4,
+      "params": 13811216,
+      "peak_gpu_mem_mb": 1330.4,
+      "est_12k_min": 13.88,
+      "loss": 2.7952,
+      "gnorm": 3.015
+    }
+  },
+  "step_time_probe_note": "单进程内 60 步实测（SCHEMA §17.8：先测步时再定预算）；真实臂墙钟见 run_log.txt",
+  "gpu_wall_budget_min": 120,
+  "gpu_wall_used_min": {
+    "step_time_probe": 3.0,
+    "r7-stock-s0": 6.79,
+    "r7-c1-legacy-s0": 10.02,
+    "r7-c1-fair-s0": 10.36,
+    "r7-ls-fair-s0": 9.73,
+    "r7-mod-s0": 19.16,
+    "r7-c1-fair-l1-s0": 10.12,
+    "battery+wall(interleaved)": 10.0
+  },
+  "peak_gpu_mem_mb": {
+    "train_max": 1339.9,
+    "decode_max": 190.1,
+    "mod_forward": 154.0
+  },
+  "noise": {
+    "reproduction_drift_bpc": {
+      "stock_vs_23d-dense-B-12k": 0.0003,
+      "c1-legacy_vs_23c-H2-w0-12k": 0.0007
+    },
+    "repo_seed_band_bpc": 0.0138,
+    "sigma_cell_measured": null,
+    "note": "seed-1 重复未跑（预算）；σ_cell 用复现漂移下界 + 仓内种子带上界"
+  },
+  "lock": {
+    "path": "/tmp/pathlm_gpu.lock",
+    "policy": "按臂释放、臂间 ≥60 s（SCHEMA §20.1）",
+    "contention": "同卡另有两条外部 llama-server（≈8 GB）与 2–3 条自研线；本波多次排队 10–60 min"
+  }
+}
