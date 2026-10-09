@@ -248,6 +248,8 @@ def main():
             "carry_write": res_p.get("carry_write"),
             "window_mask": res_p.get("window_mask"),
             "synth_task_config": res_p.get("synth_task_config"),
+            # SCHEMA §10 的活性块：训练期的真实 `_carry_tele`（无通道臂为 enabled=False）
+            "carry_liveness_training": res_p.get("carry_liveness"),
             "origin": ("2633（本实验新训）" if name in cfg["new_in_2633"] else "2631（复用）"),
         }
         tail[name] = {

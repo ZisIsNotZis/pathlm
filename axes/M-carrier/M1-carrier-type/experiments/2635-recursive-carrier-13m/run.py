@@ -165,7 +165,8 @@ def main():
 
     # ---------------- ④ 侧腿：长程电池（不作判据） ----------------
     b = cfg["battery"]
-    tok = b["tokens"]
+    # `local_k` 只是局部先验基线的参数，不是任务构造参数 ⇒ 构造任务时必须剔除
+    tok = {k: v for k, v in b["tokens"].items() if k != "local_k"}
     T = cfg["model"]["seq_len"]
     gen = torch.Generator().manual_seed(2617)
     note("侧腿（判据④，不作判据）：长程电池四任务零样本")
@@ -193,8 +194,9 @@ def main():
         for name, model in arms.items():
             row[name] = accuracy(model, task, None, device=dev)
         battery[tname] = {k: {"accuracy": round(v["accuracy"], 6),
-                              "n": v["n"], "chance": round(task.chance(), 6),
-                              "distance_mean": v.get("distance_mean")}
+                              "n": v["n"], "n_hits": v["n_hits"],
+                              "chance": round(task.chance(), 6),
+                              "by_distance": v.get("by_distance")}
                           for k, v in row.items()}
     note("  电池（accuracy）：" + " | ".join(
         f"{t}: stock={v['stock']['accuracy']:.4f} linear={v['linear']['accuracy']:.4f}"
@@ -215,8 +217,46 @@ def main():
                             "params": res_p.get("params"),
                             "attn_linear": res_p.get("attn_linear"),
                             "linear_chunk": res_p.get("linear_chunk")}
-    stall_path = os.path.join(HERE, "stall_report.json")
-    stall = json.load(open(stall_path)) if os.path.exists(stall_path) else None
+    stall_by_arm = {}
+    for arm in arms:
+        p = os.path.join(HERE, f"stall_report_{arm}.json")
+        stall_by_arm[arm] = json.load(open(p)) if os.path.exists(p) else None
+    # 判据① 落在**线性臂**上（stock 臂只是同一门下的对照；它停摆同样是环境证据）
+    stall = stall_by_arm["linear"]
+    # 停摆门的**诊断**（不预登记判据的一部分，但任务要求「如实记录停摆的诊断」）：
+    # 日志不推进有两种原因（经验证的教训）：① 进程真卡住；② 强度发散后**几乎所有步被
+    # 梯度门跳过**，而训练器只在未被跳过的步写日志 ⇒ 「日志停摆」不等于「进程停摆」。
+    # 下面用训练器自己的计数做算术对账：steps = grad_skips + 有效步数。
+    diag_lin = train_meta["linear"]
+    gl = json.load(open(resolve(next(a for a in cfg["arms"]
+                                     if a["name"] == "linear")["train_results_json"])))
+    gmon = gl.get("gnorm_monitor") or {}
+    n_layers = cfg["model"]["n_layers"]
+    lin_samples = gmon.get("attn_linear_layer_samples")
+    effective_steps = (lin_samples // n_layers) if lin_samples else None
+    grad_skips = gmon.get("grad_skips")
+    stall_diagnosis = {
+        "configured_steps": cfg["steps"],
+        "grad_skips": grad_skips,
+        "effective_optimizer_steps": effective_steps,
+        "accounting": (None if (grad_skips is None or effective_steps is None)
+                       else grad_skips + effective_steps),
+        "accounting_matches_configured_steps": bool(
+            grad_skips is not None and effective_steps is not None
+            and grad_skips + effective_steps == cfg["steps"]),
+        "gnorm_max": gmon.get("gnorm_max"),
+        "gnorm_mean": gmon.get("gnorm_mean"),
+        "den_min_min": (gmon.get("attn_linear_mean") or {}).get("den_min"),
+        "state_norm_mean": (gmon.get("attn_linear_mean") or {}).get("state_norm"),
+        "wall_minutes": diag_lin.get("wall_minutes"),
+        "interpretation": (
+            "数值发散（归一化分母触底 + gnorm 爆到 1e8 量级）⇒ 梯度门把大部分步跳过；"
+            "训练器只在未被跳过的步写 train_log ⇒ 日志在 step 1000 停写（仪器假象），"
+            "进程实际跑完了全部步数并落盘 model.pt/results.json。"
+            if (grad_skips is not None and effective_steps is not None
+                and grad_skips + effective_steps == cfg["steps"])
+            else "未能在训练器计数上完成步数对账（见 stall_report_linear.json 原始诊断）"),
+    }
     results.update({
         "quality_leg": {"bpc": bpc, "delta_bpc_stock_minus_linear": delta_bpc,
                         "caliber": f"matched-step 快照（{cfg['steps']} 步 / "
@@ -225,15 +265,20 @@ def main():
                                  "只作「不可分辨 / 有代价」的描述，不称等价（README §9.3）")},
         "liveness": liveness, "battery": battery, "loss_slope": slopes,
         "train_log_tail": tail, "train_meta": train_meta,
-        "stall_report": stall,
+        "stall_report": stall, "stall_report_by_arm": stall_by_arm,
+        "stall_diagnosis": stall_diagnosis,
         "criteria": {
             "c1_runnable": bool(stall is None or stall.get("status") == "finished"),
             "c2_quality_reported": bool(stall is None or stall.get("status") == "finished"),
             "c2_delta_bpc_stock_minus_linear": delta_bpc,
             "c3_liveness_alive": bool(liveness["linear"].get("alive")),
             "c4_battery_reported": True, "c5_no_extrapolation": True,
-            "c1_note": ("停摆门（stall_gate.py）判定；status=stalled 时判据①不通过，"
-                        "本格记「实现层再次停摆」而不给质量结论"),
+            "c1_note": ("停摆门（stall_gate.py）判定：原始报告 stall_report_linear.json 的 status="
+                         "stalled（该门判定 = 日志 mtime 冻住 ≥180s 且进程仍活）；"
+                         "**诊断显示这是「数值发散 → 梯度门跳过 → 日志停写」的仪器假象**，"
+                         "进程实际跑完了 3000 步（grad_skips + 有效步数 = 3000 对账通过）；"
+                         "预登记判据①的字面口径（日志每 200 步推进）仍计为**不通过**，"
+                         "质量腿读数只能作「发散步」参考、不构成线性载体质量结论（见 stall_diagnosis）"),
         },
     })
     results["cost"] = {

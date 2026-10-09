@@ -4,8 +4,12 @@
 复用 2631 的 seed0/seed1 六臂作对照，必须同时满足 §9 四项；本模块把它们变成可核对的
 产物 `equality_report.json`：
 
-1. **实现层 equality**：当前仓库的引擎/仪器文件 sha256 **逐文件等于** 2631 运行时记录在
-   `2631/results.json::code_hashes` 的值（不是「我记得没改」，而是逐位比对）；
+1. **实现层 equality**（两级）：① **`HEAD` 提交版**的引擎/仪器文件 sha256 逐文件等于
+   2631 运行时记录在 `2631/results.json::code_hashes` 的值（证明**提交历史里**那份实现没变）；
+   ② **工作树**可能与 HEAD 不同（其它并行线可能有未提交改动）⇒ 另跑
+   `engine_equivalence.check(...)`：把 `HEAD` 版的 `pathlm/` 整包解到临时目录、与本实验
+   三档配置（none/plain/delta，dense+sequential+窗口 16）各建一个模型，**同权重下比
+   logits 逐位**——不等 ⇒ 复用拒绝（这是比文件哈希更硬的语义等价证据）；
 2. **配置层 equality**：本实验 `config.json` 与 2631 `config.json` 的共享字段逐字段对照
    （`model`/`data`/`tokens`/`task`/`visibility`/`eval`/`aux_ood`/`sensitivity_K4`），
    以及 2631 `train_arms.sh` 的 `BASE` 与本实验 `train_recipe_seed2.cmd` 的逐 flag 对照；
@@ -62,21 +66,41 @@ def _flags(cmd_text: str) -> dict[str, str]:
     return out
 
 
-def compare(cfg: dict | None = None) -> dict:
+def _head_sha(rel: str) -> str | None:
+    """`git show HEAD:<rel>` 的 sha256（None = 该文件不在 HEAD 里）。"""
+    r = subprocess.run(["git", "-C", ROOT, "show", f"HEAD:{rel}"],
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        return None
+    return hashlib.sha256(r.stdout.encode()).hexdigest()
+
+
+def compare(cfg: dict | None = None, with_equivalence: bool = True) -> dict:
     """逐项对照；返回报告（同时落盘 `equality_report.json`）。"""
     if cfg is None:
         cfg = json.load(open(os.path.join(HERE, "config.json")))
     rep2631 = json.load(open(os.path.join(RES, "results.json")))
     cfg2631 = json.load(open(os.path.join(RES, "config.json")))
 
-    # ① 实现层
-    impl, impl_ok = {}, True
+    # ① 实现层：HEAD 提交版 == 2631 记录（工作树的并行改动单独报 + 做语义等价测试）
+    impl, impl_ok, tree_drift = {}, True, []
     for rel in CODE_FILES:
-        now = sha256_file(os.path.join(ROOT, rel))
+        head = _head_sha(rel)
+        work = sha256_file(os.path.join(ROOT, rel))
         then = rep2631.get("code_hashes", {}).get(rel)
-        same = (now == then)
+        same = (head == then)
         impl_ok = impl_ok and same
-        impl[rel] = {"now": now, "at_2631_run": then, "identical": bool(same)}
+        drift = (work != head)
+        if drift:
+            tree_drift.append(rel)
+        impl[rel] = {"head": head, "working_tree": work, "at_2631_run": then,
+                     "head_identical_to_2631": bool(same),
+                     "working_tree_differs_from_head": bool(drift)}
+    equiv = None
+    if with_equivalence and impl_ok:
+        import engine_equivalence
+        equiv = engine_equivalence.check()
+        impl_ok = impl_ok and equiv["bitwise_equivalent_on_this_experiments_configs"]
     impl_sha = subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"],
                               capture_output=True, text=True).stdout.strip()
 
@@ -112,6 +136,10 @@ def compare(cfg: dict | None = None) -> dict:
         "target": os.path.relpath(RES, ROOT),
         "implementation": impl,
         "implementation_identical": bool(impl_ok),
+        "implementation_note": ("① = HEAD 提交版哈希 == 2631 运行时记录；"
+                                "② = 工作树 vs HEAD 在本实验三档配置上的语义等价（逐位 logits）"),
+        "working_tree_drift_files": tree_drift,
+        "engine_equivalence_working_tree_vs_head": equiv,
         "git_head": impl_sha,
         "shared_config": shared,
         "differing_fields": differing,

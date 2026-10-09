@@ -1,0 +1,1383 @@
+{
+  "config": {
+    "device": "cuda",
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true,
+      "topology": "sequential",
+      "train_window": 16,
+      "train_anchors": 0,
+      "carry_chunk": 64
+    },
+    "data": {
+      "name": "enwik8_full",
+      "path": "data/enwik8_full.npz",
+      "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）",
+      "vocab_size": 206,
+      "n_real_tokens": 205,
+      "mask_token": 205,
+      "note": "真实文本口径：训练与评测同一份 enwik8 字节流（与 train_depth_ar.py 内部同一路径）"
+    },
+    "visibility": {
+      "train_window": 16,
+      "train_anchors": 0,
+      "note": "训练与评测同一个 window_anchor_keep_mask(T,16,0)；非退化（可见对数 < T(T+1)/2）；锚点 0 ⇒ 前缀里没有可被锚区保住的针（针全部落 window/beyond 两桶）"
+    },
+    "eval": {
+      "bpc": {
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "note": "窗口序与 2614/2615/2616 同一 window_seed=2；批数不同 ⇒ 绝对 bpc 不与它们逐位可比"
+      },
+      "probe": {
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "corrupt_hi": 64,
+        "eval_lo": 244,
+        "eval_hi": 255,
+        "corrupt_seed": 2634,
+        "note": "毁源式窗外源敏感度探针：被毁前缀 [0,64)，被评行 [244,255)。被评行必须满足 eval_lo − rf ≥ corrupt_hi：L 层窗口 w 的因果注意力可跨层多跳看到 [i−L(w−1), i]，本配置 L=12/w=16 ⇒ rf=180（实测：第 64+180=244 行起对被毁前缀逐位不敏感，第 243 行已是 0.0）⇒ 被毁前缀只能经**记忆槽**到达被评行。",
+        "rf": 180
+      }
+    },
+    "needle": {
+      "n_needles": 8,
+      "phrase_len": 6,
+      "anchors": 8,
+      "anchor_frac": 0.25,
+      "n_batches": 1,
+      "batch_size": 8,
+      "seed": 3,
+      "bucket_anchors": 0,
+      "note": "needle v3 真实文本短语针（retention.phrase_needle_batch）；placement anchors=8，归属桶按 anchors=0 判（本实验可见性无锚区）⇒ 桶只有 window / beyond"
+    },
+    "seeds": [
+      0,
+      1
+    ],
+    "rules": [
+      "none",
+      "delta"
+    ],
+    "arms": [
+      {
+        "name": "rt_none_s0",
+        "rule": "none",
+        "seed": 0,
+        "path": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+        "train_log": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s0/train_log.jsonl",
+        "train_results_json": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s0/results.json",
+        "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+        "size_bytes": 54193675
+      },
+      {
+        "name": "rt_delta_s0",
+        "rule": "delta",
+        "seed": 0,
+        "path": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s0/model.pt",
+        "train_log": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s0/train_log.jsonl",
+        "train_results_json": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s0/results.json",
+        "sha256": "d92114822c09f2f7538ea6a59802eed21b1297409fe91f66c031dec9d6c305eb",
+        "size_bytes": 55255619
+      },
+      {
+        "name": "rt_none_s1",
+        "rule": "none",
+        "seed": 1,
+        "path": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+        "train_log": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s1/train_log.jsonl",
+        "train_results_json": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s1/results.json",
+        "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+        "size_bytes": 54193675
+      },
+      {
+        "name": "rt_delta_s1",
+        "rule": "delta",
+        "seed": 1,
+        "path": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s1/model.pt",
+        "train_log": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s1/train_log.jsonl",
+        "train_results_json": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s1/results.json",
+        "sha256": "b3d3cdbc57266109b6b461d18c2188c7d1712170f6760b35a48ff9b6170d6843",
+        "size_bytes": 55255619
+      }
+    ],
+    "train_recipe": {
+      "cmd": "python3 train_depth_ar.py <arm> --d 256 --layers 12 --heads 8 --mlp-mult 6 --seq-len 256 --dense --topology sequential --steps 12000 --batch-size 32 --lr 1e-3 --seed {0,1} --exit-mode uniform --train-window 16 --train-anchors 0 --eval-batches 4 --carry-write {none,delta} --out-root axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train",
+      "note": "唯一变量 = carry_rule × seed；其余逐字段一致（与 2631 同配方，只把训练数据换成 enwik8）",
+      "steps": 12000,
+      "batch_size": 32,
+      "seq_len": 256,
+      "tokens_per_arm": 98304000
+    },
+    "stats": {
+      "noise_floor": {
+        "source": "本格同配置换种子（none_s0/none_s1、delta_s0/delta_s1）的 bpc 极差",
+        "note": "2 样本极差是描述量、不是方差上界"
+      }
+    },
+    "steptime_measured": {
+      "source": "2634/smoke/steps300（本实验 300 步冒烟，稳态窗 step 200→299）",
+      "ms_per_step": {
+        "none": 48.5,
+        "delta": 84.8
+      },
+      "est_min_12k": {
+        "none": 9.7,
+        "delta": 17.0
+      },
+      "est_min_total_4arms": 53.4,
+      "note": "先测步时再定预算（SCHEMA §17.8）；不借用其它实验的步时"
+    }
+  },
+  "checkpoints": {
+    "rt_none_s0": {
+      "path": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+      "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "rule": "none",
+      "seed": 0,
+      "carry_rule": null,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "rt_delta_s0": {
+      "path": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s0/model.pt",
+      "sha256": "d92114822c09f2f7538ea6a59802eed21b1297409fe91f66c031dec9d6c305eb",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "rule": "delta",
+      "seed": 0,
+      "carry_rule": "delta",
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "rt_none_s1": {
+      "path": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+      "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "rule": "none",
+      "seed": 1,
+      "carry_rule": null,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "rt_delta_s1": {
+      "path": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s1/model.pt",
+      "sha256": "b3d3cdbc57266109b6b461d18c2188c7d1712170f6760b35a48ff9b6170d6843",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "rule": "delta",
+      "seed": 1,
+      "carry_rule": "delta",
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    }
+  },
+  "visibility": {
+    "train_window": 16,
+    "train_anchors": 0
+  },
+  "selfchecks": {
+    "window_mask_visible_pairs": 3976,
+    "window_mask_nondegenerate": true,
+    "params_bitwise_equal_none_delta": {
+      "0": {
+        "n_tensors": 170,
+        "name_symmetric_difference": [
+          "blocks.0.carry_scale",
+          "blocks.1.carry_scale",
+          "blocks.10.carry_scale",
+          "blocks.11.carry_scale",
+          "blocks.2.carry_scale",
+          "blocks.3.carry_scale",
+          "blocks.4.carry_scale",
+          "blocks.5.carry_scale",
+          "blocks.6.carry_scale",
+          "blocks.7.carry_scale",
+          "blocks.8.carry_scale",
+          "blocks.9.carry_scale",
+          "carry.beta_b",
+          "carry.beta_w",
+          "carry.gate_w",
+          "carry.w_k",
+          "carry.w_q",
+          "carry.w_v"
+        ],
+        "shape_mismatch": [],
+        "value_mismatch": [],
+        "bitwise_equal": false,
+        "n_params_a": 13536768,
+        "n_params_b": 13801064
+      },
+      "1": {
+        "n_tensors": 170,
+        "name_symmetric_difference": [
+          "blocks.0.carry_scale",
+          "blocks.1.carry_scale",
+          "blocks.10.carry_scale",
+          "blocks.11.carry_scale",
+          "blocks.2.carry_scale",
+          "blocks.3.carry_scale",
+          "blocks.4.carry_scale",
+          "blocks.5.carry_scale",
+          "blocks.6.carry_scale",
+          "blocks.7.carry_scale",
+          "blocks.8.carry_scale",
+          "blocks.9.carry_scale",
+          "carry.beta_b",
+          "carry.beta_w",
+          "carry.gate_w",
+          "carry.w_k",
+          "carry.w_q",
+          "carry.w_v"
+        ],
+        "shape_mismatch": [],
+        "value_mismatch": [],
+        "bitwise_equal": false,
+        "n_params_a": 13536768,
+        "n_params_b": 13801064
+      }
+    },
+    "trunk_bitwise_equal_delta_vs_none": {
+      "0": {
+        "added_tensors": [
+          "blocks.0.carry_scale",
+          "blocks.1.carry_scale",
+          "blocks.10.carry_scale",
+          "blocks.11.carry_scale",
+          "blocks.2.carry_scale",
+          "blocks.3.carry_scale",
+          "blocks.4.carry_scale",
+          "blocks.5.carry_scale",
+          "blocks.6.carry_scale",
+          "blocks.7.carry_scale",
+          "blocks.8.carry_scale",
+          "blocks.9.carry_scale",
+          "carry.beta_b",
+          "carry.beta_w",
+          "carry.gate_w",
+          "carry.w_k",
+          "carry.w_q",
+          "carry.w_v"
+        ],
+        "missing_tensors": [],
+        "trunk_value_mismatch": [],
+        "trunk_bitwise_equal": true,
+        "n_params_added": 264296,
+        "n_params_carry_arm": 13801064,
+        "n_params_base_arm": 13536768
+      },
+      "1": {
+        "added_tensors": [
+          "blocks.0.carry_scale",
+          "blocks.1.carry_scale",
+          "blocks.10.carry_scale",
+          "blocks.11.carry_scale",
+          "blocks.2.carry_scale",
+          "blocks.3.carry_scale",
+          "blocks.4.carry_scale",
+          "blocks.5.carry_scale",
+          "blocks.6.carry_scale",
+          "blocks.7.carry_scale",
+          "blocks.8.carry_scale",
+          "blocks.9.carry_scale",
+          "carry.beta_b",
+          "carry.beta_w",
+          "carry.gate_w",
+          "carry.w_k",
+          "carry.w_q",
+          "carry.w_v"
+        ],
+        "missing_tensors": [],
+        "trunk_value_mismatch": [],
+        "trunk_bitwise_equal": true,
+        "n_params_added": 264296,
+        "n_params_carry_arm": 13801064,
+        "n_params_base_arm": 13536768
+      }
+    },
+    "identity_start_logits_bitwise": {
+      "0": {
+        "delta_matches_none_bitwise": true
+      },
+      "1": {
+        "delta_matches_none_bitwise": true
+      }
+    },
+    "n_params": {
+      "rt_none_s0": 13536768,
+      "rt_delta_s0": 13801064,
+      "rt_none_s1": 13536768,
+      "rt_delta_s1": 13801064
+    }
+  },
+  "quality_leg": {
+    "rt_none_s0": {
+      "bpc_win16": 1.637986,
+      "bpc_full_release_diagnostic": 4.678768,
+      "bpc_win16_channel_off": 1.637986
+    },
+    "rt_delta_s0": {
+      "bpc_win16": 1.584657,
+      "bpc_full_release_diagnostic": 1.949702,
+      "bpc_win16_channel_off": 4.575535
+    },
+    "rt_none_s1": {
+      "bpc_win16": 1.612549,
+      "bpc_full_release_diagnostic": 4.716083,
+      "bpc_win16_channel_off": 1.612549
+    },
+    "rt_delta_s1": {
+      "bpc_win16": 1.589881,
+      "bpc_full_release_diagnostic": 1.951541,
+      "bpc_win16_channel_off": 4.641074
+    }
+  },
+  "far_source_probe": {
+    "rt_none_s0": {
+      "delta_bpc_far": 0.0,
+      "ce_far_clean": 1.31902,
+      "ce_far_corrupt": 1.31902,
+      "delta_ci95_clustered": [
+        0.0,
+        0.0
+      ],
+      "max_abs_logit_diff_on_eval_rows": 0.0,
+      "n_tokens": 88,
+      "n_batches": 1,
+      "batch_size": 8,
+      "window_seed": 2,
+      "corrupt_seed": 2634,
+      "layout": {
+        "corrupt_prefix": [
+          0,
+          64
+        ],
+        "eval_rows": [
+          244,
+          255
+        ],
+        "receptive_field_positions": 0,
+        "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+        "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+      },
+      "ce_by_row_clean": [
+        1.98615,
+        0.995177,
+        1.336522,
+        1.622767,
+        0.579481,
+        1.234174,
+        0.833775,
+        1.896623,
+        1.344765,
+        1.339702,
+        1.340085
+      ],
+      "ce_by_row_corrupt": [
+        1.98615,
+        0.995177,
+        1.336522,
+        1.622767,
+        0.579481,
+        1.234174,
+        0.833775,
+        1.896623,
+        1.344765,
+        1.339702,
+        1.340085
+      ],
+      "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）",
+      "with_channel_off": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 1.31902,
+        "ce_far_corrupt": 1.31902,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "n_tokens": 88,
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 0,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+        },
+        "ce_by_row_clean": [
+          1.98615,
+          0.995177,
+          1.336522,
+          1.622767,
+          0.579481,
+          1.234174,
+          0.833775,
+          1.896623,
+          1.344765,
+          1.339702,
+          1.340085
+        ],
+        "ce_by_row_corrupt": [
+          1.98615,
+          0.995177,
+          1.336522,
+          1.622767,
+          0.579481,
+          1.234174,
+          0.833775,
+          1.896623,
+          1.344765,
+          1.339702,
+          1.340085
+        ],
+        "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）"
+      }
+    },
+    "rt_delta_s0": {
+      "delta_bpc_far": -0.005654,
+      "ce_far_clean": 1.281501,
+      "ce_far_corrupt": 1.275847,
+      "delta_ci95_clustered": [
+        -0.054938,
+        0.033571
+      ],
+      "max_abs_logit_diff_on_eval_rows": 2.8934218883514404,
+      "n_tokens": 88,
+      "n_batches": 1,
+      "batch_size": 8,
+      "window_seed": 2,
+      "corrupt_seed": 2634,
+      "layout": {
+        "corrupt_prefix": [
+          0,
+          64
+        ],
+        "eval_rows": [
+          244,
+          255
+        ],
+        "receptive_field_positions": 0,
+        "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+        "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+      },
+      "ce_by_row_clean": [
+        1.723817,
+        0.94948,
+        1.339139,
+        1.44321,
+        0.687317,
+        1.081767,
+        0.843842,
+        1.876205,
+        1.48669,
+        1.311829,
+        1.35321
+      ],
+      "ce_by_row_corrupt": [
+        1.806007,
+        0.936363,
+        1.424241,
+        1.38402,
+        0.671173,
+        1.085708,
+        0.884636,
+        1.810002,
+        1.491159,
+        1.174301,
+        1.366702
+      ],
+      "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）",
+      "with_channel_off": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 4.445313,
+        "ce_far_corrupt": 4.445313,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "n_tokens": 88,
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 0,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+        },
+        "ce_by_row_clean": [
+          3.946967,
+          3.339908,
+          4.599271,
+          4.380065,
+          4.378051,
+          4.105819,
+          4.642936,
+          4.601285,
+          4.73441,
+          5.014921,
+          5.15481
+        ],
+        "ce_by_row_corrupt": [
+          3.946967,
+          3.339908,
+          4.599271,
+          4.380065,
+          4.378051,
+          4.105819,
+          4.642936,
+          4.601285,
+          4.73441,
+          5.014921,
+          5.15481
+        ],
+        "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）"
+      }
+    },
+    "rt_none_s1": {
+      "delta_bpc_far": 0.0,
+      "ce_far_clean": 1.447652,
+      "ce_far_corrupt": 1.447652,
+      "delta_ci95_clustered": [
+        0.0,
+        0.0
+      ],
+      "max_abs_logit_diff_on_eval_rows": 0.0,
+      "n_tokens": 88,
+      "n_batches": 1,
+      "batch_size": 8,
+      "window_seed": 2,
+      "corrupt_seed": 2634,
+      "layout": {
+        "corrupt_prefix": [
+          0,
+          64
+        ],
+        "eval_rows": [
+          244,
+          255
+        ],
+        "receptive_field_positions": 0,
+        "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+        "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+      },
+      "ce_by_row_clean": [
+        2.175489,
+        1.21583,
+        1.199506,
+        1.563846,
+        0.679549,
+        1.084177,
+        0.922705,
+        2.009507,
+        2.183162,
+        1.27875,
+        1.61165
+      ],
+      "ce_by_row_corrupt": [
+        2.175489,
+        1.21583,
+        1.199506,
+        1.563846,
+        0.679549,
+        1.084177,
+        0.922705,
+        2.009507,
+        2.183162,
+        1.27875,
+        1.61165
+      ],
+      "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）",
+      "with_channel_off": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 1.447652,
+        "ce_far_corrupt": 1.447652,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "n_tokens": 88,
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 0,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+        },
+        "ce_by_row_clean": [
+          2.175489,
+          1.21583,
+          1.199506,
+          1.563846,
+          0.679549,
+          1.084177,
+          0.922705,
+          2.009507,
+          2.183162,
+          1.27875,
+          1.61165
+        ],
+        "ce_by_row_corrupt": [
+          2.175489,
+          1.21583,
+          1.199506,
+          1.563846,
+          0.679549,
+          1.084177,
+          0.922705,
+          2.009507,
+          2.183162,
+          1.27875,
+          1.61165
+        ],
+        "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）"
+      }
+    },
+    "rt_delta_s1": {
+      "delta_bpc_far": 0.014516,
+      "ce_far_clean": 1.467335,
+      "ce_far_corrupt": 1.481851,
+      "delta_ci95_clustered": [
+        -0.011613,
+        0.041422
+      ],
+      "max_abs_logit_diff_on_eval_rows": 2.9046268463134766,
+      "n_tokens": 88,
+      "n_batches": 1,
+      "batch_size": 8,
+      "window_seed": 2,
+      "corrupt_seed": 2634,
+      "layout": {
+        "corrupt_prefix": [
+          0,
+          64
+        ],
+        "eval_rows": [
+          244,
+          255
+        ],
+        "receptive_field_positions": 0,
+        "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+        "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+      },
+      "ce_by_row_clean": [
+        2.020377,
+        1.292788,
+        1.675163,
+        1.16678,
+        0.863517,
+        1.112872,
+        0.820159,
+        2.224886,
+        2.171297,
+        1.463286,
+        1.329559
+      ],
+      "ce_by_row_corrupt": [
+        2.134772,
+        1.325154,
+        1.666064,
+        1.249782,
+        0.841111,
+        1.170244,
+        0.889491,
+        2.098985,
+        2.132583,
+        1.419219,
+        1.372954
+      ],
+      "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）",
+      "with_channel_off": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 4.62519,
+        "ce_far_corrupt": 4.62519,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "n_tokens": 88,
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 0,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+        },
+        "ce_by_row_clean": [
+          4.048146,
+          3.882945,
+          4.505269,
+          4.631382,
+          5.375151,
+          5.090113,
+          4.782913,
+          4.566412,
+          4.204059,
+          5.021778,
+          4.768925
+        ],
+        "ce_by_row_corrupt": [
+          4.048146,
+          3.882945,
+          4.505269,
+          4.631382,
+          5.375151,
+          5.090113,
+          4.782913,
+          4.566412,
+          4.204059,
+          5.021778,
+          4.768925
+        ],
+        "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）"
+      }
+    }
+  },
+  "needle_leg": {
+    "conditions": {
+      "rt_none_s0|planted": {
+        "recall": 0.390625,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.390625,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.40625,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.2,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.4,
+            "n": 25
+          }
+        }
+      },
+      "rt_none_s0|control": {
+        "recall": 0.40625,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.40625,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.4375,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.2,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.4,
+            "n": 25
+          }
+        }
+      },
+      "rt_delta_s0|planted": {
+        "recall": 0.46875,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.46875,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.5625,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.2,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.4,
+            "n": 25
+          }
+        }
+      },
+      "rt_delta_s0|control": {
+        "recall": 0.46875,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.46875,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.59375,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.0,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.4,
+            "n": 25
+          }
+        }
+      },
+      "rt_none_s1|planted": {
+        "recall": 0.4375,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.4375,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.5,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.4,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.36,
+            "n": 25
+          }
+        }
+      },
+      "rt_none_s1|control": {
+        "recall": 0.4375,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.4375,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.5,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.4,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.36,
+            "n": 25
+          }
+        }
+      },
+      "rt_delta_s1|planted": {
+        "recall": 0.46875,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.46875,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.65625,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.2,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.28,
+            "n": 25
+          }
+        }
+      },
+      "rt_delta_s1|control": {
+        "recall": 0.46875,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.46875,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.625,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.2,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.32,
+            "n": 25
+          }
+        }
+      }
+    },
+    "n_needles_total": 64,
+    "seed": 3,
+    "n_batches": 1,
+    "bucket_rule": "anchors=0 ⇒ 桶只有 window（短语全可见）与 beyond（有位置不可见）；本实验锚点 0，窗 16 ⇒ beyond 占绝大多数",
+    "paired_beyond_vs_floor": {
+      "rt_none_s0": {
+        "n": 64,
+        "planted_hits": 25,
+        "control_hits": 26,
+        "planted_recall": 0.390625,
+        "control_recall": 0.40625,
+        "delta_pp": -1.562,
+        "hard_subset": {
+          "n": 38,
+          "planted_recall": 0.0,
+          "note": "控制臂答不出的针（答案只能来自记忆）"
+        }
+      },
+      "rt_delta_s0": {
+        "n": 64,
+        "planted_hits": 30,
+        "control_hits": 30,
+        "planted_recall": 0.46875,
+        "control_recall": 0.46875,
+        "delta_pp": 0.0,
+        "hard_subset": {
+          "n": 34,
+          "planted_recall": 0.029412,
+          "note": "控制臂答不出的针（答案只能来自记忆）"
+        }
+      },
+      "rt_none_s1": {
+        "n": 64,
+        "planted_hits": 28,
+        "control_hits": 28,
+        "planted_recall": 0.4375,
+        "control_recall": 0.4375,
+        "delta_pp": 0.0,
+        "hard_subset": {
+          "n": 36,
+          "planted_recall": 0.0,
+          "note": "控制臂答不出的针（答案只能来自记忆）"
+        }
+      },
+      "rt_delta_s1": {
+        "n": 64,
+        "planted_hits": 30,
+        "control_hits": 30,
+        "planted_recall": 0.46875,
+        "control_recall": 0.46875,
+        "delta_pp": 0.0,
+        "hard_subset": {
+          "n": 34,
+          "planted_recall": 0.029412,
+          "note": "控制臂答不出的针（答案只能来自记忆）"
+        }
+      }
+    }
+  },
+  "effects_by_seed": {
+    "0": {
+      "bpc_win16": {
+        "none": 1.637986,
+        "delta": 1.584657,
+        "delta_bpc": 0.053329,
+        "paired_delta_ci95_pp_bits": [
+          -0.089005,
+          -0.021767
+        ],
+        "paired_note": "配对 CI（同窗口序）：只含同批窗口上的测量噪声；**不含**训练种子方差（后者由 σ_cell 描述）"
+      },
+      "delta_bpc_far": {
+        "none": 0.0,
+        "delta": -0.005654
+      }
+    },
+    "1": {
+      "bpc_win16": {
+        "none": 1.612549,
+        "delta": 1.589881,
+        "delta_bpc": 0.022668,
+        "paired_delta_ci95_pp_bits": [
+          -0.076221,
+          0.015685
+        ],
+        "paired_note": "配对 CI（同窗口序）：只含同批窗口上的测量噪声；**不含**训练种子方差（后者由 σ_cell 描述）"
+      },
+      "delta_bpc_far": {
+        "none": 0.0,
+        "delta": 0.014516
+      }
+    }
+  },
+  "sigma_cell": {
+    "bpc_win16": 0.025436999999999932,
+    "delta_bpc_far": 0.02017,
+    "note": "同配置换种子的极差（2 样本 ⇒ 描述量，不是方差上界）"
+  },
+  "criteria": {
+    "c1_premise_nonchannel_insensitive": true,
+    "c2_channel_transports_on_realtext": false,
+    "c3_quality_leg_channel_better": false,
+    "c4_needle_beyond_above_floor": false,
+    "c4_note": "该腿的判据是「离散答案探针在窗外桶高于配对地板」；若各臂都 ≈ 地板 ⇒ 该探针在此尺度无区分力（如实报，不作机制结论）",
+    "c5_no_extrapolation": true
+  },
+  "noise_floor_note": "本格自测；SCHEMA §2 的 0.014 是 bpc 口径的历史方差带，本实验以 own-cell 极差为准并并列报出",
+  "liveness": {
+    "rt_delta_s0": {
+      "enabled": true,
+      "window": 16,
+      "read_share_per_layer": 0.301669,
+      "read_share_by_layer": [
+        0.696631,
+        0.329385,
+        0.3543,
+        0.257039,
+        0.250585,
+        0.20314,
+        0.199666,
+        0.218815,
+        0.15944,
+        0.283319,
+        0.264226,
+        0.403487
+      ],
+      "slot_score_mass_per_query": 33.948303,
+      "far_read_norm_frac": 0.9687,
+      "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）",
+      "eval_recheck": {
+        "note": "评测期反事实：关通道 / 换写入规则是否改变前向（见 2618 §活性口径）",
+        "probe": {
+          "enabled": true,
+          "rel_dev_vs_channel_off": 0.517422,
+          "rel_dev_vs_other_rule": 0.911008,
+          "other_rule": "plain",
+          "alive": true
+        }
+      }
+    },
+    "rt_delta_s1": {
+      "enabled": true,
+      "window": 16,
+      "read_share_per_layer": 0.303836,
+      "read_share_by_layer": [
+        0.69433,
+        0.321099,
+        0.307208,
+        0.219393,
+        0.205962,
+        0.232386,
+        0.167159,
+        0.178925,
+        0.327429,
+        0.23704,
+        0.355361,
+        0.399736
+      ],
+      "slot_score_mass_per_query": 30.133707,
+      "far_read_norm_frac": 0.960435,
+      "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）",
+      "eval_recheck": {
+        "note": "评测期反事实：关通道 / 换写入规则是否改变前向（见 2618 §活性口径）",
+        "probe": {
+          "enabled": true,
+          "rel_dev_vs_channel_off": 0.44496,
+          "rel_dev_vs_other_rule": 0.910877,
+          "other_rule": "plain",
+          "alive": true
+        }
+      }
+    }
+  },
+  "loss_slope": {
+    "rt_none_s0": {
+      "n_points": 60,
+      "slope": -0.185685,
+      "first_loss": 5.4405,
+      "last_loss": 1.0551,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "rt_delta_s0": {
+      "n_points": 60,
+      "slope": -0.188982,
+      "first_loss": 5.4405,
+      "last_loss": 1.0456,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "rt_none_s1": {
+      "n_points": 60,
+      "slope": -0.182565,
+      "first_loss": 5.4312,
+      "last_loss": 1.1448,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "rt_delta_s1": {
+      "n_points": 60,
+      "slope": -0.185349,
+      "first_loss": 5.4312,
+      "last_loss": 1.1503,
+      "window_steps": [
+        200,
+        12000
+      ]
+    }
+  },
+  "train_log_tail": {
+    "rt_none_s0": {
+      "last_step": 11999,
+      "last_loss": 1.0551,
+      "last_read_share": null
+    },
+    "rt_delta_s0": {
+      "last_step": 11999,
+      "last_loss": 1.0456,
+      "last_read_share": {
+        "read_scale_absmean": 0.10894,
+        "read_share": 0.416451,
+        "mem_write_to_resid_ratio": 0.280406,
+        "state_fro": 5.628774,
+        "beta_mean": 0.43521,
+        "write_rel": 0.74698,
+        "read_norm": 7.684108,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 64
+      }
+    },
+    "rt_none_s1": {
+      "last_step": 11999,
+      "last_loss": 1.1448,
+      "last_read_share": null
+    },
+    "rt_delta_s1": {
+      "last_step": 11999,
+      "last_loss": 1.1503,
+      "last_read_share": {
+        "read_scale_absmean": 0.097681,
+        "read_share": 0.418284,
+        "mem_write_to_resid_ratio": 0.282898,
+        "state_fro": 5.663551,
+        "beta_mean": 0.435345,
+        "write_rel": 0.757782,
+        "read_norm": 8.440881,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 64
+      }
+    }
+  },
+  "train_meta": {
+    "rt_none_s0": {
+      "wall_minutes": 11.94,
+      "peak_gpu_mem_mb": 2015.1,
+      "params": 13536768,
+      "seed": 0,
+      "carry_write": "none",
+      "window_mask": null
+    },
+    "rt_delta_s0": {
+      "wall_minutes": 16.93,
+      "peak_gpu_mem_mb": 2282.5,
+      "params": 13801064,
+      "seed": 0,
+      "carry_write": "delta",
+      "window_mask": null,
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 77.291214,
+        "state_fro": 4.218829,
+        "beta_mean": 0.575763,
+        "write_rel": 0.0,
+        "read_norm": 3.58686,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.108947,
+        "read_share": 0.41645,
+        "mem_write_to_resid_ratio": 0.280412,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.467817,
+        "rel_dev_vs_other_rule": 0.692098,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      }
+    },
+    "rt_none_s1": {
+      "wall_minutes": 8.48,
+      "peak_gpu_mem_mb": 2015.1,
+      "params": 13536768,
+      "seed": 1,
+      "carry_write": "none",
+      "window_mask": null
+    },
+    "rt_delta_s1": {
+      "wall_minutes": 15.11,
+      "peak_gpu_mem_mb": 2282.5,
+      "params": 13801064,
+      "seed": 1,
+      "carry_write": "delta",
+      "window_mask": null,
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 75.697095,
+        "state_fro": 3.861761,
+        "beta_mean": 0.568923,
+        "write_rel": 0.0,
+        "read_norm": 3.664171,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.097681,
+        "read_share": 0.418283,
+        "mem_write_to_resid_ratio": 0.28289,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.459198,
+        "rel_dev_vs_other_rule": 0.684534,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      }
+    }
+  },
+  "cost": {
+    "wall_minutes_total_eval": 0.12,
+    "train_wall_minutes": {
+      "rt_none_s0": 11.94,
+      "rt_delta_s0": 16.93,
+      "rt_none_s1": 8.48,
+      "rt_delta_s1": 15.11
+    },
+    "eval_peak_gpu_mem_mb": 267.1,
+    "train_peak_gpu_mem_mb": {
+      "rt_none_s0": 2015.1,
+      "rt_delta_s0": 2282.5,
+      "rt_none_s1": 2015.1,
+      "rt_delta_s1": 2282.5
+    },
+    "n_eval_windows_bpc": 8,
+    "n_probe_windows": 8,
+    "n_needle_batches": 1,
+    "lock_note": "训练按臂释放锁（§20.1，臂间 ≥60s）；评测整程 <10 min 持锁"
+  },
+  "code_hashes": {
+    "pathlm/depth_ar.py": "f2e72361eecc022e7ccf8a7951f6a6f9a411e12d6da9348a4d8fb70023b9440e",
+    "train_depth_ar.py": "218b63179e623d6a938e7cabe85a71c5c4a36f1831c6930e9c65b2e0a6673022",
+    "tools/evalkit/longrange_tasks.py": "4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b",
+    "tools/evalkit/carry_channel.py": "4dcd91facd60a512dcc983836fb29a7c91aad988bada1c95ada666824d226753",
+    "tools/evalkit/retention.py": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502",
+    "pathlm/data.py": "48e23520122a0b4591e71d0e3780dd1f34dc4a82744e14ca3414da8f43ba448a",
+    "run.py": "6c637d5865be6ca5a4cf04cf3f68b476724eea86447870f3667db1e6c395356b",
+    "realtext_probe.py": "c51ca23753cf0e41ea27335454004b19be372448f51c27d33995b6c1bc7347f0",
+    "config.json": "cc65b748f18c4d53e3ea9d326e867c88177b104e86a3242426633735122d90ea"
+  }
+}

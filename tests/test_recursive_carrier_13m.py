@@ -32,7 +32,7 @@ CFG = json.load(open(os.path.join(EXP, "config.json")))
 GATE = os.path.join(EXP, "stall_gate.py")
 
 
-def _run_gate(tmp_path, body: str, stall_secs: float = 2.0):
+def _run_gate(tmp_path, body: str, stall_secs: float = 2.0, kill_secs: float = 3.0):
     log = tmp_path / "train" / "arm" / "train_log.jsonl"
     log.parent.mkdir(parents=True, exist_ok=True)
     report = tmp_path / "stall_report.json"
@@ -42,34 +42,55 @@ def _run_gate(tmp_path, body: str, stall_secs: float = 2.0):
               f"{body}")
     rc = subprocess.run([sys.executable, GATE, "--train-log", str(log),
                          "--report", str(report), "--stall-secs", str(stall_secs),
+                         "--kill-secs", str(kill_secs),
                          "--poll-secs", "0.5", "--dump-stack-secs", "1",
                          "--", sys.executable, "-c", script],
-                        capture_output=True, text=True, timeout=90).returncode
+                        capture_output=True, text=True, timeout=120).returncode
     return rc, json.load(open(report)) if report.exists() else None
 
 
 # ---------------- ① 停摆必须被抓到 ----------------
 
 def test_stall_gate_detects_stall(tmp_path):
+    """真停摆：日志不推进 + 进程不退 ⇒ 超过 kill-secs 后被终止、返回码 3。"""
     body = ("open(p,'a').write(json.dumps({'step': 1}) + chr(10))\n"
             "time.sleep(60)\n")
-    rc, rep = _run_gate(tmp_path, body, stall_secs=2.0)
+    rc, rep = _run_gate(tmp_path, body, stall_secs=1.0, kill_secs=3.0)
     assert rc == 3
-    assert rep["status"] == "stalled"
+    assert rep["status"] == "killed_after_no_log_progress"
     assert rep["trigger_step"] == 1
-    assert rep["stall_wall_s"] >= 2.0
+    assert rep["stall_wall_s"] >= 3.0
     assert rep["cpu_seconds"] is not None
     assert isinstance(rep["log_tail"], list) and rep["log_tail"]
-    assert "PATHLM_DUMP_STACKS" in rep["pathlm_dump_stacks"] or rep["pathlm_dump_stacks"]
+    # 两级信号：先记 no_log_progress 事件（非致命），再终止
+    assert rep["no_log_progress_events"][0]["status"] == "no_log_progress"
+    assert rep["pathlm_dump_stacks"]
+
+
+def test_stall_gate_does_not_kill_log_frozen_but_finishing_run(tmp_path):
+    """**实测教训钉住**：日志停写 ≠ 进程停摆。
+
+    子进程写一步后长时间不写日志（模拟「数值发散后梯度门把后续步都跳过，日志不再写」），
+    但在 kill-secs 之前自己退出 ⇒ 必须记 `finished`，**不得**误杀。
+    """
+    body = ("open(p,'a').write(json.dumps({'step': 1}) + chr(10))\n"
+            "time.sleep(6)\n"
+            "open(p,'a').write(json.dumps({'step': 2}) + chr(10))\n")
+    rc, rep = _run_gate(tmp_path, body, stall_secs=1.0, kill_secs=30.0)
+    assert rc == 0
+    assert rep["status"] == "finished"
+    assert rep["last_step"] == 2
+    assert rep["n_no_log_progress_events"] >= 1        # 记过事件，但没有杀
 
 
 def test_stall_gate_passes_normal_exit(tmp_path):
     body = ("open(p,'a').write(json.dumps({'step': 1}) + chr(10))\n"
             "open(p,'a').write(json.dumps({'step': 2}) + chr(10))\n")
-    rc, rep = _run_gate(tmp_path, body, stall_secs=30.0)
+    rc, rep = _run_gate(tmp_path, body, stall_secs=30.0, kill_secs=60.0)
     assert rc == 0
     assert rep["status"] == "finished"
     assert rep["last_step"] == 2
+    assert rep["no_log_progress_events"] == []
 
 
 # ---------------- ③ 助手函数 ----------------

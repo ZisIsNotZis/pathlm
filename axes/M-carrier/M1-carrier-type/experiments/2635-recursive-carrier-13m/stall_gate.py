@@ -6,10 +6,19 @@
 本门把它变成判据①的判定：
 
   启动训练子进程（`PATHLM_DUMP_STACKS=<secs>` ⇒ faulthandler 周期性打全线程 Python 栈到
-  子进程 stderr），每 `--poll-secs` 检查 `train_log.jsonl` 的最后一步时间戳；
-  若 **≥ `--stall-secs` 秒没有新步**且子进程仍在运行 ⇒ 判停摆：采集
-  （触发步、墙钟、CPU 时间、显存、最后 3 行日志、faulthandler 栈），终止该臂（SIGTERM → SIGKILL），
-  写 `stall_report.json` 并返回码 3（非零 ⇒ 驱动脚本必须标注「实现层停摆」）。
+  子进程 stderr），每 `--poll-secs` 检查 `train_log.jsonl` 的最后一步时间戳。
+
+  **进度信号的两个模式（实测教训，见 analysis.md §停摆诊断）**：训练器只在**未被梯度门
+  跳过的步**写日志（`train_depth_ar.train` 的 `continue` 跳过了整块日志），所以「日志不推进」
+  有两种完全不同的原因：① 进程真的卡住（栈在 `backward` 内）；② 数值发散后**几乎所有步
+  都被梯度门跳过**，步在推进而日志不写。因此本门分两级：
+
+  - 无日志推进 ≥ `--no-log-secs`（缺省 = `--stall-secs`）⇒ **记录** `no_log_progress` 事件与
+    诊断（非致命），继续监控；
+  - 无日志推进 ≥ `--kill-secs`（缺省 900 s）且进程仍活着 ⇒ 终止该臂，`status=killed_after_no_log_progress`，
+    返回码 3；进程若在此期间正常退出，则按 `finished` 处理。
+
+  诊断字段：触发步、无推进墙钟、CPU 时间与 10 s 增量、该 pid 的显存、最后 3 行日志。
 
 用法：
   python3 stall_gate.py --run-dir <dir> --stall-secs 180 -- python3 train_depth_ar.py ...
@@ -81,6 +90,8 @@ def main() -> int:
     ap.add_argument("--train-log", required=True)
     ap.add_argument("--report", required=True)
     ap.add_argument("--stall-secs", type=float, default=180.0)
+    ap.add_argument("--kill-secs", type=float, default=900.0,
+                    help="无日志推进超过这个秒数才终止（缺省 900；须 ≥ stall-secs）")
     ap.add_argument("--poll-secs", type=float, default=20.0)
     ap.add_argument("--dump-stack-secs", type=int, default=150)
     ap.add_argument("cmd", nargs=argparse.REMAINDER)
@@ -91,30 +102,56 @@ def main() -> int:
 
     env = dict(os.environ)
     env["PATHLM_DUMP_STACKS"] = str(args.dump_stack_secs)
+    if args.kill_secs < args.stall_secs:
+        raise SystemExit("--kill-secs 必须 ≥ --stall-secs")
     t_start = time.time()
     proc = subprocess.Popen(cmd, env=env)
     report: dict = {"cmd": cmd, "stall_secs": args.stall_secs,
+                    "kill_secs": args.kill_secs,
                     "poll_secs": args.poll_secs, "pid": proc.pid,
                     "started_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                    "no_log_progress_events": [],
                     "pathlm_dump_stacks": env["PATHLM_DUMP_STACKS"]}
     repr_path = args.report
 
     def flush(extra: dict):
+        """把 `extra` 合进 report 并落盘（每轮都写，便于外部观察）。"""
         report.update(extra)
         with open(repr_path, "w") as f:
             json.dump(report, f, indent=2, ensure_ascii=False)
             f.write("\n")
 
+    def diag(status: str) -> dict:
+        cpu0 = _cpu_seconds(proc.pid)
+        time.sleep(10)
+        cpu1 = _cpu_seconds(proc.pid)
+        return {
+            "status": status,
+            "trigger_step": last_step,
+            "stall_wall_s": round(time.time() - last_progress, 1),
+            "wall_s": round(time.time() - t_start, 1),
+            "cpu_seconds": cpu1,
+            "cpu_delta_10s": None if (cpu0 is None or cpu1 is None) else round(cpu1 - cpu0, 2),
+            "gpu_mem_mb_for_pid": _gpu_mem_for_pid(proc.pid),
+            "log_tail": _tail(args.train_log),
+            "note": ("栈在子进程 stderr（驱动脚本重定向到 train_<arm>.log）；"
+                     "PATHLM_DUMP_STACKS 每 %ss 打一次全线程栈。"
+                     "⚠ 日志不推进 ≠ 进程停摆：训练器只在未被梯度门跳过的步写日志"
+                     % env["PATHLM_DUMP_STACKS"]),
+        }
+
     flush({"status": "running"})
     last_progress = time.time()
     last_step, last_mtime = _last_step(args.train_log)
+    warned = False
     while True:
         rc = proc.poll()
         if rc is not None:
             step, _ = _last_step(args.train_log)
             flush({"status": "finished" if rc == 0 else "failed", "returncode": rc,
                    "wall_s": round(time.time() - t_start, 1), "last_step": step,
-                   "log_tail": _tail(args.train_log)})
+                   "log_tail": _tail(args.train_log),
+                   "n_no_log_progress_events": len(report["no_log_progress_events"])})
             return rc
         time.sleep(args.poll_secs)
         step, mtime = _last_step(args.train_log)
@@ -123,32 +160,25 @@ def main() -> int:
         if progressed:
             last_progress = time.time()
             last_step, last_mtime = step, mtime
+            warned = False
             continue
-        if time.time() - last_progress >= args.stall_secs:
-            cpu0 = _cpu_seconds(proc.pid)
-            time.sleep(10)
-            cpu1 = _cpu_seconds(proc.pid)
-            diag = {
-                "status": "stalled",
-                "trigger_step": last_step,
-                "stall_wall_s": round(time.time() - last_progress, 1),
-                "wall_s": round(time.time() - t_start, 1),
-                "cpu_seconds": cpu1,
-                "cpu_delta_10s": None if (cpu0 is None or cpu1 is None) else round(cpu1 - cpu0, 2),
-                "gpu_mem_mb_for_pid": _gpu_mem_for_pid(proc.pid),
-                "log_tail": _tail(args.train_log),
-                "note": ("栈在子进程 stderr（驱动脚本重定向到 train_<arm>.log）；"
-                         "PATHLM_DUMP_STACKS 每 %ss 打一次全线程栈" % env["PATHLM_DUMP_STACKS"]),
-            }
+        idle = time.time() - last_progress
+        if idle >= args.stall_secs and not warned:
+            warned = True
+            report["no_log_progress_events"].append(diag("no_log_progress"))
+            flush({"status": "no_log_progress"})
+        if idle >= args.kill_secs:
+            d = diag("killed_after_no_log_progress")
+            report["no_log_progress_events"].append(d)
             proc.send_signal(signal.SIGTERM)
             try:
                 proc.wait(timeout=30)
             except subprocess.TimeoutExpired:
                 proc.kill()
-            flush(diag)
+            flush(d)
             return 3
         flush({"status": "running", "last_step": step,
-               "since_progress_s": round(time.time() - last_progress, 1)})
+               "since_progress_s": round(idle, 1)})
 
 
 if __name__ == "__main__":

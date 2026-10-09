@@ -111,9 +111,8 @@ def far_source_probe(model, eval_arr, keep_mask, *, n_batches: int = 96,
         x, _ = batch(eval_arr, batch_size, T, gen)
         x = x.to(device)
         xc = x.clone()
-        fill = torch.randint(0, model.vocab_size,
-                             (batch_size, corrupt_hi), generator=cgen,
-                             dtype=torch.long, device=device)
+        fill = torch.randint(0, model.vocab_size, (batch_size, corrupt_hi),
+                             generator=cgen, dtype=torch.long).to(device)
         xc[:, :corrupt_hi] = fill
         km = keep_mask.to(device) if keep_mask is not None else None
         lg = masked_logits(model, x, km)
@@ -194,15 +193,22 @@ def channel_off(model):
 @torch.no_grad()
 def win16_bpc(model, eval_arr, keep_mask, *, n_batches: int = 96,
               batch_size: int = 16, window_seed: int = 2,
-              device: str = "cuda") -> float:
+              device: str = "cuda", per_window: bool = False):
     """窗口掩码下的 clean bpc（bits/byte，越低越好）。
 
     与 `retention.masked_bpc` 同一算法/同一窗口序，但批数可调（本实验用更大样本
     压低测量噪声）；**不与 2616 的 24×16 绝对水平逐位可比**（只做臂间比较）。
+
+    `per_window=True` 时返回 `(bpc, per_window_bits)`：逐窗口的 CE 比特总数与 token 数，
+    供**跨臂配对**的聚类 bootstrap 用（四臂的窗口序相同 ⇒ 同一索引 = 同一段真实文本、
+    同一批位置）。**注意口径**：配对 CI 只含「同一批窗口上的测量噪声」，**不含**训练
+    种子方差（后者只能由换种子重训估计）。
     """
     T = model.cfg.seq_len
     gen = torch.Generator().manual_seed(window_seed)
     nats, n_tok = 0.0, 0
+    bits_per_window: list[float] = []
+    n_per_window: list[int] = []
     model.eval()
     for _ in range(n_batches):
         x, _ = batch(eval_arr, batch_size, T, gen)
@@ -210,7 +216,12 @@ def win16_bpc(model, eval_arr, keep_mask, *, n_batches: int = 96,
         km = keep_mask.to(device) if keep_mask is not None else None
         logits = masked_logits(model, x, km)[:, :-1]
         tgt = x[:, 1:]
-        nats += F.cross_entropy(logits.reshape(-1, logits.shape[-1]).float(),
-                               tgt.reshape(-1), reduction="sum").item()
+        ce = F.cross_entropy(logits.reshape(-1, logits.shape[-1]).float(),
+                             tgt.reshape(-1), reduction="none").view(batch_size, -1)
+        nats += ce.double().sum().item()
         n_tok += tgt.numel()
-    return nats / n_tok / LN2
+        if per_window:
+            bits_per_window.extend((ce.double().sum(1) / LN2).cpu().tolist())
+            n_per_window.extend([tgt.shape[1]] * batch_size)
+    bpc = nats / n_tok / LN2
+    return (bpc, bits_per_window, n_per_window) if per_window else bpc

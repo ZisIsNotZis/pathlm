@@ -37,6 +37,7 @@ from pathlm.depth_ar import (DepthARConfig, DepthARModel,          # noqa: E402
                              window_anchor_keep_mask)
 from tools.evalkit.retention import (needle_recall, needle_summary,  # noqa: E402
                                      phrase_needle_batch)
+from tools.evalkit.carry_channel import two_proportion               # noqa: E402
 from tools.evalkit.carry_channel import (loss_slope, param_equality,  # noqa: E402
                                          trunk_equality)
 import realtext_probe as rp                                        # noqa: E402
@@ -162,10 +163,14 @@ def main():
     note(f"质量腿：bpc_win16（窗口 {window}/{anchors}，{eb['n_batches']}×{eb['batch_size']}，"
          f"~{eb['n_batches']*eb['batch_size']*(T-1)} token）；release 口径只作诊断")
     quality = {}
+    per_window_bpc: dict[str, tuple[list[float], list[int]]] = {}
     for name, model in arms.items():
         row = {}
-        row["bpc_win16"] = round(rp.win16_bpc(model, eval_arr, keep, **{
-            k: eb[k] for k in ("n_batches", "batch_size", "window_seed")}, device=dev), 6)
+        bpc_val, bits_w, n_w = rp.win16_bpc(model, eval_arr, keep, **{
+            k: eb[k] for k in ("n_batches", "batch_size", "window_seed")},
+            device=dev, per_window=True)
+        per_window_bpc[name] = (bits_w, n_w)
+        row["bpc_win16"] = round(bpc_val, 6)
         row["bpc_full_release_diagnostic"] = round(rp.win16_bpc(model, eval_arr, None, **{
             k: eb[k] for k in ("n_batches", "batch_size", "window_seed")}, device=dev), 6)
         with rp.channel_off(model):
@@ -283,8 +288,17 @@ def main():
     for seed in cfg["seeds"]:
         qn = quality[f"rt_none_s{seed}"]["bpc_win16"]
         qd = quality[f"rt_delta_s{seed}"]["bpc_win16"]
+        bn, nn = per_window_bpc[f"rt_none_s{seed}"]
+        bd, _ = per_window_bpc[f"rt_delta_s{seed}"]
+        # **跨臂配对**（同一窗口序、同一批位置）：只含测量噪声，不含训练种子方差。
+        # 符号与 Δbpc 一致：Δ = bpc_none − bpc_delta（正 = 通道更好）
+        # ⇒ 逐窗口差取 `bits_none − bits_delta`（正 = 通道更好）。
+        paired_ci = rp.paired_cluster_bootstrap_ci([a - b for a, b in zip(bn, bd)], nn)
         effects[str(seed)] = {
-            "bpc_win16": {"none": qn, "delta": qd, "delta_bpc": round(qn - qd, 6)},
+            "bpc_win16": {"none": qn, "delta": qd, "delta_bpc": round(qn - qd, 6),
+                          "paired_delta_bpc_ci95_bits": paired_ci,
+                          "paired_note": ("配对 CI（同窗口序）：只含同批窗口上的测量噪声；"
+                                          "**不含**训练种子方差（后者由 σ_cell 描述）")},
             "delta_bpc_far": {
                 "none": probe[f"rt_none_s{seed}"]["delta_bpc_far"],
                 "delta": probe[f"rt_delta_s{seed}"]["delta_bpc_far"]},
@@ -299,20 +313,34 @@ def main():
         for sd in cfg["seeds"])
     quality_gain = {str(sd): bool(effects[str(sd)]["bpc_win16"]["delta_bpc"] > sigma_bpc)
                     for sd in cfg["seeds"]}
-    needle_transport = {n: bool(
-        needle["paired_beyond_vs_floor"][n]["delta_pp"] > 0) for n in arms}
+    quality_gain_sign = {str(sd): bool(effects[str(sd)]["bpc_win16"]["delta_bpc"] > 0)
+                         for sd in cfg["seeds"]}
+    paired_ci_pos = {str(sd): bool(effects[str(sd)]["bpc_win16"]
+                                   ["paired_delta_bpc_ci95_bits"][0] > 0)
+                     for sd in cfg["seeds"]}
+    # 判据④的预登记口径 = 「主臂 beyond 召回 > 配对地板，且差值 > 二项 95% CI 半宽」。
+    # 操作化：两比例差值的 Wilson 型 CI（`two_proportion.diff_ci_95`）下界 > 0。
+    needle_transport, needle_tp = {}, {}
+    for n in arms:
+        rec = needle["paired_beyond_vs_floor"][n]
+        tp = two_proportion(rec["planted_hits"], rec["n"], rec["control_hits"], rec["n"])
+        needle_tp[n] = tp
+        needle_transport[n] = bool(tp.get("diff_ci_95", [0.0, 0.0])[0] > 0)
     criteria = {
         "c1_premise_nonchannel_insensitive": bool(premise_ok),
         "c2_channel_transports_on_realtext": bool(all(trans.values())),
         "c3_quality_leg_channel_better": bool(all(quality_gain.values())),
         "c4_needle_beyond_above_floor": bool(any(needle_transport.values())),
-        "c4_note": ("该腿的判据是「离散答案探针在窗外桶高于配对地板」；"
-                    "若各臂都 ≈ 地板 ⇒ 该探针在此尺度无区分力（如实报，不作机制结论）"),
+        "c4_needle_two_proportion": needle_tp,
+        "c4_note": ("该腿的判据 = 「离散答案探针（needle v3）在 beyond 桶高于配对地板，"
+                    "且差值 > 二项 95% CI 半宽」；若各臂都 ≈ 地板 ⇒ 该探针在此尺度"
+                    "**无区分力**（如实报，不作机制结论）"),
         "c5_no_extrapolation": True,
     }
     note(f"判据① 前提（无通道臂被评行逐位不敏感）：{premise_ok}")
     note(f"判据② delta 臂 Δbpc_far>0 且>σ_far={sigma_far:.6f}：{trans}")
     note(f"判据③ 质量腿 Δbpc_win16>σ_cell={sigma_bpc:.6f}：{effects} ⇒ {quality_gain}")
+    note(f"   质量腿同号={quality_gain_sign}；配对 CI 下界>0={paired_ci_pos}")
     note(f"判据④ needle beyond 高于地板：{needle_transport}")
 
     # ---------------- 活性 / 训练侧读数 ----------------

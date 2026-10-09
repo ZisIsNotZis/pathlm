@@ -13,7 +13,9 @@ while ! mkdir "$LOCK" 2>/dev/null; do
   if [ -n "$hp" ] && ! kill -0 "$hp" 2>/dev/null; then stale=1; fi
   if [ -z "$hp" ] && [ -d "$LOCK" ] && [ $(( $(date +%s) - $(stat -c %Y "$LOCK") )) -gt 900 ]; then stale=1; fi
   if [ "$stale" -eq 1 ]; then rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/null || true; continue; fi
-  sleep 15; n=$((n+1)); [ $n -gt 40 ] && { echo "等锁超时"; exit 9; }
+  sleep 15; n=$((n+1));
+  if [ $((n % 8)) -eq 0 ]; then echo "  [wait-lock] 已等 $((n*15))s，holder=$hp $(date -Is)"; fi
+  [ $n -gt 160 ] && { echo "等锁超时（>40min）"; exit 9; }
 done
 echo $$ > "$LOCK/holder_pid"; touch "$LOCK/heartbeat"
 trap 'rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/null' EXIT

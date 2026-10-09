@@ -121,6 +121,9 @@ def test_reuse_equality_report_verdict_ok():
     assert rep["differing_fields"] == []
     assert rep["train_recipe_differing_flags"] == []
     assert rep["verdict"] == "reuse_ok"
+    # 语义级等价（工作树 vs HEAD，本实验三档配置）也必须成立
+    assert rep["engine_equivalence_working_tree_vs_head"][
+        "bitwise_equivalent_on_this_experiments_configs"] is True
     # 复用臂的 checkpoint 哈希必须就是 2631 当时落盘的那一份
     assert rep["reused_arm_checkpoint_sha256_at_2631_run"]["delta_s0"]
 
@@ -130,15 +133,38 @@ def test_reuse_equality_rejects_recipe_change():
     bad = copy.deepcopy(CFG)
     bad["train_recipe_seed2"]["cmd"] = bad["train_recipe_seed2"]["cmd"].replace(
         "--steps 12000", "--steps 6000")
-    rep = eqrep.compare(bad)
+    rep = eqrep.compare(bad, with_equivalence=False)
     assert rep["verdict"] == "reuse_rejected"
     assert "--steps" in rep["train_recipe_differing_flags"]
 
 
+def test_engine_equivalence_per_rule_report_is_complete():
+    """三档配置各自都必须给出「参数量相同 + 同权重 logits 逐位相同」的证据。
+
+    这是 `equality_report.json` 里那条**语义级**等价结论的原始来源；缺任何一档就说明
+    该档的复用没有实现层证据（本测试会红）。
+    """
+    import engine_equivalence as ee
+    r = ee.check()
+    assert set(r["per_rule"]) == {"none", "plain", "delta"}
+    for rule, v in r["per_rule"].items():
+        assert v["n_params_same"], rule
+        assert v["params_bitwise_same_at_same_seed"], rule
+        assert v["state_dict_keys_same"], rule
+        assert v["max_abs_logit_diff_same_weights"] == 0.0, rule
+
+
 def test_engine_files_unchanged_since_2631_run():
+    """HEAD 提交版的引擎/仪器必须与 2631 运行时记录逐文件相同。
+
+    工作树允许被并行线改动（`working_tree_differs_from_head`），但那种情况下必须由
+    `engine_equivalence` 在本实验的三档配置上证明语义等价（逐位 logits）。
+    """
     rep = eqrep.compare(CFG)
     for rel, row in rep["implementation"].items():
-        assert row["identical"], f"{rel} 在 2631 之后被改过 ⇒ §9 复用前提失效"
+        assert row["head_identical_to_2631"], f"{rel} 在 2631 之后被改过 ⇒ §9 复用前提失效"
+    for rel in rep["working_tree_drift_files"]:
+        assert rep["engine_equivalence_working_tree_vs_head"]["per_rule"], rel
 
 
 # ---------------- ④ results.json（跑完之后） ----------------

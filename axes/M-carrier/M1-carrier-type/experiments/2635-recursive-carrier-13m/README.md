@@ -54,9 +54,19 @@
 ### 4a. 停摆门（本实验新增的工程仪器，不改判据）
 
 `stall_gate.py`：以 `PATHLM_DUMP_STACKS=150` 启动训练子进程（faulthandler 每 150 s 打全
-线程 Python 栈，**与 2616 的停摆诊断同一手段**），并每 20 s 检查训练日志的 `step`/mtime；
-若 **180 s 无新步**且进程 CPU 仍在增长 ⇒ 落盘一条停摆记录（触发步、墙钟、CPU 时间、
-`nvidia-smi` 该进程显存、最后 3 行日志、faulthandler 栈），然后终止该臂并给非零退出码。
+线程 Python 栈，**与 2616 的停摆诊断同一手段**），并每 20 s 检查训练日志的 `step`/mtime，
+**两级信号**：
+
+- **无日志推进 ≥ `--stall-secs`（缺省 180 s）⇒ 只记事件**（`no_log_progress_events`，
+  含触发步、墙钟、CPU 时间与 10 s 增量、该 pid 显存、最后 3 行日志；**不终止**）；
+- **无日志推进 ≥ `--kill-secs`（缺省 900 s）且进程仍活着 ⇒ 终止**该臂（`status =
+  killed_after_no_log_progress`，返回码 3）；进程在此期间自己正常退出则记 `finished`。
+
+为什么要两级（**实测教训**）：`train_depth_ar.train` 只在**未被梯度门跳过的步**写
+`train_log.jsonl`（`grad_skips` 那一路是 `continue`），所以「数值发散 ⇒ 绝大多数步被跳过 ⇒
+日志停写」会**伪装**成「进程停摆」。单测
+`test_stall_gate_does_not_kill_log_frozen_but_finishing_run` 钉住「日志冻住但进程能自己
+结束 ⇒ 必须记 finished、不得误杀」。诊断落 `stall_report_<arm>.json`。
 
 ## 5. 两臂规格
 
@@ -87,7 +97,8 @@
   --exit-mode uniform --eval-batches 4 [--attn-linear] --out-root train`。
 - 评测：`python3 run.py`；配置 `config.json`；结果 `results.json`。
 - 落盘：`train/<arm>/{train_log.jsonl,gate_log.jsonl,results.json,model.pt}`、
-  `stall_report.json`、`results.json`、`analysis.md`、`MODEL.md`、`smoke/`。
+  `stall_report_<arm>.json`（停摆门原始诊断）、`train_<arm>.log`（含 faulthandler 栈）、
+  `results.json`、`analysis.md`、`MODEL.md`、`smoke/`。
 - 权重 `*.pt` 不入库；`MODEL.md` 记 sha256 / 体积。
 
 ## 8. 既有做法（prior art，SCHEMA §18）

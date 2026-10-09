@@ -177,7 +177,14 @@ def test_win16_bpc_matches_repo_instrument():
     arr = _eval_arr()
     a = rp.win16_bpc(m, arr, keep, n_batches=2, batch_size=4, window_seed=2, device="cpu")
     b = masked_bpc(m, arr, keep, n_batches=2, batch_size=4, window_seed=2, device="cpu")
-    assert a == pytest.approx(b, abs=1e-9)
+    # 同一算法、同一窗口序；容差 1e-6 是因为逐窗口比特数走 `reduction="none"` 再
+    # 自己求和（配对 bootstrap 需要逐窗口值），浮点累加顺序与仓库版不同。
+    assert a == pytest.approx(b, abs=1e-6)
+    # per_window=True 的返回必须自洽：总比特/总 token == 标量版
+    val, bits, n_tok = rp.win16_bpc(m, arr, keep, n_batches=2, batch_size=4,
+                                    window_seed=2, device="cpu", per_window=True)
+    assert val == pytest.approx(b, abs=1e-6)
+    assert sum(bits) / sum(n_tok) == pytest.approx(a, abs=1e-6)
 
 
 def test_config_layout_invariants():
