@@ -3,12 +3,12 @@ id: R6-moe-scale
 axis: R
 grid_dir: R-references/R6-moe-scale
 title: "MoE 规模轴"
-status: reference
+status: todo
 judge: "同 FLOPs 质量"
 cost: "13M 单臂 ~25–40 min"
 tax: "—"
 benefit: "—"
-verdict: "—"
+verdict: "**尚未核实／待立项**：业界基线结论无核实出处、无本地数据。"
 deps: []
 evidence: []
 ---
@@ -17,7 +17,9 @@ evidence: []
 
 # R6-moe-scale · MoE 规模轴
 
-> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference（含业界结论）**
+> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**⬜ todo**
+
+> **判读**：**尚未核实／待立项**：业界基线结论无核实出处、无本地数据。
 
 ## 1. 命题
 
@@ -39,6 +41,7 @@ evidence: []
 
 - **税**：—
 - **收益**：—
+- **判读**：**尚未核实／待立项**：业界基线结论无核实出处、无本地数据。
 
 ## 5. 失败路径与原因
 
@@ -47,6 +50,12 @@ evidence: []
 ## 6. 判据与判决实验设计
 
 - **判据**：同 FLOPs 质量
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：同 FLOPs 质量
+- 成本：13M 单臂 ~25–40 min
 
 ## 7. 成本估计
 

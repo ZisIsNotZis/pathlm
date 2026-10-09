@@ -27,12 +27,16 @@ ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "catalog.yaml"
 
 STATUS_BADGE = {
-    "stub": "⬜ stub",
-    "partial": "◐ partial",
     "judged": "✅ judged",
-    "falsified": "❌ falsified",
-    "reference": "🏭 reference（含业界结论）",
+    "todo": "⬜ todo",
 }
+
+
+def badge(status: str) -> str:
+    """状态徽章；未知状态直接报错，不静默回落。"""
+    if status not in STATUS_BADGE:
+        raise SystemExit(f"catalog.yaml 出现未知 status：{status!r}（合法值：{sorted(STATUS_BADGE)}）")
+    return STATUS_BADGE[status]
 
 REQUIRED_GRID_KEYS = ("id", "axis", "title", "claim", "options", "judge", "cost", "status")
 
@@ -84,7 +88,7 @@ def page(grid: dict, axis: dict) -> str:
 
     body = [fm(grid), "", "<!-- AUTO:begin -->", ""]
     body += [f"# {grid['id']} · {grid['title']}", ""]
-    body += [f"> 轴：**{axis['id']} {axis['title']}** ｜ 状态：**{STATUS_BADGE.get(grid['status'], grid['status'])}**"]
+    body += [f"> 轴：**{axis['id']} {axis['title']}** ｜ 状态：**{badge(grid['status'])}**"]
     if verdict:
         body += ["", f"> **判读**：{verdict.strip()}"]
     body += ["", "## 1. 命题", "", grid["claim"].strip(), ""]
@@ -119,7 +123,7 @@ def page(grid: dict, axis: dict) -> str:
     body += ["## 5. 失败路径与原因", "", bullets(failure), ""]
 
     body += ["## 6. 判据与判决实验设计", "", f"- **判据**：{grid['judge'].strip()}"]
-    if grid["status"] in ("stub", "partial"):
+    if grid["status"] == "todo":
         body += [
             "",
             "**下一步判决实验**（未做时必填）：",
@@ -162,7 +166,7 @@ def axis_page(axis: dict) -> str:
         tax = (local.get("tax") or "—").strip().replace("\n", " ")
         if len(tax) > 40:
             tax = tax[:38] + "…"
-        out += [f"| [`{g['id']}`]({g['id']}/README.md) | {STATUS_BADGE.get(g['status'], g['status'])} | {v} | {tax} |"]
+        out += [f"| [`{g['id']}`]({g['id']}/README.md) | {badge(g['status'])} | {v} | {tax} |"]
     out += ["", "<!-- AUTO:end -->", "", "<!-- MANUAL:begin -->", "<!-- MANUAL:end -->", ""]
     return "\n".join(out)
 
@@ -219,7 +223,7 @@ def index_page(cat: dict) -> str:
             counts[g["status"]] = counts.get(g["status"], 0) + 1
     total = sum(counts.values())
     out = ["<!-- AUTO:begin -->", "", "# INDEX · 设计空间状态灯", "",
-           f"共 **{total}** 个格子 ｜ " + " ｜ ".join(f"{STATUS_BADGE[k]} {v}" for k, v in sorted(counts.items())),
+           f"共 **{total}** 个格子 ｜ " + " ｜ ".join(f"{badge(k)} {v}" for k, v in sorted(counts.items())),
            "", "> 全部内容由 `tools/build_wiki.py` 从 `catalog.yaml` 生成；**不要手改本文件**。", ""]
     for a in cat["axes"]:
         out += [f"## {a['id']} · {a['title']}（{len(a['grids'])} 格）", "",
@@ -229,7 +233,7 @@ def index_page(cat: dict) -> str:
             v = (g.get("verdict") or "—").strip().replace("\n", " ")
             if len(v) > 100:
                 v = v[:98] + "…"
-            out += [f"| [`{g['id']}`](axes/{a['dir']}/{g['id']}/README.md) · {g['title']} | {STATUS_BADGE.get(g['status'], g['status'])} | {v} |"]
+            out += [f"| [`{g['id']}`](axes/{a['dir']}/{g['id']}/README.md) · {g['title']} | {badge(g['status'])} | {v} |"]
         out += [""]
     out += ["<!-- AUTO:end -->", "", "<!-- MANUAL:begin -->", "<!-- MANUAL:end -->", ""]
     return "\n".join(out)

@@ -4,7 +4,8 @@
 校验项：
   1. 目录完备：catalog 枚举的每一格都有实体目录与 README.md（缺 → fail）。
   2. 模板完备：每页 front-matter 的必需字段齐全、九节齐全。
-  3. 证据完备：status ∈ {judged, falsified} 必须有 judge 与 evidence；
+  3. 证据完备：status=judged 必须有 judge 与 evidence；status=todo 无本地证据，
+     但 verdict 必须写明「待立项」或「尚缺什么」（待补做）。
      evidence 里 `path @commit` 的 path 必须在磁盘上存在（归档/证据锚点不悬空）。
   4. 无孤儿：axes/ 下的格子目录若不在 catalog 中 → fail（防止绕开枚举加内容）。
   5. 生成一致：INDEX.md / 轴 README / 课题页自动块与 catalog 一致
@@ -29,6 +30,8 @@ SECTIONS = ["## 1. 命题", "## 2. 选项枚举", "## 3. 状态", "## 4. 结论�
             "## 8. 依赖与耦合声明", "## 9. 复现手段"]
 REQUIRED = ("id", "axis", "grid_dir", "title", "status", "judge", "cost",
             "tax", "benefit", "verdict", "deps", "evidence")
+# 状态只回答「做完没有」：judged=已有明确结论（含失败结论）；todo=尚无明确结论。
+VALID_STATUS = ("judged", "todo")
 
 
 def main() -> int:
@@ -61,14 +64,21 @@ def main() -> int:
             for s in SECTIONS:
                 if s not in text:
                     errors.append(f"{rel}: 缺小节 {s}")
-            if meta.get("status") in ("judged", "falsified"):
+            st = meta.get("status")
+            if st not in VALID_STATUS:
+                errors.append(f"{rel}: 非法 status={st!r}（合法值：{VALID_STATUS}）")
+            elif st == "judged":
                 n_judged += 1
                 if not meta.get("judge") or meta["judge"].strip() in ("—", "-"):
-                    errors.append(f"{rel}: status={meta['status']} 但无 judge（判据）")
+                    errors.append(f"{rel}: status=judged 但无 judge（判据）")
                 if not meta.get("evidence"):
-                    errors.append(f"{rel}: status={meta['status']} 但无 evidence")
+                    errors.append(f"{rel}: status=judged 但无 evidence")
                 elif meta.get("verdict", "—") in ("—", "-", None):
-                    errors.append(f"{rel}: status={meta['status']} 但无 verdict（判读）")
+                    errors.append(f"{rel}: status=judged 但无 verdict（判读）")
+            elif st == "todo":
+                v = meta.get("verdict") or ""
+                if not any(t in v for t in ("待立项", "尚缺")):
+                    errors.append(f"{rel}: status=todo 但 verdict 未写明「待立项」或「尚缺什么」")
             for ev in meta.get("evidence") or []:
                 p = str(ev).split(" @")[0].strip()
                 if p and not (ROOT / p).exists():

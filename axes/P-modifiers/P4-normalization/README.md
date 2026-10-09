@@ -3,12 +3,12 @@ id: P4-normalization
 axis: P
 grid_dir: P-modifiers/P4-normalization
 title: "归一化位置（修饰符）"
-status: partial
+status: todo
 judge: "训练稳定性 + 残差流范数分布 + 是否与「同空间」前提兼容"
 cost: "13M 单臂 ~25 min"
 tax: "—"
 benefit: "无 final LayerNorm 使 logits = h·Eᵀ 语义成立（readout scale 由 U 学）"
-verdict: "pre-LN + 无 final norm 是「同空间」几何的前提，已固定使用。"
+verdict: "**已有**：pre-LN + 无 final LayerNorm 是「同空间」几何的前提，已固定使用。**尚缺**：post-LN、QK-norm、RMSNorm 的对照判决（待补做）。"
 deps: []
 evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md @88dcc53", "axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md @88dcc53", "axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m/analysis.md @cc64112"]
 ---
@@ -17,9 +17,9 @@ evidence: [".scratch/03-engine-m1/issues @e38349f", "axes/M-carrier/M1-carrier-t
 
 # P4-normalization · 归一化位置（修饰符）
 
-> 轴：**P 修饰符（不是轴）** ｜ 状态：**◐ partial**
+> 轴：**P 修饰符（不是轴）** ｜ 状态：**⬜ todo**
 
-> **判读**：pre-LN + 无 final norm 是「同空间」几何的前提，已固定使用。
+> **判读**：**已有**：pre-LN + 无 final LayerNorm 是「同空间」几何的前提，已固定使用。**尚缺**：post-LN、QK-norm、RMSNorm 的对照判决（待补做）。
 
 ## 1. 命题
 
@@ -43,7 +43,7 @@ LayerNorm 放在哪、是否有 final norm——决定残差流是否保持 embe
 
 - **税**：—
 - **收益**：无 final LayerNorm 使 logits = h·Eᵀ 语义成立（readout scale 由 U 学）
-- **判读**：pre-LN + 无 final norm 是「同空间」几何的前提，已固定使用。
+- **判读**：**已有**：pre-LN + 无 final LayerNorm 是「同空间」几何的前提，已固定使用。**尚缺**：post-LN、QK-norm、RMSNorm 的对照判决（待补做）。
 
 ## 5. 失败路径与原因
 

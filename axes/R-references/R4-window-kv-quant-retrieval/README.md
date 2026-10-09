@@ -3,12 +3,12 @@ id: R4-window-kv-quant-retrieval
 axis: R
 grid_dir: R-references/R4-window-kv-quant-retrieval
 title: "窗口注意力 + KV 量化 + 检索"
-status: reference
+status: todo
 judge: "同内存预算下的长上下文质量 + 检索召回"
 cost: "13M 单臂 ~25 min（窗口部分已测）"
 tax: "窗口部分：+0.058~0.121 bpc（13M）；检索/量化部分零经验"
 benefit: "锚点通道 93.3%；ring-buffer 免重 prefill"
-verdict: "—"
+verdict: "**尚未核实／待立项**：业界基线结论无核实出处；本地仅覆盖窗口/锚点部分（税 +0.058~0.121 bpc；锚点通道 93.3%），检索/量化部分无本地数据。"
 deps: []
 evidence: [".scratch/07-x1-x3/evidence @7b47555", "axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/analysis.md @c39dc88"]
 ---
@@ -17,7 +17,9 @@ evidence: [".scratch/07-x1-x3/evidence @7b47555", "axes/M-carrier/M2-carrier-com
 
 # R4-window-kv-quant-retrieval · 窗口注意力 + KV 量化 + 检索
 
-> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference（含业界结论）**
+> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**⬜ todo**
+
+> **判读**：**尚未核实／待立项**：业界基线结论无核实出处；本地仅覆盖窗口/锚点部分（税 +0.058~0.121 bpc；锚点通道 93.3%），检索/量化部分无本地数据。
 
 ## 1. 命题
 
@@ -39,6 +41,7 @@ evidence: [".scratch/07-x1-x3/evidence @7b47555", "axes/M-carrier/M2-carrier-com
 
 - **税**：窗口部分：+0.058~0.121 bpc（13M）；检索/量化部分零经验
 - **收益**：锚点通道 93.3%；ring-buffer 免重 prefill
+- **判读**：**尚未核实／待立项**：业界基线结论无核实出处；本地仅覆盖窗口/锚点部分（税 +0.058~0.121 bpc；锚点通道 93.3%），检索/量化部分无本地数据。
 
 ## 5. 失败路径与原因
 
@@ -47,6 +50,12 @@ evidence: [".scratch/07-x1-x3/evidence @7b47555", "axes/M-carrier/M2-carrier-com
 ## 6. 判据与判决实验设计
 
 - **判据**：同内存预算下的长上下文质量 + 检索召回
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：同内存预算下的长上下文质量 + 检索召回
+- 成本：13M 单臂 ~25 min（窗口部分已测）
 
 ## 7. 成本估计
 

@@ -53,10 +53,10 @@
 
 **「业界是否已有此结论」判定（`H1` 是 `status: judged`）**：
 - 结论一「MTP 税小、spec 加速比可观」→ **业界已有**（`记忆·未核`）⇒
-  **账本可标 `reference` 口径**：来源类型 = **业界结论，非本地实测**。
+  **账本可标「业界结论」口径**：来源类型 = **业界结论，非本地实测**。
 - 结论二「墙钟收益是 13M/launch-bound 现象、@100M 前向 compute-bound 后收益塌」→
   **业界机制早已知道**（compute-bound vs launch-bound，`记忆·未核`）⇒
-  **账本可标 `reference` 口径**。
+  **账本可标「业界结论」口径**。
 - 结论三「逐位一致（spec 输出 == 贪心）在 @100M 因 fp 平局翻转失效」→ 这是**本地规模特有**
   的发现（`本地实测`），业界讨论 fp 平局但少见此具体判据 ⇒ **保留 `judged`**。
 
@@ -106,7 +106,7 @@ latent/self-fill/proj-fill），并给出「proj-fill（逐层恒等初始化 ad
 
 **「业界是否已有此结论」判定（`H3` 是 `status: judged`）**：
 - 「朴素概率复合是数学错误」→ **数学事实，业界显然已知**（`记忆·未核`）⇒
-  **账本该条可标 `reference` 口径**（来源类型 = 业界公认/数学事实）。
+  **账本该条可标「业界结论」口径**（来源类型 = 业界公认/数学事实）。
 - 「自门控组合无结构优势」→ **(b)** 新设计否证，保留 `judged`。
 
 **可复现的判据建议**：等 FLOPs 判决（1 次前向 + 跳跃头预测 t+2 vs 2 次前向推到 t+2）+
@@ -129,7 +129,7 @@ latent/self-fill/proj-fill），并给出「proj-fill（逐层恒等初始化 ad
 
 **「业界是否已有此结论」判定（`H4` 是 `status: judged`）**：
 - 「冻结主干只训头 → 税≈0」→ **业界已有（Medusa-1/EAGLE-1）**（`记忆·未核`）⇒
-  **账本该条可标 `reference` 口径**（来源类型 = 业界结论，非本地实测）。
+  **账本该条可标「业界结论」口径**（来源类型 = 业界结论，非本地实测）。
 - 「冻结表征只被 t+1 目标塑形 ⇒ t+2 映射不可达（85% 而非 ≥90%）」→ **(b)** 本地受控新结论，
   保留 `judged`。
 
@@ -151,7 +151,7 @@ latent/self-fill/proj-fill），并给出「proj-fill（逐层恒等初始化 ad
 
 **「业界是否已有此结论」判定（`H5` 是 `status: judged`）**：
 - 「批量验证可用且逐位一致」→ **业界已有**（spec 无损定理）⇒
-  **账本应改 `reference` 口径**（来源类型 = 业界结论，非本地实测）。
+  **账本应改「业界结论」口径**（来源类型 = 业界结论，非本地实测）。
   应写入结论句：**「批量验证草稿在数学上与逐步贪心等价（投机解码无损性，`记忆·未核`：
   Leviathan 2023 / Chen 2023）；本地复现一致（13M，`本地实测`）。」**
 - 「@100M fp 平局使逐位相等不可作跨规模正确性判据」→ **(b)** 本地增量，保留 `judged`。
@@ -164,7 +164,7 @@ latent/self-fill/proj-fill），并给出「proj-fill（逐层恒等初始化 ad
 
 ## 2. 机器可读分诊表
 
-> 判定取值：**(a)** 业界已研究透（不跑实验，写结论 + `status: reference`）｜
+> 判定取值：**(a)** 业界已研究透（不跑实验，写结论 + `status: todo`）｜
 > **(b)** 需本地实测（业界没有/结论不一致/我们设定实质不同）｜
 > **(c)** 查不到（含检索不可用，按 `记忆·未核` 记方向，**不得据此判 (a)**）。
 > `+b` 表示主判为 (a)/(c) 但含本地增量子结论需保留 `judged`。
@@ -189,7 +189,7 @@ latent/self-fill/proj-fill），并给出「proj-fill（逐层恒等初始化 ad
 | H4 | `Medusa-1 frozen backbone zero tax`, `EAGLE-1 feature draft frozen`, `draft head representation frozen mapping`, `direct vs composed jump head acceptance` |
 | H5 | `speculative decoding lossless exact distribution`, `tree attention verification Medusa`, `greedy equivalence fp tie flip`, `spec decoding correctness at scale` |
 
-**核证优先级**：`H5 投机解码无损定理`（决定 H5 账本是否改 reference）与
+**核证优先级**：`H5 投机解码无损定理`（决定 H5 账本是否改「业界结论」）与
 `H1 规模-加速比 regime`（决定 H1 参照线措辞）。
 
 ---

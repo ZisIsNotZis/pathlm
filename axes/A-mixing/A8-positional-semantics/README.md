@@ -3,12 +3,12 @@ id: A8-positional-semantics
 axis: A
 grid_dir: A-mixing/A8-positional-semantics
 title: "位置语义"
-status: partial
+status: todo
 judge: "bpc + 长度泛化（训练短测长）"
 cost: "13M 单臂 ~25 min"
 tax: "dist_pen（相对偏置族）−0.007"
 benefit: "—"
-verdict: "绝对位置嵌入是硬上界（解码总长 ≤ seq_len），相对偏置族已侧证。"
+verdict: "**已有**：绝对位置嵌入是硬上界（解码总长 ≤ seq_len）、相对偏置族（dist_pen −0.007，带内）已侧证。**尚缺**：RoPE、插值/外推（YaRN/NTK）、无位置（序无关）三族未做对照判决（待补做）。"
 deps: []
 evidence: [".scratch/07-x1-x3/evidence @7b47555", ".scratch/03-engine-m1/issues @e38349f"]
 ---
@@ -17,9 +17,9 @@ evidence: [".scratch/07-x1-x3/evidence @7b47555", ".scratch/03-engine-m1/issues 
 
 # A8-positional-semantics · 位置语义
 
-> 轴：**A 序列混合机制** ｜ 状态：**◐ partial**
+> 轴：**A 序列混合机制** ｜ 状态：**⬜ todo**
 
-> **判读**：绝对位置嵌入是硬上界（解码总长 ≤ seq_len），相对偏置族已侧证。
+> **判读**：**已有**：绝对位置嵌入是硬上界（解码总长 ≤ seq_len）、相对偏置族（dist_pen −0.007，带内）已侧证。**尚缺**：RoPE、插值/外推（YaRN/NTK）、无位置（序无关）三族未做对照判决（待补做）。
 
 ## 1. 命题
 
@@ -43,7 +43,7 @@ evidence: [".scratch/07-x1-x3/evidence @7b47555", ".scratch/03-engine-m1/issues 
 
 - **税**：dist_pen（相对偏置族）−0.007
 - **收益**：—
-- **判读**：绝对位置嵌入是硬上界（解码总长 ≤ seq_len），相对偏置族已侧证。
+- **判读**：**已有**：绝对位置嵌入是硬上界（解码总长 ≤ seq_len）、相对偏置族（dist_pen −0.007，带内）已侧证。**尚缺**：RoPE、插值/外推（YaRN/NTK）、无位置（序无关）三族未做对照判决（待补做）。
 
 ## 5. 失败路径与原因
 

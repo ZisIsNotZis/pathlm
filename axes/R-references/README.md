@@ -26,13 +26,13 @@ R1 量化 · R2 蒸馏 · R3 剪枝稀疏 · R4 窗口+KV量化+检索 · R5 bes
 
 | 格子 | 状态 | 判读 | 税 |
 |---|---|---|---|
-| [`R1-quantization`](R1-quantization/README.md) | 🏭 reference（含业界结论） | — | **部署口径（2026-10-02 按 `2631-kv-budget-ca… |
-| [`R2-distillation`](R2-distillation/README.md) | 🏭 reference（含业界结论） | — | — |
-| [`R3-pruning-sparsity`](R3-pruning-sparsity/README.md) | 🏭 reference（含业界结论） | — | 本地侧证：结构化约束（只读前 360 维）→ 恶化 −50.4%（W1） |
-| [`R4-window-kv-quant-retrieval`](R4-window-kv-quant-retrieval/README.md) | 🏭 reference（含业界结论） | — | 窗口部分：+0.058~0.121 bpc（13M）；检索/量化部分零经验 |
-| [`R5-bestofn-verifier`](R5-bestofn-verifier/README.md) | 🏭 reference（含业界结论） | — | — |
-| [`R6-moe-scale`](R6-moe-scale/README.md) | 🏭 reference（含业界结论） | — | — |
-| [`R7-existing-early-exit`](R7-existing-early-exit/README.md) | 🏭 reference（含业界结论） | — | 本地对照：dense 全深度监督（LayerSkip 式）+0.067（13… |
+| [`R1-quantization`](R1-quantization/README.md) | ⬜ todo | **尚未核实／待立项**：业界基线结论无核实出处；本地已实测部署口径价签（int8 Δbpc +0.000117、int4 +0.024748，严格因果逐值标尺下量化反占内存）… | **部署口径（源 `2631-kv-budget-causal`）**：严格… |
+| [`R2-distillation`](R2-distillation/README.md) | ⬜ todo | **尚未核实／待立项**：业界基线结论无核实出处、无本地数据。 | — |
+| [`R3-pruning-sparsity`](R3-pruning-sparsity/README.md) | ⬜ todo | **尚未核实／待立项**：业界基线结论无核实出处；本地仅有侧证——结构化约束（只读前 360 维）→ 恶化 −50.4%（W1）。 | 本地侧证：结构化约束（只读前 360 维）→ 恶化 −50.4%（W1） |
+| [`R4-window-kv-quant-retrieval`](R4-window-kv-quant-retrieval/README.md) | ⬜ todo | **尚未核实／待立项**：业界基线结论无核实出处；本地仅覆盖窗口/锚点部分（税 +0.058~0.121 bpc；锚点通道 93.3%），检索/量化部分无本地数据。 | 窗口部分：+0.058~0.121 bpc（13M）；检索/量化部分零经验 |
+| [`R5-bestofn-verifier`](R5-bestofn-verifier/README.md) | ⬜ todo | **尚未核实／待立项**：业界基线结论无核实出处；本地仅有侧证——共享主干的多线增益可忽略（G5）。 | — |
+| [`R6-moe-scale`](R6-moe-scale/README.md) | ⬜ todo | **尚未核实／待立项**：业界基线结论无核实出处、无本地数据。 | — |
+| [`R7-existing-early-exit`](R7-existing-early-exit/README.md) | ⬜ todo | **尚未核实／待立项**：业界实现结论无核实出处；本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 c… | 本地对照：dense 全深度监督（LayerSkip 式）+0.067（13… |
 
 <!-- AUTO:end -->
 

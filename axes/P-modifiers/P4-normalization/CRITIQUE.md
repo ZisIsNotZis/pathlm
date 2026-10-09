@@ -4,7 +4,7 @@
 LayerNorm 放哪、有无 final norm、是否 QK-norm——决定残差流是否保持 embedding 几何（"同空间"前提）。
 
 ## ② 对着什么 sota，我们偏离在哪
-业界标准：Pre-LN 更易训练（Xiong 2020）、RMSNorm 等价省算、QK-norm 稳定注意力 logits（`记忆·未核`）。**偏离**：本格把"无 final Norm"当成本项目的**设计前提**（不是测量），且 `status: partial`（已废除的状态）。
+业界标准：Pre-LN 更易训练（Xiong 2020）、RMSNorm 等价省算、QK-norm 稳定注意力 logits（`记忆·未核`）。**偏离**：本格把"无 final Norm"当成本项目的**设计前提**（不是测量），且 `status: todo`（已废除的状态）。
 
 ## ③ 五类问题逐条判定
 - **开倒车：无。**

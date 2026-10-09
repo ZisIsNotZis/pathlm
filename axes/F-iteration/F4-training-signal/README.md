@@ -71,7 +71,7 @@ evidence: [".scratch/02-engine-m0/evidence/REPORT.md @27418ae", ".scratch/04-m1-
 
 ## 备注
 
-**修正（ticket 34-B 情报，2026-10-01）：这条路业界已有成熟前例，不是空白格。**
+**这条路业界已有成熟前例，不是空白格。**
 压缩/重建类训练信号：Compressive Transformer（2019 的 compression loss）、
 AutoCompressors / ICAE / RECOMP / 500xCompressor 类重建或蒸馏目标；DMC 报告 KV 压缩
 需配继续预训练。（均标 `记忆·未核`——本环境联网不可用，需查原文；

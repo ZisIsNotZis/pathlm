@@ -137,7 +137,7 @@ linear attention state dimension`, `Repeat After Me copying SSM`, `sequence leng
 - **但 plain 写双稳态**（同配置同 seed 两次 0.0007 / 0.0334）⇒ **「delta 稳定优于 plain」这一
   强表述不作为我方结论**；即便取最利于 plain 的那次（3.34%），delta 仍高 +6.15pp。
 - **分诊**：「delta 写（只搬残差）优于无残差 plain 写」是 DeltaNet 系的既定机制（`记忆·未核`）
-  ⇒ 在我方账本里归 **(a) 业界做透**，`status: reference`，本地数保留为**同尺度独立复核**。
+  ⇒ 在我方账本里归 **(a) 业界做透**，`status: todo`，本地数保留为**同尺度独立复核**。
 
 **若可检索应查**：`DeltaNet delta rule residual write`, `Gated DeltaNet`, `DeltaProduct`,
 `test-time training TTT linear attention`, `delta rule vs Hebbian accumulation capacity`.
@@ -198,10 +198,10 @@ train`, `LRU usage-based allocation language model`, `H2O eviction reproducibili
 ### 4.2 **已知无意义 / 别重复造的轮子**（§21 分诊）
 
 - **(a) 别再当新发现重跑**：
-  - 「delta 写优于 plain 累加」——DeltaNet 系已证（`记忆·未核`），本地已复核 ⇒ `reference`。
+  - 「delta 写优于 plain 累加」——DeltaNet 系已证（`记忆·未核`），本地已复核 ⇒「业界结论」。
   - 「大窗口训练税近零、小窗口付质量；丢前缀是『丢了』不是『搬了』」——滑动窗口/StreamingLLM
-    既定 ⇒ `M3` 主结论 `reference`（本地 32→+0.0866 / 192→−0.0028 作复核）。
-  - 「KV int8 近无损、int4 有损」「压缩 ≠ 保信息」——KV 量化谱系已做透 ⇒ `M2` 量化支 `reference`。
+    既定 ⇒ `M3` 主结论「业界结论」（本地 32→+0.0866 / 192→−0.0028 作复核）。
+  - 「KV int8 近无损、int4 有损」「压缩 ≠ 保信息」——KV 量化谱系已做透 ⇒ `M2` 量化支「业界结论」。
   - **MQAR 任务本身**：不要自造新合成任务，复用 MQAR 式构造（本地 `tools/evalkit/longrange_tasks.py`）。
 - **(b) 才该我们做**：状态宽度 ✕ K 的**容量曲面**（13M + 局部先验受控）；「有/无 sufficiency
   损失」在**小尺度 + 受控任务**上的受控对照；同一字节预算下的压缩前沿（U3 线在做）。

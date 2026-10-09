@@ -49,7 +49,7 @@ evidence: [".scratch/06-m2-sweep/evidence @a03a579", ".scratch/23-depth-ar/evide
 
 ## 5. 失败路径与原因
 
-1. 首验判「填充是负分量 +0.167」→ 23e matched 步数下反转：是欠拟合伪影 + 对照混淆（当时 nofill 臂同时无随机退出）
+1. 「填充是负分量 +0.167」经 matched 步数检验为欠拟合伪影 + 对照混淆（当时 nofill 臂同时无随机退出）
 2. soft 提交 OOD 污染 context 三度复现（rescore 峰值：6.9 vs hard 1.2 首验；8.42 vs 0.79 @100M；C 臂 3.36 vs 0.74）→ soft 默认待重验
 
 ## 6. 判据与判决实验设计

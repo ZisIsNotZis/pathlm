@@ -3,12 +3,12 @@ id: A7-addressing
 axis: A
 grid_dir: A-mixing/A7-addressing
 title: "寻址方式"
-status: reference
+status: todo
 judge: "bpc + 检索任务（needle）+ 选择器的可解释性/命中率"
 cost: "13M 单臂 ~25 min"
 tax: "—（未做本地实验）"
 benefit: "待核方向（`记忆·未核`，检索不可用）：「学习式选择与检索式寻址业界已有；检索换召回、把成本转到外部索引。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：仅内容式+位置式两种。"
-verdict: "—"
+verdict: "**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/A-mixing/PRIOR_ART.md`，`记忆·未核`）。"
 deps: []
 evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]
 ---
@@ -17,7 +17,9 @@ evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]
 
 # A7-addressing · 寻址方式
 
-> 轴：**A 序列混合机制** ｜ 状态：**🏭 reference（含业界结论）**
+> 轴：**A 序列混合机制** ｜ 状态：**⬜ todo**
+
+> **判读**：**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/A-mixing/PRIOR_ART.md`，`记忆·未核`）。
 
 ## 1. 命题
 
@@ -47,6 +49,7 @@ evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]
 
 - **税**：—（未做本地实验）
 - **收益**：待核方向（`记忆·未核`，检索不可用）：「学习式选择与检索式寻址业界已有；检索换召回、把成本转到外部索引。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：仅内容式+位置式两种。
+- **判读**：**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/A-mixing/PRIOR_ART.md`，`记忆·未核`）。
 
 ## 5. 失败路径与原因
 
@@ -55,6 +58,12 @@ evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]
 ## 6. 判据与判决实验设计
 
 - **判据**：bpc + 检索任务（needle）+ 选择器的可解释性/命中率
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：bpc + 检索任务（needle）+ 选择器的可解释性/命中率
+- 成本：13M 单臂 ~25 min
 
 ## 7. 成本估计
 

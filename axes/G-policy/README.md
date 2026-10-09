@@ -32,7 +32,7 @@ G1 选择器 · G2 货币 · G3 观测信号 · G4 校准 · G5 并行多线
 | [`G2-currency`](G2-currency/README.md) | ✅ judged | 双货币必须双报——本项目多次出现口径分歧。 | — |
 | [`G3-signal`](G3-signal/README.md) | ✅ judged | 三信号正交监测栈成形；生成段没有单一信号够用。 | — |
 | [`G4-calibration`](G4-calibration/README.md) | ✅ judged | 校准跨规模存活是本项目最稳的资产之一。 | — |
-| [`G5-parallel-lines`](G5-parallel-lines/README.md) | ✅ judged | **收口（两规模 + 24k 收敛点，预登记判据）**：多线设想的**机制**在 13M 成立、在 **50M 失效**，而**部署判据两个规模都不过**（8× 推理算力仍输同… | **去相关税（ERRATA 更正）**：battery 口径 **13M −… |
+| [`G5-parallel-lines`](G5-parallel-lines/README.md) | ✅ judged | **收口（两规模 + 24k 收敛点，预登记判据）**：多线设想的**机制**在 13M 成立、在 **50M 失效**，而**部署判据两个规模都不过**（8× 推理算力仍输同… | **去相关税**：battery 口径 **13M −0.0086 / 50… |
 
 <!-- AUTO:end -->
 

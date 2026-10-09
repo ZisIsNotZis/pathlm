@@ -28,7 +28,7 @@
 
 ## ④ 建议动作
 
-- **并入 `docs/methodology.md`**（或保留为 `status: reference` 的方法学条目）。
+- **并入 `docs/methodology.md`**（或保留为 `status: todo` 的方法学条目）。
 - 若保留：给每个数字加「来源实验 + 规模 + 口径」三件套；补一条「跨口径不一致的清单」
   （本仓已有素材：spec forwards 占优 vs FLOPs 不利；13M 逐位相等 vs 100M 平局翻转）。
 - **不删除内容**——它的实际用途（防止单货币结论）已被证明有价值。

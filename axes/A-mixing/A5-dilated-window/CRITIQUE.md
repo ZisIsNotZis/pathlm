@@ -2,17 +2,17 @@
 用**固定**稀疏模式（跨步 strided / 膨胀 dilated / 局部+周期全局）覆盖更远范围省算力。
 
 ## ② 对着什么 sota，我们偏离在哪
-sota：Sparse Transformer（strided, 2019）、Longformer（dilated window）、BigBird（window+random+global）；现代块稀疏 NSA/MoBA。**零偏离**：本格 `status: reference`，`local` 为空（`catalog.yaml:314`），唯一的"结论"来自记忆。
+sota：Sparse Transformer（strided, 2019）、Longformer（dilated window）、BigBird（window+random+global）；现代块稀疏 NSA/MoBA。**零偏离**：本格 `status: todo`，`local` 为空（`catalog.yaml:314`），唯一的"结论"来自记忆。
 
 ## ③ 五类问题逐条判定
-1. **开倒车：有**——但形式是"记下来"而不是"重做"，可接受；问题是**没按 §21 规范落**：`(a)` 判定必须写进 `status: reference` 的 `local` 并给可核来源，现在是 `记忆·未核` + 注释掉的 note。
+1. **开倒车：有**——但形式是"记下来"而不是"重做"，可接受；问题是**没按 §21 规范落**：`(a)` 判定必须写进 `status: todo` 的 `local` 并给可核来源，现在是 `记忆·未核` + 注释掉的 note。
 2. **过程错误：无（无实验）**。
 3. **结论错误：无（但不可用）**。
 4. **无意义：有（作为实验）**。固定稀疏模式在 13M/T=256 上跑一遍，不可能改变"该算力路径值不值"；且其信息量已被 A3（位置窗）与 A6（学习式稀疏）覆盖。判定标准（AGENTS.md「研究树的判据」）：**不能改变判断的，删**。
 5. **值得做：否**——除非与 A6 合并成"位置稀疏 vs 内容稀疏同预算对照"，那才有信息量（见 A6 建议）。
 
 ## ④ 建议动作
-**删除"实验"意图（保留枚举以维持目录完备）**；`status` 保持 `reference` 并把 `(c)`（检索不可用、待核）如实写入页面。
+**删除"实验"意图（保留枚举以维持目录完备）**；`status` 保持「业界结论」 并把 `(c)`（检索不可用、待核）如实写入页面。
 **另外有一处必须修的实数据 bug**：`catalog.yaml:306` 的 `options` 用 YAML flow-seq 写 `[跨步(k, stride s), 膨胀(dilation d), ...]`，逗号被当分隔符 ⇒ 生成页 `A5/README.md` §2 把"跨步(k" 与 "stride s)" 打印成**两个独立选项**。最小修：加引号 `["跨步(k, stride s)", ...]`，改完跑 `python3 -c "import yaml;yaml.safe_load(open('catalog.yaml'))"`。
 
 ## ⑤ 若重做，正确验证方式

@@ -3,12 +3,12 @@ id: R3-pruning-sparsity
 axis: R
 grid_dir: R-references/R3-pruning-sparsity
 title: "剪枝 / 结构化稀疏"
-status: reference
+status: todo
 judge: "同 FLOPs 质量"
 cost: "13M 单臂 ~25 min"
 tax: "本地侧证：结构化约束（只读前 360 维）→ 恶化 −50.4%（W1）"
 benefit: "—"
-verdict: "—"
+verdict: "**尚未核实／待立项**：业界基线结论无核实出处；本地仅有侧证——结构化约束（只读前 360 维）→ 恶化 −50.4%（W1）。"
 deps: []
 evidence: [".scratch/25-tax-attribution/evidence @2e86924"]
 ---
@@ -17,7 +17,9 @@ evidence: [".scratch/25-tax-attribution/evidence @2e86924"]
 
 # R3-pruning-sparsity · 剪枝 / 结构化稀疏
 
-> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference（含业界结论）**
+> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**⬜ todo**
+
+> **判读**：**尚未核实／待立项**：业界基线结论无核实出处；本地仅有侧证——结构化约束（只读前 360 维）→ 恶化 −50.4%（W1）。
 
 ## 1. 命题
 
@@ -39,6 +41,7 @@ evidence: [".scratch/25-tax-attribution/evidence @2e86924"]
 
 - **税**：本地侧证：结构化约束（只读前 360 维）→ 恶化 −50.4%（W1）
 - **收益**：—
+- **判读**：**尚未核实／待立项**：业界基线结论无核实出处；本地仅有侧证——结构化约束（只读前 360 维）→ 恶化 −50.4%（W1）。
 
 ## 5. 失败路径与原因
 
@@ -47,6 +50,12 @@ evidence: [".scratch/25-tax-attribution/evidence @2e86924"]
 ## 6. 判据与判决实验设计
 
 - **判据**：同 FLOPs 质量
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：同 FLOPs 质量
+- 成本：13M 单臂 ~25 min
 
 ## 7. 成本估计
 

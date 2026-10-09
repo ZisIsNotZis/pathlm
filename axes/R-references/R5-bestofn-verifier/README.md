@@ -3,12 +3,12 @@ id: R5-bestofn-verifier
 axis: R
 grid_dir: R-references/R5-bestofn-verifier
 title: "best-of-n + verifier"
-status: reference
+status: todo
 judge: "同 FLOPs 质量 + verifier 校准"
 cost: "纯推理，分钟级"
 tax: "—"
 benefit: "本地侧证：共享主干的多线增益可忽略（G5）"
-verdict: "—"
+verdict: "**尚未核实／待立项**：业界基线结论无核实出处；本地仅有侧证——共享主干的多线增益可忽略（G5）。"
 deps: []
 evidence: [".scratch/08-tts-probe/evidence @aa97bcf"]
 ---
@@ -17,7 +17,9 @@ evidence: [".scratch/08-tts-probe/evidence @aa97bcf"]
 
 # R5-bestofn-verifier · best-of-n + verifier
 
-> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference（含业界结论）**
+> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**⬜ todo**
+
+> **判读**：**尚未核实／待立项**：业界基线结论无核实出处；本地仅有侧证——共享主干的多线增益可忽略（G5）。
 
 ## 1. 命题
 
@@ -40,6 +42,7 @@ evidence: [".scratch/08-tts-probe/evidence @aa97bcf"]
 
 - **税**：—
 - **收益**：本地侧证：共享主干的多线增益可忽略（G5）
+- **判读**：**尚未核实／待立项**：业界基线结论无核实出处；本地仅有侧证——共享主干的多线增益可忽略（G5）。
 
 ## 5. 失败路径与原因
 
@@ -48,6 +51,12 @@ evidence: [".scratch/08-tts-probe/evidence @aa97bcf"]
 ## 6. 判据与判决实验设计
 
 - **判据**：同 FLOPs 质量 + verifier 校准
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：同 FLOPs 质量 + verifier 校准
+- 成本：纯推理，分钟级
 
 ## 7. 成本估计
 

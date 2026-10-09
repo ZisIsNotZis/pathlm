@@ -1,9 +1,9 @@
 # PRIOR_ART — R 参照线（R1–R7）
 
-> 轴：**R 参照线（必须打败的基线）**（横切） ｜ 格子：`R1`–`R7`（**七格均 `status: reference`**）
+> 轴：**R 参照线（必须打败的基线）**（横切） ｜ 格子：`R1`–`R7`（**七格均 `status: todo`**）
 > 角色：知识波（无 GPU，不取锁） ｜ 依据：`SCHEMA.md` §18 / §21
-> **R 轴是 `reference` 口径：本文件直接给「业界已研究透」的结论条目**，
-> 供账本以 `status: reference` + 「业界结论，非本地实测」写入。
+> **R 轴是「业界结论」口径：本文件直接给「业界已研究透」的结论条目**，
+> 供账本以 `status: todo` + 「业界结论，非本地实测」写入。
 > 本文件只写情报与分诊，**不是实验证据**。
 
 ---
@@ -91,17 +91,17 @@ R 轴条目均为**业界结论（记忆·未核）**——写入账本时**必�
 ## 2. 机器可读分诊表（§21）
 
 ```
-R1-quantization            | (a) | 权重/激活/KV 量化是工业界标准做法、结论一致（int8 近无损/int4 有损） | 结论：int8 量化近无损、int4 有明显代价；省内存主张须打败 int8 KV −50%。来源类型：业界结论（记忆·未核）+ 本地复核。status: reference。
-R2-distillation            | (a) | 蒸馏是小模型的标准来源，业界成熟 | 结论：大模型蒸馏是「同参数等智商」的直接竞争者。来源类型：业界结论（记忆·未核）。status: reference。
-R3-pruning-sparsity        | (a) | 剪枝（尤其结构化）收益依赖任务、需重训，业界成熟 | 结论：减结构=减容量，收益强依赖任务。来源类型：业界结论（记忆·未核）+ 本地侧证。status: reference。
-R4-window-kv-quant-retrieval | (a) | 窗口+KV量化+检索是生产系统默认组合拳 | 结论：长上下文现成答案是滑窗(+sink)+KV量化+RAG；右移压缩必须打败它。来源类型：业界结论（记忆·未核）+ 本地侧证。status: reference。
-R5-bestofn-verifier        | (a) | best-of-n + verifier 是同 FLOPs 标准 test-time compute 手段 | 结论：采样+重排是标准手段，与 G5 多线竞争。来源类型：业界结论（记忆·未核）。status: reference。
-R6-moe-scale               | (a) | MoE 是同 FLOPs 更多参数的唯一大规模验证路线 | 结论：MoE 实现容量-计算分离。来源类型：业界结论（记忆·未核）。status: reference。
-R7-existing-early-exit     | (a) | CALM/LayerSkip/MoD 均有公开结果，共同需深度监督 | 结论：早退实现需深度维监督、报告质量-算力折中。来源类型：业界结论（记忆·未核）+ 本地对照。status: reference。
+R1-quantization            | (a) | 权重/激活/KV 量化是工业界标准做法、结论一致（int8 近无损/int4 有损） | 结论：int8 量化近无损、int4 有明显代价；省内存主张须打败 int8 KV −50%。来源类型：业界结论（记忆·未核）+ 本地复核。status: todo。
+R2-distillation            | (a) | 蒸馏是小模型的标准来源，业界成熟 | 结论：大模型蒸馏是「同参数等智商」的直接竞争者。来源类型：业界结论（记忆·未核）。status: todo。
+R3-pruning-sparsity        | (a) | 剪枝（尤其结构化）收益依赖任务、需重训，业界成熟 | 结论：减结构=减容量，收益强依赖任务。来源类型：业界结论（记忆·未核）+ 本地侧证。status: todo。
+R4-window-kv-quant-retrieval | (a) | 窗口+KV量化+检索是生产系统默认组合拳 | 结论：长上下文现成答案是滑窗(+sink)+KV量化+RAG；右移压缩必须打败它。来源类型：业界结论（记忆·未核）+ 本地侧证。status: todo。
+R5-bestofn-verifier        | (a) | best-of-n + verifier 是同 FLOPs 标准 test-time compute 手段 | 结论：采样+重排是标准手段，与 G5 多线竞争。来源类型：业界结论（记忆·未核）。status: todo。
+R6-moe-scale               | (a) | MoE 是同 FLOPs 更多参数的唯一大规模验证路线 | 结论：MoE 实现容量-计算分离。来源类型：业界结论（记忆·未核）。status: todo。
+R7-existing-early-exit     | (a) | CALM/LayerSkip/MoD 均有公开结果，共同需深度监督 | 结论：早退实现需深度维监督、报告质量-算力折中。来源类型：业界结论（记忆·未核）+ 本地对照。status: todo。
 ```
 
-**分诊要点**：R 轴**七格全部 (a)**——这正是 `status: reference` 的定义。主 Agent 可直接
-把上表「若要写进账本的结论」列以 `status: reference` + 「业界结论，非本地实测」写进
+**分诊要点**：R 轴**七格全部 (a)**——这正是「业界结论」类的定义。主 Agent 可直接
+把上表「若要写进账本的结论」列以 `status: todo` + 「业界结论，非本地实测」写进
 `catalog.yaml`（本地复核数保留在 `local` 块）。
 
 ---

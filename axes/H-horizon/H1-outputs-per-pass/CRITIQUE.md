@@ -7,7 +7,7 @@
 - **偏离 2（有价值的）**：在 13M 字符级 enwik8 上从头测税曲线（业界多在大模型上报告）。
 
 ## ③ 五类问题逐条
-**1. 开倒车：有。** 本格三条主结论——「MTP 税小、spec 加速」「墙钟收益是 13M/launch-bound 现象」「@100M 前向 compute-bound 后塌」——在本仓 `axes/H-horizon/PRIOR_ART.md` 的机器可读分诊表里被自己判为 `(a)+b`（H1 行）。但 `catalog.yaml:620-649` 仍以 `status: judged` 记账，`axes/H-horizon/README.md` 的本地总体结论把它写成「全项目税效比最好的机制」。按 SCHEMA §21，(a) 类应写 `reference`（业界结论、非本地实测），不跑实验。本地唯一真增量是「@100M fp 平局翻转（1/400 token）」。
+**1. 开倒车：有。** 本格三条主结论——「MTP 税小、spec 加速」「墙钟收益是 13M/launch-bound 现象」「@100M 前向 compute-bound 后塌」——在本仓 `axes/H-horizon/PRIOR_ART.md` 的机器可读分诊表里被自己判为 `(a)+b`（H1 行）。但 `catalog.yaml:620-649` 仍以 `status: judged` 记账，`axes/H-horizon/README.md` 的本地总体结论把它写成「全项目税效比最好的机制」。按 SCHEMA §21，(a) 类应写「业界结论」（业界结论、非本地实测），不跑实验。本地唯一真增量是「@100M fp 平局翻转（1/400 token）」。
 
 **2. 过程错误：有（口径混用 + 证据不可核）。**
 - `.scratch/20-spec-scale/evidence/SUMMARY.md`（结果表）**自相矛盾**：同表既写「宽度-3/宽度-1 前向成本 **3.4–5.3×**」，又写「k=2 wall speedup **1.15–1.29×**」，而 tok/forward = 2.37–2.40。由 `speedup = (tok/fwd) / c₃` 反解 ⇒ `c₃ ≈ 2.37/1.29 … 2.40/1.15 = **1.86–2.09**`，与 3.4–5.3 差约 1.8×；二者不能同真。（同表 13M 行自洽：`c₃ = 2.4/1.68…2.4/1.85 = 1.30–1.43 ≈ 表内 1.28`。）**无法核实哪个为真**——无原始 `results.json`。

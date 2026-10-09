@@ -3,12 +3,12 @@ id: A5-dilated-window
 axis: A
 grid_dir: A-mixing/A5-dilated-window
 title: "膨胀 / 跨步窗"
-status: reference
+status: todo
 judge: "bpc + 远程检索保留（KV 消融）"
 cost: "13M 单臂 ~25 min"
 tax: "—（未做本地实验）"
 benefit: "待核方向（`记忆·未核`，检索不可用）：「固定稀疏模式省算力，但精确回忆/检索上常逊于全注意力。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：无数据。"
-verdict: "—"
+verdict: "**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/A-mixing/PRIOR_ART.md`，`记忆·未核`）。"
 deps: []
 evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]
 ---
@@ -17,7 +17,9 @@ evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]
 
 # A5-dilated-window · 膨胀 / 跨步窗
 
-> 轴：**A 序列混合机制** ｜ 状态：**🏭 reference（含业界结论）**
+> 轴：**A 序列混合机制** ｜ 状态：**⬜ todo**
+
+> **判读**：**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/A-mixing/PRIOR_ART.md`，`记忆·未核`）。
 
 ## 1. 命题
 
@@ -47,6 +49,7 @@ evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]
 
 - **税**：—（未做本地实验）
 - **收益**：待核方向（`记忆·未核`，检索不可用）：「固定稀疏模式省算力，但精确回忆/检索上常逊于全注意力。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：无数据。
+- **判读**：**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/A-mixing/PRIOR_ART.md`，`记忆·未核`）。
 
 ## 5. 失败路径与原因
 
@@ -55,6 +58,12 @@ evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]
 ## 6. 判据与判决实验设计
 
 - **判据**：bpc + 远程检索保留（KV 消融）
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：bpc + 远程检索保留（KV 消融）
+- 成本：13M 单臂 ~25 min
 
 ## 7. 成本估计
 

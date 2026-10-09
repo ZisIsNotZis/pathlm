@@ -4,7 +4,7 @@
 新参数插在哪、初始化成什么——决定"恒等起步"能否成立（proj-fill / 负偏置门 / LoRA / prefix）。
 
 ## ② 对着什么 sota，我们偏离在哪
-业界标准：LoRA 的 B=0（单边零）、ReZero、Fixup、ControlNet zero-conv（`记忆·未核`；`axes/P-modifiers/PRIOR_ART.md` 块③ 已列出并自判"通用部分应改 reference"）。我们：`catalog.yaml:1339–1347` 仍 `status: judged`、无 `prior_art_*` 字段。本地真实增量是"**全零初始化在乘性结构上是鞍点**"的可复现诊断。
+业界标准：LoRA 的 B=0（单边零）、ReZero、Fixup、ControlNet zero-conv（`记忆·未核`；`axes/P-modifiers/PRIOR_ART.md` 块③ 已列出并自判"通用部分应改「业界结论」"）。我们：`catalog.yaml:1339–1347` 仍 `status: judged`、无 `prior_art_*` 字段。本地真实增量是"**全零初始化在乘性结构上是鞍点**"的可复现诊断。
 
 ## ③ 五类问题逐条判定
 - **开倒车：有（轻度）。** 单边零/恒等起步是业界成熟技法，本格把它写成"本地结论"；账本未按分诊降级（同 P1 的制度问题）。

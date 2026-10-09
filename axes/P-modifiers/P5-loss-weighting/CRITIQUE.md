@@ -7,7 +7,7 @@
 业界标准：deep supervision（GoogLeNet aux heads）、loss annealing、gradient clipping（Pascanu）、uncertainty weighting（Kendall）（`记忆·未核`）。偏离：本格把两批**不同口径**的实验并进同一个 `tax` 字段。
 
 ## ③ 五类问题逐条判定
-- **开倒车：无**（分诊已列业界做法）。但同 P1/P3：`status: judged`、无 `prior_art_*` 字段，与 `axes/P-modifiers/PRIOR_ART.md` 的"通用部分改 reference"不一致。
+- **开倒车：无**（分诊已列业界做法）。但同 P1/P3：`status: judged`、无 `prior_art_*` 字段，与 `axes/P-modifiers/PRIOR_ART.md` 的"通用部分改「业界结论」"不一致。
 - **过程错误：有（口径混用 + 证据来自 legacy 备份）。**
   - `catalog.yaml:1400`（`tax`）写"浅层降权全败且单调反向（w∈{1,0.1,0.02,退火}：depth-L **2.45→2.57→2.73**）→ 浅层全深度监督是表示正则"，`benefit` 又写"退火…使 C 配方成为族内最优（**1.8429**）"。两组数字来自**不同实验、不同口径**，被并列在同一字段。
   - 证据链：`axes/P-modifiers/P5-loss-weighting/experiments/2523b-shallow-weight-sweep/README.md` 末句自注"— 数字口径警告见 `archive/README.md`；本条目由 `tools/backfill_legacy.py` 生成"，而 `archive/README.md` 明写"**所有早期公布的税是 1.1-epoch 上界**…不要拿旧税与新实验直接比较，除非口径相同"。本格却把 legacy 臂（`.scratch/23-depth-ar/evidence @b8c9f86`）与新引擎臂（`.scratch/25-tax-attribution/evidence @2e86924`）并列。

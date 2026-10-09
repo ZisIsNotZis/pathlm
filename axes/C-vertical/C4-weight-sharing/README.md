@@ -3,12 +3,12 @@ id: C4-weight-sharing
 axis: C
 grid_dir: C-vertical/C4-weight-sharing
 title: "权重共享"
-status: reference
+status: todo
 judge: "同参数量 bpc + 同 FLOPs bpc + 训练稳定性"
 cost: "13M 单臂 ~25–40 min"
 tax: "—（未做本地实验）"
 benefit: "待核方向（`记忆·未核`，检索不可用）：「深度方向复用权重省参数、以循环次数换推理深度；匹配质量需更多步且更难训练。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：无数据。"
-verdict: "—"
+verdict: "**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/C-vertical/PRIOR_ART.md`，`记忆·未核`）。"
 deps: []
 evidence: ["axes/C-vertical/PRIOR_ART.md @b44c809"]
 ---
@@ -17,7 +17,9 @@ evidence: ["axes/C-vertical/PRIOR_ART.md @b44c809"]
 
 # C4-weight-sharing · 权重共享
 
-> 轴：**C 垂直机制（深度）** ｜ 状态：**🏭 reference（含业界结论）**
+> 轴：**C 垂直机制（深度）** ｜ 状态：**⬜ todo**
+
+> **判读**：**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/C-vertical/PRIOR_ART.md`，`记忆·未核`）。
 
 ## 1. 命题
 
@@ -45,6 +47,7 @@ evidence: ["axes/C-vertical/PRIOR_ART.md @b44c809"]
 
 - **税**：—（未做本地实验）
 - **收益**：待核方向（`记忆·未核`，检索不可用）：「深度方向复用权重省参数、以循环次数换推理深度；匹配质量需更多步且更难训练。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：无数据。
+- **判读**：**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/C-vertical/PRIOR_ART.md`，`记忆·未核`）。
 
 ## 5. 失败路径与原因
 
@@ -53,6 +56,12 @@ evidence: ["axes/C-vertical/PRIOR_ART.md @b44c809"]
 ## 6. 判据与判决实验设计
 
 - **判据**：同参数量 bpc + 同 FLOPs bpc + 训练稳定性
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：同参数量 bpc + 同 FLOPs bpc + 训练稳定性
+- 成本：13M 单臂 ~25–40 min
 
 ## 7. 成本估计
 
@@ -68,7 +77,7 @@ evidence: ["axes/C-vertical/PRIOR_ART.md @b44c809"]
 
 ## 备注
 
-重要区分：回环时代的「重入」（retry）是同一位置的再次前向，
+重要区分：「重入」（retry）是同一位置的再次前向，
 权重天然共享，但那是 F 轴（迭代）；本格要的是「层与层之间共享权重」的
 结构（省参数轴），本地从未测过。
 

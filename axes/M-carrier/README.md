@@ -27,7 +27,7 @@ M1 载体类型 · M2 载体压缩 · M3 跨步假设
 | 格子 | 状态 | 判读 | 税 |
 |---|---|---|---|
 | [`M1-carrier-type`](M1-carrier-type/README.md) | ✅ judged | **载体类型首验（ticket 35）：在「关联回忆 + 窗口 16（key 100% 落在窗外）」的合成任务上，13M/12k 步测得显式写入通道把命中率抬到 6.08× c… | ticket 35 的通道为**旁路**（`+264,296` 参数，U1/… |
-| [`M2-carrier-compression`](M2-carrier-compression/README.md) | ◐ partial | 驱逐已测（价格见 A3）；**KV 量化已有本地实测**（R1/2614、2618/2621；但旧价签在「非因果 scale」下失效，已入冻结清单，待 R1 因果口径重测）；摘… | 驱逐 +0.058~0.121（13M） |
+| [`M2-carrier-compression`](M2-carrier-compression/README.md) | ⬜ todo | **已有**：驱逐已测（价格见 A3）；KV 量化有本地实测（R1/2614、2618/2621），但价签须按因果/流式量化口径重测（见 R1）。**尚缺**：摘要压缩、低秩投… | 驱逐 +0.058~0.121（13M） |
 | [`M3-cross-step-assumption`](M3-cross-step-assumption/README.md) | ✅ judged | 有界内存的价签已测两档：**窗口 192 的训练税 −0.0028（近零）**、窗口 32 为 +0.0866；但 192 档**本就没有头寸**（未重训限制到 192 只 +… | 窗口 192 训练税 **−0.002813**（1.483569 → 1.… |
 
 <!-- AUTO:end -->

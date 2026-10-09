@@ -30,16 +30,16 @@ A9 旧信息处理 · A10 压缩触发与优先级
 
 | 格子 | 状态 | 判读 | 税 |
 |---|---|---|---|
-| [`A1-causality`](A1-causality/README.md) | 🏭 reference（含业界结论） | — | —（未做本地实验） |
+| [`A1-causality`](A1-causality/README.md) | ⬜ todo | **尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/A-mixing/PRIOR_ART.md`，`记忆·未核`）。 | —（未做本地实验） |
 | [`A2-full-attention`](A2-full-attention/README.md) | ✅ judged | 基底成立，外部锚在公开数字范围内。 | —（锚点本身） |
-| [`A3-window-anchor`](A3-window-anchor/README.md) | ✅ judged | 丢前缀的代价**由距离与预算共同决定、并不便宜**（见 ERRATA：只保留最近 32 个 = +0.212 bpc）；锚点通道是真产物（76.8→93.3%）；检索腿显示「低… | +0.121（原 X2 口径）/ +0.058（needle v2 重设计后… |
+| [`A3-window-anchor`](A3-window-anchor/README.md) | ✅ judged | 丢前缀的代价**由距离与预算共同决定、并不便宜**（只保留最近 32 个 = +0.212 bpc）；锚点通道是真产物（76.8→93.3%）；检索腿显示「低损伤 ≠ 保住了」。 | +0.121（原 X2 口径）/ +0.058（needle v2 重设计后… |
 | [`A4-soft-distance-penalty`](A4-soft-distance-penalty/README.md) | ✅ judged | 唯一**未观察到超带损伤**的 clean bpc 元素（−0.0068，落在 Δ<0.014 不可排序带内），但不创造保留——它改变使用率，不改变依赖是否为零。 | −0.0068（1.5006 vs B0 1.5074；**落在 Δ<0.0… |
-| [`A5-dilated-window`](A5-dilated-window/README.md) | 🏭 reference（含业界结论） | — | —（未做本地实验） |
+| [`A5-dilated-window`](A5-dilated-window/README.md) | ⬜ todo | **尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/A-mixing/PRIOR_ART.md`，`记忆·未核`）。 | —（未做本地实验） |
 | [`A6-mixing-operator`](A6-mixing-operator/README.md) | ✅ judged | 内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**：质量越删越差（k=32 越界有害、k=64 只在噪声带内），成本**实测上升** 2.2×（慢且更占显存）——… | k=32 Δ = **−0.0166**（越 0.014 界，配对 20/2… |
-| [`A7-addressing`](A7-addressing/README.md) | 🏭 reference（含业界结论） | — | —（未做本地实验） |
-| [`A8-positional-semantics`](A8-positional-semantics/README.md) | ◐ partial | 绝对位置嵌入是硬上界（解码总长 ≤ seq_len），相对偏置族已侧证。 | dist_pen（相对偏置族）−0.007 |
-| [`A9-old-info-retention`](A9-old-info-retention/README.md) | ◐ partial | 保留 / 硬丢 / 锚豁免已测；压缩、递归、外置三类零经验。 | 硬丢 +0.058~0.121（A3） |
-| [`A10-compression-trigger`](A10-compression-trigger/README.md) | ✅ judged | 「按访问频率优先压（LRU）」在同等删除预算下没有可见收益**——字面优势经对账后归因于「恰好删掉的可见性对数更少」，重对齐后消失（见 ERRATA）。压缩优先级这一维度在 1… | 依赖腿伤害（N=8/32/64）：distance +0.197/+0.64… |
+| [`A7-addressing`](A7-addressing/README.md) | ⬜ todo | **尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/A-mixing/PRIOR_ART.md`，`记忆·未核`）。 | —（未做本地实验） |
+| [`A8-positional-semantics`](A8-positional-semantics/README.md) | ⬜ todo | **已有**：绝对位置嵌入是硬上界（解码总长 ≤ seq_len）、相对偏置族（dist_pen −0.007，带内）已侧证。**尚缺**：RoPE、插值/外推（YaRN/NT… | dist_pen（相对偏置族）−0.007 |
+| [`A9-old-info-retention`](A9-old-info-retention/README.md) | ⬜ todo | **已有**：保留 / 硬丢 / 锚豁免已测（硬丢 +0.058~0.121；锚豁免使 needle 76.8→93.3%）。**尚缺**：压缩（summary 槽）、递归状态… | 硬丢 +0.058~0.121（A3） |
+| [`A10-compression-trigger`](A10-compression-trigger/README.md) | ✅ judged | 「按访问频率优先压（LRU）」在同等删除预算下没有可见收益**——字面优势经对账后归因于「恰好删掉的可见性对数更少」，重对齐后消失。压缩优先级这一维度在 13M/256 快照上… | 依赖腿伤害（N=8/32/64）：distance +0.197/+0.64… |
 
 <!-- AUTO:end -->
 

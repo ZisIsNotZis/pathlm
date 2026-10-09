@@ -3,12 +3,12 @@ id: R7-existing-early-exit
 axis: R
 grid_dir: R-references/R7-existing-early-exit
 title: "既有早退实现（CALM / LayerSkip / MoD）"
-status: reference
+status: todo
 judge: "同 FLOPs 质量 + 出口资产 + 税"
 cost: "13M 单臂 ~25 min"
 tax: "本地对照：dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）"
 benefit: "本地形态的增量 = 逐通道 carry 门 + 随机退出深度 + 定稿不变量（全深度重打分）"
-verdict: "—"
+verdict: "**尚未核实／待立项**：业界实现结论无核实出处；本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）。"
 deps: []
 evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scale/evidence @9fe4cf1"]
 ---
@@ -17,7 +17,9 @@ evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scal
 
 # R7-existing-early-exit · 既有早退实现（CALM / LayerSkip / MoD）
 
-> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**🏭 reference（含业界结论）**
+> 轴：**R 参照线（必须打败的基线）** ｜ 状态：**⬜ todo**
+
+> **判读**：**尚未核实／待立项**：业界实现结论无核实出处；本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）。
 
 ## 1. 命题
 
@@ -39,6 +41,7 @@ evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scal
 
 - **税**：本地对照：dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）
 - **收益**：本地形态的增量 = 逐通道 carry 门 + 随机退出深度 + 定稿不变量（全深度重打分）
+- **判读**：**尚未核实／待立项**：业界实现结论无核实出处；本地仅有对照——dense 全深度监督（LayerSkip 式）+0.067（13M）/ 剂量恶化 @100M（+1.73 corrupt）。
 
 ## 5. 失败路径与原因
 
@@ -47,6 +50,12 @@ evidence: [".scratch/18-exit-probe/evidence @83bf1ac", ".scratch/21-exit-at-scal
 ## 6. 判据与判决实验设计
 
 - **判据**：同 FLOPs 质量 + 出口资产 + 税
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：同 FLOPs 质量 + 出口资产 + 税
+- 成本：13M 单臂 ~25 min
 
 ## 7. 成本估计
 

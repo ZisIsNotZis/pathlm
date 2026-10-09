@@ -3,12 +3,12 @@ id: A1-causality
 axis: A
 grid_dir: A-mixing/A1-causality
 title: "因果性"
-status: reference
+status: todo
 judge: "bpc + 任务对「序」的依赖度（消融：打乱输入顺序测质量退化）"
 cost: "13M 单臂 ~5–25 min"
 tax: "—（未做本地实验）"
 benefit: "待核方向（`记忆·未核`，检索不可用）：「并行/非因果 LM 以困惑度与长文本质量为代价换取可并行与可编辑性；AR 因果性仍是同尺寸质量的强先验。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：无数据。"
-verdict: "—"
+verdict: "**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/A-mixing/PRIOR_ART.md`，`记忆·未核`）。"
 deps: []
 evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]
 ---
@@ -17,7 +17,9 @@ evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]
 
 # A1-causality · 因果性
 
-> 轴：**A 序列混合机制** ｜ 状态：**🏭 reference（含业界结论）**
+> 轴：**A 序列混合机制** ｜ 状态：**⬜ todo**
+
+> **判读**：**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/A-mixing/PRIOR_ART.md`，`记忆·未核`）。
 
 ## 1. 命题
 
@@ -47,6 +49,7 @@ evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]
 
 - **税**：—（未做本地实验）
 - **收益**：待核方向（`记忆·未核`，检索不可用）：「并行/非因果 LM 以困惑度与长文本质量为代价换取可并行与可编辑性；AR 因果性仍是同尺寸质量的强先验。」来源类型：待核方向（`记忆·未核`，检索不可用，按 SCHEMA §21 不判 (a)）。本地：无数据。
+- **判读**：**尚未核实／待立项**：业界结论无核实出处、无本地数据（见 `axes/A-mixing/PRIOR_ART.md`，`记忆·未核`）。
 
 ## 5. 失败路径与原因
 
@@ -55,6 +58,12 @@ evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]
 ## 6. 判据与判决实验设计
 
 - **判据**：bpc + 任务对「序」的依赖度（消融：打乱输入顺序测质量退化）
+
+**下一步判决实验**（未做时必填）：
+
+- 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
+- 判据线：bpc + 任务对「序」的依赖度（消融：打乱输入顺序测质量退化）
+- 成本：13M 单臂 ~5–25 min
 
 ## 7. 成本估计
 
@@ -72,8 +81,6 @@ evidence: ["axes/A-mixing/PRIOR_ART.md @b44c809"]
 
 重要区分：本项目测过的「序无关」是层的执行顺序（shuffle-locality，
 属 C2），不是注意力因果性。本格本地无数据——不要误引 shuffle 的 +0.545。
-（原行 `local: {}` 是同文件的**重复 YAML 键**，静默覆盖上方 `local`——F_YAML 修正已删；
-本地内容以上方 `local` 为准。）
 
 <!-- AUTO:end -->
 

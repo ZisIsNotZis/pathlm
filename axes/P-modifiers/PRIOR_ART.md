@@ -1,7 +1,7 @@
 # PRIOR_ART — P 修饰符（P1–P6）
 
 > 轴：**P 修饰符（不是轴）**（横切，不改变路径空间） ｜ 格子：`P1-precision`（judged）、
-> `P2-conditioning`（partial）、`P3-param-insertion-init`（judged）、`P4-normalization`（partial）、
+> `P2-conditioning`（todo）、`P3-param-insertion-init`（judged）、`P4-normalization`（todo）、
 > `P5-loss-weighting`（judged）、`P6-data-construction`（judged）
 > 角色：知识波（无 GPU，不取锁） ｜ 依据：`SCHEMA.md` §18 / §19 / §21
 > 本文件只写情报与分诊，**不是实验证据**。
@@ -34,7 +34,7 @@
   **两次发散** ⇒ 必须 float32 + pre-step grad-norm gate；fp32 读出头是 prob0/传输/提交地基。
   来源：`.scratch/09-m3-interactions/evidence`。
 - **判定**：**「低精度训练需 loss scaling / fp32 主权重 / 对数损失高精度」是 Micikevicius 2017
-  以来的既有结论 ⇒ P1 的通用结论应改 `reference` 口径。** 本地的「pre-step grad-norm gate」
+  以来的既有结论 ⇒ P1 的通用结论应改「业界结论」口径。** 本地的「pre-step grad-norm gate」
   是可复现的本地工程细节，保留本地口径。
 
 ### 块②：条件化信号（对标 `P2-conditioning`）
@@ -48,7 +48,7 @@
 
 - **本地实测（P2）**：深度索引（逐深度读出，13–17 格单调）与置信度条件（门控）已用；
   噪声级/任务条件零经验。来源：`.scratch/23-depth-ar/evidence`。
-- **判定**：**AdaLN/FiLM 是成熟既有做法 ⇒ 「深度/噪声级条件化」应改 `reference` 口径**；
+- **判定**：**AdaLN/FiLM 是成熟既有做法 ⇒ 「深度/噪声级条件化」应改「业界结论」口径**；
   「逐深度读出给出可观测深度曲线」的本地细节保留。
 
 ### 块③：参数插入与初始化（对标 `P3-param-insertion-init`）
@@ -67,7 +67,7 @@
   全零初始化在乘性结构上是**鞍点**（两端梯度同时 0）⇒ 干预系统性失效而测试全绿。
   来源：`.scratch/23-depth-ar/evidence`、`axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/zero-init-saddle/`。
 - **判定**：**「输出侧零初始化/单边零=恒等起步」是 LoRA/ReZero/ControlNet 已做透的技法
-  ⇒ P3 的通用结论（恒等起步有效）应改 `reference` 口径。** 「全零=鞍点」是本地可复现诊断
+  ⇒ P3 的通用结论（恒等起步有效）应改「业界结论」口径。** 「全零=鞍点」是本地可复现诊断
   （业界对 LoRA 用 B=0 而非 A=B=0 正是同一原因），保留本地口径。
 
 ### 块④：归一化位置（对标 `P4-normalization`）
@@ -81,7 +81,7 @@
 
 - **本地实测（P4）**：pre-LN + 无 final norm 是「同空间」几何前提、固定使用；
   readout scale 由 U 学。来源：`.scratch/03-engine-m1/issues`。
-- **判定**：**Pre-LN/RMSNorm 是既有标准 ⇒ 改 `reference` 口径**；「无 final norm 配合 tied
+- **判定**：**Pre-LN/RMSNorm 是既有标准 ⇒ 改「业界结论」口径**；「无 final norm 配合 tied
   readout」的接口结论保留本地口径。
 
 ### 块⑤：损失权重与调度（对标 `P5-loss-weighting`）
@@ -111,7 +111,7 @@
 - **本地实测（P6）**：needle v1 随机填充 ⇒ 信号饥饿测到 0.0（假失败）；enwik8 字符级局部
   统计极强 ⇒ 距离惩罚的 bpc 改善与长程检索退化可同时发生。来源：`.scratch/05-m1-followup/evidence`、
   `.scratch/07-x1-x3/evidence`。
-- **判定**：**needle 与合成任务构造业界成熟 ⇒ 通用部分改 `reference` 口径**；
+- **判定**：**needle 与合成任务构造业界成熟 ⇒ 通用部分改「业界结论」口径**；
   「任务构造是本项目最大单点偏差来源」+「局部先验抗性」是本仓库本地诊断（对应 §19），保留本地口径。
 
 ---
@@ -119,22 +119,22 @@
 ## 2. 机器可读分诊表（§21）
 
 ```
-P1-precision            | (a) | 混合精度需 loss scaling/fp32 主权重/对数损失高精度，是 Micikevicius 2017 以来既有结论 | 结论：低精度训练须配 fp32 主权重与（对数/奖励类损失的）高精度路径。来源类型：业界结论（记忆·未核）+ 本地复核。通用部分改 reference。
+P1-precision            | (a) | 混合精度需 loss scaling/fp32 主权重/对数损失高精度，是 Micikevicius 2017 以来既有结论 | 结论：低精度训练须配 fp32 主权重与（对数/奖励类损失的）高精度路径。来源类型：业界结论（记忆·未核）+ 本地复核。通用部分改「业界结论」。
 P1-precision            | (b) | 「bf16 下 reward 项发散 ⇒ float32 + pre-step grad-norm gate」是本仓库可复现的失败-修复路径 | 结论（本地）：判据/奖励类损失必须 float32 + pre-step grad-norm gate，否则两次发散。
-P2-conditioning         | (a) | AdaLN/FiLM 是成熟的深度/噪声级条件化技法 | 结论：条件化信号（深度索引/噪声级）有成熟既有实现。来源类型：业界结论（记忆·未核）。通用部分改 reference。
+P2-conditioning         | (a) | AdaLN/FiLM 是成熟的深度/噪声级条件化技法 | 结论：条件化信号（深度索引/噪声级）有成熟既有实现。来源类型：业界结论（记忆·未核）。通用部分改「业界结论」。
 P2-conditioning         | (b) | 「逐深度读出给出可观测深度曲线」是本地接口细节，噪声级/任务条件本地零经验 | 结论（待测）：噪声级/任务条件在本项目零经验。
-P3-param-insertion-init | (a) | 「输出侧零初始化/单边零=恒等起步」是 LoRA(B=0)/ReZero/ControlNet 已做透的技法 | 结论：恒等初始化起步有效且不消耗随机数（可严格对照）。来源类型：业界结论（记忆·未核）+ 本地复核。通用部分改 reference。
+P3-param-insertion-init | (a) | 「输出侧零初始化/单边零=恒等起步」是 LoRA(B=0)/ReZero/ControlNet 已做透的技法 | 结论：恒等初始化起步有效且不消耗随机数（可严格对照）。来源类型：业界结论（记忆·未核）+ 本地复核。通用部分改「业界结论」。
 P3-param-insertion-init | (b) | 「全零初始化是乘性结构上的鞍点 ⇒ 干预死掉但测试全绿」是本仓库可复现诊断 | 结论（本地）：恒等初始化 ≠ 零初始化；须单边零（输出侧置零、输入侧随机）。
-P4-normalization        | (a) | Pre-LN / post-LN / RMSNorm / QK-norm 是既有标准 | 结论：Pre-LN 更易训练、可与省 warmup 组合。来源类型：业界结论（记忆·未核）。status: reference 口径。
+P4-normalization        | (a) | Pre-LN / post-LN / RMSNorm / QK-norm 是既有标准 | 结论：Pre-LN 更易训练、可与省 warmup 组合。来源类型：业界结论（记忆·未核）。status: todo 口径。
 P4-normalization        | (b) | 「无 final LayerNorm 使 logits=h·Eᵀ 同空间语义成立」是本项目底座接口 | 结论（本地）：无 final norm 是同空间前提的一部分。
-P5-loss-weighting       | (a) | 深度监督/退火/梯度裁剪是既有做法 | 结论：多目标加权与退火是既有手段。来源类型：业界结论（记忆·未核）。通用部分改 reference。
+P5-loss-weighting       | (a) | 深度监督/退火/梯度裁剪是既有做法 | 结论：多目标加权与退火是既有手段。来源类型：业界结论（记忆·未核）。通用部分改「业界结论」。
 P5-loss-weighting       | (b) | 「浅层降权全败且单调反向」是本仓库可复现的反直觉观察，业界未必有同对照 | 结论（本地）：浅层全深度监督是表示正则，降低浅层权重不会提升最终质量。
-P6-data-construction    | (a) | needle-in-haystack 与合成任务（MQAR/copy/induction）是长程诊断的标准构造 | 结论：长程能力诊断用标准合成任务 + needle 探针。来源类型：业界结论（记忆·未核）。通用部分改 reference。
+P6-data-construction    | (a) | needle-in-haystack 与合成任务（MQAR/copy/induction）是长程诊断的标准构造 | 结论：长程能力诊断用标准合成任务 + needle 探针。来源类型：业界结论（记忆·未核）。通用部分改「业界结论」。
 P6-data-construction    | (b) | 「局部先验偏差使长程退化被掩盖」（§19）是本仓库本地诊断 | 结论（本地）：enwik8 局部统计极强，长程结论须在弱局部先验任务上复核。
 ```
 
 **分诊要点**：P 轴**通用技法全部 (a)**——混合精度纪律、恒等初始化、Pre-LN、
-深度监督、needle 构造都是业界已做透的工程常识 ⇒ 通用结论应改 `reference` 口径；
+深度监督、needle 构造都是业界已做透的工程常识 ⇒ 通用结论应改「业界结论」口径；
 本地的**反直觉/可复现诊断**（全零鞍点、浅层降权反向、局部先验偏差、pre-step grad-norm gate）
 保留 `本地实测` 口径，作为「本项目在同一通用技法上的具体踩坑记录」。
 

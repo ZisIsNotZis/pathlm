@@ -54,7 +54,7 @@
   + V per-token；或 G=32 分块），重测 int8/int4 的**质量**与**总字节**；判据 = 总字节 < fp16
   且 Δbpc 带内。成本：纯推理分钟级。
 - **修文档**：在 `2614-kv-ablation-retention-13m/analysis.md` 顶部加 ERRATA 指针（不改数字）。
-- **改 `reference`**：摘要压缩 / 低秩两支。
+- **改「业界结论」**：摘要压缩 / 低秩两支。
 - **保留**：`tools/evalkit/retention.py` 天平 + 检索腿（本轴最有价值的产物）。
 
 ## ⑤ 正确验证方式（若补做量化）
