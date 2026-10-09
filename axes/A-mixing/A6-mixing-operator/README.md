@@ -10,7 +10,7 @@ tax: "k=32 Δ = **−0.0166**（越 0.014 界，配对 20/20 批同向，t=−7.
 benefit: "理论：保留键数 −87.5%/−75%、注意力 FLOPs −43.75%/−37.5%（QKᵀ 因内容选择不可省）、整模型每 token FLOPs −6.25%/−5.36%、**KV 缓存 −0%**（结构性）"
 verdict: "**已有**：①内容选择式 Top-K 稀疏注意力在 **T=256 上净亏**（质量越删越差、成本实测上升 2.2×）；②**长 T 四点已统一到同一口径**（T=256/512/1024/2048 **全部 S=6000 步**；T=1024/2048 只读复用 2626/2629 的同 step 点）：同 step 四点 Δ 全落 0.014 带内（−0.0035/−0.0045/+0.0093/+0.0042），同 token(49.152M) 副口径短 T 越界（−0.0158/−0.0151）；两口径之差（0.0123）**落本格判据量噪声（Δ 跨 seed 极差 0.0095）内** ⇒ 「窗口代价随 T 消失」在本 n 下**不可判定**（不得宣称翻转或口径敏感）。③四腿（同会话两轮）：解析 FLOPs 省（注意力 −50%、整层 −7.1%…−28.6%）；**实测墙钟无稳定收益**（T=256 1.028/0.992、T=512 0.984/0.915、T=1024 1.076/1.069、T=2048 1.273/1.784 ⇒ T≥1024 两轮一致更慢）；**峰值显存更费且随 T 恶化**（r_mem 1.169/1.487/2.036/3.305）。④**线性注意力质量腿已补**（T=256/6000 步）：两档各自命名——**原实装·带伤** Δ=−0.214（den 自 step 800 贴 clamp、gnorm_max 899385、25 跳步），**稳定化·核已改** Δ=−0.624（gnorm 7.51、den 5.97）；**无伤原核质量点未取得**，能站住的是「本尺度本实装下线性不比全因果好，且付 2.78× 墙钟 / 1.27× 显存」。**尚缺**（WI-12 三件核心，均未交付）：**真稀疏/真窗口核**把纸面 FLOPs 兑现为墙钟、**T≥2048 的 n≥2 内容稀疏**是否回本、**第二个规模点**；另 A5 位置稀疏/膨胀的同预算对照（待补做）。"
 deps: []
-evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/analysis.md @3597039", "axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m/analysis.md @409f4f1", "axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/analysis.md @88c0e92", "axes/A-mixing/A6-mixing-operator/experiments/2626-longT-clean/analysis.md @e663eac", "axes/A-mixing/A6-mixing-operator/experiments/2629-longT-2048-matched/analysis.md @e663eac", "axes/A-mixing/A6-mixing-operator/experiments/2636-longT-unified/analysis.md @e663eac", "axes/A-mixing/A6-mixing-operator/experiments/2637-linear-attn-quality/analysis.md @e663eac"]
+evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/analysis.md @3597039", "axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m/analysis.md @409f4f1", "axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/analysis.md @88c0e92", "axes/A-mixing/A6-mixing-operator/experiments/2626-longT-clean/analysis.md @8cebc3f", "axes/A-mixing/A6-mixing-operator/experiments/2629-longT-2048-matched/analysis.md @8cebc3f", "axes/A-mixing/A6-mixing-operator/experiments/2636-longT-unified/analysis.md @8cebc3f", "axes/A-mixing/A6-mixing-operator/experiments/2637-linear-attn-quality/analysis.md @8cebc3f"]
 ---
 
 <!-- AUTO:begin -->
@@ -92,10 +92,10 @@ evidence: ["axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-1
 1. axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/analysis.md @3597039
 2. axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m/analysis.md @409f4f1
 3. axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/analysis.md @88c0e92
-4. axes/A-mixing/A6-mixing-operator/experiments/2626-longT-clean/analysis.md @e663eac
-5. axes/A-mixing/A6-mixing-operator/experiments/2629-longT-2048-matched/analysis.md @e663eac
-6. axes/A-mixing/A6-mixing-operator/experiments/2636-longT-unified/analysis.md @e663eac
-7. axes/A-mixing/A6-mixing-operator/experiments/2637-linear-attn-quality/analysis.md @e663eac
+4. axes/A-mixing/A6-mixing-operator/experiments/2626-longT-clean/analysis.md @8cebc3f
+5. axes/A-mixing/A6-mixing-operator/experiments/2629-longT-2048-matched/analysis.md @8cebc3f
+6. axes/A-mixing/A6-mixing-operator/experiments/2636-longT-unified/analysis.md @8cebc3f
+7. axes/A-mixing/A6-mixing-operator/experiments/2637-linear-attn-quality/analysis.md @8cebc3f
 
 ## 备注
 
