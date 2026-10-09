@@ -154,7 +154,59 @@ def derived_values() -> list[float]:
     return [x for x in out if x == x]
 
 
+def _scan(text: str, allowed: list[float]) -> list[tuple]:
+    table: dict[int, set] = {}
+    for v in allowed:
+        for d in range(0, 6):
+            table.setdefault(d, set()).add(round(v, d))
+        for scale in (1e-6, 1e-3, 1e3, 1e6, 60.0, 1 / 60.0):  # k/M 后缀、千分位、分↔秒
+            vv = v * scale
+            for d in range(0, 6):
+                table.setdefault(d, set()).add(round(vv, d))
+    flags = []
+    for lineno, line in enumerate(text.splitlines(), 1):
+        line_n = re.sub(r"(?<=\d),(?=\d{3}\b)", "", line)      # 千分位合并
+        for m in re.finditer(r"[-+]?\d+(?:\.\d+)?", line_n):
+            tok = m.group(0)
+            val = float(tok)
+            d = len(tok.split(".")[1]) if "." in tok else 0
+            if round(val, d) in table.get(d, set()):
+                continue
+            start = m.start()
+            ctx = line_n[max(0, start - 20):start]
+            if re.search(r"(WI|ticket|SCHEMA`? §|RTX |top|P[0-9]|C[0-9]+|A[0-9]+)\s*-?\s*$",
+                         ctx):
+                continue
+            if tok.lstrip("+-") in {"2621", "2623", "2630", "2631", "2632", "2633",
+                                     "2634", "2635", "2636", "2637", "16"}:
+                continue        # 实验编号 / 工单号（非测量值）
+            flags.append((lineno, tok, line.strip()[:100]))
+    return flags
+
+
+def selftest() -> int:
+    """**证明本审计会红**：把正文里的真值 1.855 换成当年那个编造值 1.9641
+    （只在内存里改，不写盘），审计必须报出它。"""
+    allowed = evidence_values() + derived_values() + ANCHORS
+    text = open(ANA).read()
+    fake = text.replace("→ **1.855**", "→ **1.9641**", 1)
+    if fake == text:
+        print("FAIL(selftest)：找不到注入点（正文结构变了？）")
+        return 1
+    flags = _scan(fake, allowed)
+    hit = [f for f in flags if f[1] == "1.9641"]
+    if not hit:
+        print("FAIL(selftest)：编造值 1.9641 没有被审计抓到 ⇒ 审计无效")
+        return 1
+    print(f"OK(selftest)：注入的编造值被抓到 ⇒ {hit[0][0]}: {hit[0][2][:70]}")
+    if flags and len(flags) > 1:
+        print(f"（另报 {len(flags) - 1} 处注入带出的连带项）")
+    return 0
+
+
 def main() -> int:
+    if "--selftest" in sys.argv:
+        return selftest()
     text = open(ANA).read()
     allowed = evidence_values() + derived_values() + ANCHORS
     table: dict[int, set] = {}
