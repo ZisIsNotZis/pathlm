@@ -200,4 +200,4 @@ python3 -m pytest tests/test_kv_budget_rest.py -q   # 19 绿
   内容再 `rmdir`）；整程 **<10 min** ⇒ 允许整程持锁（SCHEMA §20.1 第 1 条的例外）。
   **未发现**等锁超时 / 锁泄漏 / 显存超预算。
 
-> 主 Agent 补注（复核 X4 P1）：等字节 ≠ 等形状，跨形状排名须带该声明（见 analysis.md 末尾补写）。
+> **等字节 ≠ 等形状**：跨形状排名须带该声明（详见 `analysis.md` 末尾的口径说明）。

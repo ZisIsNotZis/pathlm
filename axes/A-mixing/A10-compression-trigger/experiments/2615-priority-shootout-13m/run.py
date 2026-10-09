@@ -726,7 +726,7 @@ def main():
         "why": ("删除**位置数**相同 ≠ 删除**可见性对数**相同（位置 j 的代价是 T−1−j 对）："
                 "N=8 时 distance 掉 2012 对、lru 1562 对、content 1859 对。按同一对数重对齐后"
                 "lru 由正转负、content 落回噪声带 ⇒ 契约字面达成的优势**不足以**支撑「LRU 前提"
-                "成立」（SCHEMA §12；详见 analysis.md §6.4 的 ERRATA）。判据线本身未改。"),
+                "成立」（SCHEMA §12；详见 analysis.md §6.4 的对账结论）。判据线本身未改。"),
     }
     sens = []
     for a in arms:

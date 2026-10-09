@@ -165,5 +165,3 @@ python3 axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/run
 # 变异验证（关键开关：量化/反量化语义）
 python3 axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/mutate.py
 ```
-
-> 主 Agent 补注（复核 P1）：墙钟以 `results.json::cost` 为准 = **53.1 s / 0.885 min**。

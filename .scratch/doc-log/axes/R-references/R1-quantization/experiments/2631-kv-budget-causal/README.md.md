@@ -14,3 +14,11 @@
 - §2 组合声明：「（SCHEMA §4 的 **2026-10-02** 例外条款）」→「（SCHEMA §4 的例外条款）」。
 - 备注：`config.json` / `results.json` / `smoke/results.json` 的 `contract` 字段仍是运行期产物，
   按「原始证据不做文本改动」的纪律保留原样（其中含历史台账名）。
+
+## 追加（悬空指针修正）
+
+- `config.json` / `results.json` / `smoke/results.json` 的 `contract` 字段原有：
+  `docs/REMEDIATION.md §4 R1 + .scratch/49-adversarial-review/REPORT.md A2`；`docs/REMEDIATION.md`
+  已删除 ⇒ 属悬空指针（上文「按原始证据不做文本改动保留原样」的处置已由本次修正取代）。
+- 现改为：`2621-kv-budget-rest/README.md §4（V1 判据线，逐字沿用）+ .scratch/49-adversarial-review/REPORT.md A2`；
+  不改任何数字。
