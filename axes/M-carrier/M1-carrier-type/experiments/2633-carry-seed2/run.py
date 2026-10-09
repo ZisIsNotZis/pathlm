@@ -115,9 +115,11 @@ def main():
         print(f"[{time.time() - t0:7.1f}s] {msg}", flush=True)
         log.append({"t": round(time.time() - t0, 2), "msg": msg})
 
-    note("§9 复用证据：与 2631 的实现层 sha256 + 配置逐字段对照")
+    note("§9 复用证据：基准 = 2631 运行时版本（按记录 sha256 定位），判据 = 两层行为等价")
     equality = eqrep.compare(cfg)
-    note(f"  实现层逐文件相同：{equality['implementation_identical']}；"
+    eqrep.assert_report_schema(equality)      # 消费方显式再核一次（接线可见；缺键即报错）
+    note(f"  实现层行为等价：{equality['implementation_equivalent_to_2631_runtime']}；"
+         f"复用范围：{equality['reuse_scope']}；"
          f"配置逐字段不同项：{equality['differing_fields'] or '无'}")
 
     # ---------------- 加载九臂（sha256 断言） ----------------
@@ -130,7 +132,8 @@ def main():
              f"carry={spec['rule']} params={ck[spec['name']]['n_params']}")
     results = {"config": cfg, "checkpoints": ck,
                "visibility": {"train_window": window, "train_anchors": anchors},
-               "reuse_equality_vs_2631": equality}
+               # 指针块（不是整块内嵌）：权威产物 = equality_report.json（复核 P2-1）
+               "reuse_equality_vs_2631": eqrep.pointer_block(equality)}
 
     # ---------------- ① 仪器轻自检 ----------------
     note("自检①：参数量/块类/窗口掩码非退化；同 seed 重建 plain/delta 逐位等参数")

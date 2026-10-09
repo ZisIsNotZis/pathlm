@@ -189,8 +189,8 @@
   `continue` 跳过（那些步同时跳过逐 200 步的 telemetry/日志 CPU 开销），且两次测量的共享卡
   占用不同（冒烟期其它线在跑 pytest/训练）。⇒ **两套数都不作跨臂速度结论**；本格也从未用
   步时做任何判据（只用于定预算与解释墙钟）。数字已回填 `config.json::steptime_measured`。
-- 评测：`eval_concurrent.sh` 写出 `lock_accounting.json`（见 §20 记账），墙钟 11 s、峰值
-  286.8 MB。
+- 评测：`eval_concurrent.sh` 写出 `lock_accounting.json`（见 §20 记账），墙钟 **10 s**、峰值
+  286.8 MB（与 `lock_accounting.json` / `results.json::cost.lock_accounting` 同源）。
 
 ### 7.2 对账与复现性
 

@@ -142,6 +142,51 @@ def test_reuse_equality_rejects_recipe_change():
     assert "--steps" in rep["train_recipe_differing_flags"]
 
 
+def test_equality_report_schema_is_pinned_to_consumers():
+    """消费方依赖的报告键必须与生产者产出**逐键一致**（复核 P1 的同类事故护栏）。
+
+    `compare()` 返回前自检 `REQUIRED_REPORT_KEYS`；这里再断言冻结清单覆盖了
+    `run.py` 真正读到的键，且缺键时 `assert_report_schema` 必须报错（可失败）。
+    """
+    rep = eqrep.compare(CFG, write=False, recompute_trainer=False)
+    assert set(eqrep.REQUIRED_REPORT_KEYS) <= set(rep)
+    # run.py 实际读的键
+    for key in ("implementation_equivalent_to_2631_runtime", "reuse_scope",
+                "differing_fields", "train_recipe_differing_flags"):
+        assert key in rep and key in eqrep.REQUIRED_REPORT_KEYS, key
+    # 缺键必须报错（不是静默 None / KeyError 深埋）
+    with pytest.raises(KeyError, match="缺键"):
+        eqrep.assert_report_schema({k: rep[k] for k in rep
+                                    if k != "implementation_equivalent_to_2631_runtime"})
+
+
+def test_run_py_reads_current_keys_not_retired_ones():
+    """`run.py`（文档化的复现入口）不得再读已退役的旧键名。"""
+    src = open(os.path.join(EXP, "run.py")).read()
+    assert "implementation_equivalent_to_2631_runtime" in src
+    assert "implementation_identical" not in src
+    assert "eqrep.assert_report_schema(equality)" in src
+
+
+def test_embedded_pointer_matches_authoritative_artifact():
+    """`results.json::reuse_equality_vs_2631` 是**指针块**，其标量必须等于权威产物。
+
+    防的正是复核 P2-1：同一份证据两处各存 schema ⇒ 重构后出现相反说法。
+    """
+    if not os.path.exists(RESULTS):
+        pytest.skip("results.json 尚未生成")
+    emb = json.load(open(RESULTS))["reuse_equality_vs_2631"]
+    art = json.load(open(os.path.join(EXP, "equality_report.json")))
+    assert emb["authoritative_artifact"].endswith("equality_report.json")
+    for k in ("verdict", "reuse_scope", "implementation_equivalent_to_2631_runtime",
+              "differing_fields", "train_recipe_differing_flags"):
+        assert emb[k] == art[k], k
+    # 旧 schema 的痕迹必须消失
+    for retired in ("implementation_identical", "head_identical_to_2631",
+                    "loss_sequence_head", "n_params_head"):
+        assert retired not in json.dumps(emb)
+
+
 def test_runtime_version_ledger_covers_every_arm():
     """运行期版本台账（复核 P1-3）：九臂都要有版本分类，且 verdict 与覆盖范围自洽。"""
     p = os.path.join(EXP, "runtime_version_ledger.json")

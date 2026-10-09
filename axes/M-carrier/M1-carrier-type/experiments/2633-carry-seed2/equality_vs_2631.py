@@ -47,6 +47,61 @@ def sha256_file(path: str) -> str:
     return h.hexdigest()
 
 
+#: **消费方依赖的报告键**（烧进代码的契约；生产者改键名必须先改这里，否则立刻报错）。
+#: 这条防的是本线真实发生过的一类事故：`compare()` 把 `implementation_identical`
+#: 改名为 `implementation_equivalent_to_2631_runtime`，而 `run.py` 仍读旧键 ⇒ 复现入口崩溃，
+#: 且 `pytest` 不执行 `run.py` ⇒ 全绿掩盖了它（复核 P1）。
+REQUIRED_REPORT_KEYS: tuple[str, ...] = (
+    "generated_by", "target", "implementation",
+    "implementation_equivalent_to_2631_runtime", "implementation_note",
+    "engine_equivalence_working_tree_vs_head", "working_tree_drift_files",
+    "git_head", "shared_config", "differing_fields", "train_recipe_flags",
+    "train_recipe_differing_flags", "train_recipe_note",
+    "reused_arm_checkpoint_sha256_at_2631_run", "caliber_note", "verdict",
+    "reuse_scope", "runtime_version_ledger",
+)
+
+
+def assert_report_schema(report: dict) -> None:
+    """核对报告键 == 冻结清单（缺任一即报错；多出来只提示不失败）。
+
+    `compare()` 返回前会自己调一次；消费方（`run.py`）可再显式调一次让接线可见。
+    """
+    missing = [k for k in REQUIRED_REPORT_KEYS if k not in report]
+    if missing:
+        raise KeyError(
+            f"equality_report 缺键 {missing}——生产者改过 schema 而未同步 "
+            f"`REQUIRED_REPORT_KEYS` / 消费方（复核 P1 的同类事故）")
+
+
+def pointer_block(report: dict) -> dict:
+    """`results.json` 里内嵌的**指针块**：只放判据级标量 + 指向权威产物。
+
+    为什么不整块内嵌（复核 P2-1）：整块内嵌会让同一份证据在
+    `equality_report.json` 与 `results.json` 两处各存一份 schema，重构后必然出现
+    「同一证据两处相反说法」。⇒ 权威产物 = `equality_report.json`（+ `runtime_version_ledger.json`），
+    内嵌块只留**判据级标量**与指针，并由单测核对两处标量一致。
+    """
+    return {
+        "authoritative_artifact": os.path.relpath(
+            os.path.join(HERE, "equality_report.json"), ROOT),
+        "runtime_version_ledger": report.get("runtime_version_ledger"),
+        "generated_by": report.get("generated_by"),
+        "git_head": report.get("git_head"),
+        "verdict": report.get("verdict"),
+        "reuse_scope": report.get("reuse_scope"),
+        "implementation_equivalent_to_2631_runtime":
+            report.get("implementation_equivalent_to_2631_runtime"),
+        "engine_equivalence_working_tree_vs_head":
+            report.get("engine_equivalence_working_tree_vs_head"),
+        "differing_fields": report.get("differing_fields"),
+        "train_recipe_differing_flags": report.get("train_recipe_differing_flags"),
+        "note": ("完整证据（逐文件台账、配置层对照、训练配方 flag 对照、复用臂 checkpoint 哈希）"
+                 "在 `equality_report.json`；本块只放判据级标量 + 指针，避免同一证据两处 schema "
+                 "各自漂移（复核 P2-1）"),
+    }
+
+
 def _flags(cmd_text: str) -> dict[str, str]:
     """把命令行文本拆成 `{flag: value}`（无值 flag 记为空串）；忽略可执行名。"""
     toks = shlex.split(cmd_text.replace("\\\n", " "))
@@ -182,6 +237,7 @@ def compare(cfg: dict | None = None, with_equivalence: bool = True,
         "runtime_version_ledger": os.path.relpath(
             os.path.join(HERE, "runtime_version_ledger.json"), ROOT),
     }
+    assert_report_schema(report)          # 生产者自检：缺键立刻炸（不做「静默改名」）
     if write:
         # `write=False` 供单测使用：测试**不得**改写已入账的产物（只读复核）
         with open(os.path.join(HERE, "equality_report.json"), "w") as f:
