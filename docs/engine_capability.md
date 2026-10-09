@@ -13,8 +13,8 @@
 > **ENG2 解锁的是「`carry_rule` × 非 dense 前向」**（单开通道 + 随机退出/ragged/填充，
 > 走 `CarryChannelBlock` 的 `kv_from`/`attn_mask`/`gate_vec` 约定）；
 > **`carry × GQA × 非 dense` 仍被明确拒绝**——`n_kv_heads < n_heads` 的校验要求
-> `dense=True`（`pathlm/depth_ar.py:1968`），且增量解码路径两个组合都拒绝
-> （`:2657` GQA、`:2666` carry）。**未实现的组合不得当作已就绪引用。**
+> `dense=True`（`pathlm/depth_ar.py:1973`），且增量解码路径两个组合都拒绝
+> （`:2662` GQA、`:2671` carry）。**未实现的组合不得当作已就绪引用。**
 
 ## 1. 接受矩阵 / 拒绝点（受控块：机器核对）
 
@@ -31,17 +31,17 @@
 | C3 | `carry_rule="delta"` + `n_kv_heads=2` + dense=True | 接受 | ComposableBlock | — | — |
 | C4 | `n_kv_heads=2` + `train_window=8` + dense=True | 接受 | GQABlock | — | — |
 | C5 | `n_kv_heads=2` + dense=True（单开 GQA） | 接受 | GQABlock | — | — |
-| C6 | `carry_rule="plain"` + `n_kv_heads=2` + dense=False（**B9 的核心**：carry × GQA × 非稠密） | 拒绝 | pathlm/depth_ar.py:1968 | KV 头共享（GQA/MQA）只在 dense=True | KV 头共享（GQA/MQA）只在 dense=True |
-| C7 | `carry_rule="plain"` + `attn_sparse_k=4` | 拒绝 | pathlm/depth_ar.py:1959 | carry_rule 与 {other} 互斥 | carry_rule 与 attn_sparse_k 互斥 |
-| C8 | `carry_rule="plain"` + `topology="parallel"` + dense=True | 拒绝 | pathlm/depth_ar.py:1950 | carry_rule 与层间拓扑互斥 | carry_rule 与层间拓扑互斥 |
-| C9 | `n_kv_heads=2` + `attn_linear=True` + dense=True | 拒绝 | pathlm/depth_ar.py:1982 | n_kv_heads 与 {other} 互斥 | n_kv_heads 与 attn_linear 互斥 |
-| C10 | `carry_rule="plain"` + `topology="sequential"`，再建 `DepthARDecoder` | 拒绝 | pathlm/depth_ar.py:2666 | 增量解码（KV cache）路径未定义写入通道读出 | 增量解码（KV cache）路径未定义写入通道读出 |
-| C11 | `n_kv_heads=2` + dense=True，再建 `DepthARDecoder` | 拒绝 | pathlm/depth_ar.py:2657 | 增量解码（KV cache）路径未定义 KV 头共享 | 增量解码（KV cache）路径未定义 KV 头共享 |
-| C12 | `attn_sparse_k=4` + dense=False | 拒绝 | pathlm/depth_ar.py:1883 | 内容 top-k 稀疏注意力只在 dense=True | 内容 top-k 稀疏注意力只在 dense=True |
-| C13 | `carry_gate=False` + dense=True（R7 无门变体用在没有门的 dense 上） | 拒绝 | pathlm/depth_ar.py:1873 | carry_gate=False（R7 无门变体） | carry_gate=False（R7 无门变体）只对非 dense（变深度）路径有意义 |
-| C14 | `mod_ratio=0.5` + dense=False（MoD 路由与变深度形态混开） | 拒绝 | pathlm/depth_ar.py:1865 | mod_ratio > 0（MoD 式路由） | mod_ratio > 0（MoD 式路由）只与 dense=True 同开 |
-| C15 | `mod_ratio=0.5` + dense=True 但直接建 `DepthARModel`（不实装路由的类） | 拒绝 | pathlm/depth_ar.py:1869 | mod_ratio > 0 需要 `MoDModel` | mod_ratio > 0 需要 `MoDModel` |
-| C16 | `aux_mode="mean"`（未知归一模式） | 拒绝 | pathlm/depth_ar.py:1860 | unknown aux_mode | unknown aux_mode |
+| C6 | `carry_rule="plain"` + `n_kv_heads=2` + dense=False（**B9 的核心**：carry × GQA × 非稠密） | 拒绝 | pathlm/depth_ar.py:1973 | KV 头共享（GQA/MQA）只在 dense=True | KV 头共享（GQA/MQA）只在 dense=True |
+| C7 | `carry_rule="plain"` + `attn_sparse_k=4` | 拒绝 | pathlm/depth_ar.py:1964 | carry_rule 与 {other} 互斥 | carry_rule 与 attn_sparse_k 互斥 |
+| C8 | `carry_rule="plain"` + `topology="parallel"` + dense=True | 拒绝 | pathlm/depth_ar.py:1955 | carry_rule 与层间拓扑互斥 | carry_rule 与层间拓扑互斥 |
+| C9 | `n_kv_heads=2` + `attn_linear=True` + dense=True | 拒绝 | pathlm/depth_ar.py:1987 | n_kv_heads 与 {other} 互斥 | n_kv_heads 与 attn_linear 互斥 |
+| C10 | `carry_rule="plain"` + `topology="sequential"`，再建 `DepthARDecoder` | 拒绝 | pathlm/depth_ar.py:2671 | 增量解码（KV cache）路径未定义写入通道读出 | 增量解码（KV cache）路径未定义写入通道读出 |
+| C11 | `n_kv_heads=2` + dense=True，再建 `DepthARDecoder` | 拒绝 | pathlm/depth_ar.py:2662 | 增量解码（KV cache）路径未定义 KV 头共享 | 增量解码（KV cache）路径未定义 KV 头共享 |
+| C12 | `attn_sparse_k=4` + dense=False | 拒绝 | pathlm/depth_ar.py:1888 | 内容 top-k 稀疏注意力只在 dense=True | 内容 top-k 稀疏注意力只在 dense=True |
+| C13 | `carry_gate=False` + dense=True（R7 无门变体用在没有门的 dense 上） | 拒绝 | pathlm/depth_ar.py:1878 | carry_gate=False（R7 无门变体） | carry_gate=False（R7 无门变体）只对非 dense（变深度）路径有意义 |
+| C14 | `mod_ratio=0.5` + dense=False（MoD 路由与变深度形态混开） | 拒绝 | pathlm/depth_ar.py:1870 | mod_ratio > 0（MoD 式路由） | mod_ratio > 0（MoD 式路由）只与 dense=True 同开 |
+| C15 | `mod_ratio=0.5` + dense=True 但直接建 `DepthARModel`（不实装路由的类） | 拒绝 | pathlm/depth_ar.py:1874 | mod_ratio > 0 需要 `MoDModel` | mod_ratio > 0 需要 `MoDModel` |
+| C16 | `aux_mode="mean"`（未知归一模式） | 拒绝 | pathlm/depth_ar.py:1865 | unknown aux_mode | unknown aux_mode |
 <!-- CAPABILITY:end -->
 
 ## 2. 边界的三条要点
