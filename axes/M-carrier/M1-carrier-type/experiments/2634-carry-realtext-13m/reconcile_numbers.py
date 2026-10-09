@@ -20,6 +20,7 @@ for _p in (ROOT, HERE):
         sys.path.insert(0, _p)
 
 from tools.evalkit.reconcile import Ledger                          # noqa: E402
+import needle_stats as ns                                          # noqa: E402
 from pathlm.depth_ar import (DepthARConfig, DepthARModel,           # noqa: E402
                              window_anchor_keep_mask)
 
@@ -148,6 +149,50 @@ def main() -> int:
     ledger.eq("needle 桶只有 window/beyond（无锚区）",
               sorted({r["bucket"] for n in arms
                       for r in raw[f"{n}|planted"]}) == ["beyond", "window"], True)
+
+    # ---- 布局前提（rf 接线；复核 P1-1）----
+    for name, row in R["far_source_probe"].items():
+        ledger.derived(f"{name}: layout.required_min_eval_lo == corrupt_hi + rf",
+                       row["layout"]["required_min_eval_lo"],
+                       lambda row=row: row["layout"]["corrupt_prefix"][1]
+                       + row["layout"]["receptive_field_positions"],
+                       sources=("results.json::far_source_probe.*.layout",), abs_tol=1e-9)
+        ledger.eq(f"{name}: rf == n_layers·(window−1)",
+                  row["layout"]["receptive_field_positions"]
+                  == cfg["model"]["n_layers"] * (cfg["model"]["train_window"] - 1), True,
+                  derived_from=("config.json::model",))
+
+    # ---- needle 腿：判据方向 + 同索引硬子集（复核 P1-2 / P1-4）----
+    bplant = {n: [r for r in raw[f"{n}|planted"] if r["bucket"] == "beyond"] for n in arms}
+    bctrl = {n: [r for r in raw[f"{n}|control"] if r["bucket"] == "beyond"] for n in arms}
+    for name in arms:
+        rec = R["needle_leg"]["judgement"]["per_arm"][name]
+        ledger.derived(f"{name}: 判据④ delta_pp == 植入 − 地板（方向固化）",
+                       rec["delta_pp"],
+                       lambda name=name: round(100 * (
+                           sum(r["hit"] for r in bplant[name]) / len(bplant[name])
+                           - sum(r["hit"] for r in bctrl[name]) / len(bctrl[name])), 3),
+                       sources=("needle_raw.json",), abs_tol=1e-3)
+        ledger.eq(f"{name}: passes == (植入 − 地板 的 95% CI 下界 > 0)",
+                  rec["passes"] == ns.beyond_above_floor(
+                      sum(r["hit"] for r in bplant[name]), len(bplant[name]),
+                      sum(r["hit"] for r in bctrl[name]), len(bctrl[name]))["passes"], True,
+                  derived_from=("needle_stats.beyond_above_floor",))
+    sets = ns.hard_index_sets(bctrl)
+    ledger.derived("同索引硬子集：intersection == 四臂 control 全失败（同一组索引）",
+                   R["needle_leg"]["hard_index_sets"]["n_intersection"],
+                   lambda: len(sets["intersection"]), sources=("needle_raw.json",), abs_tol=1e-9)
+    cross = R["needle_leg"]["hard_subset_same_index_cross_arm"]["intersection"]["delta_vs_none"]
+    for key, val in cross.items():
+        dname, none_name = key.split("_minus_")
+        ledger.derived(f"同索引跨臂 {key}: delta_pp == 100·(植入Δ/n)（同一索引集）",
+                       val["delta_pp"],
+                       lambda d=dname, n_=none_name: round(100 * (
+                           sum(bplant[d][i]["hit"] for i in sets["intersection"])
+                           - sum(bplant[n_][i]["hit"] for i in sets["intersection"]))
+                           / len(sets["intersection"]), 3),
+                       sources=("needle_raw.json", "needle_stats.hard_index_sets"),
+                       abs_tol=1e-3)
 
     # ---- 训练侧：末步与活性 ----
     steps = cfg["train_recipe"]["steps"]

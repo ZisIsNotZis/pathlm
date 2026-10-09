@@ -1,0 +1,49 @@
+{
+  "purpose": "把旧版停摆门的产物（status=stalled）对齐到当前两级门的口径，并给出「进程其实跑完」的对账证据；**不重跑训练**",
+  "instrument_version": {
+    "old_report_gate": "旧版：无日志推进 ≥180 s 即终止 ⇒ status=\"stalled\"；报告里没有 kill_secs / no_log_progress_events 字段",
+    "current_gate": "当前：--stall-secs(180) 只记 no_log_progress 事件；--kill-secs(900) 才终止 ⇒ status=killed_after_no_log_progress；进程自行退出记 finished",
+    "consequence": "旧报告的 status 字样与当前脚本的状态集合不一致——本文件是它的再分析，**不改写**原始报告"
+  },
+  "old_report_facts": {
+    "status": "stalled",
+    "trigger_step": 1000,
+    "stall_wall_s": 190.0,
+    "wall_s": 290.0,
+    "cpu_seconds": 269.93,
+    "cpu_delta_10s": 0.0,
+    "gpu_mem_mb_for_pid": [],
+    "log_tail_last_step": 1000
+  },
+  "step_accounting": {
+    "configured_steps": 3000,
+    "grad_skips": 1854,
+    "effective_optimizer_steps": 1146,
+    "sum": 3000,
+    "matches_configured": true,
+    "source": "train/linear/results.json::gnorm_monitor（训练器自报计数）"
+  },
+  "terminal_artifacts": {
+    "model_pt_exists": true,
+    "results_json_exists": true,
+    "actual_wall_minutes": 4.43,
+    "implied_ms_per_step": 88.6
+  },
+  "cpu_delta_evidence": {
+    "cpu_delta_10s": 0.0,
+    "reading": "0.0 = 采集前 10 s 内该进程 CPU 时间未增长 ⇒ 不是「CPU 满载却卡死」（2616 的卡死观测是 ~98% 单核持续烧）；与「进程已在收尾/已结束」一致",
+    "useful": true
+  },
+  "current_gate_would_report": {
+    "events": [
+      {
+        "status": "no_log_progress",
+        "at_trigger_step": 1000,
+        "after_secs": 190.0
+      }
+    ],
+    "final": "finished（进程在墙钟 4.43 min 内自行结束并落盘 model.pt/results.json；当前门的 --kill-secs=900 s 不会触发）",
+    "verdict": "not_a_process_hang__numerical_divergence"
+  },
+  "conclusion": "真实故障 = 归一化线性注意力的**数值发散**（den_min 触 clamp、gnorm 爆到 1e8）⇒ 62% 的步被梯度门跳过；而训练器只在未跳过的步写日志 ⇒ 日志停写被旧门读成「停摆」。对账（1854+1146=3000）与终点产物证明进程跑完。"
+}

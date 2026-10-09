@@ -116,14 +116,16 @@ def test_judge_seed3_reuses_effect_stable_semantics():
 # ---------------- ③ 复用证据（SCHEMA §9） ----------------
 
 def test_reuse_equality_report_verdict_ok():
-    rep = eqrep.compare(CFG, write=False)
+    rep = eqrep.compare(CFG, write=False, recompute_trainer=False)
     assert rep["implementation_identical"] is True
     assert rep["differing_fields"] == []
     assert rep["train_recipe_differing_flags"] == []
     assert rep["verdict"] == "reuse_ok"
-    # 语义级等价（工作树 vs HEAD，本实验三档配置）也必须成立
-    assert rep["engine_equivalence_working_tree_vs_head"][
-        "bitwise_equivalent_on_this_experiments_configs"] is True
+    # 行为等价必须**两层**成立（复核 P1-3）：前向（三档逐位 logits）+ 训练脚本（loss 序列）
+    ee = rep["engine_equivalence_working_tree_vs_head"]
+    assert ee["forward_layer_ok"] is True
+    assert ee["trainer_layer_ok"] is True, "训练脚本层未证等价 ⇒ 复用声明必须降级"
+    assert rep["reuse_scope"].startswith("pathlm/** + train_depth_ar.py")
     # 复用臂的 checkpoint 哈希必须就是 2631 当时落盘的那一份
     assert rep["reused_arm_checkpoint_sha256_at_2631_run"]["delta_s0"]
 
@@ -133,9 +135,26 @@ def test_reuse_equality_rejects_recipe_change():
     bad = copy.deepcopy(CFG)
     bad["train_recipe_seed2"]["cmd"] = bad["train_recipe_seed2"]["cmd"].replace(
         "--steps 12000", "--steps 6000")
-    rep = eqrep.compare(bad, with_equivalence=False, write=False)
+    rep = eqrep.compare(bad, with_equivalence=False, write=False, recompute_trainer=False)
     assert rep["verdict"] == "reuse_rejected"
     assert "--steps" in rep["train_recipe_differing_flags"]
+
+
+def test_runtime_version_ledger_covers_every_arm():
+    """运行期版本台账（复核 P1-3）：九臂都要有版本分类，且 verdict 与覆盖范围自洽。"""
+    p = os.path.join(EXP, "runtime_version_ledger.json")
+    if not os.path.exists(p):
+        pytest.skip("runtime_version_ledger.json 尚未生成")
+    led = json.load(open(p))
+    assert set(led["per_arm"]) == {a["name"] for a in CFG["arms"]}
+    for name, row in led["per_arm"].items():
+        for rel, cell in row["files"].items():
+            assert cell.get("version") in (
+                "head", "head(==working_tree)", "working_tree_at_run_time"), (name, rel)
+        assert row["started_at"], f"{name} 缺启动时刻（无法判断跑的是哪一版）"
+    assert led["verdict"] == "all_arms_behaviorally_equivalent"
+    assert "train_depth_ar.py" in led["engine_equivalence_coverage"]
+    assert led["drift_snapshot"]["n_bytes"] >= 0
 
 
 def test_engine_equivalence_per_rule_report_is_complete():
@@ -160,11 +179,14 @@ def test_engine_files_unchanged_since_2631_run():
     工作树允许被并行线改动（`working_tree_differs_from_head`），但那种情况下必须由
     `engine_equivalence` 在本实验的三档配置上证明语义等价（逐位 logits）。
     """
-    rep = eqrep.compare(CFG, write=False)
+    rep = eqrep.compare(CFG, write=False, recompute_trainer=False)
     for rel, row in rep["implementation"].items():
         assert row["head_identical_to_2631"], f"{rel} 在 2631 之后被改过 ⇒ §9 复用前提失效"
     for rel in rep["working_tree_drift_files"]:
         assert rep["engine_equivalence_working_tree_vs_head"]["per_rule"], rel
+    # 漂移文件若含训练脚本，训练脚本层证据必须存在
+    if "train_depth_ar.py" in rep["working_tree_drift_files"]:
+        assert rep["engine_equivalence_working_tree_vs_head"]["trainer"]["verified"] is True
 
 
 # ---------------- ④ results.json（跑完之后） ----------------

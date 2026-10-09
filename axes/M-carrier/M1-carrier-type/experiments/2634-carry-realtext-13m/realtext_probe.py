@@ -25,10 +25,45 @@ from tools.evalkit.retention import masked_logits
 
 LN2 = 0.6931471805599453
 
-#: 被毁前缀 = 位置 `[0, 128)`；被评行 = `[144, 255)`（这些行预测的目标在 145..255）
-DEFAULT_CORRUPT_HI = 128
-DEFAULT_EVAL_LO = 144
+#: 本实验采用的布局（T=256 / L=12 层 / 窗口 16 ⇒ `rf = 12·15 = 180`）：
+#: 被毁前缀 = 位置 `[0, 64)`；被评行 = `[244, 255)`（这些行预测的目标在 245..255）。
+#: `DEFAULT_EVAL_LO − DEFAULT_RF ≥ DEFAULT_CORRUPT_HI`（244−180 = 64）**恰好**满足不变式；
+#: 换成别的 `rf` 时由 `far_source_probe` 的硬断言接住。
+#: （历史的「[0,128) / [144,255)」布局在本配置下**泄漏**：144−180 < 128 ⇒ 已废弃；
+#: 见 `rf_scan.py` 的实测与 `analysis.md` §5。）
+DEFAULT_CORRUPT_HI = 64
+DEFAULT_EVAL_LO = 244
 DEFAULT_EVAL_HI = 255
+
+#: 本实验模型的跨层多跳感受野（位置数）：`n_layers·(window−1)`
+RF_NOTE = "rf = n_layers·(train_window−1)（L 层窗口 w 的因果注意力可跨层多跳看到 [i−rf, i]）"
+
+
+def probe_kwargs(cfg: dict) -> dict:
+    """把 `config.json` 的 `eval.probe` 变成 `far_source_probe` 的**完整** kwargs。
+
+    存在的理由（本实验的一次真实事故）：`rf` 曾以默认值 0 被漏传，`eval_lo − rf ≥
+    corrupt_hi` 于是退化成 `244 ≥ 64`（**恒真**），硬断言形同虚设。现在：
+
+    - `rf` **由模型规格派生**（`rf = n_layers·(train_window−1)`），不接受手工填空；
+    - 与 config 里记录的 `eval.probe.rf` **交叉校验**（不一致即报错）；
+    - `train_window ≤ 0` 直接报错（无窗时被毁前缀可经全注意力直达，本仪器无定义）。
+    """
+    model, probe = cfg["model"], cfg["eval"]["probe"]
+    window = int(model["train_window"])
+    if window <= 0:
+        raise ValueError(
+            f"far_source_probe 只对开窗模型有定义，收到 train_window={window}（无窗时"
+            "被毁前缀可经全注意力直达被评行，前提①不成立）")
+    rf = int(model["n_layers"]) * (window - 1)
+    if "rf" in probe and int(probe["rf"]) != rf:
+        raise ValueError(
+            f"config 里 eval.probe.rf={probe['rf']} 与由模型规格派生的 rf={rf}"
+            f"（n_layers={model['n_layers']}·(train_window−1)）不一致")
+    kw = {k: probe[k] for k in ("n_batches", "batch_size", "window_seed",
+                               "corrupt_hi", "eval_lo", "eval_hi", "corrupt_seed")}
+    kw["rf"] = rf
+    return kw
 
 
 def _percentile(sorted_vals: list[float], q: float) -> float:
@@ -67,30 +102,40 @@ def paired_cluster_bootstrap_ci(cluster_diff_bits: list[float], cluster_n: list[
 
 
 @torch.no_grad()
-def far_source_probe(model, eval_arr, keep_mask, *, n_batches: int = 96,
+def far_source_probe(model, eval_arr, keep_mask, *, rf: int,
+                     n_batches: int = 96,
                      batch_size: int = 16, window_seed: int = 2,
                      corrupt_hi: int = DEFAULT_CORRUPT_HI,
                      eval_lo: int = DEFAULT_EVAL_LO, eval_hi: int = DEFAULT_EVAL_HI,
-                     rf: int = 0, corrupt_seed: int = 2634,
+                     corrupt_seed: int = 2634,
                      device: str = "cuda") -> dict:
     """毁源式窗外源敏感度探针（见模块文档）。
 
     `rf` = 主干注意力在本配置下的**有效感受野**（位置数）= `n_layers·(window−1)`：
     L 层窗口 w 的因果注意力，第 i 行的表征可以**跨层多跳**地看到 `[i−L(w−1), i]`
-    （实测：L=2/w=16 时突触宽度恰为 30 行，第 64+30 行起对前缀修改逐位不敏感）。
+    （`rf_scan.py` 对 canonical 配置实测：第 244 行起对前缀修改**逐位**不敏感）。
     ⇒ 被评行必须选在 `eval_lo − rf ≥ corrupt_hi`，否则被毁前缀会**经注意力**（而非
     通道）传到被评行，前提①就不成立。本函数对该条件做硬断言。
+
+    **`rf` 是必填关键字参数**（无默认值）：默认 0 会让断言退化成恒真式——这正是本实验
+    一次真实事故（见 `probe_kwargs` 的文档）。它只是**保守**条件：只要被毁前缀对多层
+    多跳注意力不可达，无论实际可达半径是多少，前提①都成立。
 
     返回 `ce_clean` / `ce_corrupt`（bits/byte，只算被评行）/ `delta_bpc_far` /
     逐簇配对 bootstrap CI / `max_abs_logit_diff_on_eval_rows`（无通道臂必须为 0）/
     以及 `ce_clean` 的按行剖面（形状描述，不外推）。
     """
     T = model.cfg.seq_len
+    if rf <= 0:
+        raise ValueError(
+            f"rf 必须 > 0（收到 {rf}）：rf=0 会让下面的泄漏断言退化成恒真式"
+            "——用 `probe_kwargs(cfg)` 派生 rf，不要手填")
     assert 0 < corrupt_hi <= eval_lo <= eval_hi <= T, \
         f"布局非法：corrupt_hi={corrupt_hi} eval=[{eval_lo},{eval_hi}) T={T}"
     assert eval_lo - rf >= corrupt_hi, (
         f"布局泄漏：被评行起点 {eval_lo} 减去感受野 {rf} 仍小于被毁前缀末端 {corrupt_hi}"
-        f"⇒ 被毁前缀经 L 层多跳注意力可达（不是通道搬来的）")
+        f"⇒ 被毁前缀经 L 层多跳注意力可达（不是通道搬来的）；当前模型 L={model.cfg.n_layers}"
+        f"、T={T} ⇒ 需要 eval_lo ≥ {corrupt_hi + rf}")
     rows = list(range(eval_lo, eval_hi))          # 行 i 预测 token i+1
     # 第一层的直接可见集也必须完全落在未毁区（冗余校验，防掩码语义被改）
     if keep_mask is not None:
@@ -150,6 +195,7 @@ def far_source_probe(model, eval_arr, keep_mask, *, n_batches: int = 96,
         "layout": {"corrupt_prefix": [0, corrupt_hi],
                    "eval_rows": [eval_lo, eval_hi],
                    "receptive_field_positions": rf,
+                   "required_min_eval_lo": corrupt_hi + rf,
                    "min_distance_of_corrupted_prefix_from_eval_rows": eval_lo - corrupt_hi,
                    "note": ("被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 "
                             "(eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；"

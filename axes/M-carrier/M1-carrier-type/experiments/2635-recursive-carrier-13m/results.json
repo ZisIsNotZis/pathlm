@@ -136,10 +136,21 @@
       "dump_stack_secs": 150
     },
     "steptime_measured": {
-      "source": "2635/smoke/steps300（本实验 300 步冒烟；稳态窗 step 200→299）",
-      "ms_per_step_steady": null,
-      "est_min_3000": null,
-      "note": "由 smoke/steps300/<arm>/train_log.jsonl 的 step 200→299 窗口重算后回填"
+      "source": "2635/smoke/steps300（本实验 300 步冒烟；稳态窗 step 200→299；先测步时再定预算，SCHEMA §17.8）",
+      "ms_per_step_steady": {
+        "stock": 42.4,
+        "linear": 127.3
+      },
+      "est_min_3000_from_smoke": {
+        "stock": 2.12,
+        "linear": 6.36
+      },
+      "actual_train_wall_minutes": {
+        "stock": 2.56,
+        "linear": 4.43
+      },
+      "caliber_note": "两套数并存且口径不同：① 冒烟稳态外推（ms/step × 3000）② train/<arm>/results.json 的**实测墙钟**（含 torch 导入/数据加载启动开销）。linear 臂实测墙钟**低于**外推，因为发散步上 62% 的步被梯度门 `continue` 掉（那些步同时跳过逐 200 步的 telemetry/日志 CPU 开销），且两次测量的共享卡占用不同；两套数都不作跨臂速度结论。",
+      "note": "本格未用步时做任何判据；只用于定预算与解释墙钟"
     }
   },
   "checkpoints": {
@@ -2163,7 +2174,7 @@
     "c1_note": "停摆门（stall_gate.py）判定：原始报告 stall_report_linear.json 的 status=stalled（该门判定 = 日志 mtime 冻住 ≥180s 且进程仍活）；**诊断显示这是「数值发散 → 梯度门跳过 → 日志停写」的仪器假象**，进程实际跑完了 3000 步（grad_skips + 有效步数 = 3000 对账通过）；预登记判据①的字面口径（日志每 200 步推进）仍计为**不通过**，质量腿读数只能作「发散步」参考、不构成线性载体质量结论（见 stall_diagnosis）"
   },
   "cost": {
-    "wall_minutes_total_eval": 0.18,
+    "wall_minutes_total_eval": 0.13,
     "train_wall_minutes": {
       "stock": 2.56,
       "linear": 4.43
@@ -2173,7 +2184,8 @@
       "stock": 1630.2,
       "linear": 2139.7
     },
-    "lock_note": "训练按臂释放锁（§20.1，臂间 ≥60s）；评测整程 <10 min 持锁"
+    "lock_note": "训练按臂取/放 /tmp/pathlm_gpu.lock、臂间 ≥60 s（§20.1）；评测因外部线长时间占锁，按 **§20.1.2 短任务插队例外** 执行：纯推理、**不取锁、不动锁目录**；前后空闲读数与自身峰值见 `lock_accounting.json`（文本口径见 analysis §20）",
+    "lock_accounting": null
   },
   "code_hashes": {
     "pathlm/depth_ar.py": "f2e72361eecc022e7ccf8a7951f6a6f9a411e12d6da9348a4d8fb70023b9440e",
@@ -2182,8 +2194,8 @@
     "tools/evalkit/carry_channel.py": "4dcd91facd60a512dcc983836fb29a7c91aad988bada1c95ada666824d226753",
     "tools/evalkit/retention.py": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502",
     "pathlm/data.py": "48e23520122a0b4591e71d0e3780dd1f34dc4a82744e14ca3414da8f43ba448a",
-    "run.py": "5298d8ea76f2c81658832750b79433145be1b7b5d424d710957056b01580c403",
+    "run.py": "991b91ab4ff2240654a7bf3e9f946c72b963c1ce3c6d96f502b5af683de283a6",
     "stall_gate.py": "9c2b81dce718604daef81f00d85be685a98d360397b34cf296e4c60565216d8c",
-    "config.json": "f6597d08784913e1eb672e2978862b89b41ed49ba593e667324d0955b11da17a"
+    "config.json": "3a1ac31630b4aca3a24752b68f9d43d4e2c89073a9e8763e53f9bb637ea55649"
   }
 }

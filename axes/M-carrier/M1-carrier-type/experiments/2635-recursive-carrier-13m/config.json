@@ -135,9 +135,20 @@
     "dump_stack_secs": 150
   },
   "steptime_measured": {
-    "source": "2635/smoke/steps300（本实验 300 步冒烟；稳态窗 step 200→299）",
-    "ms_per_step_steady": null,
-    "est_min_3000": null,
-    "note": "由 smoke/steps300/<arm>/train_log.jsonl 的 step 200→299 窗口重算后回填"
+    "source": "2635/smoke/steps300（本实验 300 步冒烟；稳态窗 step 200→299；先测步时再定预算，SCHEMA §17.8）",
+    "ms_per_step_steady": {
+      "stock": 42.4,
+      "linear": 127.3
+    },
+    "est_min_3000_from_smoke": {
+      "stock": 2.12,
+      "linear": 6.36
+    },
+    "actual_train_wall_minutes": {
+      "stock": 2.56,
+      "linear": 4.43
+    },
+    "caliber_note": "两套数并存且口径不同：① 冒烟稳态外推（ms/step × 3000）② train/<arm>/results.json 的**实测墙钟**（含 torch 导入/数据加载启动开销）。linear 臂实测墙钟**低于**外推，因为发散步上 62% 的步被梯度门 `continue` 掉（那些步同时跳过逐 200 步的 telemetry/日志 CPU 开销），且两次测量的共享卡占用不同；两套数都不作跨臂速度结论。",
+    "note": "本格未用步时做任何判据；只用于定预算与解释墙钟"
   }
 }

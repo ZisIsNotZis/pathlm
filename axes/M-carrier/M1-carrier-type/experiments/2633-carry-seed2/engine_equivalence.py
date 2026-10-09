@@ -5,16 +5,24 @@
 （本线执行期间确实出现过）。文件哈希只说明「字节是否一样」，回答不了「换了字节之后，
 **本实验用到的那条路径**行为是否一样」。
 
-做法：把 `HEAD` 提交版的 `pathlm/` 整包解到临时目录、以独立包名 `old_pathlm` 导入，
-与本实验的三档配置（`carry_rule` ∈ {none, plain, delta}，dense + topology=sequential +
-窗口 16 + 锚 0，13M 主干）各建一个模型：
+**两层覆盖**（复核 P1-3：只覆盖 `pathlm/**` 不够，训练脚本也会漂移）：
 
-1. 同 seed 建两个版本 ⇒ **参数量与参数张量逐位相同**（构造层等价）；
-2. 把同一份 `state_dict` 装进两版模型 ⇒ 固定输入上 **logits 逐位相同**（前向等价）；
-3. 结论落 `engine_equivalence.json`；`bitwise_equivalent_on_this_experiments_configs`
-   为假 ⇒ `equality_vs_2631.compare()` 判 `reuse_rejected`（不许拿「换过引擎」的臂当对照）。
+1. **`pathlm/**`（前向）**：把 `HEAD` 提交版的 `pathlm/` 整包解到临时目录、以独立包名
+   `old_pathlm` 导入，与本实验三档配置（`carry_rule` ∈ {none, plain, delta}，dense +
+   topology=sequential + 窗口 16 + 锚 0，13M 主干）各建一个模型：同 seed ⇒ **参数量与参数
+   张量逐位相同**；同一份 `state_dict` 装进两版 ⇒ 固定输入上 **logits 逐位相同**。
+2. **`train_depth_ar.py`（训练循环）**：`trainer_loss_sequence_equivalence()` 用 `HEAD`
+   版脚本与**工作树**版脚本各跑 N 步（同 seed、同合成数据、同配方），逐字段比
+   `train_log.jsonl`（除墙钟 `min`）⇒ 训练循环/loss 归一/数据顺序/落盘路径逐位一致。
 
-用法：python3 engine_equivalence.py        # 退出码 0 = 等价
+结论落 `engine_equivalence.json`。`equality_vs_2631.compare()` 的 verdict：
+- 两层都过 ⇒ `reuse_ok`；
+- 只有前向过、训练脚本这一层**未证**（例如工作树版本跑不起来） ⇒ `reuse_ok_pathlm_only`
+  （**降级声明**，必须如实写进 analysis/MODEL）；
+- 前向不过 ⇒ `reuse_rejected`。
+
+用法：python3 engine_equivalence.py            # CPU（前向层）+ GPU（训练脚本层，~1 min）
+      python3 engine_equivalence.py --no-trainer   # 只跑前向层
 """
 
 from __future__ import annotations
@@ -26,6 +34,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 
 import torch
 
@@ -58,7 +67,87 @@ def _extract_head_package(dst: str) -> str:
     return pkg
 
 
-def check(write: bool = True) -> dict:
+#: 训练脚本层的比较：只比这些字段（`min` 是墙钟 ⇒ 排除）
+_TRAINER_LOG_FIELDS = ("step", "loss", "gnorm", "aux_w", "final_w", "window_mask",
+                       "synth_answer_ce", "synth_chance_ce")
+
+
+def trainer_loss_sequence_equivalence(steps: int = 20, *, seed: int = 0,
+                                      timeout_s: int = 300) -> dict:
+    """`HEAD` 版 `train_depth_ar.py` vs **工作树**版：同 seed/同数据/同配方跑 N 步。
+
+    判定 = 两份 `train_log.jsonl` 在这些字段上**逐字段逐值相同**（排除墙钟 `min`）。
+    这是训练循环（loss 归一、数据顺序、梯度门、落盘）的**行为**等价证据——文件哈希被
+    并行线的未提交改动打断时，这一层才能回答「换了字节之后训练行为是否一样」。
+
+    需要 GPU（`train_depth_ar.py` 无条件 `.cuda()`）：属于 §20.1.2 的短任务（~1 min、<1 GB）。
+    """
+    base_flags = ["--d", "32", "--layers", "2", "--heads", "2", "--mlp-mult", "2",
+                  "--seq-len", "64", "--dense", "--topology", "sequential",
+                  "--steps", str(steps), "--batch-size", "8", "--lr", "1e-3",
+                  "--seed", str(seed), "--exit-mode", "uniform", "--eval-batches", "1",
+                  "--synth-task", "assoc-mqar", "--synth-pairs", "2",
+                  "--synth-queries", "2", "--synth-gap", "4"]
+    logs, meta = {}, {}
+    with tempfile.TemporaryDirectory() as tmp:
+        head_script = os.path.join(tmp, "train_depth_ar_head.py")
+        blob = subprocess.run(["git", "-C", ROOT, "show", "HEAD:train_depth_ar.py"],
+                              capture_output=True, text=True)
+        if blob.returncode != 0:
+            return {"verified": False, "reason": "git show HEAD:train_depth_ar.py 失败"}
+        with open(head_script, "w") as f:
+            f.write(blob.stdout)
+        for tag, script in (("head", head_script),
+                            ("working_tree", os.path.join(ROOT, "train_depth_ar.py"))):
+            out_root = os.path.join(tmp, tag)
+            t0 = time.time()
+            env = dict(os.environ)
+            env["PYTHONPATH"] = ROOT + os.pathsep + env.get("PYTHONPATH", "")
+            r = subprocess.run([sys.executable, script, tag] + base_flags
+                               + ["--out-root", out_root],
+                               cwd=ROOT, env=env, capture_output=True, text=True,
+                               timeout=timeout_s)
+            wall = round(time.time() - t0, 1)
+            logp = os.path.join(out_root, tag, "train_log.jsonl")
+            rows = []
+            if os.path.exists(logp):
+                rows = [json.loads(l) for l in open(logp) if l.strip()]
+            logs[tag] = rows
+            meta[tag] = {"returncode": r.returncode, "wall_s": wall,
+                         "n_log_lines": len(rows),
+                         "stderr_tail": (r.stderr or "")[-400:] if r.returncode else None}
+    seq_eq_keys = {}
+    ok = True
+    if len(logs["head"]) != len(logs["working_tree"]):
+        ok = False
+    diffs = []
+    for i, (a, b) in enumerate(zip(logs["head"], logs["working_tree"])):
+        for k in _TRAINER_LOG_FIELDS:
+            if a.get(k) != b.get(k):
+                diffs.append({"line": i, "field": k, "head": a.get(k),
+                              "working_tree": b.get(k)})
+        for k in ("step", "loss"):
+            seq_eq_keys.setdefault(k, []).append((a.get(k), b.get(k)))
+    if diffs:
+        ok = False
+    verified = bool(ok and meta["head"]["returncode"] == 0
+                    and meta["working_tree"]["returncode"] == 0)
+    return {
+        "verified": verified,
+        "steps": steps,
+        "compared_fields": list(_TRAINER_LOG_FIELDS),
+        "n_lines": {"head": len(logs["head"]), "working_tree": len(logs["working_tree"])},
+        "loss_sequence_head": [r.get("loss") for r in logs["head"]],
+        "loss_sequence_working_tree": [r.get("loss") for r in logs["working_tree"]],
+        "n_field_diffs": len(diffs),
+        "field_diffs": diffs[:10],
+        "runs": meta,
+        "note": ("训练脚本层的行为等价证据；需要 GPU（§20.1.2 短任务例外，~1 min、<1 GB）。"
+                 "`working_tree.returncode != 0` ⇒ 只能降级声明（reuse_ok_pathlm_only）"),
+    }
+
+
+def check(write: bool = True, with_trainer: bool = True) -> dict:
     """跑等价测试；`write=False` 时不落盘（单测用，避免测试改写已入账产物）。
 
     `out` 键名为 "configs" 的历史拼写保留（它就是 `RULES` 的三档）。
@@ -107,24 +196,33 @@ def check(write: bool = True) -> dict:
             }
     out["bitwise_equivalent_on_this_experiments_configs"] = all(
         v["bitwise_equal_forward"] and v["n_params_same"] for v in out["per_rule"].values())
-    out["note"] = ("工作树引擎与 HEAD 提交版引擎在**本实验用到的**三档配置上逐位等价；"
-                   "这只覆盖本实验的配置，不代表两版在所有配置上等价")
+    out["forward_layer_ok"] = out["bitwise_equivalent_on_this_experiments_configs"]
+    if with_trainer:
+        out["trainer"] = trainer_loss_sequence_equivalence()
+    out["trainer_layer_ok"] = bool((out.get("trainer") or {}).get("verified"))
+    out["coverage"] = ("pathlm/**（逐位 logits）+ train_depth_ar.py（逐字段 loss 序列）"
+                       if out["trainer_layer_ok"]
+                       else "仅 pathlm/**（训练脚本层未证等价 ⇒ 声明降级）")
+    out["all_layers_ok"] = bool(out["forward_layer_ok"] and out["trainer_layer_ok"])
+    out["note"] = ("工作树与 HEAD 提交版在**本实验用到的**配置上逐位等价（前向三档 + 训练脚本"
+                   " 20 步 loss 序列）；这只覆盖本实验的配置，不代表两版在所有配置上等价")
     return out
 
 
 def main() -> int:
-    r = check(write=True)
+    r = check(write=True, with_trainer="--no-trainer" not in sys.argv)
     for rule, v in r["per_rule"].items():
         print(f"{rule:6s} params {v['n_params_head']}/{v['n_params_working_tree']} "
               f"bitwise_params={v['params_bitwise_same_at_same_seed']} "
               f"max|Δlogit|={v['max_abs_logit_diff_same_weights']:.3e}")
-    print("等价:", r["bitwise_equivalent_on_this_experiments_configs"])
-    if write:
-        out = os.path.join(HERE, "engine_equivalence.json")
-        with open(out, "w") as f:
-            json.dump(r, f, indent=2, ensure_ascii=False)
-            f.write("\n")
-    return 0 if r["bitwise_equivalent_on_this_experiments_configs"] else 1
+    print("前向层等价:", r["forward_layer_ok"], "| 训练脚本层等价:", r["trainer_layer_ok"])
+    print("覆盖:", r["coverage"])
+    out = os.path.join(HERE, "engine_equivalence.json")
+    with open(out, "w") as f:
+        json.dump(r, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    print("落盘:", out)
+    return 0 if r["all_layers_ok"] else 1
 
 
 if __name__ == "__main__":

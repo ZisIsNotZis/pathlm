@@ -71,6 +71,15 @@ def load_arm(spec: dict, mcfg: dict, vocab: int, device: str):
                    "n_params": sum(p.numel() for p in model.parameters())}
 
 
+def _lock_accounting() -> dict | None:
+    """读评测驱动写的 `lock_accounting.json`（§20 记账的结构化产物；缺则 None）。"""
+    p = os.path.join(HERE, "lock_accounting.json")
+    if not os.path.exists(p):
+        return None
+    with open(p) as f:
+        return json.load(f)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=os.path.join(HERE, "config.json"))
@@ -97,7 +106,9 @@ def main():
         log.append({"t": round(time.time() - t0, 2), "msg": msg})
 
     note("加载 enwik8 尾段 + 两臂（sha256 断言）")
-    _, eval_arr, vocab = load_enwik8_full(".tmp/enwik8", "data/enwik8_full.npz")
+    # 路径锚到仓库根（否则从实验目录直接跑会找不到 data/ 缓存）
+    _, eval_arr, vocab = load_enwik8_full(os.path.join(ROOT, ".tmp/enwik8"),
+                                         os.path.join(ROOT, "data/enwik8_full.npz"))
     arms, ck = {}, {}
     for spec in cfg["arms"]:
         arms[spec["name"]], ck[spec["name"]] = load_arm(spec, cfg["model"], vocab, dev)
@@ -286,7 +297,8 @@ def main():
         "train_wall_minutes": {n: train_meta[n]["wall_minutes"] for n in arms},
         "eval_peak_gpu_mem_mb": round(torch.cuda.max_memory_allocated() / 2 ** 20, 1),
         "train_peak_gpu_mem_mb": {n: train_meta[n]["peak_gpu_mem_mb"] for n in arms},
-        "lock_note": "训练按臂释放锁（§20.1，臂间 ≥60s）；评测整程 <10 min 持锁",
+        "lock_note": ("训练按臂取/放 /tmp/pathlm_gpu.lock、臂间 ≥60 s（§20.1）；评测因外部线长时间占锁，按 **§20.1.2 短任务插队例外** 执行：纯推理、**不取锁、不动锁目录**；前后空闲读数与自身峰值见 `lock_accounting.json`（文本口径见 analysis §20）"),
+        "lock_accounting": _lock_accounting(),
     }
     results["code_hashes"] = {
         rel: sha256_file(os.path.join(ROOT, rel)) for rel in

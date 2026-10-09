@@ -39,7 +39,7 @@
     }
   },
   "implementation_identical": true,
-  "implementation_note": "① = HEAD 提交版哈希 == 2631 运行时记录；② = 工作树 vs HEAD 在本实验三档配置上的语义等价（逐位 logits）",
+  "implementation_note": "① = HEAD 提交版哈希 == 2631 运行时记录（五个引擎/仪器文件）；② = 工作树 vs HEAD 的**行为**等价，两层覆盖：`pathlm/**`（三档配置逐位 logits）+ `train_depth_ar.py`（20 步逐字段 loss 序列）。只覆盖本实验用到的配置。",
   "working_tree_drift_files": [
     "pathlm/depth_ar.py",
     "train_depth_ar.py"
@@ -81,9 +81,56 @@
       }
     },
     "bitwise_equivalent_on_this_experiments_configs": true,
-    "note": "工作树引擎与 HEAD 提交版引擎在**本实验用到的**三档配置上逐位等价；这只覆盖本实验的配置，不代表两版在所有配置上等价"
+    "forward_layer_ok": true,
+    "trainer": {
+      "verified": true,
+      "steps": 20,
+      "compared_fields": [
+        "step",
+        "loss",
+        "gnorm",
+        "aux_w",
+        "final_w",
+        "window_mask",
+        "synth_answer_ce",
+        "synth_chance_ce"
+      ],
+      "n_lines": {
+        "head": 2,
+        "working_tree": 2
+      },
+      "loss_sequence_head": [
+        4.5637,
+        4.4647
+      ],
+      "loss_sequence_working_tree": [
+        4.5637,
+        4.4647
+      ],
+      "n_field_diffs": 0,
+      "field_diffs": [],
+      "runs": {
+        "head": {
+          "returncode": 0,
+          "wall_s": 6.7,
+          "n_log_lines": 2,
+          "stderr_tail": null
+        },
+        "working_tree": {
+          "returncode": 0,
+          "wall_s": 6.4,
+          "n_log_lines": 2,
+          "stderr_tail": null
+        }
+      },
+      "note": "训练脚本层的行为等价证据；需要 GPU（§20.1.2 短任务例外，~1 min、<1 GB）。`working_tree.returncode != 0` ⇒ 只能降级声明（reuse_ok_pathlm_only）"
+    },
+    "trainer_layer_ok": true,
+    "coverage": "pathlm/**（逐位 logits）+ train_depth_ar.py（逐字段 loss 序列）",
+    "all_layers_ok": true,
+    "note": "工作树与 HEAD 提交版在**本实验用到的**配置上逐位等价（前向三档 + 训练脚本 20 步 loss 序列）；这只覆盖本实验的配置，不代表两版在所有配置上等价"
   },
-  "git_head": "1a1f117f193eaf5e760b74e98fc0f23f19fa408d",
+  "git_head": "dc1c774bb32e58bb9aa11454a30129f861d298d5",
   "shared_config": {
     "device": {
       "2633": "cuda",
@@ -339,5 +386,7 @@
     "delta_s1": "7487540111e92cc8d065aa3ee590d7c967da3e4d68406355906b4c109049424e"
   },
   "caliber_note": "seed0/1 = 2631 的历史同配置对照（同一实现 sha256 + 同 token 预算 98.3M + 同评测仪器）；seed2 = 本次新训；七/九臂同快照口径（12k 步）",
-  "verdict": "reuse_ok"
+  "verdict": "reuse_ok",
+  "reuse_scope": "pathlm/** + train_depth_ar.py（两层行为等价）",
+  "runtime_version_ledger": "axes/M-carrier/M1-carrier-type/experiments/2633-carry-seed2/runtime_version_ledger.json"
 }

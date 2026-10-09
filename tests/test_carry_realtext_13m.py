@@ -31,6 +31,7 @@ from pathlm.depth_ar import (DepthARConfig, DepthARModel,          # noqa: E402
                              window_anchor_keep_mask)
 from tools.evalkit.retention import masked_bpc                     # noqa: E402
 import realtext_probe as rp                                        # noqa: E402
+import needle_stats as ns                                          # noqa: E402
 
 CFG = json.load(open(os.path.join(EXP, "config.json")))
 T = 128                     # 测试用小 T（比主干 256 小 ⇒ 只测语义，不测尺度）
@@ -167,6 +168,125 @@ def test_paired_cluster_bootstrap_positive_shift():
 def test_paired_cluster_bootstrap_rejects_mismatch():
     with pytest.raises(ValueError):
         rp.paired_cluster_bootstrap_ci([1.0, 2.0], [10])
+
+
+# ---------------- ⑥ rf 必填 / probe_kwargs 接线（复核 P1-1） ----------------
+
+def test_far_source_probe_requires_rf():
+    """`rf` 是必填关键字参数：漏传必须报错（默认 0 会让泄漏断言退化成恒真式）。"""
+    keep = window_anchor_keep_mask(T, WINDOW, 0)
+    m = _model(None)
+    with pytest.raises(TypeError):
+        rp.far_source_probe(m, _eval_arr(), keep, n_batches=1, batch_size=2)
+    with pytest.raises(ValueError, match="rf"):
+        rp.far_source_probe(m, _eval_arr(), keep, rf=0, n_batches=1, batch_size=2)
+
+
+def test_probe_kwargs_derives_rf_and_cross_checks_config():
+    pkw = rp.probe_kwargs(CFG)
+    assert pkw["rf"] == CFG["model"]["n_layers"] * (CFG["model"]["train_window"] - 1) == 180
+    assert pkw["eval_lo"] - pkw["rf"] >= pkw["corrupt_hi"]
+    # config 里的 rf 与模型规格不一致 ⇒ 报错（不接受手工填空）
+    bad = json.loads(json.dumps(CFG))
+    bad["eval"]["probe"]["rf"] = 999
+    with pytest.raises(ValueError, match="rf"):
+        rp.probe_kwargs(bad)
+    # 无窗模型：本仪器无定义
+    nowin = json.loads(json.dumps(CFG))
+    nowin["model"]["train_window"] = 0
+    nowin["eval"]["probe"].pop("rf", None)
+    with pytest.raises(ValueError, match="train_window"):
+        rp.probe_kwargs(nowin)
+
+
+def test_module_defaults_are_leak_free_for_canonical_rf():
+    rf = CFG["model"]["n_layers"] * (CFG["model"]["train_window"] - 1)
+    assert rp.DEFAULT_EVAL_LO - rf >= rp.DEFAULT_CORRUPT_HI
+    # 且 canonical 布局必须与 config 记录的一致
+    assert (rp.DEFAULT_CORRUPT_HI, rp.DEFAULT_EVAL_LO, rp.DEFAULT_EVAL_HI) == (
+        CFG["eval"]["probe"]["corrupt_hi"], CFG["eval"]["probe"]["eval_lo"],
+        CFG["eval"]["probe"]["eval_hi"])
+
+
+def test_run_py_calls_probe_only_via_probe_kwargs():
+    """**接线钉住**：run.py 的每次 `far_source_probe(` 都必须吃 `**pkw`（含 rf）。
+
+    这条测试的理由：rf 曾被默认值 0 漏传 ⇒ 硬断言退化成恒真。断言 rf 必填之外，
+    再把「调用点接线」也钉住（两个调用点都要）。
+    """
+    src = open(os.path.join(EXP, "run.py")).read()
+    assert "rp.probe_kwargs(cfg)" in src
+    n_calls = src.count("far_source_probe(")
+    n_pkw = src.count("**pkw")
+    assert n_calls == 2 and n_pkw >= n_calls, f"calls={n_calls} pkw={n_pkw}"
+
+
+def test_rf_scan_artifact_is_consistent():
+    p = os.path.join(EXP, "rf_scan.json")
+    if not os.path.exists(p):
+        pytest.skip("rf_scan.json 尚未生成")
+    r = json.load(open(p))
+    assert r["all_scan_ok"] is True
+    canon = r["scans"]["canonical_T256_L12_w16_corrupt64"]
+    assert canon["first_insensitive_row"] >= canon["predicted_first_insensitive_row"] - 1
+    assert canon["max_abs_logit_diff_at_244"] == 0.0
+    assert r["leaked_layout_is_sensitive"] is True
+
+
+# ---------------- ⑦ needle 统计层（复核 P1-2 / P1-4） ----------------
+
+def _needle(hits: list[int]) -> list[dict]:
+    return [{"bucket": "beyond", "hit": h, "dist": 200 + i} for i, h in enumerate(hits)]
+
+
+def test_beyond_above_floor_direction_and_can_pass():
+    """判据④必须**可达**：构造一个「植入明显高于地板」的输入，它必须通过。"""
+    ok = ns.beyond_above_floor(planted_hits=600, planted_n=1000,
+                               control_hits=500, control_n=1000)
+    assert ok["passes"] is True and ok["delta_pp"] == pytest.approx(10.0, abs=0.01)
+    assert ok["diff_ci_95"][0] > 0
+    null = ns.beyond_above_floor(500, 1000, 500, 1000)
+    assert null["passes"] is False and null["delta_pp"] == 0.0
+    worse = ns.beyond_above_floor(400, 1000, 500, 1000)
+    assert worse["passes"] is False and worse["delta_pp"] < 0
+    # 旧实现（把 planted 传在 a、control 传在 b）在同一份「应通过」输入上会判否
+    # ⇒ 这条断言把「方向传反 ⇒ 判据永不可达」这个 bug 钉住。
+    from tools.evalkit.carry_channel import two_proportion
+    reversed_old = two_proportion(600, 1000, 500, 1000)["diff_ci_95"][0]
+    assert reversed_old < 0
+
+
+def test_hard_index_sets_are_shared_across_arms():
+    a = _needle([0, 1, 1, 0, 1])          # control 失败索引 {0, 3}
+    b = _needle([0, 0, 1, 0, 1])          # control 失败索引 {0, 1, 3}
+    sets = ns.hard_index_sets({"a": a, "b": b})
+    assert sets["intersection"] == [0, 3]
+    assert sets["union"] == [0, 1, 3]
+    assert sets["per_arm_control_miss"] == {"a": 2, "b": 3}
+    with pytest.raises(ValueError):
+        ns.hard_index_sets({"a": a, "b": b[:3]})
+
+
+def test_recall_on_indices_is_index_aligned():
+    """同一索引集下两臂的 n 必须相同（否则跨臂比较不可比），hits 各按自己的记录算。"""
+    a = _needle([1, 0, 1, 1, 0])
+    b = _needle([0, 0, 1, 0, 0])
+    idx = [0, 2, 3]
+    ra, rb = ns.recall_on_indices(a, idx), ns.recall_on_indices(b, idx)
+    assert ra["n"] == rb["n"] == 3
+    assert (ra["hits"], ra["recall"]) == (3, 1.0)
+    assert (rb["hits"], rb["recall"]) == (1, 0.333333)
+    assert ns.recall_on_indices(a, [])["n"] == 0
+
+
+def test_judge_aggregation_rule_is_per_intervention_arm():
+    planted = {"none_s0": {"hits": 10, "n": 100}, "delta_s0": {"hits": 20, "n": 100}}
+    control = {"none_s0": {"hits": 10, "n": 100}, "delta_s0": {"hits": 10, "n": 100}}
+    j = ns.judge(planted, control, ("delta_s0",))
+    assert j["per_arm"]["delta_s0"]["passes"] is True
+    assert j["per_arm"]["none_s0"]["passes"] is False
+    assert j["intervention_arms_all_pass"] is True and j["all_arms_pass"] is False
+    assert j["any_arm_passes"] is True
 
 
 # ---------------- ⑤ bpc 仪器对齐与配置不变量 ----------------

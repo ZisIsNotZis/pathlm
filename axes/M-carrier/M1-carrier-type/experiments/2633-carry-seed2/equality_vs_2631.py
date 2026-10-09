@@ -76,7 +76,7 @@ def _head_sha(rel: str) -> str | None:
 
 
 def compare(cfg: dict | None = None, with_equivalence: bool = True,
-            write: bool = True) -> dict:
+            write: bool = True, recompute_trainer: bool | None = None) -> dict:
     """逐项对照；返回报告（同时落盘 `equality_report.json`）。"""
     if cfg is None:
         cfg = json.load(open(os.path.join(HERE, "config.json")))
@@ -97,14 +97,25 @@ def compare(cfg: dict | None = None, with_equivalence: bool = True,
         impl[rel] = {"head": head, "working_tree": work, "at_2631_run": then,
                      "head_identical_to_2631": bool(same),
                      "working_tree_differs_from_head": bool(drift)}
+    if recompute_trainer is None:
+        recompute_trainer = write          # 生成证据（脚本入口）时重算；测试（write=False）引用已入账产物
     equiv = None
     if with_equivalence and impl_ok:
         import engine_equivalence
-        equiv = engine_equivalence.check(write=write)
-        impl_ok = impl_ok and equiv["bitwise_equivalent_on_this_experiments_configs"]
+        if recompute_trainer:
+            equiv = engine_equivalence.check(write=write, with_trainer=True)
+        else:
+            # 只读引用已入账的 `engine_equivalence.json`（含训练脚本层），不跑 GPU
+            p_ee = os.path.join(HERE, "engine_equivalence.json")
+            equiv = json.load(open(p_ee)) if os.path.exists(p_ee) else None
+            if equiv is None:
+                equiv = engine_equivalence.check(write=False, with_trainer=False)
+        impl_ok = impl_ok and bool(equiv.get("forward_layer_ok"))
+        trainer_ok = bool(equiv.get("trainer_layer_ok"))
     impl_sha = subprocess.run(["git", "-C", ROOT, "rev-parse", "HEAD"],
                               capture_output=True, text=True).stdout.strip()
 
+    trainer_ok = bool((equiv or {}).get("trainer_layer_ok"))
     # ② 配置层
     shared = {k: {"2633": cfg.get(k), "2631": cfg2631.get(k),
                   "equal": cfg.get(k) == cfg2631.get(k)} for k in SHARED_CFG_KEYS}
@@ -137,8 +148,10 @@ def compare(cfg: dict | None = None, with_equivalence: bool = True,
         "target": os.path.relpath(RES, ROOT),
         "implementation": impl,
         "implementation_identical": bool(impl_ok),
-        "implementation_note": ("① = HEAD 提交版哈希 == 2631 运行时记录；"
-                                "② = 工作树 vs HEAD 在本实验三档配置上的语义等价（逐位 logits）"),
+        "implementation_note": ("① = HEAD 提交版哈希 == 2631 运行时记录（五个引擎/仪器文件）；"
+                                "② = 工作树 vs HEAD 的**行为**等价，两层覆盖："
+                                "`pathlm/**`（三档配置逐位 logits）+ `train_depth_ar.py`"
+                                "（20 步逐字段 loss 序列）。只覆盖本实验用到的配置。"),
         "working_tree_drift_files": tree_drift,
         "engine_equivalence_working_tree_vs_head": equiv,
         "git_head": impl_sha,
@@ -151,8 +164,14 @@ def compare(cfg: dict | None = None, with_equivalence: bool = True,
         "reused_arm_checkpoint_sha256_at_2631_run": ck_hashes,
         "caliber_note": ("seed0/1 = 2631 的历史同配置对照（同一实现 sha256 + 同 token 预算 "
                          "98.3M + 同评测仪器）；seed2 = 本次新训；七/九臂同快照口径（12k 步）"),
-        "verdict": ("reuse_ok" if (impl_ok and not differing and not flag_diff)
-                    else "reuse_rejected"),
+        "verdict": ("reuse_ok" if (impl_ok and not differing and not flag_diff and trainer_ok)
+                    else ("reuse_ok_pathlm_only"
+                          if (impl_ok and not differing and not flag_diff)
+                          else "reuse_rejected")),
+        "reuse_scope": ("pathlm/** + train_depth_ar.py（两层行为等价）" if trainer_ok
+                        else "仅 pathlm/**（训练脚本层未证等价 ⇒ 声明降级）"),
+        "runtime_version_ledger": os.path.relpath(
+            os.path.join(HERE, "runtime_version_ledger.json"), ROOT),
     }
     if write:
         # `write=False` 供单测使用：测试**不得**改写已入账的产物（只读复核）
@@ -163,12 +182,12 @@ def compare(cfg: dict | None = None, with_equivalence: bool = True,
 
 
 def main() -> int:
-    r = compare()
+    r = compare(recompute_trainer=True)
     print("实现层逐文件相同:", r["implementation_identical"])
     print("配置层不同字段:", r["differing_fields"] or "无")
     print("训练配方不同的 flag:", r["train_recipe_differing_flags"] or "无")
-    print("verdict:", r["verdict"])
-    return 0 if r["verdict"] == "reuse_ok" else 1
+    print("verdict:", r["verdict"], "| 复用范围:", r["reuse_scope"])
+    return 0 if r["verdict"].startswith("reuse_ok") else 1
 
 
 if __name__ == "__main__":

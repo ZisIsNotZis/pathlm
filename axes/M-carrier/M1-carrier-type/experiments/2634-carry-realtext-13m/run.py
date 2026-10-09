@@ -37,10 +37,10 @@ from pathlm.depth_ar import (DepthARConfig, DepthARModel,          # noqa: E402
                              window_anchor_keep_mask)
 from tools.evalkit.retention import (needle_recall, needle_summary,  # noqa: E402
                                      phrase_needle_batch)
-from tools.evalkit.carry_channel import two_proportion               # noqa: E402
 from tools.evalkit.carry_channel import (loss_slope, param_equality,  # noqa: E402
                                          trunk_equality)
 import realtext_probe as rp                                        # noqa: E402
+import needle_stats as ns                                          # noqa: E402
 
 
 def sha256_file(path: str) -> str:
@@ -81,6 +81,15 @@ def load_arm(name: str, spec: dict, mcfg: dict, vocab: int, device: str):
                    "n_params": sum(p.numel() for p in model.parameters())}
 
 
+def _lock_accounting() -> dict | None:
+    """读评测驱动写的 `lock_accounting.json`（§20 记账的结构化产物；缺则 None）。"""
+    p = os.path.join(HERE, "lock_accounting.json")
+    if not os.path.exists(p):
+        return None
+    with open(p) as f:
+        return json.load(f)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default=os.path.join(HERE, "config.json"))
@@ -111,7 +120,9 @@ def main():
         log.append({"t": round(time.time() - t0, 2), "msg": msg})
 
     note("加载 enwik8（尾段 10M 字符做评测；训练侧由 train_depth_ar.py 自行加载）")
-    _, eval_arr, vocab = load_enwik8_full(".tmp/enwik8", "data/enwik8_full.npz")
+    # 路径锚到仓库根（否则从实验目录直接跑会找不到 data/ 缓存；复核期踩到过一次）
+    _, eval_arr, vocab = load_enwik8_full(os.path.join(ROOT, ".tmp/enwik8"),
+                                         os.path.join(ROOT, "data/enwik8_full.npz"))
     assert vocab == cfg["data"]["vocab_size"], f"vocab {vocab} != {cfg['data']['vocab_size']}"
 
     note("加载四臂（sha256 断言）")
@@ -183,17 +194,20 @@ def main():
              f"通道消融={row['bpc_win16_channel_off']}")
 
     # ---------------- ③ 主判据：毁源式窗外源敏感度探针 ----------------
-    note(f"判据①③：Δbpc_far 探针（毁前缀 [0,{ep['corrupt_hi']})，被评行 "
-         f"[{ep['eval_lo']},{ep['eval_hi']})，{ep['n_batches']}×{ep['batch_size']}）")
+    # **接线纪律**（复核 P1-1）：kwargs 一律经 `rp.probe_kwargs(cfg)` 生成——`rf` 由模型规格
+    # 派生并与 config 交叉校验；`far_source_probe` 的 `rf` 是必填关键字参数（无默认值），
+    # 所以「忘记传 rf ⇒ 断言退化成恒真」在结构上不可能再发生。
+    pkw = rp.probe_kwargs(cfg)
+    assert "rf" in pkw and pkw["rf"] == cfg["model"]["n_layers"] * (cfg["model"]["train_window"] - 1)
+    note(f"判据①③：Δbpc_far 探针（毁前缀 [0,{pkw['corrupt_hi']})，被评行 "
+         f"[{pkw['eval_lo']},{pkw['eval_hi']})，rf={pkw['rf']}，"
+         f"{pkw['n_batches']}×{pkw['batch_size']}）")
     probe = {}
     for name, model in arms.items():
-        row = rp.far_source_probe(model, eval_arr, keep, **{
-            k: ep[k] for k in ("n_batches", "batch_size", "window_seed", "corrupt_hi",
-                               "eval_lo", "eval_hi", "corrupt_seed")}, device=dev)
+        row = rp.far_source_probe(model, eval_arr, keep, **pkw, device=dev)
         with rp.channel_off(model):
-            row["with_channel_off"] = rp.far_source_probe(model, eval_arr, keep, **{
-                k: ep[k] for k in ("n_batches", "batch_size", "window_seed", "corrupt_hi",
-                                   "eval_lo", "eval_hi", "corrupt_seed")}, device=dev)
+            row["with_channel_off"] = rp.far_source_probe(model, eval_arr, keep, **pkw,
+                                                          device=dev)
         probe[name] = row
         note(f"  {name}: Δbpc_far={row['delta_bpc_far']:+.6f} "
              f"CI{row['delta_ci95_clustered']} clean={row['ce_far_clean']:.4f} "
@@ -248,28 +262,66 @@ def main():
             "beyond_by_distance_band": {b: {"recall": round(sum(v) / len(v), 6),
                                             "n": len(v)} for b, v in sorted(by_band.items())},
         }
-    # 地板之上的增量（配对：同批、同针位、同生成器序列）
-    needle["paired_beyond_vs_floor"] = {}
+    # ---- 桶内（beyond）配对读数 + **同索引**硬子集（复核 P1-2/P1-4）----
+    bplanted = {n: [r for r in records[f"{n}|planted"] if r["bucket"] == "beyond"] for n in arms}
+    bcontrol = {n: [r for r in records[f"{n}|control"] if r["bucket"] == "beyond"] for n in arms}
+    for n in arms:
+        assert len(bplanted[n]) == len(bcontrol[n]), "桶内配对长度不一致"
+    idx_sets = ns.hard_index_sets(bcontrol)
+    intervention = tuple(n for n in arms if ck[n]["carry_rule"])
+    paired = {}
     for name in arms:
-        p = [r for r in records[f"{name}|planted"] if r["bucket"] == "beyond"]
-        c = [r for r in records[f"{name}|control"] if r["bucket"] == "beyond"]
-        assert len(p) == len(c)
+        p, c = bplanted[name], bcontrol[name]
         kp, kc, n = sum(r["hit"] for r in p), sum(r["hit"] for r in c), len(p)
-        hard = [i for i, r in enumerate(c) if r["hit"] == 0]
-        needle["paired_beyond_vs_floor"][name] = {
-            "n": n, "planted_hits": kp, "control_hits": kc,
-            "planted_recall": round(kp / n, 6) if n else None,
-            "control_recall": round(kc / n, 6) if n else None,
-            "delta_pp": round(100 * (kp - kc) / n, 3) if n else None,
-            "hard_subset": {
-                "n": len(hard),
-                "planted_recall": round(sum(p[i]["hit"] for i in hard) / max(len(hard), 1), 6),
-                "note": "控制臂答不出的针（答案只能来自记忆）"},
-        }
+        row = {"n": n, "planted_hits": kp, "control_hits": kc,
+               "planted_recall": round(kp / n, 6) if n else None,
+               "control_recall": round(kc / n, 6) if n else None,
+               "delta_pp": round(100 * (kp - kc) / n, 3) if n else None,
+               "hard_subset_own_control_fail": {          # 旧口径（各臂自己的失败集）——只留作对照
+                   "n": sum(1 for r in c if r["hit"] == 0),
+                   "note": "**不作跨臂比较**（索引集逐臂不同；见 hard_subset_same_index）"},
+               "hard_subset_same_index": {
+                   "intersection": {**ns.recall_on_indices(p, idx_sets["intersection"]),
+                                    "definition": "四臂 control 全答不出（同索引）"},
+                   "union": {**ns.recall_on_indices(p, idx_sets["union"]),
+                             "definition": "至少一臂 control 答不出（同索引）"}}}
+        paired[name] = row
+    needle["paired_beyond_vs_floor"] = paired
+    needle["hard_index_sets"] = {k: v for k, v in idx_sets.items()
+                                 if k != "intersection" and k != "union"}
+    needle["hard_index_sets"]["intersection"] = idx_sets["intersection"]
+    needle["hard_index_sets"]["union"] = idx_sets["union"]
+    # **同索引**上的跨臂比较（delta vs none）：两比例差 CI（方向 = 前者 − 后者）
+    hard_cmp = {}
+    if intervention:
+        for set_name in ("intersection", "union"):
+            idx = idx_sets[set_name]
+            per_arm = {n: ns.recall_on_indices(bplanted[n], idx) for n in arms}
+            cmp_rows = {}
+            for dname in intervention:
+                none_name = dname.replace("delta", "none")
+                cmp_rows[f"{dname}_minus_{none_name}"] = ns.beyond_above_floor(
+                    per_arm[dname]["hits"], per_arm[dname]["n"],
+                    per_arm[none_name]["hits"], per_arm[none_name]["n"])
+            hard_cmp[set_name] = {"per_arm_recall": per_arm, "delta_vs_none": cmp_rows}
+    needle["hard_subset_same_index_cross_arm"] = hard_cmp
+    needle["criterion_rule"] = ("判据④ = **逐臂**：干预臂（delta）的 beyond 桶植入召回必须高于"
+                                "其配对地板、且差值 95% CI 下界 > 0；只要有一个干预臂不过 ⇒ "
+                                "该腿记「无判别力（如实报）」，不作机制结论")
+    needle["judgement"] = ns.judge(
+        {n: {"hits": paired[n]["planted_hits"], "n": paired[n]["n"]} for n in arms},
+        {n: {"hits": paired[n]["control_hits"], "n": paired[n]["n"]} for n in arms},
+        intervention)
     for name in arms:
-        r = needle["paired_beyond_vs_floor"][name]
+        r = needle["judgement"]["per_arm"][name]
+        hi = paired[name]["hard_subset_same_index"]["intersection"]
         note(f"  {name}: beyond 植入 {r['planted_recall']} vs 地板 {r['control_recall']} "
-             f"⇒ Δ={r['delta_pp']}pp（n={r['n']}，硬子集 n={r['hard_subset']['n']}）")
+             f"⇒ Δ={r['delta_pp']}pp CI{r['diff_ci_95_pp']}/pp passes={r['passes']}；"
+             f"同索引交子集 n={hi['n']} 植入召回={hi['recall']}")
+    ns_ = needle["judgement"]
+    note(f"  判据④（逐臂，干预臂 = {list(intervention)}）："
+         f"干预臂全过={ns_['intervention_arms_all_pass']} "
+         f"任一拳过={ns_['any_arm_passes']} 四臂全过={ns_['all_arms_pass']}")
 
     # ---------------- ⑤ 跨臂效应 + 本格噪声界 ----------------
     note("跨臂效应与 σ_cell（同配置换种子极差；2 样本 ⇒ 描述量、非方差上界）")
@@ -319,29 +371,31 @@ def main():
                                    ["paired_delta_bpc_ci95_bits"][0] > 0)
                      for sd in cfg["seeds"]}
     # 判据④的预登记口径 = 「主臂 beyond 召回 > 配对地板，且差值 > 二项 95% CI 半宽」。
-    # 操作化：两比例差值的 Wilson 型 CI（`two_proportion.diff_ci_95`）下界 > 0。
-    needle_transport, needle_tp = {}, {}
-    for n in arms:
-        rec = needle["paired_beyond_vs_floor"][n]
-        tp = two_proportion(rec["planted_hits"], rec["n"], rec["control_hits"], rec["n"])
-        needle_tp[n] = tp
-        needle_transport[n] = bool(tp.get("diff_ci_95", [0.0, 0.0])[0] > 0)
+    # 方向与聚合规则固化在 `needle_stats`：**逐臂**判定、方向 = 植入 − 地板（CI 下界 > 0）。
+    needle_judge = needle["judgement"]
+    needle_transport = {n: v["passes"] for n, v in needle_judge["per_arm"].items()}
     criteria = {
         "c1_premise_nonchannel_insensitive": bool(premise_ok),
         "c2_channel_transports_on_realtext": bool(all(trans.values())),
         "c3_quality_leg_channel_better": bool(all(quality_gain.values())),
-        "c4_needle_beyond_above_floor": bool(any(needle_transport.values())),
-        "c4_needle_two_proportion": needle_tp,
+        "c4_needle_beyond_above_floor_per_arm": needle_transport,
+        "c4_needle_intervention_arms_all_pass":
+            bool(needle_judge["intervention_arms_all_pass"]),
+        "c4_needle_any_arm_passes": bool(needle_judge["any_arm_passes"]),
+        "c4_needle_all_arms_pass": bool(needle_judge["all_arms_pass"]),
+        "c4_needle_verdict": needle_judge,
         "c4_note": ("该腿的判据 = 「离散答案探针（needle v3）在 beyond 桶高于配对地板，"
-                    "且差值 > 二项 95% CI 半宽」；若各臂都 ≈ 地板 ⇒ 该探针在此尺度"
-                    "**无区分力**（如实报，不作机制结论）"),
+                    "且差值（植入 − 地板）的 95% CI 下界 > 0」，**逐臂**判、干预臂（delta）"
+                    "全过才算该腿有区分力（聚合规则见 `needle_leg.criterion_rule`）。"
+                    "方向已固化：`two_proportion(control, planted)` ⇒ diff = 植入 − 地板。"),
         "c5_no_extrapolation": True,
     }
     note(f"判据① 前提（无通道臂被评行逐位不敏感）：{premise_ok}")
     note(f"判据② delta 臂 Δbpc_far>0 且>σ_far={sigma_far:.6f}：{trans}")
     note(f"判据③ 质量腿 Δbpc_win16>σ_cell={sigma_bpc:.6f}：{effects} ⇒ {quality_gain}")
     note(f"   质量腿同号={quality_gain_sign}；配对 CI 下界>0={paired_ci_pos}")
-    note(f"判据④ needle beyond 高于地板：{needle_transport}")
+    note(f"判据④ needle beyond 高于地板（逐臂）：{needle_transport} ⇒ 干预臂全过="
+         f"{needle_judge['intervention_arms_all_pass']}")
 
     # ---------------- 活性 / 训练侧读数 ----------------
     note("活性量与训练侧读数（答案行 CE 斜率不适用：真实文本无答案行 ⇒ 报 loss 斜率）")
@@ -390,7 +444,11 @@ def main():
         "n_eval_windows_bpc": eb["n_batches"] * eb["batch_size"],
         "n_probe_windows": ep["n_batches"] * ep["batch_size"],
         "n_needle_batches": vcfg["n_batches"],
-        "lock_note": "训练按臂释放锁（§20.1，臂间 ≥60s）；评测整程 <10 min 持锁",
+        "lock_note": ("训练按臂取/放 /tmp/pathlm_gpu.lock、臂间 ≥60 s（§20.1）；"
+                      "评测因外部线长时间占锁，按 **§20.1.2 短任务插队例外** 执行："
+                      "纯推理、**不取锁、不动锁目录**；前后空闲读数与自身峰值见 "
+                      "`lock_accounting.json`（本块由评测驱动写入，文本口径见 analysis §20）"),
+        "lock_accounting": _lock_accounting(),
     }
     results["code_hashes"] = {
         rel: sha256_file(os.path.join(ROOT, rel)) for rel in

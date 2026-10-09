@@ -1,36 +1,36 @@
 [    0.0s] 加载 enwik8（尾段 10M 字符做评测；训练侧由 train_depth_ar.py 自行加载）
-[    0.2s] 加载四臂（sha256 断言）
-[    1.2s]   rt_none_s0: c3f6f08a4fd1dfe9… carry=none params=13536768 block=Block
-[    2.3s]   rt_delta_s0: d92114822c09f2f7… carry=delta params=13801064 block=CarryChannelBlock
-[    3.2s]   rt_none_s1: 2bfe167c133c496f… carry=none params=13536768 block=Block
-[    4.2s]   rt_delta_s1: b3d3cdbc57266109… carry=delta params=13801064 block=CarryChannelBlock
-[    4.2s] 自检①：参数量/主干逐位/单边零起步/窗口掩码非退化
-[   12.2s]   可见对数 3976；none/delta 主干逐位=True（+264296 参数）；单边零起步={'delta_matches_none_bitwise': True}
-[   12.2s] 质量腿：bpc_win16（窗口 16/0，96×16，~391680 token）；release 口径只作诊断
-[   16.6s]   rt_none_s0: bpc_win16=1.62811 release(diag)=4.55557 通道消融=1.62811
-[   25.2s]   rt_delta_s0: bpc_win16=1.624979 release(diag)=2.0089 通道消融=4.509767
-[   29.2s]   rt_none_s1: bpc_win16=1.629093 release(diag)=4.654019 通道消融=1.629093
-[   37.6s]   rt_delta_s1: bpc_win16=1.62664 release(diag)=1.970905 通道消融=4.553643
-[   37.6s] 判据①③：Δbpc_far 探针（毁前缀 [0,64)，被评行 [244,255)，96×16）
-[   45.9s]   rt_none_s0: Δbpc_far=+0.000000 CI[0.0, 0.0] clean=1.5886 max|Δlogit|被评行=0.000e+00 | 通道消融后 Δ=+0.000000
-[   59.8s]   rt_delta_s0: Δbpc_far=+0.015784 CI[0.012621, 0.019035] clean=1.5739 max|Δlogit|被评行=8.954e+00 | 通道消融后 Δ=+0.000000
-[   68.2s]   rt_none_s1: Δbpc_far=+0.000000 CI[0.0, 0.0] clean=1.5797 max|Δlogit|被评行=0.000e+00 | 通道消融后 Δ=+0.000000
-[   82.1s]   rt_delta_s1: Δbpc_far=+0.014132 CI[0.01078, 0.017523] clean=1.5799 max|Δlogit|被评行=6.539e+00 | 通道消融后 Δ=+0.000000
-[   82.1s] 判据④：真实文本短语针（needle v3，64×16，8 针/行，seed=3）
-[   97.6s]   rt_none_s0: beyond 植入 0.463561 vs 地板 0.463072 ⇒ Δ=0.049pp（n=8178，硬子集 n=4391）
-[   97.6s]   rt_delta_s0: beyond 植入 0.497677 vs 地板 0.497188 ⇒ Δ=0.049pp（n=8178，硬子集 n=4112）
-[   97.6s]   rt_none_s1: beyond 植入 0.473832 vs 地板 0.475177 ⇒ Δ=-0.135pp（n=8178，硬子集 n=4292）
-[   97.6s]   rt_delta_s1: beyond 植入 0.479824 vs 地板 0.478234 ⇒ Δ=0.159pp（n=8178，硬子集 n=4267）
-[   97.6s] 跨臂效应与 σ_cell（同配置换种子极差；2 样本 ⇒ 描述量、非方差上界）
-[  100.0s] 判据① 前提（无通道臂被评行逐位不敏感）：True
-[  100.0s] 判据② delta 臂 Δbpc_far>0 且>σ_far=0.001652：{'0': True, '1': True}
-[  100.0s] 判据③ 质量腿 Δbpc_win16>σ_cell=0.001661：{'0': {'bpc_win16': {'none': 1.62811, 'delta': 1.624979, 'delta_bpc': 0.003131, 'paired_delta_bpc_ci95_bits': [0.000252, 0.006254], 'paired_note': '配对 CI（同窗口序）：只含同批窗口上的测量噪声；**不含**训练种子方差（后者由 σ_cell 描述）'}, 'delta_bpc_far': {'none': 0.0, 'delta': 0.015784}}, '1': {'bpc_win16': {'none': 1.629093, 'delta': 1.62664, 'delta_bpc': 0.002453, 'paired_delta_bpc_ci95_bits': [-0.000416, 0.005449], 'paired_note': '配对 CI（同窗口序）：只含同批窗口上的测量噪声；**不含**训练种子方差（后者由 σ_cell 描述）'}, 'delta_bpc_far': {'none': 0.0, 'delta': 0.014132}}} ⇒ {'0': True, '1': True}
-[  100.0s]    质量腿同号={'0': True, '1': True}；配对 CI 下界>0={'0': True, '1': False}
-[  100.0s] 判据④ needle beyond 高于地板：{'rt_none_s0': False, 'rt_delta_s0': False, 'rt_none_s1': False, 'rt_delta_s1': False}
-[  100.0s] 活性量与训练侧读数（答案行 CE 斜率不适用：真实文本无答案行 ⇒ 报 loss 斜率）
-[  100.0s]   rt_none_s0: wall=11.94min peak=2015.1MB loss末=1.0551 read_share=None
-[  103.1s]   rt_delta_s0: wall=16.93min peak=2282.5MB loss末=1.0456 read_share=0.301669
-[  103.1s]   rt_none_s1: wall=8.48min peak=2015.1MB loss末=1.1448 read_share=None
-[  103.8s]   rt_delta_s1: wall=15.11min peak=2282.5MB loss末=1.1503 read_share=0.303836
-[  105.2s] 落盘：/home/z/vibe/pathlm/axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/results.json + needle_raw.json
-WALL 108.54 s MAXRSS 1629316 KB
+[    0.1s] 加载四臂（sha256 断言）
+[    1.0s]   rt_none_s0: c3f6f08a4fd1dfe9… carry=none params=13536768 block=Block
+[    1.6s]   rt_delta_s0: d92114822c09f2f7… carry=delta params=13801064 block=CarryChannelBlock
+[    2.3s]   rt_none_s1: 2bfe167c133c496f… carry=none params=13536768 block=Block
+[    3.1s]   rt_delta_s1: b3d3cdbc57266109… carry=delta params=13801064 block=CarryChannelBlock
+[    3.1s] 自检①：参数量/主干逐位/单边零起步/窗口掩码非退化
+[    4.4s]   可见对数 3976；none/delta 主干逐位=True（+264296 参数）；单边零起步={'delta_matches_none_bitwise': True}
+[    4.4s] 质量腿：bpc_win16（窗口 16/0，96×16，~391680 token）；release 口径只作诊断
+[    8.3s]   rt_none_s0: bpc_win16=1.62811 release(diag)=4.55557 通道消融=1.62811
+[   15.3s]   rt_delta_s0: bpc_win16=1.624979 release(diag)=2.0089 通道消融=4.509767
+[   18.8s]   rt_none_s1: bpc_win16=1.629093 release(diag)=4.654019 通道消融=1.629093
+[   25.9s]   rt_delta_s1: bpc_win16=1.62664 release(diag)=1.970905 通道消融=4.553643
+[   25.9s] 判据①③：Δbpc_far 探针（毁前缀 [0,64)，被评行 [244,255)，rf=180，96×16）
+[   32.9s]   rt_none_s0: Δbpc_far=+0.000000 CI[0.0, 0.0] clean=1.5886 max|Δlogit|被评行=0.000e+00 | 通道消融后 Δ=+0.000000
+[   43.2s]   rt_delta_s0: Δbpc_far=+0.015784 CI[0.012621, 0.019035] clean=1.5739 max|Δlogit|被评行=8.954e+00 | 通道消融后 Δ=+0.000000
+[   49.3s]   rt_none_s1: Δbpc_far=+0.000000 CI[0.0, 0.0] clean=1.5797 max|Δlogit|被评行=0.000e+00 | 通道消融后 Δ=+0.000000
+[   60.0s]   rt_delta_s1: Δbpc_far=+0.014132 CI[0.01078, 0.017523] clean=1.5799 max|Δlogit|被评行=6.539e+00 | 通道消融后 Δ=+0.000000
+[   60.0s] 判据④：真实文本短语针（needle v3，64×16，8 针/行，seed=3）
+[   73.2s]   rt_none_s0: beyond 植入 0.463561 vs 地板 0.463072 ⇒ Δ=0.049pp CI[-1.48, 1.577]/pp passes=False；同索引交子集 n=2974 植入召回=0.010424
+[   73.2s]   rt_delta_s0: beyond 植入 0.497677 vs 地板 0.497188 ⇒ Δ=0.049pp CI[-1.484, 1.581]/pp passes=False；同索引交子集 n=2974 植入召回=0.02421
+[   73.2s]   rt_none_s1: beyond 植入 0.473832 vs 地板 0.475177 ⇒ Δ=-0.135pp CI[-1.665, 1.396]/pp passes=False；同索引交子集 n=2974 植入召回=0.012105
+[   73.2s]   rt_delta_s1: beyond 植入 0.479824 vs 地板 0.478234 ⇒ Δ=0.159pp CI[-1.372, 1.69]/pp passes=False；同索引交子集 n=2974 植入召回=0.022529
+[   73.2s]   判据④（逐臂，干预臂 = ['rt_delta_s0', 'rt_delta_s1']）：干预臂全过=False 任一拳过=False 四臂全过=False
+[   73.2s] 跨臂效应与 σ_cell（同配置换种子极差；2 样本 ⇒ 描述量、非方差上界）
+[   74.9s] 判据① 前提（无通道臂被评行逐位不敏感）：True
+[   74.9s] 判据② delta 臂 Δbpc_far>0 且>σ_far=0.001652：{'0': True, '1': True}
+[   74.9s] 判据③ 质量腿 Δbpc_win16>σ_cell=0.001661：{'0': {'bpc_win16': {'none': 1.62811, 'delta': 1.624979, 'delta_bpc': 0.003131, 'paired_delta_bpc_ci95_bits': [0.000252, 0.006254], 'paired_note': '配对 CI（同窗口序）：只含同批窗口上的测量噪声；**不含**训练种子方差（后者由 σ_cell 描述）'}, 'delta_bpc_far': {'none': 0.0, 'delta': 0.015784}}, '1': {'bpc_win16': {'none': 1.629093, 'delta': 1.62664, 'delta_bpc': 0.002453, 'paired_delta_bpc_ci95_bits': [-0.000416, 0.005449], 'paired_note': '配对 CI（同窗口序）：只含同批窗口上的测量噪声；**不含**训练种子方差（后者由 σ_cell 描述）'}, 'delta_bpc_far': {'none': 0.0, 'delta': 0.014132}}} ⇒ {'0': True, '1': True}
+[   74.9s]    质量腿同号={'0': True, '1': True}；配对 CI 下界>0={'0': True, '1': False}
+[   74.9s] 判据④ needle beyond 高于地板（逐臂）：{'rt_none_s0': False, 'rt_delta_s0': False, 'rt_none_s1': False, 'rt_delta_s1': False} ⇒ 干预臂全过=False
+[   74.9s] 活性量与训练侧读数（答案行 CE 斜率不适用：真实文本无答案行 ⇒ 报 loss 斜率）
+[   74.9s]   rt_none_s0: wall=11.94min peak=2015.1MB loss末=1.0551 read_share=None
+[   77.2s]   rt_delta_s0: wall=16.93min peak=2282.5MB loss末=1.0456 read_share=0.301669
+[   77.2s]   rt_none_s1: wall=8.48min peak=2015.1MB loss末=1.1448 read_share=None
+[   77.9s]   rt_delta_s1: wall=15.11min peak=2282.5MB loss末=1.1503 read_share=0.303836
+[   79.1s] 落盘：/home/z/vibe/pathlm/axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/results.json + needle_raw.json

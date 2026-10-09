@@ -35,5 +35,52 @@
     }
   },
   "bitwise_equivalent_on_this_experiments_configs": true,
-  "note": "工作树引擎与 HEAD 提交版引擎在**本实验用到的**三档配置上逐位等价；这只覆盖本实验的配置，不代表两版在所有配置上等价"
+  "forward_layer_ok": true,
+  "trainer": {
+    "verified": true,
+    "steps": 20,
+    "compared_fields": [
+      "step",
+      "loss",
+      "gnorm",
+      "aux_w",
+      "final_w",
+      "window_mask",
+      "synth_answer_ce",
+      "synth_chance_ce"
+    ],
+    "n_lines": {
+      "head": 2,
+      "working_tree": 2
+    },
+    "loss_sequence_head": [
+      4.5637,
+      4.4647
+    ],
+    "loss_sequence_working_tree": [
+      4.5637,
+      4.4647
+    ],
+    "n_field_diffs": 0,
+    "field_diffs": [],
+    "runs": {
+      "head": {
+        "returncode": 0,
+        "wall_s": 6.0,
+        "n_log_lines": 2,
+        "stderr_tail": null
+      },
+      "working_tree": {
+        "returncode": 0,
+        "wall_s": 6.1,
+        "n_log_lines": 2,
+        "stderr_tail": null
+      }
+    },
+    "note": "训练脚本层的行为等价证据；需要 GPU（§20.1.2 短任务例外，~1 min、<1 GB）。`working_tree.returncode != 0` ⇒ 只能降级声明（reuse_ok_pathlm_only）"
+  },
+  "trainer_layer_ok": true,
+  "coverage": "pathlm/**（逐位 logits）+ train_depth_ar.py（逐字段 loss 序列）",
+  "all_layers_ok": true,
+  "note": "工作树与 HEAD 提交版在**本实验用到的**配置上逐位等价（前向三档 + 训练脚本 20 步 loss 序列）；这只覆盖本实验的配置，不代表两版在所有配置上等价"
 }

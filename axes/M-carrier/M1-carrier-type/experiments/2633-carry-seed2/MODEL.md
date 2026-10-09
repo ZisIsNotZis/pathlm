@@ -1,6 +1,9 @@
 # MODEL · 2633-carry-seed2 权重清单
 
-> 三臂（none/plain/delta）× seed {0,1,2}：seed0/1 六臂**复用 2631**（SCHEMA §9：`HEAD` 实现逐文件同哈希 + 工作树 vs `HEAD` 在本实验三档配置上逐位等价，见 `equality_report.json` / `engine_equivalence.json`），
+> 三臂（none/plain/delta）× seed {0,1,2}：seed0/1 六臂**复用 2631**（SCHEMA §9，**两层行为等价**：
+> `HEAD` 实现逐文件同哈希 + 工作树 vs `HEAD` 的**前向**（三档配置逐位 logits）与**训练脚本**
+> （20 步逐字段 loss 序列）等价，另加逐臂**运行期版本台账**；见 `equality_report.json` /
+> `engine_equivalence.json` / `runtime_version_ledger.json`），
 > seed2 三臂本实验新训（12k 步 / bs32 / T256 = 98.3M token/臂）。权重不入库；`run.py` 加载时逐次断言 sha256。
 
 | 臂 | 来源 | 参数量 | 体积 (B) | 训练墙钟 (min) | 训练峰值显存 (MB) | sha256 |
@@ -33,4 +36,4 @@ bash axes/M-carrier/M1-carrier-type/experiments/2633-carry-seed2/eval.sh        
 ## 说明
 
 - `--seed 2` 是 2631 的 `SEEDS=(0,1)` 之外的新档：`seed3_stats.arm_name` 在种子 0/1 上**委派** 2631 的命名，在 2 上按同一规则构造（单测钉住重叠档逐字相同）。
-- 复用前提由两级证据保住：① `HEAD` 提交版的五个引擎/仪器文件 sha256 与 2631 运行时记录逐位相同；② `engine_equivalence.check()` 把 `HEAD` 版 `pathlm/` 整包解到临时目录，在本实验三档配置（none/plain/delta）上同权重比 logits，**全部逐位相同**。
+- 复用前提由**两层行为等价 + 运行期版本台账**保住：① `HEAD` 提交版的五个引擎/仪器文件 sha256 与 2631 运行时记录逐位相同；② `engine_equivalence.check()` 的**前向层**（`HEAD` 版 `pathlm/` 整包解到临时目录，在本实验三档配置上同权重比 logits，全部 `0.000e+00`）与**训练脚本层**（工作树版 vs `HEAD` 版 `train_depth_ar.py` 各跑 20 步，逐字段 0 处不同）；③ `runtime_version_ledger.py` 逐臂记「跑的是 HEAD 版还是工作树版」（只 `delta_s2` 用了漂移后的 `pathlm/depth_ar.py`，被前向层覆盖），漂移 diff 归档在 `evidence/drift_snapshot/`。
