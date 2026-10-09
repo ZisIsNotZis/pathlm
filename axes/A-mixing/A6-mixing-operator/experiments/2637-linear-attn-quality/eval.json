@@ -1,0 +1,178 @@
+{
+  "batteries": {
+    "full-256-lin": {
+      "arm": "full-256-lin",
+      "bpc_native": 1.946343,
+      "n_batches": 20,
+      "batch_size": 16,
+      "window_seed": 2,
+      "mask": "causal"
+    },
+    "linear-256-lin": {
+      "arm": "linear-256-lin",
+      "bpc_native": 2.16045,
+      "n_batches": 20,
+      "batch_size": 16,
+      "window_seed": 2,
+      "mask": "causal"
+    },
+    "full-256-lin-qk": {
+      "arm": "full-256-lin-qk",
+      "bpc_native": 1.961525,
+      "n_batches": 20,
+      "batch_size": 16,
+      "window_seed": 2,
+      "mask": "causal"
+    },
+    "linear-256-lin-qk": {
+      "arm": "linear-256-lin-qk",
+      "bpc_native": 2.585719,
+      "n_batches": 20,
+      "batch_size": 16,
+      "window_seed": 2,
+      "mask": "causal"
+    }
+  },
+  "selfchecks": {
+    "full-256-lin": {
+      "max_abs_logit_diff_released_vs_identity_mask": 0.0,
+      "n_batches": 4,
+      "batch_size": 8
+    },
+    "linear-256-lin": {
+      "max_abs_logit_diff_released_vs_identity_mask": 6.199e-05,
+      "n_batches": 4,
+      "batch_size": 8
+    },
+    "full-256-lin-qk": {
+      "max_abs_logit_diff_released_vs_identity_mask": 0.0,
+      "n_batches": 4,
+      "batch_size": 8
+    },
+    "linear-256-lin-qk": {
+      "max_abs_logit_diff_released_vs_identity_mask": 1.717e-05,
+      "n_batches": 4,
+      "batch_size": 8
+    }
+  },
+  "field_by_field": {
+    "full-256-lin": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "mlp_mult": 4,
+      "dense": true,
+      "topology": "sequential",
+      "batch_size": 8,
+      "lr": 0.001,
+      "seed": 0,
+      "steps": 6000,
+      "seq_len": 256,
+      "attn_linear": false,
+      "linear_chunk": 64,
+      "qk_norm": "none",
+      "data": "enwik8 train 90M / eval 10M",
+      "vocab_size": 206
+    },
+    "linear-256-lin": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "mlp_mult": 4,
+      "dense": true,
+      "topology": "sequential",
+      "batch_size": 8,
+      "lr": 0.001,
+      "seed": 0,
+      "steps": 6000,
+      "seq_len": 256,
+      "attn_linear": true,
+      "linear_chunk": 64,
+      "qk_norm": "none",
+      "data": "enwik8 train 90M / eval 10M",
+      "vocab_size": 206
+    },
+    "full-256-lin-qk": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "mlp_mult": 4,
+      "dense": true,
+      "topology": "sequential",
+      "batch_size": 8,
+      "lr": 0.001,
+      "seed": 0,
+      "steps": 6000,
+      "seq_len": 256,
+      "attn_linear": false,
+      "linear_chunk": 64,
+      "qk_norm": "global",
+      "data": "enwik8 train 90M / eval 10M",
+      "vocab_size": 206
+    },
+    "linear-256-lin-qk": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "mlp_mult": 4,
+      "dense": true,
+      "topology": "sequential",
+      "batch_size": 8,
+      "lr": 0.001,
+      "seed": 0,
+      "steps": 6000,
+      "seq_len": 256,
+      "attn_linear": true,
+      "linear_chunk": 64,
+      "qk_norm": "global",
+      "data": "enwik8 train 90M / eval 10M",
+      "vocab_size": 206
+    }
+  },
+  "stall_summary": {},
+  "cost": {
+    "free_mb_before": 15288.0,
+    "steps": {
+      "full-256-lin": {
+        "median_ms": 20.741,
+        "n_iters": 6,
+        "linear": false,
+        "qk": "none",
+        "batch_size": 8,
+        "peak_mem_gib": 0.296
+      },
+      "linear-256-lin": {
+        "median_ms": 57.657,
+        "n_iters": 6,
+        "linear": true,
+        "qk": "none",
+        "batch_size": 8,
+        "peak_mem_gib": 0.377
+      },
+      "full-256-lin-qk": {
+        "median_ms": 34.318,
+        "n_iters": 6,
+        "linear": false,
+        "qk": "global",
+        "batch_size": 8,
+        "peak_mem_gib": 0.322
+      },
+      "linear-256-lin-qk": {
+        "median_ms": 69.929,
+        "n_iters": 6,
+        "linear": true,
+        "qk": "global",
+        "batch_size": 8,
+        "peak_mem_gib": 0.427
+      }
+    },
+    "ratio_linear_over_full": 2.7799,
+    "free_mb_after": 15252.0,
+    "theory": {
+      "attn_macs_per_token_per_layer_full": 131072,
+      "attn_macs_per_token_per_layer_linear_chunk64": 49152,
+      "attn_macs_per_token_per_layer_linear_streaming": 16384,
+      "note": "解析口径；实测为准（§17.11）"
+    }
+  }
+}

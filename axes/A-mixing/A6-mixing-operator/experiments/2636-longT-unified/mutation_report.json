@@ -1,0 +1,60 @@
+{
+  "target": "run.py（monkeypatch，不改文件）",
+  "sha256_before": {
+    "tests/test_longT_unified.py": "c38378797e68a7c949160766cc93bedce40ec126a23a60ef4e646c77afc26671",
+    "experiments/2636-longT-unified/run.py": "f55d46622ba22f3caa7795f8cd58d04e1c36c945adeb9b053bd998e0ae583b28",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20"
+  },
+  "note": "本实验未改动任何共享文件；变异用进程内 monkeypatch 完成（SCHEMA §22.2）",
+  "mutations": [
+    {
+      "id": "M1",
+      "desc": "同 step 口径常量被改（S=3000）",
+      "target_test": "test_step_budget_is_6000",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "M2",
+      "desc": "token 计数公式被改（tokens = steps*T，丢 batch）",
+      "target_test": "test_tokens_at_s_match_formula",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "M3",
+      "desc": "四点表里塞退化点（窗口 = T，恒等算子）",
+      "target_test": "test_window_mask_non_degenerate_at_points",
+      "caught_red": true,
+      "detail": "256@256 退化：visible_frac=1.0"
+    },
+    {
+      "id": "M4",
+      "desc": "长度条件门被忽略（T ≤ 512 也挂 hook）",
+      "target_test": "test_qk_norm_inert_at_or_below_min_t_bitwise",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "M5",
+      "desc": "长度条件门永远关（T > 512 也不挂 hook）",
+      "target_test": "test_qk_norm_active_above_min_t_and_zero_params",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "M6",
+      "desc": "成本公式被改（注意力降幅写 0）",
+      "target_test": "test_cost_theory_values",
+      "caught_red": true,
+      "detail": ""
+    }
+  ],
+  "sha256_after": {
+    "tests/test_longT_unified.py": "c38378797e68a7c949160766cc93bedce40ec126a23a60ef4e646c77afc26671",
+    "experiments/2636-longT-unified/run.py": "f55d46622ba22f3caa7795f8cd58d04e1c36c945adeb9b053bd998e0ae583b28",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20"
+  },
+  "restored_bitwise": true,
+  "all_caught": true
+}

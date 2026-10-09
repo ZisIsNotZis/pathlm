@@ -1,0 +1,125 @@
+{
+  "contract": "axes/A-mixing/A6-mixing-operator/experiments/2637-linear-attn-quality/README.md",
+  "scope": "单轴单格；唯一变量 = 注意力算子（full vs 线性核）；T=256/bs8/S=6000/seed0/enwik8",
+  "model": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "mlp_mult": 4,
+    "dense": true
+  },
+  "step_budget": 6000,
+  "tokens_by_arm": 12288000,
+  "arms": [
+    {
+      "arm": "full-256-lin",
+      "linear": false,
+      "qk": "none",
+      "role": "T=256 · 全因果 softmax",
+      "steps": 6000,
+      "seed": 0,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 6000,
+        "seq_len": 256,
+        "attn_linear": false,
+        "linear_chunk": 64,
+        "qk_norm": "none",
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "linear-256-lin",
+      "linear": true,
+      "qk": "none",
+      "role": "T=256 · 线性核（elu+1，原实装）",
+      "steps": 6000,
+      "seed": 0,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 6000,
+        "seq_len": 256,
+        "attn_linear": true,
+        "linear_chunk": 64,
+        "qk_norm": "none",
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "full-256-lin-qk",
+      "linear": false,
+      "qk": "global",
+      "role": "T=256 · 全因果 + QK-Norm（稳定化对照）",
+      "steps": 6000,
+      "seed": 0,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 6000,
+        "seq_len": 256,
+        "attn_linear": false,
+        "linear_chunk": 64,
+        "qk_norm": "global",
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "linear-256-lin-qk",
+      "linear": true,
+      "qk": "global",
+      "role": "T=256 · 线性核 + QK-Norm（稳定化分母）",
+      "steps": 6000,
+      "seed": 0,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 6000,
+        "seq_len": 256,
+        "attn_linear": true,
+        "linear_chunk": 64,
+        "qk_norm": "global",
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    }
+  ],
+  "code_fingerprints": {
+    "pathlm/depth_ar.py": "f2e72361eecc022e7ccf8a7951f6a6f9a411e12d6da9348a4d8fb70023b9440e",
+    "train_depth_ar.py": "218b63179e623d6a938e7cabe85a71c5c4a36f1831c6930e9c65b2e0a6673022",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20",
+    "note": "本实验未改这些文件（只读）"
+  }
+}

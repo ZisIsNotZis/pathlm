@@ -1,0 +1,320 @@
+{
+  "contract": "axes/A-mixing/A6-mixing-operator/experiments/2636-longT-unified/README.md",
+  "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。",
+  "intervention": {
+    "factor": "训练期可见窗口（full vs T/2，同相对刻度 50%）× 序列长度 T；固定 S=6000 步",
+    "arms": {
+      "full-256-s6k": "T=256 · 全因果 @6000",
+      "win128-256-s6k": "T=256 · 窗口 128（50%）@6000",
+      "full-512-s6k": "T=512 · 全因果 @6000",
+      "win256-512-s6k": "T=512 · 窗口 256（50%）@6000",
+      "full-256-s6k-s1": "T=256 · 全因果 @6000 · seed1（噪声自测）",
+      "win128-256-s6k-s1": "T=256 · 窗口 128 · seed1（噪声自测）",
+      "full-512-s6k-s1": "T=512 · 全因果 @6000 · seed1（噪声自测）",
+      "win256-512-s6k-s1": "T=512 · 窗口 256 · seed1（噪声自测）"
+    },
+    "dropped_arms": [],
+    "mask": "keep[i,j] = (j<=i) & ((i-j) < train_window)；对角恒开；实现 = pathlm.depth_ar.window_anchor_keep_mask",
+    "qk_norm": "长度条件档：seq_len > 512 时逐头 L2 归一 q/k（乘 √d_h，零新增参数）；seq_len ≤ 512 时不挂 hook（n_qkv_hooks == 0）"
+  },
+  "model": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "mlp_mult": 4,
+    "dense": true,
+    "topology": "sequential"
+  },
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M train / 末 10M eval",
+    "vocab_size": 206
+  },
+  "step_budget": 6000,
+  "token_budget_by_T": {
+    "256": 12288000,
+    "512": 24576000,
+    "1024": 49152000,
+    "2048": 98304000
+  },
+  "token_budget_ref": 49152000,
+  "batch_size": 8,
+  "lr": 0.001,
+  "arms": [
+    {
+      "arm": "full-256-s6k",
+      "seq_len": 256,
+      "window": 0,
+      "seed": 0,
+      "steps": 6000,
+      "tokens": 12288000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 6000,
+        "exit_mode": "uniform",
+        "seq_len": 256,
+        "train_window": 0,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "win128-256-s6k",
+      "seq_len": 256,
+      "window": 128,
+      "seed": 0,
+      "steps": 6000,
+      "tokens": 12288000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 6000,
+        "exit_mode": "uniform",
+        "seq_len": 256,
+        "train_window": 128,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "full-512-s6k",
+      "seq_len": 512,
+      "window": 0,
+      "seed": 0,
+      "steps": 6000,
+      "tokens": 24576000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 6000,
+        "exit_mode": "uniform",
+        "seq_len": 512,
+        "train_window": 0,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "win256-512-s6k",
+      "seq_len": 512,
+      "window": 256,
+      "seed": 0,
+      "steps": 6000,
+      "tokens": 24576000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 6000,
+        "exit_mode": "uniform",
+        "seq_len": 512,
+        "train_window": 256,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "full-256-s6k-s1",
+      "seq_len": 256,
+      "window": 0,
+      "seed": 1,
+      "steps": 6000,
+      "tokens": 12288000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 1,
+        "steps": 6000,
+        "exit_mode": "uniform",
+        "seq_len": 256,
+        "train_window": 0,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "win128-256-s6k-s1",
+      "seq_len": 256,
+      "window": 128,
+      "seed": 1,
+      "steps": 6000,
+      "tokens": 12288000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 1,
+        "steps": 6000,
+        "exit_mode": "uniform",
+        "seq_len": 256,
+        "train_window": 128,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "full-512-s6k-s1",
+      "seq_len": 512,
+      "window": 0,
+      "seed": 1,
+      "steps": 6000,
+      "tokens": 24576000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 1,
+        "steps": 6000,
+        "exit_mode": "uniform",
+        "seq_len": 512,
+        "train_window": 0,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "win256-512-s6k-s1",
+      "seq_len": 512,
+      "window": 256,
+      "seed": 1,
+      "steps": 6000,
+      "tokens": 24576000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 1,
+        "steps": 6000,
+        "exit_mode": "uniform",
+        "seq_len": 512,
+        "train_window": 256,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    }
+  ],
+  "checkpoints": {
+    "full-256-s6k": {
+      "path": "runs/full-256-s6k/model.pt",
+      "sha256": "21fa6df2044e552ec0bca10f41e7b4063833a3abff2346008cba34733e8dc051",
+      "size_bytes": 27882155,
+      "sha256_verified": true
+    },
+    "win128-256-s6k": {
+      "path": "runs/win128-256-s6k/model.pt",
+      "sha256": "6415c3c183048f0034a2d2231f86d221a5f361d74450381dc65b946af18e7aad",
+      "size_bytes": 27882155,
+      "sha256_verified": true
+    },
+    "full-512-s6k": {
+      "path": "runs/full-512-s6k/model.pt",
+      "sha256": "56c10419ea310a65f32f3e0b0b0aa39c626efbf90513d9aab6001ae49545ea2d",
+      "size_bytes": 28144299,
+      "sha256_verified": true
+    },
+    "win256-512-s6k": {
+      "path": "runs/win256-512-s6k/model.pt",
+      "sha256": "7287a05ba0fe6ec1c72c05992fa8d70b1e48fd9d70d8687b66faa00448e53d49",
+      "size_bytes": 28144299,
+      "sha256_verified": true
+    },
+    "full-256-s6k-s1": {
+      "path": "runs/full-256-s6k-s1/model.pt",
+      "sha256": "9ae7a7d79a6c498e279c6e294a8b52df6c0ead3411bd6d586f87a9522ba8fb73",
+      "size_bytes": 27882155,
+      "sha256_verified": true
+    },
+    "win128-256-s6k-s1": {
+      "path": "runs/win128-256-s6k-s1/model.pt",
+      "sha256": "536fe5a67557edd2cf69f21b29e819077f9466c966eec7ce5a4dcb96a096d52a",
+      "size_bytes": 27882155,
+      "sha256_verified": true
+    },
+    "full-512-s6k-s1": {
+      "path": "runs/full-512-s6k-s1/model.pt",
+      "sha256": "59230e55054f9b7456f880df8201e7e08f258b1f15c510bded02bfddb984a9f5",
+      "size_bytes": 28144299,
+      "sha256_verified": true
+    },
+    "win256-512-s6k-s1": {
+      "path": "runs/win256-512-s6k-s1/model.pt",
+      "sha256": "c6eaaa928206464246b804922dbc94b9409dce20bf0ac1f5f6cd2a8c1cf28ff2",
+      "size_bytes": 28144299,
+      "sha256_verified": true
+    }
+  },
+  "code_fingerprints": {
+    "pathlm/depth_ar.py": "b304c234b82b51a49ba477285169b41ebf3fc4e24b087ec2bafdd9caa4423192",
+    "pathlm/model.py": "75bd84a013c71f2e6eef479517cc99b96d8cebff672383f2728f2752812655d3",
+    "train_depth_ar.py": "218b63179e623d6a938e7cabe85a71c5c4a36f1831c6930e9c65b2e0a6673022",
+    "tools/evalkit/retention.py": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20",
+    "note": "本实验未改这些文件（只读）；qk-norm hook 从 2625 的 stability_driver.py 只读引用（单一实现来源）"
+  }
+}

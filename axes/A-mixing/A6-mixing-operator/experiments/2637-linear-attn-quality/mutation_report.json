@@ -1,0 +1,39 @@
+{
+  "target": "run.py + linear_driver.py（monkeypatch，不改文件）",
+  "sha256_before": {
+    "tests/test_linear_attn_quality.py": "16282bfd898e6b1ccb982c6b0910c6272ca8daa32a4e206cadd5d84b3f92d169",
+    "experiments/2637-linear-attn-quality/run.py": "af31dbb889d4f5eaca45b25371ce539b396bf53a4995436fd51e3d5401f8c7ad",
+    "experiments/2637-linear-attn-quality/linear_driver.py": "cfb55b08f8146beaa7fd628cdf6c3cbafb0543bb0b82e8df7e35ae2abb3eb063"
+  },
+  "note": "本实验未改动任何共享文件；变异用进程内 monkeypatch 完成（SCHEMA §22.2）",
+  "mutations": [
+    {
+      "id": "M1",
+      "desc": "2×2 臂表被破坏（去掉 global 两档）",
+      "target_test": "test_arms_2x2",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "M2",
+      "desc": "稳定化档（global）没挂 hook",
+      "target_test": "test_qk_norm_none_zero_hooks_global_all_hooks",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "M3",
+      "desc": "`none` 档也挂 hook（接线错）",
+      "target_test": "test_qk_norm_none_zero_hooks_global_all_hooks",
+      "caught_red": true,
+      "detail": ""
+    }
+  ],
+  "sha256_after": {
+    "tests/test_linear_attn_quality.py": "16282bfd898e6b1ccb982c6b0910c6272ca8daa32a4e206cadd5d84b3f92d169",
+    "experiments/2637-linear-attn-quality/run.py": "af31dbb889d4f5eaca45b25371ce539b396bf53a4995436fd51e3d5401f8c7ad",
+    "experiments/2637-linear-attn-quality/linear_driver.py": "cfb55b08f8146beaa7fd628cdf6c3cbafb0543bb0b82e8df7e35ae2abb3eb063"
+  },
+  "restored_bitwise": true,
+  "all_caught": true
+}

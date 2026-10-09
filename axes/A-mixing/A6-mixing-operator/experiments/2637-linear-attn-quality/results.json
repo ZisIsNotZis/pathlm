@@ -1,0 +1,718 @@
+{
+  "contract": "axes/A-mixing/A6-mixing-operator/experiments/2637-linear-attn-quality/README.md",
+  "scope": "单轴单格；唯一变量 = 注意力算子（full vs 线性核）；T=256/bs8/S=6000/seed0/enwik8",
+  "config": {
+    "contract": "axes/A-mixing/A6-mixing-operator/experiments/2637-linear-attn-quality/README.md",
+    "scope": "单轴单格；唯一变量 = 注意力算子（full vs 线性核）；T=256/bs8/S=6000/seed0/enwik8",
+    "model": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "mlp_mult": 4,
+      "dense": true
+    },
+    "step_budget": 6000,
+    "tokens_by_arm": 12288000,
+    "arms": [
+      {
+        "arm": "full-256-lin",
+        "linear": false,
+        "qk": "none",
+        "role": "T=256 · 全因果 softmax",
+        "steps": 6000,
+        "seed": 0,
+        "fields": {
+          "d_model": 256,
+          "n_layers": 8,
+          "n_heads": 8,
+          "mlp_mult": 4,
+          "dense": true,
+          "topology": "sequential",
+          "batch_size": 8,
+          "lr": 0.001,
+          "seed": 0,
+          "steps": 6000,
+          "seq_len": 256,
+          "attn_linear": false,
+          "linear_chunk": 64,
+          "qk_norm": "none",
+          "data": "enwik8 train 90M / eval 10M",
+          "vocab_size": 206
+        }
+      },
+      {
+        "arm": "linear-256-lin",
+        "linear": true,
+        "qk": "none",
+        "role": "T=256 · 线性核（elu+1，原实装）",
+        "steps": 6000,
+        "seed": 0,
+        "fields": {
+          "d_model": 256,
+          "n_layers": 8,
+          "n_heads": 8,
+          "mlp_mult": 4,
+          "dense": true,
+          "topology": "sequential",
+          "batch_size": 8,
+          "lr": 0.001,
+          "seed": 0,
+          "steps": 6000,
+          "seq_len": 256,
+          "attn_linear": true,
+          "linear_chunk": 64,
+          "qk_norm": "none",
+          "data": "enwik8 train 90M / eval 10M",
+          "vocab_size": 206
+        }
+      },
+      {
+        "arm": "full-256-lin-qk",
+        "linear": false,
+        "qk": "global",
+        "role": "T=256 · 全因果 + QK-Norm（稳定化对照）",
+        "steps": 6000,
+        "seed": 0,
+        "fields": {
+          "d_model": 256,
+          "n_layers": 8,
+          "n_heads": 8,
+          "mlp_mult": 4,
+          "dense": true,
+          "topology": "sequential",
+          "batch_size": 8,
+          "lr": 0.001,
+          "seed": 0,
+          "steps": 6000,
+          "seq_len": 256,
+          "attn_linear": false,
+          "linear_chunk": 64,
+          "qk_norm": "global",
+          "data": "enwik8 train 90M / eval 10M",
+          "vocab_size": 206
+        }
+      },
+      {
+        "arm": "linear-256-lin-qk",
+        "linear": true,
+        "qk": "global",
+        "role": "T=256 · 线性核 + QK-Norm（稳定化分母）",
+        "steps": 6000,
+        "seed": 0,
+        "fields": {
+          "d_model": 256,
+          "n_layers": 8,
+          "n_heads": 8,
+          "mlp_mult": 4,
+          "dense": true,
+          "topology": "sequential",
+          "batch_size": 8,
+          "lr": 0.001,
+          "seed": 0,
+          "steps": 6000,
+          "seq_len": 256,
+          "attn_linear": true,
+          "linear_chunk": 64,
+          "qk_norm": "global",
+          "data": "enwik8 train 90M / eval 10M",
+          "vocab_size": 206
+        }
+      }
+    ],
+    "code_fingerprints": {
+      "pathlm/depth_ar.py": "f2e72361eecc022e7ccf8a7951f6a6f9a411e12d6da9348a4d8fb70023b9440e",
+      "train_depth_ar.py": "218b63179e623d6a938e7cabe85a71c5c4a36f1831c6930e9c65b2e0a6673022",
+      "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20",
+      "note": "本实验未改这些文件（只读）"
+    }
+  },
+  "arms": {
+    "full-256-lin": {
+      "arm": "full-256-lin",
+      "stalled": false,
+      "run_dir": "runs/full-256-lin",
+      "wall_min": 3.67,
+      "seconds_per_step": 0.03673,
+      "peak_child_mem_gb_nvidia_smi": 0.82,
+      "peak_torch_gb": 0.322,
+      "params": 6962688,
+      "tokens": 12288000,
+      "patch": {
+        "attn_scale_mode": "none",
+        "n_qkv_hooks": 0,
+        "active": false,
+        "params_added": 0,
+        "attn_linear": false,
+        "linear_chunk": 64,
+        "block_class": "Block"
+      },
+      "gnorm_monitor": {
+        "gnorm_max": 7.53,
+        "gnorm_mean": 1.023,
+        "grad_skips": 0,
+        "attn_sparse_mean": null,
+        "attn_sparse_layer_samples": 0,
+        "attn_linear_mean": null,
+        "attn_linear_layer_samples": 0,
+        "attn_carry_mean": null,
+        "attn_carry_layer_samples": 0,
+        "attn_carry_layer_stats": null,
+        "attn_carry_scan_mean": null,
+        "recon_window": 0,
+        "recon_lambda": 0.0,
+        "recon_mean": null,
+        "synth_answer_ce_mean": null,
+        "synth_answer_ce_n_steps": 0,
+        "synth_chance_ce": null,
+        "window_mask": null,
+        "window_mask_probe": null,
+        "kv_heads": null,
+        "kv_heads_n_logged_lines": 0
+      },
+      "sha256_model_pt": "21fa6df2044e552ec0bca10f41e7b4063833a3abff2346008cba34733e8dc051",
+      "size_bytes": 27882155,
+      "steps": 6000,
+      "free_before_mb": 15497.0,
+      "free_after_mb": 14788.0,
+      "battery": {
+        "arm": "full-256-lin",
+        "bpc_native": 1.946343,
+        "n_batches": 20,
+        "batch_size": 16,
+        "window_seed": 2,
+        "mask": "causal"
+      },
+      "selfcheck": {
+        "max_abs_logit_diff_released_vs_identity_mask": 0.0,
+        "n_batches": 4,
+        "batch_size": 8
+      },
+      "telemetry": {
+        "n_rows": 31,
+        "last_step": 5999,
+        "last": {
+          "step": 5999,
+          "loss": 1.4157,
+          "depth_ce": [
+            1.4157
+          ],
+          "gate_mean": [],
+          "gnorm": 0.84,
+          "aux_w": 1.0,
+          "final_w": 1.0,
+          "attn_sparse": null,
+          "attn_linear": null,
+          "attn_carry": null,
+          "recon": null,
+          "readout": null,
+          "synth_answer_ce": null,
+          "synth_chance_ce": null,
+          "window_mask": null,
+          "kv_heads": null,
+          "lr": 0.0001,
+          "min": 3.51
+        },
+        "first": {
+          "step": 0,
+          "loss": 5.3095,
+          "depth_ce": [
+            5.3095
+          ],
+          "gate_mean": [],
+          "gnorm": 7.53,
+          "aux_w": 1.0,
+          "final_w": 1.0,
+          "attn_sparse": null,
+          "attn_linear": null,
+          "attn_carry": null,
+          "recon": null,
+          "readout": null,
+          "synth_answer_ce": null,
+          "synth_chance_ce": null,
+          "window_mask": null,
+          "kv_heads": null,
+          "lr": 1e-05,
+          "min": 0.01
+        }
+      }
+    },
+    "linear-256-lin": {
+      "arm": "linear-256-lin",
+      "stalled": false,
+      "run_dir": "runs/linear-256-lin",
+      "wall_min": 6.34,
+      "seconds_per_step": 0.06343,
+      "peak_child_mem_gb_nvidia_smi": 0.91,
+      "peak_torch_gb": 0.404,
+      "params": 6962688,
+      "tokens": 12288000,
+      "patch": {
+        "attn_scale_mode": "none",
+        "n_qkv_hooks": 0,
+        "active": false,
+        "params_added": 0,
+        "attn_linear": true,
+        "linear_chunk": 64,
+        "block_class": "LinearAttnBlock"
+      },
+      "gnorm_monitor": {
+        "gnorm_max": 899385.19,
+        "gnorm_mean": 529.749,
+        "grad_skips": 25,
+        "attn_sparse_mean": null,
+        "attn_sparse_layer_samples": 0,
+        "attn_linear_mean": {
+          "phi_min": 0.0,
+          "phi_max": 77.5,
+          "den_min": 1e-06,
+          "inter_mass_frac": 0.307636,
+          "state_norm": 531.622427
+        },
+        "attn_linear_layer_samples": 47800,
+        "attn_carry_mean": null,
+        "attn_carry_layer_samples": 0,
+        "attn_carry_layer_stats": null,
+        "attn_carry_scan_mean": null,
+        "recon_window": 0,
+        "recon_lambda": 0.0,
+        "recon_mean": null,
+        "synth_answer_ce_mean": null,
+        "synth_answer_ce_n_steps": 0,
+        "synth_chance_ce": null,
+        "window_mask": null,
+        "window_mask_probe": null,
+        "kv_heads": null,
+        "kv_heads_n_logged_lines": 0
+      },
+      "sha256_model_pt": "67966cbc26cdfa6fe8fd35fd2fae76234f3cffa6da13886bd12033f870bf8bbe",
+      "size_bytes": 27882155,
+      "steps": 6000,
+      "free_before_mb": 14593.0,
+      "free_after_mb": 14591.0,
+      "battery": {
+        "arm": "linear-256-lin",
+        "bpc_native": 2.16045,
+        "n_batches": 20,
+        "batch_size": 16,
+        "window_seed": 2,
+        "mask": "causal"
+      },
+      "selfcheck": {
+        "max_abs_logit_diff_released_vs_identity_mask": 6.199e-05,
+        "n_batches": 4,
+        "batch_size": 8
+      },
+      "telemetry": {
+        "n_rows": 31,
+        "last_step": 5999,
+        "last": {
+          "step": 5999,
+          "loss": 1.568,
+          "depth_ce": [
+            1.568
+          ],
+          "gate_mean": [],
+          "gnorm": 0.88,
+          "aux_w": 1.0,
+          "final_w": 1.0,
+          "attn_sparse": null,
+          "attn_linear": {
+            "phi_min": 0.0,
+            "phi_max": 77.5,
+            "den_min": 1e-06,
+            "inter_mass_frac": 0.307636,
+            "state_norm": 531.622427,
+            "n_layer_samples": 47800
+          },
+          "attn_carry": null,
+          "recon": null,
+          "readout": null,
+          "synth_answer_ce": null,
+          "synth_chance_ce": null,
+          "window_mask": null,
+          "kv_heads": null,
+          "lr": 0.0001,
+          "min": 6.19
+        },
+        "first": {
+          "step": 0,
+          "loss": 5.3091,
+          "depth_ce": [
+            5.3091
+          ],
+          "gate_mean": [],
+          "gnorm": 7.53,
+          "aux_w": 1.0,
+          "final_w": 1.0,
+          "attn_sparse": null,
+          "attn_linear": {
+            "phi_min": 0.2109375,
+            "phi_max": 2.953125,
+            "den_min": 26.375,
+            "inter_mass_frac": 0.585188,
+            "state_norm": 426.126678,
+            "n_layer_samples": 8
+          },
+          "attn_carry": null,
+          "recon": null,
+          "readout": null,
+          "synth_answer_ce": null,
+          "synth_chance_ce": null,
+          "window_mask": null,
+          "kv_heads": null,
+          "lr": 1e-05,
+          "min": 0.04
+        }
+      }
+    },
+    "full-256-lin-qk": {
+      "arm": "full-256-lin-qk",
+      "stalled": false,
+      "run_dir": "runs/full-256-lin-qk",
+      "wall_min": 4.67,
+      "seconds_per_step": 0.04674,
+      "peak_child_mem_gb_nvidia_smi": 0.86,
+      "peak_torch_gb": 0.347,
+      "params": 6962688,
+      "tokens": 12288000,
+      "patch": {
+        "attn_scale_mode": "qk-norm",
+        "tau": 1.0,
+        "min_t": 0,
+        "n_qkv_hooks": 8,
+        "active": true,
+        "params_added": 0,
+        "attn_linear": false,
+        "linear_chunk": 64,
+        "block_class": "Block"
+      },
+      "gnorm_monitor": {
+        "gnorm_max": 7.16,
+        "gnorm_mean": 0.985,
+        "grad_skips": 0,
+        "attn_sparse_mean": null,
+        "attn_sparse_layer_samples": 0,
+        "attn_linear_mean": null,
+        "attn_linear_layer_samples": 0,
+        "attn_carry_mean": null,
+        "attn_carry_layer_samples": 0,
+        "attn_carry_layer_stats": null,
+        "attn_carry_scan_mean": null,
+        "recon_window": 0,
+        "recon_lambda": 0.0,
+        "recon_mean": null,
+        "synth_answer_ce_mean": null,
+        "synth_answer_ce_n_steps": 0,
+        "synth_chance_ce": null,
+        "window_mask": null,
+        "window_mask_probe": null,
+        "kv_heads": null,
+        "kv_heads_n_logged_lines": 0
+      },
+      "sha256_model_pt": "e7ac0f3c3f4045513289d2901a2bf0ee75b9f9a924620bff764a68acac24d915",
+      "size_bytes": 27882155,
+      "steps": 6000,
+      "free_before_mb": 14591.0,
+      "free_after_mb": 14605.0,
+      "battery": {
+        "arm": "full-256-lin-qk",
+        "bpc_native": 1.961525,
+        "n_batches": 20,
+        "batch_size": 16,
+        "window_seed": 2,
+        "mask": "causal"
+      },
+      "selfcheck": {
+        "max_abs_logit_diff_released_vs_identity_mask": 0.0,
+        "n_batches": 4,
+        "batch_size": 8
+      },
+      "telemetry": {
+        "n_rows": 31,
+        "last_step": 5999,
+        "last": {
+          "step": 5999,
+          "loss": 1.4079,
+          "depth_ce": [
+            1.4079
+          ],
+          "gate_mean": [],
+          "gnorm": 0.83,
+          "aux_w": 1.0,
+          "final_w": 1.0,
+          "attn_sparse": null,
+          "attn_linear": null,
+          "attn_carry": null,
+          "recon": null,
+          "readout": null,
+          "synth_answer_ce": null,
+          "synth_chance_ce": null,
+          "window_mask": null,
+          "kv_heads": null,
+          "lr": 0.0001,
+          "min": 4.44
+        },
+        "first": {
+          "step": 0,
+          "loss": 5.3051,
+          "depth_ce": [
+            5.3051
+          ],
+          "gate_mean": [],
+          "gnorm": 7.16,
+          "aux_w": 1.0,
+          "final_w": 1.0,
+          "attn_sparse": null,
+          "attn_linear": null,
+          "attn_carry": null,
+          "recon": null,
+          "readout": null,
+          "synth_answer_ce": null,
+          "synth_chance_ce": null,
+          "window_mask": null,
+          "kv_heads": null,
+          "lr": 1e-05,
+          "min": 0.01
+        }
+      }
+    },
+    "linear-256-lin-qk": {
+      "arm": "linear-256-lin-qk",
+      "stalled": false,
+      "run_dir": "runs/linear-256-lin-qk",
+      "wall_min": 11.03,
+      "seconds_per_step": 0.11027,
+      "peak_child_mem_gb_nvidia_smi": 0.96,
+      "peak_torch_gb": 0.453,
+      "params": 6962688,
+      "tokens": 12288000,
+      "patch": {
+        "attn_scale_mode": "qk-norm",
+        "tau": 1.0,
+        "min_t": 0,
+        "n_qkv_hooks": 8,
+        "active": true,
+        "params_added": 0,
+        "attn_linear": true,
+        "linear_chunk": 64,
+        "block_class": "LinearAttnBlock"
+      },
+      "gnorm_monitor": {
+        "gnorm_max": 7.51,
+        "gnorm_mean": 1.054,
+        "grad_skips": 0,
+        "attn_sparse_mean": null,
+        "attn_sparse_layer_samples": 0,
+        "attn_linear_mean": {
+          "phi_min": 0.00488549,
+          "phi_max": 6.63485,
+          "den_min": 5.96875,
+          "inter_mass_frac": 0.426718,
+          "state_norm": 656.888125
+        },
+        "attn_linear_layer_samples": 48000,
+        "attn_carry_mean": null,
+        "attn_carry_layer_samples": 0,
+        "attn_carry_layer_stats": null,
+        "attn_carry_scan_mean": null,
+        "recon_window": 0,
+        "recon_lambda": 0.0,
+        "recon_mean": null,
+        "synth_answer_ce_mean": null,
+        "synth_answer_ce_n_steps": 0,
+        "synth_chance_ce": null,
+        "window_mask": null,
+        "window_mask_probe": null,
+        "kv_heads": null,
+        "kv_heads_n_logged_lines": 0
+      },
+      "sha256_model_pt": "75d0ce27e8e4e1181b962721a62e3aad096973bde69be3f504bcc52f7d54982f",
+      "size_bytes": 27882155,
+      "steps": 6000,
+      "free_before_mb": 14595.0,
+      "free_after_mb": 16210.0,
+      "battery": {
+        "arm": "linear-256-lin-qk",
+        "bpc_native": 2.585719,
+        "n_batches": 20,
+        "batch_size": 16,
+        "window_seed": 2,
+        "mask": "causal"
+      },
+      "selfcheck": {
+        "max_abs_logit_diff_released_vs_identity_mask": 1.717e-05,
+        "n_batches": 4,
+        "batch_size": 8
+      },
+      "telemetry": {
+        "n_rows": 31,
+        "last_step": 5999,
+        "last": {
+          "step": 5999,
+          "loss": 1.8626,
+          "depth_ce": [
+            1.8626
+          ],
+          "gate_mean": [],
+          "gnorm": 1.12,
+          "aux_w": 1.0,
+          "final_w": 1.0,
+          "attn_sparse": null,
+          "attn_linear": {
+            "phi_min": 0.00488549,
+            "phi_max": 6.63485,
+            "den_min": 5.96875,
+            "inter_mass_frac": 0.426718,
+            "state_norm": 656.888125,
+            "n_layer_samples": 48000
+          },
+          "attn_carry": null,
+          "recon": null,
+          "readout": null,
+          "synth_answer_ce": null,
+          "synth_chance_ce": null,
+          "window_mask": null,
+          "kv_heads": null,
+          "lr": 0.0001,
+          "min": 10.76
+        },
+        "first": {
+          "step": 0,
+          "loss": 5.3081,
+          "depth_ce": [
+            5.3081
+          ],
+          "gate_mean": [],
+          "gnorm": 7.51,
+          "aux_w": 1.0,
+          "final_w": 1.0,
+          "attn_sparse": null,
+          "attn_linear": {
+            "phi_min": 0.01389199,
+            "phi_max": 5.651499,
+            "den_min": 22.0,
+            "inter_mass_frac": 0.585067,
+            "state_norm": 529.397217,
+            "n_layer_samples": 8
+          },
+          "attn_carry": null,
+          "recon": null,
+          "readout": null,
+          "synth_answer_ce": null,
+          "synth_chance_ce": null,
+          "window_mask": null,
+          "kv_heads": null,
+          "lr": 1e-05,
+          "min": 0.06
+        }
+      }
+    }
+  },
+  "criteria": {
+    "criterion_1_quality": {
+      "delta_convention": "Δ = bpc_full − bpc_linear（正 = 线性更好）",
+      "delta_native_no_qk": -0.214107,
+      "delta_native_with_qk": -0.624194,
+      "delta_full_qk_effect": -0.015182,
+      "variance_band": 0.014,
+      "band_class_no_qk": "线性更差（越界）",
+      "band_class_with_qk": "线性更差（越界）",
+      "note": "诚实对手 = 同配置的 full 臂；原实装 vs 稳定化分母并列报"
+    },
+    "criterion_2_cost": {
+      "free_mb_before": 15288.0,
+      "steps": {
+        "full-256-lin": {
+          "median_ms": 20.741,
+          "n_iters": 6,
+          "linear": false,
+          "qk": "none",
+          "batch_size": 8,
+          "peak_mem_gib": 0.296
+        },
+        "linear-256-lin": {
+          "median_ms": 57.657,
+          "n_iters": 6,
+          "linear": true,
+          "qk": "none",
+          "batch_size": 8,
+          "peak_mem_gib": 0.377
+        },
+        "full-256-lin-qk": {
+          "median_ms": 34.318,
+          "n_iters": 6,
+          "linear": false,
+          "qk": "global",
+          "batch_size": 8,
+          "peak_mem_gib": 0.322
+        },
+        "linear-256-lin-qk": {
+          "median_ms": 69.929,
+          "n_iters": 6,
+          "linear": true,
+          "qk": "global",
+          "batch_size": 8,
+          "peak_mem_gib": 0.427
+        }
+      },
+      "ratio_linear_over_full": 2.7799,
+      "free_mb_after": 15252.0,
+      "theory": {
+        "attn_macs_per_token_per_layer_full": 131072,
+        "attn_macs_per_token_per_layer_linear_chunk64": 49152,
+        "attn_macs_per_token_per_layer_linear_streaming": 16384,
+        "note": "解析口径；实测为准（§17.11）"
+      }
+    },
+    "criterion_3_stall": {
+      "no_qk_stalled": false,
+      "with_qk_stalled": false,
+      "diag_matrix": null
+    }
+  },
+  "cost": {
+    "free_mb_before": 15288.0,
+    "steps": {
+      "full-256-lin": {
+        "median_ms": 20.741,
+        "n_iters": 6,
+        "linear": false,
+        "qk": "none",
+        "batch_size": 8,
+        "peak_mem_gib": 0.296
+      },
+      "linear-256-lin": {
+        "median_ms": 57.657,
+        "n_iters": 6,
+        "linear": true,
+        "qk": "none",
+        "batch_size": 8,
+        "peak_mem_gib": 0.377
+      },
+      "full-256-lin-qk": {
+        "median_ms": 34.318,
+        "n_iters": 6,
+        "linear": false,
+        "qk": "global",
+        "batch_size": 8,
+        "peak_mem_gib": 0.322
+      },
+      "linear-256-lin-qk": {
+        "median_ms": 69.929,
+        "n_iters": 6,
+        "linear": true,
+        "qk": "global",
+        "batch_size": 8,
+        "peak_mem_gib": 0.427
+      }
+    },
+    "ratio_linear_over_full": 2.7799,
+    "free_mb_after": 15252.0,
+    "theory": {
+      "attn_macs_per_token_per_layer_full": 131072,
+      "attn_macs_per_token_per_layer_linear_chunk64": 49152,
+      "attn_macs_per_token_per_layer_linear_streaming": 16384,
+      "note": "解析口径；实测为准（§17.11）"
+    }
+  }
+}
