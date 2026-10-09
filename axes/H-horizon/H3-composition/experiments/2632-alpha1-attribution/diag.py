@@ -55,6 +55,16 @@ BOOT_SEED = 2632
 TOPKS = (1, 2, 4, 8)
 
 
+def _repo_relative(path: str) -> str:
+    """仓库相对路径（越界则原样返回绝对路径）。
+
+    产物里凡是路径都必须仓库相对，否则「同一命令在不同 checkout 下运行」不会逐字节一致。
+    """
+    ap = os.path.abspath(path)
+    rp = os.path.relpath(ap, ROOT)
+    return ap if rp.startswith("..") else rp
+
+
 def sha256(path: str) -> str:
     h = hashlib.sha256()
     with open(path, "rb") as f:
@@ -352,7 +362,7 @@ def main() -> int:
         rows = teacher_anchor_pass(model, pcap, val, offsets, length)
         summ = summarize(rows)
         summ["sha256_model_pt"] = sha256(os.path.join(ck, "model.pt"))
-        summ["ckpt_path"] = os.path.abspath(ck)
+        summ["ckpt_path"] = _repo_relative(ck)
         results["checkpoints"][name] = {"free_gen": fg, "teacher_anchor": summ}
         for r in rows:
             rec_all.append({"ckpt": name, **r})

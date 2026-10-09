@@ -26,7 +26,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
-import diag  # noqa: E402
+import diag  # noqa: E402  (reuse load_ckpt / cluster_bootstrap / _repo_relative)
+
+
+def _rel(p: str) -> str:
+    """仓库相对路径（产物跨 checkout 逐字节一致的前提；越界则原样保留）。"""
+    ap = os.path.abspath(p)
+    rp = os.path.relpath(ap, diag.ROOT)
+    return ap if rp.startswith("..") else rp
 
 #: 早先 `probes.py` 增量侧 off-by-one 时记录的一对**不相等**值（4 offsets, n=256）。
 #: 冻结为常量供 `P1_note` 引用（复核选项②），使 merge 输出**对输入确定**——`probes.py` 已
@@ -52,6 +59,11 @@ def merge_diag(dirs: list[str], out: str) -> None:
         logp = os.path.join(d, "run_log.txt")
         if os.path.exists(logp):
             logs.append(open(logp, encoding="utf-8").read())
+    # ckpt_path 一律仓库相对（否则同一 run_all.sh 在不同 checkout 下产物不同）
+    for rec in merged["checkpoints"].values():
+        ta = rec.get("teacher_anchor")
+        if ta and "ckpt_path" in ta:
+            ta["ckpt_path"] = _rel(ta["ckpt_path"])
     # wilson_ci_95：从逐位置原始记录重算（准确率口径）
     rows_by: dict[str, list] = collections.defaultdict(list)
     for line in records:
