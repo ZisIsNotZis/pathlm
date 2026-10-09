@@ -1,16 +1,11 @@
 # 2631 · 因果口径 KV 预算图（27 点）—— 实验契约
 
-> **补录声明（重要）**：本实验在 2026-10-02 的 48 波次中被模型网关鉴权故障（401）中断，
-> **运行已跑完、契约文件未落盘**。本文件于运行结束后**补齐目录契约的形状**（SCHEMA §3/§6 的
-> 九节），内容逐字来源如下，**不新增、不调整任何判据**：
-> ① `config.json`（运行前写入，mtime 早于 `results.json`）的 `causal_caliber` /
-> `criterion` / `eval` / `controls` / `checkpoints` / `cost` / `reproducibility` 字段；
-> ② `2621-kv-budget-rest/README.md` §4 的 V1 判据线（本实验逐字沿用，`config.json::contract_copy` 记明）；
-> ③ `.scratch/49-adversarial-review/REPORT.md` A2（复核依据）。
-> **口径定义以 `config.json::causal_caliber.preregistered_criteria` 为准**（下同）。
-> **注**：`config.json` / `results.json` / `smoke/results.json` 的 `contract` 字段是**运行期产物**，
-> 其中仍含已删除的旧台账名 `docs/REMEDIATION.md`；口径以 `config.json::causal_caliber` 为准。
-> **判据线在 `config.json::causal_caliber.preregistered_criteria`，以那份为准**；本文件只是它的落盘副本。
+> **契约来源**：本文件的判据线落盘自 `config.json`（运行前写入，mtime 早于 `results.json`）的
+> `causal_caliber` / `criterion` / `eval` / `controls` / `checkpoints` / `cost` / `reproducibility`
+> 字段，以及 `2621-kv-budget-rest/README.md` §4 的 V1 判据线（逐字沿用，`config.json::contract_copy`
+> 记明）；复核依据 `.scratch/49-adversarial-review/REPORT.md` A2。
+> **口径定义与判据线以 `config.json::causal_caliber.preregistered_criteria` 为准**（下同）；
+> 本文件只是它的落盘副本。
 >
 > 入口：`run.py`（纯推理 + 汇总，**不训练**；`--charts-only` 可纯 CPU 重画表/图）；
 > 语义层：`causal_check.py`（前缀不变性仪器 + 新旧并列）、`budget_caliber.py`（值 + 标尺的部署字节）；
@@ -43,7 +38,7 @@
 - **因果性是本实验自带的第二个观测对象**：严格前缀确定要付「每值一个 fp16 标尺」的钱
   ⇒ 部署口径的字节必须另算（`budget_caliber.py`；判读见 `analysis.md` §4）。
 - 组合声明：本表里的组合臂（量化 × 窗口/锚点、量化 × 头共享、头共享 × 窗口）由 `2621` 的契约
-  授权（SCHEMA §4 的 2026-10-02 例外条款），本实验只是**换口径重测**它们，没有新增组合。
+  授权（SCHEMA §4 的例外条款），本实验只是**换口径重测**它们，没有新增组合。
 
 ## 3. 指标表（多维，逐项分析）
 

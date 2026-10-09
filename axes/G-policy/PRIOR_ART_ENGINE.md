@@ -1,10 +1,14 @@
 # PRIOR_ART_ENGINE — 推理引擎与调度情报（服务 G 轴）
 
-> 轴：**G 策略与调度** ｜ 服务格子：`G1-selector`、`G2-currency`、`G5-parallel-lines`
+> 轴：**G 策略与调度** ｜ 服务格子：`G1-selector`（原 `G2-currency` 归 `docs/methodology.md`、`G5-parallel-lines` 已删，见 `archive/README.md`）
 > 角色：纯知识线（无 GPU，不取锁，不跑训练/评测，不改代码/测试）
 > 依据：`SCHEMA.md` §18（既有做法节）、§19（局部先验抗性）、§21（三选一分诊）
 > 本文件**只写情报与分诊，不是实验证据**；与 `axes/G-policy/PRIOR_ART.md` 互补——
 > 那份覆盖 G1–G5 的**机制级**既有做法，本文覆盖**推理引擎与调度**的工程形态。
+
+> **范围声明**：本文写于原 `G5-parallel-lines`/`G2-currency` 移出研究树之前；
+> 其 §4/§6 的实验排序建议已被 `.scratch/51-tree/OPERATIONS.md` 取代。
+> 文中 G5/G2 相关条目仅作历史情报保留；格子身份与去处见 `archive/README.md`。
 
 ---
 
@@ -31,7 +35,7 @@
 
 ## 1. 投机解码的工程形态（草稿从哪来 / 怎么批量验证 / 加速比与质量代价 / 何时收益消失）
 
-> 整块来源类型：**外部系统，`记忆·未核`**（除非另标 `本地实测`）。不确定处已降级。
+> 整块来源类型：**外部系统，`记忆·未核`**（除非另标 `本地实测`）。不确定处一律标 `记忆·未核`。
 
 ### 1.1 各家草稿来源（谁做过 / 草稿从哪来）
 
@@ -187,7 +191,7 @@
 
 ---
 
-## 4. 对 G1 / G2 / G5 的**直接含义**（§21 三选一分诊）
+## 4. 对 G1 / G2 / G5 的**直接含义**（§21 三选一分诊；G5/G2 已移出研究树，见文首范围声明）
 
 > 记法：(a) 业界已研究透 ⇒ 直接写结论、**不跑实验**；
 > (b) 业界没有 / 结论不一致 / 我们设定实质不同 ⇒ **值得做实验**；
@@ -197,11 +201,11 @@
 G1-selector  | (a) | 投机解码的「草稿来源 + 树状验证」工程形态成熟（Medusa/EAGLE/LayerSkip/n-gram 各占位） | 结论：作为**工程管线**，草稿生成与批量验证已被业界做透；我们不重复实现，直接引用。来源类型：外部系统（记忆·未核）+ 本地 MTP 复核。
 G1-selector  | (a) | 「逐 token 变深度」有 LayerSkip/CALM/ACT 等成熟占位（见 PRIOR_ART.md 块①） | 结论：**离线求解器 + 变深度**应改「业界结论」口径；本地 Slider 作复核。
 G1-selector  | (b) | 「用延迟分位数当硬约束、逐 token 在线分配计算」的**统一求解器**未见直接前例（记忆·未核，未核证） | 值得做：这是 G1「在线多线调度器」的候选增量，但**先解决 §5 的去相关障碍**。
-G2-currency  | (a) | 「投机/效率结论必须在显存带宽受限 vs 算力受限两种计价下双报，否则相反」已是共识 | 结论：**compute-bound vs launch-bound 判据**是通用纪律；本地 100M 数据作同判据复现。来源类型：外部原理（记忆·未核）+ 本地实测。
-G2-currency  | (a) | 服务调度以「延迟分位数（p50/p99）」为目标货币有成熟工程出处（vLLM/SGLang 一类） | 结论：G2 的「延迟分位」货币**不是我们的新概念**，业界已用；应改「业界结论」口径。
-G2-currency  | (b) | 「同一机制在 forwards/FLOPs/墙钟/分位**四种货币下同报**并解释分歧」未见单一公开工作做全 | 保留本地口径：双（多）货币并报是本地已证的强纪律（本地实测）。
-G5-parallel-lines | (a) | 「多线需去相关、共享主干成员高度相关增益可忽略」是深集成/自一致的既有共识 | 结论：我们 G5 的**主结论应改「业界结论」口径**；本地数字作 13M 复核（见 PRIOR_ART.md 块⑤）。
-G5-parallel-lines | (b) | 「**以去相关为目标的多线变异草稿树**」在既有引擎里**没有现成实现**（记忆·未核；且与投机接受率目标冲突） | 值得做：这是 G5 的真空白候选，也正是「在线多线调度器」的核心；但**第一障碍见 §5**。
+G2-currency（现 docs/methodology.md） | (a) | 「投机/效率结论必须在显存带宽受限 vs 算力受限两种计价下双报，否则相反」已是共识 | 结论：**compute-bound vs launch-bound 判据**是通用纪律；本地 100M 数据作同判据复现。来源类型：外部原理（记忆·未核）+ 本地实测。
+G2-currency（现 docs/methodology.md） | (a) | 服务调度以「延迟分位数（p50/p99）」为目标货币有成熟工程出处（vLLM/SGLang 一类） | 结论：原 G2 的「延迟分位」货币**不是我们的新概念**，业界已用；应改「业界结论」口径。
+G2-currency（现 docs/methodology.md） | (b) | 「同一机制在 forwards/FLOPs/墙钟/分位**四种货币下同报**并解释分歧」未见单一公开工作做全 | 保留本地口径：双（多）货币并报是本地已证的强纪律（本地实测）。
+G5-parallel-lines（已删） | (a) | 「多线需去相关、共享主干成员高度相关增益可忽略」是深集成/自一致的既有共识 | 结论：原 G5 的**主结论应改「业界结论」口径**；本地数字作 13M 复核（见 PRIOR_ART.md 块⑤）。
+G5-parallel-lines（已删） | (b) | 「**以去相关为目标的多线变异草稿树**」在既有引擎里**没有现成实现**（记忆·未核；且与投机接受率目标冲突） | 已随原 G5 删除；证据存 `archive/dropped/`。
 ```
 
 **分诊要点**：
@@ -231,14 +235,14 @@ G5-parallel-lines | (b) | 「**以去相关为目标的多线变异草稿树**�
 ### 本地已测的硬事实（`本地实测`，直接支撑）
 
 - **共享 trunk 的 voter 太相关**：集成增益仅 **+0.0008 ~ +0.0015**（可忽略）。
-  来源 `.scratch/08-tts-probe/evidence/SUMMARY.md`、`axes/G-policy/G5-parallel-lines/README.md`。
+  来源 `.scratch/08-tts-probe/evidence/SUMMARY.md`、`archive/dropped/axes/G-policy/G5-parallel-lines/README.md`。
 - **确定性路径 checkpoint 的 K-path 集成恰好得 0**：X1/X3 的多条「路径」逐位相同，
   K=1..8 完全持平——**beam search 产出的多线正落在这个死区**（无变异 ⇒ 无增益）。
   来源 `.scratch/08-tts-probe/evidence/SUMMARY.md`。
 - **去相关必须练进去，且代价为主**：DIVL1（capped −JS + float32 + pre-step grad-norm gate）
   同时改善 baseline（−0.008）与集成斜率（−0.062 > −0.047），但**绝对数仍高于 stock**
   （多样性压力税约 +0.023）；13M 下**税仍主导**。
-  来源 `.scratch/09-m3-interactions/evidence/SUMMARY.md`、`G5-parallel-lines/README.md`。
+  来源 `.scratch/09-m3-interactions/evidence/SUMMARY.md`、`archive/dropped/axes/G-policy/G5-parallel-lines/README.md`。
 - **深度的「免费多线」也不成立**：深度集成（T2）比单线更差——早层不是「弱但可用的投票者」，
   而是**严格更差的估计器**；置信头只排序**深度**、不排序**逐 token 可靠性**。
   来源 `.scratch/08-tts-probe/evidence/SUMMARY.md`。
@@ -292,7 +296,7 @@ G5-parallel-lines | (b) | 「**以去相关为目标的多线变异草稿树**�
   接受级联、100M 墙钟收缩、核差异翻转 argmax。
 - `.scratch/08-tts-probe/evidence/SUMMARY.md` — 共享 trunk 相关性、确定性 K-path 集成得 0、深集成失败。
 - `.scratch/09-m3-interactions/evidence/SUMMARY.md` — DIVL1 去相关（税 +0.023、集成斜率 −0.062）。
-- `axes/G-policy/G5-parallel-lines/README.md`、`G1-selector/README.md`、`G2-currency/README.md` — 格子结论与数字。
+- `axes/G-policy/G1-selector/README.md` — 格子结论与数字；原 `G5-parallel-lines`/`G2-currency` 的格子页存 `archive/dropped/axes/G-policy/`。
 
 **外部（`记忆·未核`，只作设计方向，不引精确数字）**
 - 投机解码：Medusa / Medusa-2 / Hydra / EAGLE-1 / EAGLE-2 / LayerSkip / prompt lookup (REST) /

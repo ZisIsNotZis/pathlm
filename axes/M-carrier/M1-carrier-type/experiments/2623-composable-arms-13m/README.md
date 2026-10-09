@@ -129,7 +129,7 @@ long-range retrieval`、`delta rule fast weight memory MQAR`、`GQA delta net co
 `CarryChannelBlock`；否则 `Block`。四臂恰好命中后四条，**不存在不可达组合**（CPU 前向
 四臂全部 OK，见 `tests/test_composable_arms_13m.py::test_each_arm_builds_and_lands_expected_block_class`）。
 
-## 4c. 与契约明文的唯一偏离：6k 快照 token 预算（**主 Agent 裁决，2026-10-03**）
+## 4c. 与契约明文的唯一偏离：6k 快照 token 预算（**主 Agent 裁决**）
 
 契约写 `≈40–60 min`、**未**写同步数（「同 token 预算」只约束臂间相等）。**先测步时**后
 发现契约隐含的 12k（= 2618 口径）在本卡当前环境下超预算：

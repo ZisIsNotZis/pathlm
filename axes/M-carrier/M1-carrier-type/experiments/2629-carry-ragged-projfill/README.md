@@ -97,7 +97,7 @@
 | `train_window > 0` ⊕ `dense=False` | **仍硬互斥**（`raise ValueError`，`depth_ar.py:1834`） | 未用（见下方未测因子） |
 | `proj_fill` ⊕ `fill_kv=False` | **报错**（`proj_fill requires fill_kv=True`） | 两臂均 `fill_kv=True` |
 
-**关键实测（CPU，2026-10-06，`capability_probe()`）**：两臂都能建；块类 =
+**关键实测（CPU，`capability_probe()`）**：两臂都能建；块类 =
 `{projfill: Block, projfill_carry: CarryChannelBlock}`；**主干参数逐位相同**（同 seed，
 carry 参数只在目标臂 ⇒ 单因素对照成立，§9/§15）；目标臂多出的参数全部含 `carry`
 （`carry.*` + 块上的 `carry_scale`），**没有偷改主干**。

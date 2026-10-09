@@ -17,7 +17,7 @@
 我们已经直接测过「靠训练注意力掩码逼模型只用近处」这条路，结论是**只丢不搬**——
 `本地实测`：`axes/A-mixing/A9-old-info-retention/experiments/2615-window-trained-retention-13m/analysis.md`
 （窗口 32 训练后，窗外针召回 0.4588 vs 无记忆地板 0.4545，差 **+0.0043**）；
-`axes/M-carrier/M3-cross-step-assumption/experiments/2616-window192-trained-13m/analysis.md`
+`axes/M-carrier/M1-carrier-type/experiments/2616-window192-trained-13m/analysis.md`
 （窗口 192 训练后，**整段都在窗外的 494 根针差值恰好 0.000**）。
 所以这份文档不再讨论「掩码逼出局部依赖」，而是设计**显式的搬运算子**。
 
@@ -59,7 +59,7 @@
 
 ### 1.3 任务侧：enwik8 的局部先验**太强**，13M 又弱，**「不需要」压过「搬不动」**
 
-按 SCHEMA §19 与用户 2026-10-01 洞察：越小越弱的模型对远距离 context 越不敏感，因为
+按 SCHEMA §19 与用户洞察：越小越弱的模型对远距离 context 越不敏感，因为
 大部分靠语言先验补强，从未涌现真正的长程需求。本批 A 线的合成电池把「任务类型」这个
 混杂剥出来了（`本地实测` 2617 电池）：
 
@@ -293,7 +293,7 @@ $$
   — 累计 recent:d=32 = +0.212（单点 d*=32 的 15 倍）；检索腿动态范围 25.4pp；地板 0.433。
 - `axes/A-mixing/A9-old-info-retention/experiments/2615-window-trained-retention-13m/analysis.md`
   — 窗口 32 税 +0.0866；窗外针 +0.0043（≈地板）。
-- `axes/M-carrier/M3-cross-step-assumption/experiments/2616-window192-trained-13m/analysis.md`
+- `axes/M-carrier/M1-carrier-type/experiments/2616-window192-trained-13m/analysis.md`
   — 窗口 192 税 −0.0028；整段窗外 494 根差恰 0.000；训练侧噪声 ≥~0.0156 bpc。
 - `axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md`
   — 情报（其外部内容全部「记忆·未核」）。

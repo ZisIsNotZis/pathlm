@@ -56,7 +56,7 @@
 
 契约字面的 `carry × per-token depth(随机退出)` **在引擎里不存在**：carry 硬要求 `dense=True`，
 而 dense 主干**忽略** `exit_depths`（随机退出只在非 dense 的 ragged 路径成立，那条路径拒绝
-carry）。ENG1 解除的是 `GQA × carry × window`，不包含这一对。**主 Agent 裁决（2026-10-06）**：
+carry）。ENG1 解除的是 `GQA × carry × window`，不包含这一对。**主 Agent 裁决**：
 深度因子改用 dense 兼容的 `--dense-aux`（dense 全深度并行监督）。完整能力面分析见
 `README.md §4b/§4c`。「ragged 随机退出 + proj-fill」（产出 100M `tf@4=0.9726` 的真配方）是
 **显式未测因子**，**禁止外推**。
@@ -217,7 +217,7 @@ carry 26.60% / depth 1.44% / both 27.04%；交互项 **+0.46pp**——结论不�
 
 - 复核原文：`README.md §7` / `MODEL.md` 的派生产物表列了 `train_{base,carry,depth,both}.log`，
   而仓根 `.gitignore` 的 `*.log` 会匹配它们 ⇒ 断言「none are in git」。
-- **实测（2026-10-06）**：这四个文件**是已跟踪文件**（`fb1e491` 提交时随本线入库；blob 在 `HEAD`）：
+- **实测**：这四个文件**是已跟踪文件**（`fb1e491` 提交时随本线入库；blob 在 `HEAD`）：
 
   ```bash
   $ git ls-files 'axes/M-carrier/M1-carrier-type/experiments/2627-carry-x-depth/train_*.log'

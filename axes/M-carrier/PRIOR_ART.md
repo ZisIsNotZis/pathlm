@@ -1,7 +1,6 @@
-# PRIOR_ART — M 状态载体（M1–M3）
+# PRIOR_ART — M 状态载体（M1–M2）
 
-> 轴：**M 状态载体** ｜ 格子：`M1-carrier-type`（judged）、`M2-carrier-compression`（todo）、
-> `M3-cross-step-assumption`（judged） ｜ 角色：知识波（无 GPU，不取锁）
+> 轴：**M 状态载体** ｜ 格子：`M1-carrier-type`（并 `M3-cross-step-assumption`）、`M2-carrier-compression` ｜ 角色：知识波（无 GPU，不取锁）
 > 依据：`SCHEMA.md` §18（既有做法）、§19（局部先验抗性）、§21（不重复造轮子三选一分诊）
 > 本文件只写情报与分诊，**不是实验证据**，无 `results.json`。
 
@@ -49,7 +48,7 @@
 - **业界（`记忆·未核`）**：delta 规则 > 无门控线性 / 单纯递增，是 2024–2025 的既定共识；
   「只搬残差」的写入算子在 MQAR 上被反复报告有效。
 - **判定**：**「delta 写比 plain 写稳定有效」这一机制级结论，业界早已有（DeltaNet 系）。
-  ⇒ 账本该条应改为「业界结论」口径**，标注「业界结论，非本地实测」，
+  ⇒ `catalog.yaml` 该条应改为「业界结论」口径**，标注「业界结论，非本地实测」，
   本地 ticket 35 只作**同尺度的独立复核**保留。
 - **不得外推**：本地绝对水平仅 9.5%（13M/12k）⇒ 按 §19 只能读作「在该任务/该尺度上成立」。
 - **不确定**：DeltaNet 系是否在所有规模上成立、与 plain 写的**净差**数字。`要查`：
@@ -66,7 +65,7 @@
 | **动态压缩** | DMC（NVIDIA，2024，`记忆·未核`） | KV 动态压成单槽 | 需继续预训练/蒸馏——「压缩无训练信号不够」的既证 |
 
 - **本地实测（M2）**：驱逐 +0.058~0.121（13M）；保留曲线严格单调，单距离
-  d=1 +3.245 / d=8 +0.090 / d=16 +0.017 / 恰在 d=32 ≤+0.004；**ERRATA**：单距离不得当
+  d=1 +3.245 / d=8 +0.090 / d=16 +0.017 / 恰在 d=32 ≤+0.004；**注意**：单距离不得当
   可加外推——只保留最近 32 个实测累计 **+0.212 bpc**（单点 15 倍）。
   来源：`axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/analysis.md`。
 - **审慎提示**：业界多数压缩工作**只报 ppl/质量、不报可重建性**；我们的天平发现
@@ -75,7 +74,7 @@
 - **判定**：M2 的**量化/摘要/低秩**三支业界均有成熟占位 ⇒ 若只是复现，**无增量**（(a)）；
   真正可做的是**同一字节预算横轴**下的受控对照（U3 线在做）。
 
-### 块③：跨步假设（对标 `M3-cross-step-assumption`）
+### 块③：跨步假设（原 `M3-cross-step-assumption`，已并入 `M1-carrier-type`）
 
 | 系统 | 既有做法（`记忆·未核`） | 结果 |
 |---|---|---|
@@ -83,32 +82,32 @@
 | 滑动窗口注意力（Longformer、Mistral 等） | 每 token 只看最近 k 个 | 大窗口训练税近零，是主流默认 |
 | StreamingLLM | 窗口 + attention sink | 丢最前缀会崩、加回 sink 即恢复 |
 
-- **本地实测（M3）**：窗口 192 训练税 **−0.002813**（只能报「近零」，重跑 +0.000673）；
+- **本地实测（原 M3）**：窗口 192 训练税 **−0.002813**（只能报「近零」，重跑 +0.000673）；
   窗口 32 训练税 **+0.086566**；窗口外信息是「丢了」不是「搬了」（整段窗外的 494 根差
-  恰好 0.000）。来源：`axes/M-carrier/M3-cross-step-assumption/experiments/2616-window192-trained-13m/analysis.md`。
+  恰好 0.000）。来源：`axes/M-carrier/M1-carrier-type/experiments/2616-window192-trained-13m/analysis.md`。
 - **判定**：「大窗口训练税近零、小窗口要付质量」在业界是成熟共识（滑动窗口注意力）
-  ⇒ M3 的**主结论应改「业界结论」口径**；本地的 13M 两档数字作为**独立复核**保留，
+  ⇒ 原 M3 的**主结论应改「业界结论」口径**；本地的 13M 两档数字作为**独立复核**保留，
   且**不得用两点定趋势**（§17.11，悬崖形状不可判定）。
 
 ---
 
 ## 2. 机器可读分诊表（§21）
 
-格式：`grid_id | 判定 | 一句话理由 | 若要写进账本的结论`
+格式：`grid_id | 判定 | 一句话理由 | 拟写进 `catalog.yaml` 的结论`
 
 ```
 M1-carrier-type        | (a) | 「delta 写算子有效、plain 写不稳定」是 DeltaNet 系已证机制（记忆·未核） | 结论：显式写入通道 + delta 写（只搬残差）能稳定搬运信息，优于无残差的 plain 写。来源类型：业界结论（记忆·未核）+ 本地同尺度复核。口径改为「业界结论」。
 M1-carrier-type        | (b) | 13M char-enwik8 + 局部先验抗性任务上的绝对水平（9.5%）与 plain 双稳态，业界不报此尺度 | 结论（本地·保留本地实测口径）：13M/12k 上 delta 写 6.08× chance、毁源→chance；绝对水平仅 9.5%，不外推。
-M1-carrier-type        | (c) | 递归状态/显式记忆槽/外部存储/权重载体我们零经验，且无法在线核业界最新进展 | 方向：四类载体各有成熟前例；若要写账本需先按 (a) 补业界条目或本地实测。
+M1-carrier-type        | (c) | 递归状态/显式记忆槽/外部存储/权重载体我们零经验，且无法在线核业界最新进展 | 方向：四类载体各有成熟前例；若要写进 `catalog.yaml` 需先按 (a) 补业界条目或本地实测。
 M2-carrier-compression | (a) | KV 量化、摘要压缩、低秩投影（MLA）业界均已做透 | 结论：KV int8 近无损、int4 有损；压缩≠保信息，须配可重建性判据。来源类型：业界结论（记忆·未核）。
 M2-carrier-compression | (b) | 「同一每位置字节预算下的受控对照」业界多为工程配方、缺干净 sweep | 结论（待 U3 实测）：同一字节横轴上量化/驱逐/窗口的统一质量-召回前沿。
 M2-carrier-compression | (b) | 驱逐的累计口径（只留最近 32/64/128/192 各档）是本仓库本地实测 | 结论（本地）：单距离曲线不得当可加外推；只留最近 32 = +0.212 bpc（单点 15 倍）。
-M3-cross-step-assumption | (a) | 「大窗口训练税近零、小窗口付质量；丢前缀信息是『丢了』不是『搬了』」是滑动窗口注意力/StreamingLLM 的既定结论 | 结论：有界内存的价签——窗口越大越近零税；限制可见范围不产生右移搬运。口径改为「业界结论」。
-M3-cross-step-assumption | (b) | 训练侧只有 32 与 192 两点，悬崖位置不可判定（§17.11） | 待补 64/128 训练点后方可定位悬崖。
+M1-carrier-type（并 M3） | (a) | 「大窗口训练税近零、小窗口付质量；丢前缀信息是『丢了』不是『搬了』」是滑动窗口注意力/StreamingLLM 的既定结论 | 结论：有界内存的价签——窗口越大越近零税；限制可见范围不产生右移搬运。口径改为「业界结论」。
+M1-carrier-type（并 M3） | (b) | 训练侧只有 32 与 192 两点，悬崖位置不可判定（§17.11） | 待补 64/128 训练点后方可定位悬崖。
 ```
 
 **分诊要点（给主 Agent）**：
-- M1/M3 的**主结论**判为 (a) ⇒ `catalog.yaml` 对应 verdict 应加「业界已有」标注、
+- M1（并 M3）的**主结论**判为 (a) ⇒ `catalog.yaml` 对应 verdict 应加「业界已有」标注、
   状态口径改「业界结论」；本地数字保留为「同尺度复核」，**不删除**。
 - M2 的量化/摘要/低秩判 (a)，但「同一字节预算受控对照」判 (b)（U3 线在做）。
 
@@ -132,8 +131,8 @@ M3-cross-step-assumption | (b) | 训练侧只有 32 与 192 两点，悬崖位�
 **本地实测（可当证据）**
 - `axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m/analysis.md` — delta 写 6.08× chance、毁源→chance、plain 双稳态。
 - `axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md` — 长程能力分任务型（关联回忆 0.0061 等）。
-- `axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/analysis.md` — 保留曲线 + ERRATA（累计 +0.212）。
-- `axes/M-carrier/M3-cross-step-assumption/experiments/2616-window192-trained-13m/analysis.md` — 窗口 192 −0.0028 / 窗口 32 +0.0866。
+- `axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/analysis.md` — 保留曲线（累计 +0.212）。
+- `axes/M-carrier/M1-carrier-type/experiments/2616-window192-trained-13m/analysis.md` — 窗口 192 −0.0028 / 窗口 32 +0.0866（原 M3）。
 
 **记忆（未核，只可作设计方向）**
 - Transformer-XL / Compressive Transformer / Memorizing Transformer / RMT / NTM·DNC /

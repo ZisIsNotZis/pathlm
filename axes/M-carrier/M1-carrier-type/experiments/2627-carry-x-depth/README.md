@@ -3,7 +3,7 @@
 > 契约来源：`.scratch/44-wave17/issues/01-wave17.md` 的「**X2**」。
 > 本文件是该线的**执行契约**；§4 判据线**逐字**抄录 X2。
 > **§4c 记录与契约明文的唯一偏离**（深度因子落到 `--dense-aux` 而非 ragged 随机退出）
-> 及其**主 Agent 裁决（2026-10-06）**——那是本线唯一的契约参数变更。
+> 及其**主 Agent 裁决**——那是本线唯一的契约参数变更。
 > 入口：`train_arms.sh`（训练四臂）+ `run.py`（评测电池）+ `smoke_steptime.sh`（先测步时）；
 > 语义层 `carry_x_depth_arms.py`（2×2 因子定义）；单测 `tests/test_carry_x_depth_13m.py`；
 > 变异 `mutate.py`；对账 `reconcile_numbers.py`；原始结果 `results.json`；
@@ -114,7 +114,7 @@
 | `carry_rule` ⊕ `dense_aux` | **允许**（无互斥校验；实测可建可跑） | both 臂 |
 | `carry_rule` ⊕ `n_kv_heads<n_heads` / `train_window>0` | ENG1 后才允许（`ComposableBlock`）——**本线不用** | — |
 
-**关键实测（CPU 前向，2026-10-06）**：
+**关键实测（CPU 前向）**：
 1. `dense+carry`，`exit_depths=full` 与 `exit_depths=rand` 的 loss **逐位相同**
    （5.5217419 vs 5.5217419，出口 CE 条数 1）⇒ `--exit-mode uniform` 在 dense 上是**死开关**；
 2. dense 上 `dense_aux=True` 使出口 CE 条数从 1 变 13（监督真的扩容）；
@@ -126,7 +126,7 @@
 exit_depths；随机退出 ⇒ 非 dense ⇒ 拒绝 carry）。ENG1 解除的是 `GQA × carry × window`，
 **不包含这一对**。处置见 §4c。
 
-## 4c. 与契约明文的唯一偏离：深度因子落到 `--dense-aux`（**主 Agent 裁决，2026-10-06**）
+## 4c. 与契约明文的唯一偏离：深度因子落到 `--dense-aux`（**主 Agent 裁决**）
 
 **根因**（见 §4b）：契约把深度因子写成「per-token depth(随机退出)」，但它与 carry 在引擎里
 **硬互斥**——carry 要求 `dense=True`，dense 主干**忽略** `exit_depths`；而 ragged 随机退出要求

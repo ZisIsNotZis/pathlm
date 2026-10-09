@@ -174,11 +174,11 @@ gpu_wall_budget_min: 20
 
 ## 11. 分诊表（SCHEMA §21，(a)/(b)/(c) 三选一，机器可读）
 
-| grid_id | 判定 | 一句话理由 | 若要写进账本的结论 |
+| grid_id | 判定 | 一句话理由 | 拟写进 `catalog.yaml` 的结论 |
 |---|---|---|---|
-| `R1-quantization` | **(a) 业界已研究透** | KV 量化（int8 近无损 / int4 需分组）是全行业标准做法，我们的 int8/int4 逐通道数字与业界方向一致 | 保持 `status: reference`（已标「业界结论，非本地实测」）；本实验只补**本地同仪器的字节轴坐标** |
-| `W3-kv-head-sharing` | **(a) 业界已研究透** | GQA/MQA/MLA 已被全行业采纳，KV 内存降数倍、质量近无损 | 保持 `status: reference`；本实验只补**同字节预算下与量化的直接对比** |
-| `M2-carrier-compression`（驱逐/窗口） | **(a) 业界已研究透** | StreamingLLM / H2O / SnapKV 已把驱逐/窗口研究透 | 保持 `reference` 口径的结论；本实验只把 A3/M2 的本地价签放上同一字节轴 |
+| `R1-quantization` | **(a) 业界已研究透** | KV 量化（int8 近无损 / int4 需分组）是全行业标准做法，我们的 int8/int4 逐通道数字与业界方向一致 | `R1` 为 `status: todo`（业界结论须核实出处，见 `catalog.yaml`）；本实验只补**本地同仪器的字节轴坐标** |
+| `W3-kv-head-sharing` | **(a) 业界已研究透** | GQA/MQA/MLA 已被全行业采纳，KV 内存降数倍、质量近无损 | `W3` 为 `status: todo`（待按因果口径重算同字节 Pareto，见 `catalog.yaml`）；本实验只补**同字节预算下与量化的直接对比** |
+| `M2-carrier-compression`（驱逐/窗口） | **(a) 业界已研究透** | StreamingLLM / H2O / SnapKV 已把驱逐/窗口研究透 | 保持 `status: todo`（业界结论口径）；本实验只把 A3/M2 的本地价签放上同一字节轴 |
 | `M2-carrier-compression`（量化/摘要/低秩） | **(c) 查不到（检索不可用）** | 量化子项已由 R1 覆盖；**摘要压缩 / MLA 低秩**本项目零经验且无法检索确认 | 按 `记忆·未核` 记为方向，**不得**据此判 (a) |
 | **本办法（统一预算总图 + 双纵轴 + 合成召回腿）** | **(b) 我们的设定实质不同** | 13M / 局部先验抗性合成任务 / 单因素受控 / 同一仪器同一字节轴 —— 业界没有同口径公开表 | **做**这个实验（本目录） |
 

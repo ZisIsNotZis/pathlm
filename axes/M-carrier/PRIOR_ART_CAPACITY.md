@@ -36,7 +36,7 @@ K 对「键→值」，末尾问某键求值；答案不可由局部规律猜出
    回忆几条关联」当成旋钮，画「准确率 vs 状态大小 / 层数」曲线。**具体是线性还是次线性，
    我记不清 ⇒ 不写数字**，只记方向。（`记忆·未核`）
 2. **delta 写族（只搬状态还没搬的那部分）比朴素累加稳定**，这是 2024–2025 的既定共识；
-   **我们本地已经独立复核过**（13M：delta 9.5% vs plain 双稳态）。所以这一条在我方账本里
+   **我们本地已经独立复核过**（13M：delta 9.5% vs plain 双稳态）。所以这一条在 `catalog.yaml` 里
    应归 (a)「业界做透」⇒ 直接写结论，别当新发现重跑（§21）。
 3. **真正该我们做的是**：把**状态宽度（我们代码里的 `carry_state_dim`）✕ 需要的关联条数 K**
    做成受控扫描，在**局部先验抗性任务**上画容量曲线。这正是业界曲线没在「13M + 字节级 +
@@ -137,7 +137,7 @@ linear attention state dimension`, `Repeat After Me copying SSM`, `sequence leng
 - **但 plain 写双稳态**（同配置同 seed 两次 0.0007 / 0.0334）⇒ **「delta 稳定优于 plain」这一
   强表述不作为我方结论**；即便取最利于 plain 的那次（3.34%），delta 仍高 +6.15pp。
 - **分诊**：「delta 写（只搬残差）优于无残差 plain 写」是 DeltaNet 系的既定机制（`记忆·未核`）
-  ⇒ 在我方账本里归 **(a) 业界做透**，`status: todo`，本地数保留为**同尺度独立复核**。
+  ⇒ 在 `catalog.yaml` 里归 **(a) 业界做透**，`status: todo`，本地数保留为**同尺度独立复核**。
 
 **若可检索应查**：`DeltaNet delta rule residual write`, `Gated DeltaNet`, `DeltaProduct`,
 `test-time training TTT linear attention`, `delta rule vs Hebbian accumulation capacity`.
@@ -212,7 +212,7 @@ train`, `LRU usage-based allocation language model`, `H2O eviction reproducibili
 
 1. **chance 与局部先验基线必须并列报**（`2617` 已建立：chance=1/64，局部先验 k=8，ceiling=0.046875）。
 2. **每个容量点必须配毁源对照臂**（`2618`：毁源后回 chance 才可信）＋二项 CI。
-3. **单距离/单点不得当可加外推**（`M2` ERRATA 教训：只保留最近 32 实测累计 +0.212 bpc，
+3. **单距离/单点不得当可加外推**（`M2` 口径教训：只保留最近 32 实测累计 +0.212 bpc，
    是单点读数的 15 倍）。容量曲线同理，只报测过的点。
 
 ---
@@ -262,7 +262,7 @@ train`, `LRU usage-based allocation language model`, `H2O eviction reproducibili
 - `axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m/analysis.md`
   — delta 写 9.50% vs U0 1.37%（毁源→0.81%）；K=4/8/16 = 14.4/9.5/5.6%；plain 双稳态；状态范数 plain 50→71.8 vs delta ~3。
 - `axes/M-carrier/M1-carrier-type/experiments/2619-carry-difficulty-capacity/smoke/` — `carry_state_dim` 16/32/64/128 **仅 20 步冒烟**，无真实读数。
-- `axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/analysis.md` — 保留曲线 + ERRATA（只留最近 32 累计 +0.212）。
+- `axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/analysis.md` — 保留曲线（只留最近 32 累计 +0.212）。
 - `axes/A-mixing/A10-compression-trigger/README.md` — LRU vs distance vs content 同预算对照，重对齐后 lru −0.0170。
 - `axes/M-carrier/PRIOR_ART.md`、`.../2617-prior-art-memory/PRIOR_ART.md` — 同轴前序情报（本文是其「定量律」细化）。
 - `pathlm/depth_ar.py`（只读）— `carry_rule` / `carry_state_dim` / `carry_chunk` / `recon_window` 字段与校验。

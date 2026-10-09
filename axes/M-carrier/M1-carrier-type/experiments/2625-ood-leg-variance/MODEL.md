@@ -50,4 +50,4 @@ python3 train_depth_ar.py gqa_carry_win_s1 --d 256 --layers 12 --heads 8 \
 ## 4. 共享文件改动
 
 **无**。本线不修改 `pathlm/`（引擎）、`tools/evalkit/`（仪器）、`catalog.yaml`、`INDEX.md`、
-`axes/**/README.md`、`STATUS.md` 或任何他人实验目录；评测复用 2624 的 `quant_carry.py`（只读导入）。
+`axes/**/README.md` 或任何他人实验目录；评测复用 2624 的 `quant_carry.py`（只读导入）。

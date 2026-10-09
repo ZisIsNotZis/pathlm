@@ -39,7 +39,7 @@ python3 train_depth_ar.py gqa_carry_window   ... --n-kv-heads 2 --carry-write de
 | `pathlm/depth_ar.py` | `3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279` | **否**（本线不写引擎/训练入口；只组合 ENG1 已解开的开关） |
 | `train_depth_ar.py` | `1035565281ed66af16e303ce29148e6907020d438047a4e3fdadc1799f78409e` | **否**（本线不写引擎/训练入口；只组合 ENG1 已解开的开关） |
 
-> 口径重叠核对：评测落盘时（2026-10-03 18:32）`git status` 显示 `pathlm/depth_ar.py` 与
+> 口径重叠核对：评测落盘时 `git status` 显示 `pathlm/depth_ar.py` 与
 > `train_depth_ar.py` **没有未提交改动**（本波其它 GPU 线 Y2/Y3 只新增自己的实验目录与
 > `tests/`，不改引擎/训练入口）⇒ 上表指纹即提交态基线；本线**未触碰**共享引擎文件。
 

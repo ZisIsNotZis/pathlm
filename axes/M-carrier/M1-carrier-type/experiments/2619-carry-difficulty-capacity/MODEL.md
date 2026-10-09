@@ -40,7 +40,7 @@ python3 run.py --smoke  # 冒烟
 本轮 `pathlm/depth_ar.py` 与 `train_depth_ar.py` 是**共享文件**：U1（本实验）追加
 `carry_state_dim` 接线，U2 线（F4 重建损失）追加 `recon_window` 接线。两者在同一工作树里
 **共存**（U1 的改动已被编排方提交，U2 的改动当时仍未提交）。本实验在写这份报告时
-（2026-10-02）记录的工作树 sha256：
+记录的工作树 sha256：
 
 ```
 pathlm/depth_ar.py   248a92754154d65e0857ca5ceccda91ef63ffd9b90b3cfde2199da29b6b59135
