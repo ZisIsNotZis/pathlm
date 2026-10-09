@@ -161,8 +161,10 @@ T、数据或渐近极限。
 边际信息低）；⑤ **preflight 冒烟未单独跑**（四臂的 6000 步训练与 `results.json::gnorm_monitor` 已充当
 步时/活性面证据；本实验无 `smoke/smoke.json`）。
 
-**共享文件并发状态（SCHEMA §22.6）**：本实验运行时 `pathlm/depth_ar.py` sha256 = `f2e72361…`、
-`train_depth_ar.py` = `218b631…`（含他线未提交改动；本实验只读引用，**未改任何共享文件**）。
+**共享文件并发状态（SCHEMA §22.6）**：本实验运行时工作树 `pathlm/depth_ar.py` = `f2e72361…`、
+`train_depth_ar.py` = `218b631…`（含他线未提交改动；运行后被其他线提交，HEAD 现为 `b304c234…`）。
+改动落在 carry/mod/decode 区域与可选字段，本实验用到的 dense+linear 前向路径不在其中；
+本实验只读引用 2625 的 QK-Norm hook，**未改任何共享文件**。
 
 ## 8. §23「预算内极致」七问
 

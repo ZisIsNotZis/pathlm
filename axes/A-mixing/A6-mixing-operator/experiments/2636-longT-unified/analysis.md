@@ -258,11 +258,13 @@ window = 自身训练掩码）。工程方差带 **0.014**；本格自测 seed �
 （T=256/512 欠训练，§2）；③ 结论限 7.16M / enwik8；④ seed 噪声已测（§4，四对 seed），但
 **未做更长训练点 / 更多 T 的 seed 重复**。
 
-**共享文件并发状态（SCHEMA §22.6，如实记账）**：本实验运行期间 `pathlm/depth_ar.py` 的 sha256
-全程为 `f2e72361…`（稳定）；`train_depth_ar.py` 在 2636 与 2637 之间被另一线（R7 早退，未提交）
-改过（指纹 `3288b3d…` → `218b631…`），但其改动全部落在**本驱动的同一个 `main()/build_depthar_config`
-之外**（工作树 vs HEAD 的 diff hunk 均在 line ≥ 475），而我们调用的 `train_depth_ar.train()` 逐行未变
-⇒ **对本实验无影响**。本实验**未改任何共享文件**。
+**共享文件并发状态（SCHEMA §22.6，如实记账）**：本实验运行期间，工作树的 `pathlm/depth_ar.py`
+指纹为 `f2e72361…`、`train_depth_ar.py` 为 `3288b3d…→218b631…`（**含他线 M-carrier/R7 的未提交改动**）；
+运行之后这些改动被其他线**提交**（HEAD `depth_ar.py` 现为 `b304c234…`）。这些改动落在 **carry/mod/decode
+区域与 config 的可选默认字段**（`carry_gate`/`aux_mode`/`mod_ratio`），而本实验用到的
+**dense+window / qk-norm 前向路径**不在其中；本实验**未改任何共享文件**（只读引用 2625 的 QK-Norm hook）。
+**精确复现警告**：本实验证据锁在 `config.json::code_fingerprints` 记录的指纹上；若以当前 HEAD 重跑，
+应以「机制路径未被那些改动触及」为前提，并在复核时核对。
 
 ## 10. §23「预算内极致」七问
 
