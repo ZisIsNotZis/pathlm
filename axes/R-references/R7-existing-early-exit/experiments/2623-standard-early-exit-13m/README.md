@@ -3,7 +3,7 @@ name: 2623-standard-early-exit-13m
 ticket: WI-16 / R7
 date: "2026-10-09"
 grid: R7-existing-early-exit
-engine: "depth-ar 13M（d=256 / L=8 / h=8 / seq=256 / bs=32，12k 步 = 98.3M tokens，seed 0；两锚点臂加 seed 1）"
+engine: "depth-ar 13M（d=256 / L=8 / h=8 / seq=256 / bs=32，12k 步 = 98.3M tokens，seed 0；**seed-1 重复未跑**，见 analysis.md §7 #2）"
 budget: "GPU 墙钟 ≤120 min（含冒烟 + 全部训练臂 + 推断电池 + 对账）"
 ---
 
@@ -112,6 +112,10 @@ budget: "GPU 墙钟 ≤120 min（含冒烟 + 全部训练臂 + 推断电池 + �
 - **σ_cell 本格自测**：`stock`、`c1-fair`、`ls-fair` 三臂各跑 seed 0 与 seed 1（其余两臂
   单 seed，如实标注），取三对 |Δbpc| 的最大值作为 σ_cell（保守），并逐对报出。
   只有 |Δ| > σ_cell 的 bpc 差异才进入排序结论；`tf@k` 用二项 SE 报。
+  > **执行现状（指针，不改判据）**：**seed-1 重复被预算砍掉** ⇒ `σ_cell` **未直接测**，
+  > 全部训练臂为 **n=1**，改用「两条臂各自复现历史同配置值」的漂移（0.0003/0.0007）与
+  > 仓内种子带 0.0138 作界；负向结论按「方向反转、待复现」陈述。
+  > 详见 `analysis.md` §7 #2 与 `config.json::noise`（`sigma_cell_measured: null`）。
 - 对照复用：**不复用历史 run**（`c1-legacy` 臂重跑，避免跨 run 混杂；`SCHEMA` §9）。
 - 墙钟：**同一进程内交错**（同一轮内依次测各臂）⇒ 外部占用对相对比值的影响被抵消；
   报中位与极差（`C-AUDIT.md` §4① 的修复口径）。
@@ -121,7 +125,8 @@ budget: "GPU 墙钟 ≤120 min（含冒烟 + 全部训练臂 + 推断电池 + �
 - `gpu_wall_budget: 120 min`（含冒烟 + 全部训练臂 + 推断电池 + 对账；无 100M）。
 - 先测步时再定预算：`SCHEMA` §17.8 要求成本 = 臂数 × **本实验实测步时**；冒烟结果写
   `run_log.txt` 的 `[smoke]` 行与 `config.json`，`analysis.md` 附表引用同一批数字。
-- 峰值显存：**实测训练 935–1340 MB、解码 ≤190 MB**（13M 级别；`SCHEMA` §20.2 的 5 GB
+- 峰值显存：**实测训练 935–1340 MB、解码 ≤190 MB**（两次实测 154.0 / 190.1 MB，取上界；
+  出处见 `config.json::peak_gpu_mem_mb` 与 `analysis.md` §4 内存段；13M 级别；`SCHEMA` §20.2 的 5 GB
   礼貌线不构成约束）；
   实测（训练 peak + 解码 peak + `nvidia-smi` 前后）逐臂落盘。
 - 可中断性：高（每臂独立 run 目录、独立落盘；臂间释放 GPU 锁 ≥60 s，`SCHEMA` §20.1）。
@@ -161,7 +166,7 @@ budget: "GPU 墙钟 ≤120 min（含冒烟 + 全部训练臂 + 推断电池 + �
 - `analysis.md`（人话摘要 + 四腿表格 + 判据逐条判读 + 未测项）
 - `MODEL.md`（各臂权重 sha256、体积、生成命令；权重不入库）
 - `config.json`（resolved config：数据/参数/seed/步时/预算）
-- `controls/`（同配置 seed 对的原始数字 = σ_cell 的证据）
+- `controls/`（对照臂与**复现漂移**的原始数字；`σ_cell` 未直接测，见 `analysis.md` §7 #2）
 
 ---
 

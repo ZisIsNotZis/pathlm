@@ -52,7 +52,7 @@ python3 axes/R-references/R7-existing-early-exit/experiments/2623-standard-early
 | `docs/engine_capability.md` | `a78999c` | `6d7a4537dc6cb0da0548a7bc2c4816f0` | 拒绝点行号同步 + 新增 C13–C16 四条能力行 |
 | `tests/test_engine_capability.py` | `b8b78fc` | `6d0adb594a2a9dc4eec6e2f8004ebe0d` | 新增 C13–C16 四个可执行用例 |
 
-## 跨线重叠与归属（复核 P0-1 要求如实登记；**本轮不宣布回归绿**）
+## 跨线重叠与归属（复核 P0-1 要求如实登记；**闭环状态见第 3 条**）
 
 1. **`docs/engine_capability.md` 与 `tests/test_engine_capability.py` 的**真实归属**：
    这两个文件在 `b8b78fc` 之前是**未跟踪**状态（F_CLOSURE / M-carrier 方向的在飞工作，
@@ -68,9 +68,9 @@ python3 axes/R-references/R7-existing-early-exit/experiments/2623-standard-early
    （按 `pathlm/depth_ar.py` 的 sha256 断言引擎未变的 §9 复用前提）曾由本波改动打红。
    **M1 线已接单**并把该断言改成**行为级等价**口径（`--dense` 三档配置逐位 logits 等价）。
    本轮全量 `CUDA_VISIBLE_DEVICES="" python3 -m pytest tests/ -q`：
-   **812 passed / 1 failed**，两条引擎哈希断言**已转绿**；唯一红是 M1 线**在飞未提交**的
-   `test_embedded_pointer_matches_authoritative_artifact`（其工作树改动中的 `KeyError`，
-   与本波无关）。⇒ 本波**不宣布该套件全绿**，只宣布「本波引起的两条红已由 M1 线修掉、
-   剩余 1 红属他人在飞工作」。
+   修复后：本波引起的两条引擎哈希断言**已转绿**；M1 线其后已把其剩余一条在飞测试也修好并
+   **提交**（`4e445a5`）⇒ 当前 `tests/test_carry_seed2_13m.py` 单文件 **18 passed**、
+   全量 `CUDA_VISIBLE_DEVICES="" python3 -m pytest tests/ -q` = **820 passed / 0 failed**。
+   **归属：修复由 M1 线提交，本波未改其文件**；共享套件当前全绿。
 4. 本波与 `axes/M-carrier/**`（2633/2634/2635）、`axes/A-mixing/**`（2636/2637）、
    `axes/H-horizon/H3-composition/**` 并行运行；本线只写自己的路径，未改其目录。
