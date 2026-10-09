@@ -20,6 +20,11 @@
 研究树按 `.scratch/51-tree/OPERATIONS.md` 清理后，以下格子从 `catalog.yaml` 移除、目录整体移入
 `dropped/axes/<原相对路径>/`（保留 CRITIQUE.md 与全部实验证据，不销毁）。
 
+需要精确区分两种情形：**被并入格**的实验目录已**移入存活格**（`2616-window192-trained-13m` →
+`axes/M-carrier/M1-carrier-type/experiments/`；`2514-allocator-selectivity`、`2508-tts-probes` →
+`axes/G-policy/G1-selector/experiments/`），归档的并入格只留契约与审阅文档，其 `experiments/`
+下仅剩迁移前的索引快照；**被删格**的实验证据则原样保留在 `dropped/` 下。
+
 被删（政策 B：构造前提类 / 业界定论且无基线角色 / 标签误用无独立内容）：
 
 | 格子 | 删因 |

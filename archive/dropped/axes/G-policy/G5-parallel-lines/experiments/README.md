@@ -1,3 +1,5 @@
+> 索引过期：子目录 `2508-tts-probes` 已迁至 `axes/G-policy/G1-selector/experiments/`；下表为迁移前快照（其余子目录仍在本归档格下）。
+
 <!-- AUTO:begin -->
 
 # G5-parallel-lines · 实验目录

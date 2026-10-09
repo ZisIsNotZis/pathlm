@@ -1,3 +1,5 @@
+> 索引过期：子目录 `2514-allocator-selectivity` 已迁至 `axes/G-policy/G1-selector/experiments/`（F3 并入 G1）；下表为迁移前快照。
+
 <!-- AUTO:begin -->
 
 # F3-stopping · 实验目录

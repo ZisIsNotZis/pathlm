@@ -3,6 +3,7 @@
 - 产出：本文件（`.scratch/51-tree/OPERATIONS.md`），日志文档；本轮**只产出这一个文件**，不改 `catalog.yaml`、不改任何格目录、不改任何数字。
 - 依据：主 Agent 政策 A–F（见下发任务）；`AGENTS.md`（含编排模式/事实-日志文档地图）；`SCHEMA.md` §1/§19/§21/§23；起点材料为 `.scratch/50-critical-audit/{A,C,HW,FMG,RP}-AUDIT.md` 五份汇总 + 每格 `axes/**/CRITIQUE.md`（51 份，本表逐格读过）。
 - 现状取值：按工作树 `catalog.yaml` 的 `status`（当前只有 `judged`/`todo` 两值；HEAD 里残留的 `reference`/`partial` 已被规范化为 `todo`/`judged`——**本表不复活这两个已废状态**）。
+- 本表 `现状` 为清理前快照，清理后状态以 `catalog.yaml` 为准。
 
 ---
 

@@ -7,6 +7,8 @@
   3. 证据完备：status=judged 必须有 judge 与 evidence；status=todo 无本地证据，
      但 verdict 必须写明「待立项」或「尚缺什么」（待补做）。
      evidence 里 `path @commit` 的 path 必须在磁盘上存在（归档/证据锚点不悬空）。
+     并且所有 `@<sha>` 锚点必须是**真实提交**（refs 可达历史中的 commit）——「路径存在」
+     不等于「锚点有效」；无效锚点逐条列出并 fail。git 不可用 ⇒ 显式报错，不得静默跳过。
   4. 无孤儿：axes/ 下的格子目录若不在 catalog 中 → fail（防止绕开枚举加内容）。
   5. 生成一致：INDEX.md / 轴 README / 课题页自动块与 catalog 一致
      （等价于 `build_wiki.py --check`）。
@@ -34,6 +36,52 @@ REQUIRED = ("id", "axis", "grid_dir", "title", "status", "judge", "cost",
 VALID_STATUS = ("judged", "todo")
 
 
+ANCHOR_RE = re.compile(r"@([0-9a-f]{7,40})")
+
+
+class GitUnavailable(RuntimeError):
+    """git 不可用（未安装 / 不是仓库）——锚点校验必须显式报错，不得静默跳过。"""
+
+
+def reachable_commits() -> set[str]:
+    """一次取回所有 ref 可达的完整提交 hash（批处理；不对每个锚点单独 spawn git）。"""
+    r = subprocess.run(["git", "rev-list", "--all"], cwd=ROOT,
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        raise GitUnavailable((r.stderr or r.stdout or "git rev-list --all 失败").strip())
+    return set(r.stdout.split())
+
+
+def check_anchors(anchors: dict[str, list[str]]) -> list[str]:
+    """校验所有 `@<sha>` 锚点都指向真实提交（可达 ref 历史中的 commit）。
+
+    anchors：{锚点 hex 串 -> [出现位置,...]}。返回错误清单（空 = 全绿）。
+    git 不可用 ⇒ 返回显式错误（不得静默跳过）。
+    """
+    if not anchors:
+        return []
+    try:
+        reach = reachable_commits()
+    except GitUnavailable as e:
+        return [f"git 不可用，无法校验证据锚点（不得静默跳过）：{e}"]
+    # 批匹配：锚点必须是对某个可达提交 hash 的前缀（7–40 位缩写均可）。
+    bad = sorted(a for a in anchors if not any(s.startswith(a) for s in reach))
+    if not bad:
+        return []
+    # 对差分集一次性确认：区分「对象不存在」与「对象存在但不在历史中」。
+    detail: dict[str, str] = {}
+    r = subprocess.run(["git", "cat-file", "--batch-check"], cwd=ROOT,
+                       input="\n".join(bad) + "\n", capture_output=True, text=True)
+    lines = r.stdout.splitlines()
+    if r.returncode == 0 and len(lines) == len(bad):
+        for a, line in zip(bad, lines):        # batch-check 按输入顺序逐行输出
+            parts = line.split()
+            detail[a] = "missing" if len(parts) >= 2 and parts[1] == "missing" else "unreachable"
+    kind = {"missing": "对象不存在", "unreachable": "对象存在但不在任何 ref 的历史中"}
+    return [f"证据锚点无效：@{a}（{kind.get(detail.get(a), '不是可达的真实提交')}；出现于 "
+            f"{'、'.join(anchors[a])}）" for a in bad]
+
+
 def main() -> int:
     errors: list[str] = []
     with CATALOG.open(encoding="utf-8") as f:
@@ -41,6 +89,7 @@ def main() -> int:
 
     expected: set[str] = set()
     n_judged = 0
+    anchors: dict[str, list[str]] = {}      # 收集全部 `@<sha>` 锚点 -> 出现位置
     for a in cat["axes"]:
         for g in [x for x in cat["grids"] if x["axis"] == a["id"]]:
             for k in ("id", "axis", "title", "claim", "options", "judge", "cost", "status"):
@@ -83,6 +132,14 @@ def main() -> int:
                 p = str(ev).split(" @")[0].strip()
                 if p and not (ROOT / p).exists():
                     errors.append(f"{rel}: evidence 路径不存在：{p}")
+                for anc in ANCHOR_RE.findall(str(ev)):
+                    anchors.setdefault(anc, []).append(f"axes/{rel}")
+            # catalog 是 SSOT：即使页面未重生成，也校验 catalog 里的证据锚点。
+            for ev in ((g.get("local") or {}).get("evidence") or []):
+                for anc in ANCHOR_RE.findall(str(ev)):
+                    anchors.setdefault(anc, []).append(f"catalog:{g.get('id', '?')}")
+            for anc in ANCHOR_RE.findall(str(g.get("prior_art_source") or "")):
+                anchors.setdefault(anc, []).append(f"catalog:{g.get('id', '?')}")
 
     # 孤儿目录
     for ax in sorted((ROOT / "axes").glob("*")):
@@ -93,6 +150,9 @@ def main() -> int:
                 continue
             if f"{ax.name}/{gd.name}" not in expected:
                 errors.append(f"孤儿格子目录（不在 catalog 中）：axes/{ax.name}/{gd.name}")
+
+    # 证据锚点必须是真实提交（批处理；不逐个 spawn git）
+    errors.extend(check_anchors(anchors))
 
     # 生成一致性（课题页/索引/轴页）
     r = subprocess.run([sys.executable, str(ROOT / "tools" / "build_wiki.py"), "--check"],

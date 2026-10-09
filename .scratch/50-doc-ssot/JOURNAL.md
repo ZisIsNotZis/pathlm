@@ -62,7 +62,7 @@ L2 是「结论级清账线」，把复核发现的问题逐条落成文字/来�
 | C13 | bpc 的 0.014 不得当准确率 1.4pp 界 | `docs/methodology.md` §2 |
 | C14 | `reference` 格按分诊规则改判 `(c)`（检索不可用） | `catalog.yaml` 5 处 |
 | C15 | 根 scope「不做组合」改为「默认留白 + 例外登记」 | `README.md`、`SCHEMA.md` §4、`catalog.yaml` |
-| C16 | `STATUS.md` 刷新到当前 | `STATUS.md` |
+| C16 | `STATUS.md` 刷新到当前 —— 此处结论已由事实文档取代（现以 `catalog.yaml` 为准） | `STATUS.md` |
 | C17 | 自动生成页自相矛盾（改 catalog 源文本后重生成） | `catalog.yaml` 轴 `local_summary` |
 | F_SCHEMA | `catalog.yaml` 50 处 `@ticketNN` 假锚点 → 真实提交 sha | `catalog.yaml` |
 | F_YAML | `catalog.yaml` 重复 YAML 键合并 | `catalog.yaml` |

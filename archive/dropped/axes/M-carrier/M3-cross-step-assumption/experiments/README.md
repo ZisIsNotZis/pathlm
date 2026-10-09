@@ -1,3 +1,5 @@
+> 索引过期：子目录 `2616-window192-trained-13m` 已迁至 `axes/M-carrier/M1-carrier-type/experiments/`（M3 并入 M1）；下表为迁移前快照。
+
 <!-- AUTO:begin -->
 
 # M3-cross-step-assumption · 实验目录
