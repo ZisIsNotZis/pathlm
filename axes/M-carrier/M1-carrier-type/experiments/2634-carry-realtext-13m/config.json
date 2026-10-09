@@ -1,0 +1,136 @@
+{
+  "device": "cuda",
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true,
+    "topology": "sequential",
+    "train_window": 16,
+    "train_anchors": 0,
+    "carry_chunk": 64
+  },
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）",
+    "vocab_size": 206,
+    "n_real_tokens": 205,
+    "mask_token": 205,
+    "note": "真实文本口径：训练与评测同一份 enwik8 字节流（与 train_depth_ar.py 内部同一路径）"
+  },
+  "visibility": {
+    "train_window": 16,
+    "train_anchors": 0,
+    "note": "训练与评测同一个 window_anchor_keep_mask(T,16,0)；非退化（可见对数 < T(T+1)/2）；锚点 0 ⇒ 前缀里没有可被锚区保住的针（针全部落 window/beyond 两桶）"
+  },
+  "eval": {
+    "bpc": {
+      "n_batches": 96,
+      "batch_size": 16,
+      "window_seed": 2,
+      "note": "窗口序与 2614/2615/2616 同一 window_seed=2；批数不同 ⇒ 绝对 bpc 不与它们逐位可比"
+    },
+    "probe": {
+      "n_batches": 96,
+      "batch_size": 16,
+      "window_seed": 2,
+      "corrupt_hi": 64,
+      "eval_lo": 244,
+      "eval_hi": 255,
+      "corrupt_seed": 2634,
+      "note": "毁源式窗外源敏感度探针：被毁前缀 [0,64)，被评行 [244,255)。被评行必须满足 eval_lo − rf ≥ corrupt_hi：L 层窗口 w 的因果注意力可跨层多跳看到 [i−L(w−1), i]，本配置 L=12/w=16 ⇒ rf=180（实测：第 64+180=244 行起对被毁前缀逐位不敏感，第 243 行已是 0.0）⇒ 被毁前缀只能经**记忆槽**到达被评行。",
+      "rf": 180
+    }
+  },
+  "needle": {
+    "n_needles": 8,
+    "phrase_len": 6,
+    "anchors": 8,
+    "anchor_frac": 0.25,
+    "n_batches": 64,
+    "batch_size": 16,
+    "seed": 3,
+    "bucket_anchors": 0,
+    "note": "needle v3 真实文本短语针（retention.phrase_needle_batch）；placement anchors=8，归属桶按 anchors=0 判（本实验可见性无锚区）⇒ 桶只有 window / beyond"
+  },
+  "seeds": [
+    0,
+    1
+  ],
+  "rules": [
+    "none",
+    "delta"
+  ],
+  "arms": [
+    {
+      "name": "rt_none_s0",
+      "rule": "none",
+      "seed": 0,
+      "path": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+      "train_log": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s0/train_log.jsonl",
+      "train_results_json": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s0/results.json",
+      "sha256": "TO_FILL_AFTER_TRAINING",
+      "size_bytes": null
+    },
+    {
+      "name": "rt_delta_s0",
+      "rule": "delta",
+      "seed": 0,
+      "path": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s0/model.pt",
+      "train_log": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s0/train_log.jsonl",
+      "train_results_json": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s0/results.json",
+      "sha256": "TO_FILL_AFTER_TRAINING",
+      "size_bytes": null
+    },
+    {
+      "name": "rt_none_s1",
+      "rule": "none",
+      "seed": 1,
+      "path": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+      "train_log": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s1/train_log.jsonl",
+      "train_results_json": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_none_s1/results.json",
+      "sha256": "TO_FILL_AFTER_TRAINING",
+      "size_bytes": null
+    },
+    {
+      "name": "rt_delta_s1",
+      "rule": "delta",
+      "seed": 1,
+      "path": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s1/model.pt",
+      "train_log": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s1/train_log.jsonl",
+      "train_results_json": "axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train/rt_delta_s1/results.json",
+      "sha256": "TO_FILL_AFTER_TRAINING",
+      "size_bytes": null
+    }
+  ],
+  "train_recipe": {
+    "cmd": "python3 train_depth_ar.py <arm> --d 256 --layers 12 --heads 8 --mlp-mult 6 --seq-len 256 --dense --topology sequential --steps 12000 --batch-size 32 --lr 1e-3 --seed {0,1} --exit-mode uniform --train-window 16 --train-anchors 0 --eval-batches 4 --carry-write {none,delta} --out-root axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train",
+    "note": "唯一变量 = carry_rule × seed；其余逐字段一致（与 2631 同配方，只把训练数据换成 enwik8）",
+    "steps": 12000,
+    "batch_size": 32,
+    "seq_len": 256,
+    "tokens_per_arm": 98304000
+  },
+  "stats": {
+    "noise_floor": {
+      "source": "本格同配置换种子（none_s0/none_s1、delta_s0/delta_s1）的 bpc 极差",
+      "note": "2 样本极差是描述量、不是方差上界"
+    }
+  },
+  "steptime_measured": {
+    "source": "2634/smoke/steps300（本实验 300 步冒烟，稳态窗 step 200→299）",
+    "ms_per_step": {
+      "none": 48.5,
+      "delta": 84.8
+    },
+    "est_min_12k": {
+      "none": 9.7,
+      "delta": 17.0
+    },
+    "est_min_total_4arms": 53.4,
+    "note": "先测步时再定预算（SCHEMA §17.8）；不借用其它实验的步时"
+  }
+}

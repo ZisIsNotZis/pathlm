@@ -1,0 +1,289 @@
+{
+  "generated_by": "2633-carry-seed2/equality_vs_2631.py",
+  "target": "axes/M-carrier/M1-carrier-type/experiments/2631-carry-reseed",
+  "implementation": {
+    "pathlm/depth_ar.py": {
+      "now": "45f946793835f2afadf3a10f727b02ee879682ef6024b23fa179d3351c28c585",
+      "at_2631_run": "45f946793835f2afadf3a10f727b02ee879682ef6024b23fa179d3351c28c585",
+      "identical": true
+    },
+    "train_depth_ar.py": {
+      "now": "2d1863bbc4403e026d12b597d98a1da2b85f3606110073f2117a7dd1db2a1f35",
+      "at_2631_run": "2d1863bbc4403e026d12b597d98a1da2b85f3606110073f2117a7dd1db2a1f35",
+      "identical": true
+    },
+    "tools/evalkit/longrange_tasks.py": {
+      "now": "4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b",
+      "at_2631_run": "4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b",
+      "identical": true
+    },
+    "tools/evalkit/carry_channel.py": {
+      "now": "4dcd91facd60a512dcc983836fb29a7c91aad988bada1c95ada666824d226753",
+      "at_2631_run": "4dcd91facd60a512dcc983836fb29a7c91aad988bada1c95ada666824d226753",
+      "identical": true
+    },
+    "tools/evalkit/retention.py": {
+      "now": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502",
+      "at_2631_run": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502",
+      "identical": true
+    }
+  },
+  "implementation_identical": true,
+  "git_head": "937a4cce1b171eb7fea072c491a2dc20b896b22f",
+  "shared_config": {
+    "device": {
+      "2633": "cuda",
+      "2631": "cuda",
+      "equal": true
+    },
+    "model": {
+      "2633": {
+        "d_model": 256,
+        "n_layers": 12,
+        "n_heads": 8,
+        "seq_len": 256,
+        "mlp_mult": 6,
+        "dense": true,
+        "topology": "sequential",
+        "train_window": 16,
+        "train_anchors": 0,
+        "carry_chunk": 64
+      },
+      "2631": {
+        "d_model": 256,
+        "n_layers": 12,
+        "n_heads": 8,
+        "seq_len": 256,
+        "mlp_mult": 6,
+        "dense": true,
+        "topology": "sequential",
+        "train_window": 16,
+        "train_anchors": 0,
+        "carry_chunk": 64
+      },
+      "equal": true
+    },
+    "data": {
+      "2633": {
+        "vocab_size": 206,
+        "source": "合成多查询关联回忆（tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch；训练与主腿同一生成器）",
+        "enwik8": "未使用（本线不做真实文本腿）"
+      },
+      "2631": {
+        "vocab_size": 206,
+        "source": "合成多查询关联回忆（tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch；训练与主腿同一生成器）",
+        "enwik8": "未使用（本线不做真实文本腿）"
+      },
+      "equal": true
+    },
+    "tokens": {
+      "2633": {
+        "sym_vocab": 64,
+        "filler_token": 64,
+        "cue_token": 205,
+        "local_k": 8
+      },
+      "2631": {
+        "sym_vocab": 64,
+        "filler_token": 64,
+        "cue_token": 205,
+        "local_k": 8
+      },
+      "equal": true
+    },
+    "task": {
+      "2633": {
+        "K": 8,
+        "Q": 8,
+        "gap": 14
+      },
+      "2631": {
+        "K": 8,
+        "Q": 8,
+        "gap": 14
+      },
+      "equal": true
+    },
+    "visibility": {
+      "2633": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "note": "训练与评测同一个 window_anchor_keep_mask(T,16,0)；非退化（可见对数 < T(T+1)/2）"
+      },
+      "2631": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "note": "训练与评测同一个 window_anchor_keep_mask(T,16,0)；非退化（可见对数 < T(T+1)/2）"
+      },
+      "equal": true
+    },
+    "eval": {
+      "2633": {
+        "batch_size": 64,
+        "n_batches": 64,
+        "gen_seed": 5000,
+        "corrupt_seed": 7000,
+        "note": "主腿：K=8/Q=8/gap=14，距离 107–240（训练分布内）；生成器 seed 与模型 seed 无关 ⇒ 六臂配对"
+      },
+      "2631": {
+        "batch_size": 64,
+        "n_batches": 64,
+        "gen_seed": 5000,
+        "corrupt_seed": 7000,
+        "note": "主腿：K=8/Q=8/gap=14，距离 107–240（训练分布内）；生成器 seed 与模型 seed 无关 ⇒ 六臂配对"
+      },
+      "equal": true
+    },
+    "aux_ood": {
+      "2633": {
+        "batch_size": 64,
+        "n_batches": 16,
+        "gen_seed": 9000,
+        "note": "辅助腿：单查询 assoc_recall_batch，距离 241–255（训练分布外，不作判据）"
+      },
+      "2631": {
+        "batch_size": 64,
+        "n_batches": 16,
+        "gen_seed": 9000,
+        "note": "辅助腿：单查询 assoc_recall_batch，距离 241–255（训练分布外，不作判据）"
+      },
+      "equal": true
+    },
+    "sensitivity_K4": {
+      "2633": {
+        "K": 4,
+        "Q": 4,
+        "batch_size": 64,
+        "n_batches": 16,
+        "gen_seed": 11000,
+        "note": "K/Q 敏感性（K 与 Q 同时变小即难度变化；不作判据）"
+      },
+      "2631": {
+        "K": 4,
+        "Q": 4,
+        "batch_size": 64,
+        "n_batches": 16,
+        "gen_seed": 11000,
+        "note": "K/Q 敏感性（K 与 Q 同时变小即难度变化；不作判据）"
+      },
+      "equal": true
+    }
+  },
+  "differing_fields": [],
+  "train_recipe_note": "2631 train_arms.sh 的 BASE 与本实验 train_recipe_seed2.cmd 逐 flag 对照；--seed 是本实验**新增的档**，--out-root 按实验不同",
+  "train_recipe_flags": {
+    "--batch-size": {
+      "2633": "32",
+      "2631": "32",
+      "equal": true
+    },
+    "--carry-write": {
+      "2633": "{none,plain,delta}",
+      "2631": null,
+      "equal": true,
+      "note": "臂变量（占位符），非配方差异"
+    },
+    "--d": {
+      "2633": "256",
+      "2631": "256",
+      "equal": true
+    },
+    "--dense": {
+      "2633": "",
+      "2631": "",
+      "equal": true
+    },
+    "--exit-mode": {
+      "2633": "uniform",
+      "2631": "uniform",
+      "equal": true
+    },
+    "--heads": {
+      "2633": "8",
+      "2631": "8",
+      "equal": true
+    },
+    "--layers": {
+      "2633": "12",
+      "2631": "12",
+      "equal": true
+    },
+    "--lr": {
+      "2633": "1e-3",
+      "2631": "1e-3",
+      "equal": true
+    },
+    "--mlp-mult": {
+      "2633": "6",
+      "2631": "6",
+      "equal": true
+    },
+    "--out-root": {
+      "2633": "axes/M-carrier/M1-carrier-type/experiments/2633-carry-seed2/train",
+      "2631": null,
+      "equal": false,
+      "note": "输出目录按实验不同 ⇒ 允许不等（不进 equality 判据）"
+    },
+    "--seed": {
+      "2633": "2",
+      "2631": null,
+      "equal": false
+    },
+    "--seq-len": {
+      "2633": "256",
+      "2631": "256",
+      "equal": true
+    },
+    "--steps": {
+      "2633": "12000",
+      "2631": "12000",
+      "equal": true
+    },
+    "--synth-gap": {
+      "2633": "14",
+      "2631": "14",
+      "equal": true
+    },
+    "--synth-pairs": {
+      "2633": "8",
+      "2631": "8",
+      "equal": true
+    },
+    "--synth-queries": {
+      "2633": "8",
+      "2631": "8",
+      "equal": true
+    },
+    "--synth-task": {
+      "2633": "assoc-mqar",
+      "2631": "assoc-mqar",
+      "equal": true
+    },
+    "--topology": {
+      "2633": "sequential",
+      "2631": "sequential",
+      "equal": true
+    },
+    "--train-anchors": {
+      "2633": "0",
+      "2631": "0",
+      "equal": true
+    },
+    "--train-window": {
+      "2633": "16",
+      "2631": "16",
+      "equal": true
+    }
+  },
+  "train_recipe_differing_flags": [],
+  "reused_arm_checkpoint_sha256_at_2631_run": {
+    "none_s0": "5e04df917aa0336f84ad4849b917fe8bb2eda2e374e509f408ec2fdcef81444b",
+    "plain_s0": "91f8197027b2b1a370d7b5fb897ab28b6f6b568aa8fd99165ab02357282f4c33",
+    "delta_s0": "d6fff38ca2be1df4239730f89dd816dd242f48d3cb340c3f836e0d63fbe37c9b",
+    "none_s1": "8fd9dff445966025292375eb58633cb4556db6be8605f4d4d23c1568eb46d096",
+    "plain_s1": "09ff2fda8792e6029027ffb00b5d8271794a39f69b075e4cb7bbc7bf97652583",
+    "delta_s1": "7487540111e92cc8d065aa3ee590d7c967da3e4d68406355906b4c109049424e"
+  },
+  "caliber_note": "seed0/1 = 2631 的历史同配置对照（同一实现 sha256 + 同 token 预算 98.3M + 同评测仪器）；seed2 = 本次新训；七/九臂同快照口径（12k 步）",
+  "verdict": "reuse_ok"
+}
