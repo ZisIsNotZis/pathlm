@@ -1,0 +1,57 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "3.1.5"
+axis: "3 宽度轴"
+title: "通道极化 / 稀疏激活：只激活部分通道"
+dir: "axes/3-width/3.1.5-channel-sparsity"
+
+purpose: "普通 decoder-only transformer 每 token 激活全部通道，不管该 token 难不难。本项要判定：让每 token 只激活一部分通道（通道极化 / 稀疏激活，按 token 条件选通道子集）能否在**总参数不变**的前提下降低每 token 等效算力（保容量减计算的小尺度版），并放进以 stock 全通道 dense 为 100% 的质量-代价前沿。"
+innovation: "相对普通 decoder-only transformer 的全通道激活，加一个按 token 条件选通道的机制（通道级 top-k 激活 / 门控稀疏 / 极化：一半通道常开、一半条件开），使每 token 只有部分通道参与前向。改动量级：总参数不变，每 token 激活通道数下降 ⇒ 每 token 等效 FLOPs 按激活比例下降，层数不变。"
+expected_effect: "（a）每 token 等效算力下降（激活通道数下降）；（b）代价是「只激活一部分」可能掉质量，须放进以全通道 dense 为 100% 的前沿；（c）与专家轴 `4`（MoE）划界：MoE 是 FFN 层的 token 级专家路由，本项是**通道粒度**稀疏激活。"
+sota_baseline: "稀疏激活 / 条件计算（MoE 的细粒度激活、Mixture-of-Depths 类条件计算、可选激活的稀疏化）。本地零经验（`.scratch/56-restructure/MAPPING.md` §2 无旧格）。本地锚 = stock 全通道激活 dense（归一为 100%）。"
+gap: "本仓零经验。边界：与专家轴 `4`（MoE）区分——MoE 是**专家粒度**的 token 级路由（归 `4.1`/`4.3`），本项是**通道粒度**稀疏激活；两项须由 integrator 核不重叠、不重复表达。相对 SOTA 的增量在固定总参数下给「激活比例 → (算力, 质量)」的前沿读数。"
+method: "单因素：固定总参数与训练预算，只改每 token 激活的通道比例。臂 = {stock 全通道, 通道 top-k 激活, 门控稀疏, 极化（一半常开/一半条件开）}。基底恒为 stock decoder-only；各臂总参数逐位对齐。"
+validation: "端到端：对照 = stock 全通道 dense（归一为 100%）；客观判据 = clean bpc（该不跌 / 可排序，越 0.014 噪声带）+ 每 token 平均激活通道比例与等效算力（该跌）+ 活性（通道使用率分布，防坍缩）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变 = 总参数量与因果性。"
+objective_criteria: "该跌：每 token 平均激活通道比例与等效算力；该不跌/可排序：clean bpc；必须报：通道使用率分布（活性 / 坍缩对照列）；必须不变：总参数量与因果性。"
+falsification: "若通道稀疏激活相对 dense 的质量代价吃掉全部算力收益（等参数下不占前沿优势）⇒ 判在本尺度不成立；若通道使用率坍缩到少数通道（活性消失）⇒ 判该机制失效（`SCHEMA.md` 的活性判据）。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 `status: 未开始`。判据与基线按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），并把「通道使用率分布」列为必须报的活性对照列（防坍缩），把「与专家轴 4 的边界」写进 gap。独立复核未做。"
+experiments: []
+argument: "「只激活一部分通道」是「保容量减计算」的通道粒度版：总参数不变、每 token FLOPs 下降，与减宽（3.1.1，减容量）方向相反。它必须与 MoE 区分：MoE 在专家粒度上按 token 路由，本项在通道粒度上按 token 选通道，两者记账口径（专家 vs 通道）不同，故边界写进 gap、由 integrator 统一。活性（通道使用率）是必须报的对照列，否则无法区分「真稀疏」与「坍缩到少数通道」。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、同总参数、{全通道, top-k, 门控稀疏, 极化} 四臂，报 clean bpc + 激活比例 + 通道使用率分布）"
+  - "与专家轴 `4`（MoE）的边界未整合（专家粒度 vs 通道粒度）"
+  - "稀疏激活的 kernel/实装可行性（是否真省 FLOPs 而非只稀疏张量）未验"
+cost_model: "等效理论量：总参数不变，每 token 激活通道比例 ρ < 1 ⇒ 每 token 等效 FLOPs 按 ≈ρ 缩放；layer-passes 每 token 仍为 L（层数不变）；tokens-per-forward 每步 1。考虑 pipelining：按通道 gather 属同一前向内的稀疏选择，不引入额外顺序依赖（与 MoE 的 token 级专家路由区分）。"
+
+role_map:
+  owner: "轴 3 宽度轴 lead（待指派）"
+  writer: "3.1.5 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「通道极化 / 稀疏激活」判决包：固定总参数下 {全通道, top-k, 门控稀疏, 极化} 在 13M matched-step 的 clean bpc + 每 token 平均激活通道比例与等效 FLOPs + 通道使用率分布，对照 stock 全通道 dense，含 n≥2。"
+  acceptance: "各臂总参数逐位相等；通道稀疏激活相对 dense 的质量代价与算力节省同框可分（越 0.014 噪声带）或明确「不可分」；通道使用率分布齐备且非坍缩；结论不越尺度外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "通道稀疏激活最小判决（含活性对照列）"
+    goal: "判定通道粒度稀疏激活能否在总参数不变下省每 token 算力且不大掉质量"
+    means: "13M、同总参数，{全通道, top-k, 门控稀疏, 极化} 四臂，报 clean bpc + 激活比例 + 等效 FLOPs + 通道使用率分布"
+    acceptance: "四臂总参数逐位相等；稀疏相对 dense 有/无越噪声带差异，二选一明确；通道使用率分布齐备"
+    evidence: "axes/3-width/3.1.5-channel-sparsity/experiments/"
+    review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：通道稀疏激活最小判决（含活性对照列）"
+  - "复核通过与专家轴 4 的边界整合后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T10:57:34+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:57:34+08:00"
+    actor: "轴 3 §3.1 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：通道极化 / 稀疏激活 归 3.1 每 token 的激活宽度；按 docs/research-schema.md 预登记目的/基线/判据/否证条件，并把「活性对照列」与「与专家轴 4 的边界」写死。"

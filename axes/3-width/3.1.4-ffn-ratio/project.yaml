@@ -1,0 +1,57 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "3.1.4"
+axis: "3 宽度轴"
+title: "前馈隐藏比：FF/MLP 的 hidden ratio，及其逐层变化"
+dir: "axes/3-width/3.1.4-ffn-ratio"
+
+purpose: "普通 decoder-only transformer 的前馈隐藏比（FFN 中间维 / d_model）是全局常数，而 FFN 又是每 token 参数与 FLOPs 的大头。本项要判定：调 FFN 隐藏比、并让它在层间变化，能否在给定质量下降低每 token 等效算力/参数（把 FFN 容量花得更省），并放进以 stock 常数隐藏比为 100% 的质量-代价前沿。"
+innovation: "相对普通 decoder-only transformer 的常数隐藏比 r，令 FFN 中间维 = r_l·d，r_l 随层变化（浅层小/深层大，或反之），或用 GLU 式门控等价地改 r 的有效值。改动量级：FFN 参数量与每 token FLOPs ≈ 2·d·(r·d)（GLU 式门控 3 矩阵则 3·d·r·d）随 r 线性缩放；attention 不变。"
+expected_effect: "（a）FFN 是 FLOPs/参数主项 ⇒ 隐藏比下降直接降每 token 等效算力；（b）层间重分配可把 FFN 容量放到需要处；（c）须放进以 stock 常数比 100% 的前沿，并给等参数对照。"
+sota_baseline: "FFN 隐藏比的经验配方与 GLU 变体（SwiGLU 等；r = 4 或 8/3 的等价取舍，Shazeer 2020）；深度方向 FFN 宽 schedule。本地零经验（`.scratch/56-restructure/MAPPING.md` §2 无旧格）。本地锚 = stock 常数隐藏比（归一为 100%）。"
+gap: "本仓零经验。边界：本项判 FFN 隐藏比这一宽度读数及其逐层 schedule；与 `3.1.2`（逐层宽度变化，金字塔 / 沙漏）在「逐层变化」上重叠，须由 integrator 核不矛盾——`3.1.2` 判整体宽度的金字塔 / 沙漏读数，本项判 FFN 隐藏比本身。相对 SOTA 的增量在固定 d_model/层数下给隐藏比的前沿读数，不重造 GLU。"
+method: "单因素：固定 d_model 与层数，只改 FFN 隐藏比。臂 = {stock r=4, 常数横扫 r∈{1,2,3,6,8}, 层间变化 r_l, GLU 式门控等价}。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = stock 常数隐藏比（归一为 100%）+ 等参数对照；客观判据 = clean bpc（该不跌 / 可排序，越 0.014 噪声带）+ FFN 参数量与每 token 等效 FLOPs（该跌）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变 = d_model 与层数。"
+objective_criteria: "该跌：FFN 参数量与每 token 等效 FLOPs；该不跌/可排序：clean bpc；必须不变：d_model 与层数；必须报：每层隐藏比分布（对照列）。"
+falsification: "若隐藏比下降带来的质量损失与算力节省相对同预算 stock 不占前沿优势 ⇒ 判该手段在本尺度不产生新知识；若层间隐藏比变化相对常数比无越带差异 ⇒ 判该层间自由度无效。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 `status: 未开始`。判据与基线按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），把「d_model 与层数不变」钉死，使隐藏比是本项唯一变量。独立复核未做。"
+experiments: []
+argument: "FFN 是 per-token 参数与 FLOPs 的主项，因此隐藏比是宽度轴上最直接的「算力-质量」旋钮；判据必须是「同 d_model/层数下隐藏比 → (算力, 质量)」的前沿，而不是只报单点 bpc。层间 schedule 若相对常数比无越带差异，则说明该自由度在等参数下无效，须如实记。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、固定 d_model/层数，常数隐藏比横扫 + 层间 schedule + GLU 等价臂，报 clean bpc + FFN FLOPs/参数）"
+  - "GLU 式门控与常数隐藏比的等参数对照未定（需对齐三者参数量）"
+  - "与 `3.1.2` 逐层宽度变化的记账重叠须由 integrator 核一遍"
+cost_model: "等效理论量：FFN 每 token 每层 FLOPs ≈ 2·d·(r·d)（GLU 式门控 3 矩阵则 3·d·r·d），隐藏比 r 线性缩放 FFN 参数量与 FLOPs，attention FLOPs 不变；layer-passes 每 token 仍为 L；tokens-per-forward 每步 1。考虑 pipelining：各层 FFN 规模不同时以每层 FLOPs 分布评估最慢层节拍（不用任何时间量）。"
+
+role_map:
+  owner: "轴 3 宽度轴 lead（待指派）"
+  writer: "3.1.4 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「前馈隐藏比」判决包：固定 d_model/层数下 {stock r=4, 常数横扫, 层间 r_l, GLU 等价} 在 13M matched-step 的 clean bpc + FFN 参数量/FLOPs + 每层隐藏比分布，对照 stock 常数隐藏比，含 n≥2 与等参数对照。"
+  acceptance: "各臂 d_model/层数不变、等参数对照齐备；隐藏比 → (算力, 质量) 的前沿点可分（越 0.014 噪声带）或明确「不可分」；层间 schedule 相对常数比有无差异二选一明确；结论不越尺度外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "前馈隐藏比前沿最小判决（含层间 schedule 与 GLU 等价臂）"
+    goal: "判定隐藏比是否是有效的算力-质量旋钮、层间变化是否额外有增益"
+    means: "13M、固定 d_model/层数，{r=4, 横扫 r, 层间 r_l, GLU 等价}，报 clean bpc + FFN 参数量/FLOPs + 每层隐藏比分布，等参数对照"
+    acceptance: "d_model/层数逐位不变；隐藏比 → (算力,质量) 前沿点齐备；层间 schedule 有/无越噪声带差异，二选一明确"
+    evidence: "axes/3-width/3.1.4-ffn-ratio/experiments/"
+    review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：前馈隐藏比最小判决（含层间 schedule）"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T10:57:34+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:57:34+08:00"
+    actor: "轴 3 §3.1 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：前馈隐藏比 归 3.1 每 token 的激活宽度；按 docs/research-schema.md 预登记目的/基线/判据/否证条件，并把「d_model/层数不变」与「与 3.1.2 的边界」写死。"

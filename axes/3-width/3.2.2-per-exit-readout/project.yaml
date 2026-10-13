@@ -1,0 +1,57 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "3.2.2"
+axis: "3 宽度轴"
+title: "逐出口读出：early exit 或多出口时，每个出口怎么映射到词表"
+dir: "axes/3-width/3.2.2-per-exit-readout"
+
+purpose: "普通 decoder-only transformer 只有一个出口（末层）。一旦模型有多个出口（early exit / 多出口），每个出口都要把该深度的隐藏状态映射到整张词表，于是「共享一张读出表还是每个出口一张」直接决定各出口资产（浅层出口的质量）与参数开销。本项要判定：逐出口读出的形态（共享 / 每出口轻量变换 / 每出口独立表）如何影响各出口的质量与早退可用性，并放进以共享 tied 线性读出为 100% 的质量-代价前沿。"
+innovation: "相对普通 decoder-only transformer 的单出口线性读出，为每个出口设计到词表的映射：共享 tied 表 + 每出口 d×d 轻量变换、每出口独立 unembed 表、或逐出口低秩变换。改动量级：每出口加 d²（轻量变换，可 scale）或 vocab×d（独立表，不可 scale）；主干与层数不变。"
+expected_effect: "（a）浅出口质量（tf@k）提升 ⇒ 早退更可用（tokens-per-forward / 平均 layer-passes 更省的前提更稳）；（b）每出口独立表不可 scale ⇒ 只作对照臂；（c）须放进以共享 tied 线性读出为 100% 的前沿，并给等参数对照。"
+sota_baseline: "early exit 的多出口读出一族（CALM / LayerSkip / MoD，见参照台账 `axes/7-references/`）与逐深度输出头。本地最近邻 = 深度轴 `2.1.1`（跑不跑这层）与本轴 `3.2.1`（单出口的重参数化）。本地零经验（`.scratch/56-restructure/MAPPING.md` §2 无旧格）。本地锚 = 共享 tied 线性读出（归一为 100%）。"
+gap: "本仓零经验。边界：`3.2.1` 判**单出口读出**的重参数化；本项判**多出口**时每个出口到词表的映射；「跑不跑这层 / 退不退」归深度轴 `2.1.1`，本项只判「出口 → 词表」的形态。相对 SOTA 的增量在固定主干与出口数下给「出口数 → (各出口质量, 参数)」的前沿读数，不重造早退。"
+method: "单因素：固定主干与出口数，只改各出口到词表的映射。臂 = {共享 tied 表（stock 式）, 共享表 + 每出口 d×d 变换, 每出口独立线性表, 逐出口低秩变换}。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = 共享 tied 线性读出（归一为 100%）+ 等参数对照；客观判据 = 各出口的 tf@k 与各出口 clean bpc（浅出口该涨 / 该不跌，越 0.014 噪声带）+ 读出参数量（独立表 vocab×d 单列）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变 = 末层（全深度）质量不劣于 stock、prob0 可用。"
+objective_criteria: "该涨：各出口 tf@k（尤其浅出口）；该不跌：末层 clean bpc；必须报：读出参数量（独立表 vocab×d 单独列）；必须不变：prob0 / 软提交仍可用、末层质量不越带。"
+falsification: "若逐出口读出相对共享 tied 表不能让浅出口 tf@k 可排序提升（越 0.014 噪声带）⇒ 判逐出口读出在本尺度不必要（共享表够用）；若只有不可 scale 的独立表能提升 ⇒ 判该手段在本形态不实用；若逐出口读出反而损末层质量 ⇒ 判不成立。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 `status: 未开始`。判据与基线按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），把「末层质量不劣于 stock」与「独立表参数单列」钉死，以防把「补浅出口」记成「免费提升」。与 `2.1.1` / `3.2.1` 的边界写进 `gap`。独立复核未做。"
+experiments: []
+argument: "多出口模型里，读出是最容易被忽略的耦合点：共享一张 tied 表时所有出口被同一条「概率 = 状态在 embedding 基的坐标」约束；逐出口读出正是解这个耦合的候选。判据必须看**浅出口**（早退真正用到的那个），而不是只看末层；独立表虽可能有效但 vocab×d 不可 scale，故单列参数量并把「是否能 scale」当采纳门槛。跑层数归深度轴 `2.1.1`，本项只判出口→词表的形态。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、固定主干与出口数，{共享 tied, 共享+d×d, 独立表, 低秩} 四臂，报各出口 tf@k + 末层 bpc + 参数量）"
+  - "与 `2.1.1`（跑不跑这层）和 `3.2.1`（单出口重参数化）的边界须由 integrator 核一遍"
+  - "出口数 / 出口位置的选择未定（需与 `2.1.1` 的早退设计对齐）"
+cost_model: "等效理论量：每出口加 d×d 变换 ⇒ 每 token 每出口约 +2·d² 出口 FLOPs（在出口处，不重跑主干，layer-passes 每 token 不增加）；独立表参数量 = 出口数 × vocab × d（不可 scale，单列）；tokens-per-forward 每步 1。考虑 pipelining：出口读出在每步结束时对该出口已算出的隐藏态做一次映射，不引入额外顺序依赖。"
+
+role_map:
+  owner: "轴 3 宽度轴 lead（待指派）"
+  writer: "3.2.2 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「逐出口读出」判决包：{共享 tied, 共享 + 每出口 d×d, 每出口独立表, 逐出口低秩} 在 13M matched-step 下的各出口 tf@k + 末层 clean bpc + 读出参数量，对照共享 tied 线性读出（stock），含 n≥2。"
+  acceptance: "各出口 tf@k 齐备；逐出口读出相对共享表让浅出口 tf@k 可分（越噪声带）或明确「不可分」；独立表参数量单列并给出可否 scale 判定；末层质量不越带；结论不越尺度外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "逐出口读出最小判决（含末层质量与参数量对照列）"
+    goal: "判定多出口时每个出口是否需要独立/轻量的读出映射"
+    means: "13M、固定主干与出口数，{共享 tied, 共享+d×d, 独立表, 低秩} 四臂，报各出口 tf@k + 末层 bpc + 读出参数量"
+    acceptance: "四臂预算对齐；浅出口 tf@k 有/无越噪声带差异，二选一明确；末层质量与参数量列齐备"
+    evidence: "axes/3-width/3.2.2-per-exit-readout/experiments/"
+    review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：逐出口读出最小判决"
+  - "复核通过与 2.1.1 的边界整合后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T10:57:34+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:57:34+08:00"
+    actor: "轴 3 §3.2 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：逐出口读出 归 3.2 读出；按 docs/research-schema.md 预登记目的/基线/判据/否证条件，并把「末层质量不劣于 stock」「独立表参数单列」「与 2.1.1 的边界」写死。"

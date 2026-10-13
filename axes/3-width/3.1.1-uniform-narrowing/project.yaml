@@ -1,0 +1,69 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "3.1.1"
+axis: "3 宽度轴"
+title: "uniform 减宽 / width dropout"
+dir: "axes/3-width/3.1.1-uniform-narrowing"
+
+purpose: "普通 decoder-only transformer 的宽度是全局常数（hidden 维、头维、激活通道数对所有 token 一样），于是每 token 的算力/参数被均匀摊在所有 token 上。本项要判定：把宽度整体压小（uniform 减宽），或用 width dropout 训出一个「一次训练、多档宽度可部署」的弹性模型，能否在给定质量（以全宽 stock 为 100%）下降低每 token 等效算力/参数量，并在质量-代价前沿上占到一个比同预算 stock 更优的点。"
+innovation: "相对普通 decoder-only transformer 的全局常数宽度：① uniform 减宽——统一缩小 d_model / 头维，使每 token 参数量与 FLOPs 按 (d'/d)² 下降；② width dropout——训练期每步随机保留一个宽度子集（不额外加参数），一次训练得到一个宽度可调的模型族。核心改动是「宽度」由常数变成「可按档位调节的分配量」，不改变层数与可见集合。"
+expected_effect: "（a）弹性宽度：一次训练覆盖多档成本（width dropout 的收益是「多档可部署」，不是单点质量）；（b）uniform 减宽按定义掉容量，须把质量代价放进以全宽 stock 为 100% 的前沿，而不是只报「掉/没掉门槛」；（c）判据须同时给质量（该不跌/可排序）与每 token 等效算力/参数量（该跌），且必须给等参数对照（`SCHEMA.md` §15）。"
+sota_baseline: "结构化剪枝一系（LLM-Pruner / Sheared LLaMA / Minitron：通道/宽度剪枝换更小参数与算力，付质量）与弹性宽度一系（MatFormer 式嵌套宽度、width dropout / stochastic depth 式正则）。外部条目标 `记忆·未核`（本环境检索不可用，只作设计方向、不作判据；见 `axes/W-width/PRIOR_ART.md` §W1，该文件待 integrator 退役）。本地锚 = 同尺寸 stock 全宽（归一为 100%；13M B0 = 1.5074 bpc 快照）。"
+gap: "本仓**零本地判决**：没有任何实验测过「uniform 减宽 / width dropout」本身。旧格 W1 迁入的 `2525-tax-attribution` 实测的是**读出可见子空间切片**（把 unembed 与出口头只读 h[:360]，trunk/embedding 仍全宽 720），按 55-review W-06 它属**读出域**（本轴 `3.2.1`），既不减算力也不减参数 ⇒ **不是减宽**，不构成本项结论。相对 SOTA 的增量：不重造结构化剪枝，而是把「减宽 / width dropout」放进以 stock 全宽为 100% 的质量-代价前沿，并用等参数对照判定它是否只是「减容量」（55-review W-04 的造轮子风险是本项最高风险）。"
+method: "单因素：固定数据/训练预算，只改宽度分配。臂 = {全宽 stock, uniform 减宽（d / FFN 宽按比例缩小）, width dropout（训练期随机保留宽度子集）, 弹性宽度（一次训练多档）}；各减宽臂给等参数 / 等 FLOPs 对照。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = 同尺寸 stock 全宽（归一为 100%）+ 等参数对照臂；客观判据 = clean bpc（质量，该不跌 / 代价可排序，须越 0.014 噪声带）+ 参数量与每 token 等效算力（该跌）+ width dropout 各档质量随宽度的单调性（该单调）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变 = 因果性与训练/评测口径一致。"
+objective_criteria: "该跌：参数量与每 token 等效算力（FLOPs）；该不跌/可排序：clean bpc（须越 0.014 噪声带）；该单调：width dropout 各档宽度的质量随宽度单调（防「一次训练多档」名不副实）；必须不变：因果性；必须报：参数量（作对照列，防把减参数记为减宽度）。"
+falsification: "若 uniform 减宽在等参数对照下相对 stock 的 clean bpc 不越噪声带而算力/参数量下降可测 ⇒ 记为一档可用前沿点；若减宽只按参数量下降比例掉质量、等参数对照下无优势（即只是「减容量」）⇒ 判 uniform 减宽在本尺度不产生新知识（与业界共识一致）；若 width dropout 训出的各档质量不随宽度单调、或任一档显著掉出前沿 ⇒ 判弹性宽度不成立。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项按 55-review W-06/W-07/W-14/W-17 修正：旧格 W1 的判决「减宽 = 减容量」是**照抄业界共识**，且其唯一本地证据 `2525-tax-attribution` 测的是**读出切片**（读出域，不测减宽）⇒ 旧结论无本地支撑，**不迁入本项**。旧格引用的「用户本地独立实验（减宽）」仓内**无可核实 artifact**（W-14），已不作为证据。故本项命题仍无本地判决，`status: 未开始`、`conclusion` 为空。无独立复核（未做）。"
+experiments:
+  - "axes/3-width/3.1.1-uniform-narrowing/experiments/2525-tax-attribution"
+  - ".scratch/25-tax-attribution/evidence @2e86924"
+argument: "判定「宽度分配值不值」的判据形态必须是「质量-代价前沿」而非单点 Δbpc 对一个绝对门槛（55-review W-09）：横轴 = 每 token 等效算力/参数，纵轴 = clean bpc，以 stock 全宽为 100%。且必须给等参数对照，否则无法把「减宽」与「单纯减参数/容量」分开（`SCHEMA.md` §15）。`2525-tax-attribution` 按 `.scratch/56-restructure/MAPPING.md` §0/§1 物理迁入本目录（旧格 W1 的实验整目录，一格一份家），但它测的是读出切片、属 `3.2.1` 域：本项只把它登记为**背景证据**（读出约束的负结果），`3.2.1` 以指针引用它。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、{全宽, uniform 减宽, width dropout} 三臂 + 等参数对照，matched-step，报 clean bpc + 参数量 + 每 token 等效 FLOPs）"
+  - "width dropout 的「一次训练多档」性质未测（需报各档质量-宽度曲线并检单调）"
+  - "造轮子风险最高项（55-review W-04）：须在最小判决里明确「相对结构化剪枝 SOTA 的增量」是什么，否则结论无新知识"
+  - "55-review W-14：旧格引用的「用户本地独立实验（减宽）」无可核实 artifact，已剔除；若确有该实验，需补落盘证据才能引用"
+cost_model: "等效理论量：uniform 减宽把 hidden 维 d→d' ⇒ 每 token 参数量与每层 FLOPs 按 (d'/d)² 缩放，layer-passes 仍为 L；width dropout 不额外加参数，每步只激活通道子集，每 token 等效 FLOPs 按激活比例缩放；tokens-per-forward 每步 1。考虑 pipelining：宽度子集选择属同一前向内的掩码/gather 差异，不引入额外顺序依赖；不同档宽度对应不同的每 token FLOPs，按档位报（不用任何时间量）。"
+
+role_map:
+  owner: "轴 3 宽度轴 lead（待指派）"
+  writer: "3.1.1 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「uniform 减宽 / width dropout」判决包：{全宽 stock, uniform 减宽, width dropout} 在 13M matched-step 下的 clean bpc + 参数量 + 每 token 等效 FLOPs，对照 stock 全宽并含等参数对照、n≥2；width dropout 附各档质量-宽度曲线。"
+  acceptance: "等参数对照臂齐备且预算对齐；减宽相对全宽 stock 的质量代价与算力节省可分（越 0.014 噪声带）或明确「不可分」；width dropout 各档质量-宽度曲线齐备并检过单调性；结论停在「该尺度值不值」，不外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "uniform 减宽最小判决（含等参数对照）"
+    goal: "在没有本地判决的情况下给出第一个可判结论：减宽相对全宽 stock 落在质量-代价前沿的哪一侧"
+    means: "13M、matched-step，{全宽 stock, uniform 减宽}，报 clean bpc + 参数量 + 每 token 等效 FLOPs，等参数对照臂，n≥2"
+    acceptance: "两臂预算对齐；减宽相对 stock 有/无越噪声带差异，二选一明确；参数量与 FLOPs 列齐备"
+    evidence: "axes/3-width/3.1.1-uniform-narrowing/experiments/"
+    review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b，复核排在执行之后）"
+    status: "未开始"
+  - id: "WP2"
+    what: "width dropout 弹性宽度判决"
+    goal: "判定一次训练能否得到多档宽度可用、且各档质量随宽度单调的弹性模型"
+    means: "13M、训练期对宽度做 dropout，推理时扫多档宽度，报各档 clean bpc 与每 token 等效 FLOPs"
+    acceptance: "各档质量-宽度曲线齐备、单调性检过；与同档 uniform 模型比较，二选一明确"
+    evidence: "axes/3-width/3.1.1-uniform-narrowing/experiments/"
+    review: "跑完另派 fresh 复核（核对「多档」确实是同一 checkpoint 推理档位，不是分别训练）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：uniform 减宽最小判决（含等参数对照）"
+  - "WP2：width dropout 弹性宽度判决"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T10:57:34+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:57:34+08:00"
+    actor: "轴 3 §3.1 worker"
+    change: "由旧格 W1-active-width 迁入建立（MAPPING §1：W1 → 3.1.1；实验整目录迁入）。按 55-review W-06 剔除「读出切片当减宽判决」的错配证据、按 W-07 不再照抄「减宽=减容量」的业界结论、按 W-14 剔除不可核实的用户本地实验引用、按 W-17 把成本口径改为等效理论量；status 由旧 todo 记为未开始（本项命题无本地判决）。"
