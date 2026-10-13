@@ -188,6 +188,7 @@ Phase A 干三件事：① 六格 `project.yaml` 的 `role_map` 实名 + 逐项�
 | 机制归属（防造轮子） | 六格 `gap` 均写死「相对 SOTA 的增量」；`5.1` 明确 `block` ≈ 业界 per-channel/分块标尺、`block_tok`/`kivi` ≈ KIVI K 侧 per-token（机制非增量） |
 | `cost_model` 墙钟 | `tools/summary.py --check` 全绿（含墙钟/日期正则校验），六格 `cost_model` 均为等效理论量 |
 | 数字跨文档一致 | `2642` 的 7 个同字节水平 / 参数混杂 8.75%&10.21% / fp8 6144 vs int8 6528 / Pareto 6&16 臂 与 `results.json` 逐条一致（复核者另核） |
+| §12 exact wording | 六格的 `id` / `title` / `axis` 与 `docs/structure.md` §12 表格**逐字一致**（6/6）；`dir` 与结构表一致（结构表带尾斜杠、`project.yaml` 不带 ⇒ 与兄弟轴 `axes/3-width`/`axes/4-moe` 的写法一致，且 `check_tree.py` 的「dir == 文件实际目录」校验全绿） |
 | 五格 status 语义 | `5.1` 已完成（WP1+WP2 均有本地判决）；`5.6` 进行中（组合前沿与检索腿未跑）；其余 `未开始` —— 与各自 `conclusion` 正文一致 |
 
 ## 9. 未完成 / 受阻项与下一步
