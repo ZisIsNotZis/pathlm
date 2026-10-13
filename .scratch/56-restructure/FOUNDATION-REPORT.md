@@ -52,7 +52,8 @@
 7. **工单记录完整、可审计**
    - `.scratch/56-restructure/TICKET.md` §5：L1 逐字、决策与理由、改动文件、命令与结果、剩余未决（含时间戳）。
 8. **变更已用显式路径提交**
-   - 见 §4（提交哈希）。
+   - 提交 `ab1d8d8`（22 files changed, 1544 insertions(+), 285 deletions(-)）；`catalog.yaml` / `INDEX.md` /
+     `axes/C-vertical/**` 的既有未提交改动**未入本次提交**（保留在工作树，见 §3.5）。
 
 ## 3. 未决项（框架性取舍，已给默认，未自决）
 
