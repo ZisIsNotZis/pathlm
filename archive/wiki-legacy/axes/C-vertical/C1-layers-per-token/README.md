@@ -4,11 +4,11 @@ axis: C
 grid_dir: C-vertical/C1-layers-per-token
 title: "每个 token 跑几层"
 status: todo
-judge: "深度-bpc 曲线 + 出口接受率 + 墙钟/FLOPs 加速 + 税"
+judge: "主判据 = 序列级 perplexity/一致率 vs 全深度（单 token 一致率不足：p^N 累积）+ 算力（layer-passes/token）与跳过层数占比 + 税；墙钟不进判据"
 cost: "13M 单臂 ~5–25 min；100M 单臂 ~32–70 min"
 tax: "13M matched-step 真税 **+0.3291**（本波 2623 复现历史 +0.3295）；**2×2（门×配方）+ 交互重拆**：配方轴**反向**（保权更差 0.1218–0.2610；**同份额控制臂 additive λ=8 与 renorm 打平**（1.8550 vs 1.8575）⇒ 驱动量是份额、不是归一化形式，尺度未单独隔离）、门 +0.0718/+0.2110、**交互 −0.1392（两轴不独立 ⇒ 三项相加只是记账恒等式）**；形态税**按配方分列**（现配方 +0.3291 / λ=0.1 条件值 +0.5901 / 最好形态臂 无门×等权 +0.2573）。**100M 的 +0.4362 归属未重拆**：原记录「形态 96% / 引擎 4% / 配方 ≈0」是**同引擎三列拆混杂**口径，本波只覆盖 13M，**原样保留并标注**"
 benefit: "tf@4 0.9726、tf@6 0.9946；d6−d12 = 0.0003（半栈 ≈ 全栈）；exit-4 3.1× 墙钟、uniform-exit 1.8×；逐 token 变深度 + 不重 prefill 已实现并逐位测试（max|Δlogit| 9.2e-5）"
-verdict: "**已有**：逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。**尚缺**：100M 端到端深度草稿 + 交错口径墙钟 + FLOPs 净账（省延迟不省算力）（待补做）。"
+verdict: "**目标口径（本线）**：逐 token 早退必须在**降低算力**的同时保住**序列级**准确率（perplexity / 自回归一致率 vs 全深度）。单 token 一致率不足：一致率 p、长度 N 的整段一致 ≈ p^N（depth-4 p=0.973、N=100 ⇒ ≈6.5%）；序列 90% 一致对应单 token ≈99.9%。**已有**：逐 token 变深度机制成立；引擎已具备逐 token 退出门控（`pathlm/decode.py::_run_stack` 的 `exit_threshold` 读 `sigmoid(model.conf(h))`）、逐 token 深度记录（`depths`）、早退位置 KV 的 fill/proj-fill 填充（`pathlm/depth_ar.py`）。teacher-forcing：100M depth-4 bpc 1.9206 vs 全栈 1.9175（+0.0031）、tf@4 0.9726 / tf@6 0.9946；13M CALM 式门控平均退到 3.43/8 层、一致率 0.959。**尚缺（本线主判据，未测）**：① 逐 token 门控退出的**自回归序列级**结果（算力与跳过占比 + 序列 perplexity/一致率 vs 全深度）从未跑——已有 e2e 只有固定退 4 层、均匀随机退、CALM 平均退三种，均未按逐 token 报序列级口径；② 退出预测头 `conf` 的预测概率与实际「退对了没有」的校准未验（已测 ECE 只是输出头 prob0）；③ 异构深度下深层 token 回看浅层冻结表征的质量代价未测；④ 深层被哪些 token 实际使用的分布未报告。**报告口径**：算力 = layer-passes/token、跳过层数占比；端到端墙钟取决于引擎实现，不进判据。"
 deps: ["C5-refinement-operator", "C6-depth-supervision", "H4-head-trunk-relation", "G1-selector"]
 evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/evidence @7cdcdaa", ".scratch/25-tax-attribution/evidence @2e86924", "axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/analysis.md @d77c6b4"]
 ---
@@ -19,7 +19,7 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 
 > 轴：**C 垂直机制（深度）** ｜ 状态：**⬜ todo**
 
-> **判读**：**已有**：逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。**尚缺**：100M 端到端深度草稿 + 交错口径墙钟 + FLOPs 净账（省延迟不省算力）（待补做）。
+> **判读**：**目标口径（本线）**：逐 token 早退必须在**降低算力**的同时保住**序列级**准确率（perplexity / 自回归一致率 vs 全深度）。单 token 一致率不足：一致率 p、长度 N 的整段一致 ≈ p^N（depth-4 p=0.973、N=100 ⇒ ≈6.5%）；序列 90% 一致对应单 token ≈99.9%。**已有**：逐 token 变深度机制成立；引擎已具备逐 token 退出门控（`pathlm/decode.py::_run_stack` 的 `exit_threshold` 读 `sigmoid(model.conf(h))`）、逐 token 深度记录（`depths`）、早退位置 KV 的 fill/proj-fill 填充（`pathlm/depth_ar.py`）。teacher-forcing：100M depth-4 bpc 1.9206 vs 全栈 1.9175（+0.0031）、tf@4 0.9726 / tf@6 0.9946；13M CALM 式门控平均退到 3.43/8 层、一致率 0.959。**尚缺（本线主判据，未测）**：① 逐 token 门控退出的**自回归序列级**结果（算力与跳过占比 + 序列 perplexity/一致率 vs 全深度）从未跑——已有 e2e 只有固定退 4 层、均匀随机退、CALM 平均退三种，均未按逐 token 报序列级口径；② 退出预测头 `conf` 的预测概率与实际「退对了没有」的校准未验（已测 ECE 只是输出头 prob0）；③ 异构深度下深层 token 回看浅层冻结表征的质量代价未测；④ 深层被哪些 token 实际使用的分布未报告。**报告口径**：算力 = layer-passes/token、跳过层数占比；端到端墙钟取决于引擎实现，不进判据。
 
 ## 1. 命题
 
@@ -42,7 +42,7 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 
 - **税**：13M matched-step 真税 **+0.3291**（本波 2623 复现历史 +0.3295）；**2×2（门×配方）+ 交互重拆**：配方轴**反向**（保权更差 0.1218–0.2610；**同份额控制臂 additive λ=8 与 renorm 打平**（1.8550 vs 1.8575）⇒ 驱动量是份额、不是归一化形式，尺度未单独隔离）、门 +0.0718/+0.2110、**交互 −0.1392（两轴不独立 ⇒ 三项相加只是记账恒等式）**；形态税**按配方分列**（现配方 +0.3291 / λ=0.1 条件值 +0.5901 / 最好形态臂 无门×等权 +0.2573）。**100M 的 +0.4362 归属未重拆**：原记录「形态 96% / 引擎 4% / 配方 ≈0」是**同引擎三列拆混杂**口径，本波只覆盖 13M，**原样保留并标注**
 - **收益**：tf@4 0.9726、tf@6 0.9946；d6−d12 = 0.0003（半栈 ≈ 全栈）；exit-4 3.1× 墙钟、uniform-exit 1.8×；逐 token 变深度 + 不重 prefill 已实现并逐位测试（max|Δlogit| 9.2e-5）
-- **判读**：**已有**：逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。**尚缺**：100M 端到端深度草稿 + 交错口径墙钟 + FLOPs 净账（省延迟不省算力）（待补做）。
+- **判读**：**目标口径（本线）**：逐 token 早退必须在**降低算力**的同时保住**序列级**准确率（perplexity / 自回归一致率 vs 全深度）。单 token 一致率不足：一致率 p、长度 N 的整段一致 ≈ p^N（depth-4 p=0.973、N=100 ⇒ ≈6.5%）；序列 90% 一致对应单 token ≈99.9%。**已有**：逐 token 变深度机制成立；引擎已具备逐 token 退出门控（`pathlm/decode.py::_run_stack` 的 `exit_threshold` 读 `sigmoid(model.conf(h))`）、逐 token 深度记录（`depths`）、早退位置 KV 的 fill/proj-fill 填充（`pathlm/depth_ar.py`）。teacher-forcing：100M depth-4 bpc 1.9206 vs 全栈 1.9175（+0.0031）、tf@4 0.9726 / tf@6 0.9946；13M CALM 式门控平均退到 3.43/8 层、一致率 0.959。**尚缺（本线主判据，未测）**：① 逐 token 门控退出的**自回归序列级**结果（算力与跳过占比 + 序列 perplexity/一致率 vs 全深度）从未跑——已有 e2e 只有固定退 4 层、均匀随机退、CALM 平均退三种，均未按逐 token 报序列级口径；② 退出预测头 `conf` 的预测概率与实际「退对了没有」的校准未验（已测 ECE 只是输出头 prob0）；③ 异构深度下深层 token 回看浅层冻结表征的质量代价未测；④ 深层被哪些 token 实际使用的分布未报告。**报告口径**：算力 = layer-passes/token、跳过层数占比；端到端墙钟取决于引擎实现，不进判据。
 
 ## 5. 失败路径与原因
 
@@ -55,12 +55,12 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 
 ## 6. 判据与判决实验设计
 
-- **判据**：深度-bpc 曲线 + 出口接受率 + 墙钟/FLOPs 加速 + 税
+- **判据**：主判据 = 序列级 perplexity/一致率 vs 全深度（单 token 一致率不足：p^N 累积）+ 算力（layer-passes/token）与跳过层数占比 + 税；墙钟不进判据
 
 **下一步判决实验**（未做时必填）：
 
 - 干预：待定（按判据设计单轴单格实验，基底恒为 stock 对照）
-- 判据线：深度-bpc 曲线 + 出口接受率 + 墙钟/FLOPs 加速 + 税
+- 判据线：主判据 = 序列级 perplexity/一致率 vs 全深度（单 token 一致率不足：p^N 累积）+ 算力（layer-passes/token）与跳过层数占比 + 税；墙钟不进判据
 - 成本：13M 单臂 ~5–25 min；100M 单臂 ~32–70 min
 
 ## 7. 成本估计
@@ -83,8 +83,13 @@ evidence: [".scratch/23-depth-ar/evidence @1586745", ".scratch/24-depth-ar-100m/
 
 ## 备注
 
-价格是唯一未解决问题。剩余候选：读出解耦（W4）、proj-fill @100M（P3）、
-规模（Q8 剩的唯一候选，但同引擎斜率是正的）。
+本线要回答的不是「单 token 出口够不够准」，而是「逐 token 早退能否在不掉序列级
+perplexity 的前提下省算力」。判决实验（未跑）：逐 token 置信度门控退出、多阈值扫描；
+判据 = 自回归序列 perplexity/一致率 vs 全深度、序列一致率 ≥90% 时的 layer-passes/token
+与跳过占比；不用墙钟。底座形态税（+0.3291 @13M / +0.4362 @100M）是该形态的性质，
+归因已记录，不属本线的未解项。
+既有支线「深度草稿 + 全栈验证」（`2621-depth-draft-e2e`）是自投机解码，不是早退：
+它保序列准确率（发出流逐 token 相同）但不省算力（8.45 vs 8.00 layer-position/token）。
 
 <!-- AUTO:end -->
 

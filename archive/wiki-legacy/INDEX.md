@@ -26,7 +26,7 @@
 
 | 格子 | 状态 | 判读 |
 |---|---|---|
-| [`C1-layers-per-token`](axes/C-vertical/C1-layers-per-token/README.md) · 每个 token 跑几层 | ⬜ todo | **已有**：逐 token 变深度成立且是本项目最厚的资产；代价是底座质量税。**尚缺**：100M 端到端深度草稿 + 交错口径墙钟 + FLOPs 净账（省延迟不省算力）（待补做）。 |
+| [`C1-layers-per-token`](axes/C-vertical/C1-layers-per-token/README.md) · 每个 token 跑几层 | ⬜ todo | **目标口径（本线）**：逐 token 早退必须在**降低算力**的同时保住**序列级**准确率（perplexity / 自回归一致率 vs 全深度）。单 token 一致率不足：一致率 p、… |
 | [`C2-layer-selection-order`](axes/C-vertical/C2-layer-selection-order/README.md) · 选哪些层与执行顺序 | ✅ judged | 元素税定律的原始出处：破坏型元素贵，保留型近免费。 |
 | [`C3-inter-layer-topology`](axes/C-vertical/C3-inter-layer-topology/README.md) · 层间拓扑（残差之外的连接） | ✅ judged | 首探无优势：**并行子层明确有害**（+0.0458，等参数对照 +0.0402 复现），**层间学习加权和中性**（−0.0008）。 |
 | [`C4-weight-sharing`](axes/C-vertical/C4-weight-sharing/README.md) · 权重共享 | ⬜ todo | **已有**：无本地数据（业界结论检索不可用，`记忆·未核`）。**尚缺**：深度方向权重共享是否值（同参数量质量 / 同 FLOPs 质量 / tf@k）（待补做）。 |
