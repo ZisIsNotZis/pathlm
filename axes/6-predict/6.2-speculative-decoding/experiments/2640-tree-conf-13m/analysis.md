@@ -1,6 +1,6 @@
 # 2640-tree-conf-13m · 判读（WP 6.2.2）
 
-> 读数来源：`results.json` = **run #1（2026-10-13 16:54 落盘，3 个 checkpoint 完整读数）**；
+> 读数来源：`results.json`（3 个 checkpoint 完整读数）+ `cycle_log.jsonl`（逐轮活性量）；
 > 判据 = 离线重算 `criteria_fixed.json`（见 §2）。预登记契约见 `README.md`；臂与树实现见 `spec_tree.py`；
 > 评测驱动见 `run.py`；逐轮活性量见 `cycle_log.jsonl`；对照物清单见 `controls/README.md`；
 > 变异验证见 `mutate.py` / `mutation_report.json`。本文件是**当前事实**，只陈述现状。
@@ -29,20 +29,18 @@
 
 ## 2. 读数来源与判据口径声明
 
-- **读数 = run #1（2026-10-13 16:54 落盘）**：`results.json`（臂级汇总 + 逐 prompt 接受数）、
-  `cycle_log.jsonl`（逐 (ckpt, arm, prompt, round) 的 `accepts` / 候选集 / 权重 / 分歧标记）。
-  run #1 的三个 checkpoint 均**完整**跑满各自臂集（`unmeasured` 为空）。
-- **run #2（前 worker 16:56 启动）被运行时连带杀死，未产出任何读数**（`run_log.txt` 里 run #2 只到
-  `[13m_s0] native` 一行）。本判读**不**使用 run #2。
-- **判据取键缺陷与离线重算**：run #1 的 `results.json::criteria` 里
-  `P1/P2.tree_*.paired*` 全为 `null`，导致 P1/P2 全判 `false`——**原因是判据代码取配对差时取错键**：
-  `paired_diffs` 只按臂**写入顺序**存无向键（如 `combined_fixed_minus_tree_union2`），而旧代码
-  直接查 `f"{tree}_minus_{best}"`，方向相反时必然 miss。**读数本身未变**：离线重算
-  `recompute_criteria.py` 从 `results.json::per_prompt[*].accepts` 按**与 `run.py` 完全相同的**
-  聚类 bootstrap（B=2000、seed=2640、percentile 95%）重算，重算的臂级 α₁ / τ 与 `results.json`
-  原值**逐位相等**（`criteria_fixed.json::checkpoints[*].drift_vs_results_json` 全为空字典）。
-  `run.py` 已在 16:55 修好取键（`paired_dir()` 按方向取符号）+ 补 C1 的 `cis_overlap` /
-  `probe_wilson_ci95` 字段；修复的代码路径**不重跑 GPU**即可用离线重算验证。
+- **读数 = `results.json` / `cycle_log.jsonl` / `run_log.txt`（同一轮完整读数，3 个 checkpoint）**：
+  `results.json` = 臂级汇总 + 逐 prompt 接受数；`cycle_log.jsonl` = 逐 (ckpt, arm, prompt, round) 的
+  `accepts` / 候选集 / 权重 / 分歧标记。三个 checkpoint 均**完整**跑满各自臂集（`unmeasured` 为空）。
+- **判据 = 离线重算 `criteria_fixed.json`（`recompute_criteria.py`）**：`results.json::criteria` 的
+  `P1/P2.tree_*.paired*` 全为 `null`，导致其中 P1/P2 全判 `false`——原因是判据代码取配对差时**方向不敏感**：
+  `paired_diffs` 只按臂**写入顺序**存无向键（如 `combined_fixed_minus_tree_union2`），直线查
+  `f"{tree}_minus_{best}"` 在方向相反时必然 miss。**读数本身未变**：离线重算从
+  `results.json::per_prompt[*].accepts` 按**与本目录代码相同**的聚类 bootstrap（B=2000、seed=2640、
+  percentile 95%）重算，臂级 α₁ / τ 与 `results.json` 原值**逐位相等**
+  （`criteria_fixed.json::checkpoints[*].drift_vs_results_json` 全为空字典）；`run.py` 的取键已按方向修好
+  （`paired_dir()`），不需重跑即用离线重算验证。过程见
+  `.scratch/63-axis6-predict/WP-6.2.2-LOG.md`。
 - **判据语言**：α₁ = 每轮至少接受 1 个 token 的比例（接受率，越高越好）；α₂|₁ = 在已接受 1 个的
   前提下再接受第 2 个的条件比例；τ = 平均每轮接受的 token 数（平均接受长度）；tok/fwd = 1+τ =
   每次顺序前向平均发出的 token 数；`R = B_verified·(1+γ)/(1+τ)` = 每 token 等效 FLOPs（`B_verified`
@@ -93,7 +91,7 @@
 
 ## 4. 判据逐条（P1–P5 + C1）
 
-配对差 = 树臂 − 最强单臂，同一 prompt 重采样索引。**旧** = run #1 `results.json::criteria` 原判；
+配对差 = 树臂 − 最强单臂，同一 prompt 重采样索引。**旧** = `results.json::criteria` 原判；
 **重算** = 离线 `criteria_fixed.json`。预登记主打臂 = `tree_union2` / `tree_topk4`（`README.md` §4 P1），
 `tree_direct_k2` / `tree_qpw_k2` 是 axis-lead 追加臂（`README.md` §3），此处按同一口径并报。
 
@@ -157,16 +155,19 @@
 | checkpoint | 实测 α₁ [本臂 95% CI] | 探针 recall@2（n，Wilson 95%） | 探针点落在实测 CI 内 | 两 CI 重叠 | 实测**显著低于**探针 | C1 |
 |---|---|---|---|---|---|---|
 | 13m_s0 | 0.8983 [0.8576, 0.9263] | 0.8605（n=337，[0.8194, 0.8934]） | 是 | 是 | 否 | **过** |
-| 13m_s1 | 0.9200 [0.9008, 0.9426] | 0.8922（n=334，[0.8544, 0.9211]） | 否（低实测下界 0.00086） | 是 | 否 | **过** |
+| 13m_s1 | 0.9200 [0.9008, 0.9426] | 0.8922（n=334，[0.8544, 0.9211]） | 否（实测下界比探针点高 0.0086） | 是 | 否 | **过** |
 | 53m_s0 | 0.9344 [0.9143, 0.9567] | 0.9260（n=311，[0.8914, 0.9502]） | 是 | 是 | 否 | **过** |
 
 **C1 结论：三处均过**（按 README §4 C1 的 bug 判据——实测**显著低于**探针点——均不触发）。
 **13m_s1 的不确定性必须如实写清**：探针点 0.8922 **落在**本臂 α₁ 的 95% CI 之外（CI 下界 0.9008
-略高于探针点 0.00086），即两口径**不是完全落在同一区间**；但（a）两 CI 重叠
+比探针点高 0.0086），即两口径**不是完全落在同一区间**；但（a）两 CI 重叠
 （探针 Wilson 上界 0.9211 > 本臂 CI 下界 0.9008）；（b）实测方向是**高于**探针而非低于，
 与「树实现有 bug ⇒ 实测被压低」的信号相反；（c）探针只有 4 prompt / n≈334 轮、逐轮位置采样不同，
 本臂 12 prompt / n=912 轮。因此不判 C1 失败、不判实现 bug；把「探针点未落在本臂 CI 内（下界差
-0.00086）」作为已知不确定性记录，供后续复核。
+0.0086）」作为已知不确定性记录，供后续复核。
+探针的 Wilson CI **按 `probes_output.json::P3_free_gen_overall.n`（337/334/311）算**——探针文件里
+`P3_free_gen_topk_vs_T2` 各 k 条目**只有比例、无 n**，故这是可得的最接近口径；若 k=2 的实际评分
+轮数少于 overall，探针 CI 会略窄（不影响 C1 判词）。
 
 ### P5（代价轴，如实报，不作判据）
 
@@ -184,6 +185,12 @@
 量级：K=2（或 union2 的平均 K≈1.5）用约 1.8–1.9× FLOPs 换 τ 抬 ~0.14–0.19；K=4 用约 3.7× 换
 τ 抬 ~0.19–0.24 —— **τ 的边际收益随 K 递减**（K 从 2→4，R 翻倍而 τ 只多 ~0.05）。MTP 头 MAC 占比
 照抄 2631（头成本与臂无关 ⇒ 臂间相消），此处不重复。
+
+**口径局限（上表是「本实现」的代价，不是树结构的固有代价）**：本实现的验证把 K 个候选**平铺成 K 行**、
+每行自带完整 3 个位置（`[v1, c_i, d3]`，共享前缀只做 KV 广播）⇒ 每轮主干新位置数 = `K·(1+γ)` = **3K**；
+若按**节点共享的树注意力**（v1 与各候选的 d3 子节点只算一次）实现，位置数 ≈ `2K+1` ⇒ 本表的 FLOPs
+倍数是**实现侧上界**（K=2 时 6 vs 5、K=4 时 12 vs 9，约高 1.2–1.33×）。折算到理想口径后，K=2→4 的
+成本比仍约 1.8× 而 tok/fwd 仅从 2.61 到 2.66 ⇒ **「τ 边际收益随 K 递减」的结论不翻**。
 
 ## 5. 否证条件触发情况（`README.md` §4）
 

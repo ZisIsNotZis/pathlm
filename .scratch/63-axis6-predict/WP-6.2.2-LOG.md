@@ -62,3 +62,24 @@
 - 交付物：`analysis.md` / `criteria_fixed.json` / `recompute_criteria.py` / `mutate.py` /
   `mutation_report.json` / `controls/README.md`。未 commit、未 `git add`。
 - 证据锚点：`analysis.md`、`criteria_fixed.json`、`mutation_report.json`。
+
+## 2026-10-13T17:47:00+08:00 · 独立复核 #1 与更正（axis6-lead 代接任 writer 处置）
+
+- 复核：`.scratch/63-axis6-predict/REVIEW-1.md`（fresh reviewer，未参与写作；结论 = 无 blocker、
+  4 条 normal + 1 条 info）。复核者的**工具限制已如实声明**：其上下文无 shell/写文件工具，
+  故 B1/B2/B5/C 的自跑项标 `not-run`。
+- axis6-lead 已代跑复核者 §3 的补齐命令（全过，输出见 `TICKET.md` §9）：
+  `recompute_criteria.py`（重跑后 `criteria_fixed.json` 无变化）、`.scratch/63-axis6-predict/recompute_check.py`
+  （与留证快照逐值一致、仅 `source` 字段不同）、`pytest test_spec_tree.py -q`（22 passed）、
+  `mutate.py`（M1–M3 全 `caught_red=True`、`all_restored_bitwise=True`、`spec_tree.py` sha256 回到
+  `71d98b26…8fb62f`）、`summary.py --check` / `check_tree.py`（OK）、`sha256sum` 与复核者引用的四个哈希逐一相同、
+  `git diff --stat 01d25ff..HEAD -- pathlm docs tools`（空 ⇒ 无越界）、`git log --follow README.md`
+  （预登记契约只在 `cee655b` 一次入库、且文件 mtime 16:30 早于 run 开始 16:38 ⇒ 判据未被事后放宽）。
+- **更正（本行以下为对上面 T4 条目的更正，事实以 `analysis.md` 为准）**：T4 条目里
+  「探针点未落在本臂 CI 内（低 0.00086）」是 **10 倍错**——`0.900752 − 0.8922 = 0.0086`
+  （复核者 F1 指出；`analysis.md` §4 C1 已改）。C1 的定性结论（探针点在 CI 外、两 CI 重叠、
+  方向为实测更高 ⇒ 不触发 bug 判据）不变。
+- 其余处置：F2（代价口径未披露「K 行平铺 vs 节点共享树」）已在 `analysis.md` §5 补局限段；
+  F4（`analysis.md` 带日期流水）已压成当前事实 + 指针（流水即本文件）；F5（探针 Wilson CI 用
+  `P3_free_gen_overall.n`）已在 `analysis.md` §4 C1 补半句；F3（`project.yaml` 与新读数不自洽）
+  按既定收尾动作更新（见 `TICKET.md` §9）。
