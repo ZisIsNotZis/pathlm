@@ -1,0 +1,69 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "1.2.2"
+axis: "1 时间轴"
+title: "块稀疏 / 条带 / 局部+全局混合（Longformer 式）"
+dir: "axes/1-time/1.2.2-block-sparse"
+
+purpose: "用「非均匀但预先固定的可见/合并模式」（块稀疏、条带、局部窗口 + 少数全局 token）在每 token 可见量远小于 T 的前提下覆盖全序列，既避开全注意力的 T² 成本，又保住对少数全局位点的可达性。"
+innovation: "相对普通 decoder-only transformer 的全因果 attention，把可见集合从「全部历史」替换为一个固定的非均匀掩码：块稀疏（按块取可见块）、条带（对角线带宽）、局部窗口 + 少数全局 token（Longformer 式）。改动量级：不新增参数，attention 的 QKᵀ 与加权项按非零键数稀疏化（O(T·可见键数)）；迁移入本项的算子侧证据是线性核算子（φ(q)·φ(k) 归一化线性核，O(T) 分块实装，参数量增量为 0）。"
+expected_effect: "（a）固定非均匀掩码在更少可见量下保住局部质量，并借全局 token 保住对关键位点的可达；（b）线性核算子把每层算力/缓存压到长度线性、理想推理缓存常数；（c）把这两类点放进「质量-代价前沿」（横轴 = 每 token 等效 FLOPs / 每位置缓存字节，纵轴 = 相对全因果的 clean bpc 与长程召回），与硬窗口、dilated、内容 top-k 同预算比较。"
+sota_baseline: "Longformer（local window + global token）、BigBird（块稀疏 + 条带 + 全局）、ETC；线性注意力（Katharopoulos et al. 2020 Linear Transformers、Performer）；本地锚 = stock 全因果注意力基线（A2 → axes/7-references，13M B0 = 1.5074 bpc 快照）。业界条目按 `记忆·未核` 标注。"
+gap: "旧格 A6 把「块稀疏 / 线性算子」当选项罗列、无假设（55-review P11）；迁移入本项的两个实验（2616、2637）测的是**线性核算子**（一个 O(T) dense-kernel 算子，属算子族而非块稀疏掩码族），**真正的块稀疏 / 条带 / 局部+全局掩码未实装**（55-review R2）。且旧「线性更差」的读数取自数值退化（2616 停摆、2637 带伤）或已换算子（QK-Norm 后核被改）的配置，不能当算子规范质量数（2637）。本项增量 = (a) 真块稀疏 / 局部+全局掩码的同预算质量，(b) 线性核在无伤配置下的规范质量点。"
+method: "单因素：只改 attention 的可见/合并算子。臂 = {stock 全因果, 块稀疏 / 条带 / 局部+全局掩码（Longformer 式）, 线性核（φ=elu+1，O(T) 分块）}；对齐全序列每 token 可见键数（或每位置缓存字节）。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = stock 全因果基线（归一为 100%）；客观判据 = clean bpc（该跌/该不变）+ 每 token 等效注意力 FLOPs 与每位置缓存字节（该跌）+ 长程召回（该涨）；口径 = matched-step / 同 token 预算，禁墙钟。"
+objective_criteria: "该跌：每 token 等效注意力 FLOPs 与每位置缓存字节（同预算下）；该涨/该不变：clean bpc 不得越 0.014 噪声带（越界即该可见/合并模式在该尺度有害）；必须不变：因果性（无未来泄漏）、可见掩码在训练与评测一致、参数量相等。"
+falsification: "若块稀疏 / 条带 / 局部+全局掩码在同每 token 可见量预算下，clean bpc 相对全因果越 0.014 噪声带且长程召回不越无记忆地板 ⇒ 该可见模式在本尺度不成立；若线性核在无伤配置下仍远差于全因果、且不省等效 FLOPs / 每位置缓存 ⇒ 线性算子在本尺度不成立。"
+failure_analysis: ""
+conclusion: "旧读数（迁移自旧格 A6，均有伤、禁外推）：线性注意力（归一化线性核 φ=elu+1）在 T=256 / 13M 上不比全因果好——**原实装·带伤** Δbpc = −0.214（den 自 step 800 贴 clamp、gnorm_max 899385、25 次跳步），**稳定化·核已改**（QK-Norm）Δbpc = −0.624（该档把 φ 输入钉在有界区间 ⇒ 核被改、是另一个算子）；**无伤原核质量点未取得**。成本侧：T=256 整模型 2.58×/2.78× 慢、训练峰值显存 1.41×/1.27×（理论推理缓存 −93.6%@T=256，T 越大越接近 −100%）。**块稀疏 / 条带 / 局部+全局掩码本身未实装、无读数**（55-review R2）。"
+conclusion_review: "看上去旧读数只能作「线性核算子在退化/已改配置下的负观测」，不能当作块稀疏这一类可见模式的结论，也不是算子规范质量数（数值腿带伤、核被改）。故 status 进行中；块稀疏掩码的判决实验未做，线性核的无伤质量点未取得。独立复核未做。"
+experiments:
+  - "axes/1-time/1.2.2-block-sparse/experiments/2616-linear-attention-13m/analysis.md @76a07a8"
+  - "axes/1-time/1.2.2-block-sparse/experiments/2637-linear-attn-quality/analysis.md @76a07a8"
+argument: "把「可见模式」与「合并算子」分开：块稀疏/局部+全局改的是**看见谁**（掩码），线性核改的是**怎么合并**（算子）——两者都可压成本但判据不同（前者应省每位置缓存字节，后者只把每层算力降到 O(T)、推理缓存常数）。旧格把两者塞进同一张选项表、无假设（55-review P11），本项把它们作为同预算下的并列臂各自判决；线性臂的旧结论因数值带伤只作负观测。"
+gaps:
+  - "真块稀疏 / 条带 / 局部+全局掩码未实装、无读数（下一步最小实验：13M、T=256/512、{全因果, Longformer 式 local+global, BigBird 式 block+stripe} 对齐可见键数）"
+  - "线性核无伤质量点未取得（数值稳定化会改核，是另一个算子，见 2637）"
+  - "真稀疏/真窗口核把纸面 FLOPs 兑现为等效成本节省未测（旧实测为稠密 bool 掩码）"
+  - "T≥2048 的 n≥2 与第二个规模点未做"
+cost_model: "等效理论量：块稀疏 / 局部+全局掩码把每 token 可见键数压到 k（局部窗口 + 全局 token），attention 的 QKᵀ 与加权项由 O(T²) 降到 O(T·k)，layer-passes 不变；线性核把每层每头注意力降到 O(T·d)（分块实装常数因子更大），推理缓存从 O(T·d) 降到 O(d_φ²) 常数。考虑 pipelining：prefill 段按 chunk 流水，decode 段线性核每步只更新并读一个常数大小状态，块稀疏掩码每步只对新 query 算 k 个键。"
+
+role_map:
+  owner: "轴 1 时间轴 lead（待指派）"
+  writer: "1.2.2 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「非均匀可见结构 vs 全因果」的同预算判决包：{全因果, Longformer 式 local+global, BigBird 式 block+stripe, 线性核} 在相同每 token 可见量/每位置字节下的 clean bpc + 长程召回 + 每 token 等效 FLOPs，对照 stock 全因果，含 n≥2 与线性核无伤质量点。"
+  acceptance: "各臂的每 token 可见键数（或每位置缓存字节）对齐；结论明确每种模式在质量-代价前沿上的位置；线性核给出无伤配置的质量点或明确记为未取得；口径按 matched-step 报，禁墙钟。"
+
+work_packages:
+  - id: "WP1"
+    what: "Longformer 式 local+global 与 BigBird 式 block+stripe 掩码的实装与同预算判决"
+    goal: "补上本项自身机制（旧格从未实装真块稀疏掩码）"
+    means: "13M、T=256/512、{全因果, local+global, block+stripe} 三臂，对齐全序列每 token 可见键数，报 clean bpc + 长程召回 + 每 token 等效 FLOPs"
+    acceptance: "三臂可见键数相等、齐备；结论给出各掩码在前沿上的位置"
+    evidence: "axes/1-time/1.2.2-block-sparse/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+  - id: "WP2"
+    what: "线性核无伤质量点"
+    goal: "取得线性算子在数值无伤配置下的规范 clean bpc（旧点带伤或核被改）"
+    means: "13M、T=256/512、{full, linear} 两臂 × n≥2，确保 den 不触 clamp、gnorm 在健康带；勿用会改核的稳定化方式，或明确声明核已改"
+    acceptance: "线性臂 gnorm 在健康带、跳步 0、den 不触 clamp；给出无伤 Δbpc 或明确记为未取得及原因"
+    evidence: "axes/1-time/1.2.2-block-sparse/experiments/"
+    review: "fresh 复核核对数值腿健康判据与核是否被改"
+    status: "未开始"
+
+roadmap:
+  - "WP1：真块稀疏掩码同预算判决"
+  - "WP2：线性核无伤质量点"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "进行中"
+started: "2026-10-13T10:29:52+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:29:52+08:00"
+    actor: "轴 1 §1.2 worker"
+    change: "由旧格 A6-mixing-operator 拆分迁移建立（A6 → 1.2.2 + 1.2.3，见 MAPPING §3）；experiments 2616-linear-attention-13m、2637-linear-attn-quality 整目录搬入 experiments/；按 55-review A-P11/P12/R2 拆开「可见模式（掩码）」与「合并算子（线性核）」，把旧「线性更差」降为带伤/已改核的负观测、不再当块稀疏结论；补真块稀疏掩码与无伤线性质量点两个 WP。"

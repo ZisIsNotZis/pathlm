@@ -22,7 +22,7 @@ sys.path.insert(0, ROOT)
 
 from pathlm.depth_ar import (DepthARConfig, DepthARModel)     # noqa: E402
 
-EXP = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
+EXP = os.path.join(ROOT, "axes", "1-time", "1.2.2-block-sparse",
                    "experiments", "2637-linear-attn-quality")
 D, L, H, MLP = 32, 2, 2, 4
 

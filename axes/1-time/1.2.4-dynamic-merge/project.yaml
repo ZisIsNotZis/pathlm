@@ -1,0 +1,57 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "1.2.4"
+axis: "1 时间轴"
+title: "动态合并：越往下层 token 越少"
+dir: "axes/1-time/1.2.4-dynamic-merge"
+
+purpose: "让序列长度随深度递减——把已经处理过的相邻位置合并成更少的 token，使深层的算力与内存随深度下降，在尽量不丢信息的前提下减少深层每层的计算量。"
+innovation: "相对普通 decoder-only transformer（每层都处理相同的 T 个 token、算力逐层恒定），在层间插入 token 合并算子（按相似度或可学习权重把相邻位置两两/多路合并），使第 l 层处理 T_l 个 token 且 T_l 随 l 递减（如前浅后窄的金字塔/沙漏）。改动量级：新增一个小型合并打分/权重算子（相对主干可忽略）；深层 attention 与 FFN 的每 token FLOPs 按 T_l 缩放，总 layer-passes 随深度下降。"
+expected_effect: "（a）深层每 token 等效 FLOPs 随 T_l 下降，总计算量低于等深等宽的 stock；（b）把「合并率 r」放进「质量-代价前沿」（横轴 = 每 token 等效总 FLOPs / layer-passes，纵轴 = 相对全因果的 clean bpc），与同预算的窗口 / 稀疏 / 减宽比较，判断合并是否比「少看」更值。"
+sota_baseline: "ToMe（token merging，Bolya et al. 2022）、CALM（Confidence-based halting，合并已确定位置）、hourglass / hierarchical transformer（层级合并、先粗后细）；本地锚 = stock 全因果注意力基线（A2 → axes/7-references，13M B0 = 1.5074 bpc 快照）。业界条目按 `记忆·未核` 标注。"
+gap: "本仓零经验（MAPPING §2「无旧格」）；业界已有占位（ToMe / CALM / hourglass）。本项增量 = 在 13M 受控规模量化「合并率 r 下的质量-算力前沿」，并回答「合并已处理位置」相对「继续全量但少看远端」在同预算下谁更值。"
+method: "单因素：只改层间的 token 数（合并算子）。臂 = {stock 等宽基线, 金字塔合并（合并率 r∈{2,4,8}，前半全宽后半按 r 缩减）, 沙漏合并（先降后升/对称）}；合并打分可固定（相似度）或可学习，但同预算内只变一个 r。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = stock 全因果等深等宽基线（归一为 100%）+ 同等效 FLOPs 的减宽 / 稀疏臂；客观判据 = 每 token 等效总 FLOPs 与 layer-passes（该跌）+ clean bpc（该跌/该不变）+ 长程召回（该涨/必须不变）；口径 = matched-step / 同 token 预算，禁墙钟。"
+objective_criteria: "该跌：每 token 等效总 FLOPs 与深层每层处理的 token 数（同合并率下）；该涨/该不变：clean bpc 不得越 0.014 噪声带（越界即合并在该尺度有害）；必须不变：因果性（合并只能合并当前 token 之前/已有的位置）、总参数量相等或按同预算对齐。"
+falsification: "若在每 token 等效总 FLOPs 对齐的预算下，合并臂的 clean bpc 相对同预算的减宽 / 稀疏臂不占优（被支配）⇒ 动态合并这一结构在本尺度不成立；若合并率 r 增大时 clean bpc 急剧越界而等效 FLOPs 未同步下降 ⇒ 该合并在本尺度无净收益。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 55-review 的原则预登记（须有对照 + 客观判据 + 口径 + 否证条件），并把「同每 token 等效 FLOPs」作为预算对齐项钉死。独立复核未做。"
+experiments: []
+argument: "把「合并已处理位置」与「减少可见量」分开：前者减少的是**到深层的 token 数**（每 token 等效 FLOPs 与 layer-passes 随深度下降），后者减少的是**每层每 token 看多少**——两者在同预算下未必等价，故须用「每 token 等效总 FLOPs」对齐后比较质量。这正是 PROPOSED-STRUCTURE §4 点名的缺口（T.4 dynamic merging），在本仓从未立项。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、T=256、{stock, 金字塔合并 r=2/4/8} 三臂，对齐每 token 等效总 FLOPs；clean bpc + 长程召回）"
+  - "合并打分（固定相似度 vs 可学习权重）未定"
+  - "「必须不变」的长程召回是否随合并率退化未测"
+cost_model: "等效理论量：第 l 层处理 T_l 个 token 且 T_l 随深度递减（合并率 r），该层 attention 与 FFN 的每 token FLOPs 仍为 O(T_l·d)，但**处理 token 数**从 T 降到 T_l ⇒ 每 token 等效总 FLOPs（对全部层求和）随深度下降，layer-passes 相对 stock 下降；合并算子本身每层 O(T_l·d)。考虑 pipelining：prefill 段可按层流水，decode 段合并只能作用于已存的过去位置、每步新增 token 数不变。"
+
+role_map:
+  owner: "轴 1 时间轴 lead（待指派）"
+  writer: "1.2.4 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「动态合并 vs 同预算减宽/稀疏」的判决包：{stock, 金字塔合并 r∈{2,4,8}, 沙漏合并} 在每 token 等效总 FLOPs 对齐下的 clean bpc + 长程召回 + layer-passes，对照 stock 全因果，含 n≥2。"
+  acceptance: "各臂每 token 等效总 FLOPs 对齐；结论明确合并在质量-代价前沿上是否相对同预算减宽/稀疏占优，或明确被支配；口径按 matched-step 报，禁墙钟。"
+
+work_packages:
+  - id: "WP1"
+    what: "动态合并最小判决（对齐每 token 等效 FLOPs）"
+    goal: "判定「越往下层 token 越少」是否比同预算的减宽/稀疏更值"
+    means: "13M、T=256、{stock, 金字塔合并 r=2/4/8} 三臂，对齐每 token 等效总 FLOPs，报 clean bpc + 长程召回 + layer-passes"
+    acceptance: "各臂等效 FLOPs 对齐；合并臂相对同预算减宽/稀疏占优或被支配，二选一明确"
+    evidence: "axes/1-time/1.2.4-dynamic-merge/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：动态合并最小判决（对齐每 token 等效 FLOPs）"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T10:29:52+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:29:52+08:00"
+    actor: "轴 1 §1.2 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：动态合并：越往下层 token 越少 归 1.2 可见结构；对应 PROPOSED-STRUCTURE §4 的 T.4 缺口；判据钉在「同每 token 等效总 FLOPs」预算上，以区分「合并已处理位置」与「减少可见量」。"
