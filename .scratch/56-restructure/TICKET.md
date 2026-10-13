@@ -120,6 +120,14 @@
   `tools/check_schema.py`（转调）、`tools/build_wiki.py`/`tools/check_catalog_strict.py`/`tools/backfill_legacy.py`（加退役标注）、
   `tests/test_check_schema_anchor.py`（改指新校验器与 project.yaml 证据源）。
 
+> **更正（2026-10-13T09:58:18+08:00）**：上面「修改：`docs/structure.md`（追加 §12–§15…原 §1–§11 用词一字未改）」
+> 与实际不符。git 记录显示 `docs/structure.md` 在 `ab1d8d8` 里是**新建文件**（`git cat-file -e
+> ce2610a:docs/structure.md` 失败；全仓无其它 ref 含该文件），并非在既有文件上「追加」。
+> 因此该文件的 §1–§11 是否为「未改动」**无法从 git 独立核验**（无先前版本），且「追加」对一个
+> git 新增文件是误导性描述。正确处理（**不改写历史**）：本工单如实记为「**本次为新建文件，内容含
+> 既有 §1–§11 表述 + 新 §12–§15**」，并以一个**更正提交**在提交信息里说明「上一条信息超出实际改动」。
+> 详见 `.scratch/56-restructure/REPAIR-foundation.md`。
+
 ### 5.4 命令与结果
 
 - `python3 tools/check_tree.py` → `OK：2 个 project.yaml 全部符合 docs/research-schema.md`（exit 0）。
@@ -138,3 +146,49 @@
      `validation`；如出资人要另一种参照系，请裁决。
    - **`2.1.3`/`2.2.5` 的 Backlog 身份**：默认保留研究项形式（`status: 未开始`），不删。
 3. **`catalog.yaml` 物理归档时机**：默认 M2 全轴迁完后移入 `archive/wiki-legacy/`；如出资人要求立即搬，请裁决。
+
+---
+
+## 6. WP-M1.0 复核 FAIL → 修复（round 2）
+
+时间：2026-10-13T10:00:28+08:00 ｜ actor：worker（fresh 上下文，单一写入者）
+
+### 6.1 触发
+
+独立复核（`.scratch/56-restructure/REVIEW-foundation.md`，已**原样复制入库**）判 **FAIL**：
+阻塞 B1 = 冻结 schema 缺「失败归因」字段（出资人 L1 明确要求「区分设计问题 / 结构问题 / innovation 失败」）；
+另 8 项非阻塞（N1–N8）。
+
+### 6.2 改动
+
+- **B1（阻塞）**：`docs/research-schema.md` 新增必填字段 `failure_analysis`（失败归因：设计问题 /
+  结构问题 / innovation 本身失败，可并列 + 证据），§2 字段表加行、§5/§6/§7 说明触发（`status ∈ {被否证}`
+  或 `conclusion` 判失败时必填）、§9 校验项同步；`tools/check_tree.py` 加入 `REQUIRED` + 硬门
+  「`status=被否证` ⇒ `failure_analysis` 非空」；两份 exemplar（`1.1.1`/`9.1`）补键。
+- **N1**：选方案 **(a)**——`docs/research-schema.md` §9 收窄为「`experiments` 路径必须存在；
+  `work_packages[].evidence` 允许未来路径（只收锚点）」，与校验器现状一致。理由：WP `evidence` 是
+  「证据将落在哪」，预登记阶段天生是未来路径，加严会与「契约先于证据」冲突。
+- **N2**：`SCHEMA.md` 开篇不再把 `build_wiki.py`/`catalog.yaml` 当现行；§0/§3/§4/§12/§17.13/§21/§22
+  逐处加「已退役，见顶部迁移通告 / `docs/structure.md` §15」指针。**未删任何仍生效的分析纪律**。
+- **N3/N4**：`tools/check_tree.py` 补 `validation` 的「判据」关键词门 + 关键字段
+  （`purpose`/`innovation`/`validation`/`objective_criteria`/`falsification`）非空门。
+- **N5**：`CONTRIBUTING.md` 硬性规则编号 `1.2.4.5.6.7.` → 连续 `1.2.3.4.5.6.`。
+- **N6**：本节 §5.3 追加更正说明（`docs/structure.md` 本轮为**新建**文件，含既有 §1–§11 内容），
+  并以**更正提交**如实说明，**未 amend/改写历史**。
+- **N7**：`MAPPING.md` §0 与 `.scratch/57-program/TICKET.md` M2 行注明 **2434 是工作树文件计数**
+  （含约 777 个 gitignore 产物），非跟踪文件计数，清 cache 会漂移。
+- **N8**：`docs/structure.md` §9「调度/选择器」→「调度 / 选择器」，与 §12 及 exemplar 标题一致。
+
+### 6.3 命令与结果
+
+- `python3 tools/check_tree.py` → `OK：2 个 project.yaml 全部符合 docs/research-schema.md`（exit 0）。
+- `python3 tools/summary.py --check` → 同上（exit 0）。
+- `python3 tools/check_schema.py` → 转调，同上（exit 0）。
+- `python3 -m pytest tests/ -q` → **827 passed in 99.79s**（0 失败）。
+- `/tmp/repair-foundation-inject/` 注入 `status=被否证` + 空 `failure_analysis` ⇒ **FAIL**（新门生效）；
+  补非空 ⇒ OK；删键 ⇒ 缺字段 FAIL；`purpose: ""` ⇒ FAIL；`validation` 无判据 ⇒ FAIL。
+
+### 6.4 未决
+
+- 本 WP 的 PASS 判定须由**新的 fresh 独立复核**给出（复核者不得为本次 writer）；
+  详见 `.scratch/56-restructure/REPAIR-foundation.md` §4。
