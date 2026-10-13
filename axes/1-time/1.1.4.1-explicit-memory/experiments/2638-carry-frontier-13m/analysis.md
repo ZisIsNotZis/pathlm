@@ -1,8 +1,8 @@
 # 2638 · 显式记忆状态的质量-代价前沿 · 判读（analysis）
 
 > 契约 = 同目录 `README.md`（§4 判据线预登记）。原始数字 = `results.json`；
-> 权重清单 = `MODEL.md`；复核轨迹（历史）见 `.scratch/62-axis1-time/TICKET.md` 与 `REVIEW-*.md`。
-> 权重清单 = `MODEL.md`；入口 = `train_arms.sh`（训练）+ `run.py`（评测）。
+> 权重清单 = `MODEL.md`；入口 = `train_arms.sh`（训练）+ `run.py`（评测）；
+> 复核轨迹（历史）见 `.scratch/62-axis1-time/TICKET.md` 与 `REVIEW-*.md`。
 
 ## 0. 人话摘要
 

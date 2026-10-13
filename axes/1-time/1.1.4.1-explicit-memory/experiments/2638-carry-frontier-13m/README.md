@@ -62,7 +62,8 @@
 - **每位置等效 KV 字节**：`kv_bytes(k) = n_layers × 2 × d_model × bytes_per_elem × k`
   （fp16 ⇒ `bytes_per_elem=2`），`= 12288 × k` 字节；carry 状态另加 `8192 × 2 = 16,384` 字节。
   横轴等价量 **`k_eff` = 总字节 / 12288**（等效窗口位置数）。
-- **纯窗口曲线**：`{(k_eff, bpc)}` for `win16/win24/win32/win128`（seed 0）。在 carry16 的 `k_eff`
+- **纯窗口曲线**：`{(k_eff, bpc)}` for `win16/17/18/24/32/128`（seed 0；`win17/18` 为执行期追加，见 §5）。
+  在 carry16 的 `k_eff`
   处做**线性插值**定位（`interp_window_at`）。**凹性警告**：窗口质量曲线通常上凸（边际递减），
   故线性弦**高估**真实窗口质量 ⇒ 若 carry 低于弦，则它必然也低于（更好的）真实曲线（保守，判据不软）。
 - **噪声带（双列，不自选）**：① 本格同配置换种子极差 `σ_within_config`（2634 的
@@ -92,7 +93,7 @@
 同一 token 预算（12k × 32 × 256 = 98.3M）。`full` 复用 2610 主干（同尺寸、同预算、
 同 seed、同数据、全因果；配置等值性见 2615/2616 的逐字段对照，本实验只重跑评测）。
 **复用臂的复用范围 = eval-only**（不重训、不改配置）；复用等值性由「4 个复用臂的 bpc 与本实验
-评测口径下 2634 的产出逐位相同」独立佐证（见 analysis §3）。
+评测口径下 2634 的产出逐位相同」独立佐证（见 `results.json` 的 4 个复用臂 `bpc` 与 `2634/analysis.md`）。
 
 **执行期追加登记（B3）**：初版契约只列 `win16/24/32/128`（3 个训练臂）。执行到「前沿定位」时发现
 `k_eff(carry16)=17.33` **落在 win16 与 win24 之间**，而原有的两点弦插值区间太宽、无法判定
@@ -118,8 +119,8 @@
 - 数据：`data/enwik8_full.npz`（前 90M 训练 / 末 10M 评测；vocab 206）。
 - 训练：`bash train_arms.sh`（默认 `ARMS="24 32 128"`；本实验另按 `ARMS="17 18 24 32 128"` 训练 5 臂，见 §5 追加登记）⇒ `train/win{17,18,24,32,128}/{model.pt,results.json,train_log.jsonl}`。
 - 评测：`python3 run.py`（10 臂 bpc + 前沿 + 定位 + 活性）⇒ `results.json`。
-- 自包含单测（本目录内，不改共享 `tests/`）：`test_2638_frontier.py`（5 条，钉住支配定义、插值、
-  **符号约定（B1）**、掩码可见对数公式）。
+- 自包含单测（本目录内，不改共享 `tests/`）：`test_2638_frontier.py`（6 条，钉住支配定义、插值、
+  **符号约定**、掩码可见对数公式，以及**落盘 `results.json` 的支配关系与判定线数值一致**）。
 - 落盘：`config.json`、`run.py`、`train_arms.sh`、`results.json`、`analysis.md`、`MODEL.md`。
 
 ## 8. 既有做法（prior art，SCHEMA §18）

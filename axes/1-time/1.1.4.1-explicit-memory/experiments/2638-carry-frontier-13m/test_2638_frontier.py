@@ -66,11 +66,13 @@ def test_sign_convention_carry_minus_interp():
 
 
 def test_results_json_domination_matches_documented_sign_rule():
-    """把文档约定的判定线（rel < 0 ⇒ 被支配）与落盘 `results.json` 的支配关系对起来。
+    """把判定线的**数值**（rel < 0 ⇒ 被支配）与落盘 `results.json` 的支配关系对起来。
 
     这是**实质**断言（不是子串检查）：① 校验 `carry_minus_interp_window` = `bpc_interp − bpc_carry`；
-    ② 校验「rel < 0 ⇔ 被支配」与 `frontier.dominated_by` **逐臂一致**——若有人把判定线方向写反，
-    本条会红。
+    ② 校验「rel < 0 ⇔ 被支配」与 `frontier.dominated_by` **逐臂一致**。
+    范围说明（复核 R3-N4）：本条抓的是 **rel 公式 ↔ 判定线的数值一致性**（把 rel 的符号或
+    `dominated_by` 的构造写反会红）；**抓不住**「只改文档里那行判定线文字」这类纯文本回归
+    （那种回归无测试可抓，只能靠人读）。
     """
     import json
     import os

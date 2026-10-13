@@ -240,7 +240,32 @@
 | 3 | `python3 tools/summary.py --check` | `OK：46 个 project.yaml 全部符合 docs/research-schema.md` |
 | 4 | `python3 -m pytest tests/ -q` | `834 passed`（共享底座未改） |
 
-### 8.6 round 3
+### 8.6 round 3（派发 `2026-10-13T16:00+08:00`；复核件落盘 16:02）
 
-- 复核对象 = round-2 返工后的 revision；复核者 = **新的** fresh 上下文；报告落 `.scratch/62-axis1-time/REVIEW-3.md`。
-- 报告返回后回填判词与处置；若仍 FAIL，按「返工 ≤2 轮」登记 blocker 后返回。
+- 复核者：**新的** fresh 上下文（非 round-1/2 复核者、非本项 writer）；复核件 = `.scratch/62-axis1-time/REVIEW-3.md`；
+  复核对象 = `940cb23`。
+- **能力限制**：无 shell ⇒ `summary.py --check`/`pytest`/`sha256sum`/`git diff` 仍未跑（已由 axis1-lead 代跑，见 §8.7）。
+- **判词**：R2-B1 **已消解**（`MODEL.md` 与 `results.json` 对同一 `run.py` 现同为 `2023f36d…`；`MODEL.md`
+  全部 16 个哈希逐条扫过无第二处陈旧值）；R2-B2 与 N1/N2/N3/N4/N6/N7 逐条落地；**数值零回归**
+  （`rows`/`frontier`/`location` 与 round-2 记录值、与 `run_log.txt` 逐位相同）；科学结论抽查通过。
+  **总判词 = FAIL（窄范围）**：1 blocking **R3-B1**（`project.yaml` 的 `conclusion_review` 写「REVIEW-2 待派」
+  而同一文件 `change_log` 写「已按 REVIEW-2 修」——同一 SSOT 内两条互相打架的陈述）+ 5 non-blocking
+  （R3-N1 单测条数 5→6、R3-N2 悬空指针、R3-N3 §4a 曲线定义、R3-N4 单测钉子范围、R3-N5 重复行 + R3-N6
+  `change_log` 时间倒序）。
+- **处置（按 orchestrator 收口指令：修 blocking 即提交、不再开新一轮复核）**：
+  - R3-B1：`conclusion_review` 回填 REVIEW-2/REVIEW-3 判词，删去「REVIEW-2 待派」。
+  - R3-N1/N2/N3：`README.md` 单测条数改 6 并补主题；悬空指针改指 `results.json` + `2634/analysis.md`；
+    §4a 纯窗口曲线补 `win17/18` 与预登记 4 点集的关系。
+  - R3-N4：`test_2638_frontier.py` docstring 收窄钉子范围（只钉 rel 公式 ↔ 判定线的**数值**一致，
+    明说抓不住文档文字型回归）。
+  - R3-N5/N6：`analysis.md` 去重复行；`project.yaml` `change_log` 改时间正序。
+
+### 8.7 round-3 代跑检查（axis1-lead，`2026-10-13T16:02–16:05`）
+
+| 命令 | 结果 |
+|---|---|
+| `python3 tools/summary.py --check` | `OK：46 个 project.yaml 全部符合 docs/research-schema.md` |
+| `python3 -m pytest .../test_2638_frontier.py -q` | `6 passed` |
+| `python3 -m pytest tests/ -q` | `834 passed`（共享底座未改） |
+| `sha256sum` 抽 2 个 checkpoint + `MODEL.md` 全部 16 哈希 vs 磁盘 | 全部一致（10 权重 + `run.py`/`config.json`） |
+| `results.json.code_hashes` vs 磁盘 | 全部一致 |
