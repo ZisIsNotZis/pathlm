@@ -17,7 +17,7 @@ python3 train_depth_ar.py master \
   --steps 20 --batch-size 8 --seed 0 \
   --synth-task assoc-mqar --synth-pairs 8 --synth-queries 8 --synth-gap 14 \
   --train-window 16 --carry-write delta --n-kv-heads 2 \
-  --out-root axes/M-carrier/M1-carrier-type/experiments/2622-eng1-composable/smoke
+  --out-root axes/1-time/1.1.4.1-explicit-memory/experiments/2622-eng1-composable/smoke
 ```
 
 - 该命令在 **ENG1 前会直接报错**（`carry_rule` 与 `n_kv_heads<n_heads` 硬互斥）；现在

@@ -18,7 +18,7 @@
 # 训练（已发生，权重为派生物）
 #   协议 INT_100M + n_mtp=3；产物落在 .scratch/20-spec-scale/evidence/INT3_100M_s0/
 # 本实验的推理复现：
-python3 axes/H-horizon/H1-outputs-per-pass/experiments/2520-spec-at-scale/run.py \
+python3 axes/6-predict/6.2-speculative-decoding/experiments/2520-spec-at-scale/run.py \
         --ckpt .scratch/20-spec-scale/evidence/INT3_100M_s0 --reps 5
 ```
 

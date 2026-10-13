@@ -37,9 +37,9 @@ from pathlm.data import load_enwik8_full                              # noqa: E4
 from tools.evalkit.longrange_tasks import (                           # noqa: E402
     corrupt_span, local_prior_accuracy, check_local_prior_resistance)
 
-P2621 = os.path.join(ROOT, "axes/R-references/R1-quantization/experiments/"
+P2621 = os.path.join(ROOT, "axes/5-quant/5.1-kv-quant/experiments/"
                            "2621-kv-budget-rest")
-P2631 = os.path.join(ROOT, "axes/R-references/R1-quantization/experiments/"
+P2631 = os.path.join(ROOT, "axes/5-quant/5.1-kv-quant/experiments/"
                            "2631-kv-budget-causal")
 sys.path.insert(0, P2621)
 sys.path.insert(0, P2631)
@@ -672,9 +672,9 @@ def main() -> int:
                    "peak_mem_mib": round(torch.cuda.max_memory_allocated() / 2 ** 20, 1),
                    "smoke": bool(args.smoke)}
     codes = ["tools/evalkit/kv_quant.py",
-             "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/run.py",
-             "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/block_arms.py",
-             "axes/R-references/R1-quantization/experiments/2632-kv-block-scale/scale_caliber.py"]
+             "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/run.py",
+             "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/block_arms.py",
+             "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/scale_caliber.py"]
     rec["code"] = {c: b21.b19.sha256_file(os.path.join(ROOT, c))[:16] for c in codes}
 
     # GPU 工作已完成：先释放并补全 §20 记账，再落盘。

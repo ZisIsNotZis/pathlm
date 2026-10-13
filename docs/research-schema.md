@@ -6,7 +6,7 @@
 >
 > 迁移通告：新结构下 **`axes/**/project.yaml` 是研究项的 SSOT**。生成式 wiki
 > （`catalog.yaml` / `tools/build_wiki.py` / `INDEX.md`）**退役**；旧的课题页九节契约
-> （`SCHEMA.md` §1–§3）在迁移窗口内仍适用于旧 `axes/**/README.md`，迁移完成后由本文件取代。
+> （`SCHEMA.md` §1–§3）随旧 `axes/**/README.md` 退役（旧页归档于 `archive/wiki-legacy/axes/**`），由本文件取代。
 > `SCHEMA.md` §6–§24 的**分析纪律仍然生效**（判据取向、方差界、等参数对照、独立复核、
 > GPU 锁、并发写等），本文件不重复，只引用。
 
@@ -80,6 +80,8 @@ role_map:
 
 - `owner` 与 `writer` 可为同一人；`reviewer` **不得**是本项 `writer`（独立复核，
   见 `SCHEMA.md` §14 / §14b）。
+- 迁移窗口内 `owner` / `writer` / `reviewer` / `integrator` 写**角色占位**（如「轴 N lead（待指派）」）；
+  **实名在轴 lead 指派时填（M3）**，本轮不臆造（未决登记见 `.scratch/56-restructure/TICKET.md`）。
 
 ## 5. `milestone`（单数、有且仅有一个）
 

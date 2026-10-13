@@ -15,7 +15,7 @@
 
 > 旧格 `R1-quantization` 按 `.scratch/56-restructure/MAPPING.md` §1 迁入本项：其 `experiments/**` 的
 > 六个 kv 目录整目录迁入本目录（整目录 `git mv`，一格一份家，不复制）。旧格目录与其 README 仍保留在
-> `axes/R-references/R1-quantization/**`，待 integrator 统一退役。
+> `archive/wiki-legacy/axes/R-references/R1-quantization/**`，旧树退役已由本轮 integrator 完成（旧目录归档只读保留）。
 > 口径提示：**引用 KV 量化的字节数一律用 `2632` 的块标尺部署口径（含标尺）**；`2619`/`2620`/`2621` 是
 > 逐值标尺/非因果口径的历史图，其跨家族数字已作废（55-review W-08），不得当现行；`2631` 的逐值标尺
 > 字节账同样已撤回。

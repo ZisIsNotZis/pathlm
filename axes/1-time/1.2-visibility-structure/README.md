@@ -25,6 +25,6 @@
 - 代价 = 等效理论量（FLOPs / layer-passes / tokens-per-forward），**禁墙钟**。
 - 每项有且仅有一个 milestone，推进过程见各自 `project.yaml` 的 work_packages。
 
-> 旧格 `axes/A-mixing/A6-mixing-operator`（混合算子）按 `.scratch/56-restructure/MAPPING.md` §3
+> 旧格 `archive/wiki-legacy/axes/A-mixing/A6-mixing-operator`（混合算子）按 `.scratch/56-restructure/MAPPING.md` §3
 > 拆入本分组：`2614-topk` → `1.2.3`；`2616-linear-attention`、`2637-linear-attn-quality` → `1.2.2`；
-> 长 T 窗口系列归 `1.1.1`。旧目录待统一退役。
+> 长 T 窗口系列归 `1.1.1`。旧目录退役完成（归档只读保留）。

@@ -74,7 +74,7 @@
 ## 4. 判据线（**逐字**抄录 X2 契约，一字未改）
 
 > ## X2 · 搬运通道 × 深度自适应（≈40 min，13M）
-> 目录：`axes/M-carrier/M1-carrier-type/experiments/2627-carry-x-depth/`
+> 目录：`axes/1-time/1.1.4.1-explicit-memory/experiments/2627-carry-x-depth/`
 > 动机：两个独立正面资产——**delta 搬运通道**（关联回忆 0.0137→0.0950）与**深度自适应/早退**
 > （tf@4 0.9726、exit-4 3.1× 墙钟）——**从未一起测过**；ENG1 已解除组合限制。
 > 干预（同 token 预算、逐字段一致）：`dense baseline` / `+carry(delta)` / `+per-token depth(随机退出)`

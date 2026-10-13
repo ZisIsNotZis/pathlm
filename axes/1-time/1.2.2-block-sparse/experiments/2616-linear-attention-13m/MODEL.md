@@ -38,7 +38,7 @@ SCHEMA §15 的等参数要求自动满足（本臂是「零参数增量」的�
 
 ```bash
 cd /home/z/vibe/pathlm
-EXP=axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m
+EXP=axes/1-time/1.2.2-block-sparse/experiments/2616-linear-attention-13m
 python3 $EXP/smoke.py                      # 20 步冒烟（先冒烟再全跑）
 nohup python3 $EXP/run.py --steps 12000 --seed 0 --budget-min 45 \
       > $EXP/run_log.txt 2>&1 &            # ← 正式主跑；本次 full 臂由它产出
@@ -64,7 +64,7 @@ python3 train_depth_ar.py <arm>-12k-s0 \
 
 本实验**不加载**任何他人 checkpoint 做对照（两臂都是本实验新训）；
 只在 `analysis.md` §8.2 引用 ticket 32-M/2615 在
-`axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt`
+`axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt`
 上的 recent 曲线作**跨批定性参照**，该文件的 sha256 已实测断言：
 
 ```

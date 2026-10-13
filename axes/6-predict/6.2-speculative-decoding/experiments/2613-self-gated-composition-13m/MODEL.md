@@ -8,7 +8,7 @@
 
 | 项 | 值 |
 |---|---|
-| 路径 | `axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt` |
+| 路径 | `axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt` |
 | 架构 | `DepthARModel(dense=True)`：d256 × 12 层 × 8 头 × mlp6 × seq256；tied 读出、无 final LN |
 | 参数 | 13,536,768（13.54M）（12k 步 × bs32 × seq256 = 98.3M tokens，seed 0，bpc 1.4836 / t+1 acc 0.6979） |
 | SHA-256 | `86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2` |
@@ -39,14 +39,14 @@ tied 读出无参数。
 
 ```bash
 # 全跑（4 臂 × 2 seed @2000 步 + 4 臂 × 1 seed @4000 步 + 评测）≈7 min GPU
-python3 axes/H-horizon/H3-composition/experiments/2613-self-gated-composition-13m/run.py
+python3 axes/6-predict/6.2-speculative-decoding/experiments/2613-self-gated-composition-13m/run.py
 
 # 20 步冒烟（实测步时与显存）
-python3 axes/H-horizon/H3-composition/experiments/2613-self-gated-composition-13m/run.py --smoke
+python3 axes/6-predict/6.2-speculative-decoding/experiments/2613-self-gated-composition-13m/run.py --smoke
 
 # 等价直调（run.py 只是薄封装）
 python3 train_jumphead.py \
-  --config axes/H-horizon/H3-composition/experiments/2613-self-gated-composition-13m/config.json \
-  --out-dir axes/H-horizon/H3-composition/experiments/2613-self-gated-composition-13m \
+  --config axes/6-predict/6.2-speculative-decoding/experiments/2613-self-gated-composition-13m/config.json \
+  --out-dir axes/6-predict/6.2-speculative-decoding/experiments/2613-self-gated-composition-13m \
   --composition
 ```

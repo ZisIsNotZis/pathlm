@@ -3,7 +3,7 @@
 跑法（仓库根）：
 
     python3 -m pytest \
-      axes/H-horizon/H3-composition/experiments/2631-spec-three-arms/test_spec_arms.py -q
+      axes/6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms/test_spec_arms.py -q
 
 覆盖四类不变量：
 ① **臂定义**：三臂分别读的是哪个头（chain → `chain2`、direct → `node2`）；

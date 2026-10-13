@@ -40,13 +40,13 @@ python3 train_depth_ar.py <run> --out-root .scratch/52-r7-early-exit/evidence \
 
 ```bash
 # 全部训练臂（按臂取/放 GPU 锁，臂间 ≥60 s）：
-bash axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/run_arms.sh all
+bash axes/7-references/experiments/R7-existing-early-exit/2623-standard-early-exit-13m/run_arms.sh all
 # 同份额控制臂（λ=8，承载 headline 结论 1.8550 vs 1.8575）：
-bash axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/run_arms_share.sh
+bash axes/7-references/experiments/R7-existing-early-exit/2623-standard-early-exit-13m/run_arms_share.sh
 # 推断电池 + 交错墙钟（锁内、无训练）：
-bash axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/run_eval.sh all
+bash axes/7-references/experiments/R7-existing-early-exit/2623-standard-early-exit-13m/run_eval.sh all
 # 对账（analysis.md 的数字 ⇔ results.json）：
-python3 axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/reconcile_numbers.py
+python3 axes/7-references/experiments/R7-existing-early-exit/2623-standard-early-exit-13m/reconcile_numbers.py
 ```
 
 ## 共享文件指纹（`SCHEMA` §22.6；本波改过/新引入的文件在其**当前 HEAD** 的 sha256）
@@ -81,5 +81,5 @@ python3 axes/R-references/R7-existing-early-exit/experiments/2623-standard-early
    `CUDA_VISIBLE_DEVICES="" python3 -m pytest tests/ -q` = **825 passed**；按最后一次
    实跑核数，当前工作树含 M1 线在飞改动）。
    **归属：修复由 M1 线提交，本波未改其文件**；共享套件当前全绿。
-4. 本波与 `axes/M-carrier/**`（2633/2634/2635）、`axes/A-mixing/**`（2636/2637）、
-   `axes/H-horizon/H3-composition/**` 并行运行；本线只写自己的路径，未改其目录。
+4. 本波与 `archive/wiki-legacy/axes/M-carrier/**`（2633/2634/2635）、`archive/wiki-legacy/axes/A-mixing/**`（2636/2637）、
+   `archive/wiki-legacy/axes/H-horizon/H3-composition/**` 并行运行；本线只写自己的路径，未改其目录。

@@ -14,6 +14,6 @@
 
 > 旧格 `W4-readout-geometry` 按 `.scratch/56-restructure/MAPPING.md` §1 迁入本项：其 `experiments/**`
 > 整目录迁入本目录（一格一份家，不复制）。旧格目录与其 README 仍保留在
-> `axes/W-width/W4-readout-geometry/**`，待 integrator 统一退役。
+> `archive/wiki-legacy/axes/W-width/W4-readout-geometry/**`，旧树退役已由本轮 integrator 完成（旧目录归档只读保留）。
 > 结构性切分（只读前 r 维 → 能量迁出读出子空间）的负结果物理证据在本轴
 > `3.1.1/experiments/2525-tax-attribution`（MAPPING 一格一份家），本项只作**指针引用**、不复制。

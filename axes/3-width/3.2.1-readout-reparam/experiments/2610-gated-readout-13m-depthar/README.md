@@ -105,5 +105,5 @@ latent 传输所依赖的 tied 几何。
 
 ## 9. 产出
 
-`axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/`
+`axes/3-width/3.2.1-readout-reparam/experiments/2610-gated-readout-13m-depthar/`
 下的 `README.md`(本文件) / `run.py` / `config.json` / `results.json` / `analysis.md` / `MODEL.md`。

@@ -58,7 +58,7 @@ tf@4 判决。**
 ## 4. 判据线（**逐字**抄录任务下发文本，未改一字）
 
 > 【W1 · GPU】出口资产同口径判决：carry 是否弄坏 tf@4（≈40 min）
-> 目录：axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/
+> 目录：axes/1-time/1.1.4.1-explicit-memory/experiments/2630-tf4-samecaliber/
 > 动机：46-W1 的出口资产两个口径**结论相反**（分布内 synth：99.66%→98.68% 带内保持；enwik8 跨分布代理：93.69%→88.98% 超带恶化）。原因可能是「模型训在合成任务上 ⇒ enwik8 对它是跨分布」。**必须同口径判决。**
 > 干预：两臂 = `无 carry` vs `carry(delta)`，**在 enwik8 上训练**（原生预训练口径、非 dense ragged + proj-fill + 随机退出），其余逐字段一致。
 > 判据（预登记）：① 主腿 = **同口径 tf@4**（enwik8 训练、enwik8 评测）；若 |Δ| < 1.4pp ⇒ 记「carry 不弄坏出口资产」；② clean bpc（同口径）；③ 参数量；④ 活性量；⑤ 注明与 46-W1 是两个不同分布的口径、**不得混用**。
@@ -201,10 +201,10 @@ gpu_wall_budget: 40 min   # 含两臂训练 + 评测（纯推理）
 ## 9. 复现手段
 
 ```bash
-bash axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/train_arms.sh   # 训练两臂
-python3 axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/run.py        # 评测电池
-python3 axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/reconcile_numbers.py
-python3 axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/mutate.py
+bash axes/1-time/1.1.4.1-explicit-memory/experiments/2630-tf4-samecaliber/train_arms.sh   # 训练两臂
+python3 axes/1-time/1.1.4.1-explicit-memory/experiments/2630-tf4-samecaliber/run.py        # 评测电池
+python3 axes/1-time/1.1.4.1-explicit-memory/experiments/2630-tf4-samecaliber/reconcile_numbers.py
+python3 axes/1-time/1.1.4.1-explicit-memory/experiments/2630-tf4-samecaliber/mutate.py
 python3 -m pytest tests/test_tf4_samecaliber_13m.py -q
 ```
 

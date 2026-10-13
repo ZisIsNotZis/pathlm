@@ -5,7 +5,7 @@
 - 只有「预登记常数」（γ=2、λ=0.5、prompt 数）用 `golden(..., why=...)`，并写清来源；
 - 容差显式分 `abs_tol` / `rel_tol`；不用旧的含糊 `tol`。
 
-跑法：`python3 axes/H-horizon/H3-composition/experiments/2631-spec-three-arms/reconcile_numbers.py`
+跑法：`python3 axes/6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms/reconcile_numbers.py`
 """
 
 from __future__ import annotations

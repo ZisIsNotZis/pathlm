@@ -107,7 +107,7 @@
 - **我们的 `M2-carrier-compression` 空白格（摘要/低秩）全都在业界的现成盘点里**，
   我们不是从零造轮子，而是**在 13M / char-enwik8 / 局部先验抗性任务上做受控对照**。
 - **回收一条本地警告**：我们已经在 `M2` 里付过学费——「低损伤 ≠ 保住了」
-  （`axes/M-carrier/M2-carrier-compression/README.md`）。这正是 Compression 系工作
+  （`archive/wiki-legacy/axes/M-carrier/M2-carrier-compression/README.md`）。这正是 Compression 系工作
   **必须带检索腿**的原因；业界很多压缩工作只报 ppl/质量，**不报可重建性**，其「几乎无损」
   结论在我们的天平上不可直接搬用（`本地实测` + 研究推断）。
 
@@ -161,7 +161,7 @@
   通常不控制局部先验）；③ **同 seed、同尺寸、单因素**的「有/无辅助损失」受控对照；
   ④ 把 sufficiency 损失接到**右移压缩**的载体上（而不是压缩器自身）。
 - **风险预警**：`F4` 本地已测 consistency loss **中性**（`本地实测`：
-  `axes/F-iteration/F4-training-signal/README.md`）；sufficiency 损失在 bf16 下
+  `archive/wiki-legacy/axes/F-iteration/F4-training-signal/README.md`）；sufficiency 损失在 bf16 下
   属于「负/奖励类」风险区，必须 float32 + pre-step grad-norm gate（SCHEMA §10、playbook 定律 5）。
 
 ### 可复现的判据建议
@@ -193,7 +193,7 @@
    可并行训练的实现，并报告在 **MQAR / 长程回忆**上优于 Mamba-2 一类。
    `不确定`：具体增益数字与是否在所有规模成立。
 4. **`本地实测`（重要，且与业界叙事有张力）**：
-   `axes/A-mixing/A10-compression-trigger/README.md` —— 我们在 13M/256 快照上做
+   `archive/wiki-legacy/axes/A-mixing/A10-compression-trigger/README.md` —— 我们在 13M/256 快照上做
    distance / lru / content 三规则同等删除预算对照，**LRU 未测出可见收益**；
    其字面优势经对账后归因于「恰好删掉的可见性对数更少」，按对数重对齐后 **lru −0.0170
    （由正转负）**；且 `lru:k=256` 出现「bpc 伤害最低（+0.0885）但召回崩 4.5→22.8pp」
@@ -242,9 +242,9 @@
 - **业界（`记忆·未核`）**：不加 sink 直接驱逐前缀会崩；加回少量 sink 就恢复——
   **代价极低、收益极大**，是少有的「免费」结论。
 - **本地（`本地实测`）**：
-  - `axes/A-mixing/A3-window-anchor/README.md`：**锚点通道是真产物**——
+  - `archive/wiki-legacy/axes/A-mixing/A3-window-anchor/README.md`：**锚点通道是真产物**——
     needle 召回 76.8%，加距离惩罚后 **93.3%**。
-  - `axes/A-mixing/A10-compression-trigger/README.md`：注意力质量分布里
+  - `archive/wiki-legacy/axes/A-mixing/A10-compression-trigger/README.md`：注意力质量分布里
     **位置 0 的 mass 9.374 = 第 25 百分位的 12.7 倍**，「最少被读」几乎全在中段
     —— 与业界 sink 描述**独立吻合**（我们的模型是 char-enwik8 的 13M，也出现了 sink）。
 - **张力记录**：我们的 `A4` 软距离惩罚**「改变使用率，不改变依赖是否为零」**（`本地实测`）
@@ -291,12 +291,12 @@
 - `archive/dropped/axes/M-carrier/M3-cross-step-assumption/README.md` — 窗口 32 训练税 +0.0866、
   窗口 192 −0.0028；窗口外整桶召回 0.475954 vs 无记忆地板 0.444444（+3.2pp）；
   **整段都在窗口外的 494 根差恰好 0.000**；窗内阳性对照 +28.2pp。⇒ 「丢了」不是「搬了」。
-- `axes/A-mixing/A9-old-info-retention/README.md` — 同一结论的另一处记账（ticket 32-O）。
-- `axes/A-mixing/A3-window-anchor/README.md` — 锚点通道 76.8%→93.3%；硬丢 +0.058~0.121。
-- `axes/A-mixing/A10-compression-trigger/README.md` — LRU vs distance vs content 同预算对照；
+- `archive/wiki-legacy/axes/A-mixing/A9-old-info-retention/README.md` — 同一结论的另一处记账（ticket 32-O）。
+- `archive/wiki-legacy/axes/A-mixing/A3-window-anchor/README.md` — 锚点通道 76.8%→93.3%；硬丢 +0.058~0.121。
+- `archive/wiki-legacy/axes/A-mixing/A10-compression-trigger/README.md` — LRU vs distance vs content 同预算对照；
   重对齐后 lru −0.0170；位置 0 mass 9.374 = 第 25 百分位 12.7×。
-- `axes/F-iteration/F4-training-signal/README.md` — consistency loss 中性。
-- `axes/M-carrier/M1-carrier-type/README.md`、`M2-carrier-compression/README.md` — 格子盘点。
+- `archive/wiki-legacy/axes/F-iteration/F4-training-signal/README.md` — consistency loss 中性。
+- `archive/wiki-legacy/axes/M-carrier/M1-carrier-type/README.md`、`M2-carrier-compression/README.md` — 格子盘点。
 - `docs/playbook.md` 定律 7、9；`SCHEMA.md` §17.10/§17.11/§17.12。
 
 **记忆（未核，只可用于设计方向，不得当判据）**

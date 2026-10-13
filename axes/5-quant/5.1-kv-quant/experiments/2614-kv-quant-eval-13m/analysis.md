@@ -159,9 +159,9 @@
 # 单测（12 个）
 python3 -m pytest tests/test_kv_quant.py -q
 # 冒烟（实测步时/显存，不外推）
-python3 axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/run.py --smoke
+python3 axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/run.py --smoke
 # 全电池
-python3 axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/run.py
+python3 axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/run.py
 # 变异验证（关键开关：量化/反量化语义）
-python3 axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/mutate.py
+python3 axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/mutate.py
 ```

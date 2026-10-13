@@ -117,6 +117,6 @@ train_tokens=98.3M / vocab=206 / 数据切分（前 90M train、末 10M eval，�
 
 ## 9. 产出
 
-`axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/`
+`axes/3-width/3.2.1-readout-reparam/experiments/2611-equalparams-linear-control-13m/`
 下的 `README.md`(本文件) / `run.py` / `smoke.py` / `config.json` / `results.json` /
 `train_log.jsonl` / `analysis.md` / `stability.md` / `MODEL.md`。

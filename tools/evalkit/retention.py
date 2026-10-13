@@ -1,6 +1,6 @@
 """KV 消融保留曲线仪器（ticket 31 契约 I）——评测期删除 KV，不重训。
 
-契约：`axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/README.md`
+契约：`axes/1-time/1.1.4.2-compression/experiments/2614-kv-ablation-retention-13m/README.md`
 
 这件天平回答一个问题：**把某些位置的 KV 从注意力可见集里删掉，质量掉多少。**
 它不改模型权重（纯推理），只改「哪些 key 能被哪些 query 看到」——在注意力

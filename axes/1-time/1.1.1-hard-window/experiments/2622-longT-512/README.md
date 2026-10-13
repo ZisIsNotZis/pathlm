@@ -20,7 +20,7 @@ status: judged
 **【X3 原文（逐字）】**
 
 > 【X3 · GPU】长 T 首探：T=512（≈45–60 min）
-> 目录：axes/A-mixing/A6-mixing-operator/experiments/2622-longT-512/
+> 目录：axes/1-time/1.1.1-hard-window/experiments/2622-longT-512/
 > 动机：A6 的 T=256 净亏结论与注意力占比外推（14.3%@256→72.7%@4096）**从未在 T>256 实测**。
 > 干预：seq_len 256→**512**（最小改动：扩绝对位置表，K10 估 +2.8% 参数），比较 full attention
 > vs 窗口 256（同 token 预算、同步数），**必须双口径**（等效 FLOPs + 墙钟）。
@@ -46,7 +46,7 @@ status: judged
    （`512·512 = 262144`，`262144+786432 = 1048576`），**按 25.0% 对照**。T=512 的参数增量按
    **实测 +65,536 = +0.94%**。
 
-源契约行（供回溯，逐字）：`axes/A-mixing/PRIOR_ART_LENGTH.md`（K10）；
+源契约行（供回溯，逐字）：`archive/wiki-legacy/axes/A-mixing/PRIOR_ART_LENGTH.md`（K10）；
 `SCHEMA.md §17.16`、`.scratch/39-close-gaps/issues/01-close-gaps.md`。
 
 ## 1. 命题（一句话、可证伪）
@@ -112,7 +112,7 @@ status: judged
 
 ## 5. 既有做法（prior art，SCHEMA §18）
 
-> 本环境**联网不可用**（与 `axes/A-mixing/PRIOR_ART_LENGTH.md §0`、`axes/A-mixing/PRIOR_ART.md §0`
+> 本环境**联网不可用**（与 `archive/wiki-legacy/axes/A-mixing/PRIOR_ART_LENGTH.md §0`、`archive/wiki-legacy/axes/A-mixing/PRIOR_ART.md §0`
 > 一致）。外部内容一律 **`记忆·未核`**，只作设计方向、**不得当判据**。
 
 1. **谁做过**：滑动窗口注意力（Longformer / Mistral 的 SWA）是长上下文标准件；稀疏注意力

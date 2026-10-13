@@ -21,20 +21,20 @@
 
 ```bash
 # 冒烟（2 批 × bs4）
-python3 axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/run.py \
-  --config axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/config.json \
-  --out-dir axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m --smoke
+python3 axes/6-predict/6.2-speculative-decoding/experiments/2611-jumphead-ar-control-13m/run.py \
+  --config axes/6-predict/6.2-speculative-decoding/experiments/2611-jumphead-ar-control-13m/config.json \
+  --out-dir axes/6-predict/6.2-speculative-decoding/experiments/2611-jumphead-ar-control-13m --smoke
 
 # 全跑（24 批 × bs16，与 2610 评测口径一致）
-python3 axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/run.py \
-  --config axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/config.json \
-  --out-dir axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m
+python3 axes/6-predict/6.2-speculative-decoding/experiments/2611-jumphead-ar-control-13m/run.py \
+  --config axes/6-predict/6.2-speculative-decoding/experiments/2611-jumphead-ar-control-13m/config.json \
+  --out-dir axes/6-predict/6.2-speculative-decoding/experiments/2611-jumphead-ar-control-13m
 ```
 
 复用权重的生成命令（在 2610 目录，本实验不重跑）：
 
 ```bash
 python3 train_jumphead.py \
-  --config axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/config.json \
-  --out-dir axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m
+  --config axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/config.json \
+  --out-dir axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m
 ```

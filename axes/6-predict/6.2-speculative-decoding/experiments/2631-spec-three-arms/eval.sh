@@ -6,7 +6,7 @@
 # 陈旧锁（holder 死掉或 >15min 无心跳）自动回收；trap EXIT 保证异常也释放。
 set -u
 cd "$(dirname "$0")/../../../../.."   # repo root
-EXP=axes/H-horizon/H3-composition/experiments/2631-spec-three-arms
+EXP=axes/6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms
 LOCK=/tmp/pathlm_gpu.lock
 
 acquire() {

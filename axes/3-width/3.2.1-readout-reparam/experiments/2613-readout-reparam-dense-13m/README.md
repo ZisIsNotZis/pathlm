@@ -18,7 +18,7 @@ status: planned
 
 > ## 契约 F：读出重参数化在普通 dense 模型上的可迁移性（结论收尾）
 >
-> - 目录：`axes/W-width/W4-readout-geometry/experiments/2613-readout-reparam-dense-13m/`
+> - 目录：`axes/3-width/3.2.1-readout-reparam/experiments/2613-readout-reparam-dense-13m/`
 > - 文件所有权：只写本实验目录（复用既有 `--readout-linear-resid` 与 `--readout-gated` 开关）。
 > - **干预**：在普通 dense 模型（无门、无退出、仅最终 CE）上，比较
 >   `baseline`（tied 线性读出）vs `linear-resid`（h + P·(Q h)，等参数 2d²）。
@@ -138,7 +138,7 @@ vocab=206 / 数据切分（前 90M train、末 10M eval，词表来自全文件�
 
 ## 9. 产出
 
-`axes/W-width/W4-readout-geometry/experiments/2613-readout-reparam-dense-13m/`
+`axes/3-width/3.2.1-readout-reparam/experiments/2613-readout-reparam-dense-13m/`
 下的 `README.md`(本文件) / `run.py` / `smoke.py` / `mutate.py` / `stability.py` /
 `test_dense_readout_reparam.py` / `config.json` / `results.json` /
 `results-seed1.json` / `analysis.md` / `stability.md` / `stability.json` /

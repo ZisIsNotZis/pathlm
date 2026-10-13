@@ -47,8 +47,8 @@
 按 `.scratch/56-restructure/MAPPING.md`：旧格 `R1-quantization` 的六个 kv 实验目录（`2614`/`2619`/`2620`/`2621`/`2631`/`2632`）
 整搬 `5.1/experiments/`，`2617-prior-art-hybrid-kv` 整搬 `5.6/experiments/`（整目录 `git mv`，一格一份家、
 不复制）；`.scratch/**/evidence` 原地未动，仅更新指针。按 55-review 修正「作废的 int4 数字」（W-08：逐值标尺
-口径作废，改用块标尺）、「跨口径混用」（R8：每位置字节须含标尺且统一轴）。旧轴目录 `axes/R-references/**`
-及其 README、`PRIOR_ART.md` 待 integrator 统一退役。
+口径作废，改用块标尺）、「跨口径混用」（R8：每位置字节须含标尺且统一轴）。旧轴目录 `archive/wiki-legacy/axes/R-references/**`
+及其 README、`PRIOR_ART.md` 已随旧树退役归档（归档只读保留）。
 
 ## 怎么读
 

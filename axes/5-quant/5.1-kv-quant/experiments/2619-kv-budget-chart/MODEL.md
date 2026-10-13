@@ -28,10 +28,10 @@
 # trunk（2610）
 python3 train_depth_ar.py trunk-12k-s0 --d 256 --layers 12 --heads 8 --mlp-mult 6 --dense \
   --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --eval-batches 24 \
-  --out-root axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m
+  --out-root axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m
 
 # head 族（2616；四臂串行，本实验只用 mha / gqa / mqa）
-python3 run.py --train    # 在 axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/
+python3 run.py --train    # 在 axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/
 ```
 
 ## 2. 本实验新增的派生物（不入库）

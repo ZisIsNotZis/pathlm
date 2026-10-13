@@ -6,20 +6,20 @@ bpc 与召回全部由本实验**同进程、同一路径**重测（`bpc_of` / `
 
 | 点 | 类别 | 每位置 KV 字节（解析） | vs 本族基线 | bpc | Δbpc==damage | 合成召回 copy（汇总） | 95% CI | vs chance | vs 局部先验 | 来源路径 | 口径 |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| `fp16` | 不压缩基线 | 12288 (0.0%↓) | fp16 | 1.483571 | +0.000000 | 0.1413 | [0.1294, 0.1540] | 9.04× | +0.1266 | `axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json` | 解析字节（非实测显存） |
-| `int8` | 量化（R1） | 6144 (50.0%↓) | fp16 | 1.483721 | +0.000150 ⚠不可排序 | 0.1426 | [0.1307, 0.1554] | 9.12× | +0.1279 | `axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json` | 解析字节（非实测显存） |
-| `int4` | 量化（R1） | 3072 (75.0%↓) | fp16 | 1.529232 | +0.045661 | 0.1247 | [0.1135, 0.1368] | 7.98× | +0.1100 | `axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json` | 解析字节（非实测显存） |
-| `win16` | 窗口/驱逐（M2） | 768 (93.8%↓) | fp16 | 2.085526 | +0.601955 | 0.0150 (地板) | [0.0112, 0.0199] | 0.96× | +0.0003 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
-| `win32` | 窗口/驱逐（M2） | 1536 (87.5%↓) | fp16 | 1.695384 | +0.211813 | 0.0140 (地板) | [0.0104, 0.0188] | 0.90× | -0.0007 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
-| `win64` | 窗口/驱逐（M2） | 3072 (75.0%↓) | fp16 | 1.564077 | +0.080506 | 0.0589 | [0.0511, 0.0678] | 3.77× | +0.0443 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
-| `win128` | 窗口/驱逐（M2） | 6144 (50.0%↓) | fp16 | 1.503634 | +0.020063 | 0.1100 | [0.0994, 0.1216] | 7.04× | +0.0954 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
-| `win144` | 窗口/驱逐（M2） | 6912 (43.8%↓) | fp16 | 1.497328 | +0.013757 ⚠不可排序 | 0.1100 | [0.0994, 0.1216] | 7.04× | +0.0954 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
-| `win160` | 窗口/驱逐（M2） | 7680 (37.5%↓) | fp16 | 1.492435 | +0.008864 ⚠不可排序 | 0.1087 | [0.0982, 0.1202] | 6.96× | +0.0941 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
-| `win176` | 窗口/驱逐（M2） | 8448 (31.2%↓) | fp16 | 1.489695 | +0.006124 ⚠不可排序 | 0.1074 | [0.0970, 0.1189] | 6.88× | +0.0928 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
-| `win192` | 窗口/驱逐（M2） | 9216 (25.0%↓) | fp16 | 1.487744 | +0.004173 ⚠不可排序 | 0.1064 | [0.0960, 0.1178] | 6.81× | +0.0918 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
-| `mha` | 不压缩基线 | 12288 (0.0%↓) | mha | 1.482026 | +0.000000 | 0.1530 | [0.1407, 0.1662] | 9.79× | +0.1383 | `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json` | 解析字节（非实测显存） |
-| `gqa` | 头共享（W3） | 3072 (75.0%↓) | mha | 1.496325 | +0.014299 | 0.1689 | [0.1561, 0.1826] | 10.81× | +0.1543 | `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json` | 解析字节（非实测显存） |
-| `mqa` | 头共享（W3） | 1536 (87.5%↓) | mha | 1.493763 | +0.011737 ⚠不可排序 | 0.2432 | [0.2283, 0.2586] | 15.56× | +0.2285 | `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json` | 解析字节（非实测显存） |
+| `fp16` | 不压缩基线 | 12288 (0.0%↓) | fp16 | 1.483571 | +0.000000 | 0.1413 | [0.1294, 0.1540] | 9.04× | +0.1266 | `axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json` | 解析字节（非实测显存） |
+| `int8` | 量化（R1） | 6144 (50.0%↓) | fp16 | 1.483721 | +0.000150 ⚠不可排序 | 0.1426 | [0.1307, 0.1554] | 9.12× | +0.1279 | `axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json` | 解析字节（非实测显存） |
+| `int4` | 量化（R1） | 3072 (75.0%↓) | fp16 | 1.529232 | +0.045661 | 0.1247 | [0.1135, 0.1368] | 7.98× | +0.1100 | `axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json` | 解析字节（非实测显存） |
+| `win16` | 窗口/驱逐（M2） | 768 (93.8%↓) | fp16 | 2.085526 | +0.601955 | 0.0150 (地板) | [0.0112, 0.0199] | 0.96× | +0.0003 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
+| `win32` | 窗口/驱逐（M2） | 1536 (87.5%↓) | fp16 | 1.695384 | +0.211813 | 0.0140 (地板) | [0.0104, 0.0188] | 0.90× | -0.0007 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
+| `win64` | 窗口/驱逐（M2） | 3072 (75.0%↓) | fp16 | 1.564077 | +0.080506 | 0.0589 | [0.0511, 0.0678] | 3.77× | +0.0443 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
+| `win128` | 窗口/驱逐（M2） | 6144 (50.0%↓) | fp16 | 1.503634 | +0.020063 | 0.1100 | [0.0994, 0.1216] | 7.04× | +0.0954 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
+| `win144` | 窗口/驱逐（M2） | 6912 (43.8%↓) | fp16 | 1.497328 | +0.013757 ⚠不可排序 | 0.1100 | [0.0994, 0.1216] | 7.04× | +0.0954 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
+| `win160` | 窗口/驱逐（M2） | 7680 (37.5%↓) | fp16 | 1.492435 | +0.008864 ⚠不可排序 | 0.1087 | [0.0982, 0.1202] | 6.96× | +0.0941 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
+| `win176` | 窗口/驱逐（M2） | 8448 (31.2%↓) | fp16 | 1.489695 | +0.006124 ⚠不可排序 | 0.1074 | [0.0970, 0.1189] | 6.88× | +0.0928 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
+| `win192` | 窗口/驱逐（M2） | 9216 (25.0%↓) | fp16 | 1.487744 | +0.004173 ⚠不可排序 | 0.1064 | [0.0960, 0.1178] | 6.81× | +0.0918 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
+| `mha` | 不压缩基线 | 12288 (0.0%↓) | mha | 1.482026 | +0.000000 | 0.1530 | [0.1407, 0.1662] | 9.79× | +0.1383 | `axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json` | 解析字节（非实测显存） |
+| `gqa` | 头共享（W3） | 3072 (75.0%↓) | mha | 1.496325 | +0.014299 | 0.1689 | [0.1561, 0.1826] | 10.81× | +0.1543 | `axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json` | 解析字节（非实测显存） |
+| `mqa` | 头共享（W3） | 1536 (87.5%↓) | mha | 1.493763 | +0.011737 ⚠不可排序 | 0.2432 | [0.2283, 0.2586] | 15.56× | +0.2285 | `axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json` | 解析字节（非实测显存） |
 
 ## 表 2 · 逐任务召回（同一仪器，同一 seed）
 | 点 | 每位置 KV 字节 | copy（汇总） | copy **毁源**对照 | induction（汇总） | var_recall（汇总） | 不可分辨的腿 |
@@ -44,20 +44,20 @@ bpc 与召回全部由本实验**同进程、同一路径**重测（`bpc_of` / `
 ## 表 3 · 与来源实验逐一对照
 | 点 | 本实验 bpc | 来源实验路径 | 来源值 | abs diff | 一致 |
 |---|---|---|---|---|---|
-| `fp16` | 1.483571 | `axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json` | 1.483571 | 0.0 | ✓ |
-| `int8` | 1.483721 | `axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json` | 1.483721 | 0.0 | ✓ |
-| `int4` | 1.529232 | `axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json` | 1.529232 | 0.0 | ✓ |
-| `win16` | 2.085526 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 2.085526 | 0.0 | ✓ |
-| `win32` | 1.695384 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.695384 | 0.0 | ✓ |
-| `win64` | 1.564077 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.564077 | 0.0 | ✓ |
-| `win128` | 1.503634 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.503634 | 0.0 | ✓ |
-| `win144` | 1.497328 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.497328 | 0.0 | ✓ |
-| `win160` | 1.492435 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.492435 | 0.0 | ✓ |
-| `win176` | 1.489695 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.489695 | 0.0 | ✓ |
-| `win192` | 1.487744 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.487744 | 0.0 | ✓ |
-| `mha` | 1.482026 | `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json` | 1.482026 | 0.0 | ✓ |
-| `gqa` | 1.496325 | `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json` | 1.496325 | 0.0 | ✓ |
-| `mqa` | 1.493763 | `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json` | 1.493763 | 0.0 | ✓ |
+| `fp16` | 1.483571 | `axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json` | 1.483571 | 0.0 | ✓ |
+| `int8` | 1.483721 | `axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json` | 1.483721 | 0.0 | ✓ |
+| `int4` | 1.529232 | `axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json` | 1.529232 | 0.0 | ✓ |
+| `win16` | 2.085526 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 2.085526 | 0.0 | ✓ |
+| `win32` | 1.695384 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.695384 | 0.0 | ✓ |
+| `win64` | 1.564077 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.564077 | 0.0 | ✓ |
+| `win128` | 1.503634 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.503634 | 0.0 | ✓ |
+| `win144` | 1.497328 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.497328 | 0.0 | ✓ |
+| `win160` | 1.492435 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.492435 | 0.0 | ✓ |
+| `win176` | 1.489695 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.489695 | 0.0 | ✓ |
+| `win192` | 1.487744 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.487744 | 0.0 | ✓ |
+| `mha` | 1.482026 | `axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json` | 1.482026 | 0.0 | ✓ |
+| `gqa` | 1.496325 | `axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json` | 1.496325 | 0.0 | ✓ |
+| `mqa` | 1.493763 | `axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json` | 1.493763 | 0.0 | ✓ |
 
 ## 表 4 · 缺失组合（下一批候选，判据 C5）
 | 组合 | 为什么缺 | 若要补应怎么做 |

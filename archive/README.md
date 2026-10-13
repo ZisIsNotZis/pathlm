@@ -1,7 +1,7 @@
 # archive — 旧项目（只读）
 
 本目录保存 **PathLM**（2026-09-14 ~ 09-29，25 个执行 ticket）的原始文档。
-它的结论**已经被消化**进 `axes/` 的各课题页；这里保留原始叙述与逐 run 细节，
+它的结论**已经被消化**进新研究树 `axes/**/project.yaml`；这里保留原始叙述与逐 run 细节，
 供回溯与引用。
 
 ## ⚠️ 使用前必读：旧数字的口径陷阱
@@ -48,6 +48,17 @@
 | `M-carrier/M3-cross-step-assumption` | `M1-carrier-type`（有界内存价签+「丢了不是搬了」负结果） |
 | `R-references/R6-moe-scale` | `W2-expertization`（同格，并入后立项） |
 | `G-policy/G2-currency` | `docs/methodology.md`（记账纪律，不是可证伪研究格） |
+
+## 已归档的旧 wiki（`wiki-legacy/`）
+
+ticket 56 把旧研究树退役后，旧 wiki 资产整体移入 `wiki-legacy/` **只读保留**（不删）：
+`catalog.yaml`（旧「目录完备」枚举与旧结论内容源）、`INDEX.md`（旧状态灯）、
+`tools/{build_wiki,check_catalog_strict,backfill_legacy}.py`（生成式 wiki 工具）、
+`tests/test_build_wiki_manual.py`（其回归测试），以及旧轴目录
+`wiki-legacy/axes/{A-mixing,C-vertical,H-horizon,W-width,M-carrier,F-iteration,G-policy,P-modifiers,R-references}/**`
+（旧课题页 `README.md` / `PRIOR_ART*.md` / 旧实验索引）。实验证据已按
+`.scratch/56-restructure/MAPPING.md` `git mv` 到新树 `axes/1-time … 9-backlog`，旧格目录里已无实验证据。
+当前 SSOT = `axes/**/project.yaml`（见 `docs/structure.md` §15）。
 
 ## 文件导航
 

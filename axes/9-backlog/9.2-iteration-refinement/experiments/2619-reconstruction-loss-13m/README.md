@@ -197,7 +197,7 @@
    - **RECOMP**（Xu et al., 约 2023）：检索文档压缩器，明确对比**重建/抽取目标 vs 蒸馏**；
    - **500xCompressor**、**DMC**（约 2024）：压缩记忆/ KV 压缩，报告需配继续预训练或蒸馏。
    以上均 `记忆·未核`，出处与关键词清单见
-   `axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md`
+   `axes/1-time/1.1.4.1-explicit-memory/experiments/2617-prior-art-memory/PRIOR_ART.md`
    （§「既有做法」与 §「若可检索应查什么」）与 F4 课题页备注。
 2. **为什么这么设计**：压缩/有损载体只能丢信息不能增信息，只看最终 CE 时
    「把信息写进载体再读出来」比「当场读源」多一个瓶颈 ⇒ 没有梯度奖励搬运；

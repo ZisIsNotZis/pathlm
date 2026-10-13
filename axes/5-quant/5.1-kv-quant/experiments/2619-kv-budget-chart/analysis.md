@@ -211,7 +211,7 @@
   影响评估：本实验峰值 430 MiB、模型 54 MB、纯推理且无随机采样；追加的复现跑（不同时间片）
   bpc 与召回**逐位相同**（max\|Δ\| = 0.0）⇒ 未观察到污染。
 - 本实验**不写** `catalog.yaml` / `INDEX.md` / `axes/**/README.md`（归主 Agent）；
-  `axes/R-references/R1-quantization/experiments/README.md` 的 AUTO 清单已由主 Agent/其他线
+  `axes/5-quant/5.1-kv-quant/experiments/README.md` 的 AUTO 清单已由主 Agent/其他线
   跑 `build_wiki.py` 刷新并包含本目录（`check_schema.py` 对本目录无报错）。
 
 ---
@@ -223,7 +223,7 @@
 
 1. **`GQA × int8`** —— 本图最强的两个点合起来会到 1536 字节/位置（−87.5%）且两腿都近无损，
    但组合实验被 scope 禁止，未测。
-2. **`窗口 × 锚点/sink`** —— A3 已实测锚点通道把 needle 召回从 76.8% 拉到 93.3%（见 `axes/A-mixing/A3-window-anchor/README.md`），
+2. **`窗口 × 锚点/sink`** —— A3 已实测锚点通道把 needle 召回从 76.8% 拉到 93.3%（见 `archive/wiki-legacy/axes/A-mixing/A3-window-anchor/README.md`），
    锚点的字节开销极小（每层 2·head_dim·2 字节/锚点），**这可能是把窗口从「召回地板」救回来的最便宜办法**，
    但从未与本图的字节轴对齐过。
 3. **长 T（>256）下的窗口** —— 窗口的字节/位置随 T 下降，本图所有点都在 T=256 上测，

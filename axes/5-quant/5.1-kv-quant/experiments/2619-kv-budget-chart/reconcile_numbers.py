@@ -196,7 +196,7 @@ ck("analysis.md 引用的探针 rel_err（fp16 1.8e-4 / int8 4.8e-3 / int4 8.8e-
    [f"{fp16_rel:.1e}", f"{int8_rel:.1e}", f"{int4_rel:.1e}"],
    ["1.8e-04", "4.8e-03", "8.8e-02"])
 _r1 = json.load(open(os.path.join(
-    ROOT, "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json")))
+    ROOT, "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json")))
 _r1_rel = {row["mode"]: row["activity"]["rel_err"] for row in _r1["quant_rows"]}
 ck("analysis.md 引用的 2614 全电池 rel_err（1.76e-4 / 6.84e-3 / 1.24e-1）与 2614 results.json 一致",
    all(f"{_r1_rel[m]:.2e}" == w for m, w in (("fp16", "1.76e-04"), ("int8", "6.84e-03"),
@@ -213,13 +213,13 @@ ck("预算占用 2.7%（32.7s / 20min）与 results.json 一致",
    abs(R["cost"]["wall_seconds"] / 1200 * 100 - 2.7) < 0.1,
    round(R["cost"]["wall_seconds"] / 1200 * 100, 2), 2.7)
 _hashes = json.load(open(os.path.join(
-    ROOT, "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/model_hashes.json")))
+    ROOT, "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/model_hashes.json")))
 ck("参数 −8.75% / −10.25% 与 2616 model_hashes 一致（外部引用核对）",
    abs(1 - _hashes["gqa"]["params"] / _hashes["mha"]["params"] - 0.0875) < 5e-4
    and abs(1 - _hashes["mqa"]["params"] / _hashes["mha"]["params"] - 0.1025) < 5e-4,
    [round(1 - _hashes["gqa"]["params"] / _hashes["mha"]["params"], 4),
     round(1 - _hashes["mqa"]["params"] / _hashes["mha"]["params"], 4)], [0.0875, 0.1025])
-_a3 = open(os.path.join(ROOT, "axes/A-mixing/A3-window-anchor/README.md")).read()
+_a3 = open(os.path.join(ROOT, "archive/wiki-legacy/axes/A-mixing/A3-window-anchor/README.md")).read()
 ck("A3 引用的 needle 76.8% / 93.3% 在 A3 页上存在（外部引用核对）",
    "76.8" in _a3 and "93.3" in _a3)
 ck("chart.png / chart.txt / table.md / results.json 都在",

@@ -195,7 +195,7 @@ def main():
                                     "compute but the depth-wise quality is uncalibrated",
                      "exit_x_spec": "not composable in this engine: the batched "
                                     "verification must run full depth "
-                                    "(_run_stack_multi), see docs/mental_model.md §4"}}
+                                    "(_run_stack_multi), see archive/legacy-docs/mental_model.md §4"}}
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w") as f:
         json.dump(out, f, indent=1, ensure_ascii=False)

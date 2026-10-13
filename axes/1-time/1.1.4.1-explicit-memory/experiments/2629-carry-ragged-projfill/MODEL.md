@@ -18,7 +18,7 @@
     --steps 6000 --batch-size 32 --lr 1e-3 --seed 0 --exit-mode uniform \
     --synth-task assoc-mqar --synth-pairs 8 --synth-queries 8 --synth-gap 14 \
     --proj-fill --final-weight 2.0 \
-    --out-root axes/M-carrier/M1-carrier-type/experiments/2629-carry-ragged-projfill/train
+    --out-root axes/1-time/1.1.4.1-explicit-memory/experiments/2629-carry-ragged-projfill/train
   # 目标臂：同上 + --carry-write delta
   ```
 

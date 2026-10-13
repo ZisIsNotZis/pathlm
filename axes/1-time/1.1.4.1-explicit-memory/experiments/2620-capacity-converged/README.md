@@ -130,7 +130,7 @@ vs U1 的 10k 跑）正好也是一次「第三方重跑散度」读数，见 §
 > **检索条件声明**：本环境**联网检索不可用**（未注册任何 web / `web_search` / `source_check`
 > 工具；与 ticket 36/37 各 knowledge run 同因）。下列全部为 **`记忆·未核`**，
 > **只用于设计方向，不作为判据**（SCHEMA §18/§21(c)）。定量条目的完整盘点见
-> `axes/M-carrier/PRIOR_ART_CAPACITY.md`（ticket 37-K7，本文的直接依据）。
+> `archive/wiki-legacy/axes/M-carrier/PRIOR_ART_CAPACITY.md`（ticket 37-K7，本文的直接依据）。
 
 1. **谁做过**
    - **MQAR / Zoology**（Arora et al.，约 2023）：多查询关联回忆合成诊断任务；据此刻画
@@ -267,7 +267,7 @@ vs U1 的 10k 跑）正好也是一次「第三方重跑散度」读数，见 §
 
 > ## 契约 V2：容量轴在「收敛后」是否有效（训练，2 臂 × 24k）
 >
-> - 目录：`axes/M-carrier/M1-carrier-type/experiments/2620-capacity-converged/`
+> - 目录：`axes/1-time/1.1.4.1-explicit-memory/experiments/2620-capacity-converged/`
 > - 动机：U1 的容量曲线不成立，但其四臂**一万步均未收敛**（斜率 −0.065~−0.051）⇒ 必须先在收敛后重判。
 > - 干预（唯一变量 = 状态维度）：固定 K=8，`--carry-state-dim` ∈ {16, 128}（若预算允许再加 64），
 >   训练 **24k 步**（2× U1），其余逐字段一致（seed=0、同任务同窗口）。

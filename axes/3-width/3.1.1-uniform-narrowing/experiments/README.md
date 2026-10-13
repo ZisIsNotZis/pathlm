@@ -11,4 +11,4 @@
 > 旧格 `W1-active-width` 按 `.scratch/56-restructure/MAPPING.md` §1 迁入本项：其 `experiments/**`
 > 整目录迁入本目录（一格一份家，不复制）。按 55-review W-06，迁入的实验与命题**错配**（测的是读出
 > 切片），故只作**背景证据**登记，不构成本项结论；`3.2.1` 以指针引用它。
-> 旧格目录与其 README 仍保留在 `axes/W-width/W1-active-width/**`，待 integrator 统一退役。
+> 旧格目录与其 README 仍保留在 `archive/wiki-legacy/axes/W-width/W1-active-width/**`，旧树退役已由本轮 integrator 完成（旧目录归档只读保留）。

@@ -20,8 +20,8 @@
 | 臂 | 路径 | sha256 | 备注 |
 |---|---|---|---|
 | **A**（共享 tied 读出） | `.scratch/23-depth-ar/evidence/23c-H2-w0-12k/model.pt` | `2b054ab7368757fe79cf36c32bacacb5e7aafe52f718a02f0558dbb3aa5446e6` | 历史 run（ticket 23c），同配置同 seed |
-| **gated**（共享 2d² 非线性） | `axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/runs/gated-12k-s0/model.pt` | `26e976ec3fc8e16b0ae1dd1faace197bb0489f1d576f7193e533eda30bfceece` | 2610 主臂 |
-| **linear**（共享 2d² 线性） | `axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/runs/linear-12k-s0/model.pt` | `f8ae40869ac0439c0567d7e68cef7749886e655ea93aa150ebcd95ab3bc6073f` | 2611 等参数对照臂 |
+| **gated**（共享 2d² 非线性） | `axes/3-width/3.2.1-readout-reparam/experiments/2610-gated-readout-13m-depthar/runs/gated-12k-s0/model.pt` | `26e976ec3fc8e16b0ae1dd1faace197bb0489f1d576f7193e533eda30bfceece` | 2610 主臂 |
+| **linear**（共享 2d² 线性） | `axes/3-width/3.2.1-readout-reparam/experiments/2611-equalparams-linear-control-13m/runs/linear-12k-s0/model.pt` | `f8ae40869ac0439c0567d7e68cef7749886e655ea93aa150ebcd95ab3bc6073f` | 2611 等参数对照臂 |
 
 复用三道门（§9）：① **实现层**——开关关闭逐位等值单测（`tests/test_depth_ar.py::
 test_readout_perdepth_off_matches_v1_bitwise` 等）；② **配置层**——`arm_*.json::equivalence`
@@ -46,13 +46,13 @@ test_readout_perdepth_off_matches_v1_bitwise` 等）；② **配置层**——`a
 
 ```bash
 # 冒烟 + 变异验证（CPU；--train 追加 20 步 GPU 冒烟）
-python3 axes/W-width/W4-readout-geometry/experiments/2621-per-depth-readout-13m/smoke.py --train
+python3 axes/3-width/3.2.1-readout-reparam/experiments/2621-per-depth-readout-13m/smoke.py --train
 # 分阶段（每阶段单独取 GPU 锁，§20.1）：arms → perdepth → wide_shared → assemble
-python3 axes/W-width/W4-readout-geometry/experiments/2621-per-depth-readout-13m/run.py --stage arms
-python3 axes/W-width/W4-readout-geometry/experiments/2621-per-depth-readout-13m/run.py --stage perdepth
-python3 axes/W-width/W4-readout-geometry/experiments/2621-per-depth-readout-13m/run.py --stage wide_shared
-python3 axes/W-width/W4-readout-geometry/experiments/2621-per-depth-readout-13m/run.py --stage assemble
-python3 axes/W-width/W4-readout-geometry/experiments/2621-per-depth-readout-13m/reconcile_numbers.py
+python3 axes/3-width/3.2.1-readout-reparam/experiments/2621-per-depth-readout-13m/run.py --stage arms
+python3 axes/3-width/3.2.1-readout-reparam/experiments/2621-per-depth-readout-13m/run.py --stage perdepth
+python3 axes/3-width/3.2.1-readout-reparam/experiments/2621-per-depth-readout-13m/run.py --stage wide_shared
+python3 axes/3-width/3.2.1-readout-reparam/experiments/2621-per-depth-readout-13m/run.py --stage assemble
+python3 axes/3-width/3.2.1-readout-reparam/experiments/2621-per-depth-readout-13m/reconcile_numbers.py
 ```
 
 数据：char 级 enwik8（`data/enwik8_full.npz`，前 90M train / 末 10M eval / 词表 206，

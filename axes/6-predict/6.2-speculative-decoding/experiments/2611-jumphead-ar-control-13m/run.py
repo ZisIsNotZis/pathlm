@@ -1,6 +1,6 @@
 """契约 29-A（ticket 29）：跳跃头对照臂修正 + 草稿接受率（纯推理）。
 
-契约：axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/README.md
+契约：axes/6-predict/6.2-speculative-decoding/experiments/2611-jumphead-ar-control-13m/README.md
 
 复用 2610 的冻结主干 trunk.pt 与两个跳跃头 head_s{0,1}.pt（先核对 MODEL.md 哈希），
 只做**推理**，不训练。产出的量：
@@ -139,7 +139,7 @@ def main():
         verdict = "失败：跳跃头不如自回归两次"
 
     results = {
-        "contract": ("axes/H-horizon/H4-head-trunk-relation/experiments/"
+        "contract": ("axes/6-predict/6.2-speculative-decoding/experiments/"
                      "2611-jumphead-ar-control-13m/README.md"),
         "config": cfg,
         "reused_weights": {

@@ -39,13 +39,13 @@ from pathlm.data import load_enwik8_full                                  # noqa
 from tools.evalkit.longrange_tasks import (                               # noqa: E402
     corrupt_span, local_prior_accuracy, check_local_prior_resistance)
 
-CHART_2619_PATH = os.path.join(ROOT, "axes/R-references/R1-quantization/experiments/"
+CHART_2619_PATH = os.path.join(ROOT, "axes/5-quant/5.1-kv-quant/experiments/"
                                      "2619-kv-budget-chart/run.py")
-RES_2619_PATH = os.path.join(ROOT, "axes/R-references/R1-quantization/experiments/"
+RES_2619_PATH = os.path.join(ROOT, "axes/5-quant/5.1-kv-quant/experiments/"
                                    "2619-kv-budget-chart/results.json")
-RES_2620_PATH = os.path.join(ROOT, "axes/R-references/R1-quantization/experiments/"
+RES_2620_PATH = os.path.join(ROOT, "axes/5-quant/5.1-kv-quant/experiments/"
                                    "2620-kv-budget-gaps/results.json")
-GAPS_ARMS_PATH = os.path.join(ROOT, "axes/R-references/R1-quantization/experiments/"
+GAPS_ARMS_PATH = os.path.join(ROOT, "axes/5-quant/5.1-kv-quant/experiments/"
                                     "2620-kv-budget-gaps/gaps_arms.py")
 
 VARIANCE_BAND_BPC = 0.014
@@ -102,25 +102,25 @@ MARK = {"fp16": "b", "int8": "8", "int4": "4", "win16": "w", "win32": "w", "win6
 
 #: 来源实验路径（逐点），判据要求「逐点标来源实验路径与口径」。
 SOURCE = {
-    "fp16": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
-    "int8": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
-    "int4": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
-    "win16": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
-    "win32": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
-    "win64": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
-    "win128": "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json",
-    "win144": "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json",
-    "win160": "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json",
-    "win176": "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json",
-    "win192": "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json",
-    "mha": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
-    "gqa": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
-    "mqa": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
-    "win16_anchor16": "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json",
-    "win32_anchor32": "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json",
-    "win32_anchor8": "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json",
-    "gqa_int8": "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json",
-    "mqa_int8": "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json",
+    "fp16": "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json",
+    "int8": "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json",
+    "int4": "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json",
+    "win16": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "win32": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "win64": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "win128": "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json",
+    "win144": "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json",
+    "win160": "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json",
+    "win176": "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json",
+    "win192": "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json",
+    "mha": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json",
+    "gqa": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json",
+    "mqa": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json",
+    "win16_anchor16": "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json",
+    "win32_anchor32": "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json",
+    "win32_anchor8": "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json",
+    "gqa_int8": "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json",
+    "mqa_int8": "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json",
     # 本批新点：无单一来源（组合），注明叠加的两个因子来源。
     "gqa_int4": "2616 gqa-12k-s0 × R1 int4（本批组合，无单一来源）",
     "mqa_int4": "2616 mqa-12k-s0 × R1 int4（本批组合，无单一来源）",

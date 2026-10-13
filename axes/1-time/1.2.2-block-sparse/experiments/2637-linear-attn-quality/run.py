@@ -507,7 +507,7 @@ def stage_report() -> None:
     d_full_qk = delta("full-256-lin", "full-256-lin-qk")   # QK-Norm 对 full 的影响
 
     cfg = {
-        "contract": "axes/A-mixing/A6-mixing-operator/experiments/2637-linear-attn-quality/README.md",
+        "contract": "axes/1-time/1.2.2-block-sparse/experiments/2637-linear-attn-quality/README.md",
         "scope": "单轴单格；唯一变量 = 注意力算子（full vs 线性核）；T=256/bs8/S=6000/seed0/enwik8",
         "model": {"d_model": D, "n_layers": L, "n_heads": H, "mlp_mult": MLP,
                   "dense": True},

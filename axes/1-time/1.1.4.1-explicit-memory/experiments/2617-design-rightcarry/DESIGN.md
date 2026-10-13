@@ -15,9 +15,9 @@
 
 **本地现状的一条硬事实（决定了整份文档的出发点）**：
 我们已经直接测过「靠训练注意力掩码逼模型只用近处」这条路，结论是**只丢不搬**——
-`本地实测`：`axes/A-mixing/A9-old-info-retention/experiments/2615-window-trained-retention-13m/analysis.md`
+`本地实测`：`axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2615-window-trained-retention-13m/analysis.md`
 （窗口 32 训练后，窗外针召回 0.4588 vs 无记忆地板 0.4545，差 **+0.0043**）；
-`axes/M-carrier/M1-carrier-type/experiments/2616-window192-trained-13m/analysis.md`
+`axes/1-time/1.1.4.1-explicit-memory/experiments/2616-window192-trained-13m/analysis.md`
 （窗口 192 训练后，**整段都在窗外的 494 根针差值恰好 0.000**）。
 所以这份文档不再讨论「掩码逼出局部依赖」，而是设计**显式的搬运算子**。
 
@@ -40,7 +40,7 @@
 证据：`本地实测` 2617 电池——模型**有**弱但真实的「直连复制」能力（复制任务 0.1333，
 源片段放到距离 223 仍有 0.118），但**一旦源片段被毁掉就回 chance**（0.1333→0.0125），
 说明这 13% 是**当场从可见源读的**，不是从任何「搬过来的状态」里取的。
-`本地实测`：`axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md`。
+`本地实测`：`axes/1-time/1.1.4.1-explicit-memory/experiments/2617-longrange-task-battery/analysis.md`。
 
 ### 1.2 容量侧：残差流是**无地址**的共享空间，远处信息没有专属写入位置
 
@@ -50,7 +50,7 @@
 
 - `本地实测` 2614——删除**单个距离**的 KV 时，距离 ≥32 的 KV 代价 ≤0.0037 bpc（看似可丢）；
   但**累计**版本（把所有 ≥32 的 key 一起删）实测 **+0.212 bpc**，是单点读数的 **15 倍**
-  （`axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/analysis.md`）。
+  （`axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/analysis.md`）。
   ⇒ 信息**不是冗余到可以随便丢**，只是「删一条时别的 key 顶上」——说明没有任何单一位置
   是那条信息的**专属载体**。
 - `本地实测` 2615——即便**全注意力**、一根针都不删，检索腿自己的动态范围也只有
@@ -284,18 +284,18 @@ $$
 ## 6. 来源清单
 
 **本地实测（可直接当证据）**
-- `axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/analysis.md`
+- `axes/1-time/1.1.4.1-explicit-memory/experiments/2617-longrange-task-battery/analysis.md`
   — 关联回忆 0.0061、变距离回忆 0.0052（≈chance）、复制 0.1333（距离 223 仍 0.118）、
   induction 0.0586；毁源对照 copy 0.1333→0.0125、induction 0.0586→0.0156。
-- `axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/analysis.md`
+- `axes/1-time/1.1.4.2-compression/experiments/2614-kv-ablation-retention-13m/analysis.md`
   — 距离曲线 d=1 +3.245、d=8 +0.090、d=16 +0.0165、d≥32 ≤0.0037；连续段 L=4 +0.114。
-- `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/analysis.md`
+- `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/analysis.md`
   — 累计 recent:d=32 = +0.212（单点 d*=32 的 15 倍）；检索腿动态范围 25.4pp；地板 0.433。
-- `axes/A-mixing/A9-old-info-retention/experiments/2615-window-trained-retention-13m/analysis.md`
+- `axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2615-window-trained-retention-13m/analysis.md`
   — 窗口 32 税 +0.0866；窗外针 +0.0043（≈地板）。
-- `axes/M-carrier/M1-carrier-type/experiments/2616-window192-trained-13m/analysis.md`
+- `axes/1-time/1.1.4.1-explicit-memory/experiments/2616-window192-trained-13m/analysis.md`
   — 窗口 192 税 −0.0028；整段窗外 494 根差恰 0.000；训练侧噪声 ≥~0.0156 bpc。
-- `axes/M-carrier/M1-carrier-type/experiments/2617-prior-art-memory/PRIOR_ART.md`
+- `axes/1-time/1.1.4.1-explicit-memory/experiments/2617-prior-art-memory/PRIOR_ART.md`
   — 情报（其外部内容全部「记忆·未核」）。
 - `docs/playbook.md` 定律 5/6/7/9；`docs/design.md` §2；`SCHEMA.md` §15/§16/§17/§18/§19。
 

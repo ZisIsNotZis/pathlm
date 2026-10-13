@@ -19,7 +19,7 @@ status: judged
 ## 0. 契约原文（逐字）
 
 > ## V1 · 长 T 干净三点（≈60–80 min）
-> - 目录：`axes/A-mixing/A6-mixing-operator/experiments/2626-longT-clean/`
+> - 目录：`axes/1-time/1.1.1-hard-window/experiments/2626-longT-clean/`
 > - 动机：W1 已用 **QK-Norm（零参数）**切断第 1 层注意力 logit 爆炸（gnorm 1740.9/29578.6 → 7.25/7.58），
 >   并推荐**长度条件档 `qk-normfrom512`**（T≤512 零 hook）。入场券已拿到 ⇒ 可给**干净三点**。
 > - 干预：T ∈ {256, 512, 1024} × {full, 窗口=同相对占比 50%（128/256/512）}，**全部启用 `qk-normfrom512`**。

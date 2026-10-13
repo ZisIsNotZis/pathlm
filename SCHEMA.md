@@ -11,8 +11,8 @@
 > 生成式 wiki（`catalog.yaml` / `tools/build_wiki.py` / `INDEX.md` / `tools/check_catalog_strict.py` /
 > `tools/backfill_legacy.py`）**已退役**；校验入口 `tools/check_schema.py` 已**转调**
 > `tools/check_tree.py`，汇总 = `tools/summary.py`。因此本文件 **§1–§3（课题页 front-matter /
-> 九节 / 实验目录）在迁移窗口内仍适用旧 `axes/**/README.md`，迁移完成后由 `docs/research-schema.md`
-> 取代**；本文件 **§0 的「目录完备」护栏、§5 的旧校验命令改由新规范承接**。
+> 九节 / 实验目录）随旧 `axes/**/README.md` 退役（旧页归档于 `archive/wiki-legacy/axes/**`），
+> 由 `docs/research-schema.md` 取代**；本文件 **§0 的「目录完备」护栏、§5 的旧校验命令改由新规范承接**。
 > **§6–§24 的分析纪律（判据取向、方差界、等参数对照、活性判据、独立复核、GPU 锁、并发写、
 > 不重复造轮子、预算内极致）仍然全部生效。**
 
@@ -47,7 +47,7 @@ benefit: "ring-buffer 解码免重 prefill；锚点通道 needle 76.8%"
 verdict: "丢前缀在 bpc 上很便宜，但检索当场归零；锚点通道是真产物。"
 deps: [A4-soft-distance-penalty, M2-carrier-compression]
 evidence:
-  - "axes/A-mixing/A3-window-anchor/experiments/2507-x2-eviction-13m/analysis.md @<commit>"
+  - "axes/1-time/1.1.1-hard-window/experiments/2507-x2-eviction-13m/analysis.md @<commit>"
   - "archive/legacy-docs/findings.md @<commit>"
 ---
 ```
@@ -72,7 +72,7 @@ evidence:
 
 自动块夹在 `<!-- AUTO:begin/end -->`；手写块夹在 `<!-- MANUAL:begin/end -->`，
 重跑 `build_wiki.py` 不丢手写内容（`build_wiki.py` 已退役，见顶部迁移通告 /
-`docs/structure.md` §15；此机制在迁移窗口内仅对旧生成页适用，分析纪律不变）。
+`docs/structure.md` §15；此机制仅对已归档的旧生成页适用，分析纪律不变）。
 
 ## 3. 实验目录契约
 
@@ -100,7 +100,7 @@ evidence:
 > 组合留白是显式声明，不是遗漏。`deps` 字段只记录已知耦合方向，**不构成组合实验授权**。
 > 已发生的少数组合实验（搬运×深度监督 2×2、GQA+carry+窗口阶梯、头共享×量化）按**例外**登记，
 > 各有契约与证据（`catalog.yaml` 已退役，见顶部迁移通告 / `docs/structure.md` §15；
-> 迁移窗口内其 `local:` 块仍作内容源）。组合取舍属具体产品方 scope。
+> 其 `local:` 块随归档只读保留于 `archive/wiki-legacy/catalog.yaml`）。组合取舍属具体产品方 scope。
 
 ## 5. 校验命令
 
@@ -110,7 +110,7 @@ python3 tools/check_tree.py        # 新：纯校验（check_schema.py 转调它
 ```
 
 > 旧命令 `python3 tools/build_wiki.py --check` 与旧 `tools/check_schema.py` 的 catalog 校验
-> 已随生成式 wiki 退役（见顶部迁移通告）；迁移窗口内如需旧校验，用 git 历史里的版本。
+> 已随生成式 wiki 退役并归档于 `archive/wiki-legacy/tools/`（见顶部迁移通告）；如需旧校验，用 `git` 历史里的版本。
 
 ## 6. 实验契约的必需字段（`experiments/<name>/README.md`）
 
@@ -524,7 +524,7 @@ rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/nul
 1. **恒真断言**：断言里的关键参数没传进去（或取了会退化的默认值）⇒ 条件恒真、断言永远通过。
    反例：2634 的 `rf`（主干有效感受野）曾按默认值 `0` 调用，泄漏断言 `eval_lo − rf ≥ corrupt_hi`
    退化成恒真式；修法是把 `rf` 改成**必填关键字参数**并由模型规格派生
-   （`axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/realtext_probe.py:45-49,120-132`）。
+   （`axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/realtext_probe.py:45-49,120-132`）。
 2. **不可达判据**：判据的符号/方向写反 ⇒ 无论数据怎样都判不过（或都能过）。
    反例：2634 的毁源对照把 `two_proportion` 的参数顺序传反，判的成了「地板显著高于植入」，
    该判据**永远不可能通过**；修法是把方向固化进 `needle_stats.beyond_above_floor`，并加一条
@@ -552,7 +552,7 @@ rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/nul
    「字段错位」纪律对 `project.yaml` 同样适用，同一规则由 `check_tree.py` 的字段校验承接。）
 8. **恒等式当因果**：把逐项相消的记账恒等式当成可加的因果分解（交互项被漏报）。
    反例：R7 的税拆解——三项相加恒真，真实分解含交互项 −0.1392（两轴不独立）
-   （`axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/analysis.md:115-119,324`）。
+   （`axes/7-references/experiments/R7-existing-early-exit/2623-standard-early-exit-13m/analysis.md:115-119,324`）。
 9. **判决判据的合取被读成半个成功**：`A 且 B` 型判决只满足了 A 就写成「成立 / 有条件成立」。
    反例：R7 的 D1 要求 `bpc` 与 `tf@4` 两条腿同时成立，第二条不成立（0.8402 < 0.9102 − σ_tf）
    ⇒ 只能写「D1 触发条件未满足、降级为待测」，不得写「有条件成立」
@@ -560,7 +560,7 @@ rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/nul
 10. **死代码冒充对账**：对账脚本遍历的键名与产物实际键名不匹配 ⇒ 断言从未执行、却报全绿。
    反例：R7 的 `reconcile_numbers.py` 曾遍历 `decode.items()` 里 `spec_g*` 前缀的键（该键不存在），
    四条 spec 腿的恒等式/口径断言全部空转
-   （`axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/reconcile_numbers.py:101-111`）。
+   （`axes/7-references/experiments/R7-existing-early-exit/2623-standard-early-exit-13m/reconcile_numbers.py:101-111`）。
 11. **修复引入新错**：下调/替换门限或口径时没同步下游比较句 ⇒ 报告自相矛盾。
    反例：2636 把工程带换成判据量噪声（0.009459/0.006231）后，下游比较句仍按旧带 0.014 写「带内」，
    与 0.012210/0.010573 判「越界」冲突（`2636-longT-unified/analysis.md:40,89,125,274`）。
@@ -589,7 +589,7 @@ rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/nul
 
    - **只改了实验文档、漏了账本与生成页**：2634 的硬子集召回从产物 `0.022529` 誊写进正文时
      误成 `2.53%`（真值 **2.253%**）；发现后只改了 `2634/analysis.md`，**账本**
-     `catalog.yaml` 的 M1 `verdict` 与**生成页** `axes/M-carrier/M1-carrier-type/README.md`
+     `catalog.yaml` 的 M1 `verdict` 与**生成页** `archive/wiki-legacy/axes/M-carrier/M1-carrier-type/README.md`
      仍留 `2.53%` ⇒ 账本与它自己引用的证据矛盾。现由
      `tools/check_catalog_strict.py` 的 **跨表面一致性**机检（`local.key_numbers` 声明的关键数字
      必须在**账本 verdict / 生成页 / 实验产物**三类表面逐字出现；注入 `2.53%` 即红）；
@@ -604,7 +604,7 @@ rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/nul
    （改数字后必须 `python3 tools/build_wiki.py` 重生成页面，否则页面这一面必红）。
 
    > （`catalog.yaml` / `build_wiki.py` / `check_catalog_strict.py` / 生成页均属**已退役**的生成式
-   > wiki 机制，见顶部迁移通告 / `docs/structure.md` §15；迁移窗口内此条款仅对旧页/旧账本适用。
+   > wiki 机制，见顶部迁移通告 / `docs/structure.md` §15；此条款仅对已归档的旧页/旧账本适用。
    > 其**分析纪律**——关键数字必须逐表面一致、改数字必须回扫所有引用点——**仍然生效**；
    > 迁移后的落点为 `project.yaml` 的 `conclusion`/`argument` 与实验产物一致。）
 

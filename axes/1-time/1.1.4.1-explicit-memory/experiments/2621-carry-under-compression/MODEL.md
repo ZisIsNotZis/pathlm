@@ -9,7 +9,7 @@
 |---|---|---|---|---|---|
 | `U2`（delta 写通道 + 窗口 16 + MHA） | `../2618-carry-channel-13m/train/U2/model.pt` | stock dense + 单共享记忆槽（delta 残差写） | 13,801,064 | 55,255,619 B | `40ec6472fee5be3b8d3650ee74f541eb388f6d86e525942d44479e7279923420` |
 
-- **来源**：`axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m`（ticket 35 契约 U），
+- **来源**：`axes/1-time/1.1.4.1-explicit-memory/experiments/2618-carry-channel-13m`（ticket 35 契约 U），
   本实验**不重训**、不改权重、不加参数（`params_added = 0`）。
 - `run.py` 每次加载都核对 sha256；不一致直接 `SystemExit`。
 - `config.json::checkpoint` 与 `results.json::checkpoint` 都记录了路径、sha256、体积与
@@ -32,7 +32,7 @@
 #   python3 train_depth_ar.py U2 ... --carry-write delta --train-window 16 \
 #     --synth-task assoc-mqar --synth-pairs 8 --synth-queries 8 --synth-gap 14
 # 本实验（纯推理，先取 /tmp/pathlm_gpu.lock，见 SCHEMA §20）：
-cd axes/M-carrier/M1-carrier-type/experiments/2621-carry-under-compression
+cd axes/1-time/1.1.4.1-explicit-memory/experiments/2621-carry-under-compression
 python3 run.py --smoke          # 冒烟（缩档，实测耗时/显存，不外推）
 python3 run.py                  # 全电池（≈1 min，峰值 ≈432 MB）
 python3 reconcile_numbers.py    # 三道对账（退出码 0）

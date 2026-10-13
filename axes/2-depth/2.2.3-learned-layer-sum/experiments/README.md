@@ -12,4 +12,4 @@
 > 与 `2.2.4`（并行子层，只指针 see 本目录、不复制文件）。
 > 本实验的 `dense` 臂 = 层间学习加权和（本项主判据）；`parallel` / `parallel-dual-ln` 臂 = 并行子层（归 2.2.4）。
 > 出资人 C3 批注提出的**跨层 causal attention** 设计本实验**未测**（旧 README 自认未测），由 `2.2.2` 承接。
-> 旧格目录与其 README 仍保留在 `axes/C-vertical/C3-inter-layer-topology`，待 integrator 统一退役。
+> 旧格目录与其 README 仍保留在 `archive/wiki-legacy/axes/C-vertical/C3-inter-layer-topology`，旧树退役已由本轮 integrator 完成（旧目录归档只读保留）。

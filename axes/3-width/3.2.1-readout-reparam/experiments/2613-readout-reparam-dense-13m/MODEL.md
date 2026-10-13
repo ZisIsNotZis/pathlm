@@ -15,7 +15,7 @@ python3 train_depth_ar.py <run_name> \
   --d 256 --layers 8 --heads 8 --seq-len 256 --mlp-mult 4 \
   --steps 12000 --batch-size 32 --seed <seed> --exit-mode uniform \
   --dense [--readout-linear-resid] --eval-batches 20 \
-  --out-root axes/W-width/W4-readout-geometry/experiments/2613-readout-reparam-dense-13m/runs
+  --out-root axes/3-width/3.2.1-readout-reparam/experiments/2613-readout-reparam-dense-13m/runs
 ```
 
 数据：`data/enwik8_full.npz`（char 级 enwik8，前 90M train / 末 10M eval，词表 206）。

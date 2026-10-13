@@ -29,7 +29,7 @@ sys.path.insert(0, ROOT)
 from tools.evalkit import mutation                     # noqa: E402
 
 TARGET = os.path.join(HERE, "causal_check.py")
-TESTS = "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/test_causal_check.py"
+TESTS = "axes/5-quant/5.1-kv-quant/experiments/2631-kv-budget-causal/test_causal_check.py"
 CALIBER = os.path.join(HERE, "budget_caliber.py")
 CALIBER_TESTS = "tests/test_kv_budget_causal.py"
 

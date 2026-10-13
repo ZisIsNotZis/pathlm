@@ -3,7 +3,7 @@
 # 不借用任何其它实验的步时；两档规模各一次。整程 <10 min ⇒ §20.1 允许整程持锁一次。
 set -u
 cd "$(dirname "$0")/../../../../.."   # repo root
-EXP=axes/H-horizon/H3-composition/experiments/2631-spec-three-arms
+EXP=axes/6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms
 LOCK=/tmp/pathlm_gpu.lock
 
 acquire() {

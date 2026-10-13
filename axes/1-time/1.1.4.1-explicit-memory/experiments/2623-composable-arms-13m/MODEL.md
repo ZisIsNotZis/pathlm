@@ -23,12 +23,12 @@ python3 train_depth_ar.py gqa_carry_window   ... --n-kv-heads 2 --carry-write de
 
 | 文件 | sha256 |
 |---|---|
-| `axes/M-carrier/M1-carrier-type/experiments/2623-composable-arms-13m/run.py` | `39e44accf1e51d24d9b4213e8e7e2e0f5c5954b46d0ffa66803fbc1b0693812e` |
-| `axes/M-carrier/M1-carrier-type/experiments/2623-composable-arms-13m/arms.py` | `13973d98316326979c6e2be7e21fafcc7a95e98661589a12c7f7d96be7a0be05` |
-| `axes/M-carrier/M1-carrier-type/experiments/2623-composable-arms-13m/train_arms.sh` | `882212cbd0ab1cd2c42925e47f4800c7617ecd4bd72a2beffb07dd8e3fe83002` |
-| `axes/M-carrier/M1-carrier-type/experiments/2623-composable-arms-13m/reconcile_numbers.py` | `fd61239e16a05914332bf11618919596630ac5b2bea711527c50b9b969fbcb89` |
-| `axes/M-carrier/M1-carrier-type/experiments/2623-composable-arms-13m/mutate.py` | `68e0a6f8ef615fa8a140d0911b72da52a69e043f1472390d6338a37db5d8b06e` |
-| `axes/M-carrier/M1-carrier-type/experiments/2623-composable-arms-13m/config.json` | `e6e40280711bc71f5fbbf1a639b2cad311252bed28a48fa3865bd0fe964155d1` |
+| `axes/1-time/1.1.4.1-explicit-memory/experiments/2623-composable-arms-13m/run.py` | `39e44accf1e51d24d9b4213e8e7e2e0f5c5954b46d0ffa66803fbc1b0693812e` |
+| `axes/1-time/1.1.4.1-explicit-memory/experiments/2623-composable-arms-13m/arms.py` | `13973d98316326979c6e2be7e21fafcc7a95e98661589a12c7f7d96be7a0be05` |
+| `axes/1-time/1.1.4.1-explicit-memory/experiments/2623-composable-arms-13m/train_arms.sh` | `882212cbd0ab1cd2c42925e47f4800c7617ecd4bd72a2beffb07dd8e3fe83002` |
+| `axes/1-time/1.1.4.1-explicit-memory/experiments/2623-composable-arms-13m/reconcile_numbers.py` | `fd61239e16a05914332bf11618919596630ac5b2bea711527c50b9b969fbcb89` |
+| `axes/1-time/1.1.4.1-explicit-memory/experiments/2623-composable-arms-13m/mutate.py` | `68e0a6f8ef615fa8a140d0911b72da52a69e043f1472390d6338a37db5d8b06e` |
+| `axes/1-time/1.1.4.1-explicit-memory/experiments/2623-composable-arms-13m/config.json` | `e6e40280711bc71f5fbbf1a639b2cad311252bed28a48fa3865bd0fe964155d1` |
 | `tests/test_composable_arms_13m.py` | `1022e31e6fbc21e9e06a989915fcb233d04c1ae3cdf39013e9eba200d4eb5bee` |
 ## 3. 共享文件（本线**未改**，只记指纹以划清口径重叠）
 
@@ -46,9 +46,9 @@ python3 train_depth_ar.py gqa_carry_window   ... --n-kv-heads 2 --carry-write de
 ## 4. 生成与校验命令
 
 ```bash
-bash axes/M-carrier/M1-carrier-type/experiments/2623-composable-arms-13m/train_arms.sh   # 训练四臂（每臂 6.8–13.6 min，按臂取锁）
-python3 axes/M-carrier/M1-carrier-type/experiments/2623-composable-arms-13m/run.py     # 评测（纯推理 0.74 min）
-python3 axes/M-carrier/M1-carrier-type/experiments/2623-composable-arms-13m/reconcile_numbers.py
-python3 axes/M-carrier/M1-carrier-type/experiments/2623-composable-arms-13m/mutate.py
+bash axes/1-time/1.1.4.1-explicit-memory/experiments/2623-composable-arms-13m/train_arms.sh   # 训练四臂（每臂 6.8–13.6 min，按臂取锁）
+python3 axes/1-time/1.1.4.1-explicit-memory/experiments/2623-composable-arms-13m/run.py     # 评测（纯推理 0.74 min）
+python3 axes/1-time/1.1.4.1-explicit-memory/experiments/2623-composable-arms-13m/reconcile_numbers.py
+python3 axes/1-time/1.1.4.1-explicit-memory/experiments/2623-composable-arms-13m/mutate.py
 python3 -m pytest tests/test_composable_arms_13m.py -q
 ```

@@ -7,7 +7,7 @@
 
 | 项 | 值 |
 |---|---|
-| 文件 | `axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt` |
+| 文件 | `axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt` |
 | 架构 | `DepthARModel(dense=True)`：d256 × 12 层 × 8 头 × mlp6 × seq256；tied 读出、无 final LN |
 | 参数 | 13,536,768（13.54M） |
 | 体积 | 54,193,675 B（54.2 MB） |
@@ -28,8 +28,8 @@ assert got == "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2"
 
 ```bash
 python3 train_jumphead.py \
-  --config axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/config.json \
-  --out-dir axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m
+  --config axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/config.json \
+  --out-dir axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m
 ```
 
 ## 本实验的派生产物（全部入库，不含权重）

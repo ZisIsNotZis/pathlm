@@ -169,7 +169,7 @@ for arm in ARMS:
     num_in(AN, SR["trunk_ce_slope"][arm]["slope"], f"analysis 写 {arm} 主干 CE 斜率")
 REF = {"2618 U2 K=8": 0.094971, "2618 U0 K=8": 0.013672, "2618 U1 K=8": 0.000732}
 R18 = json.load(open(os.path.join(
-    ROOT, "axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m",
+    ROOT, "axes/1-time/1.1.4.1-explicit-memory/experiments/2618-carry-channel-13m",
     "results.json")))
 for name, v in REF.items():
     armK = name.split()[1] + "_" + name.split()[2].replace("=", "")

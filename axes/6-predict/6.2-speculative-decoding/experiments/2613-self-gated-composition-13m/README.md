@@ -14,9 +14,9 @@ status: judged
 
 > 【契约 G】自门控多跳组合（H3，用户提出的设计，纯空白）
 >
-> - 目录：`axes/H-horizon/H3-composition/experiments/2613-self-gated-composition-13m/`
+> - 目录：`axes/6-predict/6.2-speculative-decoding/experiments/2613-self-gated-composition-13m/`
 > - 文件所有权：可改 `train_jumphead.py`、`tests/test_jumphead.py`、本实验目录。
-> - **冻结主干**：复用 `axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt`
+> - **冻结主干**：复用 `axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt`
 >   （13.5M dense，12k 步，bpc 1.4836，t+1 acc 0.6979；核对 MODEL.md 的 sha256）。**只训头**。
 > - **干预（唯一变量 = 组合结构）**，三个臂，**参数量对齐**：
 >   - `direct`：一个 d→d 变换 T 作用一次 → 读出得 t+2；
@@ -120,7 +120,7 @@ scope（写入本仓库的每个实验）：本研究**只做单轴单格实验*
 | 可失败单测 | `tests/test_jumphead.py`（§30-G 段：T∘T 语义、混合公式、单边零起步+逃逸、变异鞍点、等参数对照、评测管线） |
 | 原始产出 | `results.json` / `compose_log_*.jsonl`（每 200 步一点）/ `run.log` |
 | 权重 | 不入库；`MODEL.md` 给哈希、体积、生成命令 |
-| 复现命令 | `python3 axes/H-horizon/H3-composition/experiments/2613-self-gated-composition-13m/run.py`（≈7 min GPU） |
+| 复现命令 | `python3 axes/6-predict/6.2-speculative-decoding/experiments/2613-self-gated-composition-13m/run.py`（≈7 min GPU） |
 
 ## 8. 失败决策树（结果不好时按此顺序排除）
 

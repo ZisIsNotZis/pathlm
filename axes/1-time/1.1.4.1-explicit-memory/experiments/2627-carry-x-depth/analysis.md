@@ -220,7 +220,7 @@ carry 26.60% / depth 1.44% / both 27.04%；交互项 **+0.46pp**——结论不�
 - **实测**：这四个文件**是已跟踪文件**（`fb1e491` 提交时随本线入库；blob 在 `HEAD`）：
 
   ```bash
-  $ git ls-files 'axes/M-carrier/M1-carrier-type/experiments/2627-carry-x-depth/train_*.log'
+  $ git ls-files 'axes/1-time/1.1.4.1-explicit-memory/experiments/2627-carry-x-depth/train_*.log'
   axes/.../train_base.log  axes/.../train_both.log  axes/.../train_carry.log  axes/.../train_depth.log
   $ git check-ignore -v axes/.../train_base.log        # 退出码 1：.gitignore 不作用于已跟踪文件
   $ git ls-tree HEAD -- axes/.../train_base.log        # 100644 blob c7be78f8…  → 确在 HEAD

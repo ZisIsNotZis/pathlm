@@ -25,7 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = HERE
 while ROOT != os.path.dirname(ROOT) and not os.path.isdir(os.path.join(ROOT, "pathlm")):
     ROOT = os.path.dirname(ROOT)
-SPEC = os.path.join(ROOT, "axes/H-horizon/H3-composition/experiments/2631-spec-three-arms")
+SPEC = os.path.join(ROOT, "axes/6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms")
 for p in (ROOT, SPEC, HERE):
     if p not in sys.path:
         sys.path.insert(0, p)

@@ -31,7 +31,7 @@
 按 `.scratch/56-restructure/MAPPING.md` §1 / §4：旧格 `A2-full-attention`、
 `A8-positional-semantics`、`W3-kv-head-sharing`、`R7-existing-early-exit` 降为参照，
 其 `experiments/**` 整目录 `git mv` 到本目录 `experiments/<旧格名>/`（一格一份家，只搬不复制）；
-`.scratch/**/evidence` 原地不动，只作锚点。旧格目录及其 README 仍保留在原处，待 integrator 统一退役。
+`.scratch/**/evidence` 原地不动，只作锚点。旧格目录及其 README 已随旧树退役归档，只读保留于 `archive/wiki-legacy/`。
 `R7` 的 `2623-standard-early-exit-13m` 同时是 `2.1.1`（early exit）与 `6.2`（投机解码）的对照指针。
 
 ## 怎么读

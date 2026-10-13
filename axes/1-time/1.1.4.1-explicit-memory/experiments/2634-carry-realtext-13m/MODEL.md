@@ -21,8 +21,8 @@
 ## 复现路径
 
 ```bash
-bash axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/train_*.sh      # 训练（按臂释放 GPU 锁，臂间 ≥60s）
-bash axes/M-carrier/M1-carrier-type/experiments/2634-carry-realtext-13m/eval.sh          # 评测（纯推理，整程 <10 min 持锁）
+bash axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train_*.sh      # 训练（按臂释放 GPU 锁，臂间 ≥60s）
+bash axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/eval.sh          # 评测（纯推理，整程 <10 min 持锁）
 ```
 
 ## 说明

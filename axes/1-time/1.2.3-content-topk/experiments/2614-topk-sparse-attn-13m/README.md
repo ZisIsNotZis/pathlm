@@ -27,7 +27,7 @@ status: judged
 
 > ## Top-K 稀疏注意力 vs 全注意力（A6 混合算子首探）
 > 
-> - 目录：`axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/`
+> - 目录：`axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/`
 > - 文件所有权：可改 `pathlm/depth_ar.py`（新增 top-k 稀疏注意力开关）、`train_depth_ar.py`、
 >   `tests/test_depth_ar.py`、本实验目录。
 > - 干预（唯一变量 = 注意力算子）：`dense` 模型（`--dense`）下，
@@ -112,7 +112,7 @@ norm_cap=1 / bs=32 / lr=1e-3 / 12k 步 / seed=0 / 98.3M token / enwik8 前 90M t
 - **重跑散度**：主 Agent 裁决只重跑**基线** `full` 臂（同 seed 第二次训练）——
   Δ 的噪声由基线与实验臂共同决定，基线是被比较的参照。另把 ticket 30 的 E 线实测
   「同配置（d256/L8/mlp4/12k/bs32/seq256/seed0）重跑散度 0.0033 bpc」
-  （`axes/C-vertical/C3-inter-layer-topology/.../analysis.md` §1）作为**独立交叉参考**
+  （`archive/wiki-legacy/axes/C-vertical/C3-inter-layer-topology/.../analysis.md` §1）作为**独立交叉参考**
   写进 `analysis.md`（注明来源与配置等值性，不替代本次重跑）。
 - 方差界：0.014。
 
@@ -156,7 +156,7 @@ norm_cap=1 / bs=32 / lr=1e-3 / 12k 步 / seed=0 / 98.3M token / enwik8 前 90M t
 
 ## 9. 产出
 
-`axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m/` 下的 `README.md`(本文件) / `run.py` / `smoke.py` / `mutate.py` /
+`axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/` 下的 `README.md`(本文件) / `run.py` / `smoke.py` / `mutate.py` /
 `config.json` / `results.json` / `mutation_report.json` / `<arm>-train_log.jsonl` /
 `analysis.md` / `stability.md` / `MODEL.md` / `smoke/smoke.json` / `run_log.txt`。
 

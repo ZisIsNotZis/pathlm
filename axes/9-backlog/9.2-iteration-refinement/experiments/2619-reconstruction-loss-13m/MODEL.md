@@ -22,7 +22,7 @@ sha256 由 `fill_config_hashes.py` 回填进 `config.json`，`run.py` 每次加�
 ## 生成命令（三臂逐字段一致，唯一变量 = `--recon-lambda`）
 
 ```bash
-cd axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m
+cd axes/9-backlog/9.2-iteration-refinement/experiments/2619-reconstruction-loss-13m
 for ARM in A:0.0 B:1.0 B_rep:1.0; do
   NAME=${ARM%%:*}; LAM=${ARM##*:}
   python3 ../../../../../train_depth_ar.py $NAME \

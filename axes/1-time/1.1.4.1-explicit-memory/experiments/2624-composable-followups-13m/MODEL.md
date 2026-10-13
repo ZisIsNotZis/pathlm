@@ -25,19 +25,19 @@
 
 ```bash
 # 步时先测（§17.8/§20.3）：200 步 × bs32 × T256，落 /tmp/steptime2624
-bash axes/M-carrier/M1-carrier-type/experiments/2624-composable-followups-13m/measure_step_time.sh
+bash axes/1-time/1.1.4.1-explicit-memory/experiments/2624-composable-followups-13m/measure_step_time.sh
 
 # 三臂训练（按臂取/放锁 + 臂间 65s 窗口，§20.1）
-bash axes/M-carrier/M1-carrier-type/experiments/2624-composable-followups-13m/train_followups.sh
+bash axes/1-time/1.1.4.1-explicit-memory/experiments/2624-composable-followups-13m/train_followups.sh
 
 # 回填哈希 → 冒烟 → 全电池（纯推理）
-python3 axes/M-carrier/M1-carrier-type/experiments/2624-composable-followups-13m/fill_hashes.py
-python3 axes/M-carrier/M1-carrier-type/experiments/2624-composable-followups-13m/run.py --smoke
-python3 axes/M-carrier/M1-carrier-type/experiments/2624-composable-followups-13m/run.py
+python3 axes/1-time/1.1.4.1-explicit-memory/experiments/2624-composable-followups-13m/fill_hashes.py
+python3 axes/1-time/1.1.4.1-explicit-memory/experiments/2624-composable-followups-13m/run.py --smoke
+python3 axes/1-time/1.1.4.1-explicit-memory/experiments/2624-composable-followups-13m/run.py
 
 # 对账 / 变异 / 单测
-python3 axes/M-carrier/M1-carrier-type/experiments/2624-composable-followups-13m/reconcile_numbers.py
-python3 axes/M-carrier/M1-carrier-type/experiments/2624-composable-followups-13m/mutate.py
+python3 axes/1-time/1.1.4.1-explicit-memory/experiments/2624-composable-followups-13m/reconcile_numbers.py
+python3 axes/1-time/1.1.4.1-explicit-memory/experiments/2624-composable-followups-13m/mutate.py
 python3 -m pytest tests/test_composable_followups_13m.py -q
 ```
 
@@ -47,7 +47,7 @@ python3 -m pytest tests/test_composable_followups_13m.py -q
 python3 train_depth_ar.py mha_mlp5       --d 256 --layers 12 --heads 8 --seq-len 256 --dense \
   --topology sequential --batch-size 32 --lr 1e-3 --seed 0 --synth-task assoc-mqar \
   --synth-pairs 8 --synth-queries 8 --synth-gap 14 --steps 6000  --mlp-mult 5 \
-  --out-root axes/M-carrier/M1-carrier-type/experiments/2624-composable-followups-13m/train
+  --out-root axes/1-time/1.1.4.1-explicit-memory/experiments/2624-composable-followups-13m/train
 python3 train_depth_ar.py gqa_10k        ... --steps 10000 --mlp-mult 6 --n-kv-heads 2
 python3 train_depth_ar.py gqa_carry_10k  ... --steps 10000 --mlp-mult 6 --n-kv-heads 2 --carry-write delta
 ```

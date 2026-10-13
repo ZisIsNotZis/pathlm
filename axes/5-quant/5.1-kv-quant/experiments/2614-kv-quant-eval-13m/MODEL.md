@@ -7,7 +7,7 @@
 
 | 项 | 值 |
 |---|---|
-| 文件 | `axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt` |
+| 文件 | `axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt` |
 | 架构 | `DepthARModel(dense=True)`：d256 × 12 层 × 8 头 × mlp6 × seq256；tied 读出、无 final LN |
 | 参数 | 13,536,768（13.54M） |
 | 训练 | 12000 步 × bs32 × seq256 = 98.3M tokens，AdamW lr 1e-3 + cosine，seed 0 |
@@ -20,12 +20,12 @@
 ## 生成命令（复用，不重新生成本实验的权重）
 
 该主干由契约 I 之前的实验生成，生成命令见
-`axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/MODEL.md`：
+`axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/MODEL.md`：
 
 ```bash
 python3 train_jumphead.py \
-  --config axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/config.json \
-  --out-dir axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m
+  --config axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/config.json \
+  --out-dir axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m
 ```
 
 ## 本实验产出的权重

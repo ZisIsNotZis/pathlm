@@ -1,6 +1,6 @@
 """重建训练信号（ticket 36 波二 U2 线，F4 训练信号）。
 
-契约：`axes/F-iteration/F4-training-signal/experiments/2619-reconstruction-loss-13m/README.md`
+契约：`axes/9-backlog/9.2-iteration-refinement/experiments/2619-reconstruction-loss-13m/README.md`
 （判据线逐字抄录，不许改）。本模块 = 该实验的**干预实现**，与 `pathlm/depth_ar.py`
 的接缝只有两处（`DepthARConfig.recon_window` 字段 + `__init__` 里建头的那一行）。
 

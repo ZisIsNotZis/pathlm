@@ -26,7 +26,7 @@
 ```bash
 cd /home/z/vibe/pathlm
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
-  nohup python3 axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/run.py \
+  nohup python3 axes/3-width/3.2.1-readout-reparam/experiments/2611-equalparams-linear-control-13m/run.py \
     --steps 12000 --seed 0 --eval-batches 20 --caps-min 20 > run_log.txt 2>&1 &
 tail -f run_log.txt
 ```
@@ -43,13 +43,13 @@ python3 train_depth_ar.py linear-12k-s0 \
 20 步冒烟（恒等起步 + 活性 + 参数量）：
 
 ```bash
-python3 axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/smoke.py
+python3 axes/3-width/3.2.1-readout-reparam/experiments/2611-equalparams-linear-control-13m/smoke.py
 ```
 
 只重算三臂电池、不训练（核对既有结果）：
 
 ```bash
-python3 axes/W-width/W4-readout-geometry/experiments/2611-equalparams-linear-control-13m/run.py --eval-only
+python3 axes/3-width/3.2.1-readout-reparam/experiments/2611-equalparams-linear-control-13m/run.py --eval-only
 ```
 
 数据集：`data/enwik8_full.npz`（char 级 enwik8，前 90M train / 末 10M eval，词表由

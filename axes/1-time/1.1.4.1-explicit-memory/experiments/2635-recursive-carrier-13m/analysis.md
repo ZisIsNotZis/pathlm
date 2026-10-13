@@ -231,7 +231,7 @@
 - **分工（避免两处事实）**：本实验只提供 M1 视角的三件事——「窗口 + 线性载体」因引擎硬互斥
   **不可测**、该快照**拿不到**质量读数（发散步）、以及**诊断与可复用教训**。
   「线性注意力这一族可不可行」的权威叙事在 A 轴
-  （`axes/A-mixing/A6-mixing-operator/`，续作 `2637-linear-attn-quality`）——本文件不重复
+  （`archive/wiki-legacy/axes/A-mixing/A6-mixing-operator/`，续作 `2637-linear-attn-quality`）——本文件不重复
   它的质量/成本判据，也不改写它的结论。
 - 侧腿电池是小样本零样本读数（n=32；copy n=1024），只作描述。
 

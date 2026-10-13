@@ -185,7 +185,7 @@ lr1e-3，`exit-mode uniform`）。**唯一变量 = 训练期可见窗口**（关
 ## 10. 失败路径与原因 / 下一步（§23 第 6 问）
 
 1. **基准臂不稳定（本点主障碍）**：full-1024 gnorm 尖峰 1740.92、loss 后半上冲 ⇒ Δ 被混淆。
-   该缺口**已由 Z1 填补（ticket 41-Z1）**：`axes/A-mixing/A6-mixing-operator/experiments/2624-longT-1024-seed1/`
+   该缺口**已由 Z1 填补（ticket 41-Z1）**：`axes/1-time/1.1.1-hard-window/experiments/2624-longT-1024-seed1/`
    以 seed=1、bs8、同步数双臂同配方重跑，`full` 臂 gnorm_max = **29578.57**（seed0 为 1740.92，×17.0）、
    跳步 3 次、爆炸点 ~step 6200 ⇒ 爆炸**非 seed 特异、复现且更猛**；`catalog.yaml` 据此把该点记为「**永久不可归因**」。
    本点 Δ=+0.0234 仍只作「**不可判**」，band 分类照字面未改（引用 Z1 不改变本点结论）。

@@ -53,12 +53,12 @@
 按 `.scratch/56-restructure/MAPPING.md`：旧格 `W1-active-width` 迁入 `3.1.1`，
 `W4-readout-geometry` 迁入 `3.2.1`（证据 `experiments/**` 整目录迁入对应新家）；旧格
 `W2-expertization` 归轴 4、`W3-kv-head-sharing` 归轴 7（见上表）。`3.1.2` / `3.1.3` / `3.1.4` /
-`3.1.5` / `3.2.2` / `3.2.3` 无旧格、为本轮新建（MAPPING §2）。旧轴目录 `axes/W-width/**` 及其
-README、`PRIOR_ART.md` 待 integrator 统一退役。
+`3.1.5` / `3.2.2` / `3.2.3` 无旧格、为本轮新建（MAPPING §2）。旧轴目录 `archive/wiki-legacy/axes/W-width/**` 及其
+README、`PRIOR_ART.md` 已随旧树退役归档（归档只读保留）。
 
 ## 怎么读
 
 - 状态与全表：`python3 tools/summary.py`；校验：`python3 tools/summary.py --check`。
 - `status` 仅四值：未开始 / 进行中 / 已完成 / 被否证；「做到多少」写在 `conclusion` / `gaps`。
-- 旧格（`axes/W-width/**`）及其 README 为**上一版结构**，证据已按 MAPPING 迁入本目录
-  `experiments/`，旧目录待统一退役。
+- 旧格（`archive/wiki-legacy/axes/W-width/**`）及其 README 为**上一版结构**，证据已按 MAPPING 迁入本目录
+  `experiments/`，旧目录退役完成（归档只读保留）。

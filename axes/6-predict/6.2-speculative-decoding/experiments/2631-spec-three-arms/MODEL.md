@@ -38,7 +38,7 @@
 
 ```bash
 cd /home/z/vibe/pathlm
-EXP=axes/H-horizon/H3-composition/experiments/2631-spec-three-arms
+EXP=axes/6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms
 
 # 步时冒烟（先测后定预算）：bash $EXP/smoke_steptime.sh
 # 训练（按臂取/放 GPU 锁，臂间 65s）：

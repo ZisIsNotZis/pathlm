@@ -68,7 +68,7 @@ GQA）。
 ## 4. 判据线（**逐字抄录**自 Z3 契约，一字未改）
 
 > ## Z3 · 搬运 × 压缩的**训练质量腿**（≈40 min GPU）
-> - 目录：`axes/M-carrier/M1-carrier-type/experiments/2624-carry-under-compression-quality/`
+> - 目录：`axes/1-time/1.1.4.1-explicit-memory/experiments/2624-carry-under-compression-quality/`
 > - 动机：ticket 38-W3 只测了**评测期** int8 量化对搬运的干扰（结论：不破坏）。**训练期**是否也兼容未测；
 >   且 ENG1 后 `GQA × carry` 已可组合 ⇒ 终于能做**质量腿**。
 > - 干预：`carry + MHA(全精度)` vs `carry + GQA(头共享)` vs `carry + GQA + 评测期 int8`（同 token 预算、同 seed）。

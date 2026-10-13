@@ -58,7 +58,7 @@
 ## 4. 判据线（**逐字**抄录任务下发文本，未改一字）
 
 > 【W1 · GPU】carry × 随机退出 × proj-fill 质量实验（ENG2 刚解锁，≈45–60 min）
-> 目录：axes/M-carrier/M1-carrier-type/experiments/2629-carry-ragged-projfill/
+> 目录：axes/1-time/1.1.4.1-explicit-memory/experiments/2629-carry-ragged-projfill/
 > 动机：**产品上真正有意义的那对**——「delta 搬运通道 × 随机退出深度 × proj-fill」= 产出 100M `tf@4=0.9726` 出口资产的那条配方——此前因引擎硬互斥**从未可测**；ticket 45-E1（ENG2）刚解锁。
 > 干预（同 token 预算、逐字段一致）：`proj-fill 基线`（无 carry，随机退出）vs `proj-fill + carry(delta)`。任务 = 合成 assoc-mqar。
 > 判据（预登记）：① 主腿 = **训练分布内**（§17.18）多查询关联回忆召回（chance + 二项 CI）+ **毁源对照臂**；② **出口资产 tf@4**（这是本条线的产品卖点）；③ 每步增量（§17.17 分量分解）；④ clean bpc 作辅助（跨分布，注明合成训练）；⑤ 若能复现 100M 量级的 tf@4≈0.97，明确记录「出口资产在 carry 存在时是否保持」；⑥ 禁外推（13M/单 seed）。

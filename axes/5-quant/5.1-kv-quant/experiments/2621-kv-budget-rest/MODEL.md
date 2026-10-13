@@ -8,8 +8,8 @@
 
 | 臂 | checkpoint | sha256 | 体积 (B) | 生成来源 |
 |---|---|---|---|---|
-| `fp16` / `int8` / `int4` / `win16` / `win32` / `win64` / `win128` / `win144` / `win160` / `win176` / `win192` / `win16_anchor16` / `win32_anchor32` / `win32_anchor8` / `win32_int8` / `win64_int8` / `win16_anchor16_int4` / `win32_anchor32_int4` | `axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt` | `86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2` | 54,193,675 | 2610 冻结 trunk（13.5M dense，12k 步，clean bpc 1.483569） |
-| `mha` | `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt` | `557453eb12b56a453b29ea279cdbbc0969cfa6bf0dbe1cdbd9965cd6cec62528` | 54,193,675 | 2616 同配方 12k 步（d256/L12/H8/mlp6/seq256/seed0） |
+| `fp16` / `int8` / `int4` / `win16` / `win32` / `win64` / `win128` / `win144` / `win160` / `win176` / `win192` / `win16_anchor16` / `win32_anchor32` / `win32_anchor8` / `win32_int8` / `win64_int8` / `win16_anchor16_int4` / `win32_anchor32_int4` | `axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt` | `86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2` | 54,193,675 | 2610 冻结 trunk（13.5M dense，12k 步，clean bpc 1.483569） |
+| `mha` | `axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt` | `557453eb12b56a453b29ea279cdbbc0969cfa6bf0dbe1cdbd9965cd6cec62528` | 54,193,675 | 2616 同配方 12k 步（d256/L12/H8/mlp6/seq256/seed0） |
 | `gqa` / `gqa_int8` / `gqa_int4` / `gqa_win64` / `gqa_win128` | `.../runs/gqa-12k-s0/model.pt` | `bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00` | 49,456,651 | 同上，`n_kv_heads=2` |
 | `mqa` / `mqa_int8` / `mqa_int4` | `.../runs/mqa-12k-s0/model.pt` | `24bdfe7f1549107175e9343444372a6abe3aba7c6ba2423e8ab069a145b1ea97` | 48,667,147 | 同上，`n_kv_heads=1` |
 

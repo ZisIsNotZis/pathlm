@@ -101,7 +101,7 @@ N=${R7_NNEW:-100}
 acquire || exit 9
 trap 'release' EXIT
 echo "=== $(date -Is) eval stage=$STAGE n_new=$N ===" | tee -a "$LOG"
-python3 axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/run.py \
+python3 axes/7-references/experiments/R7-existing-early-exit/2623-standard-early-exit-13m/run.py \
     --stage "$STAGE" --n-new "$N" --n-batches 20 ${R7_ARGS:-} 2>&1 | tee -a "$LOG"
 echo "[eval] rc=$? wall_done=$(date -Is)" | tee -a "$LOG"
 release; trap - EXIT

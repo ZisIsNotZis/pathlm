@@ -11,7 +11,7 @@ checkpoint 清单、哈希、体积与复现命令。
 
 **为什么不必先训一个 13M**：契约允许「仓库内没有带 sha256 的 depth-ar checkpoint」
 时先训一个。本仓**已有**带 sha256 记录的 depth-ar checkpoint——`23c-H2-w0-12k` 的哈希
-写在已提交文件 `axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/MODEL.md`
+写在已提交文件 `axes/3-width/3.2.1-readout-reparam/experiments/2610-gated-readout-13m-depthar/MODEL.md`
 里（该文件是本仓对它的登记），本轮 `run.py` 启动时**重新计算并校验**该 sha256
 （`run_log.txt` 的 `[ckpt]` 行），与记录值逐位相同。故按「纯 eval」口径执行，预算
 从 13 min 训练 + 25 min 评测降为 25 min 纯评测。
@@ -29,18 +29,18 @@ checkpoint 清单、哈希、体积与复现命令。
 ```bash
 cd /home/z/vibe/pathlm
 # 冒烟（先测步时再定预算；≤2min/≤1GB，§20.1 的并发例外条件）
-python3 axes/C-vertical/C1-layers-per-token/experiments/2621-depth-draft-e2e/run.py \
+python3 axes/2-depth/2.1.1-early-exit/experiments/2621-depth-draft-e2e/run.py \
     --ckpt .scratch/23-depth-ar/evidence/23c-H2-w0-12k/model.pt \
     --out /tmp/w2_smoke --smoke --device cuda
 
 # 全量（GPU 锁内；见 .scratch/38-auto-parallel 的锁台账）
-python3 axes/C-vertical/C1-layers-per-token/experiments/2621-depth-draft-e2e/run.py \
+python3 axes/2-depth/2.1.1-early-exit/experiments/2621-depth-draft-e2e/run.py \
     --ckpt .scratch/23-depth-ar/evidence/23c-H2-w0-12k/model.pt \
-    --out axes/C-vertical/C1-layers-per-token/experiments/2621-depth-draft-e2e \
+    --out axes/2-depth/2.1.1-early-exit/experiments/2621-depth-draft-e2e \
     --device cuda --repeats 3 --prompts 4
 
 # 对账（报告里每个数字都从这里复核）
-python3 axes/C-vertical/C1-layers-per-token/experiments/2621-depth-draft-e2e/reconcile_numbers.py
+python3 axes/2-depth/2.1.1-early-exit/experiments/2621-depth-draft-e2e/reconcile_numbers.py
 ```
 
 ## 3. 复现资产

@@ -48,11 +48,11 @@
 （WP `6.2.2 概率多候选 / 树` / `6.2.1 草稿头` / `6.2.3 验证`）并入其 `experiments/`；
 旧格 `H2-training-fill` 迁入 `6.4`。`6.3` 及其三个子项（diffusion / 一次性批量 pad 填充 /
 latent regression 批量生成）无旧格、为本轮新建。`6.1` 自回归降为参照，登记在
-`axes/7-references/README.md`。旧轴目录 `axes/H-horizon/**` 及其 README 待 integrator 统一退役。
+`axes/7-references/README.md`。旧轴目录 `archive/wiki-legacy/axes/H-horizon/**` 及其 README 已随旧树退役归档（归档只读保留）。
 
 ## 怎么读
 
 - 状态与全表：`python3 tools/summary.py`；校验：`python3 tools/summary.py --check`。
 - `status` 仅四值：未开始 / 进行中 / 已完成 / 被否证；「做到多少」写在 `conclusion` / `gaps`。
-- 旧格（`axes/H-horizon/**`）及其 README 为**上一版结构**，证据已按 MAPPING 迁入本目录
-  `experiments/`，旧目录待统一退役。
+- 旧格（`archive/wiki-legacy/axes/H-horizon/**`）及其 README 为**上一版结构**，证据已按 MAPPING 迁入本目录
+  `experiments/`，旧目录退役完成（归档只读保留）。

@@ -20,6 +20,6 @@
 > 旧格 `H1-outputs-per-pass`（本体）、`H3-composition`（→ WP `6.2.2 概率多候选 / 树`）、
 > `H4-head-trunk-relation`（→ WP `6.2.1 草稿头`）、`H5-verification`（→ WP `6.2.3 验证`）
 > 按 `.scratch/56-restructure/MAPPING.md` §1 并入本项：四格的 `experiments/**` 整目录迁入本目录
-> （一格一份家，不复制）。旧格目录与其 README 仍保留在 `axes/H-horizon/**`，待 integrator 统一退役。
-> 旧轴的既有做法情报 `axes/H-horizon/PRIOR_ART.md` 仍留在原位，本项字段以指针引用它（外部条目
+> （一格一份家，不复制）。旧格目录与其 README 仍保留在 `archive/wiki-legacy/axes/H-horizon/**`，旧树退役已由本轮 integrator 完成（旧目录归档只读保留）。
+> 旧轴的既有做法情报 `archive/wiki-legacy/axes/H-horizon/PRIOR_ART.md` 仍留在原位，本项字段以指针引用它（外部条目
 > 来源标 `记忆·未核`，只作设计方向、不作判据）。

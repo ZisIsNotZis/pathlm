@@ -22,7 +22,7 @@
 `P4-normalization`、`P5-loss-weighting`、`P6-data-construction` 归本台账（`docs/structure.md` §13.5）。
 其中 P5 的自有实验 `2523b-shallow-weight-sweep` 整目录 `git mv` 到本目录
 `experiments/2523b-shallow-weight-sweep/`（一格一份家，只搬不复制）；`.scratch/**/evidence` 原地不动，
-只作锚点。旧格目录及其 README 仍保留在 `axes/P-modifiers/**`，待 integrator 统一退役。
+只作锚点。旧格目录及其 README 仍保留在 `archive/wiki-legacy/axes/P-modifiers/**`，旧树退役已由本轮 integrator 完成（旧目录归档只读保留）。
 
 ## 怎么读
 

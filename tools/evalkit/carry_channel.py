@@ -1,6 +1,6 @@
 """契约 U 的评测仪器：三臂（U0/U1/U2）在合成长程任务电池上的对照读数。
 
-契约：`axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m/README.md`
+契约：`axes/1-time/1.1.4.1-explicit-memory/experiments/2618-carry-channel-13m/README.md`
 （判据线逐字）。任务与判分复用 `tools/evalkit/longrange_tasks.py`（只增不改）；
 本模块只加**对照与统计**这一层：
 

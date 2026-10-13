@@ -5,9 +5,9 @@
 
 | checkpoint | 路径（相对本仓） | sha256 | 体积 |
 |---|---|---|---|
-| 13m_s0 | `axes/H-horizon/H3-composition/experiments/2631-spec-three-arms/train/13m_s0/model.pt` | `1df7840bc4813f89709805222cedf34b0384f8bae0a04e23f9ffd2818b2d4e4d` | 54,984,075 B |
-| 13m_s1 | `axes/H-horizon/H3-composition/experiments/2631-spec-three-arms/train/13m_s1/model.pt` | `047893bda15104cc25794dc598d96bca96bbef7449bd5d45518e78e205a31b59` | 54,984,075 B |
-| 53m_s0 | `axes/H-horizon/H3-composition/experiments/2631-spec-three-arms/train/53m_s0/model.pt` | `0627862468867f1dcdf939adeaa7b65bc78bf92d7d9efec5d106bebfb37ccf35` | 217,923,979 B |
+| 13m_s0 | `axes/6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms/train/13m_s0/model.pt` | `1df7840bc4813f89709805222cedf34b0384f8bae0a04e23f9ffd2818b2d4e4d` | 54,984,075 B |
+| 13m_s1 | `axes/6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms/train/13m_s1/model.pt` | `047893bda15104cc25794dc598d96bca96bbef7449bd5d45518e78e205a31b59` | 54,984,075 B |
+| 53m_s0 | `axes/6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms/train/53m_s0/model.pt` | `0627862468867f1dcdf939adeaa7b65bc78bf92d7d9efec5d106bebfb37ccf35` | 217,923,979 B |
 
 - 生成命令（见 `2631/train_arms.sh` / `2631/README.md` §7）：`python3 train_m1.py <scale>_s<seed>
   --config 2631-spec-three-arms/config_<scale>.json --seed <seed> --out-root 2631/train`。

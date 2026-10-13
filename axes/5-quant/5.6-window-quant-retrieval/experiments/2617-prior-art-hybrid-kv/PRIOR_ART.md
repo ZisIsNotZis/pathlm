@@ -192,7 +192,7 @@
 
 ### 与我们的关系（**直接决定 W3 / R1 / M2 三格判据线怎么定才公平**）
 
-- **本次 W3 已经做了一次同预算对照**（`本地实测`，`axes/W-width/W3-kv-head-sharing/README.md`）：
+- **本次 W3 已经做了一次同预算对照**（`本地实测`，`archive/wiki-legacy/axes/W-width/W3-kv-head-sharing/README.md`）：
   在**同一「每位置 KV 字节」横轴**上，**−75% 档** GQA 代价 **+0.0143 bpc** vs int4 KV
   **+0.0457 bpc** ⇒ GQA 便宜 ≈3.2×；**−50% 档** int8 KV 仅 **+0.00015 bpc（近无损）**。
   这已经是一张**跨家族（头共享 vs 量化）同字节横轴**的小 Pareto——**这本身就是业界缺的东西，
@@ -214,8 +214,8 @@
 
 ## 4. 块④：我们两条实测数 vs 业界印象（定性对照）
 
-> 数据：`本地实测` — int8/int4 KV 见 `axes/R-references/R1-quantization/README.md`
-> （实验 `2614-kv-quant-eval-13m`）；GQA/MQA 见 `axes/W-width/W3-kv-head-sharing/README.md`
+> 数据：`本地实测` — int8/int4 KV 见 `archive/wiki-legacy/axes/R-references/R1-quantization/README.md`
+> （实验 `2614-kv-quant-eval-13m`）；GQA/MQA 见 `archive/wiki-legacy/axes/W-width/W3-kv-head-sharing/README.md`
 > （实验 `2616-gqa-mqa-13m`）。**勿当外部证据**，此处仅做「与业界印象是否一致」的定性判断。
 
 ### (a) int8 KV 近无损 +0.00015 / −50%（`本地实测`）
@@ -269,14 +269,14 @@
 （本 run 无检索工具 ⇒ **无一条「官网/论文（含链接）」**；所有外部条目均为 `记忆·未核`。）
 
 **本地实测（可直接当证据）**
-- `axes/R-references/R1-quantization/README.md` ＋ 实验 `2614-kv-quant-eval-13m/analysis.md`
+- `archive/wiki-legacy/axes/R-references/R1-quantization/README.md` ＋ 实验 `2614-kv-quant-eval-13m/analysis.md`
   — int8 KV +0.00015（近无损，−50%）；int4 KV +0.0457（−75%）；fp16 基线 1.483571。
-- `axes/W-width/W3-kv-head-sharing/README.md` ＋ 实验 `2616-gqa-mqa-13m/analysis.md`
+- `archive/wiki-legacy/axes/W-width/W3-kv-head-sharing/README.md` ＋ 实验 `2616-gqa-mqa-13m/analysis.md`
   — mha 1.4820 / gqa 1.4963（+0.0143，重跑 +0.0139）/ mqa 1.4938（+0.0118）；
   解析 KV 12288 → 3072（−75%）/ 1536 B（−87.5%）；同 −75% 档 GQA ≈ int4 的 1/3 代价。
-- `axes/M-carrier/M2-carrier-compression/README.md` — 驱逐已测（+0.058~0.121@13M）；
+- `archive/wiki-legacy/axes/M-carrier/M2-carrier-compression/README.md` — 驱逐已测（+0.058~0.121@13M）；
   保留曲线 + 检索腿（`tools/evalkit/retention.py`）；「低损伤 ≠ 保住了」。
-- `axes/A-mixing/A3-window-anchor/README.md` — 锚点通道 76.8%→93.3%；硬丢前缀 +0.058~0.121。
+- `archive/wiki-legacy/axes/A-mixing/A3-window-anchor/README.md` — 锚点通道 76.8%→93.3%；硬丢前缀 +0.058~0.121。
 - `docs/playbook.md` 定律 8（规模翻转方向）、定律 9（判据设计）；`SCHEMA.md` §17.10/§17.12/§18/§19。
 - `.scratch/34-brainstorm/issues/01-brainstorm.md` — 本批动机与「联网工具不可用」的记录。
 

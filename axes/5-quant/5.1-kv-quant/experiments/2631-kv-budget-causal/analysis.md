@@ -211,7 +211,7 @@ V 若按 token 取 `head_dim`（32 个通道）维 amax，位置 t 的标尺只�
 
 ### 4.4 与旧账逐条对照 —— **冲突处以新账为准，旧账推翻**
 
-| 旧账（`axes/R-references/R1-quantization/README.md` 等） | 新账 (a) 严格因果 | 新账 (b) G=32 | 处置 |
+| 旧账（`archive/wiki-legacy/axes/R-references/R1-quantization/README.md` 等） | 新账 (a) 严格因果 | 新账 (b) G=32 | 处置 |
 |---|---|---|---|
 | `int8`：12288 → 6144 B/位置（**−50%**） | 12288 → **18432（+50%）** | 6528（−46.9%） | **推翻旧账**；(a) 下是负收益 |
 | `int4`：3072 B/位置（**−75%**），Δbpc +0.0457 | **15360（+25%）**，Δbpc **+0.024748** | 3456（−71.9%） | **推翻省幅**；损伤改为 +0.0247（旧账夸大了 0.021） |
@@ -227,7 +227,7 @@ V 若按 token 取 `head_dim`（32 个通道）维 amax，位置 t 的标尺只�
 - **口径 87.5% 的读法要分清**：MQA 式的**头共享**省 87.5% 是真的（值个数减少，与标尺无关）；
   而 `GQA×int8` 的 87.5% 是「头共享 + 量化」的合成，量化那部分在 (a) 口径下是**倒扣**的。
   这两件事在旧账里都写成「省 87.5%」，正是需要拆开的地方。
-- 需要主 Agent 同步的落点（本线**不改**他人目录/`catalog.yaml`）：`axes/R-references/R1-quantization/README.md`
+- 需要主 Agent 同步的落点（本线**不改**他人目录/`catalog.yaml`）：`archive/wiki-legacy/axes/R-references/R1-quantization/README.md`
   的 `tax` / `benefit` 与第 47 行（GQA×int8 87.5%、MQA×int8 93.75%）；`2614/README.md:32`、
   `2621/README.md:109` 的「省访存 / 每值 1 字节」表述。
 
@@ -347,7 +347,7 @@ V 若按 token 取 `head_dim`（32 个通道）维 amax，位置 t 的标尺只�
 
 1. **[需决定]** `(b)` 分块标尺 + 块内回填要不要作为正式口径实现并测质量？它放弃「过去位置严格
    前缀确定」（违反距离 ≤ G−1），属产品级取舍（该口径**未获批准**）。批准后再加实验（同 27 点 + G 阶梯 + 质量腿），并同步判据线。
-2. **[需主 Agent]** 同步落点：`catalog.yaml` 的 R1 格 `tax/benefit`、`axes/R-references/R1-quantization/README.md`
+2. **[需主 Agent]** 同步落点：`catalog.yaml` 的 R1 格 `tax/benefit`、`archive/wiki-legacy/axes/R-references/R1-quantization/README.md`
    （GQA×int8 87.5%、int8 −50%、int4 −75% 三处）、`2614/README.md:32`、`2621/README.md:109/167`。
    本波未改（分工）。
 3. **[建议]** 把「KV 预算图」的横轴正式改成**部署口径**（值 + 标尺），并保留值字节列作对照；

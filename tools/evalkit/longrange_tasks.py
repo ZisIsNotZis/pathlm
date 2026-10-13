@@ -1,6 +1,6 @@
 """合成长程任务电池（ticket 34 契约 A）——「局部先验无法补全」的长程天平原语。
 
-契约：`axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/README.md`
+契约：`axes/1-time/1.1.4.1-explicit-memory/experiments/2617-longrange-task-battery/README.md`
 
 ## 为什么需要它（SCHEMA §19）
 

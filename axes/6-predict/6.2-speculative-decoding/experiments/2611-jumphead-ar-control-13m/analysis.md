@@ -187,7 +187,7 @@ harness 一致、主臂未被改动。
 ## 8. 复现
 
 ```bash
-EXP=axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m
+EXP=axes/6-predict/6.2-speculative-decoding/experiments/2611-jumphead-ar-control-13m
 python3 $EXP/run.py --config $EXP/config.json --out-dir $EXP --smoke   # 冒烟
 python3 $EXP/run.py --config $EXP/config.json --out-dir $EXP          # 全跑
 

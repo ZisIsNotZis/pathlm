@@ -13,4 +13,4 @@
 > 其「层序 shuffle」子项按 55-review C-P18 不立研究项（数字留 playbook note），「重复（redo）」归 2.1.3 repeating。
 > 两个实验的 `p_skip` 由 `sample_path` **逐序列/逐 batch** 采样（不是逐 token），且属旧 M2 引擎，
 > 故本项的税数字须在 depth-ar 引擎按序列级判据重测（见 `project.yaml` 的 WP1）。
-> 旧格目录与其 README 仍保留在 `axes/C-vertical/C2-layer-selection-order`，待 integrator 统一退役。
+> 旧格目录与其 README 仍保留在 `archive/wiki-legacy/axes/C-vertical/C2-layer-selection-order`，旧树退役已由本轮 integrator 完成（旧目录归档只读保留）。

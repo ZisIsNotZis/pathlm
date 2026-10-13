@@ -63,8 +63,7 @@ docs/structure.md    研究树布局 / 用词 / 粒度 / 目录命名（SSOT）
 docs/research-schema.md  研究项 project.yaml 的格式契约（SSOT）
 AGENTS.md            协作制度与文档地图（写给 agent）
 CONTRIBUTING.md      贡献流程与硬性规则
-（退役）INDEX.md / catalog.yaml / tools/build_wiki.py / tools/check_catalog_strict.py
-      旧生成式 wiki；迁移完成后移入 archive/wiki-legacy/（见 docs/structure.md §15）
+（已退役）旧生成式 wiki；已归档于 archive/wiki-legacy/（见 docs/structure.md §15）
 docs/                设计 / 方法学 / 定律 / 引擎能力（不随课题变）
   design.md          本文
   methodology.md     天平

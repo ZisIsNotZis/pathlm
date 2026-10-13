@@ -117,6 +117,6 @@ status: judged
 
 ## 9. 产出
 
-`axes/H-horizon/H4-head-trunk-relation/experiments/2611-jumphead-ar-control-13m/`
+`axes/6-predict/6.2-speculative-decoding/experiments/2611-jumphead-ar-control-13m/`
 下的 `README.md`（本文件）/ `run.py` / `config.json` / `results.json` /
 `run.log` / `analysis.md` / `MODEL.md`。

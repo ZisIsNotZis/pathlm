@@ -268,7 +268,7 @@ def decode_spec(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfi
       batched verification (`_run_stack_multi`) must run the FULL stack: per-
       position depth in a batched forward would desynchronise the per-position
       caches, so early exit does NOT compose with speculative decoding in this
-      engine (documented limitation; see docs/mental_model.md §4).
+      engine (documented limitation; see archive/legacy-docs/mental_model.md §4).
 
     Returns (generated ids, stats with per-round accept counts).
 

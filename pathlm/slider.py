@@ -1,5 +1,5 @@
 """Slider machinery: the runtime allocator over the quality-compute frontier
-(docs/mental_model.md §3). Scale parameters (model size, n_mtp, max depth)
+(archive/legacy-docs/mental_model.md §3). Scale parameters (model size, n_mtp, max depth)
 fix the frontier's *shape*; the Slider theta = (k, tau_retry) moves along it.
 
 Pure pieces (unit-tested in tests/test_slider.py, no GPU):
@@ -68,7 +68,7 @@ def spec_cost(k: int, fire_rate: float, a2: float) -> float:
     (cost 1+k units) emitting 1+a2 tokens on average; a fired retry round is
     a width-1 forward before the verify pass. a2 = P(spec draft accepted).
 
-    See `forwards_cost` for the v1 budget currency (mental_model §1 defines
+    See `forwards_cost` for the v1 budget currency (archive/legacy-docs/mental_model.md §1 defines
     the budget as FORWARD COUNT per token x depth — spec amortizes and can
     go below 1; the two currencies disagree and both are reported)."""
     if k < 0:
@@ -83,7 +83,7 @@ def spec_cost(k: int, fire_rate: float, a2: float) -> float:
 
 
 def forwards_cost(k: int, fire_rate: float, a2: float) -> float:
-    """v1 budget currency (mental_model §1: budget = forwards/token x depth;
+    """v1 budget currency (archive/legacy-docs/mental_model.md §1: budget = forwards/token x depth;
     all-levers-here run full depth, so cost = forward count per emitted
     token). Plain: 1 + fired retries. Spec: 1 verify forward per loop
     emitting 1+a2 tokens on average, +1 forward when the retry fires."""

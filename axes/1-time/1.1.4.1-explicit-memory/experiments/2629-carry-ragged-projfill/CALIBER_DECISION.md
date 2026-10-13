@@ -21,7 +21,7 @@ carry 装坏」**优先用训练分布内的 synth 口径**；**enwik8 口径**�
 | **主口径：synth 分布内（in-distribution）** | 与训练同款合成 `assoc-mqar`（K=8/Q=8/gap14），真实非 dense 前向的全深度 states | **是**（训练分布就是它） | **主判据**（`exit_asset_holds.primary_caliber`） | 99.66% / 98.68%（Δ **−0.98pp**，带内） |
 | **代理口径：enwik8 跨分布（cross-distribution）** | enwik8 真值文本 teacher-forcing（与 100M 锚点同款函数） | **否**（模型从未在真实文本上训过） | **代理 / 对齐参照**（不作主判据） | 93.69% / 88.98%（Δ **−4.71pp**，超带，待确认） |
 
-> 100M 锚点 `tf@4 = 0.9726`（`axes/C-vertical/C1-layers-per-token/`，enwik8 真值流口径）
+> 100M 锚点 `tf@4 = 0.9726`（`archive/wiki-legacy/axes/C-vertical/C1-layers-per-token/`，enwik8 真值流口径）
 > 与本线 13M 的 synth 读数**既跨尺度又跨口径**，故两边只能称「同量级」，不能称「复现」。
 
 ## 2. 为什么分布内口径更忠实

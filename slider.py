@@ -1,7 +1,7 @@
 """Slider end-to-end probe (ticket 15, Rung 3): calibration -> frontier ->
 budget solve -> validated allocation decode -> online-quality proxy.
 
-Implements docs/mental_model.md §3 on a real checkpoint:
+Implements archive/legacy-docs/mental_model.md §3 on a real checkpoint:
 
  1. calibrate   gate_probe on the CALIBRATION half of the eval stream
                 (clean + corrupted input profiles) -> fire curve P(prob0<tau),
@@ -10,7 +10,7 @@ Implements docs/mental_model.md §3 on a real checkpoint:
                 per tau; decode bench on held-out prompts per (k, tau)
                 -> wall-clock tok/s + measured forwards/token.
  3. solve       budgets in TWO cost currencies -> (k, tau):
-                "forwards" = forward count per emitted token (mental_model §1:
+                "forwards" = forward count per emitted token (archive/legacy-docs/mental_model.md §1:
                 budget = forwards x depth; spec amortizes below 1),
                 "flop" = equivalent width-1 forward units (FLOP-normalized;
                 spec floor 1.0). Validation decodes on FRESH prompts compare
@@ -42,7 +42,7 @@ from pathlm.slider import (Frontier, FrontierPoint, fire_curve, forwards_cost,
                            reliability, spec_cost)
 
 TAUS = [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 0.98]
-BUDGETS = {"forwards": [0.5, 0.6, 0.75, 1.0],     # mental_model §1 currency
+BUDGETS = {"forwards": [0.5, 0.6, 0.75, 1.0],     # archive/legacy-docs/mental_model.md §1 currency
            "flop": [1.0, 1.1, 1.25, 1.5]}         # FLOP-normalized view
 
 
@@ -262,7 +262,7 @@ def main():
                  "taus": TAUS, "budgets": BUDGETS,
                  "cost_currencies": {
                      "forwards": "v1 budget currency: forward count per emitted "
-                                 "token (mental_model §1: budget = forwards x depth)",
+                                 "token (archive/legacy-docs/mental_model.md §1: budget = forwards x depth)",
                      "flop": "FLOP-normalized: equivalent width-1 forward units per "
                              "emitted token (width-(1+k) verify = 1+k units)"}}
     frontiers, meta = {}, {}

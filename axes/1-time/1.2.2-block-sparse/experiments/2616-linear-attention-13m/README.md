@@ -24,7 +24,7 @@ status: judged
 > 「删除量」与「可见性对数」两套口径）、第 8 条（臂数=干预档数×(1+重跑)；成本按本实验实测步时）。
 >
 > 共用器材（必须断言 sha256）：
-> - 全注意力 dense 基线：`axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt`
+> - 全注意力 dense 基线：`axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt`
 > - 仪器：`tools/evalkit/retention.py`（**只增不改**，既有单测必须继续绿）
 
 （上段为逐字抄录。本实验对共用器材的处置见 §7：仪器**只读**、既有单测全绿；
@@ -34,7 +34,7 @@ status: judged
 
 > ## 契约 R：线性注意力 vs 全注意力（A6 混合算子续）
 >
-> - 目录：`axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m/`
+> - 目录：`axes/1-time/1.2.2-block-sparse/experiments/2616-linear-attention-13m/`
 > - 文件所有权：可改 `pathlm/depth_ar.py`（新增线性注意力开关，缺省逐位还原 v1）、
 >   `train_depth_ar.py`、`tests/test_depth_ar.py`、本实验目录。
 > - 动机：ticket 31-J 已证「内容选择式 top-k」在 T=256 净亏（质量越界 + 实测 2.2× 慢、KV 不省）。
@@ -177,7 +177,7 @@ norm_cap=1 / bs=32 / lr=1e-3 / 12k 步 / seed=0 / 98.3M token / enwik8 前 90M t
 
 - `tools/evalkit/retention.py`：**只读**（本实验未改一行，`git diff` 为空）；
   既有单测全绿（`pytest tests/ -q`，见 `analysis.md` §9）。
-- `trunk.pt`（`axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/`）：
+- `trunk.pt`（`axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/`）：
   本实验**不使用**它做对照（两臂都是本次新训，自包含双跑）；只在 `analysis.md` §8
   引用 ticket 32-M/2615 在该 checkpoint 上的 recent 曲线作**跨批定性参考**。
   断言：`sha256(trunk.pt) = 86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2`
@@ -187,7 +187,7 @@ norm_cap=1 / bs=32 / lr=1e-3 / 12k 步 / seed=0 / 98.3M token / enwik8 前 90M t
 
 ```bash
 cd /home/z/vibe/pathlm
-EXP=axes/A-mixing/A6-mixing-operator/experiments/2616-linear-attention-13m
+EXP=axes/1-time/1.2.2-block-sparse/experiments/2616-linear-attention-13m
 python3 $EXP/smoke.py                     # 20 步冒烟（先冒烟再全跑）
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
   nohup python3 $EXP/run.py --steps 12000 --seed 0 --budget-min 45 \

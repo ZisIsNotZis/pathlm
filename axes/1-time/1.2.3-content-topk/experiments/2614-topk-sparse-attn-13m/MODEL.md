@@ -38,7 +38,7 @@ init_bitwise_identical_to_full`）。
 
 ```bash
 cd /home/z/vibe/pathlm
-EXP=axes/A-mixing/A6-mixing-operator/experiments/2614-topk-sparse-attn-13m
+EXP=axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
   nohup python3 $EXP/run.py --steps 12000 --seed 0 --rerun-arms full > $EXP/run_log.txt 2>&1 &
 tail -f $EXP/run_log.txt          # ≤110s 轮询

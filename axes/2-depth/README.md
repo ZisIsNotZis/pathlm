@@ -35,11 +35,11 @@
 
 ## 迁移说明
 
-按 `.scratch/56-restructure/MAPPING.md`：旧格 `axes/C-vertical/C1-layers-per-token` 迁入 `2.1.1`；
+按 `.scratch/56-restructure/MAPPING.md`：旧格 `archive/wiki-legacy/axes/C-vertical/C1-layers-per-token` 迁入 `2.1.1`；
 `C2-layer-selection-order` 并入 `2.1.2`；`C3-inter-layer-topology` 拆入 `2.2.3`（主家）与 `2.2.4`
 （指针）；`C4-weight-sharing` 降为 `2.2.5`（Backlog）；`C5-refinement-operator`、`C6-depth-supervision`
 作为 `2.1.1` 的手段（精化门 / 深度监督配方）并入其 experiments。`2.2.1` / `2.2.2` / `2.3.1` / `2.3.2`
-无旧格、为本轮新建。旧 `axes/C-vertical/**` 目录与其 README 待 integrator 统一退役。
+无旧格、为本轮新建。旧 `archive/wiki-legacy/axes/C-vertical/**` 目录与其 README 已随旧树退役归档（归档只读保留）。
 
 ## 怎么读
 

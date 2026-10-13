@@ -13,5 +13,5 @@
 
 > 旧格 `G1-selector`、`G3-signal` 按 `.scratch/56-restructure/MAPPING.md` §1 迁入本项（Backlog 研究项）：
 > 其 `experiments/**` 的五个实验目录整目录 `git mv` 到本目录（一格一份家，不复制）。
-> `.scratch/**/evidence` 原地不动，只作锚点。旧格目录及其 README 仍保留在 `axes/G-policy/**`，
-> 待 integrator 统一退役。`G4-calibration` 无自有实验目录。
+> `.scratch/**/evidence` 原地不动，只作锚点。旧格目录及其 README 仍保留在 `archive/wiki-legacy/axes/G-policy/**`，
+> 旧树退役已由本轮 integrator 完成（旧目录归档只读保留）。`G4-calibration` 无自有实验目录。

@@ -285,7 +285,7 @@ def main():
         check(f"model_sha256_MODEL_md[{a}]", want, where=("MODEL.md",))
         check(f"model_size_bytes[{a}]", hashes[a]["size_bytes"], "{:,}".format,
               where=("MODEL.md",))
-    code_files = {"run_py_sha256": "axes/W-width/W3-kv-head-sharing/experiments/"
+    code_files = {"run_py_sha256": "archive/wiki-legacy/axes/W-width/W3-kv-head-sharing/experiments/"
                                   "2616-gqa-mqa-13m/run.py",
                   "depth_ar_py_sha256": "pathlm/depth_ar.py",
                   "train_depth_ar_py_sha256": "train_depth_ar.py",

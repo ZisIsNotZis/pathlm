@@ -68,7 +68,7 @@ U3 的统一 KV 预算图（`2619`）在同一横轴「每位置 KV 字节」上
 
 > 契约原文（`.scratch/37-gaps/issues/01-gaps.md` §「契约 V1」）：
 >
-> - 目录：`axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/`
+> - 目录：`axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/`
 > - 目标：补齐 ticket 36-U3 列出的 10 个缺失组合里最优先的三个：
 >   1. **GQA × int8**（两者叠加是否能在 ~1536 B/位置做到两腿近无损——U3 的第一推荐）；
 >   2. **窗口 × 锚点/sink**（锚点是拉动窗口召回的**最便宜**办法吗？这正是 A3 的锚点通道在

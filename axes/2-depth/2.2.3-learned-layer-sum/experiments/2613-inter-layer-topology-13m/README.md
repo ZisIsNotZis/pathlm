@@ -18,7 +18,7 @@ status: judged
 
 > 【契约 E】层间拓扑（C3 纯空白首次本地探索）
 > 契约：`.scratch/30-batch3/issues/01-batch3.md` 的「契约 E」。
-> 实验目录：`axes/C-vertical/C3-inter-layer-topology/experiments/2613-inter-layer-topology-13m/`
+> 实验目录：`axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m/`
 > 可改：`pathlm/depth_ar.py`、`train_depth_ar.py`、`tests/test_depth_ar.py`、本实验目录。
 >
 > 背景：这是「地图」上的纯空白格。层与层之间除了单条残差连接，还有别的接法（并行子层、对历史层的加权和）。目标：在**普通 decoder-only transformer** 上，只改层间连接方式这一个因素，看质量是否真的改善。
@@ -135,7 +135,7 @@ d=256 / L=8 / h=8 / seq=256 / mlp_mult=4 / dropout=0 / norm_cap=1 / bs=32 / lr=1
 
 ## 9. 产出
 
-`axes/C-vertical/C3-inter-layer-topology/experiments/2613-inter-layer-topology-13m/`
+`axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m/`
 下的 `README.md`(本文件) / `run.py` / `smoke.py` / `mutate.py` / `rederive_liveness.py` /
 `config.json` / `results.json` / `mutation_report.json` / `train_log.jsonl`（四臂） /
 `analysis.md` / `stability.md` / `MODEL.md`。

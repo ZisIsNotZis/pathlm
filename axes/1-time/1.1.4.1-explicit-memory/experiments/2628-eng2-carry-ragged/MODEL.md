@@ -14,7 +14,7 @@ python3 train_depth_ar.py master \
   --steps 20 --batch-size 8 --seed 0 --exit-mode uniform \
   --synth-task assoc-mqar --synth-pairs 8 --synth-queries 8 --synth-gap 14 \
   --carry-write delta --carry-chunk 64 --proj-fill \
-  --out-root axes/M-carrier/M1-carrier-type/experiments/2628-eng2-carry-ragged/smoke
+  --out-root axes/1-time/1.1.4.1-explicit-memory/experiments/2628-eng2-carry-ragged/smoke
 ```
 
 - **权重只作 20 步冒烟的活性量证据**（`results.json::carry_liveness` / `train_log.jsonl`

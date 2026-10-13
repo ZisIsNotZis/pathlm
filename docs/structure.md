@@ -180,7 +180,7 @@ change_log: [] # 变更
 | 1.2.2 | 块稀疏 / 条带 / 局部+全局混合（Longformer 式） | `axes/1-time/1.2.2-block-sparse/` | 研究项 |
 | 1.2.3 | 内容选择 top-k | `axes/1-time/1.2.3-content-topk/` | 研究项 |
 | 1.2.4 | 动态合并：越往下层 token 越少 | `axes/1-time/1.2.4-dynamic-merge/` | 研究项 |
-| 1.3 | 寻址（前提，不是手段选择） | `axes/1-time/1.3-addressing/` | 参照 |
+| 1.3 | 寻址（前提，不是手段选择） | `axes/7-references/README.md` | 参照 |
 
 ### 轴 2 · 深度轴（目录 `axes/2-depth/`）
 
@@ -238,7 +238,7 @@ change_log: [] # 变更
 
 | id | 标题（exact wording） | 目录 | 粒度 |
 |---|---|---|---|
-| 6.1 | 自回归（一次一个位置） | `axes/6-predict/6.1-autoregressive/` | 参照 |
+| 6.1 | 自回归（一次一个位置） | `axes/7-references/README.md` | 参照 |
 | 6.2 | 多位置预测 = 投机解码 | `axes/6-predict/6.2-speculative-decoding/` | 研究项 |
 | 6.3 | 整段并行生成（不止 AR） | `axes/6-predict/6.3-parallel-generation/` | 分组 |
 | 6.3.1 | diffusion（离散扩散 / 掩码扩散） | `axes/6-predict/6.3.1-diffusion/` | 研究项 |
@@ -308,12 +308,16 @@ change_log: [] # 变更
 ## 15 退役与去留（冻结）
 
 - **研究项 SSOT = `axes/**/project.yaml`**（格式见 `docs/research-schema.md`）。
-- **退役**（不再维护、不再是 SSOT、不再生成网页）：
-  - `catalog.yaml`：旧「目录完备」枚举。**迁移窗口内暂留在仓**——它的 `local:` 块是轴 worker
-    迁移旧结论的**内容源**，中途删除会丢证据；**迁移完成后整体移入 `archive/wiki-legacy/`**（证据保留，不删）。
-  - `tools/build_wiki.py`、`tools/check_catalog_strict.py`、`tools/backfill_legacy.py`：生成式
-    wiki 工具，退役后一并移入 `archive/wiki-legacy/`。
-  - `INDEX.md`：由 `build_wiki.py` 生成的旧状态灯，退役（状态改由 `tools/summary.py` 输出）。
+- **已退役并归档**（不再维护、不再是 SSOT、不再生成网页）——旧 wiki 资产只读保留于
+  `archive/wiki-legacy/`，证据不删：
+  - `catalog.yaml`（旧「目录完备」枚举）→ `archive/wiki-legacy/catalog.yaml`。
+  - `tools/build_wiki.py`、`tools/check_catalog_strict.py`、`tools/backfill_legacy.py`（生成式
+    wiki 工具）→ `archive/wiki-legacy/tools/`；其回归测试 `tests/test_build_wiki_manual.py`
+    → `archive/wiki-legacy/tests/`。
+  - `INDEX.md`（`build_wiki.py` 生成的旧状态灯）→ `archive/wiki-legacy/INDEX.md`；状态改由 `tools/summary.py` 输出。
+  - 旧轴目录 `axes/{A-mixing,C-vertical,H-horizon,W-width,M-carrier,F-iteration,G-policy,P-modifiers,R-references}/**`
+    → `archive/wiki-legacy/axes/<旧轴>/`（迁移后只剩旧课题页 `README.md` / `PRIOR_ART*.md` / 自动索引；
+    实验证据已按 `.scratch/56-restructure/MAPPING.md` 迁入新家，不删）。
 - **取代**：
   - 校验入口 `tools/check_schema.py` → **转调** `tools/check_tree.py`（新校验器）。
   - 汇总入口 = `tools/summary.py`（一条命令出全表；`--check` 校验）。

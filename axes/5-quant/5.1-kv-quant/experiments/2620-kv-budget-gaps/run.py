@@ -35,9 +35,9 @@ from pathlm.data import load_enwik8_full                                  # noqa
 from tools.evalkit.longrange_tasks import (                               # noqa: E402
     corrupt_span, local_prior_accuracy, check_local_prior_resistance)
 
-CHART_2619_PATH = os.path.join(ROOT, "axes/R-references/R1-quantization/experiments/"
+CHART_2619_PATH = os.path.join(ROOT, "axes/5-quant/5.1-kv-quant/experiments/"
                                      "2619-kv-budget-chart/run.py")
-RES_2619_PATH = os.path.join(ROOT, "axes/R-references/R1-quantization/experiments/"
+RES_2619_PATH = os.path.join(ROOT, "axes/5-quant/5.1-kv-quant/experiments/"
                                    "2619-kv-budget-chart/results.json")
 
 VARIANCE_BAND_BPC = 0.014
@@ -294,14 +294,14 @@ def write_charts(cfg, points, controls, rec, out_dir) -> None:
 def source_of(cfg, arm: str) -> str:
     spec = cfg["arms"][arm]
     if spec["kind"] == "quant_head":
-        return ("axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/"
+        return ("axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/"
                 "results.json × R1 int8（本批组合，无单一来源）")
     if spec["kind"] == "quant":
-        return "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json"
+        return "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json"
     if spec["kind"] in ("window", "window_anchor"):
-        return ("axes/M-carrier/M2-carrier-compression/experiments/"
+        return ("axes/1-time/1.1.4.2-compression/experiments/"
                 "2615-retention-retrieval-leg-13m/results.json")
-    return "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json"
+    return "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json"
 
 
 def main() -> int:

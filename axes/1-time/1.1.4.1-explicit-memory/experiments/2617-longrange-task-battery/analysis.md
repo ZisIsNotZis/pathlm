@@ -1,6 +1,6 @@
 # 2617 · 分析 · 合成长程任务电池（13M 零样本基线）
 
-复现命令：`python3 axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/run.py`
+复现命令：`python3 axes/1-time/1.1.4.1-explicit-memory/experiments/2617-longrange-task-battery/run.py`
 （补 `--smoke` 为冒烟）。契约与判据线见同目录 `README.md`（判据线逐字，未改）。
 读数 = 零样本 top-1 准确率；chance = 1/64 = 0.015625（另报模型原始词表 1/206 = 0.004854）。
 

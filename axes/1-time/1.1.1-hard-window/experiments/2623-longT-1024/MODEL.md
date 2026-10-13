@@ -18,7 +18,7 @@
       --seq-len 1024 --mlp-mult 4 --dense --steps 12000 \
       --batch-size 8 --lr 0.001 --seed 0 --exit-mode uniform \
       [--train-window 512] --eval-batches 20 \
-      --out-root axes/A-mixing/A6-mixing-operator/experiments/2623-longT-1024/runs
+      --out-root axes/1-time/1.1.1-hard-window/experiments/2623-longT-1024/runs
   ```
 
 ## 代码指纹（共享文件的并发写声明，SCHEMA §22.6）
@@ -36,7 +36,7 @@
 ## 复现（单卡 4090 共享，取锁按 §20/§20.1）
 
 ```bash
-cd axes/A-mixing/A6-mixing-operator/experiments/2623-longT-1024
+cd axes/1-time/1.1.1-hard-window/experiments/2623-longT-1024
 python3 smoke.py                      # CPU 不变量（不取锁）
 python3 run.py --stage preflight      # 20 步冒烟 + 步时/显存（自己取锁）
 python3 run.py --stage train-all      # 两臂，按臂释放锁，臂间 ≥60s

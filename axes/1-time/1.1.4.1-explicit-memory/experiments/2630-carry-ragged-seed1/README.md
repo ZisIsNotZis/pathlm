@@ -66,7 +66,7 @@ seed 上都落在 1.4pp 方差带内**，则「搬运通道对召回冗余」的
 ## 4. 判据线（**逐字**抄录任务下发文本，未改一字）
 
 > 【W2 · GPU】carry×ragged 的 seed=1 复现（≈21 min）
-> 目录：axes/M-carrier/M1-carrier-type/experiments/2630-carry-ragged-seed1/
+> 目录：axes/1-time/1.1.4.1-explicit-memory/experiments/2630-carry-ragged-seed1/
 > 动机：46-W1 是单 seed；越界腿 +6.05pp（n=2048）虽 CI 不重叠但小样本。
 > 干预：同配置（carry×随机退出×proj-fill）**seed=1 重跑两臂**（有/无 carry），与 46-W1 的 seed=0 合并为 n=2。
 > 判据：① 报两 seed 的分布内召回差与越界腿差（含 CI 与极差）；② 若越界腿效应跨 seed 保持 ⇒ 记「机制确实在搬」为稳健（**仅该腿、不外推到召回**）；③ 分布内召回冗余结论是否稳定；④ 禁外推。

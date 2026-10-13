@@ -17,7 +17,7 @@ status: judged
 ## 0. 契约原文（逐字）
 
 > 【Y2 · GPU】长 T 第三点 T=1024（A6，≈40–60 min）
-> 目录：`axes/A-mixing/A6-mixing-operator/experiments/2623-longT-1024/`
+> 目录：`axes/1-time/1.1.1-hard-window/experiments/2623-longT-1024/`
 > 干预：full vs 窗口 512（**同相对占比 50%**，§17.16），扩绝对位置表（参数增量实测）。
 > 判据：① Δ1024 的带宽分类（与 Δ256/Δ512 并列成三点，**仍禁外推**）；② 注意力占比实测 vs 公式
 > （X3 实测 5.41%@256→10.78%@512、公式 14.29%→25.00%）；③ 显存实测；④ 墙钟（两轮，方向不明如实记）。
@@ -112,7 +112,7 @@ status: judged
 
 ## 5. 既有做法（prior art，SCHEMA §18）
 
-> 本环境**联网不可用**（与 `axes/A-mixing/PRIOR_ART_LENGTH.md §0`、`PRIOR_ART.md §0` 一致）。
+> 本环境**联网不可用**（与 `archive/wiki-legacy/axes/A-mixing/PRIOR_ART_LENGTH.md §0`、`PRIOR_ART.md §0` 一致）。
 > 外部内容一律 **`记忆·未核`**，只作设计方向、**不得当判据**。
 
 1. **谁做过**：滑动窗口注意力（Longformer / Mistral 的 SWA）是长上下文标准件；稀疏注意力

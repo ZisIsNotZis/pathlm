@@ -24,7 +24,7 @@
 
 ```bash
 cd /home/z/vibe/pathlm
-EXP=axes/C-vertical/C3-inter-layer-topology/experiments/2613-inter-layer-topology-13m
+EXP=axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
   nohup python3 $EXP/run.py --steps 12000 --seed 0 > $EXP/run_log.txt 2>&1 &
 tail -f $EXP/run_log.txt          # ≤120s 轮询

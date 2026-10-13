@@ -20,9 +20,9 @@
 ```bash
 cd /home/z/vibe/pathlm
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
-  nohup python3 axes/W-width/W4-readout-geometry/experiments/2612-gated-readout-24k-13m/run.py \
+  nohup python3 axes/3-width/3.2.1-readout-reparam/experiments/2612-gated-readout-24k-13m/run.py \
     --steps 24000 --seed 0 --eval-batches 20 --caps-min 50 \
-    > axes/W-width/W4-readout-geometry/experiments/2612-gated-readout-24k-13m/run.log 2>&1 &
+    > axes/3-width/3.2.1-readout-reparam/experiments/2612-gated-readout-24k-13m/run.log 2>&1 &
 # 轮询：tail -n 40 <exp>/run.log
 ```
 
@@ -45,7 +45,7 @@ python3 train_depth_ar.py gated-24k-s0 \
 冒烟（20 步 × 两臂 + CPU 恒等检查）：
 
 ```bash
-python3 axes/W-width/W4-readout-geometry/experiments/2612-gated-readout-24k-13m/smoke.py
+python3 axes/3-width/3.2.1-readout-reparam/experiments/2612-gated-readout-24k-13m/smoke.py
 ```
 
 数据集：`data/enwik8_full.npz`（char 级 enwik8，前 90M train / 后 10M eval，词表由

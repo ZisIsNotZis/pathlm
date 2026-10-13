@@ -40,7 +40,7 @@
 按 `.scratch/56-restructure/MAPPING.md`：旧格 `W2-expertization` 归本轴，拆为 4.1（迁移）/ 4.2（新建）/
 4.3（新建）。按 55-review W-13 消除旧格「`status: todo` 与 `prior_art_verdict` 检索不可用」的自相矛盾口径；
 按 W-17 成本口径改为等效理论量；按 W-03/W-04 不照抄「todo 待补做」的立项语气。旧轴目录
-`axes/W-width/**` 及其 README、`PRIOR_ART.md` 待 integrator 统一退役。
+`archive/wiki-legacy/axes/W-width/**` 及其 README、`PRIOR_ART.md` 已随旧树退役归档（归档只读保留）。
 
 ## 怎么读
 

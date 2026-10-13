@@ -67,7 +67,7 @@
 > 契约原文（`.scratch/38-auto-parallel/issues/01-auto-parallel.md` §「W1」）：
 >
 > **W1 · KV 预算图剩余缺失组合（纯 eval ≈20 min）**
-> - 目录：`axes/R-references/R1-quantization/experiments/2621-kv-budget-rest/`
+> - 目录：`axes/5-quant/5.1-kv-quant/experiments/2621-kv-budget-rest/`
 > - 补齐 U3/V1 之后仍缺的组合（U3 列了 10 项、V1 补了 3 项）：优先 `GQA×int4`、`MQA×int4`、
 >   `窗口×int8`、`GQA×窗口`、`锚点×int4`；**判据同 V1**（两腿 + 毁源 + 同横轴 + 解析/实测分列 + 单点不外推）。
 > - 交付：一张更新后的总表（含**所有已测点**，标出来源实验路径与口径）。

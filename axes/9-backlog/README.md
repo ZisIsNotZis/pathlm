@@ -32,8 +32,8 @@ Backlog 收「不删、但已移出主线」的算力路径：它们成立与否
 按 `.scratch/56-restructure/MAPPING.md` §1 / §4：原 G 轴（`G1-selector` + `G3-signal`，`G4-calibration` 无自有实验）
 合并为 Backlog 研究项 `9.1`；原 F 轴剩余（`F2-return-channel` + `F4-training-signal`）合并为 `9.2`。
 各旧格 `experiments/**` 整目录 `git mv` 入对应新项的 `experiments/`（一格一份家，只搬不复制）；
-`.scratch/**/evidence` 原地不动，只作锚点。旧轴目录 `axes/G-policy/**`、`axes/F-iteration/**`
-及其 README 待 integrator 统一退役。
+`.scratch/**/evidence` 原地不动，只作锚点。旧轴目录 `archive/wiki-legacy/axes/G-policy/**`、`archive/wiki-legacy/axes/F-iteration/**`
+及其 README 已随旧树退役归档（归档只读保留）。
 
 ## 怎么读
 

@@ -10,7 +10,7 @@
 
 > 旧格 `R4-window-kv-quant-retrieval` 按 `.scratch/56-restructure/MAPPING.md` §1 迁入本项：其
 > `experiments/2617-prior-art-hybrid-kv` 整目录迁入本目录（整目录 `git mv`，一格一份家，不复制）。
-> 旧格目录与其 README 仍保留在 `axes/R-references/R4-window-kv-quant-retrieval/**`，待 integrator 统一退役。
+> 旧格目录与其 README 仍保留在 `archive/wiki-legacy/axes/R-references/R4-window-kv-quant-retrieval/**`，旧树退役已由本轮 integrator 完成（旧目录归档只读保留）。
 
 ## 指针（他线的本地证据，不复制、不重复登记）
 

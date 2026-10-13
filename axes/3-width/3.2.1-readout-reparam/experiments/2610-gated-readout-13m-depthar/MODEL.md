@@ -24,7 +24,7 @@ A 臂（不需要重新训练；从历史 checkpoint 载入并重测）：
 
 ```bash
 # A 臂等值性门 + 当前代码重测电池（不训练）
-python3 axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/run.py \
+python3 axes/3-width/3.2.1-readout-reparam/experiments/2610-gated-readout-13m-depthar/run.py \
     --eval-a-only --eval-batches 20
 ```
 
@@ -33,7 +33,7 @@ python3 axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-dept
 ```bash
 cd /home/z/vibe/pathlm
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
-  nohup python3 axes/W-width/W4-readout-geometry/experiments/2610-gated-readout-13m-depthar/run.py \
+  nohup python3 axes/3-width/3.2.1-readout-reparam/experiments/2610-gated-readout-13m-depthar/run.py \
     --steps 12000 --seed 0 --eval-batches 20 --caps-min 16 > run.log 2>&1 &
 tail -f run.log
 ```

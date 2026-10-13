@@ -14,7 +14,7 @@ status: planned
 
 > ## 契约 C：gated 读出 24k 收敛复测（两臂）
 >
-> - 目录：`axes/W-width/W4-readout-geometry/experiments/2612-gated-readout-24k-13m/`
+> - 目录：`axes/3-width/3.2.1-readout-reparam/experiments/2612-gated-readout-24k-13m/`
 > - 文件所有权：只写本实验目录（复用既有代码，不加新开关）。
 > - **干预**：把 2610 的 A 臂（tied 线性）与主臂（gated）都跑到 **24k 步**（其余配置逐字段一致）。
 > - **判据（预登记）**：

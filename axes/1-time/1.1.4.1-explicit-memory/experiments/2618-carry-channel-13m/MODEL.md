@@ -22,7 +22,7 @@ sha256 由 `fill_config_hashes.py` 回填进 `config.json`，`run.py` 每次加�
 ## 生成命令（三臂逐字段一致，唯一变量 = `--carry-write`）
 
 ```bash
-cd axes/M-carrier/M1-carrier-type/experiments/2618-carry-channel-13m
+cd axes/1-time/1.1.4.1-explicit-memory/experiments/2618-carry-channel-13m
 for ARM in U0:none U1:plain U2:delta; do
   NAME=${ARM%%:*}; RULE=${ARM##*:}
   python3 ../../../../../train_depth_ar.py $NAME \

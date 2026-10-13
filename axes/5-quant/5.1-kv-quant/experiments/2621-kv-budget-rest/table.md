@@ -6,25 +6,25 @@
 
 | 点 | 类别 | 每位置 KV 字节（解析） | vs 本族基线 | bpc | Δbpc==damage | 量化增量 | 窗口增量 | 相对 stock | 合成召回 copy（汇总） | 95% CI | copy 毁源 | vs chance | 来源实验路径 | 口径 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `fp16` | 不压缩基线 | 12288 (0.0%↓) | fp16 | 1.483571 | +0.000000 | — | — | +0.000002 | 0.1413 | [0.1294, 0.1540] | 0.0143 | 9.04× | `axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json` | 解析字节（非实测显存） |
-| `int8` | 量化（R1） | 6144 (50.0%↓) | fp16 | 1.483721 | +0.000150 ⚠不可排序 | — | — | +0.000152 | 0.1426 | [0.1307, 0.1554] | 0.0143 | 9.12× | `axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json` | 解析字节（非实测显存） |
-| `int4` | 量化（R1） | 3072 (75.0%↓) | fp16 | 1.529232 | +0.045661 | — | — | +0.045663 | 0.1247 | [0.1135, 0.1368] | 0.0127 | 7.98× | `axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json` | 解析字节（非实测显存） |
-| `win16` | 窗口/驱逐（M2） | 768 (93.8%↓) | fp16 | 2.085526 | +0.601955 | — | — | +0.601957 | 0.0150 (地板) | [0.0112, 0.0199] | 0.0137 | 0.96× | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
-| `win32` | 窗口/驱逐（M2） | 1536 (87.5%↓) | fp16 | 1.695384 | +0.211813 | — | — | +0.211815 | 0.0140 (地板) | [0.0104, 0.0188] | 0.0133 | 0.90× | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
-| `win64` | 窗口/驱逐（M2） | 3072 (75.0%↓) | fp16 | 1.564077 | +0.080506 | — | — | +0.080508 | 0.0589 | [0.0511, 0.0678] | 0.0166 | 3.77× | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
-| `win128` | 窗口/驱逐（M2） | 6144 (50.0%↓) | fp16 | 1.503634 | +0.020063 | — | — | +0.020065 | 0.1100 | [0.0994, 0.1216] | 0.0143 | 7.04× | `axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json` | 解析字节（非实测显存） |
-| `win144` | 窗口/驱逐（M2） | 6912 (43.8%↓) | fp16 | 1.497328 | +0.013757 ⚠不可排序 | — | — | +0.013759 | 0.1100 | [0.0994, 0.1216] | 0.0150 | 7.04× | `axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json` | 解析字节（非实测显存） |
-| `win160` | 窗口/驱逐（M2） | 7680 (37.5%↓) | fp16 | 1.492435 | +0.008864 ⚠不可排序 | — | — | +0.008866 | 0.1087 | [0.0982, 0.1202] | 0.0140 | 6.96× | `axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json` | 解析字节（非实测显存） |
-| `win176` | 窗口/驱逐（M2） | 8448 (31.2%↓) | fp16 | 1.489695 | +0.006124 ⚠不可排序 | — | — | +0.006126 | 0.1074 | [0.0970, 0.1189] | 0.0133 | 6.88× | `axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json` | 解析字节（非实测显存） |
-| `win192` | 窗口/驱逐（M2） | 9216 (25.0%↓) | fp16 | 1.487744 | +0.004173 ⚠不可排序 | — | — | +0.004175 | 0.1064 | [0.0960, 0.1178] | 0.0133 | 6.81× | `axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json` | 解析字节（非实测显存） |
-| `win16_anchor16` | 组合：窗口 × 锚点 | 1536 (87.5%↓) | fp16 | 1.858406 | +0.374835 | — | — | +0.374837 | 0.0618 | [0.0539, 0.0709] | 0.0130 | 3.96× | `axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json` | 解析字节（非实测显存） |
-| `win32_anchor32` | 组合：窗口 × 锚点 | 3072 (75.0%↓) | fp16 | 1.590539 | +0.106968 | — | — | +0.106970 | 0.0934 | [0.0836, 0.1042] | 0.0143 | 5.98× | `axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json` | 解析字节（非实测显存） |
-| `win32_anchor8` | 组合：窗口 × 锚点 | 1920 (84.4%↓) | fp16 | 1.633097 | +0.149526 | — | — | +0.149528 | 0.0290 | [0.0236, 0.0355] | 0.0150 | 1.85× | `axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json` | 解析字节（非实测显存） |
-| `mha` | 不压缩基线 | 12288 (0.0%↓) | mha | 1.482026 | +0.000000 | — | — | -0.001543 | 0.1530 | [0.1407, 0.1662] | 0.0107 | 9.79× | `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json` | 解析字节（非实测显存） |
-| `gqa` | 头共享（W3） | 3072 (75.0%↓) | mha | 1.496325 | +0.014299 | — | — | +0.012756 | 0.1689 | [0.1561, 0.1826] | 0.0137 | 10.81× | `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json` | 解析字节（非实测显存） |
-| `mqa` | 头共享（W3） | 1536 (87.5%↓) | mha | 1.493763 | +0.011737 ⚠不可排序 | — | — | +0.010194 | 0.2432 | [0.2283, 0.2586] | 0.0124 | 15.56× | `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json` | 解析字节（非实测显存） |
-| `gqa_int8` | 组合：头共享 × 量化 | 1536 (87.5%↓) | mha | 1.496489 | +0.014463 | +0.000164 | — | +0.012920 | 0.1686 | [0.1558, 0.1823] | 0.0130 | 10.79× | `axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json` | 解析字节（非实测显存） |
-| `mqa_int8` | 组合：头共享 × 量化 | 768 (93.8%↓) | mha | 1.494105 | +0.012079 ⚠不可排序 | +0.000342 | — | +0.010536 | 0.2448 | [0.2299, 0.2603] | 0.0120 | 15.67× | `axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json` | 解析字节（非实测显存） |
+| `fp16` | 不压缩基线 | 12288 (0.0%↓) | fp16 | 1.483571 | +0.000000 | — | — | +0.000002 | 0.1413 | [0.1294, 0.1540] | 0.0143 | 9.04× | `axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json` | 解析字节（非实测显存） |
+| `int8` | 量化（R1） | 6144 (50.0%↓) | fp16 | 1.483721 | +0.000150 ⚠不可排序 | — | — | +0.000152 | 0.1426 | [0.1307, 0.1554] | 0.0143 | 9.12× | `axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json` | 解析字节（非实测显存） |
+| `int4` | 量化（R1） | 3072 (75.0%↓) | fp16 | 1.529232 | +0.045661 | — | — | +0.045663 | 0.1247 | [0.1135, 0.1368] | 0.0127 | 7.98× | `axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json` | 解析字节（非实测显存） |
+| `win16` | 窗口/驱逐（M2） | 768 (93.8%↓) | fp16 | 2.085526 | +0.601955 | — | — | +0.601957 | 0.0150 (地板) | [0.0112, 0.0199] | 0.0137 | 0.96× | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
+| `win32` | 窗口/驱逐（M2） | 1536 (87.5%↓) | fp16 | 1.695384 | +0.211813 | — | — | +0.211815 | 0.0140 (地板) | [0.0104, 0.0188] | 0.0133 | 0.90× | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
+| `win64` | 窗口/驱逐（M2） | 3072 (75.0%↓) | fp16 | 1.564077 | +0.080506 | — | — | +0.080508 | 0.0589 | [0.0511, 0.0678] | 0.0166 | 3.77× | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 解析字节（非实测显存） |
+| `win128` | 窗口/驱逐（M2） | 6144 (50.0%↓) | fp16 | 1.503634 | +0.020063 | — | — | +0.020065 | 0.1100 | [0.0994, 0.1216] | 0.0143 | 7.04× | `axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json` | 解析字节（非实测显存） |
+| `win144` | 窗口/驱逐（M2） | 6912 (43.8%↓) | fp16 | 1.497328 | +0.013757 ⚠不可排序 | — | — | +0.013759 | 0.1100 | [0.0994, 0.1216] | 0.0150 | 7.04× | `axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json` | 解析字节（非实测显存） |
+| `win160` | 窗口/驱逐（M2） | 7680 (37.5%↓) | fp16 | 1.492435 | +0.008864 ⚠不可排序 | — | — | +0.008866 | 0.1087 | [0.0982, 0.1202] | 0.0140 | 6.96× | `axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json` | 解析字节（非实测显存） |
+| `win176` | 窗口/驱逐（M2） | 8448 (31.2%↓) | fp16 | 1.489695 | +0.006124 ⚠不可排序 | — | — | +0.006126 | 0.1074 | [0.0970, 0.1189] | 0.0133 | 6.88× | `axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json` | 解析字节（非实测显存） |
+| `win192` | 窗口/驱逐（M2） | 9216 (25.0%↓) | fp16 | 1.487744 | +0.004173 ⚠不可排序 | — | — | +0.004175 | 0.1064 | [0.0960, 0.1178] | 0.0133 | 6.81× | `axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json` | 解析字节（非实测显存） |
+| `win16_anchor16` | 组合：窗口 × 锚点 | 1536 (87.5%↓) | fp16 | 1.858406 | +0.374835 | — | — | +0.374837 | 0.0618 | [0.0539, 0.0709] | 0.0130 | 3.96× | `axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json` | 解析字节（非实测显存） |
+| `win32_anchor32` | 组合：窗口 × 锚点 | 3072 (75.0%↓) | fp16 | 1.590539 | +0.106968 | — | — | +0.106970 | 0.0934 | [0.0836, 0.1042] | 0.0143 | 5.98× | `axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json` | 解析字节（非实测显存） |
+| `win32_anchor8` | 组合：窗口 × 锚点 | 1920 (84.4%↓) | fp16 | 1.633097 | +0.149526 | — | — | +0.149528 | 0.0290 | [0.0236, 0.0355] | 0.0150 | 1.85× | `axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json` | 解析字节（非实测显存） |
+| `mha` | 不压缩基线 | 12288 (0.0%↓) | mha | 1.482026 | +0.000000 | — | — | -0.001543 | 0.1530 | [0.1407, 0.1662] | 0.0107 | 9.79× | `axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json` | 解析字节（非实测显存） |
+| `gqa` | 头共享（W3） | 3072 (75.0%↓) | mha | 1.496325 | +0.014299 | — | — | +0.012756 | 0.1689 | [0.1561, 0.1826] | 0.0137 | 10.81× | `axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json` | 解析字节（非实测显存） |
+| `mqa` | 头共享（W3） | 1536 (87.5%↓) | mha | 1.493763 | +0.011737 ⚠不可排序 | — | — | +0.010194 | 0.2432 | [0.2283, 0.2586] | 0.0124 | 15.56× | `axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json` | 解析字节（非实测显存） |
+| `gqa_int8` | 组合：头共享 × 量化 | 1536 (87.5%↓) | mha | 1.496489 | +0.014463 | +0.000164 | — | +0.012920 | 0.1686 | [0.1558, 0.1823] | 0.0130 | 10.79× | `axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json` | 解析字节（非实测显存） |
+| `mqa_int8` | 组合：头共享 × 量化 | 768 (93.8%↓) | mha | 1.494105 | +0.012079 ⚠不可排序 | +0.000342 | — | +0.010536 | 0.2448 | [0.2299, 0.2603] | 0.0120 | 15.67× | `axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json` | 解析字节（非实测显存） |
 | `gqa_int4` | 组合：头共享 × 量化 | 768 (93.8%↓) | mha | 1.592538 | +0.110512 | +0.096213 | — | +0.108969 | 0.1396 | [0.1278, 0.1524] | 0.0133 | 8.94× | `2616 gqa-12k-s0 × R1 int4（本批组合，无单一来源）` | 解析字节（非实测显存） |
 | `mqa_int4` | 组合：头共享 × 量化 | 384 (96.9%↓) | mha | 1.689346 | +0.207320 | +0.195583 | — | +0.205777 | 0.1709 | [0.1580, 0.1846] | 0.0117 | 10.94× | `2616 mqa-12k-s0 × R1 int4（本批组合，无单一来源）` | 解析字节（非实测显存） |
 | `win32_int8` | 组合：窗口/锚点 × 量化（本批） | 768 (93.8%↓) | fp16 | 1.695690 | +0.212119 | +0.000306 | — | +0.212121 | 0.0146 (地板) | [0.0110, 0.0195] | 0.0140 | 0.94× | `2615 win32 掩码 × R1 int8（本批组合，无单一来源）` | 解析字节（非实测显存） |
@@ -74,43 +74,43 @@
 | 点 | 本实验 bpc | 来源实验路径 | 来源值 | abs diff | 一致 |
 |---|---|---|---|---|---|
 
-| `fp16` | 1.483571 | `axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json` | 1.483571 | 0.0 | ✓ |
+| `fp16` | 1.483571 | `axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json` | 1.483571 | 0.0 | ✓ |
 
-| `int8` | 1.483721 | `axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json` | 1.483721 | 0.0 | ✓ |
+| `int8` | 1.483721 | `axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json` | 1.483721 | 0.0 | ✓ |
 
-| `int4` | 1.529232 | `axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json` | 1.529232 | 0.0 | ✓ |
+| `int4` | 1.529232 | `axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json` | 1.529232 | 0.0 | ✓ |
 
-| `win16` | 2.085526 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 2.085526 | 0.0 | ✓ |
+| `win16` | 2.085526 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 2.085526 | 0.0 | ✓ |
 
-| `win32` | 1.695384 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.695384 | 0.0 | ✓ |
+| `win32` | 1.695384 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.695384 | 0.0 | ✓ |
 
-| `win64` | 1.564077 | `axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.564077 | 0.0 | ✓ |
+| `win64` | 1.564077 | `axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json` | 1.564077 | 0.0 | ✓ |
 
-| `win128` | 1.503634 | `axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json` | 1.503634 | 0.0 | ✓ |
+| `win128` | 1.503634 | `axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json` | 1.503634 | 0.0 | ✓ |
 
-| `win144` | 1.497328 | `axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json` | 1.497328 | 0.0 | ✓ |
+| `win144` | 1.497328 | `axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json` | 1.497328 | 0.0 | ✓ |
 
-| `win160` | 1.492435 | `axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json` | 1.492435 | 0.0 | ✓ |
+| `win160` | 1.492435 | `axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json` | 1.492435 | 0.0 | ✓ |
 
-| `win176` | 1.489695 | `axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json` | 1.489695 | 0.0 | ✓ |
+| `win176` | 1.489695 | `axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json` | 1.489695 | 0.0 | ✓ |
 
-| `win192` | 1.487744 | `axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json` | 1.487744 | 0.0 | ✓ |
+| `win192` | 1.487744 | `axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json` | 1.487744 | 0.0 | ✓ |
 
-| `win16_anchor16` | 1.858406 | `axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json` | None | — | — |
+| `win16_anchor16` | 1.858406 | `axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json` | None | — | — |
 
-| `win32_anchor32` | 1.590539 | `axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json` | None | — | — |
+| `win32_anchor32` | 1.590539 | `axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json` | None | — | — |
 
-| `win32_anchor8` | 1.633097 | `axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json` | None | — | — |
+| `win32_anchor8` | 1.633097 | `axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json` | None | — | — |
 
-| `mha` | 1.482026 | `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json` | 1.482026 | 0.0 | ✓ |
+| `mha` | 1.482026 | `axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json` | 1.482026 | 0.0 | ✓ |
 
-| `gqa` | 1.496325 | `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json` | 1.496325 | 0.0 | ✓ |
+| `gqa` | 1.496325 | `axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json` | 1.496325 | 0.0 | ✓ |
 
-| `mqa` | 1.493763 | `axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json` | 1.493763 | 0.0 | ✓ |
+| `mqa` | 1.493763 | `axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json` | 1.493763 | 0.0 | ✓ |
 
-| `gqa_int8` | 1.496489 | `axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json` | None | — | — |
+| `gqa_int8` | 1.496489 | `axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json` | None | — | — |
 
-| `mqa_int8` | 1.494105 | `axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/results.json` | None | — | — |
+| `mqa_int8` | 1.494105 | `axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json` | None | — | — |
 
 | `gqa_int4` | 1.592538 | `2616 gqa-12k-s0 × R1 int4（本批组合，无单一来源）` | None | — | — |
 

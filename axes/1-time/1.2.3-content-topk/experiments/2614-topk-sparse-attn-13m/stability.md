@@ -30,7 +30,7 @@
 ## 2. 与同配置历史 run 的逐点交叉对照（跨批可比性）
 
 `full` 臂与 ticket 30 的 `sequential-12k-s0` 臂（同 d256/L8/mlp4/12k/bs32/seq256/seed0，
-`axes/C-vertical/C3-inter-layer-topology/.../2613-...`）：
+`archive/wiki-legacy/axes/C-vertical/C3-inter-layer-topology/.../2613-...`）：
 
 - 第 0 步 loss **逐位相同**（5.3131）⇒ 初始化与数据流一致；
 - 61 个采样点上 loss 最大差 **0.0167**（step 600）、均值 0.005 ⇒ 属 bf16 kernel 非确定性

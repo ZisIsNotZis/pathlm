@@ -14,23 +14,23 @@
 | 主干 clean bpc / t+1 acc | 1.4836 / 0.6979（eval 24×16 窗口，口径见 2610/MODEL.md） |
 | SHA-256 | `86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2` |
 | 体积 | 54,193,675 B（54.2 MB） |
-| 文件 | `axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt` |
+| 文件 | `axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt` |
 
 `run.py::load_trunk` 在加载前**断言 sha256**（不匹配直接 `SystemExit`）。
-锚点来源：`axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/MODEL.md`。
+锚点来源：`axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/MODEL.md`。
 
 ## 生成命令
 
 ```bash
-python3 axes/M-carrier/M1-carrier-type/experiments/2617-longrange-task-battery/run.py
+python3 axes/1-time/1.1.4.1-explicit-memory/experiments/2617-longrange-task-battery/run.py
 ```
 
 被复用的主干由 2610 生成：
 
 ```bash
 python3 train_jumphead.py \
-  --config axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/config.json \
-  --out-dir axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m
+  --config axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/config.json \
+  --out-dir axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m
 ```
 
 ## 本实验产出的其它落盘

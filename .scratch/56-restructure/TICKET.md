@@ -192,3 +192,85 @@
 
 - 本 WP 的 PASS 判定须由**新的 fresh 独立复核**给出（复核者不得为本次 writer）；
   详见 `.scratch/56-restructure/REPAIR-foundation.md` §4。
+
+---
+
+## 7. WP-M2.8 整合与收尾（M2 integrator）
+
+时间：2026-10-13T12:2x+08:00 ｜ actor：worker（fresh 上下文，**单一写入者**；本轮无其它 writer 在跑）
+契约：`docs/structure.md` §12/§13/§15、`docs/research-schema.md`、`.scratch/56-restructure/MAPPING.md`。
+
+### 7.1 输入落盘
+
+- 7 份轴迁移 WP 报告（`wp1`…`wp7`）与 4 份独立复核报告（`rev-axis1/2/6/rest`）**原样复制入库**
+  到 `.scratch/56-restructure/wp-reports/`（此前只在 subagent artifact 目录）；`diff -r` 验证逐字节一致。
+
+### 7.2 复核发现逐条处置
+
+| 发现 | 位置 | 处置 |
+|---|---|---|
+| rev-axis2 **N1**（迁入证据内仍写旧家路径） | `axes/2-depth/**/experiments/**` 等全树 | 全树路径改写（见 §7.3） |
+| rev-axis6 **D2**（backfill 旧 schema stub） | `axes/6-predict/{6.2,6.4}/experiments/{2512,2513,2521,2523e}-*` | **保留**：4 个目录各只含 1 份 backfill README，但正文含测量结论（如 2512「oracle 0.682 ≈ node-1 0.693；deploy 0.547 < direct 0.560」），按调度约束「有证据者保留并说明」不删；已登记为未决（§7.6） |
+| rev-axis6 **D3**（`6.4` 顶层 status 高报） | `axes/6-predict/6.4-training-fill/project.yaml` | `status: 已完成 → 进行中`、`ended → ""`；依据 `docs/research-schema.md` §7（milestone 要 n≥2、WP1 进行中/WP2 未开始、gaps 自述无 n≥2）；数字与 conclusion 未动，change_log 追加 |
+| rev-axis6 **D4**（`chain_mode` 默认 `"latent"` 已被否证） | `pathlm/config.py:83` | **只报告不擅改**（改默认 = 行为变更）；登记未决（§7.6） |
+| rev-axis6 **D5** / 55-review R-7（`docs/` 措辞分叉） | `docs/methodology.md`、`docs/playbook.md` | 「净亏」改为「代价轴 >1（`τ≤γ` 范式定义性质，非亏损发现）」；playbook 定律 8 去掉「实为口径事故」变更叙事、改为当前事实句 |
+| rev-axis2 **N6**（旧引擎悬空引用） | `pathlm/{decode,config,slider,depth_ar}.py`、`slider.py`、`probe_frontier.py` | `docs/mental_model.md`（已归档）→ `archive/legacy-docs/mental_model.md`（仅注释路径，无行为变更） |
+| rev-axis1 **A-R4**（`*.md.md`） | `.scratch/doc-log/**` 83 个 | `git mv` 去掉一个 `.md`（`*.md.md → *.md`），零冲突 |
+| rev-axis1 **1.3 歧义** | `docs/structure.md` §12 | `1.3`、`6.1` 的「目录」列改为台账 `axes/7-references/README.md`（与 §13.4 自洽；两目录本就不存在） |
+| **role_map 实名** | 全部 `project.yaml` | 本轮不臆造；`docs/research-schema.md` §4 注明「实名在轴 lead 指派时填（M3）」；登记未决（§7.6） |
+| rev-rest **N1**（新 SSOT 指向待退役旧文件） | `project.yaml` `sota_baseline` 指向 `axes/{W-width,G-policy,F-iteration,H-horizon}/PRIOR_ART*.md` | 旧树退役后指针改指 `archive/wiki-legacy/...`，「待 integrator 退役」改为「已随旧树退役归档」 |
+| rev-rest **N2**（`5.1`/`3.2.1` 顶层 `已完成` 与未完 WP 并存） | `axes/5-quant/5.1-kv-quant`、`axes/3-width/3.2.1-readout-reparam` | **不改**（复核自判「可辩护取值」）；登记未决（§7.6） |
+
+### 7.3 路径改写（N1 及同类）
+
+- 口径：**只改路径 token，测量数字零改动**。用 `ce2610a→HEAD` 的 `git diff -M` 重命名表建
+  「旧前缀 → 新前缀」映射（文件级 + `experiments/` 及更深目录级；另加「旧轴根 → `archive/wiki-legacy/axes/<旧轴>`」），
+  按最长前缀替换；对 `archive/dropped/…` 等既有归档路径加负向断言不误改。
+- 覆盖：新树 `axes/1-time…9-backlog/**` + `tools/evalkit/*.py` + `SCHEMA.md` + `pathlm/recon_signal.py` + `docs/**`。
+- 规模：**324 个文件、1474 处替换**；含 `.md/.yaml/.json/.py/.sh/.txt/.stdout/.runlog/.sha256`（原始转录日志的旧路径也一并改写，理由见 §7.6）。
+- **验证口径**：把「含 `axes/` 的路径 run」全部置为占位符后比较数字多重集，324/324 文件**完全一致** ⇒ 仅路径变化。
+- 改写后新树内**非归档**的旧轴路径引用 = 0（`python3` 扫描 `axes/1-time…9-backlog`）。
+
+### 7.4 退役（`docs/structure.md` §15）
+
+- **证据不丢失核验**：`ce2610a` 时旧轴 `<格>/experiments/**` 下 **1562** 个 git 跟踪文件（不含自动索引 README）
+  → 100% 命中 `git diff -M` 的 R-rename，rename 目标 100% 落盘存在；其中 **1380 个 R100（逐字节相同）**、
+  182 个相似度 <100（复核确认为路径指针改写）。5 个自动索引 `experiments/README.md` 为 D（删除，非研究证据，新家各有新索引）。
+- **迁空核验**：退役前旧 9 轴工作树共 **85 个文件**，全部只是旧课题页 `README.md` / `PRIOR_ART*.md` / 旧实验索引，**无 experiments 证据**。
+- **退役动作**（`git mv`）：9 个旧轴目录 + `catalog.yaml` + `INDEX.md` +
+  `tools/{build_wiki,check_catalog_strict,backfill_legacy}.py` + `tests/test_build_wiki_manual.py`
+  → `archive/wiki-legacy/`（共 91 个文件，只读保留，不删）。
+- **工作树既有未提交改动**（`axes/C-vertical/{README,C1-layers-per-token/README}.md`、`catalog.yaml`、`INDEX.md`）：
+  其内容已由 `2.1.1`（C1）/新树承接，本轮**随旧树一并归档**（未提交修订保存在 `archive/wiki-legacy/` 的对应文件里），未回滚、未丢弃。
+- 退役后 `find axes -type f` = **2425**（退役前 2510 − 85 旧轴文件）；`git ls-files axes` = **1648**（1733 − 85）。
+
+### 7.5 门命令真实输出（单独跑，不并发）
+
+```
+$ python3 tools/summary.py --check
+OK：46 个 project.yaml 全部符合 docs/research-schema.md。            # exit 0
+$ python3 tools/check_tree.py
+OK：46 个 project.yaml 全部符合 docs/research-schema.md。            # exit 0
+$ python3 tools/check_schema.py     # 转调
+OK：46 个 project.yaml 全部符合 docs/research-schema.md。            # exit 0
+$ python3 -m pytest tests/ -q
+815 passed in 95.15s (0:01:35)                                       # exit 0
+```
+
+- pytest **827 → 815（−12）**：差额恰为退役工具的 `tests/test_build_wiki_manual.py`（9 个测试函数，其中 1 个 4 参数 ⇒ 12 个用例）；
+  无其它失败/错误。§12 自检脚本：`OK：§12 行与磁盘/§13.4 一致`（57 行，参照行 = `1.3`/`6.1`）。
+
+### 7.6 未决（需授权/他人接手的项）
+
+1. **role_map 实名**：全部 46 份 `project.yaml` 的 owner/writer/reviewer/integrator 仍为角色占位；
+   按 M1 计划「M2 派发时填实名」本轮未执行，现顺延到 **M3（轴 lead 指派时）**（见 `docs/research-schema.md` §4）。
+2. **`pathlm/config.py` `chain_mode` 默认 `"latent"`**：该默认选的是已被否证的旧 `T∘T` 路径；
+   改默认 = **行为变更**，本 WP **只报告不擅改**。需产品/引擎 owner 决定是否改默认或标死。
+3. **backfill 旧 schema stub（4 个）**：`axes/6-predict/{6.2,6.4}/experiments/{2512,2513,2521,2523e}-*/README.md`
+   含旧 schema front-matter 与旧轴 id，但正文含测量结论 ⇒ 依「有证据者保留」未删；如要清，需先把结论迁入新契约。
+4. **顶层 `status` 与未完 WP 并存**：`5.1`（WP2 未开始）、`3.2.1`（WP4 未开始）顶层 `已完成`；
+   复核判「可辩护」，本轮未改；如需统一口径（如全部改「进行中」），需先定 `status` 与 WP 语义的对应规则。
+5. **0.014 噪声带的跨轴身份**：仍被多轴当可排序阈值用（55-review P6 记其来源自否）；属框架性取舍，非 integrator 自决。
+6. **原始转录日志的旧路径**：`axes/**` 内 `.txt/.stdout/.runlog` 的旧轴路径已按 §7.3 一并改写为当前路径
+   （`[run] <时间> ckpts=[…]` 这类行也随之变化）。理由：全树路径可解析一致；数字零改动。若下游偏好保留
+   原始转录字面，可 revert 这 38 个文件（清单见 WP-M2.8 报告）。

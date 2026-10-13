@@ -54,7 +54,7 @@ class PathConfig:
     # inference, exit at the first depth whose prob_0 clears exit_threshold.
     w_dense_exit: float = 0.0
     exit_threshold: float = 0.9
-    # Probe-style depth head (mental_model §4): supervise the per-depth MTP
+    # Probe-style depth head (archive/legacy-docs/mental_model.md §4): supervise the per-depth MTP
     # block on a STOP-GRAD trunk — the depth head is a readout probe, not a
     # training signal. Motivation: dense-exit's trunk gradients destroyed
     # retry refinement (ticket 14 ALLOC antagonism); with the trunk untouched

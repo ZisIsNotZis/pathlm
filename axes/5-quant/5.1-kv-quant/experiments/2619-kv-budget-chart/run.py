@@ -308,11 +308,11 @@ def make_logits_fn(model, spec: dict, T: int, device: str):
 
 def source_values() -> dict:
     """来源实验（R1 / W3 / M2-2615）落盘值的只读摘录，用于逐一对照。"""
-    p_r1 = os.path.join(ROOT, "axes/R-references/R1-quantization/experiments/"
+    p_r1 = os.path.join(ROOT, "axes/5-quant/5.1-kv-quant/experiments/"
                               "2614-kv-quant-eval-13m/results.json")
-    p_w3 = os.path.join(ROOT, "axes/W-width/W3-kv-head-sharing/experiments/"
+    p_w3 = os.path.join(ROOT, "archive/wiki-legacy/axes/W-width/W3-kv-head-sharing/experiments/"
                               "2616-gqa-mqa-13m/results.json")
-    p_m2 = os.path.join(ROOT, "axes/M-carrier/M2-carrier-compression/experiments/"
+    p_m2 = os.path.join(ROOT, "axes/1-time/1.1.4.2-compression/experiments/"
                               "2615-retention-retrieval-leg-13m/results.json")
     out = {"R1": {}, "W3": {}, "M2": {}}
     d = json.load(open(p_r1))
@@ -693,11 +693,11 @@ def main() -> int:
 def _source_of(cfg: dict, arm: str) -> str:
     spec = cfg["arms"][arm]
     if spec["kind"] == "quant":
-        return "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json"
+        return "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json"
     if spec["kind"] == "window":
-        return ("axes/M-carrier/M2-carrier-compression/experiments/"
+        return ("axes/1-time/1.1.4.2-compression/experiments/"
                 "2615-retention-retrieval-leg-13m/results.json")
-    return "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json"
+    return "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json"
 
 
 def _render_table(cfg, points, controls, rec) -> str:

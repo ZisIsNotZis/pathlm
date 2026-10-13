@@ -40,7 +40,7 @@ def _repo_root(start: str) -> str:
 
 
 ROOT = _repo_root(HERE)
-SPEC_DIR = os.path.join(ROOT, "axes/H-horizon/H3-composition/experiments/2631-spec-three-arms")
+SPEC_DIR = os.path.join(ROOT, "axes/6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms")
 for _p in (ROOT, SPEC_DIR, HERE):
     if _p not in sys.path:
         sys.path.insert(0, _p)

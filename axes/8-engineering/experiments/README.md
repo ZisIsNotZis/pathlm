@@ -9,4 +9,4 @@
 
 > 旧格 `P5-loss-weighting` 按 `.scratch/56-restructure/MAPPING.md` §1 迁入本台账：其
 > `experiments/2523b-shallow-weight-sweep` 整目录 `git mv` 到本目录（一格一份家，不复制）。
-> 旧格目录与其 README 仍保留在 `axes/P-modifiers/P5-loss-weighting/**`，待 integrator 统一退役。
+> 旧格目录与其 README 仍保留在 `archive/wiki-legacy/axes/P-modifiers/P5-loss-weighting/**`，旧树退役已由本轮 integrator 完成（旧目录归档只读保留）。

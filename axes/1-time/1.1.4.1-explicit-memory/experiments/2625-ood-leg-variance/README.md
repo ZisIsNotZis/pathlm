@@ -52,7 +52,7 @@
 ## 4. 判据线（**逐字**抄录 W2 契约；仅把已废的台账指代替换为「写入 `catalog.yaml`」）
 
 > ## W2 · 近 OOD 判决腿的方差量化（≈26–40 min GPU）
-> - 目录：`axes/M-carrier/M1-carrier-type/experiments/2625-ood-leg-variance/`
+> - 目录：`axes/1-time/1.1.4.1-explicit-memory/experiments/2625-ood-leg-variance/`
 > - 动机：Z3 发现该腿（距离 241–255，**超过训练上限 240**，违反 §17.18）同配置两次独立训练差 **15×**（0.93% vs 15.33%）。
 > - 干预：同一配置（GQA+carry+window16）**seed=1 与 seed=2 各一跑**（≈11 min/臂，按臂释放锁），
 >   加上已有 seed=0 共 **n=3**；评测在**同一批位置**上做。

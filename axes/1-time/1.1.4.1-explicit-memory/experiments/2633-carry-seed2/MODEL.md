@@ -30,8 +30,8 @@
 ## 复现路径
 
 ```bash
-bash axes/M-carrier/M1-carrier-type/experiments/2633-carry-seed2/train_seed2.sh     # seed=2 三臂训练（按臂释放 GPU 锁，臂间 ≥60s）
-bash axes/M-carrier/M1-carrier-type/experiments/2633-carry-seed2/eval.sh           # 九臂一次评完（纯推理，整程 <10 min 持锁）
+bash axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train_seed2.sh     # seed=2 三臂训练（按臂释放 GPU 锁，臂间 ≥60s）
+bash axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/eval.sh           # 九臂一次评完（纯推理，整程 <10 min 持锁）
 ```
 
 ## 说明

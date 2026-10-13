@@ -2,7 +2,7 @@
 
 > 位置说明（SCHEMA §22 / 本波写入者纪律）：本波 `tests/**` 由 L1 线独占，故本单测**放在
 > 本实验目录内**（与 `W4/2613`、`M1/2620` 的既例一致），用
-> `python3 -m pytest axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/test_causal_check.py -q`
+> `python3 -m pytest axes/5-quant/5.1-kv-quant/experiments/2631-kv-budget-causal/test_causal_check.py -q`
 > 运行；`tests/` 全量套件不含它。
 
 钉住 `causal_check.py` 的四件事（每个语义开关都要有可失败单测）：

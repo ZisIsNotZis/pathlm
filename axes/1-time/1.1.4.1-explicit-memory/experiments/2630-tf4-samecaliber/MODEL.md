@@ -18,7 +18,7 @@
 ## 2. 生成命令
 
 ```bash
-bash axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/train_arms.sh
+bash axes/1-time/1.1.4.1-explicit-memory/experiments/2630-tf4-samecaliber/train_arms.sh
 ```
 
 - 两臂逐字段一致（唯一变量 = `--carry-write delta`），**训练数据 = enwik8**
@@ -41,5 +41,5 @@ bash axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/train_arms.
 
 本线**不改任何共享引擎/入口文件**（`pathlm/**`、`train_depth_ar.py`、
 `tools/evalkit/**` 均未修改），因此不存在「与其它线的未提交改动重叠」的口径重叠问题。
-本线新增的文件全部在 `axes/M-carrier/M1-carrier-type/experiments/2630-tf4-samecaliber/`
+本线新增的文件全部在 `axes/1-time/1.1.4.1-explicit-memory/experiments/2630-tf4-samecaliber/`
 与 `tests/test_tf4_samecaliber_13m.py`。

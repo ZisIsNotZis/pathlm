@@ -14,7 +14,7 @@ python3 train_depth_ar.py gqa_carry_win_s1 --d 256 --layers 12 --heads 8 \
   --batch-size 32 --lr 1e-3 --seed 1 --synth-task assoc-mqar --synth-pairs 8 \
   --synth-queries 8 --synth-gap 14 --carry-write delta --train-window 16 \
   --train-anchors 0 --n-kv-heads 2 \
-  --out-root axes/M-carrier/M1-carrier-type/experiments/2625-ood-leg-variance/train
+  --out-root axes/1-time/1.1.4.1-explicit-memory/experiments/2625-ood-leg-variance/train
 # s2：同上，仅 --seed 2 → run 名 gqa_carry_win_s2
 ```
 

@@ -7,7 +7,7 @@
 3. 至少一条变异打在**引擎修复那一行**（`pathlm/model.py` 的 `cond.shape[1] >= h.shape[1]`），
    保证「修复真的被单测钉住」。
 
-跑法：`python3 axes/H-horizon/H3-composition/experiments/2631-spec-three-arms/mutate.py`
+跑法：`python3 axes/6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms/mutate.py`
 """
 
 from __future__ import annotations

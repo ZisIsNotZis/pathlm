@@ -1,6 +1,6 @@
 """2613 · 契约 F 的语义开关在**普通 dense 形态**下的可失败单测。
 
-Run: python3 -m pytest axes/W-width/W4-readout-geometry/experiments/2613-readout-reparam-dense-13m/test_dense_readout_reparam.py -q
+Run: python3 -m pytest axes/3-width/3.2.1-readout-reparam/experiments/2613-readout-reparam-dense-13m/test_dense_readout_reparam.py -q
 
 钉住三件事（本实验新增的语义接缝 = 「读出重参数化作用在 dense 单出口路径上」）：
 1. 开关关闭时 dense 路径逐位还原 v1（`logits = h.float() @ Eᵀ`）；

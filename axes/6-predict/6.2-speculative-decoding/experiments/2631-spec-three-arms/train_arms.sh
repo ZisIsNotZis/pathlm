@@ -10,7 +10,7 @@
 # 四臂（唯一变量 = seed；同一 scale 内配方逐字段一致；6000 步 × bs32 × T512 = 98.3M token）。
 set -u
 cd "$(dirname "$0")/../../../../.."   # repo root
-EXP=axes/H-horizon/H3-composition/experiments/2631-spec-three-arms
+EXP=axes/6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms
 LOCK=/tmp/pathlm_gpu.lock
 
 acquire() {

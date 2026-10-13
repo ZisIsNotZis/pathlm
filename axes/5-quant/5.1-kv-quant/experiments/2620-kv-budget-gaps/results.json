@@ -24,15 +24,15 @@
   },
   "checkpoints": {
    "trunk": {
-    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
     "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
     "size_bytes": 54193675,
     "role": "trunk 族（量化 / 窗口 / 窗口+锚点）的被测模型：13.5M dense decoder-only，12k 步，clean bpc 1.483569",
-    "train_ref": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/MODEL.md"
+    "train_ref": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/MODEL.md"
    },
    "head_family": {
-    "root": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs",
-    "registry": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/model_hashes.json",
+    "root": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs",
+    "registry": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/model_hashes.json",
     "arms": {
      "mha": {
       "run": "mha-12k-s0",
@@ -238,7 +238,7 @@
    "local_prior": "longrange_tasks.local_prior_accuracy(k=8)",
    "corrupt_source": "copy 任务源片段整段换随机符号（逐臂，源区间 = [src_pos, src_pos+copy_len)）——测读数是否真来自被搬运的信息",
    "baseline_anchor_bpc": 1.483569,
-   "baseline_anchor_source": "axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/results.json::instrument.bpc_full_release_path"
+   "baseline_anchor_source": "axes/1-time/1.1.4.2-compression/experiments/2614-kv-ablation-retention-13m/results.json::instrument.bpc_full_release_path"
   },
   "eval": {
    "bpc_method": "run.py::bpc_of（与 2619 同一统一路径：因果移位 CE token 平均，逐臂同一 logits_fn 接口）",
@@ -266,9 +266,9 @@
    "checkpoint_sha256_asserted": true,
    "new_module": "gaps_arms.py（quant_head / window_anchor 的唯一语义层；§22 第 7 条新逻辑进新模块）",
    "code_anchors": [
-    "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/run.py",
-    "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/gaps_arms.py",
-    "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/run.py",
+    "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/run.py",
+    "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/gaps_arms.py",
+    "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/run.py",
     "tools/evalkit/longrange_tasks.py",
     "tools/evalkit/kv_quant.py",
     "tools/evalkit/retention.py"
@@ -287,7 +287,7 @@
    "nondeterminism_note": "纯推理、无随机采样；同 seed 重跑应逐位相同"
   },
   "compare_against_2619": {
-   "results": "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json",
+   "results": "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json",
    "arms": [
     "fp16",
     "int8",
@@ -415,7 +415,7 @@
    {
     "arm": "fp16",
     "this_bpc": 1.483571,
-    "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+    "source": "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json",
     "source_bpc": 1.483571,
     "abs_diff": 0.0,
     "match": true
@@ -423,7 +423,7 @@
    {
     "arm": "int8",
     "this_bpc": 1.483721,
-    "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+    "source": "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json",
     "source_bpc": 1.483721,
     "abs_diff": 0.0,
     "match": true
@@ -431,7 +431,7 @@
    {
     "arm": "win16",
     "this_bpc": 2.085526,
-    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
     "source_bpc": 2.085526,
     "abs_diff": 0.0,
     "match": true
@@ -439,7 +439,7 @@
    {
     "arm": "win32",
     "this_bpc": 1.695384,
-    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
     "source_bpc": 1.695384,
     "abs_diff": 0.0,
     "match": true
@@ -447,7 +447,7 @@
    {
     "arm": "win64",
     "this_bpc": 1.564077,
-    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
     "source_bpc": 1.564077,
     "abs_diff": 0.0,
     "match": true
@@ -455,7 +455,7 @@
    {
     "arm": "mha",
     "this_bpc": 1.482026,
-    "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+    "source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json",
     "source_bpc": 1.482026,
     "abs_diff": 0.0,
     "match": true
@@ -463,7 +463,7 @@
    {
     "arm": "gqa",
     "this_bpc": 1.496325,
-    "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+    "source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json",
     "source_bpc": 1.496325,
     "abs_diff": 0.0,
     "match": true
@@ -471,7 +471,7 @@
    {
     "arm": "mqa",
     "this_bpc": 1.493763,
-    "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+    "source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json",
     "source_bpc": 1.493763,
     "abs_diff": 0.0,
     "match": true
@@ -479,49 +479,49 @@
    {
     "arm": "gqa_int8",
     "this_bpc": 1.496489,
-    "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json × R1 int8（本批组合，无单一来源）",
+    "source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json × R1 int8（本批组合，无单一来源）",
     "source_bpc": null,
     "match": null
    },
    {
     "arm": "mqa_int8",
     "this_bpc": 1.494105,
-    "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json × R1 int8（本批组合，无单一来源）",
+    "source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json × R1 int8（本批组合，无单一来源）",
     "source_bpc": null,
     "match": null
    },
    {
     "arm": "win16_anchor16",
     "this_bpc": 1.858406,
-    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
     "source_bpc": null,
     "match": null
    },
    {
     "arm": "win32_anchor32",
     "this_bpc": 1.590539,
-    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
     "source_bpc": null,
     "match": null
    },
    {
     "arm": "win32_anchor8",
     "this_bpc": 1.633097,
-    "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+    "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
     "source_bpc": null,
     "match": null
    }
   ],
   "sources": {
-   "R1": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
-   "W3": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
-   "M2": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json"
+   "R1": "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json",
+   "W3": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json",
+   "M2": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json"
   },
   "all_matched": true,
   "note": "参考臂应与其来源实验逐位一致；新组合臂没有来源（match=None，属预期）。"
  },
  "reproducibility_vs_2619": {
-  "compared_to": "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/results.json",
+  "compared_to": "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json",
   "rows": [
    {
     "arm": "fp16",
@@ -598,7 +598,7 @@
    "family": "trunk",
    "class": "baseline",
    "checkpoint": {
-    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
     "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
     "size_bytes": 54193675,
     "sha256_verified": true
@@ -842,7 +842,7 @@
    "local_prior_induction": 0.015625,
    "local_prior_var_recall": 0.019531,
    "mark": "b",
-   "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+   "source": "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json",
    "bytes_per_position": 12288.0,
    "factor_value_bytes": 2.0,
    "factor_n_kv_heads_eff": 8,
@@ -862,7 +862,7 @@
    "family": "trunk",
    "class": "quant",
    "checkpoint": {
-    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
     "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
     "size_bytes": 54193675,
     "sha256_verified": true
@@ -1108,7 +1108,7 @@
    "local_prior_induction": 0.015625,
    "local_prior_var_recall": 0.019531,
    "mark": "8",
-   "source": "axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/results.json",
+   "source": "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json",
    "bytes_per_position": 6144.0,
    "factor_value_bytes": 1.0,
    "factor_n_kv_heads_eff": 8,
@@ -1128,7 +1128,7 @@
    "family": "trunk",
    "class": "window",
    "checkpoint": {
-    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
     "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
     "size_bytes": 54193675,
     "sha256_verified": true
@@ -1371,7 +1371,7 @@
    "local_prior_induction": 0.015625,
    "local_prior_var_recall": 0.019531,
    "mark": "w",
-   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
    "bytes_per_position": 768.0,
    "factor_value_bytes": 2.0,
    "factor_n_kv_heads_eff": 8,
@@ -1391,7 +1391,7 @@
    "family": "trunk",
    "class": "window",
    "checkpoint": {
-    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
     "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
     "size_bytes": 54193675,
     "sha256_verified": true
@@ -1634,7 +1634,7 @@
    "local_prior_induction": 0.015625,
    "local_prior_var_recall": 0.019531,
    "mark": "w",
-   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
    "bytes_per_position": 1536.0,
    "factor_value_bytes": 2.0,
    "factor_n_kv_heads_eff": 8,
@@ -1654,7 +1654,7 @@
    "family": "trunk",
    "class": "window",
    "checkpoint": {
-    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
     "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
     "size_bytes": 54193675,
     "sha256_verified": true
@@ -1897,7 +1897,7 @@
    "local_prior_induction": 0.015625,
    "local_prior_var_recall": 0.019531,
    "mark": "w",
-   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
    "bytes_per_position": 3072.0,
    "factor_value_bytes": 2.0,
    "factor_n_kv_heads_eff": 8,
@@ -1917,7 +1917,7 @@
    "family": "head",
    "class": "baseline",
    "checkpoint": {
-    "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt",
+    "path": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt",
     "sha256": "557453eb12b56a453b29ea279cdbbc0969cfa6bf0dbe1cdbd9965cd6cec62528",
     "size_bytes": 54193675,
     "sha256_verified": true
@@ -2748,7 +2748,7 @@
    "local_prior_induction": 0.015625,
    "local_prior_var_recall": 0.019531,
    "mark": "M",
-   "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+   "source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json",
    "bytes_per_position": 12288.0,
    "factor_value_bytes": 2.0,
    "factor_n_kv_heads_eff": 8,
@@ -2768,7 +2768,7 @@
    "family": "head",
    "class": "head",
    "checkpoint": {
-    "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt",
+    "path": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt",
     "sha256": "bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00",
     "size_bytes": 49456651,
     "sha256_verified": true
@@ -3521,7 +3521,7 @@
    "local_prior_induction": 0.015625,
    "local_prior_var_recall": 0.019531,
    "mark": "G",
-   "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+   "source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json",
    "bytes_per_position": 3072.0,
    "factor_value_bytes": 2.0,
    "factor_n_kv_heads_eff": 2,
@@ -3541,7 +3541,7 @@
    "family": "head",
    "class": "head",
    "checkpoint": {
-    "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/mqa-12k-s0/model.pt",
+    "path": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mqa-12k-s0/model.pt",
     "sha256": "24bdfe7f1549107175e9343444372a6abe3aba7c6ba2423e8ab069a145b1ea97",
     "size_bytes": 48667147,
     "sha256_verified": true
@@ -4281,7 +4281,7 @@
    "local_prior_induction": 0.015625,
    "local_prior_var_recall": 0.019531,
    "mark": "Q",
-   "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json",
+   "source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json",
    "bytes_per_position": 1536.0,
    "factor_value_bytes": 2.0,
    "factor_n_kv_heads_eff": 1,
@@ -4301,7 +4301,7 @@
    "family": "quant_head",
    "class": "quant_head",
    "checkpoint": {
-    "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt",
+    "path": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt",
     "sha256": "bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00",
     "size_bytes": 49456651,
     "sha256_verified": true,
@@ -5068,7 +5068,7 @@
    "local_prior_induction": 0.015625,
    "local_prior_var_recall": 0.019531,
    "mark": "g",
-   "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json × R1 int8（本批组合，无单一来源）",
+   "source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json × R1 int8（本批组合，无单一来源）",
    "bytes_per_position": 1536.0,
    "factor_value_bytes": 1.0,
    "factor_n_kv_heads_eff": 2,
@@ -5090,7 +5090,7 @@
    "family": "quant_head",
    "class": "quant_head",
    "checkpoint": {
-    "path": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs/mqa-12k-s0/model.pt",
+    "path": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mqa-12k-s0/model.pt",
     "sha256": "24bdfe7f1549107175e9343444372a6abe3aba7c6ba2423e8ab069a145b1ea97",
     "size_bytes": 48667147,
     "sha256_verified": true,
@@ -5844,7 +5844,7 @@
    "local_prior_induction": 0.015625,
    "local_prior_var_recall": 0.019531,
    "mark": "q",
-   "source": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/results.json × R1 int8（本批组合，无单一来源）",
+   "source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json × R1 int8（本批组合，无单一来源）",
    "bytes_per_position": 768.0,
    "factor_value_bytes": 1.0,
    "factor_n_kv_heads_eff": 1,
@@ -5866,7 +5866,7 @@
    "family": "trunk",
    "class": "window_anchor",
    "checkpoint": {
-    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
     "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
     "size_bytes": 54193675,
     "sha256_verified": true
@@ -6111,7 +6111,7 @@
    "local_prior_induction": 0.015625,
    "local_prior_var_recall": 0.019531,
    "mark": "a",
-   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
    "bytes_per_position": 1536.0,
    "factor_value_bytes": 2.0,
    "factor_n_kv_heads_eff": 8,
@@ -6131,7 +6131,7 @@
    "family": "trunk",
    "class": "window_anchor",
    "checkpoint": {
-    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
     "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
     "size_bytes": 54193675,
     "sha256_verified": true
@@ -6376,7 +6376,7 @@
    "local_prior_induction": 0.015625,
    "local_prior_var_recall": 0.019531,
    "mark": "A",
-   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
    "bytes_per_position": 3072.0,
    "factor_value_bytes": 2.0,
    "factor_n_kv_heads_eff": 8,
@@ -6396,7 +6396,7 @@
    "family": "trunk",
    "class": "window_anchor",
    "checkpoint": {
-    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
     "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
     "size_bytes": 54193675,
     "sha256_verified": true
@@ -6641,7 +6641,7 @@
    "local_prior_induction": 0.015625,
    "local_prior_var_recall": 0.019531,
    "mark": "n",
-   "source": "axes/M-carrier/M2-carrier-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
+   "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json",
    "bytes_per_position": 1920.0,
    "factor_value_bytes": 2.0,
    "factor_n_kv_heads_eff": 8,
@@ -6662,9 +6662,9 @@
   "isolation_note": "判据 C2：解析字节是本图的**横轴**；实测显存峰值单列在此，**不**进横轴。评测实现把 K/V 立刻反量化 / 按掩码取子集（SDPA 仍算 T×T 分数矩阵）⇒ 实测峰值不随档下降。"
  },
  "code": {
-  "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/run.py": "2ab3cb878b52153b",
-  "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/gaps_arms.py": "2787e99678bcfd62",
-  "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/run.py": "7920d2002e9eb34c",
+  "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/run.py": "2ab3cb878b52153b",
+  "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/gaps_arms.py": "2787e99678bcfd62",
+  "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/run.py": "7920d2002e9eb34c",
   "tools/evalkit/longrange_tasks.py": "4a02b93f19db8e99",
   "tools/evalkit/kv_quant.py": "1630f4519fa76562",
   "tools/evalkit/retention.py": "8320f03a2ecf74e3"

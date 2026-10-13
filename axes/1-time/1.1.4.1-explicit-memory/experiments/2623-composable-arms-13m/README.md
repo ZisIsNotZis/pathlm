@@ -83,7 +83,7 @@ long-range retrieval`、`delta rule fast weight memory MQAR`、`GQA delta net co
 ## 4. 判据线（**逐字**抄录 Y1 契约，一字未改）
 
 > ## Y1 · ENG1 解锁的四臂质量实验（13M，同 token 预算，≈40–60 min）
-> - 目录：`axes/M-carrier/M1-carrier-type/experiments/2623-composable-arms-13m/`
+> - 目录：`axes/1-time/1.1.4.1-explicit-memory/experiments/2623-composable-arms-13m/`
 > - 动机：ticket 38-W3 因引擎硬互斥只能丢掉 GQA 因子；**ENG1（ticket 39-X2）已解除限制**。
 > - 四臂（唯一变量 = 特性叠加，逐字段同配方）：`stock` / `+GQA(2 KV 头)` / `+GQA+carry(delta)` /
 >   `+GQA+carry+window(16, anchors 0)`。任务 = `assoc-mqar` 合成关联回忆（**不要**用 enwik8 当主任务）。

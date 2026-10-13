@@ -334,4 +334,4 @@ loss 斜率」，已在上面给出；③ 契约预算 40 min 已被四臂 27 mi
    定义清楚，再谈它在本项目里的用法；在此之前**不建议采纳**。
 5. **catalog / 课题页**：本格首次探索的结论（并行接线失败、层间加权和中性、tf@4 并列判据
    在 stock 形态不可达）需由**主 Agent** 写入 `catalog.yaml` 与
-   `axes/C-vertical/C3-inter-layer-topology/README.md`（本执行者不碰这些文件）。
+   `archive/wiki-legacy/axes/C-vertical/C3-inter-layer-topology/README.md`（本执行者不碰这些文件）。

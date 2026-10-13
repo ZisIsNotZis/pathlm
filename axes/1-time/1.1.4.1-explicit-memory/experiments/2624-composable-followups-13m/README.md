@@ -59,7 +59,7 @@
 ## 4. 判据线（**逐字**抄录 Z2 契约，一字未改）
 
 > ## Z2 · Y1 的三个补点（≈40–60 min GPU）
-> - 目录：`axes/M-carrier/M1-carrier-type/experiments/2624-composable-followups-13m/`
+> - 目录：`axes/1-time/1.1.4.1-explicit-memory/experiments/2624-composable-followups-13m/`
 > - 三个补点（各自单因素，可分批）：
 >   ① **GQA 的 §15 等参数对照**（GQA 参数少 8.748% ⇒ 需一个等参数对照臂来分离「头共享」与「参数少」）；
 >   ② **无泄漏 Q=7 任务**（上轮多查末块有 Q=K 消除泄漏，被排除；重建无泄漏版本重测分布内腿）；

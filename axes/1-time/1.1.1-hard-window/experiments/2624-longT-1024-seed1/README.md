@@ -17,7 +17,7 @@ status: judged
 ## 0. 契约原文（逐字）
 
 > ## Z1 · T=1024 seed=1 双臂重跑（≈20–30 min GPU）
-> - 目录：`axes/A-mixing/A6-mixing-operator/experiments/2624-longT-1024-seed1/`
+> - 目录：`axes/1-time/1.1.1-hard-window/experiments/2624-longT-1024-seed1/`
 > - 判据（预登记）：① `full` 臂的 gnorm 爆炸（上轮 1740.9）在 seed=1 是否**复现**——
 >   复现 ⇒ 记「**long-T 训练不稳定**」为工程债、该点**永久不可归因**；不复现 ⇒ 该点可给干净 Δ、**重判三点趋势**；
 >   ② 两臂同配方（含 bs，须与 Y2 一致：bs8）；③ 必附答案 CE 斜率与显存；④ n=2 后仍禁外推。

@@ -87,5 +87,5 @@ node-1 **68.8%**，条件接受率 **65.8%**（给定 node-1 正确则 **77.3%**
 
 ## 9. 产出
 
-`axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/`
+`axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/`
 下的 `README.md` / `train_jumphead.py` / `config.json` / `results.json` / `analysis.md` / `MODEL.md`。

@@ -1,4 +1,4 @@
-"""深度自适应 AR（方向修订后的新形态，mental_model §0 / ticket 23）。
+"""深度自适应 AR（方向修订后的新形态，archive/legacy-docs/mental_model.md §0 / ticket 23）。
 
 纯 AR（无 corruption / 无 retry / 无 mask 站），渐进精化 + 早退 + 自 spec：
 

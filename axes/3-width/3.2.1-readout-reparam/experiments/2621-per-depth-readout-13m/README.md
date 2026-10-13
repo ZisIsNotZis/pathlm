@@ -142,7 +142,7 @@ EP 的「名义等参数」是靠**冗余**达成的（1,179,648 个参数只参
 
 ## 9. 产出
 
-`axes/W-width/W4-readout-geometry/experiments/2621-per-depth-readout-13m/`
+`axes/3-width/3.2.1-readout-reparam/experiments/2621-per-depth-readout-13m/`
 下的 `README.md`（本文件）/ `run.py` / `smoke.py` / `reconcile_numbers.py` /
 `config.json` / `results.json` / `runs/` / `analysis.md` / `MODEL.md`。
 

@@ -39,11 +39,11 @@
 
 **1.3 寻址**是**前提**，不是可独立收口的研究项（`docs/structure.md` §13.4）：位置语义（绝对 / 相对 /
 RoPE / 无位置）与寻址方式（按内容 vs 按位置）作为参照登记在 `axes/7-references/README.md`，本轴
-不写 `project.yaml`。旧格 `axes/A-mixing/A8-positional-semantics`（位置语义）同降为参照（MAPPING §1）。
+不写 `project.yaml`。旧格 `archive/wiki-legacy/axes/A-mixing/A8-positional-semantics`（位置语义）同降为参照（MAPPING §1）。
 
 ## 怎么读
 
 - 状态与全表：`python3 tools/summary.py`；校验：`python3 tools/summary.py --check`。
 - 每项有且仅有一个 `milestone`（最终输出 + 验收），推进过程拆成 `work_packages`，每条自带 acceptance 与独立 `review`。
 - `status` 仅四值：未开始 / 进行中 / 已完成 / 被否证；「做到多少」写在 `conclusion` / `gaps`。
-- 旧格（`axes/A-mixing/**`、`axes/M-carrier/**` 等）及其 README 为**上一版结构**，证据已按 `.scratch/56-restructure/MAPPING.md` 迁入本目录 `experiments/`，旧目录待统一退役。
+- 旧格（`archive/wiki-legacy/axes/A-mixing/**`、`archive/wiki-legacy/axes/M-carrier/**` 等）及其 README 为**上一版结构**，证据已按 `.scratch/56-restructure/MAPPING.md` 迁入本目录 `experiments/`，旧目录退役完成（归档只读保留）。

@@ -18,7 +18,7 @@ status: judged
 ## 0. 契约原文（逐字）
 
 > ## W1 · long-T 训练稳定性修复（≈50–70 min GPU）
-> - 目录：`axes/A-mixing/A6-mixing-operator/experiments/2625-longT-stability/`
+> - 目录：`axes/1-time/1.1.1-hard-window/experiments/2625-longT-stability/`
 > - 事实（已确证，两 seed）：T=1024 的 `full` 臂 gnorm 爆炸（seed0 1740.9 / **seed1 29578.6**，跳步 0/3，爆炸点 ~9800/~6200），
 >   而 `win` 臂两 seed 均稳（7.35/7.66）。**这挡住了整条长 T 线（A6 的入场券）。**
 > - 任务：**只诊断与修复稳定性**（不改任务/不改掩码语义）。候选手法（各为单因素，先 CPU/短冒烟筛查）：

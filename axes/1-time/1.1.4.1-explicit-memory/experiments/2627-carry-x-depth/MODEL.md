@@ -21,7 +21,7 @@ sha256 已回填进 `config.json`，`run.py` 每次加载**断言**。
 ## 生成命令（四臂逐字段一致，唯一变量 = carry × depth 两因子开关）
 
 ```bash
-cd axes/M-carrier/M1-carrier-type/experiments/2627-carry-x-depth
+cd axes/1-time/1.1.4.1-explicit-memory/experiments/2627-carry-x-depth
 bash train_arms.sh          # 按臂取/放 GPU 锁 + 臂间 65s；等价于下面四条
 # base
 python3 ../../../../../train_depth_ar.py base \

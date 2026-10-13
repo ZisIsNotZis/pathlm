@@ -4,7 +4,7 @@
 `test_failure`（收集/环境错误由 `mutation.pytest_run` 抛 `ClassifiedError` ⇒ 非零退出）。
 每条变异后逐字节还原（sha256 前后相等，不等即非零退出）。
 
-跑法：`python3 axes/H-horizon/H3-composition/experiments/2632-alpha1-attribution/mutate.py`
+跑法：`python3 axes/6-predict/6.2-speculative-decoding/experiments/2632-alpha1-attribution/mutate.py`
 """
 
 from __future__ import annotations

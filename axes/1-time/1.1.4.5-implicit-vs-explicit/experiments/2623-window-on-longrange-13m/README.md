@@ -30,7 +30,7 @@ ticket 39-X3 的 §19 合成腿是**空结果**：四臂都训练在 enwik8 上�
 
 ## 3. 干预（**逐字**抄录契约 Y3 的干预段）
 
-> - 目录：`axes/A-mixing/A9-old-info-retention/experiments/2623-window-on-longrange-13m/`
+> - 目录：`axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2623-window-on-longrange-13m/`
 > - 干预（唯一变量 = 训练/评测掩码）：`full` vs `窗口 16 + anchors 0`，**在合成关联回忆上训练**（13M/12k）。
 
 **实现（摘要）**：掩码 `keep[i,j] = (j ≤ i) ∧ ((i−j) < 16)`（anchors=0），对角恒开；

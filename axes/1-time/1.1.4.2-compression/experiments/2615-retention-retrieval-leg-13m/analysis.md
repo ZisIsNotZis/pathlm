@@ -388,7 +388,7 @@
 ### 6.5 跨实验对账发现：2614 的「安全半径 d\*=32」是**不可加外推**
 
 2614 的 `criteria.c_safe_radius_d_operational` 写「**距离 ≥ 32 的 KV 全部可丢，累计代价
-< 0.014 bpc**」（`axes/M-carrier/M2-carrier-compression/README.md` 也写了「d≥32 ≤+0.004」
+< 0.014 bpc**」（`archive/wiki-legacy/axes/M-carrier/M2-carrier-compression/README.md` 也写了「d≥32 ≤+0.004」
 与「安全丢弃半径 d\*≈32」）。该结论是把**单距离**曲线的点当成可加得到的。本实验的
 `recent:d` 家族就是它的**直接测量版**（只保留最近 d = 删除所有距离 ≥ d 的 key）：
 

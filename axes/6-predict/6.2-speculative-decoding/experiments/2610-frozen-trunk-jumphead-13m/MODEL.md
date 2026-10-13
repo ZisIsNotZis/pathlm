@@ -20,8 +20,8 @@
 
 ```bash
 python3 train_jumphead.py \
-  --config axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/config.json \
-  --out-dir axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m
+  --config axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/config.json \
+  --out-dir axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m
 ```
 
 ## 跳跃头 / 直接头（主臂，hidden=2d × 1 block = `TransformHead` 形）
@@ -47,9 +47,9 @@ python3 train_jumphead.py \
 
 ```bash
 python3 train_jumphead.py \
-  --config axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/config.json \
-  --out-dir axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/capacity-h4x2 \
-  --trunk-ckpt axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt \
+  --config axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/config.json \
+  --out-dir axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/capacity-h4x2 \
+  --trunk-ckpt axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt \
   --trunk-steps 0 --head-hidden-mult 4 --head-blocks 2 --head-steps 3000
 ```
 

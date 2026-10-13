@@ -37,7 +37,7 @@ from pathlm.data import load_enwik8_full                              # noqa: E4
 from tools.evalkit.longrange_tasks import (                           # noqa: E402
     corrupt_span, local_prior_accuracy, check_local_prior_resistance)
 
-P2621 = os.path.join(ROOT, "axes/R-references/R1-quantization/experiments/"
+P2621 = os.path.join(ROOT, "axes/5-quant/5.1-kv-quant/experiments/"
                            "2621-kv-budget-rest")
 RES_2621_PATH = os.path.join(P2621, "results.json")
 sys.path.insert(0, P2621)   # 让 2621/run.py 里的 `import rest_arms` 能解析

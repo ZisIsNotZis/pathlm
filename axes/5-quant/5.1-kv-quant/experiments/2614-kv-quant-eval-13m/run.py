@@ -239,7 +239,7 @@ def main():
     wall = time.time() - t0
     peak = torch.cuda.max_memory_allocated() / 2 ** 20
     results = {
-        "contract": ("axes/R-references/R1-quantization/experiments/"
+        "contract": ("axes/5-quant/5.1-kv-quant/experiments/"
                      "2614-kv-quant-eval-13m/README.md"),
         "checkpoint": ck,
         "config": cfg,

@@ -20,15 +20,15 @@
  },
  "checkpoints": {
   "trunk": {
-   "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+   "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
    "size_bytes": 54193675,
    "role": "trunk 族（量化 / 窗口 / 窗口+锚点 / 窗口或锚点×量化）的被测模型：13.5M dense decoder-only，12k 步，clean bpc 1.483569",
-   "train_ref": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/MODEL.md"
+   "train_ref": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/MODEL.md"
   },
   "head_family": {
-   "root": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/runs",
-   "registry": "axes/W-width/W3-kv-head-sharing/experiments/2616-gqa-mqa-13m/model_hashes.json",
+   "root": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs",
+   "registry": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/model_hashes.json",
    "arms": {
     "mha": {
      "run": "mha-12k-s0",
@@ -381,7 +381,7 @@
   "local_prior": "longrange_tasks.local_prior_accuracy(k=8)",
   "corrupt_source": "copy 任务源片段整段换随机符号（逐臂，源区间 = [src_pos, src_pos+copy_len)）——测读数是否真来自被搬运的信息",
   "baseline_anchor_bpc": 1.483569,
-  "baseline_anchor_source": "axes/M-carrier/M2-carrier-compression/experiments/2614-kv-ablation-retention-13m/results.json::instrument.bpc_full_release_path"
+  "baseline_anchor_source": "axes/1-time/1.1.4.2-compression/experiments/2614-kv-ablation-retention-13m/results.json::instrument.bpc_full_release_path"
  },
  "eval": {
   "bpc_method": "run.py::bpc_of（与 2619/2620 同一统一路径：因果移位 CE token 平均，逐臂同一 logits_fn 接口）",
@@ -410,11 +410,11 @@
   "checkpoint_sha256_asserted": true,
   "new_module": "causal_check.py（前缀不变性仪器 + 因果/非因果并列比较的唯一语义层；§22 第 7 条新逻辑进新模块，不改 2619/2620/2621 与 tools/evalkit/*）。",
   "code_anchors": [
-   "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/run.py",
-   "axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/causal_check.py",
-   "axes/R-references/R1-quantization/experiments/2621-kv-budget-rest/rest_arms.py",
-   "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/gaps_arms.py",
-   "axes/R-references/R1-quantization/experiments/2619-kv-budget-chart/run.py",
+   "axes/5-quant/5.1-kv-quant/experiments/2631-kv-budget-causal/run.py",
+   "axes/5-quant/5.1-kv-quant/experiments/2631-kv-budget-causal/causal_check.py",
+   "axes/5-quant/5.1-kv-quant/experiments/2621-kv-budget-rest/rest_arms.py",
+   "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/gaps_arms.py",
+   "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/run.py",
    "tools/evalkit/kv_quant.py",
    "tools/evalkit/longrange_tasks.py",
    "tools/evalkit/retention.py"
@@ -454,7 +454,7 @@
   "gate": "① 不成立 ⇒ 本实验作废（实现未修好），不得作为新价签。"
  },
  "compare_against_2621": {
-  "results": "axes/R-references/R1-quantization/experiments/2621-kv-budget-rest/results.json",
+  "results": "axes/5-quant/5.1-kv-quant/experiments/2621-kv-budget-rest/results.json",
   "arms": [
    "fp16",
    "int8",

@@ -55,7 +55,7 @@ python3 train_depth_ar.py gqa-12k-s0-rep ... --n-kv-heads 2 --out-root <expdir>/
 
 | 项 | 值 |
 |---|---|
-| 文件 | `axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt` |
+| 文件 | `axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt` |
 | 规格 | 同为 `DepthARModel(dense=True)` d256 × 12 层 × 8 头 × mlp6（= 本实验 mha 臂的规格） |
 | 参数 | 13,536,768（与本实验 mha 臂**逐位相同**） |
 | SHA-256 | `86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2` |

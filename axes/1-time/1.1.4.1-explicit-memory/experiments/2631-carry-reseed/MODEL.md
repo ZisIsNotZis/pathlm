@@ -33,7 +33,7 @@
 
 ```bash
 # 训练（按臂释放锁，臂间 ≥60s；重活已完成，通常无需重跑）
-bash axes/M-carrier/M1-carrier-type/experiments/2631-carry-reseed/train_arms.sh
+bash axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train_arms.sh
 # 评测（纯推理，整程 <10 min，可整程持锁）
-bash axes/M-carrier/M1-carrier-type/experiments/2631-carry-reseed/eval.sh
+bash axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/eval.sh
 ```
