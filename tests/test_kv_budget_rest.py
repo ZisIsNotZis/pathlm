@@ -1,6 +1,6 @@
 """2621 · KV 预算图**剩余缺失组合**（窗口×int8 / 锚点×int4 / 头共享×窗口）的可失败单测。
 
-契约：`axes/R-references/R1-quantization/experiments/2621-kv-budget-rest/README.md` §4
+契约：`axes/5-quant/5.1-kv-quant/experiments/2621-kv-budget-rest/README.md` §4
 （判据同 V1）。
 
 钉住新语义层 `combo_mask`（`rest_arms.py`）的四件事（SCHEMA §10 每个语义开关都要有可失败
@@ -30,9 +30,9 @@ import torch
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-RA_PATH = os.path.join(ROOT, "axes", "R-references", "R1-quantization",
+RA_PATH = os.path.join(ROOT, "axes", "5-quant", "5.1-kv-quant",
                        "experiments", "2621-kv-budget-rest", "rest_arms.py")
-GA_PATH = os.path.join(ROOT, "axes", "R-references", "R1-quantization",
+GA_PATH = os.path.join(ROOT, "axes", "5-quant", "5.1-kv-quant",
                        "experiments", "2620-kv-budget-gaps", "gaps_arms.py")
 
 

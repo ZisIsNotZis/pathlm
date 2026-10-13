@@ -261,8 +261,8 @@ def test_summarize_stats_fields_are_activity_quantities():
 
 #: 窗口 / 锚点 / 头共享等「组合入口」所在的模块（2619 的语义 + 2620/2621 的组合臂）。
 COMBO_MODULES = (
-    "axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/gaps_arms.py",
-    "axes/R-references/R1-quantization/experiments/2621-kv-budget-rest/rest_arms.py",
+    "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/gaps_arms.py",
+    "axes/5-quant/5.1-kv-quant/experiments/2621-kv-budget-rest/rest_arms.py",
 )
 
 

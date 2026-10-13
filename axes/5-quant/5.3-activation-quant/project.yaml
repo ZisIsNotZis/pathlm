@@ -1,0 +1,58 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "5.3"
+axis: "5 量化轴"
+title: "激活量化"
+dir: "axes/5-quant/5.3-activation-quant"
+
+purpose: "普通 decoder-only transformer 前向时的中间激活（attention 与 FFN 的输入/输出张量）是动态的、每个 token 不同，且体量随 batch×序列长度增长，推理时构成显存/带宽与（若用低位 matmul 内核）算力瓶颈。本项要判定：把中间激活以低比特存放（并用低位/整型矩阵乘）能否在给定质量（以 fp16 激活 stock 基线为 100%）下降低激活字节/访存，并在「激活字节 → 序列级质量」的代价前沿上占优。"
+innovation: "相对普通 decoder-only transformer 的 fp16 中间激活：在 attention/FFN 的 matmul 输入输出上做激活量化（W8A8 或 W4A8 等低位组合），并按 token/通道做动态标尺。改动量级：参数量不变，激活张量字节从 2 B/元素降到 ≈1 B（8 位）或更低；每 token FLOPs 不变（若用整型内核，理论算力上限更高，但按等效算力记账不变）。"
+expected_effect: "（a）激活字节/访存下降（该跌）；（b）序列级质量代价小到可接受（该不跌/可排序，须越 0.014 噪声带）；（c）与 `5.1`（KV 量化）/`5.2`（权重量化）划界：本项只压中间激活，KV 与权重不动，三类账分开报。"
+sota_baseline: "SmoothQuant / LLM.int8() / W8A8 整型推理（`记忆·未核`，只作设计方向、不作判据）与 fp16 激活 stock 基线（本地归一为 100%；13M B0 = 1.5074 bpc 快照）。"
+gap: "本仓零经验（无旧格；MAPPING §2 的「缺」项）。业界激活量化成熟（SmoothQuant/W8A8），**本项最高风险是造轮子**。相对 SOTA 的增量 = 在 13M 受控设定下把「激活字节 → 序列级质量」的前沿量化，并把激活量化的**动态性**（标尺随 token/通道变化、离群通道）作为必须报的活性对照列（业界多报大尺度吞吐，小尺度受控证据缺）。"
+method: "单因素：固定被测量模型/checkpoint/数据流/评测窗口，只改中间激活精度。臂 = {fp16 激活（基线）, int8 激活（W8A8）, 4 位激活（W4A8）}；不训练权重、不改 KV 精度、不新增参数。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = fp16 激活 stock 基线（归一为 100%）；客观判据 = 激活字节/访存（该跌）+ clean bpc（该不跌/可排序，须越 0.014 噪声带）+ 逐层激活标尺分布（活性，防离群通道吃掉全精度）；口径 = 解析激活字节 + clean bpc，**墙钟不进判据**；必须不变 = 因果性与非量化臂逐位不变。"
+objective_criteria: "该跌：中间激活字节/访存（含每 token/通道标尺）；该不跌/可排序：clean bpc（须越 0.014 噪声带）；该稳定：逐层激活标尺与离群通道分布（活性对照列）；必须不变：因果性与非量化臂逐位不变；必须报：标尺粒度与开销。"
+falsification: "若激活量化的 clean bpc 代价越噪声带且吃掉全部字节收益（相近字节点位上不占优）⇒ 判该档在本尺度不成立；若离群通道迫使部分层回退到高精度、使省幅远小于标称 ⇒ 判该实现在该粒度下不可用；若非量化臂不能逐位还原 ⇒ 判实现有误（对照失效）。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，无本地判决，故 `status: 未开始`。判据按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），判据形态是「激活字节 → 序列级质量」的前沿（55-review W-09），并把「逐层激活标尺 / 离群通道分布」列为必须报的活性对照列。与 `5.1`/`5.2` 的边界写进 `expected_effect`。独立复核未做。"
+experiments: []
+argument: "激活量化与 KV 量化、权重量化是三类不同的账（激活是每 token 的动态中间张量，KV 是每位置缓存，权重是静态参数），必须分开记（本轴 `5.1`/`5.2`/`5.3`）。激活量化的难点是**动态范围随 token/通道剧烈变化**，故「逐层标尺 / 离群通道分布」必须是可失败的活性判据，否则无法区分「真省字节」与「把高精度藏在少数离群通道」。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、纯推理，{fp16, int8, 4 位} 三臂，报 clean bpc + 激活字节含标尺 + 逐层离群分布）"
+  - "与 5.1（KV 量化）/ 5.2（权重量化）的三类账未在同一框架下并报（由 integrator 核不重复）"
+  - "造轮子风险最高项：须明确「相对 SmoothQuant / W8A8 的增量」是什么"
+  - "整型 matmul 内核的等效算力记账（低位理论峰值）未定口径"
+cost_model: "等效理论量：每 token 中间激活字节 = 元素数 × 位宽/8 + 每 token/通道标尺摊薄；与权重/KV 精度独立。layer-passes 每 token 仍为 L、tokens-per-forward 每步 1；主 FLOPs 不变（整型内核按等效位宽记账，不改变主 FLOPs 计法）。考虑 pipelining：激活量化是同一前向内的逐张量标定与反量化，不引入额外顺序依赖（按解析字节报，不用时间量）。"
+
+role_map:
+  owner: "轴 5 量化轴 lead（待指派）"
+  writer: "5.3 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「激活量化」判决包：{fp16, int8, 4 位} 激活在 13M 上的激活字节（含标尺）+ clean bpc + 逐层激活标尺/离群通道分布，对照 fp16 激活 stock 基线（归一为 100%），含 n≥2。"
+  acceptance: "激活字节含标尺账齐备；激活量化相对 fp16 的质量代价与字节节省同框可分（越 0.014 噪声带）或明确「不可分」；离群通道分布齐备；非量化臂逐位不变；结论停在「该尺度该档位值不值」，不外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "激活量化最小判决（含活性/离群对照列）"
+    goal: "给出激活量化在 13M 上的激活字节与序列级质量，判定 int8/4 位是否落在质量-代价前沿占优侧"
+    means: "13M、纯推理不训练，{fp16, int8, 4 位} 三臂，报 clean bpc + 激活字节（含标尺）+ 逐层离群通道分布"
+    acceptance: "激活字节含标尺账齐备；int8/4 位越/不越噪声带二选一明确；离群分布齐备；非量化臂逐位不变"
+    evidence: "axes/5-quant/5.3-activation-quant/experiments/"
+    review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b，核对活性判据非装饰读数）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：激活量化最小判决（含活性/离群对照列）"
+  - "复核通过并与 5.1/5.2 三类账整合后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T11:06:24+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T11:06:24+08:00"
+    actor: "轴 5 量化轴 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：激活量化 承接旧格 R1-quantization 的「激活量化 / 混合精度」选项、按 docs/structure.md §5 单列。按 docs/research-schema.md 预登记目的/基线/判据/否证条件，并把「逐层激活标尺 / 离群通道分布」列为必须报的活性对照列。"

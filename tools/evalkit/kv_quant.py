@@ -1,6 +1,6 @@
 """评测期 KV cache 量化参照线（ticket 31 契约 K）——不改权重、不训练。
 
-契约：`axes/R-references/R1-quantization/experiments/2614-kv-quant-eval-13m/README.md`
+契约：`axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/README.md`
 
 这件工具回答一个问题：**把 KV cache 存成 int8 / int4，质量掉多少、内存省多少。**
 它就是参照线——**任何「省内存 / 丢信息」的主张都必须先打败这条线**。

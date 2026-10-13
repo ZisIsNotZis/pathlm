@@ -1,6 +1,6 @@
 """2620 · KV 预算图缺失组合（GQA×int8 / MQA×int8 / 窗口×锚点）的可失败单测。
 
-契约：`axes/R-references/R1-quantization/experiments/2620-kv-budget-gaps/README.md`
+契约：`axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/README.md`
 §4（判据线逐字抄录 `.scratch/37-gaps/issues/01-gaps.md` 的「契约 V1」）。
 
 Run: `python3 -m pytest tests/ -q`
@@ -32,7 +32,7 @@ import torch
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-GA_PATH = os.path.join(ROOT, "axes", "R-references", "R1-quantization",
+GA_PATH = os.path.join(ROOT, "axes", "5-quant", "5.1-kv-quant",
                        "experiments", "2620-kv-budget-gaps", "gaps_arms.py")
 
 

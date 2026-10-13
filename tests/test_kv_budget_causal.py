@@ -1,6 +1,6 @@
 """2631 · 部署口径（值 + 标尺）字节核算的可失败单测。
 
-契约：`axes/R-references/R1-quantization/experiments/2631-kv-budget-causal/`
+契约：`axes/5-quant/5.1-kv-quant/experiments/2631-kv-budget-causal/`
 （`config.json::causal_caliber` + `README.md` + `analysis.md`）。
 语义层：`.../2631-kv-budget-causal/budget_caliber.py`。
 
@@ -29,7 +29,7 @@ import os
 import pytest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-EXP = os.path.join(ROOT, "axes", "R-references", "R1-quantization",
+EXP = os.path.join(ROOT, "axes", "5-quant", "5.1-kv-quant",
                    "experiments", "2631-kv-budget-causal")
 
 

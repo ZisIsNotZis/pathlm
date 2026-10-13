@@ -1,0 +1,58 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "5.4"
+axis: "5 量化轴"
+title: "低秩压缩（MLA 式）"
+dir: "axes/5-quant/5.4-low-rank"
+
+purpose: "普通 decoder-only transformer 为每个头独立存一份 K/V，KV cache 随头数×头维线性增长。低秩压缩（MLA 式）把每位置的 K/V 联合压成一个低秩潜向量（维度远小于头数×头维），推理时再上投影回每头的 K/V。本项要判定：低秩压缩能否在给定质量（以 fp16 全因果 MHA 基线为 100%）下显著降低每位置 KV 字节，并在「每位置部署字节 → 序列级质量」的代价前沿上占优，且代价（额外投影计算、需从零训练）可接受。"
+innovation: "相对普通多头注意力（每头独立 K/V）：把 K/V 联合投影到一个低秩潜向量并缓存该潜向量，推理时由潜向量上投影重建每头的 K/V；RoPE 需解耦到单独的小分量以免破坏低秩结构。改动量级：KV cache 每位置字节由 n_heads×d_head×2 降到潜维 + RoPE 分量；训练侧新增下/上投影矩阵；解码期新增上投影计算。"
+expected_effect: "（a）每位置 KV 字节下降（该跌）；（b）序列级质量代价小到可接受（该不跌/可排序，须越 0.014 噪声带）；（c）代价必须与收益同框：上投影带来的额外解码计算、RoPE 解耦、以及「不能像 GQA 那样轻量 uptrain、须从零训练」的收敛代价。"
+sota_baseline: "DeepSeek-V2 的 MLA（KV 联合低秩压缩 + decoupled RoPE，`记忆·未核`，来源 `axes/5-quant/5.6-window-quant-retrieval/experiments/2617-prior-art-hybrid-kv/PRIOR_ART.md` §2，外部条目只作设计方向、不作判据）；与 `axes/7-references/` 的头共享（GQA/MQA）作同轴对照。本地锚 = 同尺寸 stock fp16 MHA 全因果基线（归一为 100%）。"
+gap: "本仓零经验（无旧格；MAPPING §2 的「缺」项）。业界 MLA 已工程化（DeepSeek-V2/V3），**本项最高风险是造轮子**。相对 SOTA 的增量 = 在 13M 受控设定下把「每位置部署字节 → 序列级质量」的前沿与 GQA/MQA（头共享）放在**同一字节轴**上比较（跨家族统一字节轴是业界缺口，见 `2617` §3），并给出「从零训练」的代价（而非 uptrain 后的近无损）。`2617` 明确记 `未找到`「同一 KV 字节预算下的最优分配」的公开前例。"
+method: "单因素：固定主干形状与训练预算，只改 KV 的压缩方式。臂 = {MHA（基线）, GQA/MQA（头共享对照）, MLA 式低秩压缩（潜维扫描）, 低秩 + 分层共享}；每臂给等参数对照（投影矩阵与头共享改变的参数量须拆开）。基底恒为 stock decoder-only；须从零训练（不做 uptrain）。"
+validation: "端到端：对照 = 同尺寸 stock fp16 MHA 全因果基线（归一为 100%）+ 等参数对照臂 + 头共享（GQA/MQA）同字节对照；客观判据 = 每位置 KV 部署字节（该跌）+ clean bpc（该不跌/可排序，须越 0.014 噪声带）+ 合成长程召回（第二腿，该不塌）+ 解码期额外计算（必须报，上投影的每 token 等效 FLOPs）；口径 = 解析每位置 KV 字节 + clean bpc，**墙钟不进判据**；必须不变 = 因果性与可见性对数（低秩不改变可见位置集合）。"
+objective_criteria: "该跌：每位置 KV 部署字节（潜维 + RoPE 分量）；该不跌/可排序：clean bpc（相对同字节头共享臂与 stock 基线，须越 0.014 噪声带）；该保持：合成长程召回（第二腿不塌）；必须不变：因果性与可见性对数；必须报：上投影的每 token 等效解码计算、等参数对照。"
+falsification: "若 MLA 式低秩压缩在等参数对照下相对同字节头共享臂的 clean bpc 不占优（越噪声带变差或持平）⇒ 判低秩压缩在本尺度不产生新知识；若「从零训练」的收敛代价吃掉全部 KV 收益（等字节下不占优）⇒ 判该路线在本尺度不划算；若上投影额外计算使每 token 等效 FLOPs 显著上升且未被 KV 收益补偿 ⇒ 判代价记账不利。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，无本地判决，故 `status: 未开始`。判据按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），横轴统一为「每位置 KV 字节」、纵轴两腿（clean bpc + 长程召回），并给等参数对照与头共享同字节对照（`SCHEMA.md` §15/§17.12）。与 `5.1`（量化）、`7-references`（GQA/MQA 参照）的边界写进 `gap`。独立复核未做。"
+experiments: []
+argument: "低秩压缩与头共享（GQA/MQA）是两种不同的省 KV 机制，必须放在**同一「每位置字节」横轴**上比较才公平（`SCHEMA.md` §17.12；`2617` §3 记业界缺统一字节轴）。MLA 的独有代价是「须从零训练 + 上投影计算」，必须以每 token 等效解码 FLOPs 入账（不用时间量），否则会把「省内存」记成「免费」。低秩不改变可见位置集合，故可见性对数必须不变（与窗口/驱逐类不同，二者是两条账）。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、从零训练，{MHA, GQA/MQA, MLA 式潜维扫描} 三臂 + 等参数/同字节对照，报 clean bpc + 每位置字节 + 长程召回 + 上投影等效 FLOPs）"
+  - "与 5.1（KV 量化）是否可叠加（低秩 + 量化）未测（组合默认留白，`SCHEMA.md` §4）"
+  - "造轮子风险最高项：须明确「相对 DeepSeek-V2 MLA 的增量」是什么（本仓只做 13M 受控同字节前沿）"
+  - "MLA 的确切质量/KV 公开数字 `记忆·未核`（`2617` §2），不作判据"
+cost_model: "等效理论量：每位置 KV 值数由 MHA 的 L·2·n_heads·d_head 降到 L·(d_latent + d_rope)（低秩潜向量 + decoupled RoPE 分量），每值字节 fp16；每位置部署字节 = 值数 × 每值字节（可与 `5.1` 的 KV 量化叠加，另计）。解码期每 token 额外计算 = 上投影（d_latent → n_heads·d_head）；layer-passes 每 token 仍为 L；tokens-per-forward 每步 1。考虑 pipelining：上投影只依赖当前已生成位置的潜向量，严格前缀不变、不引入额外顺序依赖（按解析字节与等效 FLOPs 报，不用时间量）。"
+
+role_map:
+  owner: "轴 5 量化轴 lead（待指派）"
+  writer: "5.4 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「低秩压缩（MLA 式）」判决包：13M 从零训练下 {MHA, GQA/MQA, MLA 式低秩（潜维扫描）} 的每位置 KV 字节 + clean bpc + 合成长程召回 + 上投影等效 FLOPs，对照同尺寸 stock MHA 与同字节头共享臂，含等参数对照与 n≥2。"
+  acceptance: "每位置字节与两腿质量/召回同框可分（越 0.014 噪声带）或明确「不可分」；等参数对照与同字节头共享对照齐备；上投影额外计算已入账；结论停在「该尺度该字节值不值」，不外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "低秩压缩 vs 头共享的同字节判决"
+    goal: "判定 MLA 式低秩压缩能否在 13M 从零训练下、同一每位置字节轴上优于头共享"
+    means: "13M、从零训练，{MHA, GQA/MQA, MLA 式低秩潜维扫描} 三臂，报 clean bpc + 每位置字节 + 长程召回 + 上投影等效 FLOPs，含等参数对照"
+    acceptance: "三臂在同一字节轴上可比；低秩 vs 头共享有/无越噪声带差异，二选一明确；等参数对照齐备"
+    evidence: "axes/5-quant/5.4-low-rank/experiments/"
+    review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b，核对同字节轴与等参数对照）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：低秩压缩 vs 头共享的同字节判决"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T11:06:24+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T11:06:24+08:00"
+    actor: "轴 5 量化轴 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：低秩压缩（MLA 式） 承接旧格 R1-quantization / W3-kv-head-sharing 的 KV 压缩一面、按 docs/structure.md §5.4 单列（MLA 与头共享是两种不同机制）。按 docs/research-schema.md 预登记目的/基线/判据/否证条件，横轴统一「每位置 KV 字节」、上投影计算入账，并把与 5.1/7-references 的边界写死。"

@@ -1,0 +1,67 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "5.5"
+axis: "5 量化轴"
+title: "fp8 / 大 head_dim"
+dir: "axes/5-quant/5.5-fp8-head-dim"
+
+purpose: "8 位量化有两条不同的路：定点的 int8 与浮点的 fp8（E4M3/E5M2）。fp8 的动态范围比 int8 大、可能免去分组标尺，但尾数分辨率更低；同时 KV 量化的标尺开销与 `head_dim` 有关（标尺沿 `head_dim` 每 G 个值摊一把，`head_dim` 越大摊得越薄、省幅越接近极限）。本项要判定：fp8 相对 int8+块标尺在「每位置部署字节 → 序列级质量」前沿上如何（更省还是更贵、质量如何），以及 `head_dim` 放大时块标尺的开销如何变化。"
+innovation: "相对普通 decoder-only transformer 的 fp16 张量：用浮点 8 位（E4M3/E5M2）存 KV/激活，利用其动态范围免去或简化分组标尺；并在不同 `head_dim` 下改变块标尺的组大小 G，让每值标尺摊薄随 `head_dim` 变化。改动量级：与 int8 同为 8 位，每值 ≈1 B（+ 标尺，若免标尺则纯 1 B）；`head_dim` 只改变标尺摊薄，不改变值字节。"
+expected_effect: "（a）fp8 可能免标尺 ⇒ 每位置字节更低（该跌），但质量须与 int8+块标尺同框比较；（b）大 `head_dim` 下标尺摊薄更细 ⇒ 省幅趋近极限（该跌标尺开销）；（c）必须把 fp8 与 int8+块标尺放在**同一「每位置字节」轴**上，不得只比位宽。"
+sota_baseline: "fp8 训练/推理（E4M3/E5M2，`记忆·未核`）与 MLA 类大 `head_dim` 设计（DeepSeek-V2 `head_dim`=128，`记忆·未核`）。本地锚 = `5.1` 的块标尺口径（int8 = 1.0625 B/值、int4 = 0.5625 B/值，`head_dim`=32）与 fp16 全因果基线（归一为 100%）。`5.1` 明确记「fp8 解析 1 B/值 = ×0.50，比 int8+块标尺更省，质量未测」——本项即补这个质量点。"
+gap: "本仓零经验（无旧格自有实验；MAPPING §2 的「缺」项，承接 `5.1` 的 fp8 质量与大 head_dim 缺口）。业界 fp8 已用于训练/推理（`记忆·未核`），**本项最高风险是造轮子**。相对 SOTA 的增量 = 把 fp8 与 int8+块标尺放在**同一「每位置字节」轴**上同一个 13M 受控设定下比较质量，并给出「`head_dim` → 标尺摊薄 → 每位置字节」的解析 + 实测对照（业界多分头各报，少同轴比）。"
+method: "单因素：固定模型/数据/评测窗口，只改 8 位存放的数值格式与大 `head_dim` 设置。臂 = {fp16（基线）, int8 块标尺（对照）, fp8 E4M3, fp8 E5M2} × `head_dim` ∈ {32（现状）, 更大}；不训练、不改权重、不新增参数。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = fp16 全因果基线（归一为 100%）+ `5.1` 的 int8 块标尺同轴对照；客观判据 = 每位置部署字节（该跌，含标尺）+ clean bpc（该不跌/可排序，须越 0.014 噪声带）+ 严格前缀不变性（该成立）；口径 = 解析每位置字节（含标尺）+ clean bpc，**墙钟不进判据**；必须不变 = 严格前缀不变性两条、非量化臂逐位不变。"
+objective_criteria: "该跌：每位置部署字节（fp8 免标尺时 1 B/值；大 `head_dim` 下标尺摊薄 2/G B/值）；该不跌/可排序：clean bpc（fp8 vs int8+块标尺，须越 0.014 噪声带）；必须不变：严格前缀不变性两条、非量化臂逐位不变；必须报：fp8 是否需分组标尺、大 `head_dim` 下的 G 与省幅。"
+falsification: "若 fp8 的 clean bpc 代价越噪声带且其免标尺的字节优势被质量否定（同字节下不占优）⇒ 判 fp8 在本尺度不值得；若 fp8 同样需要分组标尺（免不掉标尺）⇒ 判其「免标尺」前提失败；若大 `head_dim` 下标尺摊薄不改变每位置字节（与解析不符）⇒ 判实测与解析口径不一致、须查明。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格自有实验、本仓零经验，无本地判决，故 `status: 未开始`。判据按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），横轴统一「每位置字节」、与 `5.1` 的 int8 块标尺同轴（防跨口径混用，55-review W-08/R8）。独立复核未做。"
+experiments: []
+argument: "8 位方案里 fp8（浮点）与 int8（定点）的取舍是「动态范围换尾数分辨率」：fp8 动态范围大可能免标尺 ⇒ 每值 1 B；int8 需分组标尺 ⇒ 1 + 2/G B/值。二者必须在**同一每位置字节轴**上比质量，否则「fp8 更省」只是位宽话术（`SCHEMA.md` §17.12）。大 `head_dim` 只影响标尺摊薄（不影响值字节），故它是「int8 块标尺省幅趋近极限」的杠杆；`head_dim`=32 时 G=32 ⇒ 一个标尺/头，`head_dim` 更大时 G 可摊得更细。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、纯推理，{fp16, int8 块标尺, fp8 E4M3, fp8 E5M2} 四臂同字节轴，报 clean bpc + 每位置字节）"
+  - "大 `head_dim` 点：需给出「`head_dim` → G → 每位置字节 → clean bpc」的解析 + 实测对照"
+  - "造轮子风险最高项：须明确「相对既有 fp8 训练/推理方案的增量」是什么（本仓只做 13M 受控同轴）"
+  - "fp8 是否需分组标尺未验（决定其字节优势是否成立）"
+cost_model: "等效理论量：fp8 = 1 B/值（若免标尺）或 1 + 2/G B/值（若分组标尺）；int8 块标尺 = 1 + 2/G B/值；二者同轴。每位置部署字节 = 值数 × 每值字节，值数 = L·2·n_kv·d_head。大 `head_dim` 只改变 G 的摊薄（2/G B/值），不改变 1 B/值 的部分。layer-passes 每 token 仍为 L、tokens-per-forward 每步 1。考虑 pipelining：fp8/块标尺只依赖已生成位置，严格前缀不变、不需 staging，不引入额外顺序依赖（按解析字节报，不用时间量）。"
+
+role_map:
+  owner: "轴 5 量化轴 lead（待指派）"
+  writer: "5.5 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「fp8 / 大 head_dim」判决包：{fp16, int8 块标尺, fp8 E4M3, fp8 E5M2} 在同一「每位置字节」轴上的 clean bpc + 每位置部署字节 + 严格前缀不变性，以及 `head_dim` → G → 每位置字节 的解析 + 实测对照，对照 fp16 全因果基线与 `5.1` 的 int8 块标尺，含 n≥2。"
+  acceptance: "四臂在同一字节轴上可比；fp8 相对 int8+块标尺有/无越噪声带差异，二选一明确；严格前缀不变性两条为 True；大 `head_dim` 省幅与解析一致；结论停在「该尺度该格式值不值」，不外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "fp8 vs int8+块标尺同字节判决"
+    goal: "判定 fp8（E4M3/E5M2）相对 int8+块标尺在同一每位置字节轴上的质量与字节取舍"
+    means: "13M、纯推理不训练，{fp16, int8 块标尺, fp8 E4M3, fp8 E5M2} 四臂同轴，报 clean bpc + 每位置字节（含标尺）+ 前缀不变性"
+    acceptance: "四臂同字节轴可比；fp8 越/不越噪声带二选一明确；前缀不变性两条为 True；非量化臂逐位不变"
+    evidence: "axes/5-quant/5.5-fp8-head-dim/experiments/"
+    review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b，核对同字节轴与标尺账）"
+    status: "未开始"
+  - id: "WP2"
+    what: "大 head_dim 下标尺摊薄判决"
+    goal: "给出「`head_dim` → G → 每位置字节 → clean bpc」的解析 + 实测对照，验证省幅趋近极限"
+    means: "改 `head_dim` 设置，扫 G，报每位置字节（值 + 2/G 标尺）与 clean bpc，与解析式对账"
+    acceptance: "每位置字节随 `head_dim`/G 的实测与解析一致；质量不越噪声带；对账差异有解释"
+    evidence: "axes/5-quant/5.5-fp8-head-dim/experiments/"
+    review: "跑完另派 fresh 复核（核对解析式与实测一致）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：fp8 vs int8+块标尺同字节判决"
+  - "WP2：大 head_dim 下标尺摊薄判决"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T11:06:24+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T11:06:24+08:00"
+    actor: "轴 5 量化轴 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：fp8 / 大 head_dim 承接旧格 R1-quantization 的「fp8 质量、更大 head_dim 点」缺口、按 docs/structure.md §5.5 单列。按 docs/research-schema.md 预登记目的/基线/判据/否证条件，与 5.1 的 int8 块标尺同轴（防跨口径混用，55-review W-08/R8）。"

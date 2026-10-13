@@ -1,6 +1,6 @@
 """2632 · KV 量化标尺方案（块 / KIVI / 逐值对照）的可失败单测。
 
-契约：`axes/R-references/R1-quantization/experiments/2632-kv-block-scale/`
+契约：`axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/`
 （`config.json` 判据线 + `README.md`）。
 语义层：`tools/evalkit/kv_quant.py`（标尺方案）、
 `.../2632-kv-block-scale/block_arms.py`（前向）、`.../scale_caliber.py`（字节账）。
@@ -29,7 +29,7 @@ import torch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-EXP = os.path.join(ROOT, "axes", "R-references", "R1-quantization",
+EXP = os.path.join(ROOT, "axes", "5-quant", "5.1-kv-quant",
                    "experiments", "2632-kv-block-scale")
 sys.path.insert(0, EXP)
 
