@@ -137,10 +137,78 @@
 
 **待上报 Main 的引擎改动（不擅改共享 `pathlm/**`）**：§5 的 F3（二级条件头 + 树注意力，需重训，本轮未做）。
 
-## 9 独立复核
+## 9 独立复核记录
 
-- `.scratch/63-axis6-predict/REVIEW-1.md`：fresh reviewer（未参与写作），预算 ≤25 min，只读；
-  范围 = WP 6.2.2 实验目录全量 + 5 份 `project.yaml` 的 Phase A 改动 + 本工单 + 复算留证；
-  必须尝试证伪：实现是否符合声称（概率加权 / K 候选 / 每轮 1 次顺序前向 / 无损接受判据 / 缓存回写）、
-  数字能否独立复现（自写脚本复算 α₁/τ 与配对 CI）、是否越界改共享引擎、是否越证据声明。
-- 结论与处置见 REVIEW-1.md 的 `VERDICT` 行（本节不重复其内容；历轮判词留本工单，不上 `conclusion_review`）。
+### 复核 #1（`.scratch/63-axis6-predict/REVIEW-1.md`，2026-10-13T17:31→17:37+08:00）
+
+- 范围：WP 6.2.2 实验目录全量 + 5 份 `project.yaml` 的 Phase A 改动 + 本工单 + 复算留证；
+  fresh 上下文（未参与写作）、只读；判词 = **无 blocker、4 条 normal + 1 条 info**。
+- **复核者工具限制（它自己声明，影响证据强度）**：其上下文**无 shell、无写文件工具** ⇒
+  `sha256sum` / `git` / `pytest` / `mutate.py` / 自写复算脚本这几类必须落盘或执行的证伪手段它做不了，
+  改用①逐行读源码②对落盘原始数据手工算术核对③两套互相独立实现（writer 的 `recompute_criteria.py`
+  vs axis-lead 的 `recompute_check.py`）互印证；未跑项逐条标 `not-run` 并给出补齐命令。
+- 它提出的真缺陷（两条都是真缺陷）：
+  - **F1（normal）10 倍数值错**：`analysis.md` §4 C1 与 `WP-6.2.2-LOG.md` T4 写「探针点低于本臂 CI 下界 0.00086」；
+    实为 `0.900752 − 0.8922 = 0.0086`。
+  - **F2（normal）代价口径未披露**：`analysis.md` §5 的 FLOPs 倍数是「K 行平铺（每轮 3K 个主干位置）」的
+    **实现口径**，未声明真·节点共享树（≈2K+1）下约高 1.2–1.33×；定级 normal（方向保守，不夸大树的收益）。
+  - F3（normal）`6.2/project.yaml` 与本轮新读数不自洽（＝既定收尾动作，须随复核一并改）；
+    F4（normal，低）`analysis.md` §2 带日期流水；F5（info）C1 的 Wilson CI 用 `overall.n`。
+- 它的 A/B/C/D/E 逐条结论：A 实现符合声称（A5 仅代码推理）；B 数字可从落盘字段复现且两套实现互证（B5 未自跑）；
+  C 无越界迹象（git 与预登记不变性未核）；D 结论未越证据；E 文档一致性除 F3/F4 外成立。
+
+### axis6-lead 代跑复核 #1 的补齐命令（2026-10-13T17:45→17:47+08:00）
+
+| 命令 | 结果 |
+|---|---|
+| `sha256sum 2640.../{spec_tree.py,results.json,cycle_log.jsonl,run_log.txt}` | 与复核者引用的四个哈希**逐一相同**（`71d98b26…` / `1302b678…` / `d2073370…` / `ba48b06a…`） |
+| `python3 2640.../recompute_criteria.py` | 重跑后 `git status --short` **无变化** ⇒ 产出确定 |
+| `python3 .scratch/63-axis6-predict/recompute_check.py 2640.../results.json` | 与留证快照**逐值一致**（仅 `source` 字段不同）；9/9 个「树臂 × ckpt」配对 α₁ 判据全 `pass` |
+| `pytest 2640.../test_spec_tree.py -q` | **22 passed** |
+| `python3 2640.../mutate.py` | M1–M3 全 `caught_red=True`、`all_restored_bitwise=True`；`spec_tree.py` sha256 回到 `71d98b26…8fb62f` |
+| `python3 tools/summary.py --check` / `check_tree.py` | `OK：46 个 project.yaml 全部符合 docs/research-schema.md` |
+| `git diff --stat 01d25ff..HEAD -- pathlm docs tools` | **空** ⇒ 未碰共享引擎/规范文档 |
+| `git log --follow -- …/2640-tree-conf-13m/README.md` | 只在 `cee655b` 一次入库；文件 mtime 16:30 **早于** run 开始 16:38 ⇒ 预登记判据未被事后放宽 |
+
+- 复核 #1 未能自跑的另一项（`paired_diffs` 正/反方向键的存在性）已由两条独立路径覆盖：复核者的键名枚举 +
+  axis-lead 的 `recompute_check.py`（从 `per_prompt` 直接重算配对 CI，不依赖该键）⇒「读数未变」结论双路支持。
+
+### 处置（commit `21f390d`）
+
+F1 两处改（LOG 按只增不改追加更正条目）；F2 在 `analysis.md` §5 补局限段；F3 重写
+`6.2/project.yaml` 的 `conclusion`/`gaps`/`status`/WP 6.2.2 状态 + `conclusion_review`；
+F4 压成当前事实 + 指针；F5 补半句。修复后复跑：`pytest` 22 passed、`mutate.py` 3/3 抓红 + 逐字节还原、
+`summary.py --check` 全绿。
+
+### 复核 #2（`.scratch/63-axis6-predict/REVIEW-2.md`，2026-10-13T17:48 派，≤12 min）
+
+- 定位：只复核修复后的最终 revision（HEAD `21f390d`）与复核 #1 未能自跑的项；fresh 上下文、**带 shell**
+  （复核 #1 无 shell 是其最大限制）⇒ 自跑项（pytest / mutate / recompute / git 越界 / 哈希）与独立复算
+  （自写脚本到 /tmp）必须由它亲自完成，不许引用 axis-lead 自报值。
+- 结论见 `REVIEW-2.md` 的 `VERDICT` 行（本节不重复；历轮判词留本工单，不上 `conclusion_review`）。
+
+### 复核 #2 结果（`.scratch/63-axis6-predict/REVIEW-2.md`，2026-10-13T17:48:12→17:51+08:00）
+
+- **VERDICT: PASS**（在 revision `21f390d` 上）；报告由复核者亲自落盘到仓库路径（与复核 #1 不同，
+  复审者**带 shell**，故 T2/T3 的自跑与独立复算全部由它亲自完成，不引用轴 lead 自报值）。
+- T1（修复核验）5/5 PASS：F1 新值 `0.900752 − 0.8922 = 0.0086` 正确、`analysis.md` 已无 `0.00086`
+  （剩余 3 处只在日志/复核留证里，其中 LOG 是引用旧值的更正条目）；F2 与 `spec_tree.py` 的
+  `rows = [[v1, c, d3] for c in cands]` + 前缀只做 KV `expand` 广播逐字一致、`3K/(2K+1)` 算术正确；
+  F3 抽 5 个数（Δα₁/Δτ/53m Δα₁/K=4 的 R）全对且无过时表述；F4 `analysis.md` 已无过程叙事；
+  F5 已注明探针 Wilson CI 用 `P3_free_gen_overall.n`=337/334/311。
+- T2 自跑 7 项全 PASS：pytest `22 passed`；`mutate.py` M1–M3 全抓红 + 逐字节还原（`spec_tree.py`
+  sha256 回 `71d98b26…`）；`recompute_criteria.py` 重跑后 `criteria_fixed.json` 未被改（产出确定）；
+  `summary.py --check` / `check_tree.py` OK；`git diff --stat 01d25ff..HEAD -- pathlm docs tools` 为空；
+  4 个关键文件 sha256 与 `run1-snapshot/README.md` 逐一相同。
+- T3 独立复算（自写 `/tmp/rev2_recompute.py`）全 PASS：13m_s0 的 `tree_direct_k2`/`combined_fixed`/
+  `chain1` 臂级 α₁/τ 与落盘逐位相同；`tree_topk4 − combined_fixed` 配对 95% CI 复算 = [0.108006, 0.147050]
+  ↔ `analysis.md` [0.1080, 0.1471]（差异仅为 4 位小数舍入）；无损性 3 ckpt × 全臂全 true、
+  `native_is_plain_decoder_path` / `prefix_consistent` 全 true。
+- T4 主动证伪：未发现修复引入的 blocker；4 条 info——① WP acceptance 写「完整树」与 gaps 的
+  「节点共享树未实装」有措辞张力；② `mutation_report.json` 写入逐次运行耗时 ⇒ 任何人重跑都会弄脏工作树；
+  ③ 复核期间 `.scratch/63-axis6-predict/TICKET.md` 被 axis6-lead 并发写（被审 4 个 artifact 未受影响，
+  工作树逐字节等于 HEAD）；④ conclusion (g) 的 `(K=2)` 标签把 union2（实测 K≈1.5–1.6）并入。
+- **处置（本轮的收口改动）**：①④ 已在 `6.2/project.yaml` 改（acceptance/roadmap 注明「树 = K 行平铺；
+  节点共享树未实装」；R 区间标为「union2 / K=2」）；② 已改实验侧 `mutate.py`（`_strip_timing()` 去耗时）+ 重跑
+  `mutation_report.json`（现为确定性：连续两次重跑后工作树不再变化，`all_caught_red`/`all_restored_bitwise` 仍 true）；
+  ③ 属工单只增不改的既定并发写入，被审 artifact 未受影响，如实登记在本节与复核报告里。

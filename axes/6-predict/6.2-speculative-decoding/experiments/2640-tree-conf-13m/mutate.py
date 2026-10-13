@@ -19,6 +19,7 @@
 import hashlib
 import json
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -54,6 +55,12 @@ def sha256_bytes(b: bytes) -> str:
     return hashlib.sha256(b).hexdigest()
 
 
+def _strip_timing(summary: str) -> str:
+    """去掉 pytest 摘要尾部的耗时（如 `in 2.19s`）：逐次运行的计时会抖动，
+    写进入库事实文件会让任何人重跑 `mutate.py` 都把工作树弄脏（复核 #2 info-2）。"""
+    return re.sub(r"\s+in\s+[0-9.]+s\s*$", "", summary.strip())
+
+
 def main() -> int:
     original = open(ST, "rb").read()
     base_digest = sha256_bytes(original)
@@ -76,7 +83,7 @@ def main() -> int:
             "expected_tests": tests, "caught_red": caught, "outcome_ok": caught,
             "sha256_mutated": mut_digest, "sha256_restored": sha256_bytes(open(target, "rb").read()),
             "restored_bitwise": restored,
-            "pytest_summary": tail[0] if tail else ""})
+            "pytest_summary": _strip_timing(tail[0] if tail else "")})
         print(f"{mid}: caught_red={caught} restored={restored} | {tail[0] if tail else ''}",
               flush=True)
     report["all_caught_red"] = all(m["caught_red"] for m in report["mutations"])
