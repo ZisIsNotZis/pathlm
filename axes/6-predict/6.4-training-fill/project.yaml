@@ -14,7 +14,7 @@ validation: "端到端：对照 = 无填充（ragged nofill）与 stock 全因�
 objective_criteria: "该跌：各填充语义相对无填充的 clean bpc（税，须越 0.014 噪声带才算可排序）+ 软提交的 rescore 峰值（OOD 污染该低）；该涨：填入位置的可读性（出口 / 草稿命中）；必须不变：非填充位置的 teacher forcing 语义（不污染主干 clean 分布）；必须报：填充位置占比与 adapter 活性。"
 falsification: "若 proj-fill / self-fill 相对无填充的 clean bpc 优势全由额外参数解释（等参数对照后消失），或「软提交 OOD 污染」不可复现 ⇒ 判填充语义在本尺度不是独立有增益的维度。"
 failure_analysis: ""
-conclusion: "已有本地读数（旧格 H2 迁入，按 55-review H-I7 归位并写明目的）：保留式填充（self-fill）1.8582 胜 ragged nofill 1.9438（+0.0856，>0.014 可排序）；proj-fill（逐层恒等初始化 adapter）1.8356 = 13M matched-step 族内最优且全深度逐深度支配 fill；mask / 错误 token 替换分别 +0.059 / +0.127（更贵）；软 latent（Σp·E）提交有 OOD 污染（rescore 峰值三度复现：首验 6.9 vs hard 1.2、@100M 8.42 vs 0.79、C 臂 3.36 vs 0.74）；embedding noise ±0.000。⇒ 本尺度下「未来 / 已退出位置的填充语义」是独立有影响的一维，且「不注入分布外内容」比「填得看起来像」更重要（软提交 OOD 污染）。"
+conclusion: "已有本地读数（旧格 H2 迁入，按 55-review H-I7 归位并写明目的）：保留式填充（self-fill）1.8582 胜 ragged nofill 1.9438（+0.0856，>0.014 可排序）；proj-fill（逐层恒等初始化 adapter）1.8356 = 13M matched-step 族内最优且全深度逐深度支配 fill；mask / 错误 token 替换分别 +0.059 / +0.127（更贵）；软 latent（Σp·E）提交有 OOD 污染（rescore 峰值三度复现：首验 6.9 vs hard 1.2、@100M 8.42 vs 0.79、C 臂 3.36 vs 0.74）；embedding noise ±0.000。⇒ 本尺度下「未来 / 已退出位置的填充语义」是独立有影响的一维，且「不注入分布外内容」比「填得看起来像」更重要（软提交 OOD 污染）。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 conclusion_review: "本项按 55-review H-PROBLEMS H-I7 重写后 status = 进行中：旧格 H2 的目的（服务变深度 AR / reentry 的右侧位置语义）没写清，且被并进「视界（一次前向产生几个位置）」当作 spec 加速的一条；本项把它归到预测轴的**训练时填充语义**上并把目的写明。结论本身（self-fill / proj-fill 胜 ragged nofill、mask / 错误 token 更贵、软提交 OOD 污染三度复现）是本仓受控实验读数，未被 55-review 质疑。判据以 matched-step / 同 token 预算记，墙钟不进判据。**尚未达到本项 milestone（13M matched-step n≥2）**：WP1 仍在进行中、WP2 未开始，填充语义对照无 n≥2 复本，故 status 记「进行中」而非「已完成」。独立复核未做。"
 experiments:
   - "axes/6-predict/6.4-training-fill/experiments/2523e-fill-variants"
@@ -72,3 +72,6 @@ change_log:
   - date: "2026-10-13T12:15:00+08:00"
     actor: "ticket 56 M2 integrator"
     change: "修正 status 自洽（独立复核 rev-axis6 D3）：顶层 status 由「已完成」改为「进行中」、ended 置空。依据 docs/research-schema.md §7（status 只回答「做完没有」）——本项 milestone 要求 13M matched-step n≥2，而 WP1 进行中、WP2 未开始、gaps 自述无 n≥2 复本，故「已完成」高报；测量数字与 conclusion 正文未动。"
+  - date: "2026-10-14T06:59:49+08:00"
+    actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
+    change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"

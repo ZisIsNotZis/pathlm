@@ -12,7 +12,7 @@ gap: "业界选择器多在单信号（置信 / 熵）上，且常在「工具�
 method: "单因素：固定基底与预算，只改选择信号的组合与分配算法（预算求解器）。臂 = {固定全深度, 输入无关阈值, 逐 token 阈值（prob0 门控）, 学习门, 离线求解器（Slider）}；信号维 = {prob0, js, distinct-2, 深度置信}；对照含「同预算最优固定路径」包络、oracle 上界、随机（零假设）。"
 validation: "端到端：对照 = 同算力预算的**最优固定路径**（不是 oracle，也不是工具自洽 KPI）+ oracle 上界 + 随机零假设 + 既有早退参照线（R7）；客观判据 = 同预算下的**序列级** bpc / perplexity（该涨）+ 选择是否命中「难」位置的分桶单调性（该涨）+ 每 token 平均 layer-passes（该跌）；口径 = 等效理论算力（layer-passes / FLOPs / tokens-per-forward），禁墙钟。该涨：选择臂相对同预算最优固定路径的序列级质量；该跌：每 token 平均 layer-passes；必须不变：因果性（无未来泄漏）与选择器活性（干预必须真开火，`SCHEMA.md` §10）。"
 objective_criteria: "该涨：同预算下序列级质量（相对最优固定路径，须越本格自测噪声门限才算可排序）；该跌：每 token 平均 layer-passes；必须不变：因果性与「同批内最长路径」的 pipelining 语义；必须报：校准误差（ECE，越低越好）与选择器开火率（作活性对照，不当结论）。"
-falsification: "若选择器核心假设（低置信位置每 FLOP 边际收益更高）在大规模失效（已观测：100M 上门控重试质量杠杆 τ 轴平坦 ±0.002、低置信带价值 ≤0.001），或唯一「收益」只是方差带内（Δbpc 落本格噪声门限内）不可排序，或收益只在自造货币（forwards）成立而在 FLOPs 口径净亏 ⇒ 判为工具 KPI 而非研究结论，维持 Backlog。"
+falsification: "若选择器核心假设（低置信位置每 FLOP 边际收益更高）在大规模失效（已观测：100M 上门控重试质量杠杆 τ 轴平坦 ±0.002、低置信带价值 ≤0.001），或唯一「收益」只是方差带内（Δbpc 落本格噪声门限内）不可排序，或收益只在自造货币（forwards）成立而在 FLOPs 口径净亏 ⇒ 判为工具 KPI 而非研究结论，维持 Backlog。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）为主判；本格自测噪声门限优先、两带不得混用。"
 cost_model: "等效理论量：选择器头每步只读已有 hidden，零额外前向（tokens-per-forward 不变）；被分配深度 d 的位置支付 d 次 layer-pass，故总 layer-passes/token = Σd_i/N。考虑 pipelining：按 token 变深度时同批内最长路径决定前向次数，收益体现在平均 layer-passes；报账时 forwards 与 FLOPs 双报、以 FLOPs 为主。（代价一律按等效理论量计。）"
 
 role_map:
@@ -90,3 +90,6 @@ change_log:
   - date: "2026-10-13T11:32:11+08:00"
     actor: "轴 9 worker（ticket 56 M2）"
     change: "按 MAPPING.md §1/§4 把旧格 G1/G3 的 experiments（2508-tts-probes / 2514-allocator-selectivity / 2515-slider-rung3 / 2517-slider-at-scale / 2522-gen-quality-signals）整目录迁入本项 experiments/；补 WP3（观测信号）与 WP4（校准）为手段；按 55-review G-PROBLEMS P1–P4/P9 修正判据与结论口径（前沿上移、禁工具 KPI、假设失效升格）。"
+  - date: "2026-10-14T06:59:49+08:00"
+    actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
+    change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
