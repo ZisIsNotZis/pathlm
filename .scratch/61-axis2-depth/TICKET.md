@@ -202,10 +202,65 @@
 
 ## 7 复核记录
 
-### 7.1 fresh 复核 round 1（2026-10-13T13:40:00+08:00 派发）
+### 7.1 round 1（派发 2026-10-13T13:34+08:00；返回 2026-10-13T13:40+08:00）
 
-- 复核者：独立上下文 subagent（**非**本项 writer）；范围 = ①`pathlm/exit_policy.py` 与
-  `pathlm/depth_ar.py::step_auto` 的实现正确性；②`tests/test_axis2_exit_decision.py` 是否真的能失败
-  （变异式质疑）；③`2631` 的协议与 `results.json` 数字是否支持 `analysis.md` 与 `project.yaml` 的结论；
-  ④10 份 `project.yaml` 的 role_map 与 `2.1.1` 的状态/结论/归因是否与证据一致。
-- 报告落 `.scratch/61-axis2-depth/REVIEW-1.md`；缺陷处置见 §7.2（修完派**新的** fresh 复核）。
+- 复核者：`subagent` 的 `reviewer`（fresh 独立上下文，非本项 writer）。复核对象 = revision `233e978`。
+- **能力限制（复核者自述，必须登记）**：该 run 只有只读工具（read/grep/find/ls/diff），**没有 shell 与写文件能力**
+  ⇒ `pytest`、变异测试、实验重跑、`summary.py --check` **一条都没跑**；结论建立在**静态复核 + 逐数字对账**上。
+  报告由轴 2 lead **原样落盘**为 `.scratch/61-axis2-depth/REVIEW-1.md`。
+- 判词：四块（实现 / 单测 / 实验数字 / SSOT 与 role_map）**成立**；`status = 被否证` 判「双向诚实、无谎报」。
+- **blocking 1 条**：正文把「异构深度上下文的代价 ≤ 0.003 bpc」写紧了（实测 +0.003296；同族副例 `ECE_true ≤ 0.005` vs 实测 0.0051）。
+- non-blocking 13 条（F2–F14，见 `REVIEW-1.md` §4）。
+
+### 7.2 round 1 处置（2026-10-13T14:00+08:00，actor：轴 2 lead）
+
+| 编号 | 处置 | 落点 |
+|---|---|---|
+| F1（blocking） | 「≤ 0.003 bpc」按实测改写为「≤ 0.005 bpc（d8 桶 +0.0033、逐窗口 SE 0.0012、两半 +0.0020/+0.0045）」；`ECE_true` 界改 0.0051 | `project.yaml` `conclusion`/`failure_analysis`/`conclusion_review`、`analysis.md` §0/§5/§6 |
+| F2 | 区间改为「省 ≥25% ⇒ 0.0117–0.2593 bpc（0.84–18.5×）」并单列 τ=0.95（省 20%） | 同上 |
+| F3 | 删除「分桶加权闭合 = 佐证」的说法，改标「算术恒等式（仅确认归因口径）」 | `conclusion_review`、`analysis.md` §6 |
+| F4 | `dominated_by_fixed` / `extra_layers` 加横轴条件 `x <= lp` | `run.py`（并重跑） |
+| F5 | 历史 `tf_acceptance` 用 `manual_seed(3)`（本实验与 `depth_curve` 用 seed 2）⇒ 只作量级参考；`acc_tf` 锚点不再声称对齐 | `MODEL.md` §3、`README.md` §1、`run.py` 注释、`analysis.md` §3 |
+| F6 | 「逐位重合」改「在浮点噪声内重合（Δbpc = 7e-06…4.6e-05）」并逐行给出 Δ | `analysis.md` §3 |
+| F7 | 「从未超过」改「从未**显著**超过」，并写明唯一未被支配的两档（τ=0.999 / min4） | `project.yaml` `conclusion`、`analysis.md` §0/§4 |
+| F8 | §4 表末列 0.99 行 `0.01×` → `0.00×`（该列定义为超出量/0.014） | `analysis.md` §4 |
+| F9 | 同位置配对新增**逐窗口 SE**与**两半样本**字段（`delta_window_se` / `delta_halves`）并重跑 | `run.py` + `results.json` |
+| F10 | §5 校准表补 depth 5 行；生成一致率区间改 28–71% | `analysis.md` §5/§9 |
+| F11 | `_layer_kv` 填充源改为经 `kv_adapters[k0]`（proj_fill 非恒等不再静默错语义）；新增 `_missing_mask` 让 `fill_kv=False` 的 no-fill 语义在解码器里成立；新增 2 条对拍单测 + 2 条活性断言 | `pathlm/depth_ar.py`、`tests/test_axis2_exit_decision.py` |
+| F12 | round 1 报告落盘；`conclusion_review` 改写成复核判词 + 处置 + 残余缺口（不再悬空） | `.scratch/61-axis2-depth/REVIEW-1.md`、`project.yaml` |
+| F13 | 臂数 11 → 14；`run_log.txt` 改覆盖模式；删 `bpc_per_window_rounded` 重复字段 | `TICKET §4.5`、`run.py` |
+| F14 | `generate_with_exit` 的 `stats["depths"]` 语义标注改正（= 产出该 token 的位置的退出深度；`layer_passes` 覆盖 prompt + n_new−1 个位置） | `pathlm/exit_policy.py` |
+
+**writer 自测补跑（round 1 未能运行的项；自测 ≠ 独立验收）**：
+
+1. `python3 -m pytest tests/test_axis2_exit_decision.py -q` ⇒ **19 passed**（含 F11 新增 2 条）；
+2. **变异检查 6 处**（每次跑完立即恢复，`git diff` 复核干净）：A `want & ~decided` → `want` ✓抓红、
+   B `step_auto` 的 `frozen_self` 取输入态 ✓抓红、C `min_depth` 判断反向 ✓抓红、
+   D `_layer_kv` 绕过 `proj_fill` adapter ✓抓红、E `_missing_mask` 恒 None ✓抓红、
+   F `score_stream` 删掉 depth-0 决策 ✓抓红。
+   **自测发现的测试缺陷（已修，见下）**：B/D 原先**抓不住**——原因是 `tiny_model` 的默认初始化
+   （Linear std 0.02、门偏置 −2）让每层对状态的改动只有 ~1e-3，对照落到 1e-6 量级而静默通过
+   （等于零测试）；已新增 `excited_model`（放大块权重 + 门偏置 σ≈0.82）并给两条对照加**活性断言**
+   （扰动必须让 logits 变 > 1e-3），B/D/E 因此才被抓红；
+3. 实验重跑（`run.py --out <同目录>`，CPU，310 s 过程量）⇒ 臂表 bpc 与 `sanity_anchor` 逐位复现
+   `233e978` 的值；新增字段 `delta_window_se` / `delta_halves` 落盘；
+4. `python3 tools/summary.py --check` ⇒ OK。
+
+### 7.3 round 2（已派发，本轮**不等待**）
+
+- 派发对象：fresh 独立上下文、**有 shell** 的复核者；范围 = ①round 1 未能运行的**运行证据**
+  （pytest / 变异测试 / 实验重跑 / `summary.py --check`）；②`233e978 → 本轮修订` 的**增量**
+  （F1–F14 处置是否真的落盘、是否有新缺陷）；③口径与外推边界复查。
+- 依据父级 steering（2026-10-13）：**不长时间等待子 Agent**，先以已落盘结果为准交付；
+  round 2 的判词到达前，§7.2 的处置效力为「writer 自测 + round 1 静态复核」，**不是**新的独立验收。
+
+## 8 上报与残余缺口
+
+- **F4（判据同题）**：`2.1.3` 与 `2.2.5` 判据近乎同题（皆「同参数量 vs 非共享 dense」且都不省 FLOPs）——
+  两格均维持 Backlog，已互相写入 `gaps`（2026-10-13T14:00）；是否合并请 Main 裁。
+- **F5（验收口径）**：`2.1.1` 的 milestone 验收文字（Δ ≤ 0.014）在本轮**字面成立**（τ≥0.99 省 6–12%、
+  Δ ≤ 0.0002）但实质判决是否证（被同算力固定截断支配）。**未**自改 milestone 文字，只在 `conclusion`
+  同时写明两面；是否把验收改成「相对同算力固定深度前沿的超出量 ≤ 0」请 Main 裁。
+- **残余缺口（不得当作已完成）**：①round 2 独立复核（有 shell）未返回 ⇒ 运行证据目前是 **writer 自测**；
+  ②`TICKET §2.1` 表里对 `2.1.3`/`2.2.5` 的边界处置已落盘（见上）；③轴 2 其余 7 项、以及 `2.1.1` 的
+  WP2/WP3/WP4/WP5/WP6 未执行；④GPU 训练类 WP 顺延（本 Phase 未做任何 GPU 工作、未取锁）。

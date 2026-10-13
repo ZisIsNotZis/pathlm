@@ -51,7 +51,7 @@ CKPT_CFG = dict(d_model=256, n_layers=8, n_heads=8, seq_len=256, mlp_mult=4)
 DATA_RAW, DATA_CACHE = ".tmp/enwik8", "data/enwik8_full.npz"
 
 T = 256
-CANON = dict(n_batches=20, batch_size=16, seed=2)   # = depth_curve / tf_acceptance 的样本约定
+CANON = dict(n_batches=20, batch_size=16, seed=2)   # = depth_curve 的样本约定（tf_acceptance 用 seed=3）
 CHUNK = 64                                          # 只影响内存与分块，不影响结果
 THRESHOLDS = (0.3, 0.6, 0.9, 0.95, 0.99, 0.999)
 NOISE_BAND = 0.014
@@ -197,7 +197,7 @@ def main():
     ap.add_argument("--smoke", action="store_true")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
-    logf = open(os.path.join(args.out, "run_log.txt"), "a")
+    logf = open(os.path.join(args.out, "run_log.txt"), "w")   # 覆盖：原地重跑不混两次流水
     t_start = time.perf_counter()
 
     sha = sha256_file(args.ckpt)
@@ -259,7 +259,6 @@ def main():
         r["delta_bpc_in_bands"] = round((r["bpc"] - base["bpc"]) / NOISE_BAND, 3)
         r["delta_bpc_paired_significant"] = bool(
             abs(r["bpc"] - base["bpc"]) > 2 * max(se(d), 1e-12))
-        r["bpc_per_window_rounded"] = [round(b, 6) for b in r["bpc_per_window"]]
         r.pop("depths", None)
         r.pop("ce_per_pos", None)
 
@@ -287,10 +286,11 @@ def main():
             "arm": r["arm"], "layer_passes_per_token": round(lp, 6),
             "delta_bpc": d, "fixed_depth_frontier_delta": (round(fd_, 6) if fd_ is not None else None),
             "frontier_excess": (round(d - fd_, 6) if fd_ is not None else None),
+            # 支配 = 存在**实测**固定深度点：层数不多于本臂（x ≤ lp）且 Δbpc 不差于本臂
             "extra_layers_vs_dominated_fixed_arm": (
-                round(lp - min(x for x, y in fxd if y <= d), 6)
-                if any(y <= d for x, y in fxd) else None),
-            "dominated_by_fixed": bool(any(y <= d for x, y in fxd)),
+                round(lp - min(x for x, y in fxd if x <= lp and y <= d), 6)
+                if any(x <= lp and y <= d for x, y in fxd) else None),
+            "dominated_by_fixed": bool(any(x <= lp and y <= d for x, y in fxd)),
         })
     log("[frontier] " + "; ".join(
         f"{r['arm']}: lp={r['layer_passes_per_token']:.3f} Δ={r['delta_bpc']:+.4f} "
@@ -433,18 +433,39 @@ def main():
     same_pos = []
     for nm in diagnosis_arms:
         d = all_depths[nm][:, :-1]
+        diffs = all_ce[nm] - base_ce                       # [W, T-1]（同位置配对差，nats）
+        Wn = d.shape[0]
         for k in range(L + 1):
             m = d == k
             n = int(m.sum())
             if n == 0:
                 continue
-            same_pos.append({
+            row = {
                 "arm": nm, "depth_bucket": k, "n": n,
                 "bpc_this_arm": round(float(all_ce[nm][m].mean()) / LN2, 6),
                 "bpc_full_depth_same_positions": round(float(base_ce[m].mean()) / LN2, 6),
                 "delta_same_positions": round(float(
                     (all_ce[nm][m].mean() - base_ce[m].mean())) / LN2, 6),
-            })
+            }
+            # 稳健性（REVIEW-1 F9）：该桶的**逐窗口**配对差 → 窗口间 SE；另报两半样本
+            cnt = m.sum(1)
+            ssum = (diffs * m).sum(1)
+            rows_ = [(float(ssum[i]) / float(cnt[i])) / LN2
+                     for i in range(Wn) if int(cnt[i]) > 0]
+            if len(rows_) >= 2:
+                mu = sum(rows_) / len(rows_)
+                var = sum((x - mu) ** 2 for x in rows_) / (len(rows_) - 1)
+                row["n_windows"] = len(rows_)
+                row["delta_window_se"] = round((var / len(rows_)) ** 0.5, 6)
+            if Wn >= 4:
+                halves = []
+                for a, b in ((0, Wn // 2), (Wn // 2, Wn)):
+                    mm = m[a:b]
+                    if int(mm.sum()):
+                        halves.append(round(float(
+                            (all_ce[nm][a:b][mm] - base_ce[a:b][mm]).mean()) / LN2, 6))
+                row["delta_halves"] = halves
+            same_pos.append(row)
     log("[same-pos] " + "; ".join(
         f"{r['arm']}@d{r['depth_bucket']}: {r['bpc_this_arm']:.3f} vs 同位置全深度 "
         f"{r['bpc_full_depth_same_positions']:.3f} (Δ{r['delta_same_positions']:+.3f}, "

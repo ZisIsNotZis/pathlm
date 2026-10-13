@@ -2682,7 +2682,15 @@ class DepthARDecoder:
         self.n = 0                                       # 已缓存 position 数
 
     def _layer_kv(self, k0: int) -> tuple[torch.Tensor, torch.Tensor]:
-        """层 k0（0-index）的完整 K/V [1,H,S,dh]：旧缓存散点 + 冻结填充。"""
+        """层 k0（0-index）的完整 K/V [1,H,S,dh]：旧缓存散点 + 冻结填充。
+
+        填充源与训练前向**逐字段一致**：`frozen` 经 `kv_adapters[k0]`（仅
+        `proj_fill=True`）再进本层 `ln1 → qkv` 的 K/V 半边——与
+        `DepthARModel.forward` 的 `kv_src = kv_adapters[k-1](frozen)` 同款。
+        未跑到本层的位置在 `fill_kv=False` 时**必须被掩掉**（不是填充）：
+        掩码由 `_missing_mask` 给，语义 = 该位置是否跑到层 k0 与
+        `forward` 的 `_ragged_mask` 相同。
+        """
         model = self.model
         d, nh = model.cfg.d_model, model.cfg.n_heads
         block = model.blocks[k0]
@@ -2696,12 +2704,27 @@ class DepthARDecoder:
         depths = torch.tensor(self.depths, device=k_all.device)
         shallow = (depths <= k0).nonzero().flatten()     # 未跑到层 k0 的位置
         if shallow.numel():
-            kv = block.qkv(block.ln1(self.frozen[:, shallow]))
+            src = self.frozen[:, shallow]
+            if model.cfg.proj_fill:
+                src = model.kv_adapters[k0](src)
+            kv = block.qkv(block.ln1(src))
             kk, vv = kv[..., d:2 * d], kv[..., 2 * d:]
             shape = lambda t: t.view(1, -1, nh, d // nh).transpose(1, 2)
             k_all[:, :, shallow] = shape(kk)
             v_all[:, :, shallow] = shape(vv)
         return k_all, v_all
+
+    def _missing_mask(self, k0: int) -> torch.Tensor | None:
+        """no-fill 语义下的自注意力掩码 [1,1,S]（True=允许）：未跑到层 k0 的位置
+        在 KV 里**缺席**（不是填充）。`fill_kv=True`（本仓训练语义与绝大多数臂）
+        返回 None——不改变原有路径，逐位还原。"""
+        if self.model.cfg.fill_kv or self.n == 0:
+            return None
+        depths = torch.tensor(self.depths,
+                              device=self.model.embed.weight.device)
+        m = (depths > k0).view(1, 1, -1)               # 缺席列不给 attend
+        return torch.cat([m, torch.ones(1, 1, 1, dtype=torch.bool, device=m.device)],
+                         dim=-1)                        # 末列 = 当前 token 自身，恒可见
 
     def step(self, inp: torch.Tensor,
              forced_depth: int) -> tuple[torch.Tensor, torch.Tensor]:
@@ -2719,9 +2742,10 @@ class DepthARDecoder:
             k_all, v_all = self._layer_kv(k0)
             qkv = block.qkv(block.ln1(h))
             q, k_self, v_self = qkv[..., :d], qkv[..., d:2 * d], qkv[..., 2 * d:]
-            a = F.scaled_dot_product_attention(shape(q),
-                                               torch.cat([k_all, shape(k_self)], dim=2),
-                                               torch.cat([v_all, shape(v_self)], dim=2))
+            a = F.scaled_dot_product_attention(
+                shape(q), torch.cat([k_all, shape(k_self)], dim=2),
+                torch.cat([v_all, shape(v_self)], dim=2),
+                attn_mask=self._missing_mask(k0))       # fill_kv=True 时为 None（原路径）
             a = a.transpose(1, 2).reshape(1, 1, d)
             y = h + block.proj(a)
             y = y + block.mlp(block.ln2(y))
@@ -2784,7 +2808,8 @@ class DepthARDecoder:
                 q, k_self, v_self = qkv[..., :d], qkv[..., d:2 * d], qkv[..., 2 * d:]
                 a = F.scaled_dot_product_attention(
                     shape(q), torch.cat([k_all, shape(k_self)], dim=2),
-                    torch.cat([v_all, shape(v_self)], dim=2))
+                    torch.cat([v_all, shape(v_self)], dim=2),
+                    attn_mask=self._missing_mask(k0))   # fill_kv=True 时为 None（原路径）
                 a = a.transpose(1, 2).reshape(1, 1, d)
                 y = h + block.proj(a)
                 y = y + block.mlp(block.ln2(y))

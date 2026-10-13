@@ -284,9 +284,11 @@ def generate_with_exit(model, prompt, n_new: int, policy: _Policy,
                        commit: str = "soft") -> tuple[list[int], dict]:
     """自由生成（逐 token 走生产解码器 `DepthARDecoder.step_auto`）。
 
-    返回 `(gen_tokens, stats)`；`stats["depths"]` = 每个**新生成位置**的退出深度
-    （prompt 段与生成段分别记账），`stats["layer_passes_per_token"]` 覆盖整段
-    （prompt + 生成）——这是「端到端」的算力账，不是只算生成段。
+    返回 `(gen_tokens, stats)`：`stats["depths"][j]` = **产出第 j 个生成 token 的那个
+    位置**的退出深度（位置索引与生成 token 对齐，注意是「产出者位置」不是「消费位置」）；
+    `stats["prompt_depths"]` = prompt 段各位置的退出深度。`stats["layer_passes_per_token"]`
+    覆盖 prompt + 前 n_new−1 个生成位置（最后一个生成 token 没有后续前向）——即端到端
+    算力账，不是只算生成段。
     """
     model.eval()
     dec = DepthARDecoder(model)

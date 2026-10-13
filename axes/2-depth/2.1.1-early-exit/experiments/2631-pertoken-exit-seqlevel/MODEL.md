@@ -29,8 +29,9 @@ seed 0、98.3M tokens（≈1 epoch 快照）。
 
 `data/enwik8_full.npz`（byte 级 enwik8，前 90M train / 后 10M val，V=206）；
 评测样本 = `pathlm.data.batch` + `torch.Generator().manual_seed(2)` × 20 批 × 16 行，`T=256`
-⇒ W=320 窗口、81,600 个预测位置。**与历史 `depth_curve` / `tf_acceptance` 完全同一个样本约定**
-（本实验的 `prescribed-k` 臂逐深度复现历史 `depth_curve[k]`，Δ = ±0.0000，见 `analysis.md` §3）。
+⇒ W=320 窗口、81,600 个预测位置。**与历史 `depth_curve` 同一个样本约定**（`depth_curve` 用 `manual_seed(2)`；`tf_acceptance` 用
+`manual_seed(3)` ⇒ 那条只是**量级参考**，不用于对齐）。本实验的 `prescribed-k` 臂逐深度复现历史
+`depth_curve[k]`（Δbpc = 7e-06…4.6e-05，见 `analysis.md` §3）。
 
 ## 4 复现命令
 
