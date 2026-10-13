@@ -1,6 +1,6 @@
 """R7 共用解码机械/早退策略的语义钉（可失败单测）。
 
-对应契约 `axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/README.md`。
+对应契约 `axes/7-references/experiments/R7-existing-early-exit/2623-standard-early-exit-13m/README.md`。
 每个策略都有可失败断言：共享机械与并行前向一致（有门/无门两路）、CALM 门控确实
 在最浅达标层退出、spec 发出的流 == 同 arm 全深度贪心流、spec 的解析算力账与实测一致、
 接受账本自洽。
@@ -17,7 +17,7 @@ import torch
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, os.path.join(
-    ROOT, "axes", "R-references", "R7-existing-early-exit", "experiments",
+    ROOT, "axes", "7-references", "experiments", "R7-existing-early-exit",
     "2623-standard-early-exit-13m"))
 
 import exit_policies as EP  # noqa: E402
