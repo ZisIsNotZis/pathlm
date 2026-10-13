@@ -1,0 +1,160 @@
+{
+  "experiment": "2641-ffn-ratio-frontier-13m",
+  "criterion": "P1 Δ_up = bpc_U2 − bpc_PYR（正 = PYR 更好）；P2 Δ_down = bpc_U2 − bpc_APYR；P4 两 seed 同号；P5 等值性门；P6 活性（隐藏维审计）。方差带 0.014。",
+  "variance_bound": 0.014,
+  "steps": 12000,
+  "seed_spread_reference": {
+    "same_config_seed_spread_2613": 0.0041,
+    "note": "同 config 跨 seed bpc 散布（参照，不替代 0.014）"
+  },
+  "arms": {
+    "APYR-s0": {
+      "clean_bpc": 1.5644,
+      "sum_r": 16,
+      "macs_per_token": 5295616,
+      "macs_ffn": 2097152,
+      "params_total": 4861440,
+      "params_ffn": 2103296,
+      "slope_per_1k": 0.0058
+    },
+    "APYR-s1": {
+      "clean_bpc": 1.5601,
+      "sum_r": 16,
+      "macs_per_token": 5295616,
+      "macs_ffn": 2097152,
+      "params_total": 4861440,
+      "params_ffn": 2103296,
+      "slope_per_1k": 0.00178
+    },
+    "PYR-s0": {
+      "clean_bpc": 1.573,
+      "sum_r": 16,
+      "macs_per_token": 5295616,
+      "macs_ffn": 2097152,
+      "params_total": 4861440,
+      "params_ffn": 2103296,
+      "slope_per_1k": 0.0027
+    },
+    "PYR-s1": {
+      "clean_bpc": 1.575,
+      "sum_r": 16,
+      "macs_per_token": 5295616,
+      "macs_ffn": 2097152,
+      "params_total": 4861440,
+      "params_ffn": 2103296,
+      "slope_per_1k": 0.00354
+    },
+    "U2-s0": {
+      "clean_bpc": 1.5709,
+      "sum_r": 16,
+      "macs_per_token": 5295616,
+      "macs_ffn": 2097152,
+      "params_total": 4861440,
+      "params_ffn": 2103296,
+      "slope_per_1k": 0.00418
+    },
+    "U2-s1": {
+      "clean_bpc": 1.5611,
+      "sum_r": 16,
+      "macs_per_token": 5295616,
+      "macs_ffn": 2097152,
+      "params_total": 4861440,
+      "params_ffn": 2103296,
+      "slope_per_1k": 0.00332
+    },
+    "U4-s0": {
+      "clean_bpc": 1.5314,
+      "sum_r": 32,
+      "macs_per_token": 7392768,
+      "macs_ffn": 4194304,
+      "params_total": 6962688,
+      "params_ffn": 4204544,
+      "slope_per_1k": 0.00401
+    }
+  },
+  "P1_P2_deltas_by_seed": {
+    "0": {
+      "delta_up_U2_minus_PYR": -0.0021,
+      "delta_down_U2_minus_APYR": 0.0065
+    },
+    "1": {
+      "delta_up_U2_minus_PYR": -0.0139,
+      "delta_down_U2_minus_APYR": 0.001
+    }
+  },
+  "P1_verdict_by_seed": {
+    "0": "不可排序（H0）：|Δ| < 0.014 ⇒ 逐层 FFN 分配在本尺度无独立增益",
+    "1": "不可排序（H0）：|Δ| < 0.014 ⇒ 逐层 FFN 分配在本尺度无独立增益"
+  },
+  "P4_same_sign_across_seeds": true,
+  "P5_engine_equivalence_gate": {
+    "U4_s0_clean_bpc": 1.5314,
+    "vs_hist_23d_dense_B_12k": 0.0027,
+    "vs_2613_baseline_s0": 0.0057,
+    "pass": true,
+    "rule": "与任一历史 dense 13M 锚之差 < 0.005 ⇒ 同引擎同配方"
+  },
+  "P6_liveness": {
+    "APYR-s0": {
+      "hidden_matches_schedule": true,
+      "ffn_params_analytic_matches_measured": true
+    },
+    "APYR-s1": {
+      "hidden_matches_schedule": true,
+      "ffn_params_analytic_matches_measured": true
+    },
+    "PYR-s0": {
+      "hidden_matches_schedule": true,
+      "ffn_params_analytic_matches_measured": true
+    },
+    "PYR-s1": {
+      "hidden_matches_schedule": true,
+      "ffn_params_analytic_matches_measured": true
+    },
+    "U2-s0": {
+      "hidden_matches_schedule": true,
+      "ffn_params_analytic_matches_measured": true
+    },
+    "U2-s1": {
+      "hidden_matches_schedule": true,
+      "ffn_params_analytic_matches_measured": true
+    },
+    "U4-s0": {
+      "hidden_matches_schedule": true,
+      "ffn_params_analytic_matches_measured": true
+    }
+  },
+  "equal_ffn_budget_check": {
+    "rule": "U2 / PYR / APYR 的 Σr、FFN 参数、每 token FFN MACs 必须逐位相等",
+    "sum_r": {
+      "U4": 32,
+      "U2": 16,
+      "PYR": 16,
+      "APYR": 16
+    },
+    "ffn_macs": {
+      "U4": 4194304,
+      "U2": 2097152,
+      "PYR": 2097152,
+      "APYR": 2097152
+    },
+    "params_ffn": {
+      "U4": 4204544,
+      "U2": 2103296,
+      "PYR": 2103296,
+      "APYR": 2103296
+    },
+    "pass": true
+  },
+  "source_files": [
+    "results_APYR_s0.json",
+    "results_APYR_s1.json",
+    "results_PYR_s0.json",
+    "results_PYR_s1.json",
+    "results_U2_s0.json",
+    "results_U2_s1.json",
+    "results_U4_s0.json"
+  ],
+  "code_hash_run_py": "cdf48604d32613ecf7ee226105390787c3e841bba442033c1a51483b40fddfbe",
+  "generated_at": "2026-10-13T19:07:55+0800"
+}

@@ -1,0 +1,198 @@
+{
+  "experiment": "2641-ffn-ratio-frontier-13m",
+  "base": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dense": true,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "topology": "sequential",
+    "exit_mode": "uniform",
+    "fill_kv": true
+  },
+  "training": {
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "train_tokens": 98304000,
+    "data": "data/enwik8_full.npz（前 90M train / 末 10M eval，词表 206）"
+  },
+  "intervention": {
+    "what": "逐层 FFN 隐藏维 r_l（构造后对 mlp[0]/mlp[2] 做**前缀切片**）",
+    "arms": {
+      "U4": [
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4,
+        4
+      ],
+      "U2": [
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2,
+        2
+      ],
+      "PYR": [
+        4,
+        3,
+        2,
+        2,
+        2,
+        1,
+        1,
+        1
+      ],
+      "APYR": [
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        3,
+        4
+      ]
+    },
+    "matched_cost_rule": "U2/PYR/APYR 对齐 Σ_l r_l ⇒ FFN 参数与每 token FFN MACs 逐位相等",
+    "analytic_cost": {
+      "U4": {
+        "d_model": 256,
+        "seq_len": 256,
+        "n_layers": 8,
+        "vocab": 206,
+        "macs_per_token": {
+          "attention": 3145728,
+          "ffn": 4194304,
+          "readout_tied": 52736,
+          "total": 7392768
+        },
+        "ffn_macs_per_token_by_layer": [
+          524288,
+          524288,
+          524288,
+          524288,
+          524288,
+          524288,
+          524288,
+          524288
+        ],
+        "ffn_params_analytic": 4204544,
+        "ffn_share_of_total_macs": 0.567352,
+        "ffn_macs_rel_to_U4": 1.0,
+        "note": "等效理论量：MACs/token（乘加）。attention 的 T·d 项随序列长度线性、FFN 的 r·d² 项与 T 无关；两列分开报，不用任何时间量。tokens-per-forward = 1（本格不涉及多 token 前向）。"
+      },
+      "U2": {
+        "d_model": 256,
+        "seq_len": 256,
+        "n_layers": 8,
+        "vocab": 206,
+        "macs_per_token": {
+          "attention": 3145728,
+          "ffn": 2097152,
+          "readout_tied": 52736,
+          "total": 5295616
+        },
+        "ffn_macs_per_token_by_layer": [
+          262144,
+          262144,
+          262144,
+          262144,
+          262144,
+          262144,
+          262144,
+          262144
+        ],
+        "ffn_params_analytic": 2103296,
+        "ffn_share_of_total_macs": 0.396017,
+        "ffn_macs_rel_to_U4": 0.5,
+        "note": "等效理论量：MACs/token（乘加）。attention 的 T·d 项随序列长度线性、FFN 的 r·d² 项与 T 无关；两列分开报，不用任何时间量。tokens-per-forward = 1（本格不涉及多 token 前向）。"
+      },
+      "PYR": {
+        "d_model": 256,
+        "seq_len": 256,
+        "n_layers": 8,
+        "vocab": 206,
+        "macs_per_token": {
+          "attention": 3145728,
+          "ffn": 2097152,
+          "readout_tied": 52736,
+          "total": 5295616
+        },
+        "ffn_macs_per_token_by_layer": [
+          524288,
+          393216,
+          262144,
+          262144,
+          262144,
+          131072,
+          131072,
+          131072
+        ],
+        "ffn_params_analytic": 2103296,
+        "ffn_share_of_total_macs": 0.396017,
+        "ffn_macs_rel_to_U4": 0.5,
+        "note": "等效理论量：MACs/token（乘加）。attention 的 T·d 项随序列长度线性、FFN 的 r·d² 项与 T 无关；两列分开报，不用任何时间量。tokens-per-forward = 1（本格不涉及多 token 前向）。"
+      },
+      "APYR": {
+        "d_model": 256,
+        "seq_len": 256,
+        "n_layers": 8,
+        "vocab": 206,
+        "macs_per_token": {
+          "attention": 3145728,
+          "ffn": 2097152,
+          "readout_tied": 52736,
+          "total": 5295616
+        },
+        "ffn_macs_per_token_by_layer": [
+          131072,
+          131072,
+          131072,
+          262144,
+          262144,
+          262144,
+          393216,
+          524288
+        ],
+        "ffn_params_analytic": 2103296,
+        "ffn_share_of_total_macs": 0.396017,
+        "ffn_macs_rel_to_U4": 0.5,
+        "note": "等效理论量：MACs/token（乘加）。attention 的 T·d 项随序列长度线性、FFN 的 r·d² 项与 T 无关；两列分开报，不用任何时间量。tokens-per-forward = 1（本格不涉及多 token 前向）。"
+      }
+    }
+  },
+  "eval": {
+    "metric": "clean bpc（depth_curve 最终深度，n_batches=20, bs=16, eval generator seed=2）"
+  },
+  "gpu_lock": "SCHEMA.md §20：按臂取/放 /tmp/pathlm_gpu.lock，臂间 ≥61 s；锁取放时间戳与 free 读数见 run_log.txt",
+  "arms_run": [
+    "U4-s0",
+    "U2-s0",
+    "PYR-s0",
+    "APYR-s0",
+    "U2-s1",
+    "PYR-s1",
+    "APYR-s1"
+  ],
+  "code_frozen_during_training": true,
+  "code_hashes_run_py": {
+    "U4-s0": "cdf48604d32613ecf7ee226105390787c3e841bba442033c1a51483b40fddfbe",
+    "U2-s0": "cdf48604d32613ecf7ee226105390787c3e841bba442033c1a51483b40fddfbe",
+    "PYR-s0": "cdf48604d32613ecf7ee226105390787c3e841bba442033c1a51483b40fddfbe",
+    "APYR-s0": "cdf48604d32613ecf7ee226105390787c3e841bba442033c1a51483b40fddfbe",
+    "U2-s1": "cdf48604d32613ecf7ee226105390787c3e841bba442033c1a51483b40fddfbe",
+    "PYR-s1": "cdf48604d32613ecf7ee226105390787c3e841bba442033c1a51483b40fddfbe",
+    "APYR-s1": "cdf48604d32613ecf7ee226105390787c3e841bba442033c1a51483b40fddfbe"
+  }
+}

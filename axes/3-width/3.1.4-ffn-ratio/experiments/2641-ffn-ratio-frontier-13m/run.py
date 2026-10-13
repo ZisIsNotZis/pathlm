@@ -302,7 +302,7 @@ def evaluate(arm: str, seed: int, steps: int, out_root: str,
         "code_hash_run_py": sha256_file(os.path.join(HERE, "run.py")),
     }
     out["params"]["hidden_matches_schedule"] = (
-        out["params"]["hidden_by_layer"] == SCHEDULES[arm])
+        out["params"]["hidden_by_layer"] == [r * D_MODEL for r in SCHEDULES[arm]])
     out["cost"]["ffn_params_measured"] = out["params"]["params_ffn"]
     out["cost"]["ffn_params_analytic_matches_measured"] = (
         out["cost"]["ffn_params_analytic"] == out["params"]["params_ffn"])

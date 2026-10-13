@@ -1,0 +1,246 @@
+{
+  "arm": "APYR",
+  "seed": 0,
+  "steps": 12000,
+  "schedule_r_by_layer": [
+    1,
+    1,
+    1,
+    2,
+    2,
+    2,
+    3,
+    4
+  ],
+  "sum_r": 16,
+  "eval": {
+    "metric": "clean bpc（最终深度、无退出、序列级、越低越好）",
+    "n_batches": 20,
+    "batch_size": 16,
+    "eval_generator_seed": 2,
+    "bpc_by_depth": [
+      {
+        "depth": 0,
+        "bpc": 7.4235,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "bpc": 5.2389,
+        "acc": 0.1162
+      },
+      {
+        "depth": 2,
+        "bpc": 4.951,
+        "acc": 0.1515
+      },
+      {
+        "depth": 3,
+        "bpc": 4.6336,
+        "acc": 0.1839
+      },
+      {
+        "depth": 4,
+        "bpc": 3.906,
+        "acc": 0.2983
+      },
+      {
+        "depth": 5,
+        "bpc": 3.3444,
+        "acc": 0.3795
+      },
+      {
+        "depth": 6,
+        "bpc": 2.7209,
+        "acc": 0.4871
+      },
+      {
+        "depth": 7,
+        "bpc": 2.0,
+        "acc": 0.6073
+      },
+      {
+        "depth": 8,
+        "bpc": 1.5644,
+        "acc": 0.6827
+      }
+    ],
+    "clean_bpc": 1.5644,
+    "acc_by_depth": [
+      {
+        "depth": 0,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "acc": 0.1162
+      },
+      {
+        "depth": 2,
+        "acc": 0.1515
+      },
+      {
+        "depth": 3,
+        "acc": 0.1839
+      },
+      {
+        "depth": 4,
+        "acc": 0.2983
+      },
+      {
+        "depth": 5,
+        "acc": 0.3795
+      },
+      {
+        "depth": 6,
+        "acc": 0.4871
+      },
+      {
+        "depth": 7,
+        "acc": 0.6073
+      },
+      {
+        "depth": 8,
+        "acc": 0.6827
+      }
+    ]
+  },
+  "params": {
+    "params_total": 4861440,
+    "params_ffn": 2103296,
+    "params_attn_and_rest": 2758144,
+    "hidden_by_layer": [
+      256,
+      256,
+      256,
+      512,
+      512,
+      512,
+      768,
+      1024
+    ],
+    "hidden_matches_schedule": true
+  },
+  "cost": {
+    "d_model": 256,
+    "seq_len": 256,
+    "n_layers": 8,
+    "vocab": 206,
+    "macs_per_token": {
+      "attention": 3145728,
+      "ffn": 2097152,
+      "readout_tied": 52736,
+      "total": 5295616
+    },
+    "ffn_macs_per_token_by_layer": [
+      131072,
+      131072,
+      131072,
+      262144,
+      262144,
+      262144,
+      393216,
+      524288
+    ],
+    "ffn_params_analytic": 2103296,
+    "ffn_share_of_total_macs": 0.396017,
+    "ffn_macs_rel_to_U4": 0.5,
+    "note": "等效理论量：MACs/token（乘加）。attention 的 T·d 项随序列长度线性、FFN 的 r·d² 项与 T 无关；两列分开报，不用任何时间量。tokens-per-forward = 1（本格不涉及多 token 前向）。",
+    "ffn_params_measured": 2103296,
+    "ffn_params_analytic_matches_measured": true
+  },
+  "liveness": {
+    "hidden_by_layer": [
+      256,
+      256,
+      256,
+      512,
+      512,
+      512,
+      768,
+      1024
+    ],
+    "ffn_out_rel_mag_by_layer": [
+      1.321126,
+      0.332624,
+      0.358562,
+      0.524542,
+      0.426854,
+      0.395424,
+      0.48475,
+      0.625595
+    ],
+    "note": "隐藏维 = 逐层审计（必须逐位等于 schedule）；相对幅度 = 真实前向中 ‖mlp_out‖/‖mlp_in‖ 的逐位置均值（>0 ⇒ 该层 FFN 真的参与前向，不是死路径）"
+  },
+  "loss_slope": {
+    "n_points": 16,
+    "step_first": 9000,
+    "step_last": 11999,
+    "slope_per_1k_steps": 0.0058,
+    "window": "末 25%"
+  },
+  "train_log_rows": 61,
+  "shared_train_results": {
+    "params": 4861440,
+    "train_tokens": 98304000,
+    "wall_minutes": 7.49,
+    "peak_gpu_mem_mb": 771.3,
+    "config": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 4,
+      "dropout": 0.0,
+      "norm_cap": 1.0,
+      "gate_bias_init": -2.0,
+      "dense": true,
+      "carry_gate": true,
+      "aux_mode": "renorm",
+      "mod_ratio": 0.0,
+      "fill_kv": true,
+      "proj_fill": false,
+      "readout_dims": null,
+      "readout_gated": false,
+      "readout_linear_resid": false,
+      "readout_perdepth": false,
+      "readout_wide_shared": 0,
+      "topology": "sequential",
+      "attn_sparse_k": 0,
+      "train_window": 0,
+      "train_anchors": 0,
+      "attn_linear": false,
+      "linear_chunk": 64,
+      "n_kv_heads": null,
+      "carry_rule": null,
+      "carry_chunk": 64,
+      "carry_state_dim": null,
+      "recon_window": 0
+    },
+    "gnorm_monitor": {
+      "gnorm_max": 7.68,
+      "gnorm_mean": 0.559,
+      "grad_skips": 0,
+      "attn_sparse_mean": null,
+      "attn_sparse_layer_samples": 0,
+      "attn_linear_mean": null,
+      "attn_linear_layer_samples": 0,
+      "attn_carry_mean": null,
+      "attn_carry_layer_samples": 0,
+      "attn_carry_layer_stats": null,
+      "attn_carry_scan_mean": null,
+      "recon_window": 0,
+      "recon_lambda": 0.0,
+      "recon_mean": null,
+      "synth_answer_ce_mean": null,
+      "synth_answer_ce_n_steps": 0,
+      "synth_chance_ce": null,
+      "window_mask": null,
+      "window_mask_probe": null,
+      "kv_heads": null,
+      "kv_heads_n_logged_lines": 0
+    }
+  },
+  "run_dir": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/runs/APYR-s0-12k",
+  "code_hash_run_py": "cdf48604d32613ecf7ee226105390787c3e841bba442033c1a51483b40fddfbe"
+}
