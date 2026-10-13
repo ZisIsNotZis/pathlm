@@ -1,0 +1,58 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "2.2.2"
+axis: "2 深度轴"
+title: "用 causal attention 代替残差"
+dir: "axes/2-depth/2.2.2-attention-residual"
+
+purpose: "普通 decoder-only transformer 只靠一条残差把上一层的结果接到下一层，深层是「逐层串联」；本项要问：让每一层直接对**之前所有层的输出**做一次 causal attention 聚合（而不是只接上一层），能否提高质量/正确率——这是出资人 C3 批注明确提出的设计。"
+innovation: "相对普通 decoder-only transformer 的「h_{l+1} = h_l + sublayer(h_l)」，把层间连接换成「h_{l+1} = Attn(h_0..h_l) + sublayer(·)」：把各历史层的输出 stack 起来做一次 **causal attention** 聚合（Hyper-Connections / feedback transformer 式跨层注意力）。改动量级：层间注意力每层 O(L·d) 参数/计算（可跨层共享），额外 FLOPs 与层数 L 成正比，须与同参数/同 FLOPs 的单残差基线对照。"
+expected_effect: "（a）每层可直接读取所有历史层的表示，缓解逐层串联的信息瓶颈；（b）应提高质量/正确率（出资人提出的诉求）；（c）代价是额外的层间注意力算力与参数，且需与 2.2.3 的「学习加权和」（无 attention 的线性聚合）区分——本项是更贵的注意力版，必须先证它值那份额外算力。"
+sota_baseline: "Hyper-Connections（2024）、Feedback Transformer（2020）等跨层注意力一族；本地最近的对照 = 旧格 C3 实测的**层间学习加权和**（DenseFormer 式，无 attention 的线性聚合，−0.0008 中性，见 `2.2.3`）。stock 单残差全深度（归一为 100%）。"
+gap: "出资人 C3 批注提出的设计（把之前各层结果 stack 起来做 causal attention）**从未测**——旧格 C3 `README` 自认「未测：跨层注意力」，却被判 `judged`（55-review C-P10：没测对的东西就下了结论）。本项增量 = 真正实装并测这个假设，并把它与 2.2.3 的线性学习加权和正面对撞，回答「attention 聚合是否值那份额外算力」。"
+method: "单因素：固定宽度/层数/训练预算，只改层间聚合的连接方式。臂 = {stock 单残差, 层间 causal attention（对历史层输出做注意力聚合）, 对照臂 2.2.3 线性学习加权和}。基底恒为 stock decoder-only；等参数/等 FLOPs 对照须齐（层间注意力的额外参数与算力须报告并剥离）。"
+validation: "端到端：对照 = stock 单残差全深度（归一为 100%）+ 2.2.3 的线性学习加权和（同预算）+ 等参数对照臂；客观判据 = clean bpc（序列级，该跌，须越 0.014 噪声带才算可排序）+ 额外参数与额外 FLOPs（必须报，作代价列）；口径 = matched-step / 同 token 预算，**墙钟不进判据**。"
+objective_criteria: "该跌：clean bpc（序列级，相对 stock 单残差与 2.2.3 线性聚合）；必须报：层间注意力的额外参数与每 token 额外 FLOPs（代价列，须与质量收益同框）；必须不变：因果性（层间注意力不得看到当前层之后的信息）、等参数对照的参数量。"
+falsification: "若层间 causal attention 相对 stock 单残差与 2.2.3 线性聚合在 clean bpc 上不越噪声带，或优势全由额外参数/额外算力解释（等参数或同算力对照下消失）⇒ 判用 causal attention 代替残差在本尺度无净增量，应退化为 2.2.3 的线性聚合或并入之。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件）；把「等参数/同算力对照」与「层间因果性」钉死，以防把额外算力买到的小幅改善误读为连接方式本身的优势。独立复核未做。"
+experiments: []
+argument: "把出资人的 C3 批注转成可证伪命题：跨层注意力与 2.2.3 的线性学习加权和价差在「聚合函数是否有内容相关权重（q·kᵀ）」与「额外算力」上。若质量收益不足以覆盖门控/注意力的额外算力，则注意力版退化。旧 C3 的 dense 学习加权和已测到中性（−0.0008），故本项的核心对照就是「把加权和升级成 causal attention 是否能越过那条中性线」。"
+gaps:
+  - "本仓零经验：跨层注意力从未实装（旧 C3 自认未测，C-P10）"
+  - "层间注意力的额外参数/FLOPs 与质量收益的同框账未做"
+  - "与 2.2.3 线性学习加权和的同预算正面对撞未做"
+  - "跨层注意力的长度/层数外推未测"
+cost_model: "等效理论量：每 token 的 layer-passes 仍为 L（层数不变），但每层额外一次对 L 个历史层的 causal attention ⇒ 每 token 额外 ≈ L（层）× O(L·d) FLOPs（层间注意力），相对单残差基线为 O(L²·d) 的额外项；层间注意力可用低秩/共享投影降本。tokens-per-forward 每步 1。考虑 pipelining：层间注意力把「当前层依赖其全部历史层」，增加层间串行依赖（不利于跨层流水），该依赖须与 2.2.3 的线性聚合对照量化。"
+
+role_map:
+  owner: "轴 2 深度轴 lead（待指派）"
+  writer: "2.2.2 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「层间 causal attention vs 单残差 vs 线性学习加权和」的判决包：13M matched-step 下的 clean bpc + 额外参数/FLOPs，对照 stock 单残差全深度，含 n≥2 与等参数对照。"
+  acceptance: "层间 causal attention 相对 stock 单残差与 2.2.3 线性聚合的 clean bpc 可分（越噪声带）或明确「无净增量」；额外参数/算力代价列齐备；结论不越尺度外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "层间 causal attention 最小判决（等参数对照）"
+    goal: "判定「把历史层输出 stack 做 causal attention 聚合」是否值那份额外算力"
+    means: "13M、matched-step、{stock 单残差, 层间 causal attention, 2.2.3 线性学习加权和} 三臂，逐位等参数/同算力对照，报 clean bpc + 额外参数/FLOPs"
+    acceptance: "三臂参数/算力代价列齐备；attention 版相对另两臂有/无净增量，二选一明确"
+    evidence: "axes/2-depth/2.2.2-attention-residual/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：层间 causal attention 最小判决（与单残差、线性聚合三方对照）"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T10:37:02+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:37:02+08:00"
+    actor: "轴 2 §2.2 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：用 causal attention 代替残差 承接出资人 C3 批注从未测的设计（55-review C-P10）；按 docs/research-schema.md 预登记目的/基线/判据/否证条件，并把与 2.2.3 线性学习加权和的同预算对照钉死。"

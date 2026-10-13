@@ -1,0 +1,57 @@
+# 研究项 SSOT（Backlog）：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "2.1.3"
+axis: "2 深度轴"
+title: "repeating 循环 transformer：多算力换少参数"
+dir: "axes/2-depth/2.1.3-repeating"
+
+purpose: "在参数量/显存受限时，用「同一组层参数被重复前向多次」换取更大的有效深度——即用可变的算力（layer-passes/token）换参数量效率；本项先判定这条路径是否值得立项。"
+innovation: "相对普通 decoder-only transformer 的「每层一组独立参数、只前向一次」，让同一组层参数被重复前向 n 次（Universal Transformer 式循环深度）。改动量级：参数量 ≈ 单组层参数（远小于 n 层独立参数），layer-passes/token 随重复次数 n 线性上升。"
+expected_effect: "（a）在给定参数量下拿到更大的有效深度；（b）用可变的重复次数换取推理期算力弹性；（c）代价是算力（layer-passes/token）随 n 上升，且循环共享可能训练更难、易不稳。"
+sota_baseline: "Universal Transformer（Dehghani 2018，循环深度 + ACT）、递归/循环深度一族。本地零经验（MAPPING §1 无旧格实验；旧格 C4 权重共享的 `记忆·未核` 结论不可当基线）。"
+gap: "本仓零经验。且出资人 C4 批注明确指出「不省计算、只省显存的路子研究意义不大——未来是 MoE 这种不 care 显存、省计算的路线」。故本项列 Backlog 的前提是**先论证它是否可能改变「某算力路径值不值」的判断**：只有在「参数量/显存是硬约束、且循环深度相对同参数非共享 dense 有可排序质量优势」时，才值得移出 Backlog。"
+method: "单因素：固定层宽/总参数预算，只改「层参数是否共享、重复几次」。臂 = {stock 独立层, 全共享循环 n∈{2,4,8}, 部分共享（每 k 层一组）}。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = 同参数量 non-shared dense 与同 FLOPs 的独立层基线（归一为 100%）+ Universal Transformer 报告口径；客观判据 = 同 layer-passes 预算下的序列级 perplexity（该涨/不跌，须越 0.014 噪声带）+ 达到同等质量所需参数量（该跌）+ 训练稳定性（必须不变，不得崩）；口径 = layer-passes/token 与参数量，**墙钟不进判据**。"
+objective_criteria: "该跌：达到同等序列级质量所需参数量；该涨/该降：同 layer-passes 预算下的序列级质量（该涨，相对同参数非共享 dense）；必须报：layer-passes/token（随 n 上升的代价列）；必须不变：训练不崩、因果性。"
+falsification: "若在固定参数量下循环深度相对同参数量非共享 dense 的序列级质量无可排序改善，或在同 layer-passes 预算下始终更差、训练不稳定 ⇒ 判本路径不改变「某算力路径值不值」的判断，维持 Backlog，不立项。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "维持 Backlog：本仓零经验，且出资人 C4 批注已给出先验否定（不省计算、只省显存，未来是 MoE 路线）。移出 Backlog 需要先给出可证伪的新目的与判据（同参数量下相对非共享 dense 的可排序质量优势），否则不投入执行预算。独立复核未做。"
+experiments: []
+argument: "（尚未论证；本项先冻结 Backlog 身份。）结构上它属 2.1 按需深度家族，但方向与早退相反——早退用更少算力、循环深度用更多算力；因此它的价值主张必须先站上「同参数量 dense」与「同算力独立层」两个对手，否则只是一个参数效率记账而非质量-代价前沿上的新点。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、同参数量 {stock, 循环 n=2,4}、序列级 bpc + layer-passes）"
+  - "无与「同参数量非共享 dense」的对照"
+  - "出线前提未证：是否可能改变「某算力路径值不值」的判断（出资人 C4 批注持否定先验）"
+cost_model: "等效理论量：参数量 ≈ 单组层参数；每 token 的 layer-passes = n ×（单组层数），随重复次数 n 线性上升（tokens-per-forward 每步 1）。考虑 pipelining：循环次数 n 固定时各 token 路径等长，批处理不改；其代价完全体现在 layer-passes/token 与参数量的权衡上。"
+
+role_map:
+  owner: "轴 2 深度轴 lead（待指派）"
+  writer: "2.1.3 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「循环深度值不值」的判决：同参数量 {stock, 循环 n} 的序列级 bpc 与 layer-passes/token 对照，对照同参数非共享 dense；含 n≥2。"
+  acceptance: "循环深度相对同参数量非共享 dense 有跨过本格噪声门的可排序质量优势，才考虑移出 Backlog；否则如实记为「不改变路径值不值」，维持 Backlog。"
+
+work_packages:
+  - id: "WP1"
+    what: "循环深度最小判决（同参数量）"
+    goal: "判定参数受限时循环深度是否比同参数量非共享 dense 更值"
+    means: "13M、同总参数、{stock, 循环 n=2,4}，报序列级 bpc + layer-passes/token + 训练稳定性"
+    acceptance: "三臂同参数量对齐；循环深度有/无可排序优势，二选一明确"
+    evidence: "axes/2-depth/2.1.3-repeating/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：循环深度最小判决（同参数量）"
+  - "只在 WP1 出可排序优势时才考虑移出 Backlog"
+
+status: "未开始"
+started: "2026-10-13T10:37:02+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:37:02+08:00"
+    actor: "轴 2 §2.1 worker"
+    change: "按 MAPPING §4 / docs/structure.md §9 冻结 2.1.3 repeating 为 Backlog 研究项（status: 未开始）；本仓零经验、无旧格证据，仅登记目的/判据/出线条件，不投入执行预算。"

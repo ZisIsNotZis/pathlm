@@ -1,0 +1,57 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "2.2.4"
+axis: "2 深度轴"
+title: "并行子层"
+dir: "axes/2-depth/2.2.4-parallel-sublayer"
+
+purpose: "普通 decoder-only transformer 一层内「先注意力、再 MLP」串行；工业界常把二者改成并行读同一层输入（PaLM / GPT-J 式）以换吞吐。本项要问：并行子层在**质量-代价前沿**上落在哪——它是不是用可接受的质量代价换到了真实的吞吐/算力收益，值不值得。"
+innovation: "相对普通 decoder-only transformer 的串行残差子层（MLP 读注意力写回之后的状态），把注意力与 MLP 改为**并行读同一层输入**再合并（GPT-J / PaLM 式并行子层）。改动量级：参数近似（并行版少一个 LayerNorm 输入维度，≈ −2d/层），每层 FLOPs 近似；收益应在吞吐/流水侧。"
+expected_effect: "（a）并行子层缩短层内串行依赖，提高吞吐/硬件利用率（业界采用它的理由）；（b）质量面可能有小幅代价；（c）判据必须同时覆盖质量面与代价面，否则只测了它不成立的一半。"
+sota_baseline: "PaLM / GPT-J 的并行子层；本地锚 = 旧格 C3 的 parallel 臂（+0.0458 质量代价，等参数 dual-LN 复现 +0.0402，n=1）与 stock 串行子层全深度（归一为 100%）。"
+gap: "旧格 C3 只测**质量面**就把并行子层判「明确有害」，**不测业界采用它的理由（吞吐/流水）**（55-review C-P18/C-P10）——即只量了它不成立的那一半就下结论。本项增量 = 补吞吐/算力面 + 等参数对照 + 大规模复核，给出「质量代价 vs 吞吐收益」的同框账。"
+method: "单因素：固定宽度/层数/训练预算，只改层内子层连接。臂 = {stock 串行子层, 并行子层（attn ∥ MLP）, 并行 + dual-LN（等参数对照）}。基底恒为 stock decoder-only；吞吐/流水面须用等效理论量（层内串行依赖长度 / 每层 FLOPs）表达，**不用墙钟**。"
+validation: "端到端：对照 = stock 串行子层全深度（归一为 100%）+ 等参数 dual-LN 对照臂；客观判据 = clean bpc（序列级，质量面，该不跌/量化代价）+ 层内串行依赖长度与每层 FLOPs（代价面，该跌/该不变）；口径 = clean bpc 与等效理论量，**墙钟不进判据**；必须不变：参数量（dual-LN 对照须与串行版逐位等参）、因果性。"
+objective_criteria: "该跌：clean bpc（序列级，衡量质量代价，须越 0.014 噪声带才算可排序）；必须报：层内串行依赖长度与每层 FLOPs（代价面）；必须不变：等参数对照的参数量、因果性。"
+falsification: "若并行子层在质量面相对 stock 串行子层有可排序代价（旧读数 +0.0458 方向），同时在等效代价面（层内串行依赖 / 每层 FLOPs）也拿不到可兑现的收益 ⇒ 判并行子层在本尺度不划算；若质量代价不越噪声带则可采纳为吞吐优化。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "status = 进行中：旧格 C3 只有质量面读数（parallel +0.0458、等参数 dual-LN +0.0402，n=1），按 55-review C-P18 这不足以判「并行子层有害」——业界采用它的理由是吞吐，质量面单测就下结论是只量了一半。本项证据**只指针** see `2.2.3` 的 `2613-inter-layer-topology-13m`（一格一份家、不复制），本项不另收文件（MAPPING §3）。独立复核未做。"
+experiments: []
+argument: "（证据只指针，见 2.2.3 的实验目录。）并行子层是「层内怎么排」的问题：串行版把注意力结果当 MLP 输入，并行版让二者同层输入并行；两者的质量差与流水收益必须同框看。旧 C3 用质量面单测判「有害」，本项要补的正是它被跳过的代价面——若并行版在等效代价面（层内串行依赖缩短）拿到真实收益，则它能以可接受质量代价换吞吐。"
+gaps:
+  - "无自有实验（按 MAPPING §3 只指针 see 2.2.3；并行读数即 2.2.3 证据目录里的 parallel / parallel-dual-ln 臂）"
+  - "吞吐/流水面从未测（旧 C3 只测质量面，C-P18）"
+  - "n=1 seed、13M/12k 单快照"
+cost_model: "等效理论量：每 token 的 layer-passes 仍为 L；并行子层把层内「注意力→MLP」的串行依赖从 2 段压到 1 段（层内关键路径更短），每层 FLOPs 近似不变（≈ −2d 参数的 LayerNorm 输入差）；tokens-per-forward 每步 1。考虑 pipelining：层内串行依赖缩短提升批内并行度，收益须以「层内串行依赖长度」这一等效量表达，而不是以任何时间量表达。"
+
+role_map:
+  owner: "轴 2 深度轴 lead（待指派）"
+  writer: "2.2.4 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「并行子层」的质量-代价同框判决：{stock 串行, 并行, 并行 dual-LN 等参数} 在 13M matched-step（n≥2）下的 clean bpc + 层内串行依赖/每层 FLOPs，对照 stock 串行全深度。"
+  acceptance: "质量代价可分（越噪声带）或明确「不越带」；代价面（层内串行依赖长度）齐备；结论明确「并行子层是否划算」，不越尺度外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "补测并行子层的代价面并与质量面同框"
+    goal: "把旧 C3 只测一半（质量面）的结论补全，判并行子层是否划算"
+    means: "13M、matched-step、{串行, 并行, 并行 dual-LN 等参数} 三臂，报 clean bpc + 层内串行依赖长度/每层 FLOPs，n≥2"
+    acceptance: "三臂等参数对齐；质量代价与代价面收益同框；结论明确划算/不划算"
+    evidence: "axes/2-depth/2.2.3-learned-layer-sum/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：补代价面并与质量面同框（证据复用 2.2.3）"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "进行中"
+started: "2026-10-13T10:37:02+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:37:02+08:00"
+    actor: "轴 2 §2.2 worker"
+    change: "按 MAPPING §1 由旧格 C3-inter-layer-topology 拆出并行子层读数归 2.2.4（证据只指针 see 2.2.3，不复制文件）；按 55-review C-P18 把「质量面单测判有害」改为「需质量面+代价面同框」的研究项。"

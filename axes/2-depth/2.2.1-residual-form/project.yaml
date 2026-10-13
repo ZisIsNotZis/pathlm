@@ -1,0 +1,57 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "2.2.1"
+axis: "2 深度轴"
+title: "残差的形式"
+dir: "axes/2-depth/2.2.1-residual-form"
+
+purpose: "普通 decoder-only transformer 用「一条残差 + pre-LN」把子层串起来；深层堆叠时这条简单的连接是否为最优的层间推进方式，还是换成缩放/门控/随深度衰减的残差能把更深的网络训得更好、并在中途截断时更可用。"
+innovation: "相对普通 decoder-only transformer 的 pre-LN 单残差（h_{l+1} = h_l + sublayer(LN(h_l))），改变残差的**形式**：归一化位置（pre / post）、是否对子层输出缩放（1/√l 式缩放残差）、是否加门（门控残差 / Highway / ReZero 式可学习标量门）、残差是否随深度衰减。改动量级：pre / post-norm 与 ReZero 标量门近零额外参数；门控残差每层加 ≤ d 参数（≈每层 <1%）。"
+expected_effect: "（a）更好的深层可训练性与质量（post-norm / 缩放 / 门控残差对深层梯度流的影响）；（b）「深度可截断性」——残差形式决定中途某一层的状态是否已经接近可用，从而影响 2.1.x 的按需深度；（c）代价是部分形式带来额外参数/归一化开销，需放进以 stock pre-LN 全深度为 100% 的质量-代价前沿。"
+sota_baseline: "pre-LN（GPT-2 式）vs post-LN（原始 Transformer）、DeepNorm、ReZero（可学习标量残差门）、Highway / gated residual（门控残差）。本地锚 = stock pre-LN 全深度（归一为 100%）。归一化位置作为纯工程选择的旧格 P4 已按 MAPPING §1 降为 8-engineering 台账，不在本项。"
+gap: "本仓零经验（MAPPING §2 无旧格）。本项增量 = 把「残差形式」作为独立研究轴，判它对**质量-深度形状**与**中途截断可用性**的影响，而不是当作归一化的工程细节；与 8-engineering 的分工是：本项研究残差形式的**质量/深度效果**，纯实现细节（eps、放置惯例）归 8。"
+method: "单因素：固定宽度/层数/训练预算，只改残差形式。臂 = {stock pre-LN 单残差, post-LN, 缩放残差（1/√l）, 门控残差（可学习标量/向量门）, 残差随深度衰减}。基底恒为 stock decoder-only；等参数对照须逐位补齐（门控残差的额外参数用 dual-LN 式对照剥离）。"
+validation: "端到端：对照 = stock pre-LN 全深度（归一为 100%）+ 等参数对照臂；客观判据 = clean bpc（序列级，该不跌/可排序下降）+ 逐深度 bpc 曲线（中间深度可读性，该跌）+ 训练稳定性（该不变，不崩/不发散）；口径 = matched-step / 同 token 预算，**墙钟不进判据**。"
+objective_criteria: "该跌：clean bpc（序列级）与逐深度 bpc（中间深度可读性）；该涨：更深/更长时的训练稳定性裕量（作对照）；必须不变：等参数对照下的参数量（门控残差的额外参数须被剥离）、因果性；必须报：每层残差门/缩放量的活性（排除「干预没生效」）。"
+falsification: "若各残差形式在 clean bpc 与逐深度可读性上相对 stock pre-LN 单残差都不越噪声带（0.014），或优势全由额外参数解释（等参数对照消失）⇒ 判残差形式在本尺度不是独立有增益的维度。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），并把「等参数对照」与「残差门活性」钉死以防把参数量优势误读为残差形式优势。独立复核未做。"
+experiments: []
+argument: "残差是深度轴的「连接语法」：早退（2.1.x）问「要不要跑这层」，本项问「跑完之后怎么把结果接回主线」。两者耦合——残差形式决定中间层状态是否已接近可用，从而影响可截断性。判据必须同时看质量（bpc）与深度可读性（逐深度 bpc），否则会把「深层更好」误当成「可截断」。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、{pre-LN, post-LN, 缩放, 门控, 衰减} 五臂，等参数对照 + 逐深度 bpc）"
+  - "post-norm / 缩放残差在大规模（≥100M）的稳定性未测"
+  - "残差形式与 2.1.1 early exit 的联合（可截断性）未测"
+cost_model: "等效理论量：pre/post-norm 与 ReZero 标量门不改每 token 的 layer-passes（= L）与 per-layer FLOPs 主项；门控残差每层加 ≤ d 参数的乘加（每 token 额外 ≈ L·d FLOPs，占比 <1%）。tokens-per-forward 每步 1。考虑 pipelining：残差形式不改变每步计算图结构，故不影响流水并行度；代价体现在参数量与逐深度可读性上。"
+
+role_map:
+  owner: "轴 2 深度轴 lead（待指派）"
+  writer: "2.2.1 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「残差形式」判决包：{pre-LN, post-LN, 缩放, 门控, 衰减} 在 13M matched-step 下的 clean bpc + 逐深度 bpc 曲线 + 训练稳定性，对照 stock pre-LN 全深度，含 n≥2 与等参数对照。"
+  acceptance: "各形式相对 stock 的 clean bpc 与逐深度可读性可分（越噪声带）或明确「无差别」；门控形式的额外参数已被等参数对照剥离；结论不越尺度外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "残差形式最小判决（等参数对照 + 逐深度 bpc）"
+    goal: "判定残差形式是否独立影响质量与中途截断可用性"
+    means: "13M、matched-step、{pre-LN, post-LN, 缩放残差, 门控残差, 残差衰减} 五臂，逐位等参数对照剥离门控额外参数，报 clean bpc + 逐深度 bpc"
+    acceptance: "五臂等参数对齐；各形式相对 stock 有/无可排序差异，二选一明确；残差门活性列齐备"
+    evidence: "axes/2-depth/2.2.1-residual-form/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：残差形式最小判决（等参数对照 + 逐深度 bpc）"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T10:37:02+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:37:02+08:00"
+    actor: "轴 2 §2.2 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：残差的形式 归 2.2 层间怎么聚合（残差族）；按 docs/research-schema.md 预登记目的/基线/判据/否证条件；与 8-engineering 的归一化位置工程句分工已在 gap 写明。"

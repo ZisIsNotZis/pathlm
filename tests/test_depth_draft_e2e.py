@@ -1,6 +1,6 @@
 """ticket 38 W2 · 深度草稿端到端解码的语义钉（可失败单测）。
 
-对应契约 `axes/C-vertical/C1-layers-per-token/experiments/2621-depth-draft-e2e/README.md`。
+对应契约 `axes/2-depth/2.1.1-early-exit/experiments/2621-depth-draft-e2e/README.md`。
 每个语义开关都有可失败断言：批量追加 == 增量逐位（KV 语义）、spec 流 == 普通贪心流
 （自 spec 不改质量）、`graded` 流 == `single` 流、拒绝路径（草稿故意错）仍保真、
 接受账本 `emitted == accepted + 1`、`graded` 在拒绝时确实省 layer-position。
@@ -17,7 +17,7 @@ import torch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-    "axes", "C-vertical", "C1-layers-per-token", "experiments",
+    "axes", "2-depth", "2.1.1-early-exit", "experiments",
     "2621-depth-draft-e2e"))
 
 import spec_decode as S  # noqa: E402

@@ -1,0 +1,57 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "2.3.1"
+axis: "2 深度轴"
+title: "逐层容量变化：前大后小 / 逐渐放大"
+dir: "axes/2-depth/2.3.1-layer-capacity"
+
+purpose: "普通 decoder-only transformer 每层容量相同，但浅层与深层承担的角色不同（浅层建表征、深层做组合/抽象）；本项要问：在**总参数固定**时，把容量按深度重分配（前大后小 / 逐渐放大）能否提高质量。"
+innovation: "相对普通 decoder-only transformer 的均匀层容量，让每层的容量（d_model / MLP 隐藏宽 / 注意力头数）按深度变化——前大后小（宽浅壳）或逐渐放大（先窄后宽）。改动量级：总参数量固定，只在层间重分配；每 token 的 layer-passes 仍为 L。"
+expected_effect: "（a）同总参数下把容量放到最需要的深度，clean bpc 相对 uniform 可排序下降；（b）暴露出「深度形状」是否是一个独立于宽度的设计维度。"
+sota_baseline: "非均匀深度容量的既有工作（金字塔 / hourglass / 深度方向宽度 schedule 的 transformer 变体）；本地零经验（MAPPING §2 无旧格）。本地锚 = stock uniform 全深度（归一为 100%）。"
+gap: "本仓零经验。与 `3.1.2` 逐层宽度变化的边界：本项判**深度形状**（哪层大哪层小、总参数固定）对质量-代价，`3.1.2` 判宽度轴定义下的金字塔/沙漏读数；两者在实现上重叠，须由 integrator 核一遍表述不矛盾。本项只做沿深度的容量重分配，纯宽度轴读数归 3.1.2。"
+method: "单因素：固定总参数与训练预算，只改每层容量随深度的分布。臂 = {uniform（stock）, 前大后小（线性/阶梯递减）, 逐渐放大（递增）, hourglass（中段大）}。基底恒为 stock decoder-only；各臂总参数逐位对齐。"
+validation: "端到端：对照 = stock uniform 全深度（归一为 100%）；客观判据 = clean bpc（序列级，该跌/可排序，须越 0.014 噪声带）+ 每层容量分布（作对照列）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变：总参数量（各臂逐位相等，否则不是同预算比较）。"
+objective_criteria: "该跌：clean bpc（序列级，相对 stock uniform）；必须不变：总参数量（所有臂逐位相等）与因果性；必须报：每层容量分布（作对照列）。"
+falsification: "若非均匀容量在固定总参数下相对 uniform 的 clean bpc 不越噪声带（0.014）⇒ 判逐层容量变化在本尺度不是独立有增益的维度，并入 3.1.2 的宽度轴读数。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），把「总参数量逐位对齐」钉死以防把参数量优势误读为深度形状优势。独立复核未做。"
+experiments: []
+argument: "均匀容量默认「所有深度同等重要」；本项检验该假设。判据必须钉在「固定总参数」上，否则无法把「重分配」与「单纯加参数」区分开。它与宽度轴的 3.1.2 是同一族问题的两个记账面，故把边界写进 gap、由 integrator 统一。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、同总参数、{uniform, 前大后小, 逐渐放大, hourglass} 四臂，clean bpc）"
+  - "与 3.1.2 逐层宽度变化的边界未整合（两研究项实现重叠）"
+  - "逐层容量 schedule 与 2.1.1 早退的联合（浅层容量是否影响可截断性）未测"
+cost_model: "等效理论量：各臂总参数量固定，每 token 的 layer-passes 仍为 L，总 FLOPs 近似不变（只把每层乘加规模在层间重分配）；tokens-per-forward 每步 1。考虑 pipelining：非均匀层宽使各层计算量不同，层间流水的最慢层决定节拍，须以每层 FLOPs 分布（而非任何时间量）评估。"
+
+role_map:
+  owner: "轴 2 深度轴 lead（待指派）"
+  writer: "2.3.1 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「逐层容量变化」判决包：固定总参数下 {uniform, 前大后小, 逐渐放大, hourglass} 在 13M matched-step 的 clean bpc + 每层容量分布，对照 stock uniform 全深度，含 n≥2。"
+  acceptance: "各臂总参数逐位相等；非均匀容量相对 uniform 的 clean bpc 可分（越噪声带）或明确「无差别」；结论不越尺度外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "逐层容量分布最小判决（固定总参数）"
+    goal: "判定「深度形状」是否是独立于宽度的有增益维度"
+    means: "13M、同总参数、{uniform, 前大后小, 逐渐放大, hourglass} 四臂，报 clean bpc + 每层容量分布"
+    acceptance: "四臂总参数逐位相等；非均匀相对 uniform 有/无越噪声带差异，二选一明确"
+    evidence: "axes/2-depth/2.3.1-layer-capacity/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：逐层容量最小判决（固定总参数）"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T10:37:02+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:37:02+08:00"
+    actor: "轴 2 §2.3 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：逐层容量变化 归 2.3 深度的形状；按 docs/research-schema.md 预登记目的/基线/判据/否证条件，并把「固定总参数」与「与 3.1.2 的边界」写死。"

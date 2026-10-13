@@ -23,7 +23,7 @@ sys.path.insert(0, ROOT)
 from tools.evalkit.reconcile import (GoldenWithoutWhy, Ledger,   # noqa: E402
                                      MissingProvenance, MissingTolerance)
 
-EXP = os.path.join(ROOT, "axes", "C-vertical", "C1-layers-per-token",
+EXP = os.path.join(ROOT, "axes", "2-depth", "2.1.1-early-exit",
                    "experiments", "2621-depth-draft-e2e")
 SCRIPT = os.path.join(EXP, "reconcile_numbers.py")
 

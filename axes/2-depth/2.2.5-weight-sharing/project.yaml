@@ -1,0 +1,57 @@
+# 研究项 SSOT（Backlog）：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "2.2.5"
+axis: "2 深度轴"
+title: "权重共享"
+dir: "axes/2-depth/2.2.5-weight-sharing"
+
+purpose: "深度方向复用同一组权重（全共享或每 k 层一组）以省参数量/显存；本项先判定这条「省参数轴」是否可能改变「某算力路径值不值」的判断。"
+innovation: "相对普通 decoder-only transformer 的每层独立参数，让若干层共享同一组层参数（全共享 = Universal Transformer 式，部分共享 = 每 k 层一组）。改动量级：参数量按共享度下降（全共享 ≈ 单层参数），layer-passes/token 与 FLOPs 不变（共享不省计算）。"
+expected_effect: "（a）显著省参数量/显存；（b）本仓先验：**不省计算**（每 token 仍跑 L 层），因此对「同算力下的质量-代价前沿」可能无贡献——这正是出货前必须先证伪的点。"
+sota_baseline: "Universal Transformer（Dehghani 2018，循环深度/权重共享）与 ALBERT 式层间参数共享；本仓零本地数据（旧格 C4 的业界结论按 `记忆·未核` 标注，检索不可用，不能当基线）。"
+gap: "本仓零经验。出资人 C4 批注明确「研究意义不大——不省计算，只省显存，而未来都是 MoE 这种不 care 显存省计算路线」。故本项列 Backlog 的前提是**先证它是否可能改变「某算力路径值不值」的判断**：权重共享不改 FLOPs，只有在「参数量/显存是硬约束、且共享版相对同参数量非共享版有可排序质量优势」时才值得立项。旧格 C4 的 `judge`（「同 FLOPs bpc」）与「权重共享不改 FLOPs」自相矛盾（55-review C-P11），本项改用「同参数量下质量 + 参数量」为判据。"
+method: "单因素：固定总参数/训练预算，只改「层间是否共享权重」。臂 = {stock 不共享, 全共享循环, 部分共享（每 k 层一组）}。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = 同参数量 non-shared dense（归一为 100%）+ 同 FLOPs 的独立层基线；客观判据 = 同参数量下的序列级 perplexity（该涨/不跌，须越 0.014 噪声带）+ 达到同等质量所需参数量（该跌）+ 训练稳定性（必须不变）；口径 = 参数量与 layer-passes/token（共享不改后者），**墙钟不进判据**。"
+objective_criteria: "该跌：达到同等序列级质量所需参数量；该涨/该降：同参数量下的序列级质量（该涨，相对同参数量非共享 dense）；必须不变：layer-passes/token 与 FLOPs（共享不改计算量，作对照列）、训练不崩、因果性。"
+falsification: "若权重共享在固定参数量下相对同参数量非共享 dense 的序列级质量无可排序改善，或本仓先验成立（不省计算、对前沿无贡献）⇒ 判本项不改变「某算力路径值不值」的判断，维持 Backlog，不立项。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "维持 Backlog：本仓零本地数据；出资人 C4 批注持否定先验（不省计算、只省显存，未来是 MoE 路线）；旧格 C4 的状态口径自相矛盾（todo / 业界 (a) / 按 SCHEMA §21 不判 (a) 三处打架，C-P11）——本项一律以「Backlog、未开始」收口，不再保留 todo 的模糊状态。移出 Backlog 需要可证伪的「同参数量下相对非共享 dense 的可排序优势」。独立复核未做。"
+experiments: []
+argument: "（尚未论证；本项先冻结 Backlog 身份。）与 2.1.3 repeating 的区别只是记账视角：repeating 强调「用循环次数换有效深度」（算力换参数），本项强调「层间共享权重」这一结构（省参数轴）；两者都不改每 token 的层数（即不省 FLOPs）。在 MoE 这类「不 care 显存、省计算」的路线下，本项的价值主张最弱，故列 Backlog。"
+gaps:
+  - "本仓零经验：本地零实验"
+  - "出线前提未证：是否可能改变「某算力路径值不值」的判断（出资人 C4 批注持否定先验）"
+  - "旧格 C4 的业界结论为 `记忆·未核`（检索不可用），不可当基线（SCHEMA §21）"
+cost_model: "等效理论量：权重共享把参数量按共享度下降（全共享 ≈ 单层参数）；每 token 的 layer-passes 仍为 L（= 不省计算）、FLOPs 主项不变（共享不减少每层乘加）；tokens-per-forward 每步 1。考虑 pipelining：层间共享权重不改变每步计算图结构，故不影响流水并行度；本项的全部权衡都在「参数量 vs 同参数量质量」上。"
+
+role_map:
+  owner: "轴 2 深度轴 lead（待指派）"
+  writer: "2.2.5 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「权重共享值不值」的判决：同参数量 {stock 不共享, 全共享, 部分共享 (每 k 层)} 的序列级 perplexity 与参数量，对照同参数量非共享 dense；含 n≥2。"
+  acceptance: "权重共享相对同参数量非共享 dense 有跨过本格噪声门的可排序质量优势，才考虑移出 Backlog；否则如实记为「不改变路径值不值」，维持 Backlog。"
+
+work_packages:
+  - id: "WP1"
+    what: "权重共享最小判决（同参数量）"
+    goal: "判定省参数轴是否可能改变「某算力路径值不值」的判断"
+    means: "13M、同总参数、{stock, 全共享, 每 2 层一组}，报序列级 perplexity + 参数量 + 训练稳定性"
+    acceptance: "三臂同参数量对齐；共享版有/无可排序优势，二选一明确"
+    evidence: "axes/2-depth/2.2.5-weight-sharing/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：权重共享最小判决（同参数量）"
+  - "只在 WP1 出可排序优势时才考虑移出 Backlog"
+
+status: "未开始"
+started: "2026-10-13T10:37:02+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:37:02+08:00"
+    actor: "轴 2 §2.2 worker"
+    change: "按 MAPPING §1/§4 将旧格 C4-weight-sharing 降为 2.2.5 权重共享（Backlog，status: 未开始）；证据一律保留（本地零实验，故 experiments 空）；按 55-review C-P11 消除旧格 todo/(a)/不判(a) 三处矛盾口径，并把判据从自相矛盾的「同 FLOPs bpc」改为「同参数量质量 + 参数量」。"

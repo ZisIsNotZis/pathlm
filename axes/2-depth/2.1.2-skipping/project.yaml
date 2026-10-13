@@ -1,0 +1,72 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "2.1.2"
+axis: "2 深度轴"
+title: "skipping（跳层）"
+dir: "axes/2-depth/2.1.2-skipping"
+
+purpose: "普通 decoder-only transformer 对每个 token 都跑满 L 层（每层都做一次残差推进）；本项要问：在训练/推理预算内**跳过**部分层（被跳层走恒等旁路）能否在保住序列级质量的前提下省算力——哪些层可跳、跳多少、是否需要训练期适配。"
+innovation: "相对普通 decoder-only transformer 的「每 token 固定跑满 L 层」，按概率 p_skip 在训练期随机跳过若干层（LayerDrop 式 layer dropout），或在推理期按预算选定层子集并跳过其余层（被跳层输出 = 输入的恒等旁路）。改动量级：不新增参数；每跳一层省一次 layer-pass（该 token 的 layer-passes 由 L 降到 L−跳层数）。"
+expected_effect: "（a）每 token layer-passes 下降，代价是保留下来的浅/中层必须承担被跳层的表示推进；（b）训练期 layer dropout 应让模型对「缺失某些层」鲁棒，从而推理期可安全跳层；（c）把跳层代价放进以 stock 全深度为 100% 的质量-代价前沿，与 2.1.1 的逐 token 早退比较「整层跳」与「逐 token 停」哪个更值。"
+sota_baseline: "LayerDrop（Fan 2019，训练期 layer dropout）与 LayerSkip（Elhoushi 2024，早退训练 + 自投机）；本仓对照 = 旧格 C2 的元素税定律（`2506` / `2509`）与 stock 全深度（归一为 100%）。"
+gap: "旧格 C2 是**手段枚举、无独立目的**（55-review C-P09）：命题写成「层可以被跳过、重排、重复到什么程度」，没有「要解决什么 / 假设是什么 / 怎么端到端验证」，且税数字来自旧 M2 引擎、`p_skip` 由 `sample_path` **逐序列/逐 batch** 采样一次（整条路径丢同一批层）**不是逐 token**、该格只有 self-review（源工单明文 user approved self-review）。本项增量 = 在能跑本线 checkpoint 的 depth-ar 引擎里、按**序列级**判据重测跳层，并给出与「逐 token 早退」的同预算比较。"
+method: "单因素：固定基底（stock depth-ar / dense），只改**跳层策略**。臂 = {stock 全深度, 固定跳 k 层, 训练期随机跳 p_skip（逐 token layer dropout）, 按预算选层子集}。基底恒为 stock decoder-only；跳层位置按层索引或按学习到的选择器给定。"
+validation: "端到端：对照 = 同尺寸 stock 全深度（归一为 100%）+ 同预算固定深度；客观判据 = clean bpc（序列级，该不跌/仅可排序下降）+ 每 token 平均 layer-passes 与跳过层数占比（该跌）+ 训练/评测跳层分布一致性（必须不变）；口径 = layer-passes/token 等等效理论量，**墙钟不进判据**。"
+objective_criteria: "该跌：每 token 平均 layer-passes 与跳过层数占比；该不跌/可排序：clean bpc（序列级，须越 0.014 噪声带才算可排序）；必须不变：训练期与评测期的跳层分布一致（旧 C2 已观测 p_skip 训练/评测不一致导致评测不可信）、因果性、被跳层的恒等旁路不引入非因果。"
+falsification: "若同预算下跳层臂相对「同预算最优固定深度」在 clean bpc 上无可排序改善，或跳层只在训练分布内鲁棒（评测/训练跳层分布不一致即崩，旧 C2 已观测 3.84 崩点）⇒ 判跳层作为独立省算力手段在本尺度无增量，应并入 2.1.1 的逐 token 深度分配。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "status = 进行中：旧格 C2 的数字（skip +0.175、redo +0.044、shuffle +0.545）有本地观测，但按 55-review C-P09 三条硬伤（无目的、跨代引擎、p_skip 逐序列而非逐 token、只有 self-review）不足以作结论，须在 depth-ar 引擎按序列级判据重测。另按 C-P18，旧 C2 的「层序 shuffle」子项没有任何部署会打乱层序、结论无论正负都不改变「某算力路径值不值」，**不立研究项**（数字留 playbook note）；「重复（redo）」属 2.1.3 repeating，不在本项。独立复核未做。"
+experiments:
+  - "axes/2-depth/2.1.2-skipping/experiments/2506-m2-element-tax-law"
+  - "axes/2-depth/2.1.2-skipping/experiments/2509-m3-composition-law"
+  - ".scratch/06-m2-sweep/evidence @a03a579"
+  - ".scratch/09-m3-interactions/evidence @39b1838"
+  - ".scratch/08-tts-probe/evidence @aa97bcf"
+argument: "跳层与逐 token 早退是同一目的（省算力）的两种手段：早退是「某 token 提前停」（layer-passes 按 token 变），跳层是「所有 token 都跳过同一批层」（layer-passes 按层数变）。旧 C2 的「元素税定律」（破坏 identity/order 的贵，保留/标记 identity 的近免费）是有用的观测，但其 p_skip 口径是逐序列而非逐 token、跨旧 M2 引擎，不能直接当本项结论。判据必须钉在序列级 bpc 与 layer-passes/token 上，并把「训练/评测跳层分布一致」列为必须不变项，否则报的是训练分布外的崩点而非机制结论。"
+gaps:
+  - "无 depth-ar 引擎的跳层重测：旧税数字来自旧 M2 引擎、p_skip 逐序列（C-P09）"
+  - "无逐 token layer dropout 版本：旧 p_skip 对整条路径丢同一批层，不是「每个 token 独立跳」"
+  - "无与 2.1.1 逐 token 早退的同预算比较"
+  - "旧 C2 只有 self-review（user approved self-review in lieu），需独立复核"
+cost_model: "等效理论量：每 token 的 layer-passes = L − 被跳层数（逐 token layer dropout 时按该 token 实际跳过的层数计），总账 = Σ(L − skip_i)/N；tokens-per-forward 每步 1（跳层不改该量）。考虑 pipelining：固定跳同一批层时整批同步省该批层的计算与 KV；逐 token 独立跳时同批内最长路径决定前向次数，收益体现在平均 layer-passes 与批内跳过层的占比。跳过的层不产生该层的 KV。"
+
+role_map:
+  owner: "轴 2 深度轴 lead（待指派）"
+  writer: "2.1.2 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「跳层」的序列级判决包：{stock 全深度, 固定跳 k 层, 逐 token layer dropout, 按预算选子集} 在 depth-ar 引擎里的 clean bpc vs 每 token layer-passes，对照 stock 与同预算固定深度，含 n≥2 与训练/评测跳层分布一致性列。"
+  acceptance: "至少一条跳层策略相对同预算最优固定深度在 clean bpc 上可排序改善或无改善（二选一明确）；每策略齐备 layer-passes/token + 跳过占比 + 序列级 bpc + 训练/评测分布一致性；结论不越尺度外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "在 depth-ar 引擎按序列级判据重测跳层"
+    goal: "把旧 C2 的跨代、非逐 token、自复核证据升级为同引擎、可排序的序列级判决"
+    means: "13M、matched-step、{stock, 固定跳 k, 逐 token layer dropout p_skip, 按预算子集}，各 2 seed，报 clean bpc + layer-passes/token + 跳过占比"
+    acceptance: "每臂有 experiments/<name>/{README.md,config.json,results.json,analysis.md}；p_skip 逐 token 与逐序列两口径分开报"
+    evidence: "axes/2-depth/2.1.2-skipping/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+  - id: "WP2"
+    what: "与 2.1.1 逐 token 早退的同预算比较"
+    goal: "回答「整层跳」与「逐 token 停」哪个更值"
+    means: "同一基底、同一 layer-passes 预算下并列 2.1.1 的早退臂与本项的跳层臂"
+    acceptance: "两手段在同预算下的序列级 bpc 并列可读；结论写明哪个前沿更高"
+    evidence: "axes/2-depth/2.1.2-skipping/experiments/"
+    review: "跑完另派 fresh 复核"
+    status: "未开始"
+
+roadmap:
+  - "WP1：depth-ar 引擎重测跳层（逐 token vs 逐序列口径分开）"
+  - "WP2：与 2.1.1 早退的同预算比较"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "进行中"
+started: "2026-10-13T10:37:02+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:37:02+08:00"
+    actor: "轴 2 §2.1 worker"
+    change: "按 MAPPING §1 由旧格 C2-layer-selection-order 并入 2.1.2 skipping（C2 → 2.1.2），整目录 git mv 两个实验目录进 experiments/；按 55-review C-P09 把「手段枚举」改成有目的/假设/判据的研究项，按 C-P18 不立「层序 shuffle」研究项（redo 归 2.1.3 repeating）。"

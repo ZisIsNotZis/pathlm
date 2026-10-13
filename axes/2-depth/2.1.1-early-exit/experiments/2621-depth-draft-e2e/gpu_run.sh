@@ -8,10 +8,10 @@
 set -u
 cd "$(dirname "$0")/../../../../.."   # 仓库根
 CKPT="${1:-.scratch/23-depth-ar/evidence/23c-H2-w0-12k/model.pt}"
-OUT="${2:-axes/C-vertical/C1-layers-per-token/experiments/2621-depth-draft-e2e}"
+OUT="${2:-axes/2-depth/2.1.1-early-exit/experiments/2621-depth-draft-e2e}"
 PROMPTS="${3:-4}"
 REPEATS="${4:-3}"
-EXP=axes/C-vertical/C1-layers-per-token/experiments/2621-depth-draft-e2e
+EXP=axes/2-depth/2.1.1-early-exit/experiments/2621-depth-draft-e2e
 LOCK=/tmp/pathlm_gpu.lock
 
 # ---------- 取锁（自愈：holder_pid 死了 / 无 holder_pid 且锁龄 >15min）----------

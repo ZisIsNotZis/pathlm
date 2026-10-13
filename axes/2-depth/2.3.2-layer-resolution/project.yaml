@@ -1,0 +1,57 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "2.3.2"
+axis: "2 深度轴"
+title: "逐层分辨率：先粗后细、层级式（层级合并）"
+dir: "axes/2-depth/2.3.2-layer-resolution"
+
+purpose: "注意力算力随被处理的位置数增长；本项要问：沿深度改变序列**分辨率**（浅层在更粗/更短的序列上工作、深层在更细/全长上工作，先粗后细或层级合并），能否在深层省算力而对序列级质量影响最小。"
+innovation: "相对普通 decoder-only transformer 的「每层都在全长 T 上、分辨率相同」，逐层改变被处理的 token 数：浅层池化/降采样（粗分辨率），深层上采样或合并（细分辨率），或层级式逐段合并。改动量级：深层若处理 n < T 个 token，则该层注意力的 QKᵀ 与加权项按 (n/T)² 缩放下降；新增池化/上采样/合并算子少量参数。"
+expected_effect: "（a）深层在更少 token 上工作 ⇒ 注意力 FLOPs 随 token 数下降，且不减少层数（layer-passes 不变）；（b）代价是降采样可能丢信息（长程/细粒度召回退化），需放进以 stock 全长等分辨率为 100% 的质量-代价前沿。"
+sota_baseline: "层级式 / U-Net 式 transformer、Hourglass、Perceiver 的 latent 分辨率、层级合并一族；本地最近邻 = `1.2.4` 动态合并：越往下层 token 越少（时间轴下的可见结构，不同研究项）。本地锚 = stock 全长等分辨率全深度（归一为 100%）。"
+gap: "本仓零经验（MAPPING §2 无旧格）。与 `1.2.4` 动态合并的边界：`1.2.4` 判「合并到更少 token」这条可见结构在**时间轴**下的效果；本项判沿深度的**分辨率 schedule**（先粗后细、层级式）对**深度形状**的效果。两项须由 integrator 核一遍不重复、不矛盾。"
+method: "单因素：固定层数与训练预算，只改每层处理的 token 数（分辨率 schedule）。臂 = {stock 全长等分辨率, 先粗后细（浅层降采样、深层全长）, 层级式（逐段合并）, 金字塔（逐层减 token）}。基底恒为 stock decoder-only；比较须对齐总 FLOPs 或总参数。"
+validation: "端到端：对照 = stock 全长等分辨率全深度（归一为 100%）；客观判据 = clean bpc（序列级，该不跌/可排序）+ 每 token 每层平均处理的 token 数与 attention FLOPs（该跌）+ 长程召回（防降采样丢信息，该不变/该跌）；口径 = layer-passes/token 与每层 token 数等等效理论量，**墙钟不进判据**。"
+objective_criteria: "该跌：每 token 每层平均处理的 token 数与 attention FLOPs；该不跌/可排序：clean bpc（序列级，须越 0.014 噪声带）；必须不变：因果性；必须报：长程召回（作降采样损伤的对照列）。"
+falsification: "若分辨率 schedule 在等效算力口径下相对 stock 全长等分辨率既能省 attention FLOPs、又不让 clean bpc 与长程召回越噪声带退化 ⇒ 本手段成立（可采纳）；若降采样导致长程召回显著退化且质量代价吃掉全部算力收益 ⇒ 判逐层分辨率在本尺度不划算。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），并把「长程召回」列为必须报的损伤对照列，以防只报 bpc 掩盖降采样丢信息。与 1.2.4 的边界已写进 gap。独立复核未做。"
+experiments: []
+argument: "分辨率是深度方向上「每层看多少个位置」的 schedule：它不改层数（layer-passes 不变），只改每层的注意力规模，因此收益落在 attention FLOPs（随 token 数平方缩放）而非 layer-passes 上。判据必须同时看质量（bpc）与长程召回，否则会把「浅层池化带来的局部平滑」误当成无损。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、{全长, 先粗后细, 层级式} 三臂，对齐总 FLOPs，报 bpc + 长程召回 + 每层 token 数）"
+  - "与 1.2.4 动态合并的边界未整合（两研究项机制重叠）"
+  - "上采样/合并的信息损失与恢复能力未测"
+cost_model: "等效理论量：每 token 的 layer-passes 仍为 L（层数不变）；若第 l 层处理 n_l 个 token，则该层 attention 的 QKᵀ 与加权项按 (n_l/T)² 相对全长缩放下降，总 attention FLOPs = Σ_l O(n_l²·d)；tokens-per-forward 每步 1。考虑 pipelining：分辨率随深度变化使各层计算量不同，层间流水的最慢层决定节拍，须以每层处理 token 数（而非任何时间量）评估。"
+
+role_map:
+  owner: "轴 2 深度轴 lead（待指派）"
+  writer: "2.3.2 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「逐层分辨率」判决包：{stock 全长, 先粗后细, 层级式, 金字塔} 在 13M matched-step 下的 clean bpc + 长程召回 + 每层 token 数，对照 stock 全长全深度，含 n≥2 与总 FLOPs 对齐。"
+  acceptance: "各臂总 FLOPs 对齐列齐备；clean bpc 与长程召回可分（越噪声带）或明确「无差别」；省下的 attention FLOPs 与质量代价同框；结论不越尺度外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "逐层分辨率最小判决（对齐总 FLOPs + 长程召回）"
+    goal: "判定沿深度的分辨率 schedule 是否在省 attention FLOPs 的同时不损序列级质量"
+    means: "13M、{全长, 先粗后细, 层级式, 金字塔} 四臂，对齐总 FLOPs，报 clean bpc + 长程召回 + 每层 token 数"
+    acceptance: "四臂总 FLOPs 对齐；分辨率 schedule 相对全长有/无可排序差异，二选一明确；长程召回列齐备"
+    evidence: "axes/2-depth/2.3.2-layer-resolution/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：逐层分辨率最小判决（对齐总 FLOPs + 长程召回）"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T10:37:02+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:37:02+08:00"
+    actor: "轴 2 §2.3 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：逐层分辨率 归 2.3 深度的形状；按 docs/research-schema.md 预登记目的/基线/判据/否证条件，并把「长程召回损伤对照列」与「与 1.2.4 的边界」写死。"

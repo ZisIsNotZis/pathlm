@@ -1,0 +1,69 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "2.2.3"
+axis: "2 深度轴"
+title: "层间学习加权和（DenseFormer 式）"
+dir: "axes/2-depth/2.2.3-learned-layer-sum"
+
+purpose: "普通 decoder-only transformer 每层只接上一层（单残差），深层的表示被逐层串联挤压；本项要问：把每层的输入换成对**之前所有层输出**的学习加权和（DenseFormer 式密集跨层聚合），能否在可接受的代价下提高质量。"
+innovation: "相对普通 decoder-only transformer 的单残差，每层的输入 = Σ_j α_{l,j}·h_j（j < l，对全部历史层输出的学习加权和），权重起步接近恒等（只选紧邻上一层，逐位等价于 stock）随后自行学习。改动量级：新增每层一组层权（≈ L(L+1)/2 个标量，本实验 36 个，相对主干参数近零）。"
+expected_effect: "（a）缓解逐层串联的信息瓶颈，让深层直接复用浅层表示；（b）若有效应体现为 clean bpc 相对单残差的可排序下降；（c）代价是每层对全部历史层加权（额外 O(L·d) 每层，可缓存）；把代价放进以 stock 单残差全深度为 100% 的质量-代价前沿。"
+sota_baseline: "DenseFormer（2023，对历史层输出做学习加权和）；本地锚 = 旧格 C3 实测（dense 臂 −0.0008 中性，n=1）与 stock 单残差全深度（13M 参照 1.5254，历史同配置 1.5287）。"
+gap: "旧格 C3 是「手段枚举、无目的」（55-review C-P10），且用**质量面零区分度**的并列判据 `tf@4 ≥ 0.95`（对 stock dense 形态不可达，同配置 dense tf@4 = 0.444）、n=1 seed、13M/12k 快照就判 `judged`。本项增量 = 把目的写成质量-代价前沿、判据钉在可排序的 clean bpc 与逐深度可读性上，补 n≥2 与更大规模复核；把「加权和升级成 causal attention」的假设交给 2.2.2。"
+method: "单因素：固定宽度/层数/训练预算，只改层间聚合方式。臂 = {stock 单残差, 层间学习加权和（DenseFormer 式）, 对照臂 2.2.4 并行子层 / 2.2.2 层间 causal attention}。基底恒为 stock decoder-only；等参数对照须齐。"
+validation: "端到端：对照 = stock 单残差全深度（归一为 100%）+ 同预算固定深度；客观判据 = clean bpc（序列级，该跌，须越 0.014 噪声带才算可排序）+ 逐深度 bpc（中间深度可读性，该跌）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变：参数量（额外 36 个层权须报告并计代价）、因果性、层权活性（排除「干预没生效」）。"
+objective_criteria: "该跌：clean bpc（序列级，相对 stock 单残差）与逐深度 bpc；必须报：额外层权参数与每 token 额外加权 FLOPs（代价列）；必须不变：因果性、等参数对照的参数量；活性：层权确实被学起（本实验 fro 3.305、第 1 层输入放大 2.36×、36 个权重全非零）。"
+falsification: "若层间学习加权和相对 stock 单残差的 clean bpc 不越噪声带（0.014），且逐深度可读性无改善 ⇒ 判密集跨层线性聚合在本尺度无净增量；若优势只在 n=1 seed 出现、扩 seed 后消失 ⇒ 判为噪声。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "status = 进行中：旧格 C3 判 `judged`（「层间学习加权和中性 −0.0008」），本项承接该本地读数，但按 55-review C-P10 三条硬伤（无目的、判据 tf@4 ≥ 0.95 对 stock dense 零区分度、n=1/单快照）不足以作最终结论，须补 n≥2 与更大规模。已把中性读数如实记为观测而非定论；「并行子层明确有害」的读数归 2.2.4（主家在 2.2.3 的证据目录）。独立复核未做。"
+experiments:
+  - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m"
+  - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m/analysis.md @b3c2484"
+argument: "旧格 C3 的 `2613` 四臂（sequential / parallel / parallel-dual-ln / dense）唯一变量 = 层间接法，其余逐字段相同；dense 臂的层权确实被学起（fro 3.305、偏离恒等起步 1.361、浅层被放大 2.36×）但质量中性（−0.0008，|Δ| < 0.014），这排除了「干预没生效」的替代解释。故本项的判断是「有本地中性观测但未收口」，需扩 seed/规模，并把 2.2.2 的注意力版与 2.2.4 的并行子层作为同组对照。"
+gaps:
+  - "n=1 seed、13M/12k 单快照（55-review：快照不能当渐近结论）"
+  - "dense 的层权无单纯形约束（≠ 原论文严格凸组合语义），与 DenseFormer 的严格对照未做"
+  - "24k 收敛点与更大规模未跑"
+  - "与 2.2.2 层间 causal attention 的同预算对照未做"
+cost_model: "等效理论量：每 token 的 layer-passes 仍为 L（层数不变）；层间学习加权和每层对 l 个历史层输出做加权求和 ⇒ 每 token 额外 ≈ Σ_l l·d = O(L²·d) FLOPs（相对单残差基线），可用缓存历史层输出降为 O(L·d) 存储开销；tokens-per-forward 每步 1。考虑 pipelining：层间加权和使每层依赖其全部历史层，增加层间串行依赖（不利于跨层流水），该依赖须与单残差对照量化。"
+
+role_map:
+  owner: "轴 2 深度轴 lead（待指派）"
+  writer: "2.2.3 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「层间学习加权和」的序列级判决包：{stock 单残差, DenseFormer 式学习加权和} 在 13M matched-step（n≥2）与一个更大规模点上的 clean bpc + 逐深度 bpc，对照 stock 单残差全深度，含额外层权参数与等参数对照。"
+  acceptance: "学习加权和相对 stock 单残差在 clean bpc 与逐深度可读性上可排序差异或无差异（二选一明确）；n≥2；结论不越尺度外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "扩 seed + 更大规模复核层间学习加权和"
+    goal: "把旧 C3 的 n=1/13M/12k 单快照中性读数升级为可排序、可外推边界的判决"
+    means: "13M n≥2 与一个更大规模点、matched-step，{stock, 学习加权和} 两臂，报 clean bpc + 逐深度 bpc"
+    acceptance: "两规模各自有 n≥2；结论停在「本 n/本尺度可判/不可判」"
+    evidence: "axes/2-depth/2.2.3-learned-layer-sum/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+  - id: "WP2"
+    what: "与 2.2.2 层间 causal attention 的同预算对照"
+    goal: "区分「线性学习加权和」与「内容相关注意力聚合」的增量"
+    means: "同基底、同预算下并列 dense 加权和与 causal attention 聚合两臂"
+    acceptance: "两聚合方式在同预算下的 clean bpc 与额外算力并列可读"
+    evidence: "axes/2-depth/2.2.3-learned-layer-sum/experiments/"
+    review: "跑完另派 fresh 复核"
+    status: "未开始"
+
+roadmap:
+  - "WP1：扩 seed/规模复核"
+  - "WP2：与层间 causal attention 同预算对照"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "进行中"
+started: "2026-10-13T10:37:02+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:37:02+08:00"
+    actor: "轴 2 §2.2 worker"
+    change: "按 MAPPING §1 由旧格 C3-inter-layer-topology 并入 2.2.3 层间学习加权和（DenseFormer 式），`2613-inter-layer-topology-13m` 整目录 git mv 为本项主家证据（并行子层读数归 2.2.4，只指针不复制）；按 55-review C-P10 把「手段枚举、判据零区分度」改成有目的/可排序判据的研究项，status 由 judged 降为进行中（n=1/单快照）。"
