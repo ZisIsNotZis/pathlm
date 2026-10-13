@@ -58,9 +58,10 @@
 
 | # | 取舍 | 现状 | 待 Main 裁决 |
 |---|---|---|---|
-| F1 | **0.014 噪声带能否当接受率（α/τ）阈值** | 该带来源 = 13M 跨 run **bpc** 漂移界（`docs/methodology.md:19`）；轴 6 用它判 α₁ 可排序性属跨量纲借用。本轴本轮**先按 `project.yaml` 里已预登记的写法**给出 CI + 带内/带外双读数，不自选阈值 | 是否把「α/τ 的可排序门」单独定（例如按 prompt 聚类 bootstrap CI 不含 0 为主、0.014 仅作参考） |
+| F1 | **0.014 噪声带能否当接受率（α/τ）阈值** | 该带来源 = 13M 跨 run **bpc** 漂移界（`docs/methodology.md:19`）；同一文件 `:25-28` **明文**写「0.014 是 **bpc** 口径的方差带，**不得**直接当准确率的 1.4pp 界……准确率的可排序性应用**二项 / Wilson 95% CI**」⇒ 轴 6 用它判 α₁ 可排序性属**跨量纲借用**。本轴本轮**先按 `project.yaml` 里已预登记的写法**给出 CI + 带内/带外双读数（CI 为主、0.014 为参考），不自选阈值 | 是否把「α/τ 的可排序门」单独定（建议：按 prompt 聚类 bootstrap / Wilson CI 不含 0 为主判，0.014 仅作参考线）；本轴已如此并报 |
 | F2 | **树 / 多候选验证的代价口径**：树用 K 倍并行 FLOPs 换更高 τ，同 size 下 `R_tree` 通常仍 >1 | 本轴按「τ / tokens-per-forward 是硬指标、FLOPs 是代价轴」如实双报，**不**把 `R_tree` 与单臂 `R` 的对比写成硬判据 | 是否要求所有多候选 / 树结论一律附「等 FLOPs 对照臂」（本引擎 `n_mtp=3` 上限下等 FLOPs 臂不可得，见 §5 记录） |
 | F3 | **引擎改动边界**：完整二级树（N+3 以被接受的 N+2 候选为条件）需要**新的二级条件头 + 重训**，属共享 `pathlm/**` 改动 | 本 WP 不擅改；把「需要什么 + 最小 patch 描述」记入 §5 并上报 | 是否授权（谁改、谁复核、是否本轮做） |
+| F4 | **6.3.3 latent regression 的判据归因**：`milestone`/`validation` 同时要「tokens-per-forward 与 τ（该涨）」+「草稿接受率」，但 `cost_model` 写的是「一次前向回归 k 个 latent 再各自贪心」——即**不经验证直接发**（估计得贪心） | 两条路是**不同的东西**：(i) 不验证直接发（无「接受率」概念，判据只能是质量 + 每 token 主干 FLOPs ≈ L/k）；(ii) 当**草稿**再验证（有接受率，但每 token 主干 FLOPs 变成 ≈ (1+k)/k×L，即 ≈L）。本轴不自选口径，6.3.3 本轮**不执行**；已记入本表 | 6.3.3 的判据与 `cost_model` 选哪条（或两条各作一臂并分开报代价）；确认后由 axis6-lead 改 `project.yaml` |
 
 ## 5 WP 排序、预算与执行
 
@@ -91,7 +92,14 @@
   占位改为实名（owner=axis6-lead，writer=每项 worker，reviewer=axis6-reviewer，integrator=tree-integrator）；
   6.2 `objective_criteria` 加无损性口径限定（消除与 `conclusion`(e) 的矛盾）；WP 6.2.2 `status: 未开始 → 进行中`、
   `evidence` 钉到 `experiments/2640-tree-conf-13m/`。
-- 兄弟字段一致性扫描（待本轮 WP 结果落盘后补跑，见收口记录）。
+- `2026-10-13T16:31:28+08:00` · axis6-lead · 修 6.2 两处证据保真（`tokens-per-forward` 区间归因、`1/400 token` 自造摘要数）→ 见下方扫描第 4 条；`python3 tools/summary.py --check` 复跑全绿。
+- `2026-10-13T16:31:28+08:00` · axis6-lead · 兄弟字段一致性扫描（第一遍，逐条可核）：
+  1. `1.5074`（13M B0 快照 bpc）的唯一家 = `axes/7-references/README.md:13` ✓；6.2/6.3.1 只是指针式引用，无二家。
+  2. `dir` 字段 vs 实际目录：5/5 一致 ✓；`experiments` 列出的 10 个 6.2 目录 vs 磁盘 10/10 一致 ✓；6.4 = 1/1 ✓。
+  3. 6.2 experiments/README.md 表 10 行 vs 磁盘 10 目录 ✓（新实验 `2640` 待落盘后补行，见收口记录）。
+  4. **6.2 `conclusion` 两处证据保真问题已修**（commit 见 §7 时间线）：(i) `tokens-per-forward 2.37–2.40（13M 与 100M）` 把 2520 的 γ=2 四点压成一个区间、并漏掉 13M random 2.6846 与 2631 部署三臂 2.07–2.58 ⇒ 改为**逐点列源**（2520：13M enwik8 2.3952 / 100M random 2.3669 / 100M enwik8 2.3952；2631 另为 2.07–2.58）；`expected_effect` 同步。(ii) `@100M fp 平局翻转（1/400 token）` 是**自造摘要数**，源件（2520 analysis §fp 平局）写的是「**1 次**翻转、首错位 169、级联 68 token、翻转处 top-2 gap 0.0079 > 预登记 1e-3 并列容差」⇒ 改为逐字对齐源件。
+  5. 6.4 `conclusion` 引「>0.014 可排序」，而其源件 `2523e-fill-variants/README.md:24` 用「±0.03 平局带」：二者不冲突（0.014 = `docs/methodology.md:19` 的 SSOT 口径；±0.03 是源件自定的旧平局带），且 +0.0856 同时越两者 ⇒ 记 **info**，不改。
+  6. `6.2` 的 16 条 `experiments` 中含 10 个仓内目录 + 6 个 `.scratch/**@sha` 锚点；锚点可达性由 `summary.py --check` 校验 ✓（全绿）。
 
 ## 7 时间线
 
