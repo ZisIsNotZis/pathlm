@@ -6,8 +6,9 @@ input axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jump
 input axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt: OK
 input axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt: OK
 input axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mqa-12k-s0/model.pt: OK
-必须不变：bpc / copy 召回（含 CI）与父实验逐位相等 = True
-父实验自证的非量化臂不变性：2632::reuse.nonquant_bitwise_preserved = True（max|Δbpc| = 0.0）
+必须不变 (a) 透传事实 = True（非独立检验）
+必须不变 (b) 跨文档独立核（2632/table.md 表 1 vs 2642 rows）：解析 27 臂，max|Δ| = {'deployment_bytes_per_position': 0.0, 'bpc': 0.0, 'recall_copy': 4.900000000000043e-05, 'recall_copy_ci': 4.900000000002125e-05}，不一致 = 0 ⇒ PASS
+上游独立检验：2632::reuse.nonquant_bitwise_preserved = True（max|Δbpc| = 0.0，相对 2631 的检验）
 G1 独立重算 vs 2632 记录：max|Δ部署字节| = 0 ⇒ PASS
 G2 量化臂标尺口径：非块标尺量化臂 = [] ⇒ PASS
 仅值口径核对：points[*].bytes_per_position 与独立重算的仅值字节不一致条目 = 0

@@ -149,9 +149,33 @@ Phase A 干三件事：① 六格 `project.yaml` 的 `role_map` 实名 + 逐项�
 - 另核 `5.1::conclusion` 里既有的 int8 三窗口配对 Δ 逐 seed 值（`+0.000101 / +0.000013 / +0.000009`）与
   `2632::variance_self_measured_paired.delta_by_seed`（`0.000101, 1.3e-05, 9e-06`）**一致**，无需更正。
 
-### 7.1 复核判词与处置
+### 7.1 第 1 轮复核判词与处置（`2026-10-13T20:18+08:00` 返回）
 
-（待复核返回后填写。）
+**判词：OK with notes**（无 blocker；normal ×2；逐判据：① 手算 14 臂逐位相等 = PASS；② 口径纪律 = PASS；
+③ 参数混杂 = PASS；④ 数字可追溯 = **FAIL（1 处数字错）**；⑤ project.yaml 实名/成本口径 = PASS 但 4 个子项
+复核者无法执行；⑥ 范围纪律 = PASS）。
+
+- **报告落盘**：`.scratch/66-axis5-quant/REVIEW-1.md`。复核者所在会话**只有 read/grep/find/ls 类工具、无写入与执行工具**
+  ⇒ 判词由复核者返回、axis5-lead **原样落盘**并标注来源（未改动其结论、未替它补写内容；被会话输出截断处已标注）。
+- **N1 处置（已修，bug 属实）**：`analysis.md` 原文「非支配集 6 臂，其中 **5 个是头族**」→ 实际 **4 个**
+  （`mqa_int4` / `gqa_win64` / `mqa_int8` / `mqa`；另 2 个为 `int8`（class=quant）与 `mha`（class=baseline））。
+  已改为「其中 **4 个是头族**（…；另 2 个是 trunk 基线 `mha` 与 trunk×量化 `int8`）」并保留被支配点清单锚点。
+- **N2 处置（已修，属循环论证，复核者独立判定「属实」）**：采纳其 (a) 的**如实降级**并叠加一个真检验，三处改动：
+  1. `gates.values_unchanged_bitwise_ok` → **`gates.readings_passed_through_untouched`**，并在 `analysis.md` §1 明确标注
+     「本条是**逐值透传的过程陈述，不构成独立检验**」；`verdict` 改为**只由 G1/G2 决定**（新增 `verdict_basis` 字段说明）。
+  2. **删死代码**：`parent_pairs` / `local_pairs` / `value_fingerprint` / `import math` 全部移除。
+  3. 新增真检验 **`gates.cross_artifact_table_md`**：解析父实验**另一份产物** `2632/table.md` 表 1（markdown，
+     由 `2632` 自己的代码路径生成、与 `results.json` 不同格式、由本实验**新写的解析器**读取），与 2642 rows
+     逐臂比部署字节 / bpc / copy 召回 / CI ⇒ **27 臂全解析、不一致 0**，`max|Δ|` = 0（字节）/ 0（bpc）/
+     4.9e-5（召回）/ 4.9e-5（CI），零头来自 `table.md` 只印 4 位小数（容差 5e-5，**非口径差异**，已写进 `results.json`）。
+     ⇒ 这实现了复核者建议 (b) 的意图（比较对象不是同一内存对象）而不必逐臂去 `points[*].source` 指的原实验目录重算。
+- **I1 处置（已补）**：复核者列为「无法执行」的四项（重跑脚本并核 `results.json::code` 指纹、6 个输入 sha256、
+  `summary.py --check`、9 条 arXiv 标题）已由 axis5-lead 代跑，原始输出留证
+  `.scratch/66-axis5-quant/evidence/REVIEW-1-COMMANDS.md`（结果：`exit=0` 且脚本指纹相符、sha256 逐条相符、
+  check 全绿、9 篇标题核实）。
+- **复核者自述的局限（如实登记）**：其会话无 exec/curl ⇒ 上述四项原为「未核」；其视野不含已 commit 区间
+  （`C8` 的 git 范围结论由 axis5-lead 在 §8/§4 以 `git status --short` / `git diff --stat` 证据补齐）。
+- **第 2 轮**：见 §7.3。
 
 ## 8. 兄弟字段一致性扫描（本轮）
 
@@ -187,3 +211,13 @@ Phase A 干三件事：① 六格 `project.yaml` 的 `role_map` 实名 + 逐项�
 | F2 | 头族（更少参数）在原始 Pareto 上支配大量 trunk 臂，是否算发现 | **不算**：记为「参数混杂的可见后果」，纯机制读数须等参数臂（登记为下一步 + 等效算力成本） | 55-review W-08 精神：跨家族比较必须同价（同字节 + 同参数） |
 | F3 | `5.1` 的 `status` | 保持 `已完成`（WP2 是本项内的过程 WP，未改变里程碑级结论「8 位近无损、4 位两腿都掉」） | `docs/research-schema.md` §7「状态只回答做完没有」 |
 | F4 | 等参数臂是新研究项还是 `5.1`/`5.4` 的 WP | 倾向作为 **`5.1` + `5.4` 共用的 WP**（同一臂服务两格），**待 Main 裁决**（涉及研究树结构） | `docs/structure.md` §15（不重复建格） |
+
+### 7.3 第 2 轮复核（新的 fresh 上下文）
+
+- 触发：第 1 轮有 2 条 normal（N1 数字错、N2 恒真门禁）⇒ 按纪律「复核发现缺陷 → 派 writer 修 → 再派**新的** fresh 复核」。
+- 派单对象：新的 `reviewer`（fresh 上下文，不复用第 1 轮上下文），只读 + 只写报告（报告落 `REVIEW-2.md`）。
+- 复核目标（最小范围，不重跑第 1 轮已过项）：① N1 是否真已改正且新数字可在 `results.json` 逐条对齐；
+  ② N2 的降级是否诚实（`verdict` 只由 G1/G2 决定、死代码已删）且新增的跨文档独立核**是否真的是独立路径**
+  （要求其判定该核的独立性强度与容差是否合理，能否被伪造）；③ 修复是否引入新缺陷（`results.json`/`table.md`/
+  `run_log.txt` 三者自洽、`results.json::code` 指纹与磁盘一致）；④ 是否仍在允许范围内改动。
+- 预算：≤20 分钟。第 2 轮仍 FAIL 即按「累计 ≤2 轮」如实登记返回（不再开第 3 轮）。

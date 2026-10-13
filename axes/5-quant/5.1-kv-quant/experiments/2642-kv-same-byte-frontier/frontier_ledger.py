@@ -84,6 +84,34 @@ def param_count(path: Path, d_model: int = 256, head_dim: int = 32) -> tuple[int
     return int(total), int(n_kv)
 
 
+def parse_2632_table(path: Path) -> dict:
+    """解析父实验**另一份产物** `2632/table.md` 表 1（markdown 表格）。
+
+    与 `results.json` 不同格式、由 2632 自己的代码路径生成 ⇒ 用于跨文档独立核对读数。
+    列序：臂 | 类别 | 值字节 | 部署字节(block) | ×fp16 | 旧部署(a) | ×fp16(a) | bpc | damage | 量化增量 | copy 召回 | 95% CI | 前缀不变。
+    """
+    import re
+
+    out: dict[str, dict] = {}
+    for line in path.read_text().splitlines():
+        if not line.startswith("| `"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 13:
+            continue
+        try:
+            arm = cells[0].strip("`")
+            deploy = float(cells[3])
+            bpc = float(cells[7])
+            recall = float(cells[10].split()[0])
+            lo, hi = (float(x) for x in cells[11].strip("[]").split(","))
+        except (ValueError, IndexError):
+            continue
+        out[arm] = {"deployment_bytes_per_position": deploy, "value_bytes": float(cells[2]),
+                    "bpc": bpc, "recall_copy": recall, "recall_copy_ci": [lo, hi]}
+    return out
+
+
 def main() -> int:
     log: list[str] = []
     cfg = json.loads((HERE / "config.json").read_text())
@@ -150,26 +178,44 @@ def main() -> int:
         })
     rows.sort(key=lambda r: (r["deployment_bytes_per_position"], r["bpc"]))
 
-    # 必须不变：本实验不改任何 bpc / 召回数值（逐位等于父实验读数）
-    def value_fingerprint(pairs):
-        return hashlib.sha256(json.dumps(pairs, sort_keys=True).encode()).hexdigest()
-
-    parent_pairs = [(p["arm"], p["bpc"], p["recall_copy"]["accuracy"],
-                     p["recall_copy"]["wilson95"], p["recall_induction"]["accuracy"],
-                     p["recall_var_recall"]["accuracy"]) for p in points]
-    local_pairs = [(r["arm"], r["bpc"], r["recall_copy"], r["recall_copy_ci"], None, None) for r in rows]
-    # 逐臂核对 bpc 与 copy 召回（含 CI）逐位相等；induction/var_recall 亦核
-    import math
-    bitwise_ok = True
-    for p in points:
-        r = next(x for x in rows if x["arm"] == p["arm"])
-        if (r["bpc"] != p["bpc"] or r["recall_copy"] != p["recall_copy"]["accuracy"]
-                or list(r["recall_copy_ci"]) != list(p["recall_copy"]["wilson95"])):
-            bitwise_ok = False
-            log.append(f"  ! 数值被改动：{p['arm']}")
-    log.append(f"必须不变：bpc / copy 召回（含 CI）与父实验逐位相等 = {bitwise_ok}")
-    log.append(f"父实验自证的非量化臂不变性：2632::reuse.nonquant_bitwise_preserved = "
-               f"{parent['reuse']['nonquant_bitwise_preserved']}（max|Δbpc| = {parent['reuse']['nonquant_max_abs_delta_bpc']}）")
+    # 「必须不变」（预登记第 4 条）——两条证据，分开记，不混：
+    #   (a) 透传事实：本实验对读数是**逐值透传、无任何数值变换**（不是独立检验，只是过程陈述）；
+    #   (b) 跨文档独立核：把父实验**另一份产物** `2632/table.md` 表 1（markdown，由 2632 自己的代码路径生成、
+    #       与 results.json 不同格式）解析出来，与 2642 的 rows 逐臂比部署字节 / bpc / copy 召回 / CI。
+    #       这是「读数未被改动」的真检验：若 2632 的 json 与 md 不一致、或 2642 改动了读数，此处必红。
+    readings_passed_through_untouched = True  # (a) 构造性事实：rows 的数值字段直接取自同一 points
+    table_rows = parse_2632_table(PARENT / "table.md")
+    # 容差按 md 的**显示精度**定：字节与 bpc 逐位（md 印整数/6 位小数）；召回与 CI md 只印 4 位小数 ⇒ 容差 5e-5
+    tol = {"deployment_bytes_per_position": 1e-9, "bpc": 1e-9, "recall_copy": 5e-5, "recall_copy_ci": 5e-5}
+    cross = {"source": str((PARENT / "table.md").relative_to(ROOT)),
+             "n_arms_parsed": len(table_rows), "tolerance_by_field": tol,
+             "max_abs_diff": {}, "mismatches": [], "rounding_note": "2632/table.md 的召回与 CI 只印 4 位小数 ⇒ 容差 5e-5（不是口径差异）"}
+    for field in ("deployment_bytes_per_position", "bpc", "recall_copy"):
+        cross["max_abs_diff"][field] = 0.0
+    cross["max_abs_diff"]["recall_copy_ci"] = 0.0
+    for r in rows:
+        t = table_rows.get(r["arm"])
+        if t is None:
+            cross["mismatches"].append((r["arm"], "missing_in_table_md"))
+            continue
+        for field, ref in (("deployment_bytes_per_position", t["deployment_bytes_per_position"]),
+                           ("bpc", t["bpc"]), ("recall_copy", t["recall_copy"])):
+            d = abs(r[field] - ref)
+            cross["max_abs_diff"][field] = max(cross["max_abs_diff"][field], d)
+            if d > tol[field]:
+                cross["mismatches"].append((r["arm"], field, r[field], ref))
+        ci_d = max(abs(a - b) for a, b in zip(r["recall_copy_ci"], t["recall_copy_ci"]))
+        cross["max_abs_diff"]["recall_copy_ci"] = max(cross["max_abs_diff"]["recall_copy_ci"], ci_d)
+        if ci_d > tol["recall_copy_ci"]:
+            cross["mismatches"].append((r["arm"], "recall_copy_ci", r["recall_copy_ci"], t["recall_copy_ci"]))
+    cross["ok"] = not cross["mismatches"] and cross["n_arms_parsed"] == len(rows)
+    log.append(f"必须不变 (a) 透传事实 = {readings_passed_through_untouched}（非独立检验）")
+    log.append(f"必须不变 (b) 跨文档独立核（2632/table.md 表 1 vs 2642 rows）：解析 {cross['n_arms_parsed']} 臂，"
+               f"max|Δ| = {cross['max_abs_diff']}，不一致 = {len(cross['mismatches'])} ⇒ "
+               f"{'PASS' if cross['ok'] else 'FAIL'}")
+    log.append(f"上游独立检验：2632::reuse.nonquant_bitwise_preserved = "
+               f"{parent['reuse']['nonquant_bitwise_preserved']}（max|Δbpc| = {parent['reuse']['nonquant_max_abs_delta_bpc']}，"
+               f"相对 2631 的检验）")
 
     gate_g1 = max_diff < 1e-9
     bad_scheme = [r["arm"] for r in rows if r["quantized"] and (r["scheme"] != "block" or r["group"] != GROUP_G)]
@@ -280,10 +326,13 @@ def main() -> int:
             "G2_all_quantized_arms_use_block_scale": gate_g2,
             "G2_offenders": bad_scheme,
             "value_only_caliber_agrees": not value_only_mismatch,
-            "values_unchanged_bitwise_ok": bitwise_ok,
+            "readings_passed_through_untouched": readings_passed_through_untouched,
+            "cross_artifact_table_md_ok": cross["ok"],
+            "cross_artifact_table_md": cross,
             "parent_nonquant_bitwise_preserved": parent["reuse"]["nonquant_bitwise_preserved"],
             "parent_nonquant_max_abs_delta_bpc": parent["reuse"]["nonquant_max_abs_delta_bpc"],
-            "verdict": "PROCEED" if (gate_g1 and gate_g2 and bitwise_ok) else "VOID",
+            "verdict": "PROCEED" if (gate_g1 and gate_g2) else "VOID",
+        "verdict_basis": "只由 G1（独立重算字节账）与 G2（块标尺口径）决定；跨文档独立核另列（cross_artifact_table_md）",
         },
         "inputs_sha256": cfg["inputs_sha256"],
         "rows": rows,
