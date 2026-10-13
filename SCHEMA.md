@@ -1,8 +1,9 @@
 # SCHEMA — 课题页与实验的格式契约与分析纪律
 
 本仓库是一份**设计空间目录 + 单实验 Playbook**。它成立的前提是格式可机检：
-`tools/build_wiki.py` 由 `catalog.yaml` 生成所有索引与课题页，
-`tools/check_schema.py` 在 CI 里让格式错误直接失败。本文件同时是**分析纪律**的家：
+`tools/check_schema.py`（已转调 `tools/check_tree.py`）在 CI 里让格式错误直接失败；
+历史生成式 wiki（`tools/build_wiki.py` 由 `catalog.yaml` 生成索引与课题页）**已退役**
+（见顶部迁移通告 / `docs/structure.md` §15）。本文件同时是**分析纪律**的家：
 所有条款都是**当前生效的规则**，按编号引用（编号稳定，正文可读）。
 
 > **迁移通告（ticket 56）**：新结构下研究项的 SSOT = **`axes/**/project.yaml`**
@@ -16,6 +17,10 @@
 > 不重复造轮子、预算内极致）仍然全部生效。**
 
 ## 0. 「完备」的三级定义
+
+> （本节的「谁来保证」列写于生成式 wiki 时代；`catalog.yaml` 与旧 catalog 校验 `check_schema.py`
+> 已退役，见顶部迁移通告 / `docs/structure.md` §15。新结构下「目录完备」由 `docs/structure.md` §12
+> 节点清单 + `tools/check_tree.py` 承接；三级定义与护栏纪律不变。）
 
 | 级别 | 含义 | 谁来保证 |
 |---|---|---|
@@ -66,7 +71,8 @@ evidence:
 | 9. 复现手段 | 脚本 / 命令 / 数据 / 权重哈希 | 「本地未做」 |
 
 自动块夹在 `<!-- AUTO:begin/end -->`；手写块夹在 `<!-- MANUAL:begin/end -->`，
-重跑 `build_wiki.py` 不丢手写内容。
+重跑 `build_wiki.py` 不丢手写内容（`build_wiki.py` 已退役，见顶部迁移通告 /
+`docs/structure.md` §15；此机制在迁移窗口内仅对旧生成页适用，分析纪律不变）。
 
 ## 3. 实验目录契约
 
@@ -93,7 +99,8 @@ evidence:
 > 本研究**默认只做单轴单格实验**，基底恒为 stock 对照；**组合默认留白**——
 > 组合留白是显式声明，不是遗漏。`deps` 字段只记录已知耦合方向，**不构成组合实验授权**。
 > 已发生的少数组合实验（搬运×深度监督 2×2、GQA+carry+窗口阶梯、头共享×量化）按**例外**登记，
-> 各有契约与证据（见 `catalog.yaml` 对应格子）。组合取舍属具体产品方 scope。
+> 各有契约与证据（`catalog.yaml` 已退役，见顶部迁移通告 / `docs/structure.md` §15；
+> 迁移窗口内其 `local:` 块仍作内容源）。组合取舍属具体产品方 scope。
 
 ## 5. 校验命令
 
@@ -194,7 +201,8 @@ python3 tools/check_tree.py        # 新：纯校验（check_schema.py 转调它
    （实例：把整段上下文替换为自预测再用真值打分 = 「假上下文猜真值」，不是 AR。）
 3. **口径对账**：快照/渐近/matched-step/墙钟/FLOPs 是否与主臂一致。
 
-对账不过 ⇒ **撤回该结论**：把 `analysis.md` 与 `catalog.yaml` 改成**当前正确状态**
+对账不过 ⇒ **撤回该结论**：把 `analysis.md`（及退役前的 `catalog.yaml`，见顶部迁移通告 /
+`docs/structure.md` §15）改成**当前正确状态**
 （不要留 ERRATA 叠加）。不利于假设的数字同样必须报（但只要求如实体量，不强制对账）。
 
 ## 13. 对照臂可比性
@@ -298,6 +306,8 @@ python3 tools/check_tree.py        # 新：纯校验（check_schema.py 转调它
 13. **`catalog.yaml` 的标量不得以 `*` 或 `**` 开头**（YAML 会当别名/锚点，直接解析失败）。
     规范：写 `catalog.yaml` 时凡值以 `*` 开头一律加引号，或不用 Markdown 强调；改完必须跑一次
     `python3 -c "import yaml;yaml.safe_load(open('catalog.yaml'))"` 再提交。
+    （`catalog.yaml` 已退役，见顶部迁移通告 / `docs/structure.md` §15；此 YAML 标量纪律对迁移后的
+    `project.yaml` 同样适用。）
 
 ### 17.14 判据的「基准」必须唯一且显式
 
@@ -452,7 +462,7 @@ rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/nul
 
 | 判定 | 处置 |
 |---|---|
-| **(a) 业界已研究透**（同任务、同机制、规模足够、结论一致） | **不跑实验**。在对应目录写 `PRIOR_ART.md` 的结论条目，并在 `catalog.yaml` 的 `local` 值里**显式标注「业界结论，非本地实测」**（附可核实出处，或标 `记忆·未核`） |
+| **(a) 业界已研究透**（同任务、同机制、规模足够、结论一致） | **不跑实验**。在对应目录写 `PRIOR_ART.md` 的结论条目，并在 `catalog.yaml` 的 `local` 值里**显式标注「业界结论，非本地实测」**（附可核实出处，或标 `记忆·未核`）。（`catalog.yaml` 已退役，见顶部迁移通告 / `docs/structure.md` §15；迁移后等效落点 = 该研究项 `project.yaml` 的 `sota_baseline`/`conclusion`，非本地实测须显式标注。） |
 | **(b) 业界没有 / 结论不一致 / 我们的设定实质不同**（13M、局部先验抗性任务、单因素受控、旁路形态） | **做实验**，契约必须写「我们的增量在哪」 |
 | **(c) 查不到**（含检索不可用） | 按 `记忆·未核` 记录方向；**不得**据此判定 (a) |
 
@@ -538,6 +548,8 @@ rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/nul
    反例：`catalog.yaml` 曾有 22 处 `prior_art_source` 漂到上一格；现由
    `tools/check_catalog_strict.py`（§2 归属核对 + §3 游离键）机检
    （另见 `.scratch/50-critical-audit/FMG-AUDIT.md:148`）。
+   （`check_catalog_strict.py` 已退役，见顶部迁移通告 / `docs/structure.md` §15；
+   「字段错位」纪律对 `project.yaml` 同样适用，同一规则由 `check_tree.py` 的字段校验承接。）
 8. **恒等式当因果**：把逐项相消的记账恒等式当成可加的因果分解（交互项被漏报）。
    反例：R7 的税拆解——三项相加恒真，真实分解含交互项 −0.1392（两轴不独立）
    （`axes/R-references/R7-existing-early-exit/experiments/2623-standard-early-exit-13m/analysis.md:115-119,324`）。
@@ -590,6 +602,11 @@ rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/nul
    **三类表面（实验文档 / `catalog.yaml` verdict / 生成页）必须逐字一致**：关键数字用
    `local.key_numbers` 声明，`tools/check_catalog_strict.py` 会在三类表面上机检
    （改数字后必须 `python3 tools/build_wiki.py` 重生成页面，否则页面这一面必红）。
+
+   > （`catalog.yaml` / `build_wiki.py` / `check_catalog_strict.py` / 生成页均属**已退役**的生成式
+   > wiki 机制，见顶部迁移通告 / `docs/structure.md` §15；迁移窗口内此条款仅对旧页/旧账本适用。
+   > 其**分析纪律**——关键数字必须逐表面一致、改数字必须回扫所有引用点——**仍然生效**；
+   > 迁移后的落点为 `project.yaml` 的 `conclusion`/`argument` 与实验产物一致。）
 
 **两条强制动作**（每个契约 / 对账脚本 / 门限或口径修改收口前必做）：
 

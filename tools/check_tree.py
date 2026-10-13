@@ -7,15 +7,20 @@
 
 校验项：
   1. 字段齐全：`docs/research-schema.md` §2 列出的字段一个都不能少。
-  2. `milestone` 单数：必须是 map 且有 `output` + `acceptance`（不是 list）。
-  3. `role_map` 四角色齐：owner / writer / reviewer / integrator。
-  4. `work_packages`：每条含 id/what/goal/means/acceptance/evidence/review/status。
-  5. `status` 合法：未开始 / 进行中 / 已完成 / 被否证。
-  6. `cost_model` 禁墙钟/日期（只许等效理论量：FLOPs / layer-passes / tokens-per-forward）。
-  7. `status ∈ {已完成, 被否证}` ⇒ 必须有 `conclusion` + 非空且存在的 `experiments`。
-  8. `validation` 必须含「对照/基线/stock/SOTA」之一 + 「口径/bpc/FLOPs/...」之一。
-  9. `id` 全局唯一；`dir` 必须等于文件实际所在目录。
- 10. 证据锚点：`experiments/evidence` 里的 `path @<sha>` 路径存在，锚点是真实可达提交。
+  2. 关键字段非空：`purpose` / `innovation` / `validation` / `objective_criteria` /
+     `falsification` 不得为空串/空列表。
+  3. `milestone` 单数：必须是 map 且有 `output` + `acceptance`（不是 list）。
+  4. `role_map` 四角色齐：owner / writer / reviewer / integrator。
+  5. `work_packages`：每条含 id/what/goal/means/acceptance/evidence/review/status。
+  6. `status` 合法：未开始 / 进行中 / 已完成 / 被否证。
+  7. `cost_model` 禁墙钟/日期（只许等效理论量：FLOPs / layer-passes / tokens-per-forward）。
+  8. `status ∈ {已完成, 被否证}` ⇒ 必须有 `conclusion` + 非空且存在的 `experiments`；
+     `status = 被否证` ⇒ 还必须有非空 `failure_analysis`（失败归因：设计 / 结构 / innovation，
+     见 `docs/research-schema.md` §7）。
+  9. `validation` 必须含「对照/基线/stock/SOTA」之一 + 「判据/该涨/该跌」之一 + 
+     「口径/bpc/...」之一。
+ 10. `id` 全局唯一；`dir` 必须等于文件实际所在目录。
+ 11. 证据锚点：`experiments` 路径存在；WP `evidence` 允许未来路径（只校锚点 `@<sha>` 可达）。
 
 用法：python3 tools/check_tree.py   （退出码 0 = 全过；1 = 有错）
 """
@@ -39,9 +44,11 @@ REQUIRED = (
     "id", "axis", "title", "dir", "purpose", "innovation", "expected_effect",
     "sota_baseline", "gap", "method", "validation", "objective_criteria",
     "falsification", "cost_model", "role_map", "milestone", "work_packages",
-    "roadmap", "status", "conclusion_review", "experiments", "argument", "gaps",
-    "started", "ended", "change_log",
+    "roadmap", "status", "failure_analysis", "conclusion_review", "experiments",
+    "argument", "gaps", "started", "ended", "change_log",
 )
+#: 「必填」= 必须**非空**的字符串字段（不允许空串/空列表蒙混，见 docs/research-schema.md §2）。
+NONEMPTY = ("purpose", "innovation", "validation", "objective_criteria", "falsification")
 WP_REQUIRED = ("id", "what", "goal", "means", "acceptance", "evidence", "review", "status")
 ROLE_REQUIRED = ("owner", "writer", "reviewer", "integrator")
 
@@ -156,6 +163,11 @@ def validate_file(path: Path) -> tuple[list[str], dict[str, list[str]], dict[str
         if k not in doc:
             errors.append(f"{rel}: 缺字段 {k}")
 
+    # 关键字段非空（必填 = 校验器 fail，空串/空列表不得蒙混）
+    for k in NONEMPTY:
+        if k in doc and not _nonempty(doc.get(k)):
+            errors.append(f"{rel}: {k} 不得为空（必填字段）")
+
     # dir 与实际位置一致
     actual = path.parent.relative_to(ROOT).as_posix()
     if doc.get("dir") and str(doc["dir"]).rstrip("/") != actual:
@@ -212,16 +224,21 @@ def validate_file(path: Path) -> tuple[list[str], dict[str, list[str]], dict[str
     val = str(doc.get("validation") or "")
     if not any(w in val for w in ("对照", "基线", "stock", "SOTA", "sota", "baseline")):
         errors.append(f"{rel}: validation 缺「与 SOTA/stock 基线对照」")
+    if not any(w in val for w in ("判据", "该涨", "该跌", "必须不变", "criteria", "objective")):
+        errors.append(f"{rel}: validation 缺「客观判据」（该涨/该跌/必须不变）")
     if not any(w in val for w in ("口径", "bpc", "FLOPs", "layer-passes",
                                   "tokens-per-forward", "perplexity", "acc", "一致率")):
         errors.append(f"{rel}: validation 缺口径")
 
-    # 已完成/被否证 ⇒ conclusion + experiments
+    # 已完成/被否证 ⇒ conclusion + experiments；被否证 ⇒ failure_analysis 非空
     if st in DONE_STATUS:
         if not _nonempty(doc.get("conclusion")):
             errors.append(f"{rel}: status={st} 但无 conclusion")
         if not _nonempty(doc.get("experiments")):
             errors.append(f"{rel}: status={st} 但无 experiments（结论必须有证据）")
+        if st == "被否证" and not _nonempty(doc.get("failure_analysis")):
+            errors.append(f"{rel}: status=被否证 但 failure_analysis 为空"
+                          f"（必须区分 设计问题 / 结构问题 / innovation 本身失败 并给证据）")
 
     # experiments 路径存在 + 收集锚点
     for ev in (doc.get("experiments") or []):

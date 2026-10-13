@@ -47,6 +47,7 @@
 | `roadmap` | list | ✅ | 推进步骤（有序字符串；可空列表，但键必须存在） |
 | `status` | str | ✅ | `未开始` / `进行中` / `已完成` / `被否证`（见 §7） |
 | `conclusion` | str | 条件 | `status ∈ {已完成, 被否证}` 时必填；否则可空 |
+| `failure_analysis` | str | ✅ | **失败归因**：研究判失败/被否证时，必须先区分是 **设计问题 / 结构问题 / innovation 本身失败** 中的哪一类（可并列）并给证据，不得只说「没做出来」。触发与非空要求见 §7；未判失败时写 `""` |
 | `conclusion_review` | str | ✅ | 这个结论**看上去对吗**：自评 + 独立复核的判词 |
 | `experiments` | list | ✅ | 实验目录（仓库内相对路径，必须存在）；空列表合法 |
 | `argument` | str | ✅ | 结论**是怎么论证出来的**（逻辑链 + 对照） |
@@ -90,6 +91,7 @@ milestone:
 
 - 一个研究项**只有一个最终 milestone**——即最终输出。过程节点不叫 milestone，叫
   `work_packages`。校验器要求 `milestone` 是 map 且有 `output` + `acceptance`。
+- 验收不达标即判研究失败 ⇒ 按 §7 填顶层 `failure_analysis`（失败归因），不得只在 milestone 文本里写一句「没做出来」。
 
 ## 6. `work_packages`（一堆 WP，每个都要定义清楚）
 
@@ -105,6 +107,9 @@ work_packages:
     status: "未开始"   # 未开始 / 进行中 / 已完成 / 被否证
 ```
 
+- 若某 WP 的 `status` 判 `被否证`，其失败归因写进**顶层** `failure_analysis`（见 §7），
+  WP 内不得只留一句「没做出来」结案。
+
 ## 7. `status`（最新状态）
 
 | 值 | 含义 |
@@ -116,6 +121,10 @@ work_packages:
 
 - `status ∈ {已完成, 被否证}` ⇒ `conclusion` 必填，且 `experiments` 非空（至少一条
   存在的实验目录）作为证据。**判据悬空、无证据的结论不入账**。
+- **失败归因（`failure_analysis`）**：`status = 被否证`，或 `conclusion` 判失败（含 `已完成`
+  但结论是「手段不成立」）⇒ `failure_analysis` **必填且非空**，且必须**先区分**是
+  **设计问题 / 结构问题 / innovation 本身失败**中的哪一类（可并列）并给证据。
+  校验器对 `status = 被否证` **硬性强制**（空 ⇒ fail）；判失败但状态非 `被否证` 时由复核把关。
 - 状态枚举**只回答「做完没有」**；「做到多少」写在 `conclusion` / `gaps` 正文。
 
 ## 8. 时间与变更
@@ -134,10 +143,13 @@ python3 tools/check_tree.py         # 同上：纯校验（summary.py --check �
 python3 tools/check_schema.py       # 兼容入口：转调 check_tree.py（生成式 wiki 已退役）
 ```
 
-- 校验项：字段齐全、`milestone` 单数、`role_map` 四角色齐、`status` 合法、
-  `cost_model` 无墙钟/日期、`已完成/被否证` 有 `conclusion` + 存在的 `experiments`、
-  `validation` 含对照/判据/口径、`id` 全局唯一、`dir` 与实际路径一致。
-- **证据锚点**：`experiments` / `evidence` 里的路径必须存在；如需钉到修订，用
+- 校验项：字段齐全（含 `failure_analysis`）、关键字段非空（`purpose` / `innovation` /
+  `validation` / `objective_criteria` / `falsification` 不允许空串/空列表）、`milestone` 单数、
+  `role_map` 四角色齐、`status` 合法、`cost_model` 无墙钟/日期、`已完成/被否证` 有
+  `conclusion` + 存在的 `experiments`、`被否证` ⇒ `failure_analysis` 非空、`validation`
+  含对照/判据/口径、`id` 全局唯一、`dir` 与实际路径一致。
+- **证据路径与锚点**：`experiments` 路径必须存在；`work_packages[].evidence` 是
+  「证据将落在哪」，允许**未来路径**（只收锚点、不强制已存在）。如需钉到修订，用
   `"<路径> @<7–40 位十六进制 sha>"`，锚点须是可达真实提交（沿用旧 `check_schema.py` 的
   锚点纪律）。
 

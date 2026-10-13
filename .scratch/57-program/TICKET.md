@@ -14,7 +14,7 @@
 | # | 里程碑 | 交付物 | 验收 | 同步点 |
 |---|---|---|---|---|
 | **M1** | **规范冻结（foundation）** | `docs/structure.md`（树+粒度+目录）、`docs/research-schema.md`、`MAPPING.md`、`tools/summary.py`、`tools/check_tree.py`、exemplar `project.yaml` | 本 ticket 56 §3 的 8 条 | **本 WP 交付**（出资人/复核确认规范） |
-| **M2** | **逐轴迁移完成** | 每个研究项一份合格 `project.yaml`；旧证据按 `MAPPING.md` 归位；旧 wiki 退役落 `archive/wiki-legacy/` | `python3 tools/summary.py --check` 全绿；`find axes -type f｜wc -l` ≥ 2434；无孤儿旧格 | 各轴 lead 交付后合入 |
+| **M2** | **逐轴迁移完成** | 每个研究项一份合格 `project.yaml`；旧证据按 `MAPPING.md` 归位；旧 wiki 退役落 `archive/wiki-legacy/` | `python3 tools/summary.py --check` 全绿；`find axes -type f｜wc -l` ≥ 2434（**工作树文件计数**，含约 777 个 gitignore 产物，非跟踪文件数；清 cache 后会漂移，须并记 `git ls-files axes｜wc -l`）；无孤儿旧格 | 各轴 lead 交付后合入 |
 | **M3** | **集成验收** | 全树 `summary.py` 表 + 抽检复核 | 独立复核通过；`pytest tests/ -q` 通过；跨轴一致性无矛盾 | 出资人验收 |
 
 ## 2. M1 边界（本 WP 只做这些，不做逐轴迁移）
