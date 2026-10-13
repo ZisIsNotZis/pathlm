@@ -133,6 +133,18 @@ Phase A 干三件事：① 六格 `project.yaml` 的 `role_map` 实名 + 逐项�
      由复核者独立判定**，已在 steer 里要求其按 normal 级给出判定与正确写法。
 - 复核结果：见 §7.1（待复核返回后填写）。
 
+### 7.2 writer 自查（复核期间并行做的机检，全部落盘可复核）
+
+- `2026-10-13T20:17:11+08:00` 机检 `analysis.md` §2 的 7 行同字节组表 vs `results.json::same_byte_groups`
+  （字节水平 / 组内族 / bpc 最优臂 / 是否参数混杂 / bpc 极差）：**7/7 行逐字段一致**（数值按浮点打印精度对齐）。
+- 同刻机检「召回腿」：逐组比较「bpc 最优臂」与组内其余臂的 `recall_copy_ci`（Wilson 95%）⇒ **7/7 组里 bpc 最优臂
+  同时是 copy 召回最高臂，且与其余臂 CI 不重叠**；⇒ 两条腿同向（不是单腿假象），但同样被参数量混杂污染。
+  该结论已写进 `analysis.md` §2，数据源 = `results.json::same_byte_groups[*].members[*].recall_copy_ci`（读者可核）。
+- 同刻把 `analysis.md` §3 的千位空格（`13 536 768` 等）改为纯数字（`13536768` 等），便于逐值机检；
+  `results.json` / `table.md` **未改动**（故复核者的 G1/G2 与数字核对结论不受影响）。
+- 另核 `5.1::conclusion` 里既有的 int8 三窗口配对 Δ 逐 seed 值（`+0.000101 / +0.000013 / +0.000009`）与
+  `2632::variance_self_measured_paired.delta_by_seed`（`0.000101, 1.3e-05, 9e-06`）**一致**，无需更正。
+
 ### 7.1 复核判词与处置
 
 （待复核返回后填写。）
