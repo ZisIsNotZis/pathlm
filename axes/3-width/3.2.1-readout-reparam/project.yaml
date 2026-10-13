@@ -34,10 +34,10 @@ gaps:
 cost_model: "等效理论量：读出重参数化加 2·d² 参数与每 token 约 2·d² 的出口 FLOPs（相对主干总计约 L·d² 量级可忽略）；layer-passes 每 token 不增加（读出只在出口，不重跑主干）；tokens-per-forward 每步 1。考虑 pipelining：读出变换在每步出口对已算出的隐藏态做一次 d×d 变换，不引入额外顺序依赖。"
 
 role_map:
-  owner: "轴 3 宽度轴 lead（待指派）"
-  writer: "3.2.1 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis3-lead（轴 3 宽度轴 lead）"
+  writer: "axis3-w3.2.1（3.2.1 worker，单一写入者）"
+  reviewer: "axis3-reviewer（fresh 独立上下文 subagent，**不得**为本项 writer；复核排在 writer 停止之后）"
+  integrator: "tree-integrator（研究树 integrator；本轴合并与跨轴一致性核对由 axis3-lead 代行）"
 
 milestone:
   output: "一份「读出重参数化」判决包：{tied 线性, 解绑线性, 线性重参数化（等参数）, GLU 式 gated 残差读出, 逐深度读出} 在 13M（12k 与 24k 两训练点）的 clean bpc + 出口资产 tf@k + ECE，对照 tied 线性读出（stock）与等参数纯线性对照，并附 stock dense 可迁移性读数；含 n≥2。"

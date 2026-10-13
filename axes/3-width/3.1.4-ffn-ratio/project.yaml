@@ -9,26 +9,29 @@ innovation: "相对普通 decoder-only transformer 的常数隐藏比 r，令 FF
 expected_effect: "（a）FFN 是 FLOPs/参数主项 ⇒ 隐藏比下降直接降每 token 等效算力；（b）层间重分配可把 FFN 容量放到需要处；（c）须放进以 stock 常数比 100% 的前沿，并给等参数对照。"
 sota_baseline: "FFN 隐藏比的经验配方与 GLU 变体（SwiGLU 等；r = 4 或 8/3 的等价取舍，Shazeer 2020）；深度方向 FFN 宽 schedule。本地零经验（`.scratch/56-restructure/MAPPING.md` §2 无旧格）。本地锚 = stock 常数隐藏比（归一为 100%）。"
 gap: "本仓零经验。边界：本项判 FFN 隐藏比这一宽度读数及其逐层 schedule；与 `3.1.2`（逐层宽度变化，金字塔 / 沙漏）在「逐层变化」上重叠，须由 integrator 核不矛盾——`3.1.2` 判整体宽度的金字塔 / 沙漏读数，本项判 FFN 隐藏比本身。相对 SOTA 的增量在固定 d_model/层数下给隐藏比的前沿读数，不重造 GLU。"
-method: "单因素：固定 d_model 与层数，只改 FFN 隐藏比。臂 = {stock r=4, 常数横扫 r∈{1,2,3,6,8}, 层间变化 r_l, GLU 式门控等价}。基底恒为 stock decoder-only。"
-validation: "端到端：对照 = stock 常数隐藏比（归一为 100%）+ 等参数对照；客观判据 = clean bpc（该不跌 / 可排序，越 0.014 噪声带）+ FFN 参数量与每 token 等效 FLOPs（该跌）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变 = d_model 与层数。"
-objective_criteria: "该跌：FFN 参数量与每 token 等效 FLOPs；该不跌/可排序：clean bpc；必须不变：d_model 与层数；必须报：每层隐藏比分布（对照列）。"
-falsification: "若隐藏比下降带来的质量损失与算力节省相对同预算 stock 不占前沿优势 ⇒ 判该手段在本尺度不产生新知识；若层间隐藏比变化相对常数比无越带差异 ⇒ 判该层间自由度无效。"
+method: "单因素：固定 d_model 与层数，只改 FFN 隐藏比。臂 = {stock r=4（U4，代价 100% 锚）, 常数横扫 r∈{1,2,3,6,8}, 层间变化 r_l（PYR/APYR）, GLU 式门控等价}。**层间变化臂必须与等宽臂对齐 Σ_l r_l**——FFN 参数与每 token FFN 等效算力都只依赖 Σ_l r_l ⇒ 「Σr 相等」= 「FFN 参数逐位相等 + 每 token FFN 等效算力逐位相等」，否则比的是 FFN 容量而不是分配方式。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = stock 常数隐藏比 r=4（归一为 100%）+ **等 FFN 预算对照（同 Σr 的等宽臂，剪枝类按 `SCHEMA.md` §15 例外取同算力位点）**；客观判据 = clean bpc（该不跌 / 可排序，越 0.014 噪声带）+ FFN 参数量与每 token 等效 FLOPs（该跌）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变 = d_model 与层数。"
+objective_criteria: "该跌：FFN 参数量与每 token 等效 FLOPs（相对 stock r=4）；该不跌/可排序：clean bpc；必须不变：d_model、层数与因果性，且**等预算臂（U2/PYR/APYR）之间 Σ_l r_l、FFN 参数量、每 token FFN 等效算力逐位相等**；必须报：每层 r_l 分布 + 每层计算量分布（对照列，因层间流水节拍由最宽层决定）。"
+falsification: "若隐藏比下降带来的质量损失与算力节省相对同预算 stock 不占前沿优势 ⇒ 判该手段在本尺度不产生新知识；**若层间 schedule 与同 Σr 的等宽臂的 clean bpc 差 |Δ| < 0.014（噪声带）⇒ 判「逐层 FFN 分配」在本尺度不是独立于 FFN 总量的设计维度**（该读数并入 `3.1.2` 的深度形状结论，本项不再单独主张）；若 schedule 臂越带更差 ⇒ 判非均匀分配反向有害。"
 failure_analysis: ""
 conclusion: ""
 conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 `status: 未开始`。判据与基线按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），把「d_model 与层数不变」钉死，使隐藏比是本项唯一变量。独立复核未做。"
-experiments: []
+experiments:
+  - "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m"
 argument: "FFN 是 per-token 参数与 FLOPs 的主项，因此隐藏比是宽度轴上最直接的「算力-质量」旋钮；判据必须是「同 d_model/层数下隐藏比 → (算力, 质量)」的前沿，而不是只报单点 bpc。层间 schedule 若相对常数比无越带差异，则说明该自由度在等参数下无效，须如实记。"
 gaps:
   - "本仓零经验：需先做最小判决（13M、固定 d_model/层数，常数隐藏比横扫 + 层间 schedule + GLU 等价臂，报 clean bpc + FFN FLOPs/参数）"
   - "GLU 式门控与常数隐藏比的等参数对照未定（需对齐三者参数量）"
-  - "与 `3.1.2` 逐层宽度变化的记账重叠须由 integrator 核一遍"
+  - "与 `3.1.2` 逐层宽度变化的记账重叠须由 integrator 核一遍（边界已写死：本项判 FFN 隐藏比，`3.1.2` 判整体 d_model 的逐层 schedule）"
+  - "**实现边界**：引擎 `pathlm/depth_ar.py` 无「逐层 FFN 宽」开关（`mlp_mult` 为全局标量）⇒ 本项 WP1 把逐层 schedule 实现在**实验目录内**（构造后对 FFN 做前缀切片，见 2641/README.md §2.1），不碰共享 `pathlm/**`；把该开关收编进引擎的最小 patch 描述记在 `.scratch/64-axis3-width/TICKET.md`，由 Main 裁决"
+  - "13M/12k 快照 + 单任务（enwik8 字符级）；规模与任务外推未做"
 cost_model: "等效理论量：FFN 每 token 每层 FLOPs ≈ 2·d·(r·d)（GLU 式门控 3 矩阵则 3·d·r·d），隐藏比 r 线性缩放 FFN 参数量与 FLOPs，attention FLOPs 不变；layer-passes 每 token 仍为 L；tokens-per-forward 每步 1。考虑 pipelining：各层 FFN 规模不同时以每层 FLOPs 分布评估最慢层节拍（不用任何时间量）。"
 
 role_map:
-  owner: "轴 3 宽度轴 lead（待指派）"
-  writer: "3.1.4 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis3-lead（轴 3 宽度轴 lead）"
+  writer: "axis3-w3.1.4（3.1.4 worker，单一写入者；本轮 WP1 的 writer = axis3-lead）"
+  reviewer: "axis3-reviewer（fresh 独立上下文 subagent，**不得**为本项 writer；复核排在 writer 停止之后）"
+  integrator: "tree-integrator（研究树 integrator；本轴合并与跨轴一致性核对由 axis3-lead 代行）"
 
 milestone:
   output: "一份「前馈隐藏比」判决包：固定 d_model/层数下 {stock r=4, 常数横扫, 层间 r_l, GLU 等价} 在 13M matched-step 的 clean bpc + FFN 参数量/FLOPs + 每层隐藏比分布，对照 stock 常数隐藏比，含 n≥2 与等参数对照。"
@@ -36,19 +39,19 @@ milestone:
 
 work_packages:
   - id: "WP1"
-    what: "前馈隐藏比前沿最小判决（含层间 schedule 与 GLU 等价臂）"
-    goal: "判定隐藏比是否是有效的算力-质量旋钮、层间变化是否额外有增益"
-    means: "13M、固定 d_model/层数，{r=4, 横扫 r, 层间 r_l, GLU 等价}，报 clean bpc + FFN 参数量/FLOPs + 每层隐藏比分布，等参数对照"
-    acceptance: "d_model/层数逐位不变；隐藏比 → (算力,质量) 前沿点齐备；层间 schedule 有/无越噪声带差异，二选一明确"
-    evidence: "axes/3-width/3.1.4-ffn-ratio/experiments/"
-    review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b）"
-    status: "未开始"
+    what: "前馈隐藏比前沿 + **等 FFN 预算**下的逐层非均匀宽度最小判决"
+    goal: "判定隐藏比是否是有效的算力-质量旋钮，以及「逐层 FFN 分配」在等 FFN 预算下是否独立有增益"
+    means: "13M/dense/12k matched-step，d_model 与层数固定；臂 = {U4 r=4（100% 代价锚）, U2 r=2 等宽, PYR 前宽后窄 [4,3,2,2,2,1,1,1], APYR 镜像}，**U2/PYR/APYR 同 Σr=16**；每层 FFN 用同一次初始化的前缀切片实现（引擎无逐层开关，实现边界见 gaps）；报 clean bpc + FFN 参数/每 token 等效算力 + 每层 r_l 分布"
+    acceptance: "d_model/层数/数据/步数/lr/seed 逐位不变；U2/PYR/APYR 的 Σr、FFN 参数、每 token FFN 等效算力逐位相等；layer schedule 相对等宽臂的 Δbpc 越/不越 0.014 二选一明确（n≥2 同号）"
+    evidence: "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m"
+    review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b；复核件落 `.scratch/64-axis3-width/REVIEW-*.md`）"
+    status: "进行中"
 
 roadmap:
   - "WP1：前馈隐藏比最小判决（含层间 schedule）"
   - "复核通过后写 conclusion，更新 status"
 
-status: "未开始"
+status: "进行中"
 started: "2026-10-13T10:57:34+08:00"
 ended: ""
 change_log:

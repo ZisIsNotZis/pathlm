@@ -5,30 +5,30 @@ title: "tied vs untied embedding"
 dir: "axes/3-width/3.2.3-tied-untied"
 
 purpose: "普通 decoder-only transformer 把输入 embedding 与输出读出绑定（U = Eᵀ，省 vocab×d 参数），代价是「概率 = 隐藏状态在 embedding 基下的坐标」这一强约束。本项要判定：解绑（独立 unembed）在小词表 / 小模型尺度对质量与参数量（每 token 等效算力不变）的影响，以及绑定是否约束了读出可见空间，并把结果放进以 tied 为 100% 的质量-参数前沿。"
-innovation: "相对普通 decoder-only transformer 的 tied 读出（U = Eᵀ），把输出投影改成独立参数 U（untied embedding），或部分绑定。改动量级：+vocab×d 参数（本仓 vocab=205 / d=256 时 +52480；大词表下不可 scale）；每 token 输出投影 FLOPs 不变（同是 d×vocab），层数与主干不变。"
+innovation: "相对普通 decoder-only transformer 的 tied 读出（U = Eᵀ），把输出投影改成独立参数 U（untied embedding），或部分绑定。改动量级：+vocab×d 参数（本仓 vocab=206 = 205 个不同字节 + 1 个 [mask] 槽 / d=256 时 +52736；大词表下不可 scale）；每 token 输出投影 FLOPs 不变（同是 d×vocab），层数与主干不变。"
 expected_effect: "（a）解绑在小词表上质量可能中性或略优（业界口径），须量化而非假设；（b）代价 = +vocab×d 参数，须放进以 tied 为 100% 的前沿；（c）解绑即放弃「概率 = 状态在 embedding 基的坐标」语义，须报 prob0 / 线性传输是否仍可用。"
 sota_baseline: "权重绑定（Press & Wolf 2017 / Inan 2017：tied 省参数、小模型质量差异小；解绑在大词表/小模型上有时更好但非标准增益）。外部条目标 `记忆·未核`（本环境检索不可用，只作设计方向、不作判据；见 `archive/wiki-legacy/axes/W-width/PRIOR_ART.md` §W4，该文件已随旧树退役归档）。本地最近邻 = 本轴 `3.2.1`（在 tied 桥上加的重参数化）。本地锚 = tied 线性读出（归一为 100%）。"
 gap: "本仓零经验。边界：本项判**绑定 / 解绑**这一二元选择本身；`3.2.1` 判在 tied 之和**加**重参数化（两者参数量口径不同：本项 vocab×d，`3.2.1` 是 2·d²）。相对 SOTA 的增量在固定主干下给「绑定 → (质量, 参数)」的前沿读数，并把「小词表结论不可外推到大词表」写死。"
 method: "单因素：固定主干与训练预算，只改输入 / 输出是否绑定。臂 = {tied（stock）, untied（独立 unembed）, 部分绑定}。基底恒为 stock decoder-only；比较须报参数量并要求等训练预算。"
 validation: "端到端：对照 = tied 线性读出（归一为 100%）；客观判据 = clean bpc（该不跌 / 可排序，越 0.014 噪声带）+ 参数量（该报，+vocab×d）+ prob0 / 线性传输可用性（该不变）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变 = 因果性与评测口径；必须报：小词表与大词表两档（防把小词表结论外推）。"
-objective_criteria: "该不跌/可排序：clean bpc；必须报：参数增量 = vocab×d（单列）；必须不变：prob0 / 线性传输语义（tied 下「概率 = 状态在 embedding 基的坐标」，解绑即放弃）；必须报：小词表与大词表两档。"
+objective_criteria: "该不跌/可排序：clean bpc；必须报：参数增量 = vocab×d = 206×256 = 52736（单列）；必须不变：prob0 / 线性传输语义（tied 下「概率 = 状态在 embedding 基的坐标」，解绑即放弃）；必须报：小词表与大词表两档。"
 falsification: "若解绑相对 tied 的 clean bpc 不越噪声带 ⇒ 判绑定 / 解绑在本尺度质量中性（tied 省参数即占优）；若解绑只有在大词表下才有效、而本仓小词表下不可判 ⇒ 判本尺度不可判、不外推；若解绑提升但代价（vocab×d 不可 scale）使其不占前沿优势 ⇒ 判不采纳。"
 failure_analysis: ""
 conclusion: ""
 conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 `status: 未开始`。判据与基线按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），把「参数量单列」「小/大词表两档」「prob0 语义不变」钉死。与 `3.2.1` 的边界写进 `gap`。独立复核未做。"
 experiments: []
-argument: "tied 与 untied 的本质差别不是「多一层」，而是**语义约束**：tied 把「概率」钉成「状态在 embedding 基的坐标」，解绑放弃该语义以换读出自由度。因此判据必须同时看质量（该不跌/可排序）与语义可用性（prob0 / 线性传输，该不变）与参数（该报 vocab×d），且必须分小词表 / 大词表两档——小词表（本仓 vocab=205）与大词表（100k+）的结论方向可能相反，不得外推。"
+argument: "tied 与 untied 的本质差别不是「多一层」，而是**语义约束**：tied 把「概率」钉成「状态在 embedding 基的坐标」，解绑放弃该语义以换读出自由度。因此判据必须同时看质量（该不跌/可排序）与语义可用性（prob0 / 线性传输，该不变）与参数（该报 vocab×d），且必须分小词表 / 大词表两档——小词表（本仓 vocab=206）与大词表（100k+）的结论方向可能相反，不得外推。"
 gaps:
   - "本仓零经验：需先做最小判决（13M、{tied, untied, 部分绑定} 三臂，报 clean bpc + 参数量 + prob0 可用性，n≥2）"
-  - "大词表档未测：本仓 vocab=205，无法判「大词表下解绑是否更好」，须显式记不可判"
+  - "大词表档未测：本仓 vocab=206，无法判「大词表下解绑是否更好」，须显式记不可判"
   - "与 `3.2.1`（在 tied 桥上加的重参数化）的边界须由 integrator 核一遍"
 cost_model: "等效理论量：解绑加 vocab×d 参数（读出层），每 token 输出投影 FLOPs 不变（仍是 d×vocab）；layer-passes 每 token 仍为 L；tokens-per-forward 每步 1。考虑 pipelining：输出投影在出口，不引入额外顺序依赖；参数增量按 vocab×d 单列（大词表下不可 scale）。"
 
 role_map:
-  owner: "轴 3 宽度轴 lead（待指派）"
-  writer: "3.2.3 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis3-lead（轴 3 宽度轴 lead）"
+  writer: "axis3-w3.2.3（3.2.3 worker，单一写入者）"
+  reviewer: "axis3-reviewer（fresh 独立上下文 subagent，**不得**为本项 writer；复核排在 writer 停止之后）"
+  integrator: "tree-integrator（研究树 integrator；本轴合并与跨轴一致性核对由 axis3-lead 代行）"
 
 milestone:
   output: "一份「tied vs untied embedding」判决包：{tied, untied, 部分绑定} 在 13M matched-step 的 clean bpc + 参数量（+vocab×d）+ prob0 / 线性传输可用性，对照 tied 线性读出（stock），含 n≥2，并显式记大词表档不可判。"
