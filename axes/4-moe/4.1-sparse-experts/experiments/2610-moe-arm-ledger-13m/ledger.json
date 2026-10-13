@@ -1,0 +1,132 @@
+{
+  "base_config": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 512,
+    "mlp_mult": 6,
+    "vocab_size": 206,
+    "token_budget": 98304000,
+    "token_budget_source": "configs/B0.json steps=6000 × batch=32 × seq=512"
+  },
+  "arms": {
+    "dense-B0": {
+      "kind": "dense",
+      "mlp_mult": 6,
+      "expert_hidden": 1536,
+      "total_params": 13602304,
+      "ffn_params": 9458688,
+      "router_params": 0,
+      "expert_macs_per_token_per_layer": 786432,
+      "router_macs_per_token_per_layer": 0,
+      "ffn_macs_per_token_per_layer": 786432,
+      "expert_macs_per_token": 9437184,
+      "ffn_macs_per_token": 9437184,
+      "ffn_flops_per_token": 18874368,
+      "token_budget": 98304000,
+      "tokens_per_param": 7.227,
+      "ffn_params_x_dense": 1.0,
+      "ffn_macs_ratio_vs_dense": 1.0,
+      "expert_macs_ratio_vs_dense": 1.0
+    },
+    "moe-top1-E8": {
+      "kind": "moe",
+      "n_experts": 8,
+      "top_k": 1,
+      "expert_hidden": 1536,
+      "total_params": 79837696,
+      "ffn_params": 75694080,
+      "router_params": 24576,
+      "expert_macs_per_token_per_layer": 786432,
+      "router_macs_per_token_per_layer": 2048,
+      "ffn_macs_per_token_per_layer": 788480,
+      "expert_macs_per_token": 9437184,
+      "ffn_macs_per_token": 9461760,
+      "ffn_flops_per_token": 18923520,
+      "token_budget": 98304000,
+      "tokens_per_param": 1.2313,
+      "ffn_params_x_dense": 8.0026,
+      "ffn_macs_ratio_vs_dense": 1.002604,
+      "expert_macs_ratio_vs_dense": 1.0
+    },
+    "moe-top2-E8": {
+      "kind": "moe",
+      "n_experts": 8,
+      "top_k": 2,
+      "expert_hidden": 768,
+      "total_params": 42015232,
+      "ffn_params": 37871616,
+      "router_params": 24576,
+      "expert_macs_per_token_per_layer": 786432,
+      "router_macs_per_token_per_layer": 2048,
+      "ffn_macs_per_token_per_layer": 788480,
+      "expert_macs_per_token": 9437184,
+      "ffn_macs_per_token": 9461760,
+      "ffn_flops_per_token": 18923520,
+      "token_budget": 98304000,
+      "tokens_per_param": 2.3397,
+      "ffn_params_x_dense": 4.0039,
+      "ffn_macs_ratio_vs_dense": 1.002604,
+      "expert_macs_ratio_vs_dense": 1.0
+    },
+    "dense-eqparam-top1": {
+      "kind": "dense",
+      "mlp_mult": 48,
+      "expert_hidden": 12288,
+      "total_params": 79791616,
+      "ffn_params": 75648000,
+      "router_params": 0,
+      "expert_macs_per_token_per_layer": 6291456,
+      "router_macs_per_token_per_layer": 0,
+      "ffn_macs_per_token_per_layer": 6291456,
+      "expert_macs_per_token": 75497472,
+      "ffn_macs_per_token": 75497472,
+      "ffn_flops_per_token": 150994944,
+      "token_budget": 98304000,
+      "tokens_per_param": 1.232,
+      "ffn_params_x_dense": 7.9977,
+      "ffn_macs_ratio_vs_dense": 8.0,
+      "expert_macs_ratio_vs_dense": 8.0
+    },
+    "dense-eqparam-top2": {
+      "kind": "dense",
+      "mlp_mult": 24,
+      "expert_hidden": 6144,
+      "total_params": 41969152,
+      "ffn_params": 37825536,
+      "router_params": 0,
+      "expert_macs_per_token_per_layer": 3145728,
+      "router_macs_per_token_per_layer": 0,
+      "ffn_macs_per_token_per_layer": 3145728,
+      "expert_macs_per_token": 37748736,
+      "ffn_macs_per_token": 37748736,
+      "ffn_flops_per_token": 75497472,
+      "token_budget": 98304000,
+      "tokens_per_param": 2.3423,
+      "ffn_params_x_dense": 3.999,
+      "ffn_macs_ratio_vs_dense": 4.0,
+      "expert_macs_ratio_vs_dense": 4.0
+    }
+  },
+  "notes": [
+    "MACs = 乘加；FLOPs = 2×MACs。注意力/LN/embedding/读出三臂逐位相同，未重复计。",
+    "等 FLOPs 对照：moe-* 相对 dense-B0 的 expert_macs_ratio_vs_dense 恰为 1.0；ffn_macs_ratio_vs_dense > 1 的部分 = 路由器 E·d logits 的『路由税』（本配置 +0.26%）。",
+    "等参数对照：dense-eqparam-* 的 total_params 应与对应 moe-* 同量级（见 eqparam_check）。"
+  ],
+  "eqparam_check": [
+    {
+      "moe": "moe-top1-E8",
+      "dense": "dense-eqparam-top1",
+      "moe_params": 79837696,
+      "dense_params": 79791616,
+      "rel_gap": 0.00058
+    },
+    {
+      "moe": "moe-top2-E8",
+      "dense": "dense-eqparam-top2",
+      "moe_params": 42015232,
+      "dense_params": 41969152,
+      "rel_gap": 0.0011
+    }
+  ]
+}

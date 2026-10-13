@@ -1,0 +1,361 @@
+{
+  "contract": "axes/4-moe/4.1-sparse-experts/experiments/2610-moe-arm-ledger-13m/README.md",
+  "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。",
+  "ledger": {
+    "base_config": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 512,
+      "mlp_mult": 6,
+      "vocab_size": 206,
+      "token_budget": 98304000,
+      "token_budget_source": "configs/B0.json steps=6000 × batch=32 × seq=512"
+    },
+    "arms": {
+      "dense-B0": {
+        "kind": "dense",
+        "mlp_mult": 6,
+        "expert_hidden": 1536,
+        "total_params": 13602304,
+        "ffn_params": 9458688,
+        "router_params": 0,
+        "expert_macs_per_token_per_layer": 786432,
+        "router_macs_per_token_per_layer": 0,
+        "ffn_macs_per_token_per_layer": 786432,
+        "expert_macs_per_token": 9437184,
+        "ffn_macs_per_token": 9437184,
+        "ffn_flops_per_token": 18874368,
+        "token_budget": 98304000,
+        "tokens_per_param": 7.227,
+        "ffn_params_x_dense": 1.0,
+        "ffn_macs_ratio_vs_dense": 1.0,
+        "expert_macs_ratio_vs_dense": 1.0
+      },
+      "moe-top1-E8": {
+        "kind": "moe",
+        "n_experts": 8,
+        "top_k": 1,
+        "expert_hidden": 1536,
+        "total_params": 79837696,
+        "ffn_params": 75694080,
+        "router_params": 24576,
+        "expert_macs_per_token_per_layer": 786432,
+        "router_macs_per_token_per_layer": 2048,
+        "ffn_macs_per_token_per_layer": 788480,
+        "expert_macs_per_token": 9437184,
+        "ffn_macs_per_token": 9461760,
+        "ffn_flops_per_token": 18923520,
+        "token_budget": 98304000,
+        "tokens_per_param": 1.2313,
+        "ffn_params_x_dense": 8.0026,
+        "ffn_macs_ratio_vs_dense": 1.002604,
+        "expert_macs_ratio_vs_dense": 1.0
+      },
+      "moe-top2-E8": {
+        "kind": "moe",
+        "n_experts": 8,
+        "top_k": 2,
+        "expert_hidden": 768,
+        "total_params": 42015232,
+        "ffn_params": 37871616,
+        "router_params": 24576,
+        "expert_macs_per_token_per_layer": 786432,
+        "router_macs_per_token_per_layer": 2048,
+        "ffn_macs_per_token_per_layer": 788480,
+        "expert_macs_per_token": 9437184,
+        "ffn_macs_per_token": 9461760,
+        "ffn_flops_per_token": 18923520,
+        "token_budget": 98304000,
+        "tokens_per_param": 2.3397,
+        "ffn_params_x_dense": 4.0039,
+        "ffn_macs_ratio_vs_dense": 1.002604,
+        "expert_macs_ratio_vs_dense": 1.0
+      },
+      "dense-eqparam-top1": {
+        "kind": "dense",
+        "mlp_mult": 48,
+        "expert_hidden": 12288,
+        "total_params": 79791616,
+        "ffn_params": 75648000,
+        "router_params": 0,
+        "expert_macs_per_token_per_layer": 6291456,
+        "router_macs_per_token_per_layer": 0,
+        "ffn_macs_per_token_per_layer": 6291456,
+        "expert_macs_per_token": 75497472,
+        "ffn_macs_per_token": 75497472,
+        "ffn_flops_per_token": 150994944,
+        "token_budget": 98304000,
+        "tokens_per_param": 1.232,
+        "ffn_params_x_dense": 7.9977,
+        "ffn_macs_ratio_vs_dense": 8.0,
+        "expert_macs_ratio_vs_dense": 8.0
+      },
+      "dense-eqparam-top2": {
+        "kind": "dense",
+        "mlp_mult": 24,
+        "expert_hidden": 6144,
+        "total_params": 41969152,
+        "ffn_params": 37825536,
+        "router_params": 0,
+        "expert_macs_per_token_per_layer": 3145728,
+        "router_macs_per_token_per_layer": 0,
+        "ffn_macs_per_token_per_layer": 3145728,
+        "expert_macs_per_token": 37748736,
+        "ffn_macs_per_token": 37748736,
+        "ffn_flops_per_token": 75497472,
+        "token_budget": 98304000,
+        "tokens_per_param": 2.3423,
+        "ffn_params_x_dense": 3.999,
+        "ffn_macs_ratio_vs_dense": 4.0,
+        "expert_macs_ratio_vs_dense": 4.0
+      }
+    },
+    "notes": [
+      "MACs = 乘加；FLOPs = 2×MACs。注意力/LN/embedding/读出三臂逐位相同，未重复计。",
+      "等 FLOPs 对照：moe-* 相对 dense-B0 的 expert_macs_ratio_vs_dense 恰为 1.0；ffn_macs_ratio_vs_dense > 1 的部分 = 路由器 E·d logits 的『路由税』（本配置 +0.26%）。",
+      "等参数对照：dense-eqparam-* 的 total_params 应与对应 moe-* 同量级（见 eqparam_check）。"
+    ],
+    "eqparam_check": [
+      {
+        "moe": "moe-top1-E8",
+        "dense": "dense-eqparam-top1",
+        "moe_params": 79837696,
+        "dense_params": 79791616,
+        "rel_gap": 0.00058
+      },
+      {
+        "moe": "moe-top2-E8",
+        "dense": "dense-eqparam-top2",
+        "moe_params": 42015232,
+        "dense_params": 41969152,
+        "rel_gap": 0.0011
+      }
+    ]
+  },
+  "preflight": {
+    "n_experts_preflight": 8,
+    "top_k_preflight": 2,
+    "transparency_E1_top1": {
+      "non_mlp_extra_keys": [],
+      "max_abs_diff_logits": 0.0,
+      "bitwise_equal": true
+    },
+    "ledger_consistency": {
+      "dense_ffn_params_measured": 9458688,
+      "dense_ffn_params_analytic": 9458688,
+      "dense_match": true,
+      "moe_ffn_params_measured": 37871616,
+      "moe_ffn_params_analytic": 37871616,
+      "moe_match": true
+    },
+    "liveness": {
+      "global": {
+        "usage": [
+          1629,
+          1115,
+          1663,
+          1955,
+          1564,
+          1283,
+          1678,
+          1401
+        ],
+        "usage_entropy": 2.066495,
+        "usage_entropy_norm": 0.993774,
+        "usage_max_frac": 0.159098,
+        "top_k": 2,
+        "n_experts": 8
+      },
+      "router_grad_abs_sum": 18.504797,
+      "router_alive": true,
+      "loss_step": 5.385252
+    },
+    "routing_discrimination": {
+      "expert0_out_absmax": 0.13929687,
+      "expert1_out_absmax": 0.0,
+      "routes_to_different_experts": true
+    },
+    "aux_loss_check": {
+      "aux_requires_grad": true,
+      "aux_value": 0.13662195
+    },
+    "pass": true
+  },
+  "cpu_smoke": {
+    "note": "toy 配置（d=64,L=2,seq=64,40 步 / 5 步）——只证接线可跑、活性量可读，非科学结论",
+    "runs": {
+      "dense-B0": {
+        "arm": "dense-B0",
+        "config": {
+          "d_model": 64,
+          "n_layers": 2,
+          "n_heads": 8,
+          "seq_len": 64,
+          "mlp_mult": 6,
+          "steps": 40,
+          "batch_size": 4,
+          "lr": 0.001,
+          "seed": 0
+        },
+        "total_params": 158592,
+        "eval": {
+          "bpc": 5.0076,
+          "n_eval_positions": 504
+        },
+        "log": [
+          {
+            "step": 1,
+            "loss": 5.28224
+          }
+        ]
+      },
+      "moe-top2-E8": {
+        "arm": "moe-top2-E8",
+        "config": {
+          "d_model": 64,
+          "n_layers": 2,
+          "n_heads": 8,
+          "seq_len": 64,
+          "mlp_mult": 6,
+          "steps": 40,
+          "batch_size": 4,
+          "lr": 0.001,
+          "seed": 0
+        },
+        "total_params": 457728,
+        "eval": {
+          "bpc": 4.9632,
+          "n_eval_positions": 504,
+          "moe_liveness": {
+            "usage": [
+              0,
+              1,
+              256,
+              0,
+              256,
+              256,
+              255,
+              0
+            ],
+            "usage_entropy": 1.392684,
+            "usage_entropy_norm": 0.66974,
+            "usage_max_frac": 0.25,
+            "top_k": 2,
+            "n_experts": 8
+          }
+        },
+        "log": [
+          {
+            "step": 1,
+            "loss": 5.285865,
+            "usage_entropy_norm": 0.978119,
+            "usage_max_frac": 0.21582
+          }
+        ]
+      }
+    }
+  },
+  "timing_20": {
+    "note": "13M 单臂 20 步实测（过程指标）",
+    "file": "timing_20.json",
+    "first_20_steps_s": 14.958
+  },
+  "collapse_probe": {
+    "note": "单臂、seed 0、无 aux loss、1200 步、13M top-1；只回答「该尺度/该预算下坍缩是否可观测」，非质量判决",
+    "arm": "moe-top1-E8",
+    "steps": 1200,
+    "n_experts": 8,
+    "top_k": 1,
+    "aux_weight": 0.0,
+    "total_params": 79837696,
+    "loss_trace": {
+      "1": 5.324248,
+      "100": 3.17741,
+      "200": 3.052587,
+      "300": 2.899679,
+      "400": 2.911367,
+      "500": 2.753533,
+      "600": 2.78307,
+      "700": 2.699322,
+      "800": 2.579905,
+      "900": 2.5287,
+      "1000": 2.380633,
+      "1100": 2.191231,
+      "1200": 2.276505
+    },
+    "usage_entropy_norm": [
+      0.968129,
+      0.952481,
+      0.962654,
+      0.961134,
+      0.969125,
+      0.982648,
+      0.967957,
+      0.977874,
+      0.979053,
+      0.970286,
+      0.976385,
+      0.974664,
+      0.979991
+    ],
+    "usage_max_frac": [
+      0.204803,
+      0.2002,
+      0.180278,
+      0.191503,
+      0.186895,
+      0.185328,
+      0.209981,
+      0.189351,
+      0.178319,
+      0.212158,
+      0.192968,
+      0.214101,
+      0.193715
+    ],
+    "entropy_norm_min": 0.952481,
+    "entropy_norm_max": 0.982648,
+    "entropy_norm_final": 0.979991,
+    "entropy_norm_slope_per_step": 1.5368e-05,
+    "max_frac_min": 0.178319,
+    "max_frac_max": 0.214101,
+    "final_eval": {
+      "bpc": 6.5369,
+      "n_eval_positions": 163520,
+      "moe_liveness": {
+        "usage": [
+          13099,
+          9197,
+          7041,
+          18178,
+          10550,
+          8863,
+          12994,
+          18382
+        ],
+        "usage_entropy": 2.028637,
+        "usage_entropy_norm": 0.975568,
+        "usage_max_frac": 0.186991,
+        "top_k": 1,
+        "n_experts": 8
+      }
+    },
+    "collapse_observed": false,
+    "prereg_threshold": "README §4 判据线 4：1200 步内归一化熵始终 > 0.5（或最大占比 < 0.6）⇒ 本尺度坍缩不可观测",
+    "evidence_strength_note": "阈值在随机初始化第 1 步即已满足（0.968/0.205），命中近乎必然；主证应为「1200 步内未下移（斜率 +1.5e-5/步）」+「温和持久偏斜」",
+    "pooling_caveat": "报告的使用率是跨 12 层池化（run.py 只记 global）；池化会抹平整层坍缩（若 1 层全坍缩、其余 11 层均匀，池化后最大占比仍 ~0.198）⇒ 「无专家死亡」只作池化口径解读",
+    "timing_process_metric": {
+      "probe_start": "2026-10-13T19:29:03+08:00",
+      "probe_done": "2026-10-13T19:52:23+08:00",
+      "total_s": 1395.141,
+      "note": "墙钟只作过程指标（SCHEMA §3），不进 cost_model/判据；取锁期间外部争用 util≥94%"
+    },
+    "caveats": [
+      "1200 步快照（§16：loss 仍下降，未收敛）",
+      "单 seed / 单臂 / 无 aux-loss 对照",
+      "使用率跨 12 层池化，不分辨整层坍缩",
+      "温和持久偏斜（专家 3/7 长期约 1.3–1.5× 均匀份额）"
+    ]
+  }
+}
