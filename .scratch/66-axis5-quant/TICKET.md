@@ -142,6 +142,10 @@ Phase A 干三件事：① 六格 `project.yaml` 的 `role_map` 实名 + 逐项�
   该结论已写进 `analysis.md` §2，数据源 = `results.json::same_byte_groups[*].members[*].recall_copy_ci`（读者可核）。
 - 同刻把 `analysis.md` §3 的千位空格（`13 536 768` 等）改为纯数字（`13536768` 等），便于逐值机检；
   `results.json` / `table.md` **未改动**（故复核者的 G1/G2 与数字核对结论不受影响）。
+- 第一手手算（axis5-lead 亲自算，**不读** `2642/frontier_ledger.py` 代码，只用公式 + `2632` 的因子）：对 `int8`/`int4`/`gqa_int8`/`mqa_int4`/`win32_int8`/`win64`/`win16_anchor16_int4` 七臂，
+  按 `2·L·n_kv_eff·head_dim·(值字节 + 2/G)·(kept/T)`（L=12, head_dim=32, T=256）手算，与 `2632::deployment_caliber.per_arm[*].primary.bytes_per_position`
+  **逐臂相等**（6528 / 3456 / 1632 / 432 / 816 / 3072 / 432）。⇒ G1 的「独立重算」不是同一段代码的自证。
+  注意：这是 writer 自检，**不替代**独立复核。
 - 另核 `5.1::conclusion` 里既有的 int8 三窗口配对 Δ 逐 seed 值（`+0.000101 / +0.000013 / +0.000009`）与
   `2632::variance_self_measured_paired.delta_by_seed`（`0.000101, 1.3e-05, 9e-06`）**一致**，无需更正。
 
