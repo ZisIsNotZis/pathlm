@@ -17,7 +17,7 @@
   8. `status ∈ {已完成, 被否证}` ⇒ 必须有 `conclusion` + 非空且存在的 `experiments`；
      `status = 被否证` ⇒ 还必须有非空 `failure_analysis`（失败归因：设计 / 结构 / innovation，
      见 `docs/research-schema.md` §7）。
-  9. `validation` 必须含「对照/基线/stock/SOTA」之一 + 「判据/该涨/该跌」之一 + 
+  9. `validation` 必须含「对照/基线/stock/SOTA」之一 + 「判据/该涨/该跌」之一 +
      「口径/bpc/...」之一。
  10. `id` 全局唯一；`dir` 必须等于文件实际所在目录。
  11. 证据锚点：`experiments` 路径存在；WP `evidence` 允许未来路径（只校锚点 `@<sha>` 可达）。
