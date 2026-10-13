@@ -1,0 +1,57 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "6.3.1"
+axis: "6 预测轴"
+title: "diffusion（离散扩散 / 掩码扩散）"
+dir: "axes/6-predict/6.3.1-diffusion"
+
+purpose: "自回归逐 token 生成把生成长度 T 直接变成 T 次顺序前向，长段生成被「顺序依赖次数」卡住。本项要判定：用 K 步（K ≪ T）双向去噪并行刷新整段、换掉 T 步因果 AR，是否能在小尺度 / char 任务上把顺序前向次数与生成长度解耦，同时把质量代价压在以全因果 stock 为 100% 的质量-代价前沿上。"
+innovation: "相对普通 decoder-only transformer（因果自注意力 + 逐位置 AR 目标），改成非因果（双向）注意力 + 掩码 / 离散扩散目标：训练时按噪声调度随机 mask 一部分位置、只对被 mask 位置算损失；推理时从全 mask 出发迭代去噪 K 步，每步并行刷新全段。改动量级：主干宽度 / 层数不变，但注意力的可见集合由因果变双向（同层 FLOPs 主项不变、可并行度变化），另加噪声步条件；每 token 等效 FLOPs 由 AR 的 L 变成 K 步全段前向摊到 T 个位置。"
+expected_effect: "（a）tokens-per-forward ≈ T/K，顺序前向次数由 T 降到 K，顺序依赖与生成长度解耦；（b）质量代价 = 失去严格因果似然（右移建模变弱），须以全因果 AR 为 100% 量化；（c）代价 = 每步是全段双向前向，K 步摊到 T 个位置后每 token 等效 FLOPs 仍高于 AR，必须放进质量-代价前沿而不是只报单点质量。"
+sota_baseline: "离散 / 掩码扩散族：D3PM、Plaid、SEDD、MDLM、LLaDA、Diffusion-LM（外部条目来源标 `记忆·未核`，只作设计方向、不作判据；见 `axes/H-horizon/PRIOR_ART.md` §H2 的填空 / 去噪一节与 `docs/playbook.md`）。本地锚 = 同尺寸 stock 全因果 AR（归一为 100%；13M B0 = 1.5074 bpc 快照）。"
+gap: "本仓零经验（MAPPING §2 无旧格，全仓没有一个扩散对照点）。业界已在离散 / 掩码扩散上做透结构与采样器，本项增量**不是**重造扩散结构，而是：在同尺寸 stock 主干、同 token 预算、同评测口径下，把「K 步双向去噪」的 tokens-per-forward、每 token 等效 FLOPs 与序列级质量同全因果 AR **同框**对照，判定小尺度 / char 任务上值不值。"
+method: "单因素：固定主干尺寸 / 数据 / token 预算，只改目标与注意力因果性。臂 = {stock 因果 AR, 掩码扩散（双向 + mask 目标，去噪步数 K∈{1,4,8,16}）, 离散扩散（均匀 / 吸收核）}。基底恒为 stock decoder-only；K=1 即 6.3.2 的一次填空特例，作为两线的连接点。"
+validation: "端到端：对照 = 同尺寸 stock 全因果 AR（归一为 100%）；客观判据 = 序列级 bpc / perplexity（质量，该不跌 / 该跌）+ tokens-per-forward（一次前向刷新的位置数，该涨）+ 每 token 顺序前向次数（该跌）+ 每 token 等效 FLOPs（代价轴，如实报）；口径 = matched-step / 同 token 预算，禁墙钟；必须不变 = 评测集与 clean bpc 口径与 AR 同框、给定种子可复现。"
+objective_criteria: "该涨：tokens-per-forward（一次前向刷新的位置数）；该跌：每 token 顺序前向次数；该不跌：序列级 bpc / 一致率（相对全因果 AR，须越 0.014 噪声带才算可排序）；必须报：每 token 等效 FLOPs（K 步双向）；必须不变：评测口径与 AR 同框、种子可复现。"
+falsification: "若在 matched-step、同 token 预算下，掩码 / 离散扩散的序列级 bpc 相对全因果 AR 越噪声带恶化，且提高 K（去噪步）不能把它拉回带内 ⇒ 判扩散并行生成在本尺度 / 本任务上不成立。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），并把 tokens-per-forward（该涨）与每 token 等效 FLOPs（代价轴）分开写死，以防把「顺序前向变少」误读成「算力变少」。外部基线条目均为 `记忆·未核`，不得当判据。独立复核未做。"
+experiments: []
+argument: "扩散与 AR 的差别是「全段并行刷新 K 次」对「逐位置刷新 T 次」：两者都在花算力换顺序依赖，因此判据必须同时给顺序前向次数（该跌）、一次前向产出位置数（该涨）与质量（该不跌）；只报单点 bpc 或只报一次前向能出多少位置，都会得出方向相反的结论。本项与 6.3.2 共用一个连接点（K=1 即一次填空）。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、{AR, 掩码扩散 K=1/4/8/16} 两族，matched-step + 同 token 预算）"
+  - "采样器与噪声调度未定（掩码 vs 离散核、吸收 vs 均匀），需在最小判决里定一个默认再扫"
+  - "与 6.3.2 / 6.3.3 的边界（一次填空、latent 回归）未在同一实验里排开"
+cost_model: "等效理论量：一次去噪前向 = 全段一次双向前向（layer-passes = L × T），K 步 ⇒ 每 token 等效 FLOPs = K × L（以 AR 每 token 的 L 为单位）；tokens-per-forward ≈ T/K；每 token 顺序前向次数由 1 降到 K/T。考虑 pipelining：段内位置全并行、去噪步间是 K 段顺序依赖。"
+
+role_map:
+  owner: "轴 6 预测轴 lead（待指派）"
+  writer: "6.3.1 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「扩散并行生成」判决包：{stock 因果 AR, 掩码扩散 K∈{1,4,8,16}, 离散扩散} 在 13M matched-step / 同 token 预算下的序列级 bpc + tokens-per-forward + 每 token 等效 FLOPs，对照全因果 AR，含 n≥2。"
+  acceptance: "各臂的 tokens-per-forward 确实随 K 上升、每 token 等效 FLOPs 与质量同框可比；扩散臂相对全因果 AR 的质量差可分（越 0.014 噪声带）或明确「不越带」；结论停在「该尺度 / 该任务值不值」，不外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "扩散并行生成的最小判决（含 K 扫描与连接点）"
+    goal: "在没有本地对照点的情况下给出第一个可判结论：K 步双向去噪相对全因果 AR 的质量-代价位置"
+    means: "13M、matched-step、同 token 预算，{AR, 掩码扩散 K=1/4/8/16} 两族（K=1 同时作 6.3.2 的连接点），报 bpc + tokens-per-forward + 每 token 等效 FLOPs，n≥2"
+    acceptance: "各臂齐备且预算对齐；质量差与代价轴同框；结论明确「在本尺度可判 / 不可判」并给否证条件触发情况"
+    evidence: "axes/6-predict/6.3.1-diffusion/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b，复核排在执行之后）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：扩散最小判决（AR vs 掩码扩散 K 扫描，K=1 作 6.3.2 连接点）"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T10:47:00+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:47:00+08:00"
+    actor: "轴 6 §6.3 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：diffusion（离散扩散 / 掩码扩散）归 6.3 整段并行生成（不止 AR）；按 docs/research-schema.md 预登记目的 / 基线 / 判据 / 否证条件，并把 tokens-per-forward（该涨）与每 token 等效 FLOPs（代价轴）分开写死。"

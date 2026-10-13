@@ -1,6 +1,6 @@
 """冻结主干 + 只训跳跃头（H4 线 A，ticket 28-pilot-batch1）。
 
-契约：axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/README.md
+契约：axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/README.md
 
 命题：在一个**冻结**的 13M dense decoder-only 主干上只训一个预测 t+2 的跳跃
 头，回答等 FLOPs 问题——「1 次前向 + 头」（成本 1）能否达到「2 次前向」
@@ -888,7 +888,7 @@ def run_composition(cfg: dict, args) -> None:
             }
 
     results = {
-        "contract": ("axes/H-horizon/H3-composition/experiments/"
+        "contract": ("axes/6-predict/6.2-speculative-decoding/experiments/"
                      "2613-self-gated-composition-13m/README.md"),
         "config": cfg,
         "reused_trunk": {"path": trunk_path, "sha256": sha_actual,
@@ -1097,7 +1097,7 @@ def main():
                                          device="cuda")[-1]["bpc"]
 
     results = {
-        "contract": ("axes/H-horizon/H4-head-trunk-relation/experiments/"
+        "contract": ("axes/6-predict/6.2-speculative-decoding/experiments/"
                      "2610-frozen-trunk-jumphead-13m/README.md"),
         "config": cfg,
         "trunk": {

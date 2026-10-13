@@ -15,7 +15,13 @@
 | GQA/MQA | 轴 W / 轴 7 | KV 头共享（业界已做透） | `2616-gqa-mqa-13m`（W3 整搬 `axes/7-references/`） |
 | 量化基线 | 轴 R / 轴 5 | 低比特对照 | 见 `axes/5-quant/`（5.1–5.6） |
 | CALM/LayerSkip/MoD | 轴 R / 轴 7 | 既有早退实现 | `2623-standard-early-exit-13m`（R7 整搬；同时作 `2.1.1` 对照指针） |
-| 自回归（一次一个位置） | 轴 6（6.1） | 预测轴参照 | 见 `axes/6-predict/6.1-autoregressive/` 与 `6.2` |
+| 自回归（一次一个位置） | 轴 6（6.1） | 预测轴参照（对照基线，归一为 100%） | 见下方「轴 6 的参照」；对照落点 = `axes/6-predict/6.2-speculative-decoding/`、`6.3-parallel-generation/`、`6.4-training-fill/` 的 stock 全因果逐 token 贪心 |
+
+## 轴 6 的参照
+
+| 参照（exact wording） | 所属轴 | 粒度 | 说明 |
+|---|---|---|---|
+| 自回归（一次一个位置） | 轴 6（6.1） | 参照 | 逐 token 贪心 = 全因果 stock 的输出流，是 `6.2` / `6.3` / `6.4` 的对照基线（归一为 100%）；它是**前提 / 对照**，不是可独立收口的研究项（`docs/structure.md` §13.4），本轴不写 `project.yaml`、不建目录。 |
 
 ## 轴 1 的参照（前提）
 
@@ -25,5 +31,7 @@
 
 > 登记备注：本文件按 `docs/structure.md` §12 轴 7 建。上表「全注意力基线 / RoPE / GQA/MQA /
 > CALM/LayerSkip/MoD」的证据整搬与台账登记由对应轴 worker 执行（MAPPING §4）；轴 1 的 `1.3 寻址`
-> 由轴 1 worker 登记（本行）。旧格 `axes/A-mixing/A2-full-attention`、`A8-positional-semantics`、
-> `axes/W-width/W3-kv-head-sharing`、`axes/R-references/R7-existing-early-exit` 目录待统一退役。
+> 由轴 1 worker 登记（本行）；轴 6 的 `6.1 自回归` 由轴 6 worker 登记（上方「轴 6 的参照」）。
+> 旧格 `axes/A-mixing/A2-full-attention`、`A8-positional-semantics`、
+> `axes/W-width/W3-kv-head-sharing`、`axes/R-references/R7-existing-early-exit`、
+> `axes/H-horizon/**` 目录待统一退役。

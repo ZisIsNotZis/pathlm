@@ -1,0 +1,57 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "6.3.2"
+axis: "6 预测轴"
+title: "一次性批量 pad 填充（填空式）"
+dir: "axes/6-predict/6.3.2-pad-fill"
+
+purpose: "一段文本里若已知布局、只有少数位置待生成（补全 / 填空场景），逐 token 自回归仍要按左到右顺序生成，顺序前向次数等于待生成数。本项要判定：训练成「一次前向把所有待填位置填出来」的填空式模型，能否把顺序前向次数压到 1，以及它相对全因果 AR 的质量代价形状。"
+innovation: "相对普通 decoder-only transformer 的逐位置因果 AR 目标，训练时按比例 r 随机把位置替换为 PAD、被 PAD 位置的损失照算，且**被填位置之间在同层互相可见**（填空视图、非因果）；推理时给含 PAD 的序列一次前向把所有 PAD 位置填出。改动量级：只改 attention 可见性与损失位置集，不新增参数（与 6.3.1 的 K=1 特例共享同一目标）。"
+expected_effect: "（a）tokens-per-forward = 一次填出的 PAD 数，整段顺序前向次数 ≈ 1；（b）质量代价 = 被填位置无法条件于彼此（同层并行、无左到右条件），须以全因果 AR 为 100% 量化；（c）代价 = 需要预知 PAD 布局（长度 / 掩码），且单步无迭代修正（错一次不能回头），故必须在同 token 预算下与 AR 及 6.3.1 的 K>1 去噪同框。"
+sota_baseline: "填空 / 非自回归生成族：Mask-Predict 与非自回归翻译、FIM（fill-in-the-middle）、BERT 式 masked LM，以及掩码扩散在 K=1 时的特例（外部条目来源标 `记忆·未核`，只作设计方向、不作判据；情报入口 `axes/H-horizon/PRIOR_ART.md` §H2）。本地锚 = 同尺寸 stock 全因果 AR（归一为 100%）。"
+gap: "本仓零经验（MAPPING §2 无旧格）。增量 = 在同尺寸 stock 主干、同 token 预算下，把「一次填空（K=1）」与全因果 AR、以及 6.3.1 的「K 步去噪」放在同一质量-代价前沿上，量化**一次并行填充**的质量代价随 PAD 比例的形状；不是重造 masking 目标本身。"
+method: "单因素：固定主干 / 数据 / token 预算，只改「PAD 比例与可见性」。臂 = {stock 因果 AR, 一次性 pad 填空（PAD 比例 r∈{10%,25%,50%}，双向可见）, 因果填空（PAD 只可见左侧，作「可见性」对照）}。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = 同尺寸 stock 全因果 AR（归一为 100%）+ 因果填空臂（可见性对照）；客观判据 = 序列级 bpc（质量，该不跌 / 该跌）+ tokens-per-forward（一次填出的位置数，该涨）+ 每 token 等效 FLOPs（代价轴，如实报）+ 每 token 顺序前向次数（该跌）；口径 = matched-step / 同 token 预算，禁墙钟；必须不变 = 未填位置的因果性（不得让被填位置看到未来真值）、评测口径与 AR 同框。"
+objective_criteria: "该涨：tokens-per-forward（一次前向填出的位置数）；该跌：每 token 顺序前向次数；该不跌：序列级 bpc（相对全因果 AR，须越 0.014 噪声带才算可排序）；必须报：每 token 等效 FLOPs（随 r 变化）；必须不变：未填位置的因果性、评测口径与 AR 同框。"
+falsification: "若在 matched-step、同 token 预算下，一次性 pad 填空的序列级 bpc 相对全因果 AR 越噪声带恶化且随 PAD 比例 r 单调恶化、因果填空臂又救不回 ⇒ 判「一次填充」（K=1 并行填充）在本尺度 / 本任务上不成立。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据按 docs/research-schema.md 预登记，并把「未填位置的因果性」（不得泄漏未来真值）写成必须不变的硬门，以排除「把答案同时喂进去」这类伪成功。外部基线条目均为 `记忆·未核`，不得当判据。独立复核未做。"
+experiments: []
+argument: "填空式生成把「条件依赖」全部删掉：被填位置互相不可见，质量只能靠上下文与位置先验补；因此它的质量代价必然随 PAD 比例 r 上升，而代价面（每 token 等效 FLOPs = L/r）随 r 下降。这条「质量-代价」权衡曲线正是本项要测的东西，而不是只报一次填充的 bpc。与 6.3.1 的关系是 K=1 的特例边界：K 从 1 增加即从一次填空变成迭代去噪。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、{AR, pad 填空 r=10%/25%/50%, 因果填空}，matched-step + 同 token 预算）"
+  - "PAD 布局的两种情形（随机位置 vs 后段连续）未分开"
+  - "与 6.3.1（K≥2 去噪）的连续过渡未在同一实验里扫"
+cost_model: "等效理论量：一次前向处理全段 T 个位置（layer-passes = L × T），一次填出 N = r·T 个 PAD 位置 ⇒ tokens-per-forward = N、每生成 token 等效 FLOPs = L × T / N = L / r（以 AR 每 token 的 L 为单位）；每 token 顺序前向次数由 1 降到 1/N。考虑 pipelining：被填位置在全段一次前向内互相并行，整段顺序依赖只剩 1 段。"
+
+role_map:
+  owner: "轴 6 预测轴 lead（待指派）"
+  writer: "6.3.2 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「一次性 pad 填充」判决包：{stock 因果 AR, pad 填空 r∈{10%,25%,50%}, 因果填空} 在 13M matched-step / 同 token 预算下的序列级 bpc + tokens-per-forward + 每 token 等效 FLOPs，对照全因果 AR，含 n≥2。"
+  acceptance: "各臂预算对齐、未填位置因果性单测通过；序列级 bpc 相对全因果 AR 的差可分（越 0.014 噪声带）或明确「不越带」；结论停在「该 r / 该尺度值不值」，不外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "一次填空的最小判决（r 扫描 + 可见性对照）"
+    goal: "量化一次并行填充的质量代价随 PAD 比例的形状，并确认它相对全因果 AR 的位置"
+    means: "13M、matched-step、同 token 预算，{AR, pad 填空 r=10%/25%/50%, 因果填空}，报 bpc + tokens-per-forward + 每 token 等效 FLOPs，n≥2"
+    acceptance: "各臂齐备且预算对齐；未填位置因果性单测通过（无未来泄漏）；质量-代价曲线齐备"
+    evidence: "axes/6-predict/6.3.2-pad-fill/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b，复核排在执行之后）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：一次填空最小判决（r 扫描 + 可见性对照 + 因果性单测）"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T10:47:00+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:47:00+08:00"
+    actor: "轴 6 §6.3 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：一次性批量 pad 填充（填空式）归 6.3 整段并行生成（不止 AR）；按 docs/research-schema.md 预登记目的 / 基线 / 判据 / 否证条件，并把「未填位置因果性」写成必须不变的硬门以防未来泄漏。"

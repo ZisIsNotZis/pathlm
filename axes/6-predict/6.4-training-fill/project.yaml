@@ -1,0 +1,71 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "6.4"
+axis: "6 预测轴"
+title: "训练时未来位置的填充语义：pad / self-fill / 错误 token"
+dir: "axes/6-predict/6.4-training-fill"
+
+purpose: "变深度 / 重入自回归与多位置预测要一次前向为「未来 / 已退出」位置产出预测，这些位置在训练时**没有真 token 可喂**，必须被某种内容占位。本项要判定哪种填充语义（pad / self-fill / 错误 token）能让这些位置的表征**可读**（能作草稿 / 出口），且不把分布外内容注入上下文。"
+innovation: "相对普通 decoder-only transformer（每个位置都用真 token 做 teacher forcing），改变「未来 / 已退出位置的输入内容」：pad / mask、错误 token、self-fill（用自己上一轮预测或已退出位置的冻结表征）、proj-fill（逐层恒等初始化 adapter 把冻结表征投回主干输入空间）。改动量级：proj-fill 的逐层 adapter 近零额外参数（恒等初始化，量级每层 <1% d）；pad / 错误 token 零额外参数。"
+expected_effect: "（a）让变深度 / 重入 AR 的右侧位置表征可用（出口 / 草稿可读），否则该形态无从谈起；（b）填错内容会把分布外噪声注入上下文（软提交 rescore 爆表即现象）；（c）须把填充语义的质量代价放到以无填充与全因果 stock 为对照的前沿上量化。"
+sota_baseline: "主流 MTP 训练**不填充**右侧——DeepSeek-V3 MTP 用独立顺序头直接预测 t+1/t+2 目标、Medusa 头直接拟合并行草稿；填空 / 去噪目标（FIM、masked-token 预测、掩码扩散）用 [mask] / 噪声填充但动机是补齐而非 MTP。本地锚 = 同引擎 ragged nofill 与 stock 全因果 AR（归一为 100%）。情报 `axes/H-horizon/PRIOR_ART.md`（外部条目来源标 `记忆·未核`）。"
+gap: "业界系统比较「self-fill / proj-fill / mask / 错误 token / 软 latent」这组填充方案的税**未找到**直接前例（55-review PRIOR_ART §H2）。本仓增量 = 同引擎、同 seed、matched-step 的单因素扫描 + 「proj-fill（逐层恒等初始化 adapter）最优、全深度逐深度支配 fill」的受控结论 + 「软提交 OOD 污染」三度复现 + 首验「填充是负分量 +0.167」被 matched-step 检验反转的纠错；不重造填充机制本身。"
+method: "单因素：固定引擎 / seed / matched-step，只改填充语义。臂 = {无填充（ragged nofill）, pad / mask, 错误 token, self-fill（用自己上一轮预测 / 已退出位置的冻结表征）, proj-fill（逐层恒等初始化 adapter）, 软 latent（Σp·E）, 纯噪声 latent}。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = 无填充（ragged nofill）与 stock 全因果 AR（归一为 100%）；客观判据 = clean bpc（质量税，该跌 / 该不跌）+ 填入位置的可读性（出口 / 草稿命中，该涨）+ 提交质量（rescore，软提交 OOD 污染该低）；口径 = matched-step / 同 token 预算，禁墙钟；必须报活性 = 填充位置占比与 adapter 是否真被用到。"
+objective_criteria: "该跌：各填充语义相对无填充的 clean bpc（税，须越 0.014 噪声带才算可排序）+ 软提交的 rescore 峰值（OOD 污染该低）；该涨：填入位置的可读性（出口 / 草稿命中）；必须不变：非填充位置的 teacher forcing 语义（不污染主干 clean 分布）；必须报：填充位置占比与 adapter 活性。"
+falsification: "若 proj-fill / self-fill 相对无填充的 clean bpc 优势全由额外参数解释（等参数对照后消失），或「软提交 OOD 污染」不可复现 ⇒ 判填充语义在本尺度不是独立有增益的维度。"
+failure_analysis: ""
+conclusion: "已有本地读数（旧格 H2 迁入，按 55-review H-I7 归位并写明目的）：保留式填充（self-fill）1.8582 胜 ragged nofill 1.9438（+0.0856，>0.014 可排序）；proj-fill（逐层恒等初始化 adapter）1.8356 = 13M matched-step 族内最优且全深度逐深度支配 fill；mask / 错误 token 替换分别 +0.059 / +0.127（更贵）；软 latent（Σp·E）提交有 OOD 污染（rescore 峰值三度复现：首验 6.9 vs hard 1.2、@100M 8.42 vs 0.79、C 臂 3.36 vs 0.74）；embedding noise ±0.000。⇒ 本尺度下「未来 / 已退出位置的填充语义」是独立有影响的一维，且「不注入分布外内容」比「填得看起来像」更重要（软提交 OOD 污染）。"
+conclusion_review: "本项按 55-review H-PROBLEMS H-I7 重写后 status = 已完成：旧格 H2 的目的（服务变深度 AR / reentry 的右侧位置语义）没写清，且被并进「视界（一次前向产生几个位置）」当作 spec 加速的一条；本项把它归到预测轴的**训练时填充语义**上并把目的写明。结论本身（self-fill / proj-fill 胜 ragged nofill、mask / 错误 token 更贵、软提交 OOD 污染三度复现）是本仓受控实验读数，未被 55-review 质疑。判据以 matched-step / 同 token 预算记，墙钟不进判据。独立复核未做。"
+experiments:
+  - "axes/6-predict/6.4-training-fill/experiments/2523e-fill-variants"
+  - ".scratch/06-m2-sweep/evidence @a03a579"
+  - ".scratch/23-depth-ar/evidence @6b27b5e"
+  - ".scratch/24-depth-ar-100m/evidence @7cdcdaa"
+argument: "填什么内容不是「审美」而是可测的质量项：无填充让右侧位置的输入与训练分布不一致，填错内容直接注入离群向量（软提交 OOD 污染三度复现即活证）。逻辑链：proj-fill 用逐层恒等初始化 adapter 把冻结表征投回主干输入空间，与 nofill 相比全深度逐深度支配，说明「填对语义」是正分量；而首验「填充是负分量 +0.167」经 matched 步数检验为欠拟合伪影 + 对照混淆（当时 nofill 臂同时无随机退出），说明口径不对齐会给出反向结论。"
+gaps:
+  - "仅 13M（12k matched）+ 部分 @100M 点；填充语义对照无 n≥2 复本"
+  - "软提交 OOD 污染有复现但未做等参数剥离（adapter 容量 vs 填充语义）"
+  - "pad / 错误 token 的「更贵」只有一处读数，未在多 seed 复核"
+  - "填充语义与多位置预测（6.2）/ 整段并行生成（6.3）的耦合未测（组合默认留白）"
+cost_model: "等效理论量：pad / 错误 token / self-fill 不改每 token 的 layer-passes（= L）与每层 FLOPs 主项；proj-fill 的逐层 adapter 额外参数量级每层 <1% d，每 token 额外 ≈ L·d FLOPs；tokens-per-forward 每步 1（填充不改该量）。考虑 pipelining：填充位置占比决定被填位置的同批并行度。"
+
+role_map:
+  owner: "轴 6 预测轴 lead（待指派）"
+  writer: "6.4 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「训练时未来位置填充语义」判决包：{无填充, pad / mask, 错误 token, self-fill, proj-fill, 软 latent} 在 13M matched-step（n≥2）下的 clean bpc + 填入位置可读性 + 提交质量（rescore），对照无填充与 stock 全因果。"
+  acceptance: "各填充语义相对无填充的 clean bpc 可分（越 0.014 噪声带）或明确「无差别」；软提交的 OOD 污染被显式量化；结论不越尺度外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "填充语义单因素对照（含等参数对照）"
+    goal: "判定填充语义是否独立影响质量，而不是容量在起作用"
+    means: "13M matched-step，{无填充, pad / mask, 错误 token, self-fill, proj-fill, 软 latent} 六臂 n≥2；proj-fill 加一个等参数普通 adapter 对照"
+    acceptance: "六臂齐备且等参数对齐；各语义相对无填充的质量差可分或明确无差别；活性列（填充位置占比 / adapter 使用率）齐备"
+    evidence: "axes/6-predict/6.4-training-fill/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "进行中"
+  - id: "WP2"
+    what: "软提交 OOD 污染复现与剥离"
+    goal: "把「软提交污染上下文」从单次现象升格为可复现判据，并剥离 adapter 容量成分"
+    means: "同 checkpoint 三度复现点 + 等参数 hard/soft 对照，报 rescore 峰值分布"
+    acceptance: "软提交 rescore 峰值显著高于 hard（越噪声带）且复现；等参数对照下仍成立或明确归因容量"
+    evidence: "axes/6-predict/6.4-training-fill/experiments/"
+    review: "跑完另派 fresh 复核"
+    status: "未开始"
+
+roadmap:
+  - "WP1：填充语义单因素对照（n≥2 + 等参数对照）"
+  - "WP2：软提交 OOD 污染复现与等参数剥离"
+  - "复核通过后更新 conclusion，必要时更新 status"
+
+status: "已完成"
+started: "2026-10-13T10:47:00+08:00"
+ended: "2026-10-13T10:47:00+08:00"
+change_log:
+  - date: "2026-10-13T10:47:00+08:00"
+    actor: "轴 6 §6.4 worker"
+    change: "按 MAPPING §1 由旧格 H2-training-fill 迁入（H2→6.4）；其 experiments/2523e-fill-variants 整目录 git mv 进本项 experiments/。按 55-review H-PROBLEMS H-I7 修正：把目的从「一次前向输出几个位置」的附属项改为「训练时未来 / 已退出位置的填充语义」（服务变深度 AR / reentry 与多位置预测），判据改为 clean bpc（税）+ 填入位置可读性（该涨）+ 提交质量 rescore（OOD 污染该低），并钉「禁墙钟、matches-step 口径」。"

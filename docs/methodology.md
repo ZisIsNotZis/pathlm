@@ -54,7 +54,7 @@
   1.07–1.27（**两规模都 >1，净亏**）；墙钟口径 13M k=2 1.68–1.90×、@100M 约 1.0–1.35×
   （外部占用下不可稳定复现）；深度自适应 C 配方按 FLOPs 口径 122.8 vs 112.9 tok/s。
   证据：`.scratch/15-slider-rung3/evidence`、`.scratch/20-spec-scale/evidence`、`.scratch/25-tax-attribution/evidence`、
-  `axes/H-horizon/H1-outputs-per-pass/experiments/2520-spec-at-scale/analysis.md @c3cf43c`。
+  `axes/6-predict/6.2-speculative-decoding/experiments/2520-spec-at-scale/analysis.md @c3cf43c`。
 - 反例（不得犯）：「逐位相等」只在 13M 成立，@100M fp 平局会翻转（enwik8 k=2 首错位 169、
   级联 68 token、gap 0.0079，两轮运行复现）⇒ 规模性质不得当跨规模结论。
 

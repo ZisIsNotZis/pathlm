@@ -18,7 +18,8 @@ import os
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 EXP = os.path.join(
-    ROOT, "axes", "H-horizon", "H3-composition", "experiments", "2631-spec-three-arms")
+    ROOT, "axes", "6-predict", "6.2-speculative-decoding", "experiments",
+    "2631-spec-three-arms")
 RUN = os.path.join(EXP, "run.py")
 RESULTS = os.path.join(EXP, "results.json")
 

@@ -1,6 +1,6 @@
 """H1 算力账（预登记主判据）的单测：`R = (1+γ)/(1+τ)`。
 
-对应 `axes/H-horizon/H1-outputs-per-pass/experiments/2520-spec-at-scale/`：
+对应 `axes/6-predict/6.2-speculative-decoding/experiments/2520-spec-at-scale/`：
 spec 一次前向把 `1+γ` 个位置送进主干、产出 `1+τ` 个 token，故每 token 算力
 （以 native 逐 token 的 1 次 width-1 前向为单位）为 `R=(1+γ)/(1+τ)`。
 旧口径 `c₃/(tok/fwd)` 把**墙钟**前向比 `c₃` 当算力比，是符号错误——本测试把
@@ -13,7 +13,7 @@ import os
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 LEDGER = os.path.join(
-    ROOT, "axes", "H-horizon", "H1-outputs-per-pass", "experiments",
+    ROOT, "axes", "6-predict", "6.2-speculative-decoding", "experiments",
     "2520-spec-at-scale", "compute_ledger.py")
 
 

@@ -1,0 +1,57 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "6.3.3"
+axis: "6 预测轴"
+title: "latent regression 批量生成（估计得贪心）"
+dir: "axes/6-predict/6.3.3-latent-regression"
+
+purpose: "逐 token 自回归每步只产 1 个位置、顺序前向次数等于生成长度；多位置预测（6.2）用**离散**跳头并行出 k 个位置。本项要判定「一次前向先回归出 k 个未来位置的连续隐状态（latent）、再各自取贪心解（估计得贪心）」这条**回归式**批量生成路线，能否把顺序前向次数压到 1/k，以及它相对全因果 AR 与相对离散草稿的质量-代价位置。"
+innovation: "相对普通 decoder-only transformer 的逐位置离散 AR 目标，在冻结主干上加一个回归变换，一次输出未来 k 个位置的隐藏状态（latent），再各自经**共享**读出取 argmax（贪心）；训练目标 = 对未来位置真值 token 的 CE（经共享读出）+ 可选 latent 一致性项。改动量级：额外 k 个 d 维 latent 的回归变换（量级 k×d×d 参数，比挂 k 个独立离散头小），主干与读出共享、不动主干。"
+expected_effect: "（a）tokens-per-forward = k，每 token 的主干等效 FLOPs 降到 ≈ L/k（回归头分摊 ≈ d·d 每 token），顺序前向次数由 T 降到 T/k；（b）质量代价 = 一次回归出的 k 个 latent 无法互条件（与 chain 式逐位置条件相反），须与 6.2 的离散 direct / chain / 概率加权三臂在同一 checkpoint 风格下同框；（c）与离散跳头的差别是「回归到连续隐状态再贪心」还是「直接分类到词表」，须用同参数量对照把两者的增益分开。"
+sota_baseline: "并行多位置预测族：Medusa 多头、Gloeckle 2024（Meta MTP）、Stern 2018（blockwise parallel decoding）与特征级草稿 EAGLE（外部条目来源标 `记忆·未核`，只作设计方向、不作判据；情报入口 `axes/H-horizon/PRIOR_ART.md`）。本地对手 = 6.2 的离散跳头三臂 `axes/6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms`（direct / chain / 概率加权组合）；基线 = 同尺寸 stock 全因果 AR（归一为 100%）。"
+gap: "本仓零经验（MAPPING §2 无旧格）。增量 = 把「latent 回归一次出 k 个位置」与「离散跳头」（6.2）、「K 步去噪」（6.3.1）、「一次填空」（6.3.2）放在同一质量-代价前沿上，判定回归式批量生成在 τ / 质量上的位置，并用**同参数量对照**把「回归到 latent」与「直接分类」的增益分开；不是重造多位置预测结构本身。"
+method: "单因素：固定冻结主干与共享读出，只改「未来 k 个位置的产出方式」。臂 = {stock 全因果 AR 逐 token（对照）, latent 回归 k∈{2,4} + 贪心读出, 离散跳头 k∈{2,4}（6.2 同参数量对照）, 回归 + 离散组合}。基底恒为 stock decoder-only；读出在整个对照里保持共享。"
+validation: "端到端：对照 = 同尺寸 stock 全因果 AR（归一为 100%）+ 离散跳头同参数量臂；客观判据 = tokens-per-forward 与平均接受长度 τ（该涨）+ 序列级质量与草稿接受率（该不跌，须越 0.014 噪声带才算可排序）+ 每 token 等效 FLOPs（代价轴，如实报）；口径 = 等效理论量（FLOPs / layer-passes / tokens-per-forward，考虑 pipelining），禁墙钟；必须不变 = 读出共享、冻结断言（主干 grad is None）。"
+objective_criteria: "该涨：tokens-per-forward 与平均接受长度 τ；该不跌：序列级 bpc 与草稿接受率（相对全因果 AR 与同参数量离散跳头，须越 0.014 噪声带才算可排序）；必须报：每 token 等效 FLOPs（≈ L/k + d·d）；必须不变：读出共享、冻结主干断言（grad is None）。"
+falsification: "若 latent 回归臂在同参数量离散跳头对照下，既不涨 tokens-per-forward / τ（不越噪声带），质量又不优于离散跳头 ⇒ 判「回归到连续 latent 再贪心」相对直接分类在本尺度没有独立增益；若质量越带恶化且提高 k 更差 ⇒ 判该回归式批量生成在本尺度不成立。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据按 docs/research-schema.md 预登记，并把「同参数量离散跳头对照」与「读出共享」写死，以防把参数量 / 读出容量差异记成回归式路线的增益（SCHEMA.md §15 的等参数纪律）。外部基线条目均为 `记忆·未核`，不得当判据。独立复核未做。"
+experiments: []
+argument: "回归式与离散式的差别只在最后一跳：前者把「预测未来位置」变成连续回归 + 共享读出贪心，后者直接对词表分类。因此判据必须把两件事分开：tokens-per-forward / τ（该涨）与质量（该不跌），并在同参数量、同读出的条件下比，否则参数量差异会被误记成机制差异。与 6.2 的关系是：6.2 测离散草稿来源与组合，本项测「回归到 latent」这一产出方式的增量。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、{AR, latent 回归 k=2/4, 同参数量离散跳头 k=2/4}，冻结主干 + 同读出）"
+  - "latent 一致性项是否必要未定，需在最小判决里做有无消融"
+  - "与 6.2（离散草稿）/ 6.3.1（K 步去噪）的边界未在同一实验里排开"
+cost_model: "等效理论量：一次前向主干 layer-passes = L、回归变换再产 k 个 latent ⇒ 一次前向产出 k 个位置、tokens-per-forward = k、每生成 token 的主干等效 FLOPs ≈ L/k、回归头分摊 ≈ d·d；每 token 顺序前向次数由 1 降到 1/k。考虑 pipelining：同一次前向内 k 个 latent 彼此无顺序依赖、可并行，轮与轮之间是顺序依赖。"
+
+role_map:
+  owner: "轴 6 预测轴 lead（待指派）"
+  writer: "6.3.3 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「latent regression 批量生成」判决包：{stock 全因果 AR, latent 回归 k∈{2,4} + 贪心读出, 同参数量离散跳头 k∈{2,4}} 在 13M 冻结主干 / 同读出下的 tokens-per-forward、τ、草稿接受率与序列级 bpc，配每 token 等效 FLOPs，含 n≥2。"
+  acceptance: "同参数量与同读出对齐；latent 回归臂相对离散跳头的 τ / tokens-per-forward 差可分（越 0.014 噪声带）或明确「无差别」；结论停在「该尺度下回归式值不值」，不外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "latent 回归 vs 离散跳头的同参数量最小判决"
+    goal: "判定「回归到连续 latent 再贪心」相对直接分类在本尺度是否有独立增益"
+    means: "13M 冻结主干 + 共享读出，{AR, latent 回归 k=2/4, 同参数量离散跳头 k=2/4}，报 tokens-per-forward / τ / 草稿接受率 / bpc / 每 token 等效 FLOPs，n≥2；含 latent 一致性项有无消融"
+    acceptance: "同参数量、同读出对齐；冻结断言（grad is None）通过；增益归因可分（回归式 vs 容量）"
+    evidence: "axes/6-predict/6.3.3-latent-regression/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b，复核排在执行之后）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：同参数量最小判决（latent 回归 vs 离散跳头 + 读出共享 + 一致性项消融）"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T10:47:00+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:47:00+08:00"
+    actor: "轴 6 §6.3 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：latent regression 批量生成（估计得贪心）归 6.3 整段并行生成（不止 AR）；按 docs/research-schema.md 预登记目的 / 基线 / 判据 / 否证条件，并把「同参数量离散跳头对照 + 读出共享」写死以防把容量差异记成机制增益。"
