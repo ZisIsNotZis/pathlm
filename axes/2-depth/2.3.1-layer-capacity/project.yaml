@@ -25,10 +25,10 @@ gaps:
 cost_model: "等效理论量：各臂总参数量固定，每 token 的 layer-passes 仍为 L，总 FLOPs 近似不变（只把每层乘加规模在层间重分配）；tokens-per-forward 每步 1。考虑 pipelining：非均匀层宽使各层计算量不同，层间流水的最慢层决定节拍，须以每层 FLOPs 分布（而非任何时间量）评估。"
 
 role_map:
-  owner: "轴 2 深度轴 lead（待指派）"
-  writer: "2.3.1 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "轴 2 深度轴 lead"
+  writer: "轴 2 深度轴 lead（本项单一写入者；若派发 WP worker，则 writer = 该 WP 的单一写入者，且 reviewer 换新的 fresh 上下文）"
+  reviewer: "fresh 复核者（独立上下文 subagent，**不得**为本项 writer；复核排在 writer 停止之后）"
+  integrator: "研究树 integrator（M3 集成；本轴合并与跨轴一致性核对由轴 2 lead 代行）"
 
 milestone:
   output: "一份「逐层容量变化」判决包：固定总参数下 {uniform, 前大后小, 逐渐放大, hourglass} 在 13M matched-step 的 clean bpc + 每层容量分布，对照 stock uniform 全深度，含 n≥2。"

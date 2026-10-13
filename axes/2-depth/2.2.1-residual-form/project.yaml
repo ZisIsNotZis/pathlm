@@ -25,10 +25,10 @@ gaps:
 cost_model: "等效理论量：pre/post-norm 与 ReZero 标量门不改每 token 的 layer-passes（= L）与 per-layer FLOPs 主项；门控残差每层加 ≤ d 参数的乘加（每 token 额外 ≈ L·d FLOPs，占比 <1%）。tokens-per-forward 每步 1。考虑 pipelining：残差形式不改变每步计算图结构，故不影响流水并行度；代价体现在参数量与逐深度可读性上。"
 
 role_map:
-  owner: "轴 2 深度轴 lead（待指派）"
-  writer: "2.2.1 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "轴 2 深度轴 lead"
+  writer: "轴 2 深度轴 lead（本项单一写入者；若派发 WP worker，则 writer = 该 WP 的单一写入者，且 reviewer 换新的 fresh 上下文）"
+  reviewer: "fresh 复核者（独立上下文 subagent，**不得**为本项 writer；复核排在 writer 停止之后）"
+  integrator: "研究树 integrator（M3 集成；本轴合并与跨轴一致性核对由轴 2 lead 代行）"
 
 milestone:
   output: "一份「残差形式」判决包：{pre-LN, post-LN, 缩放, 门控, 衰减} 在 13M matched-step 下的 clean bpc + 逐深度 bpc 曲线 + 训练稳定性，对照 stock pre-LN 全深度，含 n≥2 与等参数对照。"

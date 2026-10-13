@@ -2743,6 +2743,73 @@ class DepthARDecoder:
         self.n += 1
         return h, model.readout(h, depth=forced_depth)
 
+    def step_auto(self, inp: torch.Tensor,
+                  policy) -> tuple[torch.Tensor, torch.Tensor, int]:
+        """**逐 token 退出决策**的增量步：逐层往下跑，每跑完一层就问 `policy`
+        该不该停在这个深度；停则该 position 的退出深度定格，更深层由本位置的
+        冻结表征填充（`_layer_kv`）。
+
+        与 `step(inp, forced_depth)` 的关系：`forced_depth` 是**逐位置强制**一个
+        深度（同一位置内不做判断）；本方法把判断交给 `policy.decide(depth, logits)`
+        —— 这是 2.1.1 主判据所需的生产解码器能力（55-review C-P03：旧实现只在
+        参照实验的私有缓存里）。
+
+        `policy` 契约：`decide(depth, logits) -> bool[B,T]`，B=T=1（本方法单序列），
+        且必须是 `(depth, 该位置第 depth 层读出)` 的纯函数 ⇒ 与批量逐层实现
+        `pathlm.exit_policy.score_stream` 给出同一套退出深度（单测钉住）。
+
+        返回 `(该位置退出深度表征 [1,1,d], 该深度 logits [1,V], 退出深度)`。
+        """
+        model = self.model
+        L = model.cfg.n_layers
+        d = model.cfg.d_model
+        nh = model.cfg.n_heads
+        shape = lambda t: t.view(1, 1, nh, d // nh).transpose(1, 2)
+
+        def _stop(depth: int, logits: torch.Tensor) -> bool:
+            return bool(policy.decide(depth, logits).reshape(-1)[0].item())
+
+        h = inp
+        exit_depth = L
+        frozen_self = None
+        logits = model.readout(h, depth=0)
+        if _stop(0, logits):                      # depth 0 = 输入态直连（缺省策略不停）
+            exit_depth, frozen_self = 0, inp
+        else:
+            for k0 in range(L):                   # 跑层 k0，落后状态深度 = k0+1
+                depth = k0 + 1
+                block = model.blocks[k0]
+                k_all, v_all = self._layer_kv(k0)
+                qkv = block.qkv(block.ln1(h))
+                q, k_self, v_self = qkv[..., :d], qkv[..., d:2 * d], qkv[..., 2 * d:]
+                a = F.scaled_dot_product_attention(
+                    shape(q), torch.cat([k_all, shape(k_self)], dim=2),
+                    torch.cat([v_all, shape(v_self)], dim=2))
+                a = a.transpose(1, 2).reshape(1, 1, d)
+                y = h + block.proj(a)
+                y = y + block.mlp(block.ln2(y))
+                g = (torch.sigmoid(model.gates[k0](h))
+                     if model.cfg.carry_gate else None)
+                h = y if g is None else h + g * (y - h)   # carry 门乘整个 delta
+                self.K[k0] = shape(k_self) if self.K[k0] is None else \
+                    torch.cat([self.K[k0], shape(k_self)], dim=2)
+                self.V[k0] = shape(v_self) if self.V[k0] is None else \
+                    torch.cat([self.V[k0], shape(v_self)], dim=2)
+                pos_t = torch.tensor([self.n], device=h.device)
+                self.pos_idx[k0] = pos_t if self.pos_idx[k0] is None else \
+                    torch.cat([self.pos_idx[k0], pos_t])
+                logits = model.readout(h, depth=depth)
+                if _stop(depth, logits):
+                    exit_depth, frozen_self = depth, h
+                    break
+        if frozen_self is None:                   # 未在任何层停：退到 L（与 step 同款收口）
+            exit_depth, frozen_self = L, h
+        self.frozen = frozen_self if self.frozen is None else \
+            torch.cat([self.frozen, frozen_self], dim=1)
+        self.depths.append(exit_depth)
+        self.n += 1
+        return h, logits, exit_depth
+
 
 def token_input(model: DepthARModel, token: int, pos: int) -> torch.Tensor:
     """普通 token 输入状态 [1,1,d]（embed + pos，cap），prefill 用。"""

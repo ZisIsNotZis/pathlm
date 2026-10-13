@@ -1,0 +1,65 @@
+{
+ "experiment": "2631-pertoken-exit-seqlevel",
+ "item": "2.1.1 early exit",
+ "ticket": "61（轴 2 lead, Phase A）",
+ "frozen_constants": {
+  "ckpt": ".scratch/23-depth-ar/evidence/23c-H2-w0-12k/model.pt",
+  "ckpt_sha256": "2b054ab7368757fe79cf36c32bacacb5e7aafe52f718a02f0558dbb3aa5446e6",
+  "ckpt_config": {
+   "d_model": 256,
+   "n_layers": 8,
+   "n_heads": 8,
+   "seq_len": 256,
+   "mlp_mult": 4
+  },
+  "params": 6962688,
+  "data": "data/enwik8_full.npz val 尾段（byte 级，V=206）",
+  "device": "cpu",
+  "dtype": "fp32（CPU 纯推理；不训练、不分片、不 autocast）",
+  "sample": {
+   "n_batches": 20,
+   "batch_size": 16,
+   "seed": 2,
+   "window_len": 256,
+   "windows": 320,
+   "n_pred_positions": 81600,
+   "note": "与历史 depth_curve/tf_acceptance 同一 seed=2 样本约定 ⇒ 可对锚"
+  },
+  "thresholds": [
+   0.3,
+   0.6,
+   0.9,
+   0.95,
+   0.99,
+   0.999
+  ],
+  "noise_band": 0.014,
+  "prescribed_depths": [
+   2,
+   3,
+   4,
+   5,
+   6,
+   7
+  ],
+  "calibration_bins": 10,
+  "gen_agreement": {
+   "seed": 5,
+   "batch_size": 4,
+   "prompt_len": 64,
+   "n_new": 32,
+   "commit": "soft",
+   "note": "诊断列；early exit 本就会改流，只有退化臂须为 1.000"
+  },
+  "diagnostics": [
+   "depth-shuffled",
+   "no-fill",
+   "structural-null(prescribed-4 fill vs no-fill)",
+   "same-position paired"
+  ],
+  "shuffle_seed": 1234,
+  "wallclock_policy": "墙钟/吞吐不进 results.json、不进任何判据（SCHEMA §7/§8）"
+ },
+ "reproduce": "python3 axes/2-depth/2.1.1-early-exit/experiments/2631-pertoken-exit-seqlevel/run.py --out <同目录>",
+ "unit_tests": "python3 -m pytest tests/test_axis2_exit_decision.py -q"
+}

@@ -25,10 +25,10 @@ gaps:
 cost_model: "等效理论量：权重共享把参数量按共享度下降（全共享 ≈ 单层参数）；每 token 的 layer-passes 仍为 L（= 不省计算）、FLOPs 主项不变（共享不减少每层乘加）；tokens-per-forward 每步 1。考虑 pipelining：层间共享权重不改变每步计算图结构，故不影响流水并行度；本项的全部权衡都在「参数量 vs 同参数量质量」上。"
 
 role_map:
-  owner: "轴 2 深度轴 lead（待指派）"
-  writer: "2.2.5 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "轴 2 深度轴 lead"
+  writer: "轴 2 深度轴 lead（本项单一写入者；若派发 WP worker，则 writer = 该 WP 的单一写入者，且 reviewer 换新的 fresh 上下文）"
+  reviewer: "fresh 复核者（独立上下文 subagent，**不得**为本项 writer；复核排在 writer 停止之后）"
+  integrator: "研究树 integrator（M3 集成；本轴合并与跨轴一致性核对由轴 2 lead 代行）"
 
 milestone:
   output: "一份「权重共享值不值」的判决：同参数量 {stock 不共享, 全共享, 部分共享 (每 k 层)} 的序列级 perplexity 与参数量，对照同参数量非共享 dense；含 n≥2。"

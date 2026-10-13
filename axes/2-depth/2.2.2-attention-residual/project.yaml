@@ -26,10 +26,10 @@ gaps:
 cost_model: "等效理论量：每 token 的 layer-passes 仍为 L（层数不变），但每层额外一次对 L 个历史层的 causal attention ⇒ 每 token 额外 ≈ L（层）× O(L·d) FLOPs（层间注意力），相对单残差基线为 O(L²·d) 的额外项；层间注意力可用低秩/共享投影降本。tokens-per-forward 每步 1。考虑 pipelining：层间注意力把「当前层依赖其全部历史层」，增加层间串行依赖（不利于跨层流水），该依赖须与 2.2.3 的线性聚合对照量化。"
 
 role_map:
-  owner: "轴 2 深度轴 lead（待指派）"
-  writer: "2.2.2 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "轴 2 深度轴 lead"
+  writer: "轴 2 深度轴 lead（本项单一写入者；若派发 WP worker，则 writer = 该 WP 的单一写入者，且 reviewer 换新的 fresh 上下文）"
+  reviewer: "fresh 复核者（独立上下文 subagent，**不得**为本项 writer；复核排在 writer 停止之后）"
+  integrator: "研究树 integrator（M3 集成；本轴合并与跨轴一致性核对由轴 2 lead 代行）"
 
 milestone:
   output: "一份「层间 causal attention vs 单残差 vs 线性学习加权和」的判决包：13M matched-step 下的 clean bpc + 额外参数/FLOPs，对照 stock 单残差全深度，含 n≥2 与等参数对照。"
