@@ -269,3 +269,15 @@
 | `python3 -m pytest tests/ -q` | `834 passed`（共享底座未改） |
 | `sha256sum` 抽 2 个 checkpoint + `MODEL.md` 全部 16 哈希 vs 磁盘 | 全部一致（10 权重 + `run.py`/`config.json`） |
 | `results.json.code_hashes` vs 磁盘 | 全部一致 |
+
+### 8.8 round 4（终审）与收口清理（`2026-10-13T16:17:46+08:00`，actor：axis1-lead）
+
+- 复核者：**新的** fresh 上下文（本轮具备 shell）；复核件 = `.scratch/62-axis1-time/REVIEW-4.md`；复核对象 = `54afd31`（= `69d431b` + 锚点前移）。
+- **判词**：**BLOCK（窄范围）**。科学结论 PASS、数值零回归（`gap=0.125421`、`win17` 严格支配 `carry16_s0`：208,896 B ≤ 212,992 B 且 1.624104 < 1.624979、下包络、`carry_minus_interp_window`、recovery 2.5%/1.2% 逐项独立复算一致）；无回归（`summary.py --check` OK、`pytest tests/` 834 passed、自包含单测 6 passed、工作树干净、无暂存）。窄范围 blocker 全属纯文字/指针：R3-B1 三步修法只做了第 1 步（`project.yaml` `conclusion_review` 里重复/过时的独立复核句未删、`WP1.review` 只列 `REVIEW-1.md` 漏 REVIEW-2/3）+ R3-N1 兄弟处（`test_2638_frontier.py` module docstring 仍写「钉住三件事」，实际 6 条）未同步。
+- **Main 裁定（原文）**：「REVIEW-4 的 R3-B1 剩余 2 步 + N1 兄弟处，裁量为非关键记账，收口后清理，不做新一轮终审」。
+- **本轮处置（收口后一次性清掉这 3 处文字/指针；不动实现代码、不动测量数字）**：
+  - `project.yaml` `conclusion_review`：删除那段重复且过时的「独立复核（`REVIEW-1.md`）：见该文件判词。复核前未改本 `project.yaml` 的判据或数字；若有缺陷按 SCHEMA §14/§14b 返工。」（与 `940cb23` 逐字相同）；保留已写全 REVIEW-1/2/3 判词的那段（并补回其闭合引号）。
+  - `project.yaml` `WP1.review`：由只列 `REVIEW-1.md` 改为列全本 WP 全部轮次 `REVIEW-1.md`/`REVIEW-2.md`/`REVIEW-3.md`（WP2/WP3 尚未开始、零轮复核件，维持 `fresh 复核` 原样）。
+  - `test_2638_frontier.py` module docstring：`钉住三件事（复核 N8 / B1）` → `钉住以下事项（复核 N8 / B1）`（不写死数量；实际 6 个 `test_*`）。
+  - `.scratch/62-axis1-time/REVIEW-4.md` 复制入仓（与 REVIEW-1/2/3 落盘模式一致）。
+- **流程规则（本轮反复账实不符的根因，登记为纪律）**：`conclusion_review` **只写当前（最后一轮）判词**；**历轮判词写本 ticket**（§8.1/8.4/8.6/8.8）；**不得**在同一字段累积多轮判词。本条为**自本轮起**的纪律；本项 `conclusion_review` 现有那段（已写全 R1/R2/R3）按 Main 裁定保留、不再改，自下一次修订起该字段只留最后一轮判词。

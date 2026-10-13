@@ -3,7 +3,7 @@
 
 跑法：`python3 -m pytest axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/test_2638_frontier.py -q`
 
-钉住三件事（复核 N8 / B1）：
+钉住以下事项（复核 N8 / B1）：
 1. `frontier()` 的支配关系定义（两轴皆越小越好）；
 2. `interp_window_at()` 的线性插值；
 3. **符号约定**：`carry_minus_interp_window = bpc_interp − bpc_carry`
