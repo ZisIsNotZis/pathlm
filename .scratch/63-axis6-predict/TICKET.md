@@ -109,3 +109,38 @@
   复用 `2631-spec-three-arms` 的 checkpoint 与 prompt 口径；臂 = {native, direct1, chain1, combined_fixed, combo_pw, tree_union2, tree_topk4, oracle 上界}；
   预登记判据 P1–P5；禁墙钟；GPU 按 §20 取锁。
 - `2026-10-13T16:27:43+08:00` · axis6-lead · Phase A 步骤 1 落盘（本文件 + 5 份 `project.yaml` role_map 实名）。
+- `2026-10-13T17:23:00+08:00` · axis6-lead · WP 6.2.2 前任 worker 在 **16:56 被运行时 30 min 上限**杀死（`Subagent timed out after 1800000ms`），run #2 未产出；产物齐备度审计 → 见 §8。
+- `2026-10-13T17:24:00+08:00` · axis6-lead · 派**接任 writer**（fresh，≤20 min 预算；前任无法 resume：session 路径不匹配）；同时自写第三方复算 `recompute_check.py`（结果 `recompute_check.json`）。
+- `2026-10-13T17:27:18+08:00` · 接任 writer · T1–T4 完成（`analysis.md` / `criteria_fixed.json` / `recompute_criteria.py` / `mutate.py` / `mutation_report.json` / `controls/README.md`）；日志见 `WP-6.2.2-LOG.md`。
+- `2026-10-13T17:31:00+08:00` · axis6-lead · 派 fresh reviewer（≤25 min，只读，未参与写作）→ `.scratch/63-axis6-predict/REVIEW-1.md`。
+- `2026-10-13T17:32:11+08:00` · axis6-lead · 登记新实验到 6.2 的 `experiments` 与 `6.2/experiments/README.md`；run #1 快照降为哈希指针（`run1-snapshot/README.md`）；`summary.py --check` 全绿。
+
+## 8 WP 6.2.2 执行记录（Phase A 步骤 2：只执行 1 个最高价值 WP）
+
+| 项 | 值 |
+|---|---|
+| WP | 6.2.2 概率多候选 / 树（+2 / +1+1 / 加权组合） |
+| 实验 | `axes/6-predict/6.2-speculative-decoding/experiments/2640-tree-conf-13m/` |
+| 预登记 | `2640.../README.md`（先写契约再跑；臂定义 / P1–P5 + C1 / 否证条件 / 禁墙钟） |
+| writer | 前任 WP worker（16:26:27 派 → 16:56 被运行时上限杀死）→ **接任 writer**（17:24→17:27，完成 T1–T4） |
+| 读数来源 | **run #1（16:54 落盘）**：`results.json` + `cycle_log.jsonl` + `run_log.txt`（3 个 checkpoint 完整）；判据 = 离线重算 `criteria_fixed.json` |
+| GPU | §20 锁按 checkpoint 取放（`run_log.txt` 内有 `[lock] acquired/released` 与 `§20.1 让出窗口：sleep 60s`）；run #1 GPU 实耗 963 s（`wrote results.json (963s)`），在 60 min 盒内 |
+| 独立复核 | fresh reviewer，报告 = `.scratch/63-axis6-predict/REVIEW-1.md`（见 §9） |
+
+**axis-lead 自己的第三方复算（不复用 writer 判据代码）**：`.scratch/63-axis6-predict/recompute_check.py` → `recompute_check.json`（按 prompt 聚类 bootstrap，B=2000/seed=2640）：
+- **臂级 α₁/τ 与 `results.json` 逐位一致**（10 臂 × 3 ckpt）⇒ 评测驱动与落盘一致。
+- **P1/P2 实测成立**（配对差 = 树臂 − 该 ckpt 实测最强单臂）：13m_s0 `tree_direct_k2` Δα₁ **+0.0934** CI [0.0657,0.1217]、Δτ **+0.1857** CI [0.1251,0.2507]；`tree_topk4` Δα₁ **+0.1269**、Δτ **+0.2361**；`tree_union2` Δα₁ **+0.0855**；`tree_qpw_k2` Δα₁ **+0.0618**。13m_s1 同类（Δα₁ +0.0638…+0.1123）；53m_s0 `tree_direct_k2` Δα₁ **+0.0905**（该 ckpt 唯一跑的树臂）。⇒ run #1 `criteria` 里 P1/P2 全 false 确系**判据取键缺陷**（配对键方向相反 ⇒ null），读数本身未变。
+- **P3 否证**：`combo_pw` − `combined_fixed` 的 Δα₁ = −0.0048（13m_s0）/ +0.0039（13m_s1），CI 均含 0 ⇒ 「路径概率加权 vs 固定 λ=0.5」在本尺度**不可区分**（逐轮草稿分歧率 ~5.7%/5.8% ≠ 0，说明两臂确实不同）。
+- **代价轴**：`R = K·(1+γ)/(1+τ)` 从单臂 1.16–1.24 升到 K=2 的 ~2.30 / K=4 的 ~4.51 ⇒ 树用 ~1.9×（K=2）到 ~3.7×（K=4）FLOPs 换 τ +0.13…+0.24；τ 边际收益随 K 递减。**R>1 不作判据**（范式定义性质）。
+- **无损性**：全部臂 × 3 ckpt × 12 prompt 的发出流逐位 == native 贪心流（P4 全过；53m_s0 也未出现 fp 平局翻转）。
+- **run #1 快照处置**：快照三份与实验目录同名文件 sha256 逐字节相同 ⇒ 不入库，只留 `.scratch/63-axis6-predict/run1-snapshot/README.md`（哈希 + 主家指针），副本文件已删（证据主家在实验目录）。
+
+**待上报 Main 的引擎改动（不擅改共享 `pathlm/**`）**：§5 的 F3（二级条件头 + 树注意力，需重训，本轮未做）。
+
+## 9 独立复核
+
+- `.scratch/63-axis6-predict/REVIEW-1.md`：fresh reviewer（未参与写作），预算 ≤25 min，只读；
+  范围 = WP 6.2.2 实验目录全量 + 5 份 `project.yaml` 的 Phase A 改动 + 本工单 + 复算留证；
+  必须尝试证伪：实现是否符合声称（概率加权 / K 候选 / 每轮 1 次顺序前向 / 无损接受判据 / 缓存回写）、
+  数字能否独立复现（自写脚本复算 α₁/τ 与配对 CI）、是否越界改共享引擎、是否越证据声明。
+- 结论与处置见 REVIEW-1.md 的 `VERDICT` 行（本节不重复其内容；历轮判词留本工单，不上 `conclusion_review`）。
