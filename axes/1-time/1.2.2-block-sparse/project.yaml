@@ -28,10 +28,10 @@ gaps:
 cost_model: "等效理论量：块稀疏 / 局部+全局掩码把每 token 可见键数压到 k（局部窗口 + 全局 token），attention 的 QKᵀ 与加权项由 O(T²) 降到 O(T·k)，layer-passes 不变；线性核把每层每头注意力降到 O(T·d)（分块实装常数因子更大），推理缓存从 O(T·d) 降到 O(d_φ²) 常数。考虑 pipelining：prefill 段按 chunk 流水，decode 段线性核每步只更新并读一个常数大小状态，块稀疏掩码每步只对新 query 算 k 个键。"
 
 role_map:
-  owner: "轴 1 时间轴 lead（待指派）"
-  writer: "1.2.2 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis1-lead（轴 1 时间轴 lead）"
+  writer: "axis1-w1.2.2（1.2.2 worker，单一写入者）"
+  reviewer: "axis1-reviewer（fresh 上下文，不得为本项 writer）"
+  integrator: "tree-integrator（研究树 integrator）"
 
 milestone:
   output: "一份「非均匀可见结构 vs 全因果」的同预算判决包：{全因果, Longformer 式 local+global, BigBird 式 block+stripe, 线性核} 在相同每 token 可见量/每位置字节下的 clean bpc + 长程召回 + 每 token 等效 FLOPs，对照 stock 全因果，含 n≥2 与线性核无伤质量点。"

@@ -28,10 +28,10 @@ gaps:
 cost_model: "等效理论量：soft 衰减把距离偏置加到 attention logits 上，attention 的 QKᵀ 与加权项仍是 O(T²)（FLOPs 与 layer-passes 不变）；相比硬窗口不省可见量，只改权重分布。固定偏置零新增参数、每 head 1 个 slope 的参数量 O(n_heads)。考虑 pipelining：prefill/decode 均为 dense attention，可按 chunk 流水。"
 
 role_map:
-  owner: "轴 1 时间轴 lead（待指派）"
-  writer: "1.1.2 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis1-lead（轴 1 时间轴 lead）"
+  writer: "axis1-w1.1.2（1.1.2 worker，单一写入者）"
+  reviewer: "axis1-reviewer（fresh 上下文，不得为本项 writer）"
+  integrator: "tree-integrator（研究树 integrator）"
 
 milestone:
   output: "一份「soft 衰减 vs stock」的判决包：{固定 w, per-head slope, 乘性衰减} × clean bpc + per-head 距离分布 + 长度外推召回，对照 stock 全因果，n≥2。"

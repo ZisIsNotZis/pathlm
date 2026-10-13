@@ -27,10 +27,10 @@ gaps:
 cost_model: "等效理论量：压缩把每位置 KV 字节按压缩率 ρ 缩放（如低秩投影把 KV 维降到 r，则字节 ∝ r/d；pooling 按池大小），读出仍是 attention。每 token 额外 FLOPs = 压缩写 + 读，量级与 KV 维成正比、与 T 无关；相对全因果 O(T·d) 记忆读取，带来每位置字节的下降。考虑 pipelining：压缩写可逐 token 递推并入 decode 流水。"
 
 role_map:
-  owner: "轴 1 时间轴 lead（待指派）"
-  writer: "1.1.4.2 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis1-lead（轴 1 时间轴 lead）"
+  writer: "axis1-w1.1.4.2（1.1.4.2 worker，单一写入者）"
+  reviewer: "axis1-reviewer（fresh 上下文，不得为本项 writer）"
+  integrator: "tree-integrator（研究树 integrator）"
 
 milestone:
   output: "一份「载体压缩质量-代价前沿」：{不压, 量化, 驱逐窗口, 摘要槽, 低秩投影, pooling} 在同每位置字节预算下的 clean bpc 与长程召回，对照 stock 全因果，含 n≥2。"

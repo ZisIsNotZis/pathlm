@@ -36,10 +36,10 @@ gaps:
 cost_model: "等效理论量：窗口把每 token 的可见键数从 T 压到 k，attention 的 QKᵀ 与加权项由 O(T²) 降到 O(T·k)（layer-passes 不变、每层 FLOPs 按 k/T 缩放）；锚点 s 个时键数为 k+s。考虑 pipelining：prefill 段可按 chunk 流水，decode 段每步只算新增 query 对 k+s 个键。长 T 子线按同 step 记 tokens-per-forward 与每 token 等效 FLOPs。"
 
 role_map:
-  owner: "轴 1 时间轴 lead（待指派）"
-  writer: "1.1.1 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis1-lead（轴 1 时间轴 lead）"
+  writer: "axis1-w1.1.1（1.1.1 worker，单一写入者）"
+  reviewer: "axis1-reviewer（fresh 上下文，不得为本项 writer）"
+  integrator: "tree-integrator（研究树 integrator）"
 
 milestone:
   output: "一份自包含的「硬窗口保留曲线」：k∈{16..192} × {无锚点, anchors, sink} 的 clean bpc 与 KV 消融保留曲线，对照 stock 全因果；并附 T∈{256..2048} 同 step 的窗口代价曲线；含 n≥2 复本。"

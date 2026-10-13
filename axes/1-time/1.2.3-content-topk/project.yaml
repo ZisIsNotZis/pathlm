@@ -27,10 +27,10 @@ gaps:
 cost_model: "等效理论量：内容 top-k 保留键数 k（相对 T=256 时 −87.5%/−75%），attention 的 P·V 混合由 O(T²) 降到 O(T·k)，但 q·kᵀ 仍需 O(T²)（按内容选必须算完整分数矩阵），layer-passes 不变；整模型每 token 等效 FLOPs 按注意力占比缩放（T=256 时 −6.25%/−5.36%），每位置缓存字节结构性不变。考虑 pipelining：decode 段每步仍需对全 KV 打分再筛 k，故等效访存不随 k 下降。"
 
 role_map:
-  owner: "轴 1 时间轴 lead（待指派）"
-  writer: "1.2.3 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis1-lead（轴 1 时间轴 lead）"
+  writer: "axis1-w1.2.3（1.2.3 worker，单一写入者）"
+  reviewer: "axis1-reviewer（fresh 上下文，不得为本项 writer）"
+  integrator: "tree-integrator（研究树 integrator）"
 
 milestone:
   output: "一份「内容选择 top-k vs 按位置窗口」的同预算判决包：{全因果, 内容 top-k, 按位置最近 k} 在相同每 token 可见量下的 clean bpc + 长程召回 + 每 token 等效 FLOPs + 每位置缓存字节，覆盖 T∈{256,512,1024,2048}，对照 stock 全因果，含 n≥2。"

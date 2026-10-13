@@ -29,10 +29,10 @@ gaps:
 cost_model: "等效理论量：implicit 零新增参数、attention 可见键数由 T 降到 k（O(T²)→O(T·k)）；explicit 每 token 额外 O(d·d_state) 写读、状态与 T 无关（见 1.1.4.1）。两者在同 token 预算下比。考虑 pipelining：implicit 走 chunk 流水；explicit 状态更新并入 decode 流水。"
 
 role_map:
-  owner: "轴 1 时间轴 lead（待指派）"
-  writer: "1.1.4.5 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis1-lead（轴 1 时间轴 lead）"
+  writer: "axis1-w1.1.4.5（1.1.4.5 worker，单一写入者）"
+  reviewer: "axis1-reviewer（fresh 上下文，不得为本项 writer）"
+  integrator: "tree-integrator（研究树 integrator）"
 
 milestone:
   output: "一份 implicit vs explicit 正面对撞包：同任务、同预算、同保留仪器下，{窗口/implicit, delta 写/explicit} 的窗口外召回 + KV 消融保留曲线 + clean bpc，对照 stock 全因果，含 n≥2。"

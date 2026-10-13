@@ -25,10 +25,10 @@ gaps:
 cost_model: "等效理论量：dilated 掩码把每 token 可见键数压到 k（近端窗口 k_local + 空洞取的 k_dilated），attention 的 QKᵀ 与加权项由 O(T²) 降到 O(T·k)，layer-passes 不变。考虑 pipelining：prefill 段可按 chunk 流水，decode 段每步只算新增 query 对 k 个键；dilation 只改键的索引集合，不改变每步键数，故 decode 每步等效 FLOPs 与同宽硬窗口相同。"
 
 role_map:
-  owner: "轴 1 时间轴 lead（待指派）"
-  writer: "1.2.1 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis1-lead（轴 1 时间轴 lead）"
+  writer: "axis1-w1.2.1（1.2.1 worker，单一写入者）"
+  reviewer: "axis1-reviewer（fresh 上下文，不得为本项 writer）"
+  integrator: "tree-integrator（研究树 integrator）"
 
 milestone:
   output: "一份「dilated vs 硬窗口」的同预算判决包：{全因果, 硬窗口 k, 硬窗口+空洞} 在相同每 token 可见键数下的 clean bpc 与长程召回，对照 stock 全因果，含 n≥2。"

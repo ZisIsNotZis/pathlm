@@ -25,10 +25,10 @@ gaps:
 cost_model: "等效理论量：第 l 层处理 T_l 个 token 且 T_l 随深度递减（合并率 r），该层 attention 与 FFN 的每 token FLOPs 仍为 O(T_l·d)，但**处理 token 数**从 T 降到 T_l ⇒ 每 token 等效总 FLOPs（对全部层求和）随深度下降，layer-passes 相对 stock 下降；合并算子本身每层 O(T_l·d)。考虑 pipelining：prefill 段可按层流水，decode 段合并只能作用于已存的过去位置、每步新增 token 数不变。"
 
 role_map:
-  owner: "轴 1 时间轴 lead（待指派）"
-  writer: "1.2.4 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis1-lead（轴 1 时间轴 lead）"
+  writer: "axis1-w1.2.4（1.2.4 worker，单一写入者）"
+  reviewer: "axis1-reviewer（fresh 上下文，不得为本项 writer）"
+  integrator: "tree-integrator（研究树 integrator）"
 
 milestone:
   output: "一份「动态合并 vs 同预算减宽/稀疏」的判决包：{stock, 金字塔合并 r∈{2,4,8}, 沙漏合并} 在每 token 等效总 FLOPs 对齐下的 clean bpc + 长程召回 + layer-passes，对照 stock 全因果，含 n≥2。"

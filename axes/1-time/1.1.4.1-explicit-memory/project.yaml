@@ -53,10 +53,10 @@ gaps:
 cost_model: "等效理论量：状态 S 大小固定（8192 floats），读/写各一次与 T 无关的 matvec，每 token 额外 FLOPs O(d·d_state)；相对全因果 attention 每层 O(T·d)，在 T 大时该预算点在前沿上左移。考虑 pipelining：状态更新是逐 token 递推，可并入 decode 流水、与 attention 并行。"
 
 role_map:
-  owner: "轴 1 时间轴 lead（待指派）"
-  writer: "1.1.4.1 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis1-lead（轴 1 时间轴 lead）"
+  writer: "axis1-w1.1.4.1（1.1.4.1 worker，单一写入者）"
+  reviewer: "axis1-reviewer（fresh 上下文，不得为本项 writer）"
+  integrator: "tree-integrator（研究树 integrator）"
 
 milestone:
   output: "一份自包含的「显式状态质量-代价前沿」：{delta, plain, none} × 载体类型（显式记忆槽 / 递归状态）在若干每位置字节预算点上的 clean bpc + 长程召回，与 stock 全因果、同预算窗口/量化同图，n≥2，且与真实 DeltaNet/GLA 实现对齐。"
