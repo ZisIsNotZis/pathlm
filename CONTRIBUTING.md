@@ -7,18 +7,18 @@
 
 | 类型 | 怎么做 | 需要注意 |
 |---|---|---|
-| **补一个空课题** | 在 `catalog.yaml` 对应的轴下把 `status: todo` 的格子填成 `judged` | 九节齐全；失败路径必须是列表 |
-| **加一次实验** | 在该格子的 `experiments/` 下建目录（见 `SCHEMA.md` §3） | 必须含判据线、对照、方差界、混杂声明、复现命令 |
-| **加一个新格子** | 在 `catalog.yaml` 相应轴下新增条目（含选项枚举与判据） | 新增格子必须来自**枚举规则**，不能是孤立灵感；随后 `build_wiki.py` 会生成页面 |
-| **修正一个结论** | 直接改对应课题页/实验，并在 PR 说明里给出反证数据 | 只改结论不改证据 = 不合并 |
-| **加一条参照线** | `axes/R-references/` 下新增 | 参照线必须附判据线（我们要打败它什么） |
+| **推进一个研究项** | 编辑 `axes/<轴>/<研究项>/project.yaml`（字段见 `docs/research-schema.md`） | 目的/创新/SOTA 基线/端到端验证/单一 milestone 齐全 |
+| **加一次实验** | 在该研究项的 `experiments/` 下建目录（见 `SCHEMA.md` §3） | 必须含判据线、对照、方差界、混杂声明、复现命令 |
+| **加一个研究项** | 按 `docs/structure.md` §12 的布局新增 `axes/<轴>/<id>-<slug>/project.yaml` | 必须来自树上的节点，不能是孤立灵感；一个研究项一个 milestone |
+| **修正一个结论** | 改对应 `project.yaml` 的 `conclusion` 与实验，并给出反证数据 | 只改结论不改证据 = 不合并 |
+| **加一条参照线** | `axes/7-references/README.md` 下新增 | 参照线必须附判据线（我们要打败它什么） |
 
 ## 硬性规则（CI 会拦）
 
-1. `python3 tools/check_schema.py` 必须退出 0（缺页 / 缺字段 / judged 无证据 / 证据路径悬空都 fail）。
-2. `python3 tools/build_wiki.py --check` 与 `python3 tools/backfill_legacy.py --check` 必须干净
-   ——**不要手改 `INDEX.md` 或自动块**。
-3. 新增实验目录后要重跑 `build_wiki.py`（格子页的实验清单是自动列出的）。
+1. `python3 tools/summary.py --check`（= `tools/check_tree.py`）必须退出 0
+   （缺字段 / milestone 非单数 / role_map 缺角色 / 已完成无证据 / 证据路径悬空 / cost_model 含墙钟都 fail）。
+2. 新研究项/新状态一律写进 `project.yaml`；旧的 `catalog.yaml` / `build_wiki.py` / `INDEX.md` **已退役**
+   （见 `docs/structure.md` §15）——不要再改它们。
 4. 新开关必须有可失败单测；实验前先 20 步冒烟。
 5. 数字必须**带口径**（1.1-epoch 快照 / 4.4-epoch 渐近 / matched-step / 墙钟 / FLOPs）；
    单货币记账的结论会被要求双报。
@@ -40,13 +40,11 @@
 ## 流程
 
 ```bash
-# 1) 改 catalog.yaml（新格子/新状态）或写实验目录
-# 2) 生成/刷新索引与页面（顺序：先 backfill，再 build）
-python3 tools/backfill_legacy.py    # 仅回填 archive/legacy-experiments.yaml 里的历史条目
-python3 tools/build_wiki.py
-# 3) 自检
-python3 tools/check_schema.py && python3 -m pytest tests/ -q
-# 4) 提 PR：说明「你替别人趟了什么坑」
+# 1) 编辑 axes/<轴>/<研究项>/project.yaml（新研究项/新状态）或写实验目录
+# 2) 自检
+python3 tools/summary.py            # 看全表
+python3 tools/summary.py --check && python3 -m pytest tests/ -q
+# 3) 提 PR：说明「你替别人趟了什么坑」
 ```
 
 ## 语言

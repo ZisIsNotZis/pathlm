@@ -58,22 +58,25 @@
 
 ```
 README.md            门面（本仓库是什么、怎么用）
-INDEX.md             状态灯总表（自动生成）
-SCHEMA.md            课题页/实验的格式契约与分析纪律
+SCHEMA.md            实验与旧课题页的格式契约与分析纪律（§6–§24 仍生效）
+docs/structure.md    研究树布局 / 用词 / 粒度 / 目录命名（SSOT）
+docs/research-schema.md  研究项 project.yaml 的格式契约（SSOT）
 AGENTS.md            协作制度与文档地图（写给 agent）
 CONTRIBUTING.md      贡献流程与硬性规则
-catalog.yaml         目录枚举 = 完备性依据（唯一的「应有哪些格子」来源）
+（退役）INDEX.md / catalog.yaml / tools/build_wiki.py / tools/check_catalog_strict.py
+      旧生成式 wiki；迁移完成后移入 archive/wiki-legacy/（见 docs/structure.md §15）
 docs/                设计 / 方法学 / 定律 / 引擎能力（不随课题变）
   design.md          本文
   methodology.md     天平
   playbook.md        已测定律
   engine_capability.md 引擎能力面事实表
-axes/                大类 = 轴；小类 = 格子（课题）；格子内 = 实验目录
-  A-mixing/A3-window-anchor/README.md
-  A-mixing/A3-window-anchor/experiments/2507-x2-eviction-13m/
+axes/                大类 = 轴；小类 = 研究项；研究项内 = 实验目录
+  1-time/1.1.1-hard-window/project.yaml
+  1-time/1.1.1-hard-window/experiments/<name>/
   ...
-tools/build_wiki.py  由 catalog 生成索引与课题页
-tools/check_schema.py CI 校验（完备/模板/证据/无孤儿）
+tools/summary.py     扫描 project.yaml 出状态全表
+tools/check_tree.py  研究树校验（字段/证据/口径）
+tools/check_schema.py 兼容入口（转调 check_tree.py）
 archive/             旧项目（只读）：legacy-docs/ 与说明
 .scratch/            历史工单与原始证据（只读，见其 README）
 pathlm/ tests/ configs/ train_*.py probe_*.py slider.py

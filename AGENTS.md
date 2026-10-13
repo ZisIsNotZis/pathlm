@@ -15,13 +15,16 @@
 
 | 事实 | 唯一权威 |
 |---|---|
-| 有哪些格子、每格当前结论 | `catalog.yaml` |
-| 课题页（状态 / 判据 / 结论 / 失败路径） | `axes/**/README.md`（由 catalog 生成，不手写） |
-| 课题页与实验的格式契约、分析纪律 | `SCHEMA.md` |
+| 研究树是什么：轴 / 节点 / 用词 / 粒度 / 目录命名 | `docs/structure.md` |
+| 研究项格式契约（`project.yaml` 字段与纪律） | `docs/research-schema.md` |
+| 有哪些研究项、每项当前状态/结论/证据 | `axes/**/project.yaml` |
+| 课题页（旧：状态 / 判据 / 结论 / 失败路径） | `axes/**/README.md`（旧生成式 wiki 产物；已退役，迁移完成后移入 `archive/wiki-legacy/`） |
+| 课题页与实验的格式契约、分析纪律 | `SCHEMA.md`（§6–§24 仍生效；§1–§3 在迁移窗口内适用旧页） |
 | 协作/编排制度与文档地图 | `AGENTS.md`（本文件） |
 | 项目是什么 | `README.md` |
 | 设计 / 方法 / 已测定律 | `docs/design.md` / `docs/methodology.md` / `docs/playbook.md` |
 | 单个实验 | 实验目录内 `README.md`（预登记契约）· `analysis.md`（**当前**结论与证据）· `results.json`（原始数字）· `MODEL.md`（权重清单） |
+| 旧索引（已退役） | `catalog.yaml` / `INDEX.md`（迁移窗口内仅作旧结论的**内容源**，不是当前 SSOT） |
 
 规矩：
 
@@ -31,7 +34,7 @@
   事故编号叙事，不写「刷新时间 / 当前波次」式仪表盘（**溯源元数据的日期除外**，见 `SCHEMA.md` §3）。
 - 事实文档**不得**把日志**叙事**（`.scratch/**` 的流水叙事、`.scratch/doc-log/**` 的过程史、
   `JOURNAL.md`）当结论依据；**证据锚点**可以是**原始证据路径**——`.scratch/**/evidence/**` 的落盘证据、
-  `.scratch/**/{REPORT,VERDICTS}.md` 等复核报告（`catalog.yaml` 的 `evidence` 即指向这类路径）。
+  `.scratch/**/{REPORT,VERDICTS}.md` 等复核报告（`project.yaml` 的 `experiments` / `evidence` 即指向这类路径）。
 - 同一事实若在两处冲突：以本表的权威处为准，另一处**删除或改为指针**。
 
 ### 2.2 日志文档（允许日期流水）
@@ -44,9 +47,10 @@
 
 ### 2.3 生成物与归档
 
-- `INDEX.md`、`axes/**/README.md`、轴页格子表、实验清单全部由 `tools/build_wiki.py` 从
-  `catalog.yaml` 生成；**不要手改自动块**（`<!-- AUTO:begin/end -->`），手写内容只放在
-  `<!-- MANUAL:begin/end -->` 之间。
+- `catalog.yaml` / `INDEX.md` / `tools/build_wiki.py` / `tools/check_catalog_strict.py` /
+  `tools/backfill_legacy.py` **已退役**（新 SSOT = `axes/**/project.yaml`，见 `docs/research-schema.md`
+  与 `docs/structure.md` §15）。迁移完成后移入 `archive/wiki-legacy/`；**不要手改 `INDEX.md` 的自动块**
+  （`<!-- AUTO:begin/end -->`），手写内容只放在 `<!-- MANUAL:begin/end -->` 之间。
 - `archive/` 是旧项目只读资产；**旧数字有口径陷阱，引用前先读 `archive/README.md`**。
 - `archive/dropped/**` 收**已删除或已并入的研究格**（原目录连同证据保留，供回溯）；它不是当前目录的一部分。
 
@@ -155,8 +159,9 @@
 工作流与硬性规则：
 
 ```bash
-python3 tools/build_wiki.py        # 改完 catalog.yaml 后刷新索引与课题页
-python3 tools/check_schema.py      # 必过（缺页/缺字段/已判无证据/证据悬空都 fail）
+python3 tools/summary.py           # 一条命令打印研究树状态全表（SSOT）
+python3 tools/summary.py --check   # 必过（缺字段/无证据/非法状态/墙钟口径都 fail）
+python3 tools/check_tree.py        # 同上：纯校验（check_schema.py 转调它）
 python3 -m pytest tests/ -q        # 共享底座测试
 ```
 

@@ -9,8 +9,9 @@
 
 **是**：
 
-- 一张**可机检的目录**（`SCHEMA.md`）：每个格子都有页；`tools/check_schema.py` 让
-  「缺页 / 缺字段 / 已判却无证据」直接 fail。
+- 一棵**可机检的研究树**（`docs/structure.md` + `docs/research-schema.md`）：每个研究项一份
+  `axes/**/project.yaml`（目的 / 创新 / SOTA 基线 / 端到端验证 / 单一 milestone / work packages /
+  状态）；`tools/summary.py` 一条命令出全表，`tools/check_tree.py` 让格式/证据错误直接 fail。
 - 一份**失败路径的账本**：不只写什么有效，更写**试过什么、为什么失败、排除了什么
   替代解释**——这是本项目最贵的资产。
 - 一套**共享天平**（`docs/methodology.md`）：三列账本、方差界、口径标注、双货币记账、
@@ -24,24 +25,26 @@
 - **不能只看结论**：所有数字都带口径（快照 / 渐近 / matched-step / 墙钟 / FLOPs），
   跨口径比较会得出相反结论。
 
-已测的总规律见 `docs/playbook.md`；设计契约与共享底座见 `docs/design.md`；每格的当前结论见
-`INDEX.md`（状态灯，自动生成）与 `catalog.yaml`。
+已测的总规律见 `docs/playbook.md`；设计契约与共享底座见 `docs/design.md`；研究树布局见
+`docs/structure.md`，研究项格式见 `docs/research-schema.md`，每项当前状态见 `tools/summary.py`
+的输出（旧的 `INDEX.md` / `catalog.yaml` 已退役）。
 
 ## 怎么读
 
 | 想做什么 | 去哪 |
 |---|---|
-| 一眼看**哪里是空白**（状态灯） | **`INDEX.md`** |
-| 读**一条轴的完整故事** | `axes/<轴>/README.md` |
-| 接手/复现**一个格子** | `axes/<轴>/<格子>/README.md`（§6 判据、§9 复现）→ 同目录 `experiments/` |
+| 一眼看**哪里是空白 / 每项状态** | **`python3 tools/summary.py`**（研究树状态全表） |
+| 看**研究树布局 / 用词 / 粒度 / 目录** | `docs/structure.md` |
+| 看**研究项格式契约**（`project.yaml` 字段） | `docs/research-schema.md` |
+| 接手/复现**一个研究项** | `axes/<轴>/<研究项>/project.yaml` → 同目录 `experiments/` |
 | 学**方法论** | `docs/methodology.md` |
 | 查**已验证的定律** | `docs/playbook.md` |
 | 看**核心设计（RAP）与共享底座** | `docs/design.md` |
 | 看**引擎能力边界** | `docs/engine_capability.md` |
 | 知道**旧项目发生了什么** | `archive/README.md` → `archive/legacy-docs/retrospective.md` |
 
-轴的记号：`A` 序列混合 · `C` 垂直（深度） · `H` 视界 · `W` 宽度 · `F` 迭代 ·
-`M` 状态载体 · `G` 策略与调度 · `R` 参照线（必须打败的基线） · `P` 修饰符。
+轴的记号：`1` 时间 · `2` 深度 · `3` 宽度 · `4` 专家（MoE） · `5` 量化 · `6` 预测 ·
+`7` 不研究（只当对照组） · `8` 工程纪律 · `9` Backlog。
 
 ## 贡献与复现
 

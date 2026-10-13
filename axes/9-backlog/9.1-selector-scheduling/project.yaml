@@ -1,0 +1,65 @@
+# 研究项 SSOT 示例（Backlog）：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "9.1"
+axis: "9 Backlog（不删，移出主线）"
+title: "调度 / 选择器（原 G 轴）"
+dir: "axes/9-backlog/9.1-selector-scheduling"
+
+purpose: "按预算把算力/路径分配给每个 token 或位置（谁走哪条路），使同一预算下的质量最高。"
+innovation: "相对普通 decoder-only transformer 的「固定全深度、固定宽度执行」，加一个轻量选择器：用 prob0 / 分歧度 / 重复率等信号给每个位置打分，按预算分配深度或路径。改动量级：新增一个读各层 hidden 的线性/非线性头（零额外前向，成本见下）。"
+expected_effect: "在给定算力预算下有可排序的质量前沿上移（相对最优固定路径）。"
+sota_baseline: "MoD（Mixture-of-Depths）式按 token 分配算力；CALM 早退门控。见 axes/7-references/README.md。"
+gap: "业界的选择器多在单信号上；本项要检验「多信号正交栈 + 预算求解器」在同预算下是否真的上移前沿，而不是只把工具 KPI 做好看。"
+method: "单因素：固定基底与预算，只改选择信号的组合与分配算法（预算求解器）。"
+validation: "端到端：对照 = 同预算的**最优固定路径**（不是 oracle，也不是工具自洽 KPI）；客观判据 = 同算力预算下的序列级 bpc/perplexity + 选择是否真的命中了「难」位置；口径 = 等效理论算力（layer-passes / tokens-per-forward），禁墙钟。"
+objective_criteria: "该涨：同预算下的序列级质量（相对最优固定路径）；该跌：无；必须报：校准误差（ECE，越低越好）与选择器的活性量。"
+falsification: "若选择器的核心假设在大规模失效（已观测：100M 上选择性假设失效），或唯一「收益」只是方差带内（Δ<本格自测噪声门限）不可排序 ⇒ 判为工具 KPI 而非研究结论，维持 Backlog。"
+cost_model: "等效理论量：选择器头每步只读已有 hidden，零额外前向（tokens-per-forward 不变）；被分配深度 d 的位置支付 d 次 layer-pass，故总 layer-passes/token = Σ d_i / N。考虑 pipelining：按 token 变深度时同批内最长路径决定前向次数，收益体现在平均 layer-passes。（代价一律按等效理论量计）。"
+
+role_map:
+  owner: "轴 9 Backlog lead（待指派）"
+  writer: "9.1 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「同预算选择 vs 最优固定路径」的判决：选择信号在序列级质量上是否上移前沿，含跨规模（13M + 一个更大点）与 n≥2。"
+  acceptance: "选择臂相对同预算最优固定路径有跨过本格噪声门限的可排序提升；否则如实记为「未测出信息量」，本项维持 Backlog。"
+
+work_packages:
+  - id: "WP1"
+    what: "把选择器判据从工具自洽 KPI 换成同预算最优固定路径"
+    goal: "让结论对准「前沿是否上移」，而不是 Slider 自身的记账"
+    means: "预登记判据 + 同预算固定路径扫点取包络"
+    acceptance: "判据线与对照臂在契约里写死、事后不改"
+    evidence: "axes/9-backlog/9.1-selector-scheduling/experiments/"
+    review: "fresh 复核"
+    status: "未开始"
+  - id: "WP2"
+    what: "跨规模复核选择性假设"
+    goal: "确认 100M 上选择性假设失效是否可复现"
+    means: "13M 与 100M 两点、n≥2 的同一判决"
+    acceptance: "两点结论分开报，禁外推"
+    evidence: "axes/9-backlog/9.1-selector-scheduling/experiments/"
+    review: "fresh 复核"
+    status: "未开始"
+
+roadmap:
+  - "WP1：换判据为同预算最优固定路径"
+  - "WP2：跨规模复核"
+  - "只在 WP1 出可排序提升时才考虑移出 Backlog"
+
+status: "未开始"
+conclusion: ""
+conclusion_review: "维持 Backlog：原 G 轴没有 research topic（只有选择器/信号/校准这些手段），唯一「收益」是 Slider 工具自洽 KPI，唯一「严格占优」落在方差带内不可排序（见 55-review G-PROBLEMS P1–P4）。要移出 Backlog 必须先给出可证伪的新目的与判据。"
+experiments:
+  - "axes/G-policy/G1-selector/experiments/2514-allocator-selectivity @ce2610a0d"
+argument: "（尚未论证；目的是先冻结 Backlog 身份，证据保留在原 G 轴目录与 .scratch，不删除。）"
+gaps:
+  - "无「同预算最优固定路径」对照"
+  - "选择性假设在 100M 失效未升格为否证"
+started: "2026-10-13T09:40:25+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T09:40:25+08:00"
+    actor: "WP-M1.0 foundation"
+    change: "原 G1/G3/G4 合并为 Backlog 研究项（G→Backlog）；证据保留在 axes/G-policy/**，见 MAPPING.md。"

@@ -1,0 +1,76 @@
+# 研究项 SSOT 示例：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "1.1.1"
+axis: "1 时间轴"
+title: "hard 窗口"
+dir: "axes/1-time/1.1.1-hard-window"
+
+purpose: "把可见范围压到硬性上限（滑动窗口 / sink / 锚点槽），使前缀可以被真正丢掉、长上下文成本可解析，同时尽量少掉序列级质量。"
+innovation: "相对普通 decoder-only transformer 的全因果 attention，把每个 token 的可见集合裁成「最近 k + 少数锚点/sink」。改动量级：只改 attention mask 与位置保留策略，不新增参数（除非加锚点槽）；算力从 O(T²) 降到 O(T·k)。"
+expected_effect: "（a）推理期前缀可丢、KV 缓存可截断，长 T 的算力/显存随 T 线性而非平方；（b）解码器免重 prefill（ring-buffer）；（c）代价是长程检索能力受限，需量化它到底掉了多少。"
+sota_baseline: "StreamingLLM（attention sink + 驱逐）与 Longformer/Sliding-Window 一族；本地锚 = 全因果注意力基线（A2，13M B0 = 1.5074 bpc 快照）。见 axes/7-references/README.md。"
+gap: "业界给了「窗口几乎无损」的说法；本项要补的是**在真正的长程召回判据上量化损失**，并区分「评测期丢前缀」与「训练期累计预算」两种口径——两者在本仓被实测证明不是一回事。"
+method: "单因素：只改 attention 可见掩码。臂 = {full, 窗口 k∈{16,32,64,128,192}, 窗口+anchors, 窗口+sink, 窗口+稀疏全局}。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = 同尺寸 stock 全因果基线（A2/7-references）；客观判据 = clean bpc（质量税）+ KV 消融保留曲线（真删位置 j 的 KV 测损伤，不是窗口外答对率）；口径 = matched-step / 同 token 预算，禁墙钟。该涨：锚点/sink 臂的远距离召回；该跌：无（窗口臂长程召回应停在 chance）。"
+objective_criteria: "该涨：锚点通道的 needle 召回；该跌：无；必须不变：被删位置数（作对照列）、同位置 logits 的因果性单测。"
+falsification: "若窗口臂在真正的长程任务上召回等于 chance（已观测到 beyond-window 0.4%），且加锚点/sink 也救不回 ⇒ 硬窗口作为「信息右移」手段失败；若软衰减只把局部统计补全能力训强、bpc 改善但与长程召回同时退化 ⇒ 判为「假保留」，本项手段不成立。"
+cost_model: "等效理论量：窗口把每 token 的可见键数从 T 压到 k，attention 的 QKᵀ 与加权项由 O(T²) 降到 O(T·k)（layer-passes 不变、每层 FLOPs 按 k/T 缩放）；锚点 s 个时键数为 k+s。考虑 pipelining：prefill 段可按 chunk 流水，decode 段每步只算新增 query 对 k+s 个键。（代价一律按等效理论量计）。"
+
+role_map:
+  owner: "轴 1 时间轴 lead（待指派）"
+  writer: "1.1.1 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份自包含的「硬窗口保留曲线」：k∈{16..192} × {无锚点, anchors, sink} 的 clean bpc 与 KV 消融保留曲线，对照 stock 全因果，含 n≥2 复本。"
+  acceptance: "k 全曲线的累计预算列与单距离列分开报；锚点通道召回相对同掩码地板有可排序提升（跨过本格自测噪声门限）；结论表述为「该尺度/该任务下窗口值不值」，不外推。"
+
+work_packages:
+  - id: "WP1"
+    what: "自包含复算窗口/锚点臂（同引擎、同数据流、n≥2）"
+    goal: "把主数字从旧 .scratch 摘要升级为仓内可复核的实验目录 + results.json"
+    means: "在 13M、T=256、matched-step 下重跑 {full, win-k, win+anchor} 三臂各 2 seed"
+    acceptance: "每臂有 experiments/<name>/{README.md,config.json,results.json,analysis.md}，bpc 与旧摘要量级一致或解释差异"
+    evidence: "axes/1-time/1.1.1-hard-window/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14），复核排在执行之后（§14b）"
+    status: "未开始"
+  - id: "WP2"
+    what: "把「评测期丢前缀」与「累计预算」两列拆开"
+    goal: "消除单点曲线被当累计代价的陷阱"
+    means: "同一实验里分别报：只保留最近 k 的累计 bpc 曲线；单距离 j 的边际贡献曲线"
+    acceptance: "两列都在结果里，且不互相外推（禁单点求和）"
+    evidence: "axes/1-time/1.1.1-hard-window/experiments/"
+    review: "复核者核对两列的口径标注"
+    status: "未开始"
+  - id: "WP3"
+    what: "检索腿重设计 + 锚点通道复核"
+    goal: "把「低损伤 ≠ 保住了」变成可区分的判据"
+    means: "needle v2 式非饥饿任务，锚点/损坏×精确三路豁免对照"
+    acceptance: "窗口臂长程召回停在 chance、锚点臂相对地板可排序提升"
+    evidence: ".scratch/07-x1-x3/evidence"
+    review: "fresh 复核"
+    status: "未开始"
+
+roadmap:
+  - "WP1：自包含复算三臂"
+  - "WP2：拆两列口径"
+  - "WP3：检索腿重设计"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "进行中"
+conclusion: "已有（旧证据，待迁入本目录复算）：丢前缀在 clean bpc 上并不便宜（只保留最近 32 个 = +0.212 bpc 累计；+0.058~0.121 在原口径）；锚点通道是真产物（needle 76.8%→93.3%）；beyond-window 检索召回 0.4% ⇒ 信息是真丢了。"
+conclusion_review: "看上去部分成立但有口径裂缝：主数字只存在于 .scratch 摘要、无仓内 results.json；「评测期丢前缀」与「累计预算」混列。故 status 保持进行中，待 WP1/WP2 复算后再判。独立复核未做。"
+experiments:
+  - ".scratch/07-x1-x3/evidence @ce2610a0d"
+  - "axes/A-mixing/A3-window-anchor/experiments/2505-m1-followups @ce2610a0d"
+argument: "用 KV 消融（真删位置）而非窗口外答对率测保留，排除了「局部统计补全」这一替代解释；锚点通道的提升被反过来当作长程信息可达的证据。"
+gaps:
+  - "无仓内自包含复算（WP1）"
+  - "累计预算与单距离两列未拆（WP2）"
+  - "per-head 平均注意距离分布未报"
+started: "2026-10-13T09:40:25+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T09:40:25+08:00"
+    actor: "WP-M1.0 foundation"
+    change: "由旧格 A3-window-anchor 拆分建立（A3 → 1.1.1 hard 窗口 + 1.1.3 可见量上限）；内容按 55-review A-PROBLEMS P9/P14/P21 修正。"

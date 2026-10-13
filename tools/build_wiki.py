@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """build_wiki.py — 由 catalog.yaml 生成/刷新 Research Wiki 的索引与课题页。
 
+**已退役（ticket 56）**：新结构下研究项 SSOT = `axes/**/project.yaml`（见
+`docs/research-schema.md` / `docs/structure.md`）；本文件不再维护、不再生成网页，
+迁移完成后整体移入 `archive/wiki-legacy/`。保留在仓仅供迁移窗口读旧内容。
+
 设计原则（见 SCHEMA.md）：
   * catalog.yaml 是「目录完备」的唯一来源（枚举了哪些格子必须存在）。
   * 课题页 = front-matter（生成）+ 九节正文（生成）+ 手写块（保留）。

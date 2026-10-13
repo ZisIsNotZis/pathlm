@@ -5,6 +5,16 @@
 `tools/check_schema.py` 在 CI 里让格式错误直接失败。本文件同时是**分析纪律**的家：
 所有条款都是**当前生效的规则**，按编号引用（编号稳定，正文可读）。
 
+> **迁移通告（ticket 56）**：新结构下研究项的 SSOT = **`axes/**/project.yaml`**
+> （格式契约 = `docs/research-schema.md`；树/用词/粒度/目录 = `docs/structure.md`）。
+> 生成式 wiki（`catalog.yaml` / `tools/build_wiki.py` / `INDEX.md` / `tools/check_catalog_strict.py` /
+> `tools/backfill_legacy.py`）**已退役**；校验入口 `tools/check_schema.py` 已**转调**
+> `tools/check_tree.py`，汇总 = `tools/summary.py`。因此本文件 **§1–§3（课题页 front-matter /
+> 九节 / 实验目录）在迁移窗口内仍适用旧 `axes/**/README.md`，迁移完成后由 `docs/research-schema.md`
+> 取代**；本文件 **§0 的「目录完备」护栏、§5 的旧校验命令改由新规范承接**。
+> **§6–§24 的分析纪律（判据取向、方差界、等参数对照、活性判据、独立复核、GPU 锁、并发写、
+> 不重复造轮子、预算内极致）仍然全部生效。**
+
 ## 0. 「完备」的三级定义
 
 | 级别 | 含义 | 谁来保证 |
@@ -88,9 +98,12 @@ evidence:
 ## 5. 校验命令
 
 ```bash
-python3 tools/build_wiki.py --check     # 生成物是否与 catalog 一致
-python3 tools/check_schema.py           # 格式/完备/证据锚点
+python3 tools/summary.py --check   # 新：校验 axes/**/project.yaml（字段/证据/墙钟口径）
+python3 tools/check_tree.py        # 新：纯校验（check_schema.py 转调它）
 ```
+
+> 旧命令 `python3 tools/build_wiki.py --check` 与旧 `tools/check_schema.py` 的 catalog 校验
+> 已随生成式 wiki 退役（见顶部迁移通告）；迁移窗口内如需旧校验，用 git 历史里的版本。
 
 ## 6. 实验契约的必需字段（`experiments/<name>/README.md`）
 

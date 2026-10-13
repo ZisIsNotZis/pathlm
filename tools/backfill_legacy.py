@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """backfill_legacy.py — 把 archive/legacy-experiments.yaml 渲染成各格子下的实验目录。
 
+**已退役（ticket 56）**：旧格子（catalog 枚举）被新研究树取代（`axes/**/project.yaml`）；
+本一次性回填工具不再维护，迁移完成后随 catalog 一并移入 `archive/wiki-legacy/`。
+
 一次性回填工具（可重复运行、幂等）。渲染目标：
     axes/<轴目录>/<primary grid>/experiments/<name>/README.md
 

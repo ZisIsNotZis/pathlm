@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """`catalog.yaml` 的**严格结构审计**（补充 `check_schema.py` 不覆盖的三件事）。
 
+**已退役（ticket 56）**：catalog.yaml 已退役（SSOT = `axes/**/project.yaml`）；
+本文件不再维护，迁移完成后随 catalog 一并移入 `archive/wiki-legacy/`。
+
 0b. **已废止数字黑名单（`local.key_numbers_forbidden`）**：声明过的**废弃值**不得出现在
    三类表面（账本 verdict+benefit、生成页、实验产物）任何一处——「改数字只改一半」会立刻红。
 0. **跨表面一致性（`local.key_numbers` 声明式）**：一个格子的**关键数字**必须在**三类表面**
