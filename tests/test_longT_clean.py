@@ -28,7 +28,7 @@ import evidence_anchor                                      # noqa: E402
 from pathlm.depth_ar import (DepthARConfig, DepthARModel,     # noqa: E402
                              window_anchor_keep_mask)
 
-EXP = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
+EXP = os.path.join(ROOT, "axes", "1-time", "1.1.1-hard-window",
                    "experiments", "2626-longT-clean")
 DRIVER = os.path.join(EXP, "clean_driver.py")
 
@@ -207,11 +207,11 @@ def test_driver_qknorm_step0_matches_2625_w1():
     assert ours_a["loss"] == theirs_a["loss"], "锚点记录的两侧 step0 loss 不一致"
     assert ours_a["gnorm"] == theirs_a["gnorm"], "锚点记录的两侧 step0 gnorm 不一致"
     ours = evidence_anchor.local_step0(
-        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+        os.path.join("axes", "1-time", "1.1.1-hard-window", "experiments",
                      "2626-longT-clean", "runs", "full-1024-clean",
                      "train_log.jsonl"), "clean_full1024_step0", anchors)
     theirs = evidence_anchor.local_step0(
-        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+        os.path.join("axes", "1-time", "1.1.1-hard-window", "experiments",
                      "2625-longT-stability", "runs", "full-T1024-qknorm-s0",
                      "train_log.jsonl"), "w1_qknorm_2625_step0", anchors)
     a, b = ours, theirs

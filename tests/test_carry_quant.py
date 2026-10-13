@@ -22,7 +22,7 @@ from tools.evalkit.longrange_tasks import accuracy, assoc_recall_batch
 
 from importlib import import_module
 
-HERE = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type",
+HERE = os.path.join(ROOT, "axes", "1-time", "1.1.4.1-explicit-memory",
                     "experiments", "2621-carry-under-compression")
 sys.path.insert(0, HERE)
 cq = import_module("carry_quant")

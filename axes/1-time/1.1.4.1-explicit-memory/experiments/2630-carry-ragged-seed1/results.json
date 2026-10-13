@@ -1,0 +1,2357 @@
+{
+  "config": {
+    "experiment": "2630-carry-ragged-seed1",
+    "ticket": "ticket 46 · W2（任务下发文本逐字转录见 README §4）",
+    "device": "cuda",
+    "seed": 1,
+    "seed0_source": {
+      "experiment": "2629-carry-ragged-projfill",
+      "results": "axes/1-time/1.1.4.1-explicit-memory/experiments/2629-carry-ragged-projfill/results.json",
+      "note": "W2 判据：本实验 seed=1 与 46-W1（2629）的 seed=0 合并为 n=2；不重训 seed=0。"
+    },
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": false,
+      "topology": "sequential",
+      "fill_kv": true,
+      "proj_fill": true
+    },
+    "train": {
+      "steps": 6000,
+      "batch_size": 32,
+      "lr": 0.001,
+      "seed": 1,
+      "final_weight": 2.0,
+      "exit_mode": "uniform",
+      "tokens_per_arm": 49152000,
+      "note": "与 2629（seed=0）逐字段同配方、同预算：6k×32×256=49.0M token；唯一变量 = 训练 seed（模型初始化 + 数据流），单因素对照仍是 carry 的开关。步时先测后定（SCHEMA §20.3）。"
+    },
+    "arms": [
+      {
+        "name": "projfill_s1",
+        "carry": false
+      },
+      {
+        "name": "projfill_carry_s1",
+        "carry": true
+      }
+    ],
+    "checkpoint": {
+      "dir": "axes/1-time/1.1.4.1-explicit-memory/experiments/2630-carry-ragged-seed1/train",
+      "sha256": {
+        "projfill_s1": "d2539fb43a550bc0e9af0d061f22361b62ab9cca10031aef8066a7c7c3f51ffe",
+        "projfill_carry_s1": "e52d2569b801345b69afcc25a0e27e02901ff328cd77189a7099e280d9e26055"
+      },
+      "note": "本实验 seed=1 两臂自己训练（6k 步合成 assoc-mqar，随机退出 + proj-fill，非 dense）；权重不入库，运行时 sha256 断言。"
+    },
+    "data": {
+      "train_source": "tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch",
+      "vocab_size": 206,
+      "bpc_name": "enwik8_full",
+      "bpc_path": "data/enwik8_full.npz",
+      "bpc_split": "末段评测批（跨分布的质量代价项，不作召回判据）"
+    },
+    "tokens": {
+      "sym_vocab": 64,
+      "filler_token": 64,
+      "cue_token": 205,
+      "local_k": 8
+    },
+    "train_task_leg": {
+      "n_queries": 8,
+      "gap": 14,
+      "batch_size": 64,
+      "n_batches": 32,
+      "modes": [
+        "in_distribution_random_exit",
+        "full_depth_deployment"
+      ],
+      "note": "与 2629 同一批位置（同数据生成器 seed）；两臂成对（同一批 + 同一退出模式）。主腿 = in_distribution_random_exit。"
+    },
+    "tf_leg": {
+      "enwik8_n_batches": 16,
+      "enwik8_batch_size": 16,
+      "synth_n_batches": 16,
+      "synth_batch_size": 32,
+      "depths": [
+        4,
+        6
+      ],
+      "note": "出口资产 tf@4 / tf@6。enwik8 口径对齐 100M 的 0.9726；synth 口径 = 训练分布内。"
+    },
+    "bpc_leg": {
+      "batch_size": 16,
+      "n_batches": 16,
+      "note": "clean bpc（enwik8 全因果；跨分布 + 合成训练 ⇒ 只作非退化锚与质量代价项）。"
+    },
+    "criteria": {
+      "c1_per_seed_effects": "报两 seed 的分布内召回差与越界腿差（含 two_proportion 差值 CI 与跨 seed 极差）",
+      "c2_ood_robust": "越界腿（单查询，距离 241–255）carry 效应跨 seed 保持（每 seed 差值 CI 下界 >0 且同号为正）⇒ 记「机制确实在搬」为稳健（仅该腿）",
+      "c3_indist_stable": "分布内召回 carry 效应跨 seed 都在方差带（1.4pp）内 ⇒ 「冗余」结论稳定",
+      "c4_no_extrapolation": "禁外推（§17.11）：两点 / 13M / 6k 快照，不外推到召回或其它尺度",
+      "c5_convergence": "§17.15：答案行 CE（synth_answer_ce）末窗斜率；仍在陡降则只读臂间增量"
+    },
+    "variance_band_pp": 1.4,
+    "gpu_wall_budget_min": 21
+  },
+  "seed": 1,
+  "capability_probe": {
+    "probe": "capability",
+    "dense": false,
+    "topology": "sequential",
+    "exit_mode": "uniform",
+    "proj_fill": true,
+    "fill_kv": true,
+    "arms": {
+      "projfill": {
+        "block_class": "Block",
+        "block_class_expected": "Block",
+        "n_params": 45152,
+        "carry_rule": null,
+        "proj_fill": true,
+        "fill_kv": true,
+        "dense": false
+      },
+      "projfill_carry": {
+        "block_class": "CarryChannelBlock",
+        "block_class_expected": "CarryChannelBlock",
+        "n_params": 49392,
+        "carry_rule": "delta",
+        "proj_fill": true,
+        "fill_kv": true,
+        "dense": false
+      }
+    },
+    "trunk_bit_identical": true,
+    "trunk_diff_keys": [],
+    "param_delta": 4240,
+    "carry_only_keys": [
+      "blocks.0.carry_scale",
+      "blocks.1.carry_scale",
+      "blocks.2.carry_scale",
+      "carry.beta_b",
+      "carry.beta_w",
+      "carry.gate_w",
+      "carry.w_k",
+      "carry.w_q",
+      "carry.w_v"
+    ],
+    "all_extra_params_are_carry": true,
+    "combo_buildable": true
+  },
+  "checkpoints": {
+    "projfill_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2630-carry-ragged-seed1/train/projfill_s1/model.pt",
+      "sha256": "d2539fb43a550bc0e9af0d061f22361b62ab9cca10031aef8066a7c7c3f51ffe",
+      "size_bytes": 57358059,
+      "sha256_verified": true,
+      "seed": 1,
+      "block_class": "Block",
+      "block_class_expected": "Block",
+      "n_params": 14326272,
+      "carry_rule": false,
+      "dense": false,
+      "proj_fill": true,
+      "fill_kv": true
+    },
+    "projfill_carry_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2630-carry-ragged-seed1/train/projfill_carry_s1/model.pt",
+      "sha256": "e52d2569b801345b69afcc25a0e27e02901ff328cd77189a7099e280d9e26055",
+      "size_bytes": 58420003,
+      "sha256_verified": true,
+      "seed": 1,
+      "block_class": "CarryChannelBlock",
+      "block_class_expected": "CarryChannelBlock",
+      "n_params": 14590568,
+      "carry_rule": true,
+      "dense": false,
+      "proj_fill": true,
+      "fill_kv": true
+    }
+  },
+  "param_declaration": {
+    "projfill_s1": {
+      "n_params": 14326272,
+      "delta_vs_base": 0,
+      "delta_pct_vs_base": 0.0
+    },
+    "projfill_carry_s1": {
+      "n_params": 14590568,
+      "delta_vs_base": 264296,
+      "delta_pct_vs_base": 1.845
+    }
+  },
+  "architecture_equality": {
+    "block_class": {
+      "projfill_s1": "Block",
+      "projfill_carry_s1": "CarryChannelBlock"
+    },
+    "block_class_expected": {
+      "projfill_s1": "Block",
+      "projfill_carry_s1": "CarryChannelBlock"
+    },
+    "dense": {
+      "projfill_s1": false,
+      "projfill_carry_s1": false
+    },
+    "proj_fill": {
+      "projfill_s1": true,
+      "projfill_carry_s1": true
+    },
+    "fill_kv": {
+      "projfill_s1": true,
+      "projfill_carry_s1": true
+    }
+  },
+  "train_task_leg": {
+    "in_distribution_random_exit": {
+      "projfill_s1": {
+        "mode": "in_distribution_random_exit",
+        "K": 8,
+        "Q": 8,
+        "n_batches": 32,
+        "n": 16384,
+        "n_hits": 5466,
+        "accuracy": 0.333618,
+        "accuracy_ci": [
+          0.326438,
+          0.340876
+        ],
+        "chance": 0.015625,
+        "local_prior": 0.013672,
+        "by_distance": {
+          "107": {
+            "accuracy": 0.129693,
+            "n": 293
+          },
+          "109": {
+            "accuracy": 0.100402,
+            "n": 249
+          },
+          "111": {
+            "accuracy": 0.168776,
+            "n": 237
+          },
+          "113": {
+            "accuracy": 0.131868,
+            "n": 273
+          },
+          "115": {
+            "accuracy": 0.152174,
+            "n": 276
+          },
+          "117": {
+            "accuracy": 0.170404,
+            "n": 223
+          },
+          "119": {
+            "accuracy": 0.120482,
+            "n": 249
+          },
+          "121": {
+            "accuracy": 0.173387,
+            "n": 248
+          },
+          "124": {
+            "accuracy": 0.136929,
+            "n": 241
+          },
+          "126": {
+            "accuracy": 0.169675,
+            "n": 277
+          },
+          "128": {
+            "accuracy": 0.159533,
+            "n": 257
+          },
+          "130": {
+            "accuracy": 0.119658,
+            "n": 234
+          },
+          "132": {
+            "accuracy": 0.148289,
+            "n": 263
+          },
+          "134": {
+            "accuracy": 0.187279,
+            "n": 283
+          },
+          "136": {
+            "accuracy": 0.172131,
+            "n": 244
+          },
+          "138": {
+            "accuracy": 0.188755,
+            "n": 249
+          },
+          "141": {
+            "accuracy": 0.199262,
+            "n": 271
+          },
+          "143": {
+            "accuracy": 0.173077,
+            "n": 260
+          },
+          "145": {
+            "accuracy": 0.169231,
+            "n": 260
+          },
+          "147": {
+            "accuracy": 0.192771,
+            "n": 249
+          },
+          "149": {
+            "accuracy": 0.238095,
+            "n": 252
+          },
+          "151": {
+            "accuracy": 0.171429,
+            "n": 245
+          },
+          "153": {
+            "accuracy": 0.178862,
+            "n": 246
+          },
+          "155": {
+            "accuracy": 0.233962,
+            "n": 265
+          },
+          "158": {
+            "accuracy": 0.217213,
+            "n": 244
+          },
+          "160": {
+            "accuracy": 0.188525,
+            "n": 244
+          },
+          "162": {
+            "accuracy": 0.13879,
+            "n": 281
+          },
+          "164": {
+            "accuracy": 0.192913,
+            "n": 254
+          },
+          "166": {
+            "accuracy": 0.228814,
+            "n": 236
+          },
+          "168": {
+            "accuracy": 0.229391,
+            "n": 279
+          },
+          "170": {
+            "accuracy": 0.186992,
+            "n": 246
+          },
+          "172": {
+            "accuracy": 0.268939,
+            "n": 264
+          },
+          "175": {
+            "accuracy": 0.247059,
+            "n": 255
+          },
+          "177": {
+            "accuracy": 0.205021,
+            "n": 239
+          },
+          "179": {
+            "accuracy": 0.23506,
+            "n": 251
+          },
+          "181": {
+            "accuracy": 0.202847,
+            "n": 281
+          },
+          "183": {
+            "accuracy": 0.250896,
+            "n": 279
+          },
+          "185": {
+            "accuracy": 0.242188,
+            "n": 256
+          },
+          "187": {
+            "accuracy": 0.3,
+            "n": 250
+          },
+          "189": {
+            "accuracy": 0.265823,
+            "n": 237
+          },
+          "192": {
+            "accuracy": 0.316794,
+            "n": 262
+          },
+          "194": {
+            "accuracy": 0.302682,
+            "n": 261
+          },
+          "196": {
+            "accuracy": 0.34728,
+            "n": 239
+          },
+          "198": {
+            "accuracy": 0.335878,
+            "n": 262
+          },
+          "200": {
+            "accuracy": 0.326848,
+            "n": 257
+          },
+          "202": {
+            "accuracy": 0.368644,
+            "n": 236
+          },
+          "204": {
+            "accuracy": 0.374545,
+            "n": 275
+          },
+          "206": {
+            "accuracy": 0.394531,
+            "n": 256
+          },
+          "209": {
+            "accuracy": 0.494163,
+            "n": 257
+          },
+          "211": {
+            "accuracy": 0.409774,
+            "n": 266
+          },
+          "213": {
+            "accuracy": 0.454902,
+            "n": 255
+          },
+          "215": {
+            "accuracy": 0.379699,
+            "n": 266
+          },
+          "217": {
+            "accuracy": 0.469388,
+            "n": 245
+          },
+          "219": {
+            "accuracy": 0.47012,
+            "n": 251
+          },
+          "221": {
+            "accuracy": 0.412955,
+            "n": 247
+          },
+          "223": {
+            "accuracy": 0.544061,
+            "n": 261
+          },
+          "226": {
+            "accuracy": 0.893333,
+            "n": 225
+          },
+          "228": {
+            "accuracy": 0.924603,
+            "n": 252
+          },
+          "230": {
+            "accuracy": 0.936567,
+            "n": 268
+          },
+          "232": {
+            "accuracy": 0.90393,
+            "n": 229
+          },
+          "234": {
+            "accuracy": 0.920833,
+            "n": 240
+          },
+          "236": {
+            "accuracy": 0.941818,
+            "n": 275
+          },
+          "238": {
+            "accuracy": 0.914089,
+            "n": 291
+          },
+          "240": {
+            "accuracy": 0.929104,
+            "n": 268
+          }
+        },
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 16384,
+          "n_hits": 260,
+          "accuracy": 0.015869,
+          "accuracy_ci": [
+            0.014066,
+            0.017899
+          ]
+        },
+        "query_key_distance": {
+          "min": 107,
+          "max": 240,
+          "median": 175,
+          "window": 0,
+          "in_train_distribution": true,
+          "frac_outside_window": 0.0,
+          "n": 16384
+        }
+      },
+      "projfill_carry_s1": {
+        "mode": "in_distribution_random_exit",
+        "K": 8,
+        "Q": 8,
+        "n_batches": 32,
+        "n": 16384,
+        "n_hits": 4932,
+        "accuracy": 0.301025,
+        "accuracy_ci": [
+          0.294049,
+          0.308095
+        ],
+        "chance": 0.015625,
+        "local_prior": 0.013672,
+        "by_distance": {
+          "107": {
+            "accuracy": 0.112628,
+            "n": 293
+          },
+          "109": {
+            "accuracy": 0.124498,
+            "n": 249
+          },
+          "111": {
+            "accuracy": 0.185654,
+            "n": 237
+          },
+          "113": {
+            "accuracy": 0.135531,
+            "n": 273
+          },
+          "115": {
+            "accuracy": 0.155797,
+            "n": 276
+          },
+          "117": {
+            "accuracy": 0.165919,
+            "n": 223
+          },
+          "119": {
+            "accuracy": 0.156627,
+            "n": 249
+          },
+          "121": {
+            "accuracy": 0.165323,
+            "n": 248
+          },
+          "124": {
+            "accuracy": 0.178423,
+            "n": 241
+          },
+          "126": {
+            "accuracy": 0.173285,
+            "n": 277
+          },
+          "128": {
+            "accuracy": 0.182879,
+            "n": 257
+          },
+          "130": {
+            "accuracy": 0.15812,
+            "n": 234
+          },
+          "132": {
+            "accuracy": 0.174905,
+            "n": 263
+          },
+          "134": {
+            "accuracy": 0.151943,
+            "n": 283
+          },
+          "136": {
+            "accuracy": 0.151639,
+            "n": 244
+          },
+          "138": {
+            "accuracy": 0.156627,
+            "n": 249
+          },
+          "141": {
+            "accuracy": 0.180812,
+            "n": 271
+          },
+          "143": {
+            "accuracy": 0.203846,
+            "n": 260
+          },
+          "145": {
+            "accuracy": 0.211538,
+            "n": 260
+          },
+          "147": {
+            "accuracy": 0.208835,
+            "n": 249
+          },
+          "149": {
+            "accuracy": 0.214286,
+            "n": 252
+          },
+          "151": {
+            "accuracy": 0.138776,
+            "n": 245
+          },
+          "153": {
+            "accuracy": 0.211382,
+            "n": 246
+          },
+          "155": {
+            "accuracy": 0.222642,
+            "n": 265
+          },
+          "158": {
+            "accuracy": 0.254098,
+            "n": 244
+          },
+          "160": {
+            "accuracy": 0.184426,
+            "n": 244
+          },
+          "162": {
+            "accuracy": 0.217082,
+            "n": 281
+          },
+          "164": {
+            "accuracy": 0.200787,
+            "n": 254
+          },
+          "166": {
+            "accuracy": 0.161017,
+            "n": 236
+          },
+          "168": {
+            "accuracy": 0.229391,
+            "n": 279
+          },
+          "170": {
+            "accuracy": 0.207317,
+            "n": 246
+          },
+          "172": {
+            "accuracy": 0.170455,
+            "n": 264
+          },
+          "175": {
+            "accuracy": 0.247059,
+            "n": 255
+          },
+          "177": {
+            "accuracy": 0.196653,
+            "n": 239
+          },
+          "179": {
+            "accuracy": 0.258964,
+            "n": 251
+          },
+          "181": {
+            "accuracy": 0.263345,
+            "n": 281
+          },
+          "183": {
+            "accuracy": 0.207885,
+            "n": 279
+          },
+          "185": {
+            "accuracy": 0.214844,
+            "n": 256
+          },
+          "187": {
+            "accuracy": 0.224,
+            "n": 250
+          },
+          "189": {
+            "accuracy": 0.240506,
+            "n": 237
+          },
+          "192": {
+            "accuracy": 0.332061,
+            "n": 262
+          },
+          "194": {
+            "accuracy": 0.245211,
+            "n": 261
+          },
+          "196": {
+            "accuracy": 0.309623,
+            "n": 239
+          },
+          "198": {
+            "accuracy": 0.274809,
+            "n": 262
+          },
+          "200": {
+            "accuracy": 0.29572,
+            "n": 257
+          },
+          "202": {
+            "accuracy": 0.292373,
+            "n": 236
+          },
+          "204": {
+            "accuracy": 0.312727,
+            "n": 275
+          },
+          "206": {
+            "accuracy": 0.285156,
+            "n": 256
+          },
+          "209": {
+            "accuracy": 0.435798,
+            "n": 257
+          },
+          "211": {
+            "accuracy": 0.383459,
+            "n": 266
+          },
+          "213": {
+            "accuracy": 0.396078,
+            "n": 255
+          },
+          "215": {
+            "accuracy": 0.428571,
+            "n": 266
+          },
+          "217": {
+            "accuracy": 0.4,
+            "n": 245
+          },
+          "219": {
+            "accuracy": 0.430279,
+            "n": 251
+          },
+          "221": {
+            "accuracy": 0.412955,
+            "n": 247
+          },
+          "223": {
+            "accuracy": 0.429119,
+            "n": 261
+          },
+          "226": {
+            "accuracy": 0.742222,
+            "n": 225
+          },
+          "228": {
+            "accuracy": 0.730159,
+            "n": 252
+          },
+          "230": {
+            "accuracy": 0.772388,
+            "n": 268
+          },
+          "232": {
+            "accuracy": 0.69869,
+            "n": 229
+          },
+          "234": {
+            "accuracy": 0.7375,
+            "n": 240
+          },
+          "236": {
+            "accuracy": 0.778182,
+            "n": 275
+          },
+          "238": {
+            "accuracy": 0.75945,
+            "n": 291
+          },
+          "240": {
+            "accuracy": 0.772388,
+            "n": 268
+          }
+        },
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 16384,
+          "n_hits": 263,
+          "accuracy": 0.016052,
+          "accuracy_ci": [
+            0.014238,
+            0.018093
+          ]
+        },
+        "query_key_distance": {
+          "min": 107,
+          "max": 240,
+          "median": 175,
+          "window": 0,
+          "in_train_distribution": true,
+          "frac_outside_window": 0.0,
+          "n": 16384
+        }
+      }
+    },
+    "full_depth_deployment": {
+      "projfill_s1": {
+        "mode": "full_depth_deployment",
+        "K": 8,
+        "Q": 8,
+        "n_batches": 32,
+        "n": 16384,
+        "n_hits": 5966,
+        "accuracy": 0.364136,
+        "accuracy_ci": [
+          0.3568,
+          0.371535
+        ],
+        "chance": 0.015625,
+        "local_prior": 0.013672,
+        "by_distance": {
+          "107": {
+            "accuracy": 0.133106,
+            "n": 293
+          },
+          "109": {
+            "accuracy": 0.124498,
+            "n": 249
+          },
+          "111": {
+            "accuracy": 0.185654,
+            "n": 237
+          },
+          "113": {
+            "accuracy": 0.139194,
+            "n": 273
+          },
+          "115": {
+            "accuracy": 0.15942,
+            "n": 276
+          },
+          "117": {
+            "accuracy": 0.174888,
+            "n": 223
+          },
+          "119": {
+            "accuracy": 0.136546,
+            "n": 249
+          },
+          "121": {
+            "accuracy": 0.165323,
+            "n": 248
+          },
+          "124": {
+            "accuracy": 0.141079,
+            "n": 241
+          },
+          "126": {
+            "accuracy": 0.198556,
+            "n": 277
+          },
+          "128": {
+            "accuracy": 0.167315,
+            "n": 257
+          },
+          "130": {
+            "accuracy": 0.153846,
+            "n": 234
+          },
+          "132": {
+            "accuracy": 0.148289,
+            "n": 263
+          },
+          "134": {
+            "accuracy": 0.204947,
+            "n": 283
+          },
+          "136": {
+            "accuracy": 0.209016,
+            "n": 244
+          },
+          "138": {
+            "accuracy": 0.196787,
+            "n": 249
+          },
+          "141": {
+            "accuracy": 0.236162,
+            "n": 271
+          },
+          "143": {
+            "accuracy": 0.196154,
+            "n": 260
+          },
+          "145": {
+            "accuracy": 0.192308,
+            "n": 260
+          },
+          "147": {
+            "accuracy": 0.204819,
+            "n": 249
+          },
+          "149": {
+            "accuracy": 0.242063,
+            "n": 252
+          },
+          "151": {
+            "accuracy": 0.179592,
+            "n": 245
+          },
+          "153": {
+            "accuracy": 0.207317,
+            "n": 246
+          },
+          "155": {
+            "accuracy": 0.267925,
+            "n": 265
+          },
+          "158": {
+            "accuracy": 0.25,
+            "n": 244
+          },
+          "160": {
+            "accuracy": 0.209016,
+            "n": 244
+          },
+          "162": {
+            "accuracy": 0.163701,
+            "n": 281
+          },
+          "164": {
+            "accuracy": 0.220472,
+            "n": 254
+          },
+          "166": {
+            "accuracy": 0.233051,
+            "n": 236
+          },
+          "168": {
+            "accuracy": 0.258065,
+            "n": 279
+          },
+          "170": {
+            "accuracy": 0.203252,
+            "n": 246
+          },
+          "172": {
+            "accuracy": 0.299242,
+            "n": 264
+          },
+          "175": {
+            "accuracy": 0.262745,
+            "n": 255
+          },
+          "177": {
+            "accuracy": 0.230126,
+            "n": 239
+          },
+          "179": {
+            "accuracy": 0.262948,
+            "n": 251
+          },
+          "181": {
+            "accuracy": 0.231317,
+            "n": 281
+          },
+          "183": {
+            "accuracy": 0.275986,
+            "n": 279
+          },
+          "185": {
+            "accuracy": 0.261719,
+            "n": 256
+          },
+          "187": {
+            "accuracy": 0.348,
+            "n": 250
+          },
+          "189": {
+            "accuracy": 0.303797,
+            "n": 237
+          },
+          "192": {
+            "accuracy": 0.343511,
+            "n": 262
+          },
+          "194": {
+            "accuracy": 0.321839,
+            "n": 261
+          },
+          "196": {
+            "accuracy": 0.364017,
+            "n": 239
+          },
+          "198": {
+            "accuracy": 0.347328,
+            "n": 262
+          },
+          "200": {
+            "accuracy": 0.365759,
+            "n": 257
+          },
+          "202": {
+            "accuracy": 0.402542,
+            "n": 236
+          },
+          "204": {
+            "accuracy": 0.385455,
+            "n": 275
+          },
+          "206": {
+            "accuracy": 0.425781,
+            "n": 256
+          },
+          "209": {
+            "accuracy": 0.533074,
+            "n": 257
+          },
+          "211": {
+            "accuracy": 0.462406,
+            "n": 266
+          },
+          "213": {
+            "accuracy": 0.505882,
+            "n": 255
+          },
+          "215": {
+            "accuracy": 0.421053,
+            "n": 266
+          },
+          "217": {
+            "accuracy": 0.502041,
+            "n": 245
+          },
+          "219": {
+            "accuracy": 0.521912,
+            "n": 251
+          },
+          "221": {
+            "accuracy": 0.445344,
+            "n": 247
+          },
+          "223": {
+            "accuracy": 0.586207,
+            "n": 261
+          },
+          "226": {
+            "accuracy": 1.0,
+            "n": 225
+          },
+          "228": {
+            "accuracy": 1.0,
+            "n": 252
+          },
+          "230": {
+            "accuracy": 1.0,
+            "n": 268
+          },
+          "232": {
+            "accuracy": 1.0,
+            "n": 229
+          },
+          "234": {
+            "accuracy": 1.0,
+            "n": 240
+          },
+          "236": {
+            "accuracy": 1.0,
+            "n": 275
+          },
+          "238": {
+            "accuracy": 1.0,
+            "n": 291
+          },
+          "240": {
+            "accuracy": 1.0,
+            "n": 268
+          }
+        },
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 16384,
+          "n_hits": 277,
+          "accuracy": 0.016907,
+          "accuracy_ci": [
+            0.015043,
+            0.018997
+          ]
+        },
+        "query_key_distance": {
+          "min": 107,
+          "max": 240,
+          "median": 175,
+          "window": 0,
+          "in_train_distribution": true,
+          "frac_outside_window": 0.0,
+          "n": 16384
+        }
+      },
+      "projfill_carry_s1": {
+        "mode": "full_depth_deployment",
+        "K": 8,
+        "Q": 8,
+        "n_batches": 32,
+        "n": 16384,
+        "n_hits": 4691,
+        "accuracy": 0.286316,
+        "accuracy_ci": [
+          0.279445,
+          0.293287
+        ],
+        "chance": 0.015625,
+        "local_prior": 0.013672,
+        "by_distance": {
+          "107": {
+            "accuracy": 0.133106,
+            "n": 293
+          },
+          "109": {
+            "accuracy": 0.160643,
+            "n": 249
+          },
+          "111": {
+            "accuracy": 0.236287,
+            "n": 237
+          },
+          "113": {
+            "accuracy": 0.150183,
+            "n": 273
+          },
+          "115": {
+            "accuracy": 0.163043,
+            "n": 276
+          },
+          "117": {
+            "accuracy": 0.143498,
+            "n": 223
+          },
+          "119": {
+            "accuracy": 0.144578,
+            "n": 249
+          },
+          "121": {
+            "accuracy": 0.173387,
+            "n": 248
+          },
+          "124": {
+            "accuracy": 0.170124,
+            "n": 241
+          },
+          "126": {
+            "accuracy": 0.191336,
+            "n": 277
+          },
+          "128": {
+            "accuracy": 0.155642,
+            "n": 257
+          },
+          "130": {
+            "accuracy": 0.222222,
+            "n": 234
+          },
+          "132": {
+            "accuracy": 0.186312,
+            "n": 263
+          },
+          "134": {
+            "accuracy": 0.155477,
+            "n": 283
+          },
+          "136": {
+            "accuracy": 0.155738,
+            "n": 244
+          },
+          "138": {
+            "accuracy": 0.188755,
+            "n": 249
+          },
+          "141": {
+            "accuracy": 0.195572,
+            "n": 271
+          },
+          "143": {
+            "accuracy": 0.192308,
+            "n": 260
+          },
+          "145": {
+            "accuracy": 0.192308,
+            "n": 260
+          },
+          "147": {
+            "accuracy": 0.196787,
+            "n": 249
+          },
+          "149": {
+            "accuracy": 0.178571,
+            "n": 252
+          },
+          "151": {
+            "accuracy": 0.15102,
+            "n": 245
+          },
+          "153": {
+            "accuracy": 0.223577,
+            "n": 246
+          },
+          "155": {
+            "accuracy": 0.267925,
+            "n": 265
+          },
+          "158": {
+            "accuracy": 0.27459,
+            "n": 244
+          },
+          "160": {
+            "accuracy": 0.188525,
+            "n": 244
+          },
+          "162": {
+            "accuracy": 0.217082,
+            "n": 281
+          },
+          "164": {
+            "accuracy": 0.232283,
+            "n": 254
+          },
+          "166": {
+            "accuracy": 0.186441,
+            "n": 236
+          },
+          "168": {
+            "accuracy": 0.275986,
+            "n": 279
+          },
+          "170": {
+            "accuracy": 0.268293,
+            "n": 246
+          },
+          "172": {
+            "accuracy": 0.193182,
+            "n": 264
+          },
+          "175": {
+            "accuracy": 0.239216,
+            "n": 255
+          },
+          "177": {
+            "accuracy": 0.246862,
+            "n": 239
+          },
+          "179": {
+            "accuracy": 0.258964,
+            "n": 251
+          },
+          "181": {
+            "accuracy": 0.252669,
+            "n": 281
+          },
+          "183": {
+            "accuracy": 0.247312,
+            "n": 279
+          },
+          "185": {
+            "accuracy": 0.191406,
+            "n": 256
+          },
+          "187": {
+            "accuracy": 0.248,
+            "n": 250
+          },
+          "189": {
+            "accuracy": 0.227848,
+            "n": 237
+          },
+          "192": {
+            "accuracy": 0.305344,
+            "n": 262
+          },
+          "194": {
+            "accuracy": 0.268199,
+            "n": 261
+          },
+          "196": {
+            "accuracy": 0.297071,
+            "n": 239
+          },
+          "198": {
+            "accuracy": 0.316794,
+            "n": 262
+          },
+          "200": {
+            "accuracy": 0.249027,
+            "n": 257
+          },
+          "202": {
+            "accuracy": 0.305085,
+            "n": 236
+          },
+          "204": {
+            "accuracy": 0.301818,
+            "n": 275
+          },
+          "206": {
+            "accuracy": 0.261719,
+            "n": 256
+          },
+          "209": {
+            "accuracy": 0.431907,
+            "n": 257
+          },
+          "211": {
+            "accuracy": 0.37218,
+            "n": 266
+          },
+          "213": {
+            "accuracy": 0.376471,
+            "n": 255
+          },
+          "215": {
+            "accuracy": 0.413534,
+            "n": 266
+          },
+          "217": {
+            "accuracy": 0.4,
+            "n": 245
+          },
+          "219": {
+            "accuracy": 0.386454,
+            "n": 251
+          },
+          "221": {
+            "accuracy": 0.449393,
+            "n": 247
+          },
+          "223": {
+            "accuracy": 0.421456,
+            "n": 261
+          },
+          "226": {
+            "accuracy": 0.586667,
+            "n": 225
+          },
+          "228": {
+            "accuracy": 0.571429,
+            "n": 252
+          },
+          "230": {
+            "accuracy": 0.570896,
+            "n": 268
+          },
+          "232": {
+            "accuracy": 0.572052,
+            "n": 229
+          },
+          "234": {
+            "accuracy": 0.558333,
+            "n": 240
+          },
+          "236": {
+            "accuracy": 0.607273,
+            "n": 275
+          },
+          "238": {
+            "accuracy": 0.61512,
+            "n": 291
+          },
+          "240": {
+            "accuracy": 0.604478,
+            "n": 268
+          }
+        },
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 16384,
+          "n_hits": 285,
+          "accuracy": 0.017395,
+          "accuracy_ci": [
+            0.015503,
+            0.019513
+          ]
+        },
+        "query_key_distance": {
+          "min": 107,
+          "max": 240,
+          "median": 175,
+          "window": 0,
+          "in_train_distribution": true,
+          "frac_outside_window": 0.0,
+          "n": 16384
+        }
+      }
+    }
+  },
+  "train_task_leg_no_last_block": {
+    "in_distribution_random_exit": {
+      "projfill_s1": {
+        "n": 14336,
+        "n_hits": 3579,
+        "accuracy": 0.249651,
+        "accuracy_ci": [
+          0.242634,
+          0.256803
+        ],
+        "dropped": "距离 226–240（= Q=K 最后一块，排除法伪影）"
+      },
+      "projfill_carry_s1": {
+        "n": 14336,
+        "n_hits": 3395,
+        "accuracy": 0.236816,
+        "accuracy_ci": [
+          0.229928,
+          0.243846
+        ],
+        "dropped": "距离 226–240（= Q=K 最后一块，排除法伪影）"
+      }
+    },
+    "full_depth_deployment": {
+      "projfill_s1": {
+        "n": 14336,
+        "n_hits": 3918,
+        "accuracy": 0.273298,
+        "accuracy_ci": [
+          0.266064,
+          0.280653
+        ],
+        "dropped": "距离 226–240（= Q=K 最后一块，排除法伪影）"
+      },
+      "projfill_carry_s1": {
+        "n": 14336,
+        "n_hits": 3489,
+        "accuracy": 0.243373,
+        "accuracy_ci": [
+          0.236418,
+          0.250466
+        ],
+        "dropped": "距离 226–240（= Q=K 最后一块，排除法伪影）"
+      }
+    }
+  },
+  "main_leg_single_query_ood": {
+    "in_distribution_random_exit": {
+      "projfill_s1": {
+        "mode": "in_distribution_random_exit",
+        "K": 8,
+        "n_batches": 32,
+        "n": 2048,
+        "n_hits": 113,
+        "accuracy": 0.055176,
+        "accuracy_ci": [
+          0.046094,
+          0.065923
+        ],
+        "chance": 0.015625,
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 2048,
+          "n_hits": 12,
+          "accuracy": 0.005859,
+          "accuracy_ci": [
+            0.003355,
+            0.010214
+          ]
+        },
+        "distance_range": [
+          241,
+          255
+        ],
+        "in_train_distribution": false
+      },
+      "projfill_carry_s1": {
+        "mode": "in_distribution_random_exit",
+        "K": 8,
+        "n_batches": 32,
+        "n": 2048,
+        "n_hits": 40,
+        "accuracy": 0.019531,
+        "accuracy_ci": [
+          0.014376,
+          0.026486
+        ],
+        "chance": 0.015625,
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 2048,
+          "n_hits": 31,
+          "accuracy": 0.015137,
+          "accuracy_ci": [
+            0.010684,
+            0.021405
+          ]
+        },
+        "distance_range": [
+          241,
+          255
+        ],
+        "in_train_distribution": false
+      }
+    },
+    "full_depth_deployment": {
+      "projfill_s1": {
+        "mode": "full_depth_deployment",
+        "K": 8,
+        "n_batches": 32,
+        "n": 2048,
+        "n_hits": 111,
+        "accuracy": 0.054199,
+        "accuracy_ci": [
+          0.045202,
+          0.064866
+        ],
+        "chance": 0.015625,
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 2048,
+          "n_hits": 13,
+          "accuracy": 0.006348,
+          "accuracy_ci": [
+            0.003713,
+            0.01083
+          ]
+        },
+        "distance_range": [
+          241,
+          255
+        ],
+        "in_train_distribution": false
+      },
+      "projfill_carry_s1": {
+        "mode": "full_depth_deployment",
+        "K": 8,
+        "n_batches": 32,
+        "n": 2048,
+        "n_hits": 61,
+        "accuracy": 0.029785,
+        "accuracy_ci": [
+          0.023257,
+          0.038074
+        ],
+        "chance": 0.015625,
+        "corrupt_source": {
+          "span": [
+            0,
+            16
+          ],
+          "n": 2048,
+          "n_hits": 39,
+          "accuracy": 0.019043,
+          "accuracy_ci": [
+            0.013961,
+            0.025926
+          ]
+        },
+        "distance_range": [
+          241,
+          255
+        ],
+        "in_train_distribution": false
+      }
+    }
+  },
+  "tf_enwik8": {
+    "projfill_s1": {
+      "by_depth": [
+        {
+          "depth": 0,
+          "accept": 0.0485
+        },
+        {
+          "depth": 1,
+          "accept": 0.6582
+        },
+        {
+          "depth": 2,
+          "accept": 0.6717
+        },
+        {
+          "depth": 3,
+          "accept": 0.6763
+        },
+        {
+          "depth": 4,
+          "accept": 0.6888
+        },
+        {
+          "depth": 5,
+          "accept": 0.7053
+        },
+        {
+          "depth": 6,
+          "accept": 0.7299
+        },
+        {
+          "depth": 7,
+          "accept": 0.7612
+        },
+        {
+          "depth": 8,
+          "accept": 0.7892
+        },
+        {
+          "depth": 9,
+          "accept": 0.8113
+        },
+        {
+          "depth": 10,
+          "accept": 0.8573
+        },
+        {
+          "depth": 11,
+          "accept": 0.924
+        }
+      ],
+      "tf4": 0.6888,
+      "tf6": 0.7299,
+      "caliber": "enwik8 teacher-forcing 代理（对齐 100M 0.9726）"
+    },
+    "projfill_carry_s1": {
+      "by_depth": [
+        {
+          "depth": 0,
+          "accept": 0.0597
+        },
+        {
+          "depth": 1,
+          "accept": 0.2004
+        },
+        {
+          "depth": 2,
+          "accept": 0.7404
+        },
+        {
+          "depth": 3,
+          "accept": 0.7705
+        },
+        {
+          "depth": 4,
+          "accept": 0.8212
+        },
+        {
+          "depth": 5,
+          "accept": 0.8345
+        },
+        {
+          "depth": 6,
+          "accept": 0.8612
+        },
+        {
+          "depth": 7,
+          "accept": 0.8778
+        },
+        {
+          "depth": 8,
+          "accept": 0.9028
+        },
+        {
+          "depth": 9,
+          "accept": 0.9244
+        },
+        {
+          "depth": 10,
+          "accept": 0.9482
+        },
+        {
+          "depth": 11,
+          "accept": 0.9722
+        }
+      ],
+      "tf4": 0.8212,
+      "tf6": 0.8612,
+      "caliber": "enwik8 teacher-forcing 代理（对齐 100M 0.9726）"
+    }
+  },
+  "tf_synth_indist": {
+    "projfill_s1": {
+      "depths": [
+        4,
+        6
+      ],
+      "n_tokens": 130560,
+      "accept": {
+        "4": 0.9942,
+        "6": 0.9952
+      },
+      "caliber": "synth-assoc-mqar（训练分布内，真实非 dense 前向的全深度 states），逐位置 argmax 一致率",
+      "n_batches": 16,
+      "batch_size": 32
+    },
+    "projfill_carry_s1": {
+      "depths": [
+        4,
+        6
+      ],
+      "n_tokens": 130560,
+      "accept": {
+        "4": 0.9953,
+        "6": 0.9972
+      },
+      "caliber": "synth-assoc-mqar（训练分布内，真实非 dense 前向的全深度 states），逐位置 argmax 一致率",
+      "n_batches": 16,
+      "batch_size": 32
+    }
+  },
+  "bpc_leg": {
+    "projfill_s1": {
+      "bpc": 15.880892,
+      "n_batches": 16,
+      "batch_size": 16
+    },
+    "projfill_carry_s1": {
+      "bpc": 17.387679,
+      "n_batches": 16,
+      "batch_size": 16
+    }
+  },
+  "bpc_damage_vs_base": {
+    "projfill_s1": 0.0,
+    "projfill_carry_s1": 1.506787
+  },
+  "increments": {
+    "recall_random_exit": {
+      "carry_effect": -3.2593,
+      "net_vs_base": -3.2593
+    },
+    "recall_random_exit_no_last_block": {
+      "carry_effect": -1.2835,
+      "net_vs_base": -1.2835
+    },
+    "recall_full_depth": {
+      "carry_effect": -7.782,
+      "net_vs_base": -7.782
+    },
+    "single_query_ood_random_exit": {
+      "carry_effect": -3.5645,
+      "net_vs_base": -3.5645
+    },
+    "single_query_ood_full_depth": {
+      "carry_effect": -2.4414,
+      "net_vs_base": -2.4414
+    },
+    "tf4_synth_indist": {
+      "carry_effect": 0.11,
+      "net_vs_base": 0.11
+    },
+    "tf4_enwik8": {
+      "carry_effect": 13.24,
+      "net_vs_base": 13.24
+    },
+    "bpc": {
+      "carry_effect": 1.506787,
+      "net_vs_base": 1.506787
+    },
+    "pairwise_recall_random_exit": {
+      "p_a": 0.333618,
+      "p_b": 0.301025,
+      "delta_pp": -3.259,
+      "ci_a": [
+        0.326438,
+        0.340876
+      ],
+      "ci_b": [
+        0.294049,
+        0.308095
+      ],
+      "ci_overlap": false,
+      "diff_ci_95": [
+        -0.042666,
+        -0.02252
+      ],
+      "z": -6.338,
+      "p_value": 0.0
+    },
+    "pairwise_recall_full_depth": {
+      "p_a": 0.364136,
+      "p_b": 0.286316,
+      "delta_pp": -7.782,
+      "ci_a": [
+        0.3568,
+        0.371535
+      ],
+      "ci_b": [
+        0.279445,
+        0.293287
+      ],
+      "ci_overlap": false,
+      "diff_ci_95": [
+        -0.087929,
+        -0.06771
+      ],
+      "z": -15.035,
+      "p_value": 0.0
+    },
+    "pairwise_ood_full_depth": {
+      "p_a": 0.054199,
+      "p_b": 0.029785,
+      "delta_pp": -2.441,
+      "ci_a": [
+        0.045202,
+        0.064866
+      ],
+      "ci_b": [
+        0.023257,
+        0.038074
+      ],
+      "ci_overlap": false,
+      "diff_ci_95": [
+        -0.036676,
+        -0.012152
+      ],
+      "z": -3.895,
+      "p_value": 9.815e-05
+    }
+  },
+  "destroy_source_validity": {
+    "in_distribution_random_exit": {
+      "projfill_s1": {
+        "corrupt_accuracy": 0.015869,
+        "corrupt_ci": [
+          0.014066,
+          0.017899
+        ],
+        "chance": 0.015625,
+        "valid": true,
+        "rule": "毁源后 CI 下界 > 4×chance ⇒ 该臂读数作废"
+      },
+      "projfill_carry_s1": {
+        "corrupt_accuracy": 0.016052,
+        "corrupt_ci": [
+          0.014238,
+          0.018093
+        ],
+        "chance": 0.015625,
+        "valid": true,
+        "rule": "毁源后 CI 下界 > 4×chance ⇒ 该臂读数作废"
+      }
+    },
+    "full_depth_deployment": {
+      "projfill_s1": {
+        "corrupt_accuracy": 0.016907,
+        "corrupt_ci": [
+          0.015043,
+          0.018997
+        ],
+        "chance": 0.015625,
+        "valid": true,
+        "rule": "毁源后 CI 下界 > 4×chance ⇒ 该臂读数作废"
+      },
+      "projfill_carry_s1": {
+        "corrupt_accuracy": 0.017395,
+        "corrupt_ci": [
+          0.015503,
+          0.019513
+        ],
+        "chance": 0.015625,
+        "valid": true,
+        "rule": "毁源后 CI 下界 > 4×chance ⇒ 该臂读数作废"
+      }
+    }
+  },
+  "train_activity": {
+    "projfill_s1": {
+      "n_log_lines": 31,
+      "n_rows_step_multiple_of_200": 30,
+      "final_step": 5999,
+      "final_loss": 0.3479,
+      "final_synth_answer_ce": 2.5615,
+      "synth_chance_ce": 4.1589,
+      "answer_ce_slope_nats_per_1k_lastquarter": -0.18578,
+      "last_attn_carry": null,
+      "attn_carry_series_present": 0,
+      "n_exit_ce": 13
+    },
+    "projfill_carry_s1": {
+      "n_log_lines": 31,
+      "n_rows_step_multiple_of_200": 30,
+      "final_step": 5999,
+      "final_loss": 0.3662,
+      "final_synth_answer_ce": 3.1789,
+      "synth_chance_ce": 4.1589,
+      "answer_ce_slope_nats_per_1k_lastquarter": -0.22087,
+      "last_attn_carry": {
+        "read_scale_absmean": 0.046497,
+        "read_share": 0.402539,
+        "mem_write_to_resid_ratio": 0.475924,
+        "state_fro": 13.676826,
+        "beta_mean": 0.471368,
+        "write_rel": 0.593427,
+        "read_norm": 19.965851,
+        "n_layer_samples": 72000,
+        "rule": "delta",
+        "carry_chunk": 64
+      },
+      "attn_carry_series_present": 30,
+      "n_exit_ce": 13
+    }
+  },
+  "exit_asset_holds": {
+    "primary_caliber": "synth_assoc-mqar_in_distribution",
+    "tf4_indist_base": 0.9942,
+    "tf4_indist_carry": 0.9953,
+    "delta_pp_indist": 0.11,
+    "tf4_enwik8_base": 0.6888,
+    "tf4_enwik8_carry": 0.8212,
+    "delta_pp_enwik8": 13.24,
+    "reproduces_100m_magnitude": true,
+    "holds_indist": true,
+    "holds_enwik8_proxy": false,
+    "holds": true,
+    "rule": "主口径 = 训练分布内（synth）tf@4：两臂均 ≥0.90 ⇒ 100M 量级（0.9726）在本尺度/步数下复现；|Δ| ≤ 1.4pp ⇒ 「出口资产在 carry 存在时保持」。enwik8 口径是**跨分布代理**（本线模型在合成任务上训练），单独报、不作主口径。"
+  },
+  "cross_seed": {
+    "n_seeds": 2,
+    "seeds": [
+      0,
+      1
+    ],
+    "seed0_source": "axes/1-time/1.1.4.1-explicit-memory/experiments/2629-carry-ragged-projfill/results.json",
+    "seed0_source_sha256": "7f4681bcdde14f7d67ea9d5f5d9300f6acc2ca70e529813da5cabd9178a4c3a5",
+    "seed1_source": "本实验 results.json（同配置 seed=1）",
+    "legs": {
+      "recall_indist_random_exit": {
+        "0": {
+          "effect_pp": 0.36,
+          "diff_ci_lo": -0.6563,
+          "diff_ci_hi": 1.3766,
+          "p_value": 0.48744347,
+          "ci_overlap": true,
+          "base_hits": 5340,
+          "base_n": 16384,
+          "target_hits": 5399,
+          "target_n": 16384
+        },
+        "1": {
+          "effect_pp": -3.259,
+          "diff_ci_lo": -4.2666,
+          "diff_ci_hi": -2.252,
+          "p_value": 0.0,
+          "ci_overlap": false,
+          "base_hits": 5466,
+          "base_n": 16384,
+          "target_hits": 4932,
+          "target_n": 16384
+        }
+      },
+      "recall_indist_random_exit_no_last_block": {
+        "0": {
+          "effect_pp": -0.391,
+          "diff_ci_lo": -1.3889,
+          "diff_ci_hi": 0.6077,
+          "p_value": 0.44312499,
+          "ci_overlap": true,
+          "base_hits": 3568,
+          "base_n": 14336,
+          "target_hits": 3512,
+          "target_n": 14336
+        },
+        "1": {
+          "effect_pp": -1.283,
+          "diff_ci_lo": -2.2766,
+          "diff_ci_hi": -0.2904,
+          "p_value": 0.01131647,
+          "ci_overlap": true,
+          "base_hits": 3579,
+          "base_n": 14336,
+          "target_hits": 3395,
+          "target_n": 14336
+        }
+      },
+      "recall_full_depth_deployment": {
+        "0": {
+          "effect_pp": 0.494,
+          "diff_ci_lo": -0.542,
+          "diff_ci_hi": 1.5308,
+          "p_value": 0.34982428,
+          "ci_overlap": true,
+          "base_hits": 5781,
+          "base_n": 16384,
+          "target_hits": 5862,
+          "target_n": 16384
+        },
+        "1": {
+          "effect_pp": -7.782,
+          "diff_ci_lo": -8.7929,
+          "diff_ci_hi": -6.771000000000001,
+          "p_value": 0.0,
+          "ci_overlap": false,
+          "base_hits": 5966,
+          "base_n": 16384,
+          "target_hits": 4691,
+          "target_n": 16384
+        }
+      },
+      "ood_single_query_random_exit": {
+        "0": {
+          "effect_pp": 5.908,
+          "diff_ci_lo": 4.5011,
+          "diff_ci_hi": 7.3153,
+          "p_value": 0.0,
+          "ci_overlap": false,
+          "base_hits": 56,
+          "base_n": 2048,
+          "target_hits": 177,
+          "target_n": 2048
+        },
+        "1": {
+          "effect_pp": -3.564,
+          "diff_ci_lo": -4.7208,
+          "diff_ci_hi": -2.4081,
+          "p_value": 0.0,
+          "ci_overlap": false,
+          "base_hits": 113,
+          "base_n": 2048,
+          "target_hits": 40,
+          "target_n": 2048
+        }
+      },
+      "ood_single_query_full_depth": {
+        "0": {
+          "effect_pp": 6.055,
+          "diff_ci_lo": 4.6686,
+          "diff_ci_hi": 7.4408,
+          "p_value": 0.0,
+          "ci_overlap": false,
+          "base_hits": 51,
+          "base_n": 2048,
+          "target_hits": 175,
+          "target_n": 2048
+        },
+        "1": {
+          "effect_pp": -2.441,
+          "diff_ci_lo": -3.6676,
+          "diff_ci_hi": -1.2152,
+          "p_value": 9.815e-05,
+          "ci_overlap": false,
+          "base_hits": 111,
+          "base_n": 2048,
+          "target_hits": 61,
+          "target_n": 2048
+        }
+      },
+      "tf4_synth_indist": {
+        "0": {
+          "effect_pp": -0.98,
+          "diff_ci_lo": -1.0491000000000001,
+          "diff_ci_hi": -0.9101,
+          "p_value": 0.0,
+          "ci_overlap": false,
+          "base_hits": 130116,
+          "base_n": 130560,
+          "target_hits": 128837,
+          "target_n": 130560
+        },
+        "1": {
+          "effect_pp": 0.11,
+          "diff_ci_lo": 0.0541,
+          "diff_ci_hi": 0.165,
+          "p_value": 0.00010785,
+          "ci_overlap": false,
+          "base_hits": 129803,
+          "base_n": 130560,
+          "target_hits": 129946,
+          "target_n": 130560
+        }
+      },
+      "tf4_enwik8": {
+        "0": {
+          "effect_pp": -4.71,
+          "diff_ci_lo": -5.014600000000001,
+          "diff_ci_hi": -4.4064,
+          "p_value": 0.0,
+          "ci_overlap": false,
+          "base_hits": 61161,
+          "base_n": 65280,
+          "target_hits": 58086,
+          "target_n": 65280
+        },
+        "1": {
+          "effect_pp": 13.24,
+          "diff_ci_lo": 12.778900000000002,
+          "diff_ci_hi": 13.700899999999999,
+          "p_value": 0.0,
+          "ci_overlap": false,
+          "base_hits": 44965,
+          "base_n": 65280,
+          "target_hits": 53608,
+          "target_n": 65280
+        }
+      }
+    },
+    "criterion_1_per_seed_effects": {
+      "recall_indist_random_exit": {
+        "0": 0.36,
+        "1": -3.259
+      },
+      "recall_indist_random_exit_no_last_block": {
+        "0": -0.391,
+        "1": -1.283
+      },
+      "recall_full_depth_deployment": {
+        "0": 0.494,
+        "1": -7.782
+      },
+      "ood_single_query_random_exit": {
+        "0": 5.908,
+        "1": -3.564
+      },
+      "ood_single_query_full_depth": {
+        "0": 6.055,
+        "1": -2.441
+      },
+      "tf4_synth_indist": {
+        "0": -0.98,
+        "1": 0.11
+      },
+      "tf4_enwik8": {
+        "0": -4.71,
+        "1": 13.24
+      }
+    },
+    "criterion_1_range_pp": {
+      "recall_indist_random_exit": 3.619,
+      "recall_indist_random_exit_no_last_block": 0.892,
+      "recall_full_depth_deployment": 8.276,
+      "ood_single_query_random_exit": 9.472,
+      "ood_single_query_full_depth": 8.496,
+      "tf4_synth_indist": 1.09,
+      "tf4_enwik8": 17.95
+    },
+    "criterion_2_ood_robust_full_depth": {
+      "n_seeds": 2,
+      "seeds": [
+        0,
+        1
+      ],
+      "effects_pp": [
+        6.055,
+        -2.441
+      ],
+      "same_sign_positive": false,
+      "ci_lower_positive_each": false,
+      "range_pp": 8.496,
+      "mean_pp": 1.807,
+      "robust": false,
+      "evidence_type": "statistical_test: per-seed two_proportion 95% diff CI lower bound > 0 + same-sign-positive across seeds",
+      "no_extrapolation": "仅越界腿；不外推到分布内召回（§17.18 / W2 判据②）"
+    },
+    "criterion_2_ood_robust_random_exit": {
+      "n_seeds": 2,
+      "seeds": [
+        0,
+        1
+      ],
+      "effects_pp": [
+        5.908,
+        -3.564
+      ],
+      "same_sign_positive": false,
+      "ci_lower_positive_each": false,
+      "range_pp": 9.472,
+      "mean_pp": 1.172,
+      "robust": false,
+      "evidence_type": "statistical_test: per-seed two_proportion 95% diff CI lower bound > 0 + same-sign-positive across seeds",
+      "no_extrapolation": "仅越界腿；不外推到分布内召回（§17.18 / W2 判据②）"
+    },
+    "criterion_3_indist_redundancy_stable": {
+      "n_seeds": 2,
+      "seeds": [
+        0,
+        1
+      ],
+      "effects_pp": [
+        0.36,
+        -3.259
+      ],
+      "band_pp": 1.4,
+      "all_within_band": false,
+      "all_ci_contain_zero": false,
+      "range_pp": 3.619,
+      "mean_pp": -1.45,
+      "stable": false,
+      "evidence_type": "magnitude: |carry effect| <= variance band 1.4pp in every seed (SCHEMA §12 / docs/methodology.md: Δ<0.014 不可排序)",
+      "no_extrapolation": "仅两点（seed=0/1）/ 13M / 6k 快照；§17.11 禁外推"
+    },
+    "criterion_3_no_last_block": {
+      "n_seeds": 2,
+      "seeds": [
+        0,
+        1
+      ],
+      "effects_pp": [
+        -0.391,
+        -1.283
+      ],
+      "band_pp": 1.4,
+      "all_within_band": true,
+      "all_ci_contain_zero": false,
+      "range_pp": 0.892,
+      "mean_pp": -0.837,
+      "stable": true,
+      "evidence_type": "magnitude: |carry effect| <= variance band 1.4pp in every seed (SCHEMA §12 / docs/methodology.md: Δ<0.014 不可排序)",
+      "no_extrapolation": "仅两点（seed=0/1）/ 13M / 6k 快照；§17.11 禁外推"
+    },
+    "criterion_3_full_depth": {
+      "n_seeds": 2,
+      "seeds": [
+        0,
+        1
+      ],
+      "effects_pp": [
+        0.494,
+        -7.782
+      ],
+      "band_pp": 1.4,
+      "all_within_band": false,
+      "all_ci_contain_zero": false,
+      "range_pp": 8.276,
+      "mean_pp": -3.644,
+      "stable": false,
+      "evidence_type": "magnitude: |carry effect| <= variance band 1.4pp in every seed (SCHEMA §12 / docs/methodology.md: Δ<0.014 不可排序)",
+      "no_extrapolation": "仅两点（seed=0/1）/ 13M / 6k 快照；§17.11 禁外推"
+    },
+    "no_extrapolation": "两点（seed=0/1）/ 13M / 6k 快照；§17.11 禁外推——不推断其它 seed、其它尺度、其它退出模式、或 window×carry 格"
+  },
+  "cost": {
+    "wall_minutes_total_eval": 0.466,
+    "peak_gpu_mem_mb": 786.6,
+    "free_mb_before": 17675,
+    "free_mb_after": 16667,
+    "pure_inference": true
+  },
+  "provenance": {
+    "run_log": [
+      {
+        "t": 0.18,
+        "msg": "CPU 能力面自检（两臂可建 / 块类 / 主干逐位一致，复用 2629 语义层）"
+      },
+      {
+        "t": 0.2,
+        "msg": "  combo_buildable=True trunk_bit_identical=True param_delta=4240"
+      },
+      {
+        "t": 0.2,
+        "msg": "加载 seed=1 两臂（sha256 断言）"
+      },
+      {
+        "t": 0.78,
+        "msg": "  projfill_s1          d2539fb43a550bc0… block=Block params=14326272"
+      },
+      {
+        "t": 1.32,
+        "msg": "  projfill_carry_s1    e52d2569b801345b… block=CarryChannelBlock params=14590568"
+      },
+      {
+        "t": 1.32,
+        "msg": "判据①：多查询 assoc-mqar 召回 —— in_distribution_random_exit + full_depth（seed=1）"
+      },
+      {
+        "t": 4.22,
+        "msg": "  [in_distribution_random_exit ] projfill_s1          acc=0.3336 CI=[0.326438, 0.340876] chance=0.0156 lp=0.0137 corrupt=0.0159"
+      },
+      {
+        "t": 7.53,
+        "msg": "  [in_distribution_random_exit ] projfill_carry_s1    acc=0.3010 CI=[0.294049, 0.308095] chance=0.0156 lp=0.0137 corrupt=0.0161"
+      },
+      {
+        "t": 10.1,
+        "msg": "  [full_depth_deployment       ] projfill_s1          acc=0.3641 CI=[0.3568, 0.371535] chance=0.0156 lp=0.0137 corrupt=0.0169"
+      },
+      {
+        "t": 13.31,
+        "msg": "  [full_depth_deployment       ] projfill_carry_s1    acc=0.2863 CI=[0.279445, 0.293287] chance=0.0156 lp=0.0137 corrupt=0.0174"
+      },
+      {
+        "t": 13.31,
+        "msg": "越界腿：单查询关联回忆（距离 241–255 = 训练分布外）—— 外推参照、非判据"
+      },
+      {
+        "t": 15.97,
+        "msg": "  [in_distribution_random_exit ] projfill_s1          acc=0.0552 corrupt=0.0059"
+      },
+      {
+        "t": 19.26,
+        "msg": "  [in_distribution_random_exit ] projfill_carry_s1    acc=0.0195 corrupt=0.0151"
+      },
+      {
+        "t": 21.95,
+        "msg": "  [full_depth_deployment       ] projfill_s1          acc=0.0542 corrupt=0.0063"
+      },
+      {
+        "t": 25.23,
+        "msg": "  [full_depth_deployment       ] projfill_carry_s1    acc=0.0298 corrupt=0.0190"
+      },
+      {
+        "t": 25.23,
+        "msg": "判据②：出口资产 tf@4 / tf@6（enwik8 口径 + synth 训练分布内口径）"
+      },
+      {
+        "t": 26.08,
+        "msg": "  projfill_s1          tf@4(enwik8)=0.6888 tf@6(enwik8)=0.7299 tf@4(synth)=0.9942 tf@6(synth)=0.9952"
+      },
+      {
+        "t": 27.16,
+        "msg": "  projfill_carry_s1    tf@4(enwik8)=0.8212 tf@6(enwik8)=0.8612 tf@4(synth)=0.9953 tf@6(synth)=0.9972"
+      },
+      {
+        "t": 27.16,
+        "msg": "clean bpc（enwik8 全因果；跨分布 + 合成训练 ⇒ 非退化锚，不作召回判据）"
+      },
+      {
+        "t": 27.43,
+        "msg": "  projfill_s1          clean bpc=15.880892"
+      },
+      {
+        "t": 27.96,
+        "msg": "  projfill_carry_s1    clean bpc=17.387679"
+      },
+      {
+        "t": 27.96,
+        "msg": "  enwik8 vocab=206（模型 vocab=206）"
+      },
+      {
+        "t": 27.96,
+        "msg": "  毁源对照有效（CI 下界 ≤ 4×chance）：RAND={'projfill_s1': True, 'projfill_carry_s1': True}"
+      },
+      {
+        "t": 27.96,
+        "msg": "收敛门禁（§17.15，答案行 CE 末窗斜率 nats/1k）： projfill_s1=-0.18578, projfill_carry_s1=-0.22087"
+      },
+      {
+        "t": 27.96,
+        "msg": "  出口资产 tf@4（主口径 in-dist）: base=0.9942 carry=0.9953 ⇒ holds=True；enwik8 代理: base=0.6888 carry=0.8212 (Δ=+13.24pp)"
+      },
+      {
+        "t": 27.96,
+        "msg": "W2 判据①②③：与 2629（seed=0）合并为 n=2"
+      },
+      {
+        "t": 27.97,
+        "msg": "  分布内召回（随机退出）每 seed 效应 pp：{'0': 0.36, '1': -3.259}，极差 3.619pp，冗余稳定=False"
+      },
+      {
+        "t": 27.97,
+        "msg": "  越界腿（全深度）每 seed 效应 pp：{'0': 6.055, '1': -2.441}，极差 8.496pp，稳健=False"
+      }
+    ]
+  }
+}

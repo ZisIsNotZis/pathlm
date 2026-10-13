@@ -1,0 +1,850 @@
+{
+  "contract": "axes/1-time/1.1.1-hard-window/experiments/2629-longT-2048-matched/README.md",
+  "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。",
+  "config": {
+    "contract": "axes/1-time/1.1.1-hard-window/experiments/2629-longT-2048-matched/README.md",
+    "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。",
+    "intervention": {
+      "factor": "**唯一变量 = 训练步数**（3000 → 6000，与 2626 的 T=1024 点matched-step）；两臂（full vs T/2 = 1024）仍全部套 qk-normfrom512",
+      "arms": {
+        "full-2048-clean": "T=2048 · 全因果 · 6000 步",
+        "win1024-2048-clean": "T=2048 · 窗口 1024（50%）· 6000 步"
+      },
+      "mask": "keep[i,j] = (j<=i) & ((i-j) < train_window)；对角恒开；实现 = pathlm.depth_ar.window_anchor_keep_mask（训练/评测共用）",
+      "qk_norm": "长度条件档：seq_len > 512 时逐头 L2 归一 q/k（乘 √d_h，零新增参数）；本实验 seq_len=2048 > 512 ⇒ 两臂各 8 个 hook"
+    },
+    "model": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "mlp_mult": 4,
+      "dense": true,
+      "topology": "sequential"
+    },
+    "data": {
+      "name": "enwik8_full",
+      "path": "data/enwik8_full.npz",
+      "split": "前 90M train / 末 10M eval",
+      "vocab_size": 206
+    },
+    "token_budget": 98304000,
+    "batch_size": 8,
+    "lr": 0.001,
+    "seed": 0,
+    "steps": 6000,
+    "arms": [
+      {
+        "arm": "full-2048-clean",
+        "seq_len": 2048,
+        "window": 0,
+        "steps": 6000,
+        "tokens": 98304000,
+        "fields": {
+          "d_model": 256,
+          "n_layers": 8,
+          "n_heads": 8,
+          "mlp_mult": 4,
+          "dense": true,
+          "topology": "sequential",
+          "batch_size": 8,
+          "lr": 0.001,
+          "seed": 0,
+          "steps": 6000,
+          "exit_mode": "uniform",
+          "seq_len": 2048,
+          "train_window": 0,
+          "qk_norm": "qk-normfrom512",
+          "qk_norm_min_t": 512,
+          "data": "enwik8 train 90M / eval 10M",
+          "vocab_size": 206
+        }
+      },
+      {
+        "arm": "win1024-2048-clean",
+        "seq_len": 2048,
+        "window": 1024,
+        "steps": 6000,
+        "tokens": 98304000,
+        "fields": {
+          "d_model": 256,
+          "n_layers": 8,
+          "n_heads": 8,
+          "mlp_mult": 4,
+          "dense": true,
+          "topology": "sequential",
+          "batch_size": 8,
+          "lr": 0.001,
+          "seed": 0,
+          "steps": 6000,
+          "exit_mode": "uniform",
+          "seq_len": 2048,
+          "train_window": 1024,
+          "qk_norm": "qk-normfrom512",
+          "qk_norm_min_t": 512,
+          "data": "enwik8 train 90M / eval 10M",
+          "vocab_size": 206
+        }
+      }
+    ],
+    "checkpoints": {
+      "full-2048-clean": {
+        "path": "runs/full-2048-clean/model.pt",
+        "sha256": "5e0006a3f4e01af4b6ca35d2bcc7379fa3bee230e49760d4582441a0fc2072da",
+        "size_bytes": 29717163,
+        "sha256_verified": true
+      },
+      "win1024-2048-clean": {
+        "path": "runs/win1024-2048-clean/model.pt",
+        "sha256": "68f14bc4eeed04c46b3186b7a9dc8b85320f94eb6f75d375e2ebdd22fa576f62",
+        "size_bytes": 29717163,
+        "sha256_verified": true
+      }
+    },
+    "code_fingerprints": {
+      "pathlm/depth_ar.py": "45f946793835f2afadf3a10f727b02ee879682ef6024b23fa179d3351c28c585",
+      "pathlm/model.py": "4dda7c08c4b5d564c5f066a0e8c2a52950f88498a4959ccdf68762430ab8d77f",
+      "train_depth_ar.py": "2d1863bbc4403e026d12b597d98a1da2b85f3606110073f2117a7dd1db2a1f35",
+      "tools/evalkit/longrange_tasks.py": "4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b",
+      "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20",
+      "note": "本实验未改这些文件（只读）；qk-norm hook 从 2625 的 stability_driver.py 只读引用（单一实现来源）"
+    }
+  },
+  "arms": {
+    "full-2048-clean": {
+      "arm": "full-2048-clean",
+      "run_dir": "runs/full-2048-clean",
+      "wall_min": 4.34,
+      "seconds_per_step": 0.04341,
+      "peak_child_mem_gb_nvidia_smi": 2.53,
+      "peak_torch_gb": 1.906,
+      "params": 7421440,
+      "tokens": 98304000,
+      "patch": {
+        "candidate": "qk-normfrom512",
+        "attn_scale_mode": "qk-norm",
+        "tau": 1.0,
+        "min_t": 512,
+        "n_qkv_hooks": 8,
+        "active": true,
+        "params_added": 0
+      },
+      "gnorm_monitor": {
+        "gnorm_max": 7.22,
+        "gnorm_mean": 0.586,
+        "grad_skips": 0,
+        "attn_sparse_mean": null,
+        "attn_sparse_layer_samples": 0,
+        "attn_linear_mean": null,
+        "attn_linear_layer_samples": 0,
+        "attn_carry_mean": null,
+        "attn_carry_layer_samples": 0,
+        "attn_carry_layer_stats": null,
+        "attn_carry_scan_mean": null,
+        "recon_window": 0,
+        "recon_lambda": 0.0,
+        "recon_mean": null,
+        "synth_answer_ce_mean": null,
+        "synth_answer_ce_n_steps": 0,
+        "synth_chance_ce": null,
+        "window_mask": null,
+        "window_mask_probe": null,
+        "kv_heads": null,
+        "kv_heads_n_logged_lines": 0
+      },
+      "sha256_model_pt": "5e0006a3f4e01af4b6ca35d2bcc7379fa3bee230e49760d4582441a0fc2072da",
+      "size_bytes": 29717163,
+      "steps": 6000,
+      "free_before_mb": 19406.0,
+      "free_after_mb": 19020.0,
+      "battery": {
+        "arm": "full-2048-clean",
+        "seq_len": 2048,
+        "window": 0,
+        "bpc_native": 1.705365,
+        "bpc_release": 1.705365,
+        "n_batches": 20,
+        "batch_size": 16,
+        "window_seed": 2,
+        "native_mask": "release(causal)",
+        "native_mask_liveness": null
+      },
+      "selfcheck": {
+        "max_abs_logit_diff_released_vs_identity_mask": 0.0,
+        "n_batches": 4,
+        "batch_size": 8
+      }
+    },
+    "win1024-2048-clean": {
+      "arm": "win1024-2048-clean",
+      "run_dir": "runs/win1024-2048-clean",
+      "wall_min": 5.34,
+      "seconds_per_step": 0.05342,
+      "peak_child_mem_gb_nvidia_smi": 6.6,
+      "peak_torch_gb": 5.91,
+      "params": 7421440,
+      "tokens": 98304000,
+      "patch": {
+        "candidate": "qk-normfrom512",
+        "attn_scale_mode": "qk-norm",
+        "tau": 1.0,
+        "min_t": 512,
+        "n_qkv_hooks": 8,
+        "active": true,
+        "params_added": 0
+      },
+      "gnorm_monitor": {
+        "gnorm_max": 7.26,
+        "gnorm_mean": 0.557,
+        "grad_skips": 0,
+        "attn_sparse_mean": null,
+        "attn_sparse_layer_samples": 0,
+        "attn_linear_mean": null,
+        "attn_linear_layer_samples": 0,
+        "attn_carry_mean": null,
+        "attn_carry_layer_samples": 0,
+        "attn_carry_layer_stats": null,
+        "attn_carry_scan_mean": null,
+        "recon_window": 0,
+        "recon_lambda": 0.0,
+        "recon_mean": null,
+        "synth_answer_ce_mean": null,
+        "synth_answer_ce_n_steps": 0,
+        "synth_chance_ce": null,
+        "window_mask": {
+          "train_window": 1024,
+          "train_anchors": 0,
+          "params_added": 0,
+          "n_visible_pairs": 1573376,
+          "causal_pairs": 2098176,
+          "visible_frac": 0.749878,
+          "dropped_frac": 0.250122,
+          "alive": true,
+          "max_abs_logit_diff_masked_vs_open": 0.155103
+        },
+        "window_mask_probe": {
+          "max_abs_logit_diff_masked_vs_open": 0.155103,
+          "alive": true
+        },
+        "kv_heads": null,
+        "kv_heads_n_logged_lines": 0
+      },
+      "sha256_model_pt": "68f14bc4eeed04c46b3186b7a9dc8b85320f94eb6f75d375e2ebdd22fa576f62",
+      "size_bytes": 29717163,
+      "steps": 6000,
+      "free_before_mb": 19442.0,
+      "free_after_mb": 19442.0,
+      "battery": {
+        "arm": "win1024-2048-clean",
+        "seq_len": 2048,
+        "window": 1024,
+        "bpc_native": 1.701179,
+        "bpc_release": 2.371519,
+        "n_batches": 20,
+        "batch_size": 16,
+        "window_seed": 2,
+        "native_mask": "window",
+        "native_mask_liveness": {
+          "train_window": 1024,
+          "train_anchors": 0,
+          "params_added": 0,
+          "n_visible_pairs": 1573376,
+          "causal_pairs": 2098176,
+          "visible_frac": 0.749878,
+          "dropped_frac": 0.250122,
+          "alive": true
+        }
+      },
+      "selfcheck": {
+        "max_abs_logit_diff_released_vs_identity_mask": 28.22982407,
+        "n_batches": 4,
+        "batch_size": 8
+      }
+    }
+  },
+  "criteria": {
+    "criterion_1_quality_matched": {
+      "delta_convention": "Δ = bpc_full − bpc_window（正 = 窗口更好）",
+      "this_point_native": [
+        {
+          "T": 2048,
+          "window": 1024,
+          "steps": 6000,
+          "delta_native": 0.004186,
+          "band_class": "不亏（噪声带内）",
+          "bpc_full": 1.705365,
+          "bpc_window": 1.701179
+        }
+      ],
+      "this_point_release": [
+        {
+          "T": 2048,
+          "window": 1024,
+          "steps": 6000,
+          "delta_release": -0.666154,
+          "band_class": "窗口更差（越界）"
+        }
+      ],
+      "two_point_2048_native": [
+        {
+          "T": 2048,
+          "steps": 3000,
+          "delta_native": 0.004361,
+          "band_class": "不亏（噪声带内）",
+          "bpc_full": 2.339413,
+          "bpc_window": 2.335052,
+          "full_final_logged_loss": 1.5423,
+          "full_gnorm_max": 7.22,
+          "source": "2628-longT-2048/results.json"
+        },
+        {
+          "T": 2048,
+          "steps": 6000,
+          "delta_native": 0.004186,
+          "band_class": "不亏（噪声带内）",
+          "bpc_full": 1.705365,
+          "bpc_window": 1.701179,
+          "full_final_logged_loss": 1.1221,
+          "full_gnorm_max": 7.22,
+          "source": "本实验 results.json"
+        }
+      ],
+      "two_point_2048_shape": "Δ=+0.004361@3000步（不亏（噪声带内）） → Δ=+0.004186@6000步（不亏（噪声带内））",
+      "matched_step_native": {
+        "note": "T=1024 与 T=2048 同为 **6000 步**（matched-step）；但 token 预算不同（49.152M vs 98.304M）⇒ 只作同 step 对照，禁外推（§17.11）。",
+        "T1024_steps6000": {
+          "delta_native": 0.009264,
+          "band_class": "不亏（噪声带内）",
+          "bpc_full": 1.712069,
+          "bpc_window": 1.702805,
+          "full_final_logged_loss": 1.2146,
+          "source": "2626-longT-clean"
+        },
+        "T2048_steps6000": {
+          "delta_native": 0.004186,
+          "band_class": "不亏（噪声带内）",
+          "bpc_full": 1.705365,
+          "bpc_window": 1.701179,
+          "full_final_logged_loss": 1.1221,
+          "source": "本实验 results.json"
+        }
+      },
+      "four_points_native_mixed_calibre": [
+        {
+          "T": 256,
+          "window": 128,
+          "delta_native": -0.015752,
+          "band_class": "窗口更差（越界）",
+          "bpc_full": 1.631129,
+          "bpc_window": 1.646881
+        },
+        {
+          "T": 512,
+          "window": 256,
+          "delta_native": -0.015101,
+          "band_class": "窗口更差（越界）",
+          "bpc_full": 1.639843,
+          "bpc_window": 1.654944
+        },
+        {
+          "T": 1024,
+          "window": 512,
+          "delta_native": 0.009264,
+          "band_class": "不亏（噪声带内）",
+          "bpc_full": 1.712069,
+          "bpc_window": 1.702805
+        },
+        {
+          "T": 2048,
+          "window": 1024,
+          "steps": 6000,
+          "delta_native": 0.004186,
+          "band_class": "不亏（噪声带内）",
+          "bpc_full": 1.705365,
+          "bpc_window": 1.701179
+        }
+      ],
+      "four_point_shape_native": "窗口更差（越界）@256 → 窗口更差（越界）@512 → 不亏（噪声带内）@1024 → 不亏（噪声带内）@2048",
+      "variance_band": 0.014,
+      "primary_reading": "native 工作点 Δ2048@6000 的带宽分类（|Δ|<0.014 ⇒ 不亏）",
+      "note": "本实验 = 1024@2048 @ **6000 步**（bs8 + qk-normfrom512 + 98.304M token/臂）；与 Δ2048@3000（2628）只作**两点描述**；与 2626 的 T=1024@6000 作 matched-step 对照；四点属**混合口径**，均禁外推（§17.11/§17.16）"
+    },
+    "criterion_2_stability_gate": {
+      "full_2048_gnorm_max": 7.22,
+      "full_2048_gnorm_mean": 0.586,
+      "full_2048_grad_skips": 0,
+      "win_2048_gnorm_max": 7.26,
+      "win_2048_grad_skips": 0,
+      "threshold_gnorm_max": 100,
+      "threshold_grad_skips": 0,
+      "steps": 6000,
+      "passed": true
+    },
+    "criterion_3_memory": {
+      "round_1_preflight": [
+        {
+          "median_ms": 32.684,
+          "min_ms": 30.269,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 0,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 1.688
+        },
+        {
+          "median_ms": 45.998,
+          "min_ms": 45.968,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 1024,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 5.579
+        }
+      ],
+      "round_2_eval": [
+        {
+          "median_ms": 30.995,
+          "min_ms": 28.616,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 0,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 1.688
+        },
+        {
+          "median_ms": 46.722,
+          "min_ms": 46.512,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 1024,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 5.579
+        }
+      ],
+      "peak_torch_gb_by_arm": {
+        "full-2048-clean": 1.906,
+        "win1024-2048-clean": 5.91
+      },
+      "peak_nvidia_smi_gb_by_arm": {
+        "full-2048-clean": 2.53,
+        "win1024-2048-clean": 6.6
+      },
+      "budget_gb_net": 5.0,
+      "max_peak_gb": 5.91,
+      "free_mb_before": 19407.0,
+      "free_mb_after": 18856.0,
+      "over_politeness_line": true
+    },
+    "criterion_4_matched_convergence_answer": {
+      "question": "把 T=2048 补到与 T=1024 同 step（6000）后，「窗口不亏」是否保持？",
+      "answer": "保持。Δ2048@6000 = +0.004186（|Δ| < 0.014）⇒ 仍落在噪声带内；且与 @3000 的 +0.004361 同带。",
+      "band_holds": true,
+      "delta_at_3000": 0.004361,
+      "delta_at_6000": 0.004186,
+      "convergence": {
+        "full_2048_6000_final_logged_loss": 1.1221,
+        "full_2048_3000_final_logged_loss": 1.5423,
+        "full_1024_6000_final_logged_loss": 1.2146,
+        "note": "三个 loss 同为 enwik8 训练 CE（nats/char，越低越好）：本点 T=2048@6000 末 loss = 1.1221；同点的 @3000 = 1.5423；T=1024@6000 = 1.2146。本点相对 T=1024@6000 **更低**（即本点在 enwik8 CE 口径上比 T=1024@6000 **更收敛**） ⇒ 「同 step」不等于「同 loss」，但**本点上这个偏差的方向是已知的**；本判据只答「同 step 下带分类是否保持」，不外推为渐近结论。"
+      }
+    },
+    "criterion_aux_attn_share": {
+      "measured": [
+        {
+          "T": 2048,
+          "window": 1024,
+          "step_ms_full": 30.995,
+          "step_ms_window": 46.722,
+          "r_time_window_over_full": 1.5074,
+          "qk_norm_hooks_full": 8,
+          "peak_full_gib": 1.688,
+          "peak_window_gib": 5.579,
+          "r_mem_window_over_full": 3.3051,
+          "attn_island_ms_full": 7.054,
+          "attn_island_over_model_step": 0.2276,
+          "attn_island_over_model_step_window": 0.3023,
+          "attn_share_formula": 0.5714
+        }
+      ],
+      "formula": {
+        "1024": 0.4,
+        "2048": 0.5714
+      },
+      "note": "公式 512T/(512T+786432)：1024=0.4000、2048=0.5714；公式值只作对照（不是判据）；T=1024 的实测值见 2628-longT-2048/results.json"
+    },
+    "criterion_aux_calibre": {
+      "note": "本实验 T=2048@6000 与 2628 的 T=2048@3000 **逐字段相同、只差 steps与由其决定的 token 总量**；与 2626 的点共享 bs8 + qk-normfrom512，且在 T=1024 上同 step，但 token 预算不同。",
+      "matched_3000_reference": {
+        "source": "2628-longT-2048/results.json",
+        "steps": 3000,
+        "token_budget": 49152000,
+        "same_recipe_except_steps": true,
+        "batch_size": 8,
+        "qk_norm": "qk-normfrom512",
+        "delta_native": 0.004361,
+        "band_class": "不亏（噪声带内）",
+        "bpc_full": 2.339413,
+        "bpc_window": 2.335052,
+        "full_gnorm_max": 7.22,
+        "full_final_logged_loss": 1.5423,
+        "full_final_logged_step": 2999
+      },
+      "clean_three_points_reference": {
+        "note": "2626 干净三点（bs8 + qk-normfrom512 + 49.152M token/臂 = 24000/12000/6000 步）；本实验 T=2048@6000 与之**在 T=1024 上同 step**，但 token 预算 2× ⇒ 混合口径并列，禁外推。",
+        "three_points_native": [
+          {
+            "T": 256,
+            "window": 128,
+            "delta_native": -0.015752,
+            "band_class": "窗口更差（越界）",
+            "bpc_full": 1.631129,
+            "bpc_window": 1.646881
+          },
+          {
+            "T": 512,
+            "window": 256,
+            "delta_native": -0.015101,
+            "band_class": "窗口更差（越界）",
+            "bpc_full": 1.639843,
+            "bpc_window": 1.654944
+          },
+          {
+            "T": 1024,
+            "window": 512,
+            "delta_native": 0.009264,
+            "band_class": "不亏（噪声带内）",
+            "bpc_full": 1.712069,
+            "bpc_window": 1.702805
+          }
+        ],
+        "batch_size": 8,
+        "qk_norm": "qk-normfrom512",
+        "token_budget": 49152000,
+        "three_point_shape_native": "窗口更差（越界）@256 → 窗口更差（越界）@512 → 不亏（噪声带内）@1024",
+        "steps_by_point": {
+          "256": 24000,
+          "512": 12000,
+          "1024": 6000
+        },
+        "full_1024_final_logged_loss": 1.2146,
+        "full_1024_final_logged_step": 5999
+      },
+      "batch_size_same_as_2628_and_2626": true,
+      "qk_norm_same": true,
+      "steps_differs_from_2628": true,
+      "token_budget_differs_from_2626": true
+    }
+  },
+  "cost": {
+    "theory": {
+      "other_macs_per_token_per_layer": 786432,
+      "attn_share_formula": {
+        "1024": 0.4,
+        "2048": 0.5714
+      },
+      "window_theory": {
+        "1024@2048": {
+          "visible_frac_of_causal": 0.749878,
+          "attn_flops_reduction_relative_to_full": 0.5,
+          "layer_macs_reduction_all_in": 0.2857
+        }
+      }
+    },
+    "measured": {
+      "model_step": [
+        {
+          "median_ms": 30.995,
+          "min_ms": 28.616,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 0,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 1.688
+        },
+        {
+          "median_ms": 46.722,
+          "min_ms": 46.512,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 1024,
+          "batch_size": 8,
+          "qk_norm_hooks": 8,
+          "peak_mem_gib": 5.579
+        }
+      ],
+      "attn_island": [
+        {
+          "median_ms": 7.054,
+          "min_ms": 7.023,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 0,
+          "batch_size": 8,
+          "peak_mem_gib": 0.283
+        },
+        {
+          "median_ms": 14.123,
+          "min_ms": 13.604,
+          "n_iters": 6,
+          "seq_len": 2048,
+          "window": 1024,
+          "batch_size": 8,
+          "peak_mem_gib": 1.225
+        }
+      ],
+      "ratio_by_T": [
+        {
+          "T": 2048,
+          "window": 1024,
+          "step_ms_full": 30.995,
+          "step_ms_window": 46.722,
+          "r_time_window_over_full": 1.5074,
+          "qk_norm_hooks_full": 8,
+          "peak_full_gib": 1.688,
+          "peak_window_gib": 5.579,
+          "r_mem_window_over_full": 3.3051,
+          "attn_island_ms_full": 7.054,
+          "attn_island_over_model_step": 0.2276,
+          "attn_island_over_model_step_window": 0.3023,
+          "attn_share_formula": 0.5714
+        }
+      ],
+      "free_mb_before": 18952.0
+    },
+    "note": "双口径：理论（等效 FLOPs）+ 实测（墙钟/显存）。公式值只作对照，不得当判据（SCHEMA §17.11）。模型步成本已套 QK-Norm（同实验配方）。"
+  },
+  "synthetic_leg": {
+    "task": "var_recall_batch（tools/evalkit/longrange_tasks.py，未改工具）",
+    "distances_by_T": {
+      "2048": [
+        512,
+        1024,
+        1536
+      ]
+    },
+    "chance": 0.015625,
+    "local_prior_k": 8,
+    "results": {
+      "full-2048-clean": {
+        "arm": "full-2048-clean",
+        "seq_len": 2048,
+        "window": 0,
+        "native_mask": "release(causal)",
+        "by_distance": {
+          "512": {
+            "accuracy": 0.015625,
+            "n": 64,
+            "chance_answer_set": 0.015625,
+            "local_prior_accuracy_k8": 0.015625,
+            "local_prior_resistance": true
+          },
+          "1024": {
+            "accuracy": 0.078125,
+            "n": 64,
+            "chance_answer_set": 0.015625,
+            "local_prior_accuracy_k8": 0.03125,
+            "local_prior_resistance": true
+          },
+          "1536": {
+            "accuracy": 0.015625,
+            "n": 64,
+            "chance_answer_set": 0.015625,
+            "local_prior_accuracy_k8": 0.03125,
+            "local_prior_resistance": true
+          }
+        }
+      },
+      "win1024-2048-clean": {
+        "arm": "win1024-2048-clean",
+        "seq_len": 2048,
+        "window": 1024,
+        "native_mask": "window",
+        "by_distance": {
+          "512": {
+            "accuracy": 0.015625,
+            "n": 64,
+            "chance_answer_set": 0.015625,
+            "local_prior_accuracy_k8": 0.015625,
+            "local_prior_resistance": true
+          },
+          "1024": {
+            "accuracy": 0.0625,
+            "n": 64,
+            "chance_answer_set": 0.015625,
+            "local_prior_accuracy_k8": 0.03125,
+            "local_prior_resistance": true
+          },
+          "1536": {
+            "accuracy": 0.0,
+            "n": 64,
+            "chance_answer_set": 0.015625,
+            "local_prior_accuracy_k8": 0.03125,
+            "local_prior_resistance": true
+          }
+        }
+      }
+    },
+    "disclaimer": "距离档均 ≤ T−2（训练分布内，§17.18）；对窗口臂，远端档落在窗口外（这正是要量的「可见性外能否召回」）。本腿在 enwik8 权重上是分布外任务，预期接近 chance"
+  },
+  "liveness": {
+    "full-2048-clean": {
+      "window_mask": null,
+      "window_mask_probe": null,
+      "qk_norm_hooks": 8,
+      "qk_norm_params_added": 0
+    },
+    "win1024-2048-clean": {
+      "window_mask": {
+        "train_window": 1024,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 1573376,
+        "causal_pairs": 2098176,
+        "visible_frac": 0.749878,
+        "dropped_frac": 0.250122,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 0.155103
+      },
+      "window_mask_probe": {
+        "max_abs_logit_diff_masked_vs_open": 0.155103,
+        "alive": true
+      },
+      "qk_norm_hooks": 8,
+      "qk_norm_params_added": 0
+    }
+  },
+  "stability": {
+    "full-2048-clean": {
+      "gnorm_max": 7.22,
+      "gnorm_mean": 0.586,
+      "grad_skips": 0,
+      "first_logged_loss": 5.345,
+      "final_logged_step": 5999,
+      "final_logged_loss": 1.1221,
+      "last_window_slope_nats_per_1k": -0.16417
+    },
+    "win1024-2048-clean": {
+      "gnorm_max": 7.26,
+      "gnorm_mean": 0.557,
+      "grad_skips": 0,
+      "first_logged_loss": 5.3445,
+      "final_logged_step": 5999,
+      "final_logged_loss": 1.1152,
+      "last_window_slope_nats_per_1k": -0.16081
+    }
+  },
+  "preflight_smoke": {
+    "full-2048-clean": {
+      "config": {
+        "seq_len": 2048,
+        "window": 0,
+        "steps_full": 6000
+      },
+      "smoke_wall_min": 0.15,
+      "smoke_sec_per_step": 0.45442,
+      "peak_torch_gb": 1.906,
+      "params": 7421440,
+      "patch": {
+        "candidate": "qk-normfrom512",
+        "attn_scale_mode": "qk-norm",
+        "tau": 1.0,
+        "min_t": 512,
+        "n_qkv_hooks": 8,
+        "active": true,
+        "params_added": 0
+      },
+      "last_log_row": {
+        "step": 19,
+        "loss": 3.2899,
+        "depth_ce": [
+          3.2899
+        ],
+        "gate_mean": [],
+        "gnorm": 2.49,
+        "aux_w": 1.0,
+        "final_w": 1.0,
+        "attn_sparse": null,
+        "attn_linear": null,
+        "attn_carry": null,
+        "recon": null,
+        "readout": null,
+        "synth_answer_ce": null,
+        "synth_chance_ce": null,
+        "window_mask": null,
+        "kv_heads": null,
+        "lr": 0.0001,
+        "min": 0.03
+      },
+      "window_mask_liveness": null,
+      "config_validates": true
+    },
+    "win1024-2048-clean": {
+      "config": {
+        "seq_len": 2048,
+        "window": 1024,
+        "steps_full": 6000
+      },
+      "smoke_wall_min": 0.15,
+      "smoke_sec_per_step": 0.45435,
+      "peak_torch_gb": 5.91,
+      "params": 7421440,
+      "patch": {
+        "candidate": "qk-normfrom512",
+        "attn_scale_mode": "qk-norm",
+        "tau": 1.0,
+        "min_t": 512,
+        "n_qkv_hooks": 8,
+        "active": true,
+        "params_added": 0
+      },
+      "last_log_row": {
+        "step": 19,
+        "loss": 3.2889,
+        "depth_ce": [
+          3.2889
+        ],
+        "gate_mean": [],
+        "gnorm": 2.5,
+        "aux_w": 1.0,
+        "final_w": 1.0,
+        "attn_sparse": null,
+        "attn_linear": null,
+        "attn_carry": null,
+        "recon": null,
+        "readout": null,
+        "synth_answer_ce": null,
+        "synth_chance_ce": null,
+        "window_mask": {
+          "train_window": 1024,
+          "train_anchors": 0,
+          "params_added": 0,
+          "n_visible_pairs": 1573376,
+          "causal_pairs": 2098176,
+          "visible_frac": 0.749878,
+          "dropped_frac": 0.250122,
+          "alive": true,
+          "max_abs_logit_diff_masked_vs_open": 0.155103
+        },
+        "kv_heads": null,
+        "lr": 0.0001,
+        "min": 0.03
+      },
+      "window_mask_liveness": {
+        "train_window": 1024,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 1573376,
+        "causal_pairs": 2098176,
+        "visible_frac": 0.749878,
+        "dropped_frac": 0.250122,
+        "alive": true
+      },
+      "config_validates": true
+    }
+  },
+  "wall_total_min": 9.68
+}

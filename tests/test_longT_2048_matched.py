@@ -32,11 +32,11 @@ import evidence_anchor                                      # noqa: E402
 from pathlm.depth_ar import (DepthARConfig, DepthARModel,     # noqa: E402
                              window_anchor_keep_mask)
 
-EXP = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
+EXP = os.path.join(ROOT, "axes", "1-time", "1.1.1-hard-window",
                    "experiments", "2629-longT-2048-matched")
-EXP2628 = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
+EXP2628 = os.path.join(ROOT, "axes", "1-time", "1.1.1-hard-window",
                        "experiments", "2628-longT-2048")
-EXP2626 = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
+EXP2626 = os.path.join(ROOT, "axes", "1-time", "1.1.1-hard-window",
                        "experiments", "2626-longT-clean")
 DRIVER = os.path.join(EXP, "clean_driver.py")
 
@@ -154,7 +154,7 @@ def test_steps_are_6000_and_match_2626_t1024():
     assert run2629.steps_for(2048) == 6000
     assert [a["seq_len"] for a in run2629.ARMS] == [2048, 2048]
     p26 = evidence_anchor.require_tracked(
-        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+        os.path.join("axes", "1-time", "1.1.1-hard-window", "experiments",
                      "2626-longT-clean", "config.json"),
         "步数匹配的参照配置（入 git）")
     c26 = json.load(open(p26))
@@ -173,7 +173,7 @@ def test_token_budget_is_double_of_series_steps_matched():
 def test_recipe_constants_match_2628():
     """契约常量（bs/lr/seed/d/L/H/mlp/qk-norm 档）必须与 2628 一致：唯一变量是 steps。"""
     p28 = evidence_anchor.require_tracked(
-        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+        os.path.join("axes", "1-time", "1.1.1-hard-window", "experiments",
                      "2628-longT-2048", "config.json"),
         "配方常数来源配置（入 git）")
     c28 = json.load(open(p28))
@@ -231,11 +231,11 @@ def test_step_probe_records_all_layer_stats():
 def test_results_two_points_match_eval_when_present():
     """落盘后：两点（@3000 只读引用 / @6000 本点）与 eval.json 重算一致；cfg 字段与 2628 对得上。"""
     rp = evidence_anchor.require_tracked(
-        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+        os.path.join("axes", "1-time", "1.1.1-hard-window", "experiments",
                      "2629-longT-2048-matched", "results.json"),
         "本实验的落盘结果（入 git）")
     ep = evidence_anchor.require_tracked(
-        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+        os.path.join("axes", "1-time", "1.1.1-hard-window", "experiments",
                      "2629-longT-2048-matched", "eval.json"),
         "本实验的评测落盘（入 git）")
     R = json.load(open(rp))

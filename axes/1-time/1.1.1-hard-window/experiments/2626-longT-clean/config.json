@@ -1,0 +1,239 @@
+{
+  "contract": "axes/1-time/1.1.1-hard-window/experiments/2626-longT-clean/README.md",
+  "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。",
+  "intervention": {
+    "factor": "训练期可见窗口（full vs T/2，同相对刻度 50%）× 序列长度 T，全部套用长度条件档 qk-normfrom512（min_t=512）",
+    "arms": {
+      "full-256-clean": "T=256 · 全因果",
+      "win128-256-clean": "T=256 · 窗口 128（50%）",
+      "full-512-clean": "T=512 · 全因果",
+      "win256-512-clean": "T=512 · 窗口 256（50%）",
+      "full-1024-clean": "T=1024 · 全因果",
+      "win512-1024-clean": "T=1024 · 窗口 512（50%）"
+    },
+    "mask": "keep[i,j] = (j<=i) & ((i-j) < train_window)；对角恒开；实现 = pathlm.depth_ar.window_anchor_keep_mask（训练/评测共用）",
+    "qk_norm": "长度条件档：seq_len > 512 时逐头 L2 归一 q/k（乘 √d_h，零新增参数）；seq_len ≤ 512 时不挂 hook（n_qkv_hooks == 0）"
+  },
+  "model": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "mlp_mult": 4,
+    "dense": true,
+    "topology": "sequential"
+  },
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M train / 末 10M eval",
+    "vocab_size": 206
+  },
+  "token_budget": 49152000,
+  "batch_size": 8,
+  "lr": 0.001,
+  "seed": 0,
+  "arms": [
+    {
+      "arm": "full-256-clean",
+      "seq_len": 256,
+      "window": 0,
+      "steps": 24000,
+      "tokens": 49152000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 24000,
+        "exit_mode": "uniform",
+        "seq_len": 256,
+        "train_window": 0,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "win128-256-clean",
+      "seq_len": 256,
+      "window": 128,
+      "steps": 24000,
+      "tokens": 49152000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 24000,
+        "exit_mode": "uniform",
+        "seq_len": 256,
+        "train_window": 128,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "full-512-clean",
+      "seq_len": 512,
+      "window": 0,
+      "steps": 12000,
+      "tokens": 49152000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 12000,
+        "exit_mode": "uniform",
+        "seq_len": 512,
+        "train_window": 0,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "win256-512-clean",
+      "seq_len": 512,
+      "window": 256,
+      "steps": 12000,
+      "tokens": 49152000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 12000,
+        "exit_mode": "uniform",
+        "seq_len": 512,
+        "train_window": 256,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "full-1024-clean",
+      "seq_len": 1024,
+      "window": 0,
+      "steps": 6000,
+      "tokens": 49152000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 6000,
+        "exit_mode": "uniform",
+        "seq_len": 1024,
+        "train_window": 0,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "win512-1024-clean",
+      "seq_len": 1024,
+      "window": 512,
+      "steps": 6000,
+      "tokens": 49152000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 0,
+        "steps": 6000,
+        "exit_mode": "uniform",
+        "seq_len": 1024,
+        "train_window": 512,
+        "qk_norm": "qk-normfrom512",
+        "qk_norm_min_t": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    }
+  ],
+  "checkpoints": {
+    "full-256-clean": {
+      "path": "runs/full-256-clean/model.pt",
+      "sha256": "6eba2dcc62711569559dd34b65a7df3116bf7e967a605074fb73d752cc9ac420",
+      "size_bytes": 27882155,
+      "sha256_verified": true
+    },
+    "win128-256-clean": {
+      "path": "runs/win128-256-clean/model.pt",
+      "sha256": "db1d59b58bc4533b26449b90b4b9f02786c3ed7235cff219ec434917a6fb676f",
+      "size_bytes": 27882155,
+      "sha256_verified": true
+    },
+    "full-512-clean": {
+      "path": "runs/full-512-clean/model.pt",
+      "sha256": "9bd9c233f542b7b2691958e81e36b712456e016e64caf76e75ae6b5cc80d077f",
+      "size_bytes": 28144299,
+      "sha256_verified": true
+    },
+    "win256-512-clean": {
+      "path": "runs/win256-512-clean/model.pt",
+      "sha256": "3b5b0dad44b279f4a207d27612560907f8f592fa66e02926cc87a46cabb947dd",
+      "size_bytes": 28144299,
+      "sha256_verified": true
+    },
+    "full-1024-clean": {
+      "path": "runs/full-1024-clean/model.pt",
+      "sha256": "e5009af94470ecdef6303d3c361686282451d7198de391168ed3fe5483667756",
+      "size_bytes": 28668587,
+      "sha256_verified": true
+    },
+    "win512-1024-clean": {
+      "path": "runs/win512-1024-clean/model.pt",
+      "sha256": "0c2779a262252ad10794ae6b22424889a5c75b68a20423f575927a2b48b6fdeb",
+      "size_bytes": 28668587,
+      "sha256_verified": true
+    }
+  },
+  "code_fingerprints": {
+    "pathlm/depth_ar.py": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279",
+    "pathlm/model.py": "4dda7c08c4b5d564c5f066a0e8c2a52950f88498a4959ccdf68762430ab8d77f",
+    "train_depth_ar.py": "1035565281ed66af16e303ce29148e6907020d438047a4e3fdadc1799f78409e",
+    "tools/evalkit/longrange_tasks.py": "4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b",
+    "experiments/2625-longT-stability/stability_driver.py": "b7f49df7de6ea1d8aa9f2663c9c4d09272bae5dfb1389d5f211cc5c33acc3f20",
+    "note": "本实验未改这些文件（只读）；qk-norm hook 从 2625 的 stability_driver.py 只读引用（单一实现来源）"
+  }
+}

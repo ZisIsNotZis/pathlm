@@ -1,0 +1,70 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "1.1.4.5"
+axis: "1 时间轴"
+title: "implicit（掩码/窗口，已证退化）vs **explicit**（有希望的方向）"
+dir: "axes/1-time/1.1.4.5-implicit-vs-explicit"
+
+purpose: "对「把前缀信息搬到右侧」这件事正面对撞 implicit（靠掩码/窗口逼模型）与 explicit（给写通道 + 迫使使用的训练目标），判定 implicit 是否已证退化、explicit 是否是有希望的方向。"
+innovation: "相对普通 decoder-only transformer：对比两类右移机制——implicit = 只改可见掩码（窗口/衰减），逼模型自己把信息留在近处；explicit = 加显式写通道（delta/plain）+ 迫使使用的训练目标。改动量级：implicit 零新增参数；explicit 见 1.1.4.1。"
+expected_effect: "（a）给出「implicit 是否已证退化」的本地判决；（b）给出 explicit 相对 implicit 在同任务/同预算/同仪器下是否有可排序优势。"
+sota_baseline: "explicit 记忆：Compressive Transformer（compression loss）、Memorizing Transformer、RMT、AutoCompressors、ICAE；implicit：StreamingLLM / Sliding-Window；本地锚 = stock 全因果基线（A2 → axes/7-references，13M B0 = 1.5074 bpc 快照）。业界条目按 `记忆·未核` 标注。"
+gap: "55-review P14 指出旧格 A9 与 1.1.1 实质重复（同族同判据）；55-review §6 缺「implicit vs explicit 同仪器/同预算正面对撞」。本项增量 = 同一任务、同一物理预算、同一保留仪器下的正面对撞。"
+method: "单因素：同一任务、同一预算、同一保留仪器下比 {implicit（掩码/窗口，只看最近 k）, explicit（加 delta 写通道）}。基底恒为 stock decoder-only；explicit 的实现与读数见 1.1.4.1（本项只做对撞与判决）。"
+validation: "端到端：对照 = stock 全因果基线（归一为 100%）+ 同掩码无记忆地板；客观判据 = 窗口外针召回（该涨/该停在 chance）+ KV 消融保留曲线 + clean bpc；口径 = matched-step / 同 token 预算，禁墙钟。"
+objective_criteria: "该涨：窗口外针召回（explicit 相对同掩码无记忆地板；implicit 应停在 chance）；该跌：无；必须不变：训练/评测掩码一致、因果性。"
+falsification: "若 implicit 臂的窗口外召回等于同掩码地板（已观测 beyond-window 0.4%、win16 0.92× chance），且 explicit 臂相对地板也不越噪声带 ⇒ 两类都搬不动、本项「explicit 是有希望的方向」被否证。"
+failure_analysis: ""
+conclusion: "旧格读数：只看最近 16 在合成长程任务上直接归零（win16 0.0144 = 0.92× chance，full 0.3665；毁源后 full → 0.0145）；训成「只看最近 32 + 8 锚点」的质量税 +0.0866、窗口外针召回 0.4588 vs 同掩码地板 0.4545（+0.004，等于没有记忆）⇒ 「信息被搬到近处」被否证，是「丢了」不是「搬了」。explicit 通道的对撞读数见 1.1.4.1（delta 写相对无通道稳健，但真实文本收益 ≈0.2%）。"
+conclusion_review: "看上去 implicit 已证退化的这半边成立（窗口外 ≈ chance + 同掩码地板）；但「explicit 是有希望的方向」的正面证据在 1.1.4.1、且尚未放进前沿，故本项对撞的完整判决未做。status 进行中。独立复核未做。"
+experiments:
+  - "axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2615-window-trained-retention-13m"
+  - "axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2623-window-on-longrange-13m"
+  - ".scratch/13-four-experiments/evidence @9abc181"
+argument: "用 KV 消融保留曲线与同掩码无记忆地板把「局部统计补全」与「真搬动」分开：implicit 臂的窗口外召回等于地板说明信息没被搬走；explicit 臂的正面证据（毁源敏感度 + 跨种子 delta 优势）在 1.1.4.1。"
+gaps:
+  - "缺 implicit 与 explicit 在同任务/同预算/同仪器下的正面对撞（55-review §6 第 2 条）"
+  - "缺「前缀可丢」的端到端协议（训练期右移 → 推理期真丢前缀 KV → 目标仍可测）"
+  - "缺 AR 仍 causal 的验收条件（丢前缀后是否长出非因果捷径）"
+  - "explicit 半边依赖 1.1.4.1 的修复（逐层状态、前沿）"
+cost_model: "等效理论量：implicit 零新增参数、attention 可见键数由 T 降到 k（O(T²)→O(T·k)）；explicit 每 token 额外 O(d·d_state) 写读、状态与 T 无关（见 1.1.4.1）。两者在同 token 预算下比。考虑 pipelining：implicit 走 chunk 流水；explicit 状态更新并入 decode 流水。"
+
+role_map:
+  owner: "轴 1 时间轴 lead（待指派）"
+  writer: "1.1.4.5 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份 implicit vs explicit 正面对撞包：同任务、同预算、同保留仪器下，{窗口/implicit, delta 写/explicit} 的窗口外召回 + KV 消融保留曲线 + clean bpc，对照 stock 全因果，含 n≥2。"
+  acceptance: "两臂同仪器同预算；implicit 停在 chance / explicit 相对地板可排序提升或明确无提升；结论区分「设计问题」与「机制不成立」。"
+
+work_packages:
+  - id: "WP1"
+    what: "implicit vs explicit 同仪器对撞"
+    goal: "补上 55-review §6 第 2 条缺失的正面比较"
+    means: "同任务、同预算、同保留仪器下比 {implicit, explicit}，报窗口外召回 + 保留曲线 + clean bpc"
+    acceptance: "两臂同仪器同预算；结论可区分「设计问题」与「机制不成立」"
+    evidence: "axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+  - id: "WP2"
+    what: "「前缀可丢」端到端协议与因果验收"
+    goal: "补上训练期右移 → 推理期真丢前缀 KV 的端到端判据"
+    means: "丢前缀 KV 后测目标可测性 + 与全量对照 + 严格因果单测（无未来泄漏）"
+    acceptance: "丢前缀后目标仍可测且无因果捷径；否则如实记否证"
+    evidence: "axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/"
+    review: "fresh 复核"
+    status: "未开始"
+
+roadmap:
+  - "WP1：implicit vs explicit 同仪器对撞"
+  - "WP2：前缀可丢端到端协议 + 因果验收"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "进行中"
+started: "2026-10-13T10:15:48+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:15:48+08:00"
+    actor: "轴 1 §1.1 worker"
+    change: "由旧格 A9-old-info-retention 迁移建立（A9 → 1.1.4.5）；2 个实验目录整目录搬入 experiments/；按 55-review P14 把与 1.1.1 重复的部分归 1.1.1、本项聚焦 implicit vs explicit 对撞；按 55-review §6 补上「同仪器/同预算正面对撞」与「前缀可丢端到端协议」为缺口。"

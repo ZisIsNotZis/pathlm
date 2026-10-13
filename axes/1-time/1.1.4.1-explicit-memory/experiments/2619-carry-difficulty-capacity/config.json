@@ -1,0 +1,112 @@
+{
+  "device": "cuda",
+  "seed": 0,
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true,
+    "topology": "sequential",
+    "train_window": 16,
+    "train_anchors": 0,
+    "carry_chunk": 64
+  },
+  "data": {
+    "vocab_size": 206,
+    "source": "合成多查询关联回忆（tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch）",
+    "enwik8": "未使用（契约要求主任务不用 enwik8）"
+  },
+  "tokens": {
+    "sym_vocab": 64,
+    "filler_token": 64,
+    "cue_token": 205
+  },
+  "visibility": {
+    "train_window": 16,
+    "train_anchors": 0,
+    "note": "训练与评测用同一个 window_anchor_keep_mask(T,16,0)"
+  },
+  "eval": {
+    "batch_size": 64,
+    "n_batches": 40
+  },
+  "difficulty_levels": [
+    [
+      4,
+      4
+    ],
+    [
+      8,
+      8
+    ],
+    [
+      16,
+      8
+    ],
+    [
+      32,
+      8
+    ]
+  ],
+  "difficulty_levels_note": "K=pair 数、Q=查询数；Q<=K 是生成器硬约束 ⇒ K=4 只能配 Q=4；其余配 Q=8（= 训练同档）",
+  "arm_order": [
+    "D16",
+    "D32",
+    "D64",
+    "D128"
+  ],
+  "premise_cell": "D32_K8",
+  "difficulty_arm": "D32",
+  "capacity_main_K": 32,
+  "exchange_threshold_mult": 4,
+  "arms": {
+    "D16": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D16/model.pt",
+      "results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D16/results.json",
+      "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D16/train_log.jsonl",
+      "carry_state_dim": 16,
+      "sha256": "b8799d315a808a5a0df052ef5f0b79fe666af8cfd6211bb405ef507f89e20a39",
+      "size_bytes": 55263811
+    },
+    "D32": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D32/model.pt",
+      "results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D32/results.json",
+      "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D32/train_log.jsonl",
+      "carry_state_dim": 32,
+      "sha256": "1181a9988aa587dae97b58151a868679f79f149d5f36b30e7bd913980e6f5d52",
+      "size_bytes": 55255619
+    },
+    "D64": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D64/model.pt",
+      "results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D64/results.json",
+      "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D64/train_log.jsonl",
+      "carry_state_dim": 64,
+      "sha256": "b792d7e2912e24acecbc6c486f6d92a79f0ef246a7507191869422d15c83d6a0",
+      "size_bytes": 55251523
+    },
+    "D128": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D128/model.pt",
+      "results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D128/results.json",
+      "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D128/train_log.jsonl",
+      "carry_state_dim": 128,
+      "sha256": "b29d1fc71bf9a1641cd32988544fff395d28435d1d17c8b96804e8428c772715",
+      "size_bytes": 55249475
+    }
+  },
+  "train_recipe": {
+    "steps": 10000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "optimizer": "AdamW(weight_decay=0.01) + cosine",
+    "exit_mode": "uniform",
+    "aux_weight": 1.0,
+    "final_weight": 1.0,
+    "synth_task": "assoc-mqar",
+    "synth_pairs": 8,
+    "synth_queries": 8,
+    "synth_gap": 14,
+    "note": "四臂逐字段一致，唯一变量 = --carry-state-dim（16/32/64/128）；步数 10000（见 README §2 的取舍记账）"
+  }
+}

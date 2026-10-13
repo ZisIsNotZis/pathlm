@@ -3003,7 +3003,7 @@ def test_carry_state_dim_validation():
 # 逐通道门），使四条组合第一次可测。
 #
 # 四条组合各一条可失败单测；「故意破坏 ⇒ 抓红 ⇒ 逐字节还原」的变异验证见
-# `axes/M-carrier/M1-carrier-type/experiments/2628-eng2-carry-ragged/mutate.py`。
+# `axes/1-time/1.1.4.1-explicit-memory/experiments/2628-eng2-carry-ragged/mutate.py`。
 #
 # 写入时机（本引擎的显式语义，`test_eng2_carry_write_timing_ignores_exit_depths`
 # 钉住）：写入在 `_input_states` 对输入流 h₀ 因果扫描一次、发生在任何退出之前 ⇒

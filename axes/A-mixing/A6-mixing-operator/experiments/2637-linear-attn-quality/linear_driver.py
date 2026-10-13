@@ -36,7 +36,7 @@ from pathlm.data import load_enwik8_full                            # noqa: E402
 D, L, H, MLP = 256, 8, 8, 4
 QK_NORM_MIN_T = 512
 
-W1_DRIVER = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
+W1_DRIVER = os.path.join(ROOT, "axes", "1-time", "1.1.1-hard-window",
                          "experiments", "2625-longT-stability",
                          "stability_driver.py")
 

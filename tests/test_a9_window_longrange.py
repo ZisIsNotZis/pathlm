@@ -21,7 +21,7 @@ import torch
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
-HERE = os.path.join(ROOT, "axes", "A-mixing", "A9-old-info-retention",
+HERE = os.path.join(ROOT, "axes", "1-time", "1.1.4.5-implicit-vs-explicit",
                     "experiments", "2623-window-on-longrange-13m")
 sys.path.insert(0, HERE)
 

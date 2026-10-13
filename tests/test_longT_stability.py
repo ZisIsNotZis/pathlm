@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import evidence_anchor                                       # noqa: E402
 from pathlm.depth_ar import DepthARConfig, DepthARModel          # noqa: E402
 
-DRIVER = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
+DRIVER = os.path.join(ROOT, "axes", "1-time", "1.1.1-hard-window",
                       "experiments", "2625-longT-stability",
                       "stability_driver.py")
 EXP = os.path.dirname(DRIVER)
@@ -245,11 +245,11 @@ def test_driver_preflight_step0_matches_engine_2623():
     assert ours_a["gnorm"] == theirs_a["gnorm"], "锚点记录的两侧 step0 gnorm 不一致"
     # ② 本地原始证据在时逐位复算（并与锚点对齐，防证据被换）
     ours = evidence_anchor.local_step0(
-        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+        os.path.join("axes", "1-time", "1.1.1-hard-window", "experiments",
                      "2625-longT-stability", "runs", "preflight-20",
                      "train_log.jsonl"), "stability_preflight_step0", anchors)
     theirs = evidence_anchor.local_step0(
-        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+        os.path.join("axes", "1-time", "1.1.1-hard-window", "experiments",
                      "2623-longT-1024", "runs", "full-1024", "train_log.jsonl"),
         "engine_2623_full1024_step0", anchors)
     a, b = ours, theirs

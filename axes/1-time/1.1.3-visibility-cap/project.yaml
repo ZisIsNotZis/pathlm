@@ -1,0 +1,55 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "1.1.3"
+axis: "1 时间轴"
+title: "可见量上限"
+dir: "axes/1-time/1.1.3-visibility-cap"
+
+purpose: "给每个 token 的可见量设一个硬上限（最多能看 k 个键），把「前缀可丢」变成结构事实，同时回答「上限设在哪，质量与长程可达性的代价才最小」。"
+innovation: "相对普通 decoder-only transformer 的全因果 attention，给每个 token 一个可见键数预算 k（与窗口/锚点如何取无关）。改动量级：只改可见集合的基数上限，不新增参数；attention 的 QKᵀ 与加权项由 O(T²) 降到 O(T·k)。"
+expected_effect: "（a）把每 token 的注意力代价钉成常数，长 T 的算力/显存随 T 线性；（b）暴露出「可见量上限」这一维度本身是否独立于「按什么规则选可见位置」而影响质量。"
+sota_baseline: "StreamingLLM / Longformer 一族的固定预算可见性；本地锚 = 全因果注意力基线（A2 → axes/7-references，13M B0 = 1.5074 bpc 快照）与 1.1.1 的窗口/锚点保留曲线。"
+gap: "1.1.1 测的是「窗口 k / 锚点 / sink 这些具体可见集合」；本项只问「可见量上限 k 本身（不指定选法）」在质量-代价前沿上落在哪——这一维度在本仓未被单独判决，旧格 A3 把两类问题混在一格里（55-review P14/P21）。"
+method: "单因素：固定可见规则（如滑动窗口或锚点），只变每 token 的可见量上限 k。臂 = {full, k∈{16,32,64,128,192}}。基底恒为 stock decoder-only。证据**只指针到 1.1.1**，本项不另收实验文件。"
+validation: "端到端：对照 = 同尺寸 stock 全因果基线（归一为 100%）+ 1.1.1 的窗口/锚点保留曲线；客观判据 = clean bpc（该跌）+ KV 消融保留曲线 + 长程召回；口径 = matched-step / 同 token 预算，禁墙钟。"
+objective_criteria: "该跌：clean bpc（可见量上限越小越贵，须越 0.014 噪声带才算可排序）；该涨：可见量上限越大时长程召回（作剂量曲线）；必须不变：每 token 可见键数 ≤ k（结构约束）、因果性单测。"
+falsification: "若可见量上限在 k 的一个宽区间内对 clean bpc 与长程召回都无可排序影响 ⇒ 「可见量上限」不构成独立研究维度，应并入 1.1.1（见 1.1.1 的窗口保留曲线）。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项为 1.1.1 的拆分位、只收判据与选项叙述、不接收文件（MAPPING §3）。未做本地独立判决，故 status 未开始；判据与证据见 1.1.1。独立复核未做。"
+experiments: []
+argument: "本项与 1.1.1 的分工：1.1.1 = 具体可见集合（窗口/锚点/sink）的价格上界；本项 = 可见量上限这一维度是否独立成立。指针见 1.1.1（`axes/1-time/1.1.1-hard-window/experiments/`）。"
+gaps:
+  - "无自有实验（按 MAPPING §3：1.1.3 仅取判据/选项叙述，指针 see 1.1.1）"
+  - "可见量上限对质量/召回的影响未单独判决"
+cost_model: "等效理论量：可见量上限 k 把每 token 的可见键数从 T 压到 k，attention 的 QKᵀ 与加权项由 O(T²) 降到 O(T·k)（layer-passes 不变、每层 FLOPs 按 k/T 缩放）。考虑 pipelining：prefill 段按 chunk 流水，decode 段每步只算新增 query 对 k 个键。"
+
+role_map:
+  owner: "轴 1 时间轴 lead（待指派）"
+  writer: "1.1.3 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「可见量上限 k」的剂量曲线：k∈{16..192} 的 clean bpc 与长程召回，对照 stock 全因果与 1.1.1 的窗口曲线（本项复用 1.1.1 证据，不另收文件）。"
+  acceptance: "能回答「可见量上限本身是否为独立维度」；若否，明写并入 1.1.1；口径按 matched-step 报。"
+
+work_packages:
+  - id: "WP1"
+    what: "可见量上限 k 的剂量曲线"
+    goal: "判定可见量上限是否为独立于选法的研究维度"
+    means: "复用 1.1.1 的窗口/锚点臂，按 k 重排剂量曲线；必要时补 k 的中间点"
+    acceptance: "剂量曲线齐备；结论明确「独立成立」或「并入 1.1.1」"
+    evidence: "axes/1-time/1.1.1-hard-window/experiments/"
+    review: "fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：复用 1.1.1 证据排 k 剂量曲线，判定是否独立维度"
+
+status: "未开始"
+started: "2026-10-13T10:15:48+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:15:48+08:00"
+    actor: "轴 1 §1.1 worker"
+    change: "由旧格 A3-window-anchor 拆分建立（A3 → 1.1.1 + 1.1.3）；按 MAPPING §3 仅收判据/选项叙述、指针 see 1.1.1、不接收文件；按 55-review P14/P21 把「可见量上限」从与窗口混装的一格拆成独立研究项。"

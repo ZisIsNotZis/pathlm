@@ -1,0 +1,227 @@
+{
+  "config": {
+    "device_combos": "cpu",
+    "model": {
+      "d_model": 32,
+      "n_layers": 3,
+      "n_heads": 8,
+      "seq_len": 12,
+      "dense": true,
+      "topology": "sequential"
+    },
+    "seed": 0,
+    "carry_activation_value": 0.5,
+    "note": "组合自检 = CPU 前向；qkv 宽度 / K/V 张量形状 / read_share 都是活性量，不是标签"
+  },
+  "combos": [
+    {
+      "name": "gqa_x_carry",
+      "block_class": "ComposableBlock",
+      "gqa_on": true,
+      "carry_on": true,
+      "window_on": false,
+      "qkv_out_width": 48,
+      "qkv_out_width_mha_equivalent": 96,
+      "n_params": 41616,
+      "carry_read_share": 0.003198,
+      "kv_k_shape": [
+        2,
+        2,
+        12,
+        4
+      ],
+      "kv_attn_mask_applied": false,
+      "kv_qkv_out_width_seen": 48,
+      "window_changes_logits_vs_full": null
+    },
+    {
+      "name": "gqa_x_window",
+      "block_class": "GQABlock",
+      "gqa_on": true,
+      "carry_on": false,
+      "window_on": true,
+      "qkv_out_width": 48,
+      "qkv_out_width_mha_equivalent": 96,
+      "n_params": 37232,
+      "carry_read_share": null,
+      "kv_k_shape": [
+        2,
+        2,
+        12,
+        4
+      ],
+      "kv_attn_mask_applied": true,
+      "kv_qkv_out_width_seen": 48,
+      "window_changes_logits_vs_full": true
+    },
+    {
+      "name": "carry_x_window",
+      "block_class": "CarryChannelBlock",
+      "gqa_on": false,
+      "carry_on": true,
+      "window_on": true,
+      "qkv_out_width": 96,
+      "qkv_out_width_mha_equivalent": 96,
+      "n_params": 46368,
+      "carry_read_share": 0.004629,
+      "kv_k_shape": null,
+      "kv_attn_mask_applied": null,
+      "kv_qkv_out_width_seen": null,
+      "window_changes_logits_vs_full": true
+    },
+    {
+      "name": "gqa_x_carry_x_window",
+      "block_class": "ComposableBlock",
+      "gqa_on": true,
+      "carry_on": true,
+      "window_on": true,
+      "qkv_out_width": 48,
+      "qkv_out_width_mha_equivalent": 96,
+      "n_params": 41616,
+      "carry_read_share": 0.002974,
+      "kv_k_shape": [
+        2,
+        2,
+        12,
+        4
+      ],
+      "kv_attn_mask_applied": true,
+      "kv_qkv_out_width_seen": 48,
+      "window_changes_logits_vs_full": true
+    }
+  ],
+  "default_bitwise_v1": {
+    "weights_bitwise_equal": true,
+    "forward_bitwise_equal": true,
+    "n_params_block": 12704,
+    "n_params_composable": 12704,
+    "state_dict_keys": [
+      "ln1.weight",
+      "ln1.bias",
+      "ln2.weight",
+      "ln2.bias",
+      "qkv.weight",
+      "qkv.bias",
+      "proj.weight",
+      "proj.bias",
+      "mlp.0.weight",
+      "mlp.0.bias",
+      "mlp.2.weight",
+      "mlp.2.bias"
+    ]
+  },
+  "fast_paths": {
+    "gqa_only": "GQABlock",
+    "carry_only": "CarryChannelBlock",
+    "default": "Block",
+    "gqa_x_carry": "ComposableBlock"
+  },
+  "smoke": {
+    "run_dir": "axes/1-time/1.1.4.1-explicit-memory/experiments/2622-eng1-composable/smoke/master",
+    "n_log_rows": 2,
+    "final_step": 19,
+    "final_loss": 0.7768,
+    "wall_minutes": 0.04,
+    "final_log_row": {
+      "step": 19,
+      "loss": 0.7768,
+      "depth_ce": [
+        0.7768
+      ],
+      "gate_mean": [],
+      "gnorm": 1.28,
+      "aux_w": 1.0,
+      "final_w": 1.0,
+      "attn_sparse": null,
+      "attn_linear": null,
+      "attn_carry": {
+        "read_scale_absmean": 0.00016,
+        "read_share": 1e-06,
+        "mem_write_to_resid_ratio": 0.0,
+        "state_fro": 0.313171,
+        "beta_mean": 0.499656,
+        "write_rel": 0.448632,
+        "read_norm": 0.004915,
+        "n_layer_samples": 240,
+        "rule": "delta",
+        "carry_chunk": 64
+      },
+      "recon": null,
+      "readout": null,
+      "synth_answer_ce": 6.321,
+      "synth_chance_ce": 4.1589,
+      "window_mask": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "dropped_frac": 0.879134,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 1.613432
+      },
+      "kv_heads": {
+        "n_heads": 8,
+        "n_kv_heads": 2,
+        "head_dim": 32,
+        "qkv_out_width": 384,
+        "kv_elems_per_position": 128,
+        "kv_reduction_frac_vs_mha": 0.75,
+        "k_proj_per_kv_head_row_norm": [
+          1.8153,
+          1.8332
+        ],
+        "kv_rows_fro_mean": 3.6193
+      },
+      "lr": 0.0001,
+      "min": 0.04
+    },
+    "params": 12616808,
+    "peak_gpu_mem_mb": 735.6,
+    "kv_head_liveness_alive": true,
+    "carry_liveness_alive": false,
+    "block_class": "ComposableBlock"
+  },
+  "smoke_this_run_minutes": null,
+  "regression": {
+    "source": "pytest_full.txt",
+    "last_line": "367 passed in 1627.81s (0:27:07)"
+  },
+  "eng1_tests": {
+    "source": "pytest_eng1.txt",
+    "last_line": "6 passed in 5.87s"
+  },
+  "mutation": {
+    "n_mutations": 4,
+    "all_caught_red": true,
+    "all_restored_bitwise": true,
+    "sha256_original": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279",
+    "sha256_restored": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279",
+    "ids": [
+      "M1",
+      "M2",
+      "M3",
+      "M4"
+    ],
+    "caught": {
+      "M1": true,
+      "M2": true,
+      "M3": true,
+      "M4": true
+    }
+  },
+  "code": {
+    "pathlm/depth_ar.py": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279",
+    "train_depth_ar.py": "1035565281ed66af16e303ce29148e6907020d438047a4e3fdadc1799f78409e",
+    "tests/test_eng1_composable.py": "997542cdc9d028383dae4b9ea716c34903793d7a415e1e84dff9c9a56886a906",
+    "axes/1-time/1.1.4.1-explicit-memory/experiments/2622-eng1-composable/run.py": "b0c7622323b1cce9ec624548b50ae49218fe6c6092045fd15b89d7370a3be960",
+    "axes/1-time/1.1.4.1-explicit-memory/experiments/2622-eng1-composable/mutate.py": "88f83baaeefd0959590be46b8b2e7e98f13c2c67820dd29c4d5401d5bb198f6b",
+    "axes/1-time/1.1.4.1-explicit-memory/experiments/2622-eng1-composable/reconcile_numbers.py": "201bdb6389f208f48bf0d6575767108347ea299390c486e7501758e451ca4168"
+  },
+  "cost": {
+    "cpu_selfcheck_minutes": 0.018,
+    "gpu_smoke_minutes": 0.04,
+    "peak_gpu_mem_mb": 735.6
+  }
+}

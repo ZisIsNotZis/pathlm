@@ -1,0 +1,2376 @@
+{
+  "config": {
+    "device": "cuda",
+    "seed": 0,
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true,
+      "topology": "sequential",
+      "train_window": 16,
+      "train_anchors": 0,
+      "carry_chunk": 64
+    },
+    "data": {
+      "vocab_size": 206,
+      "source": "合成多查询关联回忆（tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch）",
+      "enwik8": "未使用（契约要求主任务不用 enwik8）"
+    },
+    "tokens": {
+      "sym_vocab": 64,
+      "filler_token": 64,
+      "cue_token": 205
+    },
+    "visibility": {
+      "train_window": 16,
+      "train_anchors": 0,
+      "note": "训练与评测用同一个 window_anchor_keep_mask(T,16,0)"
+    },
+    "eval": {
+      "batch_size": 64,
+      "n_batches": 40
+    },
+    "difficulty_levels": [
+      [
+        4,
+        4
+      ],
+      [
+        8,
+        8
+      ],
+      [
+        16,
+        8
+      ],
+      [
+        32,
+        8
+      ]
+    ],
+    "difficulty_levels_note": "K=pair 数、Q=查询数；Q<=K 是生成器硬约束 ⇒ K=4 只能配 Q=4；其余配 Q=8（= 训练同档）",
+    "arm_order": [
+      "D16",
+      "D32",
+      "D64",
+      "D128"
+    ],
+    "premise_cell": "D32_K8",
+    "difficulty_arm": "D32",
+    "capacity_main_K": 32,
+    "exchange_threshold_mult": 4,
+    "arms": {
+      "D16": {
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D16/model.pt",
+        "results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D16/results.json",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D16/train_log.jsonl",
+        "carry_state_dim": 16,
+        "sha256": "b8799d315a808a5a0df052ef5f0b79fe666af8cfd6211bb405ef507f89e20a39",
+        "size_bytes": 55263811
+      },
+      "D32": {
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D32/model.pt",
+        "results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D32/results.json",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D32/train_log.jsonl",
+        "carry_state_dim": 32,
+        "sha256": "1181a9988aa587dae97b58151a868679f79f149d5f36b30e7bd913980e6f5d52",
+        "size_bytes": 55255619
+      },
+      "D64": {
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D64/model.pt",
+        "results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D64/results.json",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D64/train_log.jsonl",
+        "carry_state_dim": 64,
+        "sha256": "b792d7e2912e24acecbc6c486f6d92a79f0ef246a7507191869422d15c83d6a0",
+        "size_bytes": 55251523
+      },
+      "D128": {
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D128/model.pt",
+        "results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D128/results.json",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D128/train_log.jsonl",
+        "carry_state_dim": 128,
+        "sha256": "b29d1fc71bf9a1641cd32988544fff395d28435d1d17c8b96804e8428c772715",
+        "size_bytes": 55249475
+      }
+    },
+    "train_recipe": {
+      "steps": 10000,
+      "batch_size": 32,
+      "lr": 0.001,
+      "optimizer": "AdamW(weight_decay=0.01) + cosine",
+      "exit_mode": "uniform",
+      "aux_weight": 1.0,
+      "final_weight": 1.0,
+      "synth_task": "assoc-mqar",
+      "synth_pairs": 8,
+      "synth_queries": 8,
+      "synth_gap": 14,
+      "note": "四臂逐字段一致，唯一变量 = --carry-state-dim（16/32/64/128）；步数 10000（见 README §2 的取舍记账）"
+    }
+  },
+  "checkpoints": {
+    "D16": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D16/model.pt",
+      "sha256": "b8799d315a808a5a0df052ef5f0b79fe666af8cfd6211bb405ef507f89e20a39",
+      "size_bytes": 55263811,
+      "sha256_verified": true,
+      "carry_state_dim": 16
+    },
+    "D32": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D32/model.pt",
+      "sha256": "1181a9988aa587dae97b58151a868679f79f149d5f36b30e7bd913980e6f5d52",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "carry_state_dim": 32
+    },
+    "D64": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D64/model.pt",
+      "sha256": "b792d7e2912e24acecbc6c486f6d92a79f0ef246a7507191869422d15c83d6a0",
+      "size_bytes": 55251523,
+      "sha256_verified": true,
+      "carry_state_dim": 64
+    },
+    "D128": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2619-carry-difficulty-capacity/train/D128/model.pt",
+      "sha256": "b29d1fc71bf9a1641cd32988544fff395d28435d1d17c8b96804e8428c772715",
+      "size_bytes": 55249475,
+      "sha256_verified": true,
+      "carry_state_dim": 128
+    }
+  },
+  "visibility": {
+    "train_window": 16,
+    "train_anchors": 0
+  },
+  "selfchecks": {
+    "release_vs_explicit_causal_max_abs_logit": 0.0,
+    "model_window_forward_vs_mask_instrument_max_abs_logit": 0.0,
+    "attention_heads_unchanged_across_arms": true,
+    "attention_heads": [
+      8
+    ],
+    "structure_by_arm": {
+      "D16": {
+        "carry_state_dim": 16,
+        "carry_heads": 16,
+        "carry_state_floats": 4096,
+        "attn_heads": 8,
+        "n_params": 13803216,
+        "trunk_bitwise_equal_to_ref": true
+      },
+      "D32": {
+        "carry_state_dim": 32,
+        "carry_heads": 8,
+        "carry_state_floats": 8192,
+        "attn_heads": 8,
+        "n_params": 13801064,
+        "trunk_bitwise_equal_to_ref": true
+      },
+      "D64": {
+        "carry_state_dim": 64,
+        "carry_heads": 4,
+        "carry_state_floats": 16384,
+        "attn_heads": 8,
+        "n_params": 13799988,
+        "trunk_bitwise_equal_to_ref": true
+      },
+      "D128": {
+        "carry_state_dim": 128,
+        "carry_heads": 2,
+        "carry_state_floats": 32768,
+        "attn_heads": 8,
+        "n_params": 13799450,
+        "trunk_bitwise_equal_to_ref": true
+      }
+    },
+    "total_state_floats_equals_d_model_times_dh": true,
+    "state_floats_map": {
+      "16": 4096,
+      "32": 8192,
+      "64": 16384,
+      "128": 32768
+    },
+    "note": "容量轴只动记忆槽：注意力头数/主干张量逐位不变（同 seed 构造对照）；总状态浮点 = d_model·dh 与 T 无关"
+  },
+  "grid": {
+    "D16_K4": {
+      "arm": "D16",
+      "dh": 16,
+      "K": 4,
+      "Q": 4,
+      "n": 10240,
+      "n_hits": 5433,
+      "accuracy": 0.530566,
+      "accuracy_ci": [
+        0.52089,
+        0.540219
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.007812,
+      "corrupt_source": {
+        "span": [
+          0,
+          8
+        ],
+        "n": 10240,
+        "n_hits": 145,
+        "accuracy": 0.01416,
+        "accuracy_ci": [
+          0.012047,
+          0.016638
+        ]
+      },
+      "query_key_distance": {
+        "min": 183,
+        "max": 240,
+        "median": 217,
+        "window": 16
+      }
+    },
+    "D16_K8": {
+      "arm": "D16",
+      "dh": 16,
+      "K": 8,
+      "Q": 8,
+      "n": 20480,
+      "n_hits": 7468,
+      "accuracy": 0.364648,
+      "accuracy_ci": [
+        0.358082,
+        0.371266
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.017578,
+      "corrupt_source": {
+        "span": [
+          0,
+          16
+        ],
+        "n": 20480,
+        "n_hits": 307,
+        "accuracy": 0.01499,
+        "accuracy_ci": [
+          0.013415,
+          0.016748
+        ]
+      },
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "window": 16
+      }
+    },
+    "D16_K16": {
+      "arm": "D16",
+      "dh": 16,
+      "K": 16,
+      "Q": 8,
+      "n": 20480,
+      "n_hits": 2182,
+      "accuracy": 0.106543,
+      "accuracy_ci": [
+        0.102391,
+        0.110843
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.019531,
+      "corrupt_source": {
+        "span": [
+          0,
+          32
+        ],
+        "n": 20480,
+        "n_hits": 355,
+        "accuracy": 0.017334,
+        "accuracy_ci": [
+          0.015635,
+          0.019214
+        ]
+      },
+      "query_key_distance": {
+        "min": 91,
+        "max": 240,
+        "median": 166,
+        "window": 16
+      }
+    },
+    "D16_K32": {
+      "arm": "D16",
+      "dh": 16,
+      "K": 32,
+      "Q": 8,
+      "n": 20480,
+      "n_hits": 1174,
+      "accuracy": 0.057324,
+      "accuracy_ci": [
+        0.054223,
+        0.060592
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.013672,
+      "corrupt_source": {
+        "span": [
+          0,
+          64
+        ],
+        "n": 20480,
+        "n_hits": 330,
+        "accuracy": 0.016113,
+        "accuracy_ci": [
+          0.014477,
+          0.017931
+        ]
+      },
+      "query_key_distance": {
+        "min": 59,
+        "max": 240,
+        "median": 149,
+        "window": 16
+      }
+    },
+    "D32_K4": {
+      "arm": "D32",
+      "dh": 32,
+      "K": 4,
+      "Q": 4,
+      "n": 10240,
+      "n_hits": 5475,
+      "accuracy": 0.534668,
+      "accuracy_ci": [
+        0.524996,
+        0.544314
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.007812,
+      "corrupt_source": {
+        "span": [
+          0,
+          8
+        ],
+        "n": 10240,
+        "n_hits": 130,
+        "accuracy": 0.012695,
+        "accuracy_ci": [
+          0.010702,
+          0.015054
+        ]
+      },
+      "query_key_distance": {
+        "min": 183,
+        "max": 240,
+        "median": 217,
+        "window": 16
+      }
+    },
+    "D32_K8": {
+      "arm": "D32",
+      "dh": 32,
+      "K": 8,
+      "Q": 8,
+      "n": 20480,
+      "n_hits": 7491,
+      "accuracy": 0.365771,
+      "accuracy_ci": [
+        0.359201,
+        0.372393
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.017578,
+      "corrupt_source": {
+        "span": [
+          0,
+          16
+        ],
+        "n": 20480,
+        "n_hits": 297,
+        "accuracy": 0.014502,
+        "accuracy_ci": [
+          0.012953,
+          0.016233
+        ]
+      },
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "window": 16
+      }
+    },
+    "D32_K16": {
+      "arm": "D32",
+      "dh": 32,
+      "K": 16,
+      "Q": 8,
+      "n": 20480,
+      "n_hits": 2200,
+      "accuracy": 0.107422,
+      "accuracy_ci": [
+        0.103254,
+        0.111737
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.019531,
+      "corrupt_source": {
+        "span": [
+          0,
+          32
+        ],
+        "n": 20480,
+        "n_hits": 323,
+        "accuracy": 0.015771,
+        "accuracy_ci": [
+          0.014154,
+          0.017571
+        ]
+      },
+      "query_key_distance": {
+        "min": 91,
+        "max": 240,
+        "median": 166,
+        "window": 16
+      }
+    },
+    "D32_K32": {
+      "arm": "D32",
+      "dh": 32,
+      "K": 32,
+      "Q": 8,
+      "n": 20480,
+      "n_hits": 1154,
+      "accuracy": 0.056348,
+      "accuracy_ci": [
+        0.053272,
+        0.05959
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.013672,
+      "corrupt_source": {
+        "span": [
+          0,
+          64
+        ],
+        "n": 20480,
+        "n_hits": 311,
+        "accuracy": 0.015186,
+        "accuracy_ci": [
+          0.013599,
+          0.016954
+        ]
+      },
+      "query_key_distance": {
+        "min": 59,
+        "max": 240,
+        "median": 149,
+        "window": 16
+      }
+    },
+    "D64_K4": {
+      "arm": "D64",
+      "dh": 64,
+      "K": 4,
+      "Q": 4,
+      "n": 10240,
+      "n_hits": 5499,
+      "accuracy": 0.537012,
+      "accuracy_ci": [
+        0.527342,
+        0.546654
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.007812,
+      "corrupt_source": {
+        "span": [
+          0,
+          8
+        ],
+        "n": 10240,
+        "n_hits": 137,
+        "accuracy": 0.013379,
+        "accuracy_ci": [
+          0.011329,
+          0.015794
+        ]
+      },
+      "query_key_distance": {
+        "min": 183,
+        "max": 240,
+        "median": 217,
+        "window": 16
+      }
+    },
+    "D64_K8": {
+      "arm": "D64",
+      "dh": 64,
+      "K": 8,
+      "Q": 8,
+      "n": 20480,
+      "n_hits": 7445,
+      "accuracy": 0.363525,
+      "accuracy_ci": [
+        0.356964,
+        0.370138
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.017578,
+      "corrupt_source": {
+        "span": [
+          0,
+          16
+        ],
+        "n": 20480,
+        "n_hits": 305,
+        "accuracy": 0.014893,
+        "accuracy_ci": [
+          0.013322,
+          0.016645
+        ]
+      },
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "window": 16
+      }
+    },
+    "D64_K16": {
+      "arm": "D64",
+      "dh": 64,
+      "K": 16,
+      "Q": 8,
+      "n": 20480,
+      "n_hits": 2205,
+      "accuracy": 0.107666,
+      "accuracy_ci": [
+        0.103494,
+        0.111985
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.019531,
+      "corrupt_source": {
+        "span": [
+          0,
+          32
+        ],
+        "n": 20480,
+        "n_hits": 344,
+        "accuracy": 0.016797,
+        "accuracy_ci": [
+          0.015125,
+          0.01865
+        ]
+      },
+      "query_key_distance": {
+        "min": 91,
+        "max": 240,
+        "median": 166,
+        "window": 16
+      }
+    },
+    "D64_K32": {
+      "arm": "D64",
+      "dh": 64,
+      "K": 32,
+      "Q": 8,
+      "n": 20480,
+      "n_hits": 1154,
+      "accuracy": 0.056348,
+      "accuracy_ci": [
+        0.053272,
+        0.05959
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.013672,
+      "corrupt_source": {
+        "span": [
+          0,
+          64
+        ],
+        "n": 20480,
+        "n_hits": 330,
+        "accuracy": 0.016113,
+        "accuracy_ci": [
+          0.014477,
+          0.017931
+        ]
+      },
+      "query_key_distance": {
+        "min": 59,
+        "max": 240,
+        "median": 149,
+        "window": 16
+      }
+    },
+    "D128_K4": {
+      "arm": "D128",
+      "dh": 128,
+      "K": 4,
+      "Q": 4,
+      "n": 10240,
+      "n_hits": 4319,
+      "accuracy": 0.421777,
+      "accuracy_ci": [
+        0.412243,
+        0.43137
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.007812,
+      "corrupt_source": {
+        "span": [
+          0,
+          8
+        ],
+        "n": 10240,
+        "n_hits": 149,
+        "accuracy": 0.014551,
+        "accuracy_ci": [
+          0.012407,
+          0.017059
+        ]
+      },
+      "query_key_distance": {
+        "min": 183,
+        "max": 240,
+        "median": 217,
+        "window": 16
+      }
+    },
+    "D128_K8": {
+      "arm": "D128",
+      "dh": 128,
+      "K": 8,
+      "Q": 8,
+      "n": 20480,
+      "n_hits": 7493,
+      "accuracy": 0.365869,
+      "accuracy_ci": [
+        0.359298,
+        0.372491
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.017578,
+      "corrupt_source": {
+        "span": [
+          0,
+          16
+        ],
+        "n": 20480,
+        "n_hits": 289,
+        "accuracy": 0.014111,
+        "accuracy_ci": [
+          0.012585,
+          0.01582
+        ]
+      },
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "window": 16
+      }
+    },
+    "D128_K16": {
+      "arm": "D128",
+      "dh": 128,
+      "K": 16,
+      "Q": 8,
+      "n": 20480,
+      "n_hits": 2202,
+      "accuracy": 0.10752,
+      "accuracy_ci": [
+        0.10335,
+        0.111836
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.019531,
+      "corrupt_source": {
+        "span": [
+          0,
+          32
+        ],
+        "n": 20480,
+        "n_hits": 344,
+        "accuracy": 0.016797,
+        "accuracy_ci": [
+          0.015125,
+          0.01865
+        ]
+      },
+      "query_key_distance": {
+        "min": 91,
+        "max": 240,
+        "median": 166,
+        "window": 16
+      }
+    },
+    "D128_K32": {
+      "arm": "D128",
+      "dh": 128,
+      "K": 32,
+      "Q": 8,
+      "n": 20480,
+      "n_hits": 1183,
+      "accuracy": 0.057764,
+      "accuracy_ci": [
+        0.054651,
+        0.061043
+      ],
+      "chance": 0.015625,
+      "local_prior": 0.013672,
+      "corrupt_source": {
+        "span": [
+          0,
+          64
+        ],
+        "n": 20480,
+        "n_hits": 319,
+        "accuracy": 0.015576,
+        "accuracy_ci": [
+          0.013969,
+          0.017365
+        ]
+      },
+      "query_key_distance": {
+        "min": 59,
+        "max": 240,
+        "median": 149,
+        "window": 16
+      }
+    }
+  },
+  "premise_check": {
+    "cell": "D32_K8",
+    "accuracy": 0.365771,
+    "accuracy_ci": [
+      0.359201,
+      0.372393
+    ],
+    "chance": 0.015625,
+    "significantly_above_chance": true,
+    "multiple_of_chance": 23.409,
+    "query_key_distance": {
+      "min": 107,
+      "max": 240,
+      "median": 175,
+      "window": 16
+    },
+    "local_prior": 0.017578,
+    "note": "判据 ①：dh=32/K=8 臂（ticket 35 的 U2 口径）必须显著高于 chance"
+  },
+  "curves": {
+    "difficulty": {
+      "arm": "D32",
+      "axis": "K",
+      "points": [
+        {
+          "arm": "D32",
+          "dh": 32,
+          "K": 4,
+          "Q": 4,
+          "n": 10240,
+          "n_hits": 5475,
+          "accuracy": 0.534668,
+          "accuracy_ci": [
+            0.524996,
+            0.544314
+          ],
+          "chance": 0.015625,
+          "local_prior": 0.007812,
+          "corrupt_source": {
+            "span": [
+              0,
+              8
+            ],
+            "n": 10240,
+            "n_hits": 130,
+            "accuracy": 0.012695,
+            "accuracy_ci": [
+              0.010702,
+              0.015054
+            ]
+          },
+          "query_key_distance": {
+            "min": 183,
+            "max": 240,
+            "median": 217,
+            "window": 16
+          }
+        },
+        {
+          "arm": "D32",
+          "dh": 32,
+          "K": 8,
+          "Q": 8,
+          "n": 20480,
+          "n_hits": 7491,
+          "accuracy": 0.365771,
+          "accuracy_ci": [
+            0.359201,
+            0.372393
+          ],
+          "chance": 0.015625,
+          "local_prior": 0.017578,
+          "corrupt_source": {
+            "span": [
+              0,
+              16
+            ],
+            "n": 20480,
+            "n_hits": 297,
+            "accuracy": 0.014502,
+            "accuracy_ci": [
+              0.012953,
+              0.016233
+            ]
+          },
+          "query_key_distance": {
+            "min": 107,
+            "max": 240,
+            "median": 175,
+            "window": 16
+          }
+        },
+        {
+          "arm": "D32",
+          "dh": 32,
+          "K": 16,
+          "Q": 8,
+          "n": 20480,
+          "n_hits": 2200,
+          "accuracy": 0.107422,
+          "accuracy_ci": [
+            0.103254,
+            0.111737
+          ],
+          "chance": 0.015625,
+          "local_prior": 0.019531,
+          "corrupt_source": {
+            "span": [
+              0,
+              32
+            ],
+            "n": 20480,
+            "n_hits": 323,
+            "accuracy": 0.015771,
+            "accuracy_ci": [
+              0.014154,
+              0.017571
+            ]
+          },
+          "query_key_distance": {
+            "min": 91,
+            "max": 240,
+            "median": 166,
+            "window": 16
+          }
+        },
+        {
+          "arm": "D32",
+          "dh": 32,
+          "K": 32,
+          "Q": 8,
+          "n": 20480,
+          "n_hits": 1154,
+          "accuracy": 0.056348,
+          "accuracy_ci": [
+            0.053272,
+            0.05959
+          ],
+          "chance": 0.015625,
+          "local_prior": 0.013672,
+          "corrupt_source": {
+            "span": [
+              0,
+              64
+            ],
+            "n": 20480,
+            "n_hits": 311,
+            "accuracy": 0.015186,
+            "accuracy_ci": [
+              0.013599,
+              0.016954
+            ]
+          },
+          "query_key_distance": {
+            "min": 59,
+            "max": 240,
+            "median": 149,
+            "window": 16
+          }
+        }
+      ],
+      "adjacent": [
+        {
+          "from": 4,
+          "to": 8,
+          "delta_pp": -16.89,
+          "ci_overlap": false
+        },
+        {
+          "from": 8,
+          "to": 16,
+          "delta_pp": -25.835,
+          "ci_overlap": false
+        },
+        {
+          "from": 16,
+          "to": 32,
+          "delta_pp": -5.107,
+          "ci_overlap": false
+        }
+      ],
+      "n_resolvable_pairs": 3,
+      "monotone_non_increasing": true,
+      "monotone_non_decreasing": false,
+      "knee_detected": true,
+      "monotone_or_knee": true,
+      "indistinguishable": false,
+      "note": "相邻点 Wilson CI 重叠记「不可分辨」、不计入方向判定；knee = 曲线中段的相邻步长 ≥2× 最小步"
+    },
+    "capacity": {
+      "K4": {
+        "axis": "dh",
+        "points": [
+          {
+            "arm": "D16",
+            "dh": 16,
+            "K": 4,
+            "Q": 4,
+            "n": 10240,
+            "n_hits": 5433,
+            "accuracy": 0.530566,
+            "accuracy_ci": [
+              0.52089,
+              0.540219
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.007812,
+            "corrupt_source": {
+              "span": [
+                0,
+                8
+              ],
+              "n": 10240,
+              "n_hits": 145,
+              "accuracy": 0.01416,
+              "accuracy_ci": [
+                0.012047,
+                0.016638
+              ]
+            },
+            "query_key_distance": {
+              "min": 183,
+              "max": 240,
+              "median": 217,
+              "window": 16
+            }
+          },
+          {
+            "arm": "D32",
+            "dh": 32,
+            "K": 4,
+            "Q": 4,
+            "n": 10240,
+            "n_hits": 5475,
+            "accuracy": 0.534668,
+            "accuracy_ci": [
+              0.524996,
+              0.544314
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.007812,
+            "corrupt_source": {
+              "span": [
+                0,
+                8
+              ],
+              "n": 10240,
+              "n_hits": 130,
+              "accuracy": 0.012695,
+              "accuracy_ci": [
+                0.010702,
+                0.015054
+              ]
+            },
+            "query_key_distance": {
+              "min": 183,
+              "max": 240,
+              "median": 217,
+              "window": 16
+            }
+          },
+          {
+            "arm": "D64",
+            "dh": 64,
+            "K": 4,
+            "Q": 4,
+            "n": 10240,
+            "n_hits": 5499,
+            "accuracy": 0.537012,
+            "accuracy_ci": [
+              0.527342,
+              0.546654
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.007812,
+            "corrupt_source": {
+              "span": [
+                0,
+                8
+              ],
+              "n": 10240,
+              "n_hits": 137,
+              "accuracy": 0.013379,
+              "accuracy_ci": [
+                0.011329,
+                0.015794
+              ]
+            },
+            "query_key_distance": {
+              "min": 183,
+              "max": 240,
+              "median": 217,
+              "window": 16
+            }
+          },
+          {
+            "arm": "D128",
+            "dh": 128,
+            "K": 4,
+            "Q": 4,
+            "n": 10240,
+            "n_hits": 4319,
+            "accuracy": 0.421777,
+            "accuracy_ci": [
+              0.412243,
+              0.43137
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.007812,
+            "corrupt_source": {
+              "span": [
+                0,
+                8
+              ],
+              "n": 10240,
+              "n_hits": 149,
+              "accuracy": 0.014551,
+              "accuracy_ci": [
+                0.012407,
+                0.017059
+              ]
+            },
+            "query_key_distance": {
+              "min": 183,
+              "max": 240,
+              "median": 217,
+              "window": 16
+            }
+          }
+        ],
+        "adjacent": [
+          {
+            "from": 16,
+            "to": 32,
+            "delta_pp": 0.41,
+            "ci_overlap": true
+          },
+          {
+            "from": 32,
+            "to": 64,
+            "delta_pp": 0.234,
+            "ci_overlap": true
+          },
+          {
+            "from": 64,
+            "to": 128,
+            "delta_pp": -11.524,
+            "ci_overlap": false
+          }
+        ],
+        "n_resolvable_pairs": 1,
+        "monotone_non_increasing": true,
+        "monotone_non_decreasing": false,
+        "knee_detected": false,
+        "monotone_or_knee": true,
+        "indistinguishable": false,
+        "note": "相邻点 Wilson CI 重叠记「不可分辨」、不计入方向判定；knee = 曲线中段的相邻步长 ≥2× 最小步"
+      },
+      "K8": {
+        "axis": "dh",
+        "points": [
+          {
+            "arm": "D16",
+            "dh": 16,
+            "K": 8,
+            "Q": 8,
+            "n": 20480,
+            "n_hits": 7468,
+            "accuracy": 0.364648,
+            "accuracy_ci": [
+              0.358082,
+              0.371266
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.017578,
+            "corrupt_source": {
+              "span": [
+                0,
+                16
+              ],
+              "n": 20480,
+              "n_hits": 307,
+              "accuracy": 0.01499,
+              "accuracy_ci": [
+                0.013415,
+                0.016748
+              ]
+            },
+            "query_key_distance": {
+              "min": 107,
+              "max": 240,
+              "median": 175,
+              "window": 16
+            }
+          },
+          {
+            "arm": "D32",
+            "dh": 32,
+            "K": 8,
+            "Q": 8,
+            "n": 20480,
+            "n_hits": 7491,
+            "accuracy": 0.365771,
+            "accuracy_ci": [
+              0.359201,
+              0.372393
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.017578,
+            "corrupt_source": {
+              "span": [
+                0,
+                16
+              ],
+              "n": 20480,
+              "n_hits": 297,
+              "accuracy": 0.014502,
+              "accuracy_ci": [
+                0.012953,
+                0.016233
+              ]
+            },
+            "query_key_distance": {
+              "min": 107,
+              "max": 240,
+              "median": 175,
+              "window": 16
+            }
+          },
+          {
+            "arm": "D64",
+            "dh": 64,
+            "K": 8,
+            "Q": 8,
+            "n": 20480,
+            "n_hits": 7445,
+            "accuracy": 0.363525,
+            "accuracy_ci": [
+              0.356964,
+              0.370138
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.017578,
+            "corrupt_source": {
+              "span": [
+                0,
+                16
+              ],
+              "n": 20480,
+              "n_hits": 305,
+              "accuracy": 0.014893,
+              "accuracy_ci": [
+                0.013322,
+                0.016645
+              ]
+            },
+            "query_key_distance": {
+              "min": 107,
+              "max": 240,
+              "median": 175,
+              "window": 16
+            }
+          },
+          {
+            "arm": "D128",
+            "dh": 128,
+            "K": 8,
+            "Q": 8,
+            "n": 20480,
+            "n_hits": 7493,
+            "accuracy": 0.365869,
+            "accuracy_ci": [
+              0.359298,
+              0.372491
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.017578,
+            "corrupt_source": {
+              "span": [
+                0,
+                16
+              ],
+              "n": 20480,
+              "n_hits": 289,
+              "accuracy": 0.014111,
+              "accuracy_ci": [
+                0.012585,
+                0.01582
+              ]
+            },
+            "query_key_distance": {
+              "min": 107,
+              "max": 240,
+              "median": 175,
+              "window": 16
+            }
+          }
+        ],
+        "adjacent": [
+          {
+            "from": 16,
+            "to": 32,
+            "delta_pp": 0.112,
+            "ci_overlap": true
+          },
+          {
+            "from": 32,
+            "to": 64,
+            "delta_pp": -0.225,
+            "ci_overlap": true
+          },
+          {
+            "from": 64,
+            "to": 128,
+            "delta_pp": 0.234,
+            "ci_overlap": true
+          }
+        ],
+        "n_resolvable_pairs": 0,
+        "monotone_non_increasing": false,
+        "monotone_non_decreasing": false,
+        "knee_detected": false,
+        "monotone_or_knee": false,
+        "indistinguishable": true,
+        "note": "相邻点 Wilson CI 重叠记「不可分辨」、不计入方向判定；knee = 曲线中段的相邻步长 ≥2× 最小步"
+      },
+      "K16": {
+        "axis": "dh",
+        "points": [
+          {
+            "arm": "D16",
+            "dh": 16,
+            "K": 16,
+            "Q": 8,
+            "n": 20480,
+            "n_hits": 2182,
+            "accuracy": 0.106543,
+            "accuracy_ci": [
+              0.102391,
+              0.110843
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.019531,
+            "corrupt_source": {
+              "span": [
+                0,
+                32
+              ],
+              "n": 20480,
+              "n_hits": 355,
+              "accuracy": 0.017334,
+              "accuracy_ci": [
+                0.015635,
+                0.019214
+              ]
+            },
+            "query_key_distance": {
+              "min": 91,
+              "max": 240,
+              "median": 166,
+              "window": 16
+            }
+          },
+          {
+            "arm": "D32",
+            "dh": 32,
+            "K": 16,
+            "Q": 8,
+            "n": 20480,
+            "n_hits": 2200,
+            "accuracy": 0.107422,
+            "accuracy_ci": [
+              0.103254,
+              0.111737
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.019531,
+            "corrupt_source": {
+              "span": [
+                0,
+                32
+              ],
+              "n": 20480,
+              "n_hits": 323,
+              "accuracy": 0.015771,
+              "accuracy_ci": [
+                0.014154,
+                0.017571
+              ]
+            },
+            "query_key_distance": {
+              "min": 91,
+              "max": 240,
+              "median": 166,
+              "window": 16
+            }
+          },
+          {
+            "arm": "D64",
+            "dh": 64,
+            "K": 16,
+            "Q": 8,
+            "n": 20480,
+            "n_hits": 2205,
+            "accuracy": 0.107666,
+            "accuracy_ci": [
+              0.103494,
+              0.111985
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.019531,
+            "corrupt_source": {
+              "span": [
+                0,
+                32
+              ],
+              "n": 20480,
+              "n_hits": 344,
+              "accuracy": 0.016797,
+              "accuracy_ci": [
+                0.015125,
+                0.01865
+              ]
+            },
+            "query_key_distance": {
+              "min": 91,
+              "max": 240,
+              "median": 166,
+              "window": 16
+            }
+          },
+          {
+            "arm": "D128",
+            "dh": 128,
+            "K": 16,
+            "Q": 8,
+            "n": 20480,
+            "n_hits": 2202,
+            "accuracy": 0.10752,
+            "accuracy_ci": [
+              0.10335,
+              0.111836
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.019531,
+            "corrupt_source": {
+              "span": [
+                0,
+                32
+              ],
+              "n": 20480,
+              "n_hits": 344,
+              "accuracy": 0.016797,
+              "accuracy_ci": [
+                0.015125,
+                0.01865
+              ]
+            },
+            "query_key_distance": {
+              "min": 91,
+              "max": 240,
+              "median": 166,
+              "window": 16
+            }
+          }
+        ],
+        "adjacent": [
+          {
+            "from": 16,
+            "to": 32,
+            "delta_pp": 0.088,
+            "ci_overlap": true
+          },
+          {
+            "from": 32,
+            "to": 64,
+            "delta_pp": 0.024,
+            "ci_overlap": true
+          },
+          {
+            "from": 64,
+            "to": 128,
+            "delta_pp": -0.015,
+            "ci_overlap": true
+          }
+        ],
+        "n_resolvable_pairs": 0,
+        "monotone_non_increasing": false,
+        "monotone_non_decreasing": false,
+        "knee_detected": false,
+        "monotone_or_knee": false,
+        "indistinguishable": true,
+        "note": "相邻点 Wilson CI 重叠记「不可分辨」、不计入方向判定；knee = 曲线中段的相邻步长 ≥2× 最小步"
+      },
+      "K32": {
+        "axis": "dh",
+        "points": [
+          {
+            "arm": "D16",
+            "dh": 16,
+            "K": 32,
+            "Q": 8,
+            "n": 20480,
+            "n_hits": 1174,
+            "accuracy": 0.057324,
+            "accuracy_ci": [
+              0.054223,
+              0.060592
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.013672,
+            "corrupt_source": {
+              "span": [
+                0,
+                64
+              ],
+              "n": 20480,
+              "n_hits": 330,
+              "accuracy": 0.016113,
+              "accuracy_ci": [
+                0.014477,
+                0.017931
+              ]
+            },
+            "query_key_distance": {
+              "min": 59,
+              "max": 240,
+              "median": 149,
+              "window": 16
+            }
+          },
+          {
+            "arm": "D32",
+            "dh": 32,
+            "K": 32,
+            "Q": 8,
+            "n": 20480,
+            "n_hits": 1154,
+            "accuracy": 0.056348,
+            "accuracy_ci": [
+              0.053272,
+              0.05959
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.013672,
+            "corrupt_source": {
+              "span": [
+                0,
+                64
+              ],
+              "n": 20480,
+              "n_hits": 311,
+              "accuracy": 0.015186,
+              "accuracy_ci": [
+                0.013599,
+                0.016954
+              ]
+            },
+            "query_key_distance": {
+              "min": 59,
+              "max": 240,
+              "median": 149,
+              "window": 16
+            }
+          },
+          {
+            "arm": "D64",
+            "dh": 64,
+            "K": 32,
+            "Q": 8,
+            "n": 20480,
+            "n_hits": 1154,
+            "accuracy": 0.056348,
+            "accuracy_ci": [
+              0.053272,
+              0.05959
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.013672,
+            "corrupt_source": {
+              "span": [
+                0,
+                64
+              ],
+              "n": 20480,
+              "n_hits": 330,
+              "accuracy": 0.016113,
+              "accuracy_ci": [
+                0.014477,
+                0.017931
+              ]
+            },
+            "query_key_distance": {
+              "min": 59,
+              "max": 240,
+              "median": 149,
+              "window": 16
+            }
+          },
+          {
+            "arm": "D128",
+            "dh": 128,
+            "K": 32,
+            "Q": 8,
+            "n": 20480,
+            "n_hits": 1183,
+            "accuracy": 0.057764,
+            "accuracy_ci": [
+              0.054651,
+              0.061043
+            ],
+            "chance": 0.015625,
+            "local_prior": 0.013672,
+            "corrupt_source": {
+              "span": [
+                0,
+                64
+              ],
+              "n": 20480,
+              "n_hits": 319,
+              "accuracy": 0.015576,
+              "accuracy_ci": [
+                0.013969,
+                0.017365
+              ]
+            },
+            "query_key_distance": {
+              "min": 59,
+              "max": 240,
+              "median": 149,
+              "window": 16
+            }
+          }
+        ],
+        "adjacent": [
+          {
+            "from": 16,
+            "to": 32,
+            "delta_pp": -0.098,
+            "ci_overlap": true
+          },
+          {
+            "from": 32,
+            "to": 64,
+            "delta_pp": 0.0,
+            "ci_overlap": true
+          },
+          {
+            "from": 64,
+            "to": 128,
+            "delta_pp": 0.142,
+            "ci_overlap": true
+          }
+        ],
+        "n_resolvable_pairs": 0,
+        "monotone_non_increasing": false,
+        "monotone_non_decreasing": false,
+        "knee_detected": false,
+        "monotone_or_knee": false,
+        "indistinguishable": true,
+        "note": "相邻点 Wilson CI 重叠记「不可分辨」、不计入方向判定；knee = 曲线中段的相邻步长 ≥2× 最小步"
+      }
+    },
+    "capacity_main_K": 32
+  },
+  "exchange_rate": {
+    "threshold": 0.0625,
+    "threshold_mult_of_chance": 4,
+    "definition": "K*(dh) = 使该格 Wilson CI 下界 > 4×chance 的最大 K；无外推",
+    "K_star_by_arm": {
+      "D16": {
+        "dh": 16,
+        "K_star": 16,
+        "K_passed": [
+          4,
+          8,
+          16
+        ],
+        "state_floats": 4096
+      },
+      "D32": {
+        "dh": 32,
+        "K_star": 16,
+        "K_passed": [
+          4,
+          8,
+          16
+        ],
+        "state_floats": 8192
+      },
+      "D64": {
+        "dh": 64,
+        "K_star": 16,
+        "K_passed": [
+          4,
+          8,
+          16
+        ],
+        "state_floats": 16384
+      },
+      "D128": {
+        "dh": 128,
+        "K_star": 16,
+        "K_passed": [
+          4,
+          8,
+          16
+        ],
+        "state_floats": 32768
+      }
+    },
+    "dh_min_by_K": {
+      "K4": {
+        "dh_min_passing": 16,
+        "arms_passing": [
+          "D16",
+          "D32",
+          "D64",
+          "D128"
+        ]
+      },
+      "K8": {
+        "dh_min_passing": 16,
+        "arms_passing": [
+          "D16",
+          "D32",
+          "D64",
+          "D128"
+        ]
+      },
+      "K16": {
+        "dh_min_passing": 16,
+        "arms_passing": [
+          "D16",
+          "D32",
+          "D64",
+          "D128"
+        ]
+      },
+      "K32": {
+        "dh_min_passing": 0,
+        "arms_passing": []
+      }
+    },
+    "n_distinct_measured_points": 1,
+    "meets_ge3_points": false
+  },
+  "criteria": {
+    "c1_premise_anchor_above_chance": true,
+    "c2_difficulty_monotone_or_knee": true,
+    "c3_capacity_monotone_or_knee": false,
+    "c4_exchange_ge3_measured_points": false,
+    "c5_corrupt_source_control": {
+      "D16_K4": {
+        "main": 0.530566,
+        "corrupt": 0.01416,
+        "corrupt_ci": [
+          0.012047,
+          0.016638
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D16_K8": {
+        "main": 0.364648,
+        "corrupt": 0.01499,
+        "corrupt_ci": [
+          0.013415,
+          0.016748
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D16_K16": {
+        "main": 0.106543,
+        "corrupt": 0.017334,
+        "corrupt_ci": [
+          0.015635,
+          0.019214
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D16_K32": {
+        "main": 0.057324,
+        "corrupt": 0.016113,
+        "corrupt_ci": [
+          0.014477,
+          0.017931
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D32_K4": {
+        "main": 0.534668,
+        "corrupt": 0.012695,
+        "corrupt_ci": [
+          0.010702,
+          0.015054
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D32_K8": {
+        "main": 0.365771,
+        "corrupt": 0.014502,
+        "corrupt_ci": [
+          0.012953,
+          0.016233
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D32_K16": {
+        "main": 0.107422,
+        "corrupt": 0.015771,
+        "corrupt_ci": [
+          0.014154,
+          0.017571
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D32_K32": {
+        "main": 0.056348,
+        "corrupt": 0.015186,
+        "corrupt_ci": [
+          0.013599,
+          0.016954
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D64_K4": {
+        "main": 0.537012,
+        "corrupt": 0.013379,
+        "corrupt_ci": [
+          0.011329,
+          0.015794
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D64_K8": {
+        "main": 0.363525,
+        "corrupt": 0.014893,
+        "corrupt_ci": [
+          0.013322,
+          0.016645
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D64_K16": {
+        "main": 0.107666,
+        "corrupt": 0.016797,
+        "corrupt_ci": [
+          0.015125,
+          0.01865
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D64_K32": {
+        "main": 0.056348,
+        "corrupt": 0.016113,
+        "corrupt_ci": [
+          0.014477,
+          0.017931
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D128_K4": {
+        "main": 0.421777,
+        "corrupt": 0.014551,
+        "corrupt_ci": [
+          0.012407,
+          0.017059
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D128_K8": {
+        "main": 0.365869,
+        "corrupt": 0.014111,
+        "corrupt_ci": [
+          0.012585,
+          0.01582
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D128_K16": {
+        "main": 0.10752,
+        "corrupt": 0.016797,
+        "corrupt_ci": [
+          0.015125,
+          0.01865
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      },
+      "D128_K32": {
+        "main": 0.057764,
+        "corrupt": 0.015576,
+        "corrupt_ci": [
+          0.013969,
+          0.017365
+        ],
+        "chance": 0.015625,
+        "invalidated": false
+      }
+    },
+    "c5_n_invalidated_cells": 0
+  },
+  "train_results": {
+    "D16": {
+      "wall_minutes": 14.84,
+      "peak_gpu_mem_mb": 2381.4,
+      "params": 13803216,
+      "carry_liveness": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 266448,
+        "w_fro": 90.269809,
+        "state_fro": 1.540105,
+        "beta_mean": 0.493176,
+        "write_rel": 0.0,
+        "read_norm": 3.572649,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.092509,
+        "read_share": 0.752323,
+        "mem_write_to_resid_ratio": 0.255111,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.077034,
+        "rel_dev_vs_other_rule": 0.418332,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "carry_read_mass": {
+        "enabled": true,
+        "window": 16,
+        "read_share_per_layer": 0.721051,
+        "read_share_by_layer": [
+          0.115767,
+          0.378472,
+          0.52072,
+          0.775661,
+          0.631541,
+          0.744112,
+          0.897267,
+          0.719562,
+          0.954287,
+          0.921755,
+          1.026055,
+          0.967415
+        ],
+        "slot_score_mass_per_query": 15.056456,
+        "far_read_norm_frac": 1.011292,
+        "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）"
+      },
+      "gnorm_monitor": {
+        "gnorm_max": 104.58,
+        "gnorm_mean": 0.214,
+        "grad_skips": 0,
+        "synth_answer_ce_mean": 1.511,
+        "synth_chance_ce": 4.1589,
+        "window_mask_probe": {
+          "max_abs_logit_diff_masked_vs_open": 2.106155,
+          "alive": true
+        }
+      },
+      "liveness_recheck": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 266448,
+        "w_fro": 90.269809,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "write_rel_chunks": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "read_scale_absmean": 0.08612,
+        "rel_dev_vs_channel_off": 0.051709,
+        "rel_dev_vs_other_rule": 0.402197,
+        "alive": false,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "read_mass": {
+        "enabled": true,
+        "window": 16,
+        "read_share_per_layer": 0.472916,
+        "read_share_by_layer": [
+          0.137467,
+          0.123324,
+          0.165982,
+          0.330253,
+          0.332583,
+          0.420812,
+          0.546597,
+          0.394184,
+          0.712206,
+          0.731145,
+          0.867189,
+          0.913253
+        ],
+        "slot_score_mass_per_query": 18.118168,
+        "far_read_norm_frac": 0.964416,
+        "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）"
+      }
+    },
+    "D32": {
+      "wall_minutes": 15.11,
+      "peak_gpu_mem_mb": 2283.4,
+      "params": 13801064,
+      "carry_liveness": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 82.095976,
+        "state_fro": 1.983845,
+        "beta_mean": 0.507149,
+        "write_rel": 0.0,
+        "read_norm": 4.718987,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.09156,
+        "read_share": 0.752925,
+        "mem_write_to_resid_ratio": 0.324075,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.188489,
+        "rel_dev_vs_other_rule": 0.228059,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "carry_read_mass": {
+        "enabled": true,
+        "window": 16,
+        "read_share_per_layer": 0.663871,
+        "read_share_by_layer": [
+          0.187536,
+          0.306389,
+          0.410965,
+          0.368452,
+          0.713934,
+          0.650073,
+          0.602277,
+          0.71272,
+          0.984534,
+          0.952498,
+          1.008808,
+          1.068267
+        ],
+        "slot_score_mass_per_query": 26.769674,
+        "far_read_norm_frac": 1.000241,
+        "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）"
+      },
+      "gnorm_monitor": {
+        "gnorm_max": 66.07,
+        "gnorm_mean": 0.172,
+        "grad_skips": 0,
+        "synth_answer_ce_mean": 1.4942,
+        "synth_chance_ce": 4.1589,
+        "window_mask_probe": {
+          "max_abs_logit_diff_masked_vs_open": 2.106155,
+          "alive": true
+        }
+      },
+      "liveness_recheck": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 82.095976,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "write_rel_chunks": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "read_scale_absmean": 0.074317,
+        "rel_dev_vs_channel_off": 0.058557,
+        "rel_dev_vs_other_rule": 0.332766,
+        "alive": false,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "read_mass": {
+        "enabled": true,
+        "window": 16,
+        "read_share_per_layer": 0.499542,
+        "read_share_by_layer": [
+          0.186163,
+          0.202061,
+          0.168923,
+          0.174435,
+          0.427329,
+          0.411166,
+          0.409253,
+          0.462674,
+          0.863762,
+          0.772269,
+          0.903369,
+          1.013106
+        ],
+        "slot_score_mass_per_query": 25.764732,
+        "far_read_norm_frac": 1.003288,
+        "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）"
+      }
+    },
+    "D64": {
+      "wall_minutes": 14.78,
+      "peak_gpu_mem_mb": 2244.1,
+      "params": 13799988,
+      "carry_liveness": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 263220,
+        "w_fro": 76.065681,
+        "state_fro": 1.906338,
+        "beta_mean": 0.440511,
+        "write_rel": 0.0,
+        "read_norm": 8.860038,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.10485,
+        "read_share": 0.684646,
+        "mem_write_to_resid_ratio": 0.155692,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.903562,
+        "rel_dev_vs_other_rule": 0.528728,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "carry_read_mass": {
+        "enabled": true,
+        "window": 16,
+        "read_share_per_layer": 0.615359,
+        "read_share_by_layer": [
+          0.042346,
+          0.173845,
+          0.190256,
+          0.31818,
+          0.11729,
+          0.66936,
+          0.802089,
+          0.913841,
+          0.989627,
+          1.024086,
+          1.069733,
+          1.073651
+        ],
+        "slot_score_mass_per_query": 49.4375,
+        "far_read_norm_frac": 1.004725,
+        "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）"
+      },
+      "gnorm_monitor": {
+        "gnorm_max": 67.04,
+        "gnorm_mean": 0.182,
+        "grad_skips": 0,
+        "synth_answer_ce_mean": 1.4728,
+        "synth_chance_ce": 4.1589,
+        "window_mask_probe": {
+          "max_abs_logit_diff_masked_vs_open": 2.106155,
+          "alive": true
+        }
+      },
+      "liveness_recheck": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 263220,
+        "w_fro": 76.065681,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "write_rel_chunks": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "read_scale_absmean": 0.084627,
+        "rel_dev_vs_channel_off": 0.444876,
+        "rel_dev_vs_other_rule": 0.964086,
+        "alive": false,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "read_mass": {
+        "enabled": true,
+        "window": 16,
+        "read_share_per_layer": 0.479992,
+        "read_share_by_layer": [
+          0.051331,
+          0.069753,
+          0.095136,
+          0.144058,
+          0.065907,
+          0.372037,
+          0.447285,
+          0.698315,
+          0.810589,
+          0.921195,
+          1.037235,
+          1.047057
+        ],
+        "slot_score_mass_per_query": 42.923782,
+        "far_read_norm_frac": 0.99192,
+        "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）"
+      }
+    },
+    "D128": {
+      "wall_minutes": 14.82,
+      "peak_gpu_mem_mb": 2242.5,
+      "params": 13799450,
+      "carry_liveness": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 262682,
+        "w_fro": 68.832223,
+        "state_fro": 2.737103,
+        "beta_mean": 0.404433,
+        "write_rel": 0.0,
+        "read_norm": 11.529205,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.084378,
+        "read_share": 0.666713,
+        "mem_write_to_resid_ratio": 0.165829,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.106485,
+        "rel_dev_vs_other_rule": 0.198834,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "carry_read_mass": {
+        "enabled": true,
+        "window": 16,
+        "read_share_per_layer": 0.53504,
+        "read_share_by_layer": [
+          0.054056,
+          0.360102,
+          0.143239,
+          0.165599,
+          0.335959,
+          0.355862,
+          0.58439,
+          0.515087,
+          0.875335,
+          0.973189,
+          1.009071,
+          1.048589
+        ],
+        "slot_score_mass_per_query": 72.951401,
+        "far_read_norm_frac": 1.01234,
+        "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）"
+      },
+      "gnorm_monitor": {
+        "gnorm_max": 87.46,
+        "gnorm_mean": 0.19,
+        "grad_skips": 0,
+        "synth_answer_ce_mean": 1.4778,
+        "synth_chance_ce": 4.1589,
+        "window_mask_probe": {
+          "max_abs_logit_diff_masked_vs_open": 2.106155,
+          "alive": true
+        }
+      },
+      "liveness_recheck": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 262682,
+        "w_fro": 68.832223,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "write_rel_chunks": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "read_scale_absmean": 0.059886,
+        "rel_dev_vs_channel_off": 0.065047,
+        "rel_dev_vs_other_rule": 0.37695,
+        "alive": false,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "read_mass": {
+        "enabled": true,
+        "window": 16,
+        "read_share_per_layer": 0.364894,
+        "read_share_by_layer": [
+          0.06118,
+          0.10283,
+          0.066676,
+          0.06438,
+          0.134441,
+          0.163516,
+          0.289875,
+          0.266852,
+          0.589164,
+          0.6774,
+          0.980694,
+          0.981721
+        ],
+        "slot_score_mass_per_query": 62.502945,
+        "far_read_norm_frac": 0.987122,
+        "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）"
+      }
+    }
+  },
+  "loss_slope": {
+    "D16": {
+      "n_points": 50,
+      "slope": -0.0647,
+      "first_loss": 4.7499,
+      "last_loss": 0.326,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "D32": {
+      "n_points": 50,
+      "slope": -0.062243,
+      "first_loss": 4.7499,
+      "last_loss": 0.3255,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "D64": {
+      "n_points": 50,
+      "slope": -0.055834,
+      "first_loss": 4.7499,
+      "last_loss": 0.3257,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "D128": {
+      "n_points": 50,
+      "slope": -0.050859,
+      "first_loss": 4.7499,
+      "last_loss": 0.3257,
+      "window_steps": [
+        200,
+        12000
+      ]
+    }
+  },
+  "memory_analytic": {
+    "params": 13801064,
+    "params_bytes_fp32": 55204256,
+    "optimizer_bytes_adamw": 110408512,
+    "train_act_floats_per_sample_est": 3932160,
+    "train_act_bytes_bf16_batch": 480.0,
+    "window_attn_scores_floats_per_layer": 2097152,
+    "window_attn_scores_mb": 8.0,
+    "full_attn_scores_mb_for_contrast": 128.0,
+    "carry_state_floats": 8192,
+    "carry_state_bytes": 32768,
+    "carry_state_note": "单共享槽 H·dh·dh = 8192 floats/样本，**与 T 无关**",
+    "kv_cache_bytes_per_sample": 6291456
+  },
+  "memory_measured": {
+    "eval_peak_gpu_mem_mb": 608.2,
+    "train_peak_gpu_mem_mb": {
+      "D16": 2381.4,
+      "D32": 2283.4,
+      "D64": 2244.1,
+      "D128": 2242.5
+    },
+    "note": "实测 = torch.cuda.max_memory_allocated（净分配，不含共享卡其他任务）；解析 = analytic_memory（参数/优化器/激活/状态）"
+  },
+  "cost": {
+    "wall_minutes_total_eval": 1.33,
+    "train_wall_minutes": {
+      "D16": 14.84,
+      "D32": 15.11,
+      "D64": 14.78,
+      "D128": 14.82
+    },
+    "n_forward_batches": 1280,
+    "n_grid_cells": 16
+  },
+  "reproducibility": {
+    "n_per_pass": 4096,
+    "accuracy_1": 0.366943,
+    "accuracy_2": 0.366943,
+    "same_seed_rerun_max_abs_diff": 0.0,
+    "pass": true,
+    "note": "同 seed/同代码/同设备把 anchor 格 8 个批再跑一遍（纯推理复现性）"
+  },
+  "code": {
+    "run.py": "78b3f9ff2ef0c185d231fb8270090c8f41673cc8fb4bfa42c144895dbc33d123",
+    "mutate.py": "fb1bc62e3f1c9d89feeab36a7598e980a5fe8fd1f0a7dcbb623abea0e935c60a",
+    "reconcile_numbers.py": "adcb41ae19d9bad55205fc93d94dd384dcc97811d280db38fd252179c49b601a",
+    "config.json": "8c2732d484badb55f3bf7480d36481e95511796727df8f25fc33f8852806daf0",
+    "README.md": "4c82f2f4e5991dc8f30d8580b3b8d4e65ba147a836e45f4cc2c6bfe339e1a799",
+    "pathlm/depth_ar.py": "248a92754154d65e0857ca5ceccda91ef63ffd9b90b3cfde2199da29b6b59135",
+    "train_depth_ar.py": "8c333e5405baf23812cd8d389e69063a3b0129fa17993db7fe1ddb50e71828a0",
+    "tests/test_depth_ar.py": "433d4ef4dc48de4c40d70a068a1c916004cd35fc38aad11be377af7fd22bdead",
+    "tools/evalkit/carry_channel.py": "4dcd91facd60a512dcc983836fb29a7c91aad988bada1c95ada666824d226753",
+    "tools/evalkit/longrange_tasks.py": "4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b",
+    "tools/evalkit/retention.py": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502"
+  }
+}

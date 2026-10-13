@@ -1,0 +1,59 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "1.1.4.3"
+axis: "1 时间轴"
+title: "压缩触发与优先级"
+dir: "axes/1-time/1.1.4.3-compression-trigger"
+
+purpose: "在必须驱逐 / 压缩 KV 时，决定「何时压、先压谁」的调度，使同样的删除预算下丢失的信息最少。"
+innovation: "相对 stock 的固定距离驱逐，给 KV 驱逐 / 压缩加一个内容 / 频率感知的优先级调度器（LRU、注意力质量、信号驱动）。改动量级：只改调度规则与删除顺序，不改变量（删除预算与压缩率不变）。"
+expected_effect: "（a）同删除预算下保留更多长程可检索信息；（b）给出「调度维度是否独立于删除量」的判断，并放进同预算前沿。"
+sota_baseline: "H2O / Scissorhands / SnapKV / PyramidKV / StreamingLLM（注意力式驱逐）、Compressive Transformer（固定压缩率）；本地锚 = stock 全因果基线（A2 → axes/7-references，13M B0 = 1.5074 bpc 快照）。业界条目按 `记忆·未核` 标注。"
+gap: "旧格判据（固定压缩率 ρ 下重建质量 + ρ-质量曲线）与实测量（同预算驱逐优先级三规则对决）错配，且保留腿门槛算术不可达（55-review P15/P16）；旧 notes「业界无人占位」与自家 PRIOR_ART 矛盾（P23）。本项增量 = 在**同可见性对数预算**下重测优先级是否有可排序收益，并给出 ρ-质量曲线。"
+method: "单因素：固定删除/压缩预算，比 {距离（本项目 eviction 语义）, 访问频率 LRU, 内容/信号驱动} 三条优先级规则；以「掉掉的可见性对数」对齐预算而非只对齐删除位置数。基底恒为 stock。"
+validation: "端到端：对照 = stock 全因果基线（归一为 100%）+ 同预算的距离/固定调度臂；客观判据 = 同预算保留腿召回（该涨）+ 被压缩的可见性对数（作对照列）+ ρ-质量曲线；口径 = 同「可见性对数」预算（不是只对齐删除位置数），禁墙钟。"
+objective_criteria: "该涨：同预算下保留腿召回（相对距离/固定调度）；该跌：被压缩的可见性对数（作对照列）；必须不变：压缩率 ρ 与总字节预算严格相等（否则不是调度比较）、因果性。"
+falsification: "若在**同可见性对数**预算下，LRU / 内容感知调度的召回相对距离调度不越噪声带（旧格已在字面口径下观测到优势在重对齐后消失）⇒ 压缩优先级这一维度在 13M/256 上无信息量。"
+failure_analysis: ""
+conclusion: "旧格读数（口径错配，见 gaps）：同删除位置数下 lru/content 字面伤害更低（N=8 上 +0.0159/+0.0244），但按「可见性对数」重对齐后 lru −0.0170（由正转负）、content +0.0132（<0.014 噪声带）⇒ 「LRU 前提成立」在旧口径下被否证。保留腿三规则最大差 +1.71pp（门槛 10pp 结构上不可达）。该结论只覆盖「驱逐调度」这一子形式，**不得**推广为「LRU 思想不可能」。"
+conclusion_review: "看上去旧读数不能当本项结论：判据（ρ 曲线）与实测（驱逐优先级对决）错配、门槛算术不可达（55-review P15/P16）。故 status 进行中，按正确判据（同可见性对数预算 + ρ-质量曲线）的判决未做。独立复核未做。"
+experiments:
+  - "axes/1-time/1.1.4.3-compression-trigger/experiments/2615-priority-shootout-13m/analysis.md @4d4ecb0"
+  - "axes/1-time/1.1.4.3-compression-trigger/experiments/2615-priority-shootout-13m"
+argument: "用「同可见性对数预算」对齐把「删得更省」与「删得更聪明」分开——旧格的字面优势被证明来自前者；并指出「LRU 式增量搬运」更严谨的对应物是写入算子（delta，见 1.1.4.1），不是驱逐调度。"
+gaps:
+  - "判据错配未修：需在固定 ρ 下报重建质量 + ρ-质量曲线（下一步最小实验：13M、固定 ρ∈{2,4,8}，三规则 × 保留/重建）"
+  - "未测流式（只看过去）LRU 与 >13.5M/T=256 规模"
+  - "旧 notes「业界无人占位」与 PRIOR_ART 矛盾（P23），随旧格退役"
+cost_model: "等效理论量：优先级调度只改删除顺序，删除预算（删除位置数或可见性对数）与压缩率 ρ 不变，故每位置内存字节与每 token FLOPs 与对照臂相同；调度本身是每位置一个标量打分。考虑 pipelining：调度可逐 token 递推并入 decode 流水。"
+
+role_map:
+  owner: "轴 1 时间轴 lead（待指派）"
+  writer: "1.1.4.3 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「压缩触发/优先级」判决包：在固定 ρ 与同「可见性对数」预算下，{距离, LRU, 内容/信号} 三规则的保留召回与重建质量，对照 stock 全因果，含 n≥2。"
+  acceptance: "同预算下三规则可排序或明确不可排序；门槛在跑之前先算术核验可达；口径按同可见性对数报，禁墙钟。"
+
+work_packages:
+  - id: "WP1"
+    what: "按正确判据（固定 ρ + ρ-质量曲线）重判优先级"
+    goal: "修 55-review P15/P16 的判据错配与不可达门槛"
+    means: "固定 ρ、同可见性对数预算，三规则 × 保留召回 + 重建质量"
+    acceptance: "门槛先算术核验有变化空间；三规则可排序或不越噪声带"
+    evidence: "axes/1-time/1.1.4.3-compression-trigger/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：按正确判据重判优先级"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "进行中"
+started: "2026-10-13T10:15:48+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:15:48+08:00"
+    actor: "轴 1 §1.1 worker"
+    change: "由旧格 A10-compression-trigger 迁移建立（A10 → 1.1.4.3 压缩触发与优先级）；experiments 整目录搬入；按 55-review P15/P16/P23 修正——判据从「LRU 无收益」改为「固定 ρ 下重建质量 + ρ-质量曲线 + 同可见性对数预算」，并注明旧门槛算术不可达；补目的（同预算下丢失信息最少）。"

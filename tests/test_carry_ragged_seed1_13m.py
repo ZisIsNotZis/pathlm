@@ -21,9 +21,9 @@ import sys
 import pytest
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-EXP2630 = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type", "experiments",
+EXP2630 = os.path.join(ROOT, "axes", "1-time", "1.1.4.1-explicit-memory", "experiments",
                        "2630-carry-ragged-seed1")
-EXP2629 = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type", "experiments",
+EXP2629 = os.path.join(ROOT, "axes", "1-time", "1.1.4.1-explicit-memory", "experiments",
                        "2629-carry-ragged-projfill")
 sys.path.insert(0, ROOT)
 sys.path.insert(0, EXP2630)

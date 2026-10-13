@@ -1,0 +1,705 @@
+{
+  "contract": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/README.md",
+  "checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "sha256_verified": true
+  },
+  "config": {
+    "checkpoint": {
+      "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+      "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+      "size_bytes": 54193675,
+      "role": "被测量模型（复用，只读）：13.5M dense decoder-only 主干，12k 步，clean bpc 1.4836"
+    },
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true
+    },
+    "data": {
+      "name": "enwik8_full",
+      "path": "data/enwik8_full.npz",
+      "split": "前 90M 训练 / 末 10M 评测（本实验只用评测尾段）",
+      "vocab_size": 206,
+      "n_real_tokens": 205,
+      "mask_token": 205
+    },
+    "eval": {
+      "n_batches": 2,
+      "batch_size": 16,
+      "window_seed": 2,
+      "device": "cuda",
+      "note": "依赖腿用 2614 的同一窗口序（window_seed=2 + 24×16），基线锚 1.483569"
+    },
+    "needle": {
+      "construction": "phrase_needle_batch（needle v3，真实文本短语针；v2 随机字节对在本 checkpoint 上基线 1.5%，见 README §3）",
+      "n_needles": 8,
+      "phrase_len": 6,
+      "anchors": 8,
+      "anchor_frac": 0.25,
+      "n_batches": 2,
+      "batch_size": 16,
+      "seed": 3,
+      "require_phrase_absent": true
+    },
+    "v2_construction_diagnosis": {
+      "fn": "pathlm.data.needle_batch",
+      "n_needles": 8,
+      "anchors": 8,
+      "anchor_frac": 0.2,
+      "n_batches": 1,
+      "batch_size": 16,
+      "seed": 3,
+      "note": "契约「方法」原文要求沿用 v2 构造；先测它的基线召回，<50% 即为构造问题"
+    },
+    "configs": {
+      "prefix": {
+        "n_dropped": [
+          8,
+          64
+        ]
+      },
+      "recent": {
+        "d": [
+          32,
+          256
+        ]
+      },
+      "segment": {
+        "lengths": [
+          4,
+          16,
+          64
+        ],
+        "n_starts": 1,
+        "start_seed": 11
+      }
+    },
+    "diagnostics": {
+      "query_min_long": 128,
+      "query_min_needle": 200
+    },
+    "reproducibility": {
+      "rerun": false,
+      "n_configs": 6
+    },
+    "noise_floor": {
+      "window_seeds": [
+        3,
+        4
+      ],
+      "needle_seeds": [
+        3
+      ]
+    },
+    "variance_band_bpc": 0.014,
+    "main_criterion_recall_drop_pp": 0.3
+  },
+  "instrument": {
+    "bpc_full_release_path": 1.470954,
+    "bpc_full_identity_mask": 1.470954,
+    "bitwise_equal": true,
+    "abs_diff_vs_anchor": 0.012646,
+    "release_anchor_bpc_2610": 1.4836,
+    "paired_control_same_meta": true,
+    "plant_cells": 109,
+    "needle_layout": {
+      "n_needles": 8,
+      "phrase_len": 6,
+      "anchors": 8,
+      "anchor_frac": 0.25,
+      "q0": 200,
+      "answer_rows_first_row": [
+        206,
+        213,
+        220,
+        227,
+        234,
+        241,
+        248,
+        255
+      ]
+    }
+  },
+  "v2_construction_diagnosis": {
+    "construction": "pathlm.data.needle_batch（v2：随机字节对针）",
+    "n": 125,
+    "recall": 0.016,
+    "buckets": {
+      "anchor": {
+        "recall": 0.0,
+        "n": 30
+      },
+      "in_window": {
+        "recall": 0.021053,
+        "n": 95
+      }
+    },
+    "meets_50pct_floor": false
+  },
+  "intervention": {
+    "what": "评测期改注意力可见集（依赖腿）+ 在窗口里植入/不植入真实文本短语针（检索腿）；不改权重、不训练",
+    "params_added": 0,
+    "weights_changed": false,
+    "alive": true,
+    "max_abs_damage_bpc": 1.526859,
+    "retention_gap": 0.238282,
+    "activity_note": "活性量 = 每个配置的被删因果 (query,key) 对数 / 占比（mask_stats），以及逐批判定的针命中与分桶（needle_batch 行）；本实验无训练步，等价物是**每批判定即写** retention_log.jsonl，见 SCHEMA §17.4。"
+  },
+  "hard_needle_subset": {
+    "n_hard": 142,
+    "frac_hard": 0.554688,
+    "baseline_recall_hard": 0.443662,
+    "control_recall_hard": 0.0,
+    "per_config": {
+      "full": 0.443662,
+      "prefix:N=8": 0.408451,
+      "prefix:N=64": 0.366197,
+      "recent:d=32": 0.084507,
+      "recent:d=256": 0.443662,
+      "segment:L=4@83": 0.429577,
+      "segment:L=16@113": 0.408451,
+      "segment:L=64@92": 0.34507
+    },
+    "note": "难度控制子集 = 无针控制臂答不出的针（答案不能从线索先验得到）。契约的 50% 门槛按**全针**基线判：本子集基线低于 50% ⇒ 仅作诊断，不作为主判据口径（SCHEMA §17.10 的「带病构造不得判读」）。"
+  },
+  "baseline": {
+    "bpc": 1.470954,
+    "retention": {
+      "recall": 0.683594,
+      "n": 256,
+      "buckets": {
+        "window": {
+          "recall": 0.678571,
+          "n": 224
+        },
+        "anchor": {
+          "recall": 0.71875,
+          "n": 32
+        }
+      }
+    }
+  },
+  "no_needle_control": {
+    "retention": {
+      "recall": 0.445312,
+      "n": 256,
+      "buckets": {
+        "window": {
+          "recall": 0.441964,
+          "n": 224
+        },
+        "anchor": {
+          "recall": 0.46875,
+          "n": 32
+        }
+      }
+    },
+    "note": "plant=False，同一 generator 状态 ⇒ 针位与线索与主臂逐一配对；= 检索腿地板「记忆不存在」"
+  },
+  "configs": [
+    {
+      "id": "full",
+      "kind": "full",
+      "bpc": 1.470954,
+      "delta_bpc": 0.0,
+      "damage_bpc": 0.0,
+      "damage_qmin128": 0.0,
+      "damage_qmin200": 0.0,
+      "n_dropped_pairs": 0,
+      "causal_pairs": 32896,
+      "dropped_frac": 0.0,
+      "n_dropped_keys": 0,
+      "diagonal_kept": true,
+      "retention": {
+        "recall": 0.683594,
+        "n": 256,
+        "buckets": {
+          "window": {
+            "recall": 0.678571,
+            "n": 224
+          },
+          "anchor": {
+            "recall": 0.71875,
+            "n": 32
+          }
+        }
+      },
+      "recall_drop_vs_baseline": 0.0,
+      "deleted_frac_non_anchor": 0.0,
+      "bucket_recall": {
+        "window": 0.678571,
+        "anchor": 0.71875
+      },
+      "n_deleted": 0,
+      "deleted_share": 0.0,
+      "paired_baseline_recall_deleted": 0.0,
+      "paired_recall_deleted": 0.0,
+      "paired_drop_deleted": 0.0,
+      "overlaps_query_block": false,
+      "hard_recall": 0.443662,
+      "hard_drop_vs_baseline": 0.0
+    },
+    {
+      "id": "prefix:N=8",
+      "kind": "prefix",
+      "n_dropped": 8,
+      "bpc": 1.656931,
+      "delta_bpc": -0.185977,
+      "damage_bpc": 0.185977,
+      "damage_qmin128": 0.013741,
+      "damage_qmin200": 0.006215,
+      "n_dropped_pairs": 2012,
+      "causal_pairs": 32896,
+      "dropped_frac": 0.06116245,
+      "n_dropped_keys": 8,
+      "diagonal_kept": true,
+      "retention": {
+        "recall": 0.652344,
+        "n": 256,
+        "buckets": {
+          "window": {
+            "recall": 0.683036,
+            "n": 224
+          },
+          "anchor": {
+            "recall": 0.4375,
+            "n": 32
+          }
+        }
+      },
+      "recall_drop_vs_baseline": 0.03125,
+      "deleted_frac_non_anchor": 0.0,
+      "bucket_recall": {
+        "window": 0.683036,
+        "anchor": 0.4375
+      },
+      "n_deleted": 32,
+      "deleted_share": 0.125,
+      "paired_baseline_recall_deleted": 0.71875,
+      "paired_recall_deleted": 0.4375,
+      "paired_drop_deleted": 0.28125,
+      "overlaps_query_block": false,
+      "hard_recall": 0.408451,
+      "hard_drop_vs_baseline": 0.035211
+    },
+    {
+      "id": "prefix:N=64",
+      "kind": "prefix",
+      "n_dropped": 64,
+      "bpc": 2.732199,
+      "delta_bpc": -1.261245,
+      "damage_bpc": 1.261245,
+      "damage_qmin128": 0.047168,
+      "damage_qmin200": 0.025269,
+      "n_dropped_pairs": 14304,
+      "causal_pairs": 32896,
+      "dropped_frac": 0.4348249,
+      "n_dropped_keys": 64,
+      "diagonal_kept": true,
+      "retention": {
+        "recall": 0.609375,
+        "n": 256,
+        "buckets": {
+          "window": {
+            "recall": 0.677419,
+            "n": 155
+          },
+          "anchor": {
+            "recall": 0.40625,
+            "n": 32
+          },
+          "beyond": {
+            "recall": 0.550725,
+            "n": 69
+          }
+        }
+      },
+      "recall_drop_vs_baseline": 0.074219,
+      "deleted_frac_non_anchor": 0.308036,
+      "bucket_recall": {
+        "window": 0.677419,
+        "anchor": 0.40625,
+        "beyond": 0.550725
+      },
+      "n_deleted": 101,
+      "deleted_share": 0.394531,
+      "paired_baseline_recall_deleted": 0.70297,
+      "paired_recall_deleted": 0.50495,
+      "paired_drop_deleted": 0.19802,
+      "overlaps_query_block": false,
+      "hard_recall": 0.366197,
+      "hard_drop_vs_baseline": 0.077465
+    },
+    {
+      "id": "recent:d=32",
+      "kind": "recent",
+      "d": 32,
+      "bpc": 1.657028,
+      "delta_bpc": -0.186074,
+      "damage_bpc": 0.186074,
+      "damage_qmin128": 0.219288,
+      "damage_qmin200": 0.251537,
+      "n_dropped_pairs": 25200,
+      "causal_pairs": 32896,
+      "dropped_frac": 0.76605058,
+      "n_dropped_keys": 224,
+      "diagonal_kept": true,
+      "retention": {
+        "recall": 0.367188,
+        "n": 256,
+        "buckets": {
+          "beyond": {
+            "recall": 0.360731,
+            "n": 219
+          },
+          "anchor": {
+            "recall": 0.34375,
+            "n": 32
+          },
+          "window": {
+            "recall": 0.8,
+            "n": 5
+          }
+        }
+      },
+      "recall_drop_vs_baseline": 0.316406,
+      "deleted_frac_non_anchor": 0.977679,
+      "bucket_recall": {
+        "beyond": 0.360731,
+        "anchor": 0.34375,
+        "window": 0.8
+      },
+      "n_deleted": 251,
+      "deleted_share": 0.980469,
+      "paired_baseline_recall_deleted": 0.681275,
+      "paired_recall_deleted": 0.358566,
+      "paired_drop_deleted": 0.322709,
+      "overlaps_query_block": false,
+      "hard_recall": 0.084507,
+      "hard_drop_vs_baseline": 0.359155
+    },
+    {
+      "id": "recent:d=256",
+      "kind": "recent",
+      "d": 256,
+      "bpc": 1.470954,
+      "delta_bpc": 0.0,
+      "damage_bpc": 0.0,
+      "damage_qmin128": 0.0,
+      "damage_qmin200": 0.0,
+      "n_dropped_pairs": 0,
+      "causal_pairs": 32896,
+      "dropped_frac": 0.0,
+      "n_dropped_keys": 0,
+      "diagonal_kept": true,
+      "retention": {
+        "recall": 0.683594,
+        "n": 256,
+        "buckets": {
+          "window": {
+            "recall": 0.678571,
+            "n": 224
+          },
+          "anchor": {
+            "recall": 0.71875,
+            "n": 32
+          }
+        }
+      },
+      "recall_drop_vs_baseline": 0.0,
+      "deleted_frac_non_anchor": 0.0,
+      "bucket_recall": {
+        "window": 0.678571,
+        "anchor": 0.71875
+      },
+      "n_deleted": 0,
+      "deleted_share": 0.0,
+      "paired_baseline_recall_deleted": 0.0,
+      "paired_recall_deleted": 0.0,
+      "paired_drop_deleted": 0.0,
+      "overlaps_query_block": false,
+      "hard_recall": 0.443662,
+      "hard_drop_vs_baseline": 0.0
+    },
+    {
+      "id": "segment:L=4@83",
+      "kind": "segment",
+      "length": 4,
+      "start": 83,
+      "bpc": 1.582133,
+      "delta_bpc": -0.111179,
+      "damage_bpc": 0.111179,
+      "damage_qmin128": -0.000581,
+      "damage_qmin200": -0.000672,
+      "n_dropped_pairs": 682,
+      "causal_pairs": 32896,
+      "dropped_frac": 0.020732,
+      "n_dropped_keys": 4,
+      "diagonal_kept": true,
+      "retention": {
+        "recall": 0.671875,
+        "n": 256,
+        "buckets": {
+          "window": {
+            "recall": 0.679245,
+            "n": 212
+          },
+          "anchor": {
+            "recall": 0.71875,
+            "n": 32
+          },
+          "beyond": {
+            "recall": 0.416667,
+            "n": 12
+          }
+        }
+      },
+      "recall_drop_vs_baseline": 0.011719,
+      "deleted_frac_non_anchor": 0.053571,
+      "bucket_recall": {
+        "window": 0.679245,
+        "anchor": 0.71875,
+        "beyond": 0.416667
+      },
+      "n_deleted": 12,
+      "deleted_share": 0.046875,
+      "paired_baseline_recall_deleted": 0.583333,
+      "paired_recall_deleted": 0.416667,
+      "paired_drop_deleted": 0.166666,
+      "overlaps_query_block": false,
+      "hard_recall": 0.429577,
+      "hard_drop_vs_baseline": 0.014085
+    },
+    {
+      "id": "segment:L=16@113",
+      "kind": "segment",
+      "length": 16,
+      "start": 113,
+      "bpc": 1.894619,
+      "delta_bpc": -0.423665,
+      "damage_bpc": 0.423665,
+      "damage_qmin128": 0.257336,
+      "damage_qmin200": 0.021998,
+      "n_dropped_pairs": 2152,
+      "causal_pairs": 32896,
+      "dropped_frac": 0.06541829,
+      "n_dropped_keys": 16,
+      "diagonal_kept": true,
+      "retention": {
+        "recall": 0.660156,
+        "n": 256,
+        "buckets": {
+          "window": {
+            "recall": 0.664975,
+            "n": 197
+          },
+          "anchor": {
+            "recall": 0.75,
+            "n": 32
+          },
+          "beyond": {
+            "recall": 0.518519,
+            "n": 27
+          }
+        }
+      },
+      "recall_drop_vs_baseline": 0.023438,
+      "deleted_frac_non_anchor": 0.120536,
+      "bucket_recall": {
+        "window": 0.664975,
+        "anchor": 0.75,
+        "beyond": 0.518519
+      },
+      "n_deleted": 27,
+      "deleted_share": 0.105469,
+      "paired_baseline_recall_deleted": 0.740741,
+      "paired_recall_deleted": 0.518519,
+      "paired_drop_deleted": 0.222222,
+      "overlaps_query_block": false,
+      "hard_recall": 0.408451,
+      "hard_drop_vs_baseline": 0.035211
+    },
+    {
+      "id": "segment:L=64@92",
+      "kind": "segment",
+      "length": 64,
+      "start": 92,
+      "bpc": 2.997813,
+      "delta_bpc": -1.526859,
+      "damage_bpc": 1.526859,
+      "damage_qmin128": 1.566884,
+      "damage_qmin200": 0.077987,
+      "n_dropped_pairs": 8416,
+      "causal_pairs": 32896,
+      "dropped_frac": 0.25583658,
+      "n_dropped_keys": 64,
+      "diagonal_kept": true,
+      "retention": {
+        "recall": 0.621094,
+        "n": 256,
+        "buckets": {
+          "window": {
+            "recall": 0.680851,
+            "n": 141
+          },
+          "anchor": {
+            "recall": 0.8125,
+            "n": 32
+          },
+          "beyond": {
+            "recall": 0.445783,
+            "n": 83
+          }
+        }
+      },
+      "recall_drop_vs_baseline": 0.0625,
+      "deleted_frac_non_anchor": 0.370536,
+      "bucket_recall": {
+        "window": 0.680851,
+        "anchor": 0.8125,
+        "beyond": 0.445783
+      },
+      "n_deleted": 83,
+      "deleted_share": 0.324219,
+      "paired_baseline_recall_deleted": 0.722892,
+      "paired_recall_deleted": 0.445783,
+      "paired_drop_deleted": 0.277109,
+      "overlaps_query_block": false,
+      "hard_recall": 0.34507,
+      "hard_drop_vs_baseline": 0.098592
+    }
+  ],
+  "criteria": {
+    "band_bpc": 0.014,
+    "main_criterion_recall_drop_pp": 0.3,
+    "baseline_recall_full": 0.683594,
+    "baseline_recall_ok_ge_50pct": true,
+    "no_needle_floor_recall": 0.445312,
+    "no_needle_floor_by_bucket": {
+      "window": 0.441964,
+      "anchor": 0.46875
+    },
+    "instrument_gap_baseline_minus_floor": 0.238282,
+    "max_paired_drop_deleted_needles": 0.322709,
+    "main_delta_bpc_full_query": {
+      "caliber": "delta_bpc",
+      "drop_field": "recall_drop_vs_baseline",
+      "exclude_query_block": false,
+      "n_qualifying": 0,
+      "configs": [],
+      "n_low_damage_configs": 2,
+      "max_recall_drop_overall": 0.316406,
+      "max_recall_drop_at_low_damage": 0.0
+    },
+    "main_delta_bpc_qmin128": {
+      "caliber": "damage_qmin128",
+      "drop_field": "recall_drop_vs_baseline",
+      "exclude_query_block": false,
+      "n_qualifying": 0,
+      "configs": [],
+      "n_low_damage_configs": 4,
+      "max_recall_drop_overall": 0.316406,
+      "max_recall_drop_at_low_damage": 0.03125
+    },
+    "main_delta_bpc_qmin200": {
+      "caliber": "damage_qmin200",
+      "drop_field": "recall_drop_vs_baseline",
+      "exclude_query_block": false,
+      "n_qualifying": 0,
+      "configs": [],
+      "n_low_damage_configs": 4,
+      "max_recall_drop_overall": 0.316406,
+      "max_recall_drop_at_low_damage": 0.03125
+    },
+    "main_delta_bpc_full_query_no_query_block_overlap": {
+      "caliber": "delta_bpc",
+      "drop_field": "recall_drop_vs_baseline",
+      "exclude_query_block": true,
+      "n_qualifying": 0,
+      "configs": [],
+      "n_low_damage_configs": 2,
+      "max_recall_drop_overall": 0.316406,
+      "max_recall_drop_at_low_damage": 0.0
+    },
+    "main_on_paired_deleted_subset_full_query": {
+      "caliber": "delta_bpc",
+      "drop_field": "paired_drop_deleted",
+      "exclude_query_block": false,
+      "n_qualifying": 0,
+      "configs": [],
+      "n_low_damage_configs": 2,
+      "max_recall_drop_overall": 0.322709,
+      "max_recall_drop_at_low_damage": 0.0
+    },
+    "main_on_hard_needle_subset_full_query": {
+      "caliber": "delta_bpc",
+      "drop_field": "hard_drop_vs_baseline",
+      "exclude_query_block": false,
+      "n_qualifying": 0,
+      "configs": [],
+      "n_low_damage_configs": 2,
+      "max_recall_drop_overall": 0.359155,
+      "max_recall_drop_at_low_damage": 0.0
+    },
+    "main_criterion_met_full_query": false,
+    "v2_construction_baseline_recall": 0.016,
+    "v2_construction_meets_floor": false,
+    "two_legs_move_together": {
+      "corr_delta_bpc_vs_recall_drop": -0.057078,
+      "note": "Pearson r（配置级）：Δbpc（负 = 变差）与召回下降（正）若为**负相关**，说明两腿同向（删得越多两边都越差）。"
+    }
+  },
+  "reproducibility": {
+    "threshold": 0.005,
+    "rerun": false,
+    "per_config": []
+  },
+  "noise_floor": {
+    "needle_recall": {
+      "needle_seeds": [
+        3
+      ],
+      "window_seeds": [
+        3,
+        4
+      ],
+      "configs": [
+        {
+          "id": "full",
+          "n_seeds": 1,
+          "n_per_seed": 128,
+          "recall": [
+            0.75
+          ],
+          "mean_recall": 0.75,
+          "std_recall": 0.0
+        }
+      ],
+      "max_std_recall": 0.0
+    },
+    "dependency_damage": {
+      "configs": [],
+      "max_std_damage_bpc": null
+    }
+  },
+  "code": {
+    "run_py_sha256": "d2cd636b0ec7b37f2d201a3583995b4077019b85ff8f11735ec29bcd2bf0ef4a",
+    "retention_py_sha256": "f1c6a8f377af2cec3bb0b4c8fc360745affb46a99f1c44ca1f14d28342e16978",
+    "tests_sha256": "2d627ae0e8ab6e9decdd2c76de83a70f8040d1672c13fbb0fde2777cdfd6476f"
+  },
+  "cost": {
+    "wall_minutes": 0.017,
+    "wall_seconds": 0.99,
+    "peak_mem_mib": 140.3,
+    "n_evals": 38,
+    "n_needles": 256,
+    "n_configs": 8,
+    "device": "NVIDIA GeForce RTX 4090"
+  }
+}

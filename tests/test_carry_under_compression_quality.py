@@ -26,7 +26,7 @@ from tools.evalkit.retention import masked_logits
 
 from importlib import import_module
 
-HERE = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type",
+HERE = os.path.join(ROOT, "axes", "1-time", "1.1.4.1-explicit-memory",
                     "experiments", "2624-carry-under-compression-quality")
 sys.path.insert(0, HERE)
 qc = import_module("quant_carry")

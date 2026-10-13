@@ -1,0 +1,56 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "1.1.4.4"
+axis: "1 时间轴"
+title: "外部检索"
+dir: "axes/1-time/1.1.4.4-external-retrieval"
+
+purpose: "把可丢弃的前缀存到外部索引，按内容检索回当前预测所需的信息——在不保留全量 KV 的前提下，保住需要精确回忆的远距离内容（信息右移的 explicit 形式之一）。"
+innovation: "相对普通 decoder-only transformer，在 attention 之外加一条外部 kNN / key-value 存储与按 query 的检索读取（Memorizing Transformer / RAG 式），把远距离内容以索引+检索回填。改动量级：主干不变，新增一个外置存储（每位置若干字节）与检索读；检索离线完成、不占主干 FLOPs。"
+expected_effect: "（a）需要精确回忆的长程内容召回提升，同时前缀 KV 可丢；（b）把外置存储的每位置字节放进质量-代价前沿，与窗口/量化/显式状态同图比较。"
+sota_baseline: "Memorizing Transformer（kNN memory）、RETRO、RAG、ICAE / AutoCompressors；本地锚 = stock 全因果基线（A2 → axes/7-references，13M B0 = 1.5074 bpc 快照）。业界条目按 `记忆·未核` 标注。"
+gap: "本仓零经验（无旧格；MAPPING §2）。业界已有占位；本项增量 = 在 13M 受控规模上量化检索腿相对 stock 与窗口臂的保留/质量，并纳入质量-代价前沿，回答「外置存储这一预算点值不值」。"
+method: "单因素：固定主干，只加/不加减检索腿。臂 = {stock, stock + 外置检索}；检索库 = 前缀的 key-value 对，读回方式 = 按 query 的顶部 k 检索。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = stock 全因果基线（归一为 100%）+ 1.1.1 窗口臂；客观判据 = 需要精确回忆的长程召回（该涨）+ clean bpc（该不变/该跌）+ 每位置外置字节（该跌）；口径 = matched-step / 同 token 预算，禁墙钟。"
+objective_criteria: "该涨：远距离精确回忆召回（相对无检索地板与窗口臂）；该跌：每位置保留的 KV 字节（前缀可丢）；必须不变：因果性（检索只能命中当前 token 之前写入的库）、训练/评测索引口径一致。"
+falsification: "若加检索腿后长程精确回忆相对无检索地板不越噪声带，或在同每位置字节预算下被窗口/量化点支配 ⇒ 外部检索这一形式在本尺度不成立。"
+failure_analysis: ""
+conclusion: ""
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 55-review 的原则预登记（须有对照 + 客观判据 + 口径 + 否证条件）。独立复核未做。"
+experiments: []
+argument: "本项按 docs/structure.md §1.1.4 的「信息右移」子类建立：检索是 explicit 右移的一种（把内容搬到可查的外部索引），与 1.1.4.1（状态载体）、1.1.4.2（压缩）并列，判据共用保留/召回 + 质量-代价前沿。"
+gaps:
+  - "本仓零经验：需先做最小判决（13M、{stock, stock+检索} 两臂，长程召回 + clean bpc + 每位置字节）"
+  - "检索库的写入时机与容量未定"
+cost_model: "等效理论量：主干 FLOPs 不变；新增外置存储每位置若干字节（与 KV 相比按存储宽度缩放），检索读每 token O(k) 命中、不随 T 增长。考虑 pipelining：检索可异步于主干前向，属额外访存而非主干 FLOPs。"
+
+role_map:
+  owner: "轴 1 时间轴 lead（待指派）"
+  writer: "1.1.4.4 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「外部检索」判决包：{stock, stock+检索} 的长程精确回忆 + clean bpc + 每位置外置字节，对照 stock 全因果与 1.1.1 窗口臂，含 n≥2。"
+  acceptance: "检索腿相对无检索地板有可排序提升或明确无提升；每位置字节与质量两轴数字齐备；结论表述定量、不越界。"
+
+work_packages:
+  - id: "WP1"
+    what: "外部检索最小判决"
+    goal: "判定外置检索这一信息右移形式在本尺度是否成立"
+    means: "13M、{stock, stock+检索} 两臂，长程精确回忆 + clean bpc + 每位置字节"
+    acceptance: "检索腿相对无检索地板可排序提升或无提升，二选一明确"
+    evidence: "axes/1-time/1.1.4.4-external-retrieval/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+
+roadmap:
+  - "WP1：外部检索最小判决"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "未开始"
+started: "2026-10-13T10:15:48+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:15:48+08:00"
+    actor: "轴 1 §1.1 worker"
+    change: "新建研究项（无旧格，MAPPING §2）：外部检索归 1.1.4 信息右移；按 55-review A 轴 §6「缺 explicit 右移设计集」补上检索这一 explicit 形式；预登记对照/判据/口径/否证条件。"

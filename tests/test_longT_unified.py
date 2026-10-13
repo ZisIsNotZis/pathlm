@@ -24,7 +24,7 @@ sys.path.insert(0, ROOT)
 from pathlm.depth_ar import (DepthARConfig, DepthARModel,     # noqa: E402
                              window_anchor_keep_mask)
 
-EXP = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
+EXP = os.path.join(ROOT, "axes", "1-time", "1.1.1-hard-window",
                    "experiments", "2636-longT-unified")
 D, L, H, MLP = 32, 2, 2, 4
 

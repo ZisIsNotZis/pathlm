@@ -30,7 +30,7 @@ import evidence_anchor                                      # noqa: E402
 from pathlm.depth_ar import (DepthARConfig, DepthARModel,     # noqa: E402
                              window_anchor_keep_mask)
 
-EXP = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
+EXP = os.path.join(ROOT, "axes", "1-time", "1.1.1-hard-window",
                    "experiments", "2628-longT-2048")
 DRIVER = os.path.join(EXP, "clean_driver.py")
 
@@ -144,7 +144,7 @@ def test_token_budget_matches_2626_clean_three_points():
     """同 token 预算 = 四点并列的前提：本实验与 2626 的 TOKEN_BUDGET 必须相等。"""
     assert run2628.TOKEN_BUDGET == 49_152_000
     p26 = evidence_anchor.require_tracked(
-        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+        os.path.join("axes", "1-time", "1.1.1-hard-window", "experiments",
                      "2626-longT-clean", "config.json"),
         "四点并列表的 token 预算基准（入 git）")
     cfg26 = json.load(open(p26))
@@ -199,11 +199,11 @@ def test_step_probe_records_all_layer_stats():
 def test_results_four_points_include_2048_when_present():
     """落盘后：四点并列应含 T=2048，且 Δ 与 eval.json 重算一致。"""
     rp = evidence_anchor.require_tracked(
-        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+        os.path.join("axes", "1-time", "1.1.1-hard-window", "experiments",
                      "2628-longT-2048", "results.json"),
         "本实验的落盘结果（入 git）")
     ep = evidence_anchor.require_tracked(
-        os.path.join("axes", "A-mixing", "A6-mixing-operator", "experiments",
+        os.path.join("axes", "1-time", "1.1.1-hard-window", "experiments",
                      "2628-longT-2048", "eval.json"),
         "本实验的评测落盘（入 git）")
     R = json.load(open(rp))

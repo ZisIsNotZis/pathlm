@@ -10,7 +10,7 @@ ENG1 前：`carry_rule`、`n_kv_heads < n_heads`（GQA/MQA）、`train_window > 
 ③ 单特性路径的块类不变（`GQABlock` / `CarryChannelBlock` 仍是快路径）。
 
 变异验证（每处抓红 + 逐字节还原）见
-`axes/M-carrier/M1-carrier-type/experiments/2622-eng1-composable/mutate.py`。
+`axes/1-time/1.1.4.1-explicit-memory/experiments/2622-eng1-composable/mutate.py`。
 """
 
 import torch

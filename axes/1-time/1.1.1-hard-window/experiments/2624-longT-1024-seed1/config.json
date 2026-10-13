@@ -1,0 +1,97 @@
+{
+  "contract": "axes/1-time/1.1.1-hard-window/experiments/2624-longT-1024-seed1/README.md",
+  "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。",
+  "intervention": {
+    "factor": "训练期可见窗口（唯一变量；关闭 vs T/2）在 **seed=1** 下重跑；seed 两臂相同，相对 2623 的唯一变化是 seed（0→1）",
+    "arms": {
+      "full-1024-seed1": "基线 · T=1024 · 全因果 · seed1",
+      "win512-1024-seed1": "第三点 · T=1024 · 窗口 512（相对刻度 50%）· seed1"
+    },
+    "mask": "keep[i,j] = (j<=i) & ((i-j) < train_window)；对角恒开；实现 = pathlm.depth_ar.window_anchor_keep_mask（训练/评测共用同一函数）"
+  },
+  "model": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "mlp_mult": 4,
+    "dense": true,
+    "topology": "sequential"
+  },
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M train / 末 10M eval",
+    "vocab_size": 206
+  },
+  "token_budget": 98304000,
+  "arms": [
+    {
+      "arm": "full-1024-seed1",
+      "seq_len": 1024,
+      "window": 0,
+      "steps": 12000,
+      "tokens": 98304000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 1,
+        "steps": 12000,
+        "exit_mode": "uniform",
+        "seq_len": 1024,
+        "train_window": 0,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    },
+    {
+      "arm": "win512-1024-seed1",
+      "seq_len": 1024,
+      "window": 512,
+      "steps": 12000,
+      "tokens": 98304000,
+      "fields": {
+        "d_model": 256,
+        "n_layers": 8,
+        "n_heads": 8,
+        "mlp_mult": 4,
+        "dense": true,
+        "topology": "sequential",
+        "batch_size": 8,
+        "lr": 0.001,
+        "seed": 1,
+        "steps": 12000,
+        "exit_mode": "uniform",
+        "seq_len": 1024,
+        "train_window": 512,
+        "data": "enwik8 train 90M / eval 10M",
+        "vocab_size": 206
+      }
+    }
+  ],
+  "checkpoints": {
+    "full-1024-seed1": {
+      "path": "runs/full-1024-seed1/model.pt",
+      "sha256": "3c34a1ffcc081fad818892cd4a224fa9d25fddc4d8dc5f151122ed318d0fe5b5",
+      "size_bytes": 28668587,
+      "sha256_verified": true
+    },
+    "win512-1024-seed1": {
+      "path": "runs/win512-1024-seed1/model.pt",
+      "sha256": "b34bd8fdd8379219b927d01feecb5571c1de5f60aaa99b59ade619a3542cf81c",
+      "size_bytes": 28668587,
+      "sha256_verified": true
+    }
+  },
+  "code_fingerprints": {
+    "pathlm/depth_ar.py": "3a0db552faf4ee5d193ef8c1153b97e0c0d7e145de65c1399cdc83282d0a9279",
+    "train_depth_ar.py": "1035565281ed66af16e303ce29148e6907020d438047a4e3fdadc1799f78409e",
+    "tools/evalkit/longrange_tasks.py": "4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b",
+    "note": "本实验未改这些文件（只读，见 README §9）"
+  }
+}

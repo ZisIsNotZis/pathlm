@@ -23,7 +23,7 @@ import torch
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ROOT)
-EXP = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type", "experiments",
+EXP = os.path.join(ROOT, "axes", "1-time", "1.1.4.1-explicit-memory", "experiments",
                    "2624-composable-followups-13m")
 sys.path.insert(0, EXP)
 

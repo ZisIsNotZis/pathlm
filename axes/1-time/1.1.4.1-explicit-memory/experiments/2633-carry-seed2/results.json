@@ -1,0 +1,2673 @@
+{
+  "config": {
+    "device": "cuda",
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true,
+      "topology": "sequential",
+      "train_window": 16,
+      "train_anchors": 0,
+      "carry_chunk": 64
+    },
+    "data": {
+      "vocab_size": 206,
+      "source": "合成多查询关联回忆（tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch；训练与主腿同一生成器）",
+      "enwik8": "未使用（本线不做真实文本腿）"
+    },
+    "tokens": {
+      "sym_vocab": 64,
+      "filler_token": 64,
+      "cue_token": 205,
+      "local_k": 8
+    },
+    "task": {
+      "K": 8,
+      "Q": 8,
+      "gap": 14
+    },
+    "visibility": {
+      "train_window": 16,
+      "train_anchors": 0,
+      "note": "训练与评测同一个 window_anchor_keep_mask(T,16,0)；非退化（可见对数 < T(T+1)/2）"
+    },
+    "eval": {
+      "batch_size": 64,
+      "n_batches": 64,
+      "gen_seed": 5000,
+      "corrupt_seed": 7000,
+      "note": "主腿：K=8/Q=8/gap=14，距离 107–240（训练分布内）；生成器 seed 与模型 seed 无关 ⇒ 六臂配对"
+    },
+    "aux_ood": {
+      "batch_size": 64,
+      "n_batches": 16,
+      "gen_seed": 9000,
+      "note": "辅助腿：单查询 assoc_recall_batch，距离 241–255（训练分布外，不作判据）"
+    },
+    "sensitivity_K4": {
+      "K": 4,
+      "Q": 4,
+      "batch_size": 64,
+      "n_batches": 16,
+      "gen_seed": 11000,
+      "note": "K/Q 敏感性（K 与 Q 同时变小即难度变化；不作判据）"
+    },
+    "stats": {
+      "bootstrap": "clustered_by_sequence",
+      "n_boot": 2000,
+      "seed": 2631,
+      "primary_ci": "按序列聚类的 percentile bootstrap 95%",
+      "naive_ci": "每条查询 Wilson（仅对照；复核 B2：同一序列查询共享 KV/记忆状态 ⇒ 偏窄）",
+      "delta_vs_none_min_pp": 5.0,
+      "delta_vs_plain_min_pp": 3.0,
+      "corrupt_leak_factor": 4.0,
+      "band_pp": 1.4
+    },
+    "train_recipe": {
+      "steps": 12000,
+      "batch_size": 32,
+      "lr": 0.001,
+      "optimizer": "AdamW(weight_decay=0.01) + cosine",
+      "exit_mode": "uniform",
+      "aux_weight": 1.0,
+      "final_weight": 1.0,
+      "synth_task": "assoc-mqar",
+      "synth_pairs": 8,
+      "synth_queries": 8,
+      "synth_gap": 14,
+      "train_tokens": 98304000,
+      "note": "六臂逐字段一致，唯一变量 = --carry-write（none/plain/delta）与 --seed（0/1）"
+    },
+    "arms": [
+      {
+        "name": "none_s0",
+        "rule": "none",
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/none_s0/model.pt",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/none_s0/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/none_s0/results.json",
+        "sha256": "5e04df917aa0336f84ad4849b917fe8bb2eda2e374e509f408ec2fdcef81444b",
+        "size_bytes": 54193675
+      },
+      {
+        "name": "plain_s0",
+        "rule": "plain",
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/plain_s0/model.pt",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/plain_s0/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/plain_s0/results.json",
+        "sha256": "91f8197027b2b1a370d7b5fb897ab28b6f6b568aa8fd99165ab02357282f4c33",
+        "size_bytes": 55255619
+      },
+      {
+        "name": "delta_s0",
+        "rule": "delta",
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/delta_s0/model.pt",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/delta_s0/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/delta_s0/results.json",
+        "sha256": "d6fff38ca2be1df4239730f89dd816dd242f48d3cb340c3f836e0d63fbe37c9b",
+        "size_bytes": 55255619
+      },
+      {
+        "name": "none_s1",
+        "rule": "none",
+        "seed": 1,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/none_s1/model.pt",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/none_s1/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/none_s1/results.json",
+        "sha256": "8fd9dff445966025292375eb58633cb4556db6be8605f4d4d23c1568eb46d096",
+        "size_bytes": 54193675
+      },
+      {
+        "name": "plain_s1",
+        "rule": "plain",
+        "seed": 1,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/plain_s1/model.pt",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/plain_s1/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/plain_s1/results.json",
+        "sha256": "09ff2fda8792e6029027ffb00b5d8271794a39f69b075e4cb7bbc7bf97652583",
+        "size_bytes": 55255619
+      },
+      {
+        "name": "delta_s1",
+        "rule": "delta",
+        "seed": 1,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/delta_s1/model.pt",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/delta_s1/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/delta_s1/results.json",
+        "sha256": "7487540111e92cc8d065aa3ee590d7c967da3e4d68406355906b4c109049424e",
+        "size_bytes": 55255619
+      },
+      {
+        "name": "none_s2",
+        "rule": "none",
+        "seed": 2,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train/none_s2/model.pt",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train/none_s2/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train/none_s2/results.json",
+        "sha256": "f379ac79ccf104e22ae4d4fbf4f253623b50d465c4950a6592ad050033b29883",
+        "size_bytes": 54193675
+      },
+      {
+        "name": "plain_s2",
+        "rule": "plain",
+        "seed": 2,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train/plain_s2/model.pt",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train/plain_s2/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train/plain_s2/results.json",
+        "sha256": "1d010ccacdb74fddaaeb4387710198825383d9e4724abfbb033aefda32a53891",
+        "size_bytes": 55255619
+      },
+      {
+        "name": "delta_s2",
+        "rule": "delta",
+        "seed": 2,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train/delta_s2/model.pt",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train/delta_s2/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train/delta_s2/results.json",
+        "sha256": "0ad748e0f7cfef8b69561a70737b31b188090d5c357dd86431e249e81ed7f05c",
+        "size_bytes": 55255619
+      }
+    ],
+    "seeds": [
+      0,
+      1,
+      2
+    ],
+    "reused_from_2631": [
+      "none_s0",
+      "plain_s0",
+      "delta_s0",
+      "none_s1",
+      "plain_s1",
+      "delta_s1"
+    ],
+    "new_in_2633": [
+      "none_s2",
+      "plain_s2",
+      "delta_s2"
+    ],
+    "train_recipe_seed2": {
+      "cmd": "python3 train_depth_ar.py <arm> --d 256 --layers 12 --heads 8 --mlp-mult 6 --seq-len 256 --dense --topology sequential --steps 12000 --batch-size 32 --lr 1e-3 --seed 2 --exit-mode uniform --train-window 16 --train-anchors 0 --synth-task assoc-mqar --synth-pairs 8 --synth-queries 8 --synth-gap 14 --carry-write {none,plain,delta} --out-root axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train",
+      "note": "与 2631 train_arms.sh 的 BASE 逐字段相同，唯一差别 = --seed 2（与三臂同源）"
+    },
+    "equality_vs_2631": {
+      "target_config": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/config.json",
+      "target_driver": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train_arms.sh",
+      "note": "seed0/1 六臂复用 2631；复用前提 = 实现层同一份代码（逐文件 sha256）+ 配置逐字段一致（equality_vs_2631.py 断言并落 equality_report.json）"
+    },
+    "steptime_measured": {
+      "source": "2633/smoke/steps300（本实验 300 步冒烟，稳态窗 step 200→299）",
+      "ms_per_step": {
+        "none": 42.4,
+        "plain": 60.6,
+        "delta": 78.8
+      },
+      "est_min_12k": {
+        "none": 8.5,
+        "plain": 12.1,
+        "delta": 15.8
+      },
+      "est_min_total_3arms": 36.4,
+      "note": "先测步时再定预算（SCHEMA §17.8）；不借用其它实验的步时"
+    }
+  },
+  "checkpoints": {
+    "none_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/none_s0/model.pt",
+      "sha256": "5e04df917aa0336f84ad4849b917fe8bb2eda2e374e509f408ec2fdcef81444b",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "rule": "none",
+      "seed": 0,
+      "carry_rule": null,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "plain_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/plain_s0/model.pt",
+      "sha256": "91f8197027b2b1a370d7b5fb897ab28b6f6b568aa8fd99165ab02357282f4c33",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "rule": "plain",
+      "seed": 0,
+      "carry_rule": "plain",
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "delta_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/delta_s0/model.pt",
+      "sha256": "d6fff38ca2be1df4239730f89dd816dd242f48d3cb340c3f836e0d63fbe37c9b",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "rule": "delta",
+      "seed": 0,
+      "carry_rule": "delta",
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "none_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/none_s1/model.pt",
+      "sha256": "8fd9dff445966025292375eb58633cb4556db6be8605f4d4d23c1568eb46d096",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "rule": "none",
+      "seed": 1,
+      "carry_rule": null,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "plain_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/plain_s1/model.pt",
+      "sha256": "09ff2fda8792e6029027ffb00b5d8271794a39f69b075e4cb7bbc7bf97652583",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "rule": "plain",
+      "seed": 1,
+      "carry_rule": "plain",
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "delta_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/train/delta_s1/model.pt",
+      "sha256": "7487540111e92cc8d065aa3ee590d7c967da3e4d68406355906b4c109049424e",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "rule": "delta",
+      "seed": 1,
+      "carry_rule": "delta",
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "none_s2": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train/none_s2/model.pt",
+      "sha256": "f379ac79ccf104e22ae4d4fbf4f253623b50d465c4950a6592ad050033b29883",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "rule": "none",
+      "seed": 2,
+      "carry_rule": null,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "plain_s2": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train/plain_s2/model.pt",
+      "sha256": "1d010ccacdb74fddaaeb4387710198825383d9e4724abfbb033aefda32a53891",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "rule": "plain",
+      "seed": 2,
+      "carry_rule": "plain",
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "delta_s2": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train/delta_s2/model.pt",
+      "sha256": "0ad748e0f7cfef8b69561a70737b31b188090d5c357dd86431e249e81ed7f05c",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "rule": "delta",
+      "seed": 2,
+      "carry_rule": "delta",
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    }
+  },
+  "visibility": {
+    "train_window": 16,
+    "train_anchors": 0
+  },
+  "reuse_equality_vs_2631": {
+    "authoritative_artifact": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/equality_report.json",
+    "runtime_version_ledger": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/runtime_version_ledger.json",
+    "generated_by": "2633-carry-seed2/equality_vs_2631.py",
+    "git_head": "580b60c8c14e927c33b17601a4a9312081203a70",
+    "verdict": "reuse_ok",
+    "reuse_scope": "pathlm/** + train_depth_ar.py（两层行为等价）",
+    "implementation_equivalent_to_2631_runtime": true,
+    "engine_equivalence": {
+      "authoritative_artifact": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/engine_equivalence.json",
+      "comparison_base": "2631 运行时版本（按 2631/results.json::code_hashes 定位）",
+      "forward_layer_ok": true,
+      "trainer_layer_ok": true,
+      "all_layers_ok": true,
+      "coverage": "pathlm/**（逐位 logits）+ train_depth_ar.py（逐字段 loss 序列）",
+      "trainer_n_log_points_compared": 6,
+      "trainer_n_field_diffs": 0,
+      "note": "逐档细节（`per_rule` 的三档 logits 对照、训练脚本层的字段级差异、两次 run 的墙钟）在 `engine_equivalence.json`；本块只留标量 + 指针"
+    },
+    "differing_fields": [],
+    "train_recipe_differing_flags": [],
+    "note": "完整证据（逐文件台账、配置层对照、训练配方 flag 对照、复用臂 checkpoint 哈希）在 `equality_report.json`；本块只放判据级标量 + 指针，避免同一证据两处 schema 各自漂移（复核 P2-1）"
+  },
+  "selfchecks": {
+    "window_mask_visible_pairs": 3976,
+    "window_mask_nondegenerate": true,
+    "n_params": {
+      "none_s0": 13536768,
+      "plain_s0": 13801064,
+      "delta_s0": 13801064,
+      "none_s1": 13536768,
+      "plain_s1": 13801064,
+      "delta_s1": 13801064,
+      "none_s2": 13536768,
+      "plain_s2": 13801064,
+      "delta_s2": 13801064
+    },
+    "params_bitwise_equal_plain_delta": {
+      "0": {
+        "n_tensors": 188,
+        "name_symmetric_difference": [],
+        "shape_mismatch": [],
+        "value_mismatch": [],
+        "bitwise_equal": true,
+        "n_params_a": 13801064,
+        "n_params_b": 13801064
+      },
+      "1": {
+        "n_tensors": 188,
+        "name_symmetric_difference": [],
+        "shape_mismatch": [],
+        "value_mismatch": [],
+        "bitwise_equal": true,
+        "n_params_a": 13801064,
+        "n_params_b": 13801064
+      },
+      "2": {
+        "n_tensors": 188,
+        "name_symmetric_difference": [],
+        "shape_mismatch": [],
+        "value_mismatch": [],
+        "bitwise_equal": true,
+        "n_params_a": 13801064,
+        "n_params_b": 13801064
+      }
+    },
+    "trunk_bitwise_equal_carry_vs_none": {
+      "0": {
+        "added_tensors": [
+          "blocks.0.carry_scale",
+          "blocks.1.carry_scale",
+          "blocks.10.carry_scale",
+          "blocks.11.carry_scale",
+          "blocks.2.carry_scale",
+          "blocks.3.carry_scale",
+          "blocks.4.carry_scale",
+          "blocks.5.carry_scale",
+          "blocks.6.carry_scale",
+          "blocks.7.carry_scale",
+          "blocks.8.carry_scale",
+          "blocks.9.carry_scale",
+          "carry.beta_b",
+          "carry.beta_w",
+          "carry.gate_w",
+          "carry.w_k",
+          "carry.w_q",
+          "carry.w_v"
+        ],
+        "missing_tensors": [],
+        "trunk_value_mismatch": [],
+        "trunk_bitwise_equal": true,
+        "n_params_added": 264296,
+        "n_params_carry_arm": 13801064,
+        "n_params_base_arm": 13536768
+      },
+      "1": {
+        "added_tensors": [
+          "blocks.0.carry_scale",
+          "blocks.1.carry_scale",
+          "blocks.10.carry_scale",
+          "blocks.11.carry_scale",
+          "blocks.2.carry_scale",
+          "blocks.3.carry_scale",
+          "blocks.4.carry_scale",
+          "blocks.5.carry_scale",
+          "blocks.6.carry_scale",
+          "blocks.7.carry_scale",
+          "blocks.8.carry_scale",
+          "blocks.9.carry_scale",
+          "carry.beta_b",
+          "carry.beta_w",
+          "carry.gate_w",
+          "carry.w_k",
+          "carry.w_q",
+          "carry.w_v"
+        ],
+        "missing_tensors": [],
+        "trunk_value_mismatch": [],
+        "trunk_bitwise_equal": true,
+        "n_params_added": 264296,
+        "n_params_carry_arm": 13801064,
+        "n_params_base_arm": 13536768
+      },
+      "2": {
+        "added_tensors": [
+          "blocks.0.carry_scale",
+          "blocks.1.carry_scale",
+          "blocks.10.carry_scale",
+          "blocks.11.carry_scale",
+          "blocks.2.carry_scale",
+          "blocks.3.carry_scale",
+          "blocks.4.carry_scale",
+          "blocks.5.carry_scale",
+          "blocks.6.carry_scale",
+          "blocks.7.carry_scale",
+          "blocks.8.carry_scale",
+          "blocks.9.carry_scale",
+          "carry.beta_b",
+          "carry.beta_w",
+          "carry.gate_w",
+          "carry.w_k",
+          "carry.w_q",
+          "carry.w_v"
+        ],
+        "missing_tensors": [],
+        "trunk_value_mismatch": [],
+        "trunk_bitwise_equal": true,
+        "n_params_added": 264296,
+        "n_params_carry_arm": 13801064,
+        "n_params_base_arm": 13536768
+      }
+    },
+    "instrument_selfcheck_reference": "2611/2631 的完整仪器自检（释放版 vs 显式因果掩码、单边零起步逐位恒等、评测掩码 == 训练掩码）——实现未变，见 axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed/results.json::selfchecks"
+  },
+  "main_leg": {
+    "none_s0": {
+      "n_hits": 508,
+      "n": 32768,
+      "accuracy": 0.015503,
+      "clustered_ci": [
+        0.01416,
+        0.016876
+      ],
+      "wilson_ci_naive": [
+        0.014221,
+        0.016899
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "plain_s0": {
+      "n_hits": 11832,
+      "n": 32768,
+      "accuracy": 0.361084,
+      "clustered_ci": [
+        0.357177,
+        0.365387
+      ],
+      "wilson_ci_naive": [
+        0.3559,
+        0.366301
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "delta_s0": {
+      "n_hits": 11953,
+      "n": 32768,
+      "accuracy": 0.364777,
+      "clustered_ci": [
+        0.360412,
+        0.368927
+      ],
+      "wilson_ci_naive": [
+        0.359581,
+        0.370004
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "none_s1": {
+      "n_hits": 540,
+      "n": 32768,
+      "accuracy": 0.016479,
+      "clustered_ci": [
+        0.015045,
+        0.017822
+      ],
+      "wilson_ci_naive": [
+        0.015157,
+        0.017916
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "plain_s1": {
+      "n_hits": 625,
+      "n": 32768,
+      "accuracy": 0.019073,
+      "clustered_ci": [
+        0.017578,
+        0.020477
+      ],
+      "wilson_ci_naive": [
+        0.017648,
+        0.020612
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "delta_s1": {
+      "n_hits": 11787,
+      "n": 32768,
+      "accuracy": 0.359711,
+      "clustered_ci": [
+        0.355652,
+        0.364044
+      ],
+      "wilson_ci_naive": [
+        0.354531,
+        0.364923
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "none_s2": {
+      "n_hits": 526,
+      "n": 32768,
+      "accuracy": 0.016052,
+      "clustered_ci": [
+        0.014679,
+        0.017395
+      ],
+      "wilson_ci_naive": [
+        0.014747,
+        0.017471
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "plain_s2": {
+      "n_hits": 491,
+      "n": 32768,
+      "accuracy": 0.014984,
+      "clustered_ci": [
+        0.013641,
+        0.016266
+      ],
+      "wilson_ci_naive": [
+        0.013724,
+        0.016358
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "delta_s2": {
+      "n_hits": 12021,
+      "n": 32768,
+      "accuracy": 0.366852,
+      "clustered_ci": [
+        0.362701,
+        0.370911
+      ],
+      "wilson_ci_naive": [
+        0.361649,
+        0.372085
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    }
+  },
+  "corrupt_leg": {
+    "none_s0": {
+      "n_hits": 508,
+      "n": 32768,
+      "accuracy": 0.015503,
+      "clustered_ci": [
+        0.01416,
+        0.016876
+      ],
+      "wilson_ci_naive": [
+        0.014221,
+        0.016899
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "plain_s0": {
+      "n_hits": 505,
+      "n": 32768,
+      "accuracy": 0.015411,
+      "clustered_ci": [
+        0.01416,
+        0.016755
+      ],
+      "wilson_ci_naive": [
+        0.014133,
+        0.016803
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "delta_s0": {
+      "n_hits": 544,
+      "n": 32768,
+      "accuracy": 0.016602,
+      "clustered_ci": [
+        0.015289,
+        0.018005
+      ],
+      "wilson_ci_naive": [
+        0.015274,
+        0.018043
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "none_s1": {
+      "n_hits": 540,
+      "n": 32768,
+      "accuracy": 0.016479,
+      "clustered_ci": [
+        0.015045,
+        0.017822
+      ],
+      "wilson_ci_naive": [
+        0.015157,
+        0.017916
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "plain_s1": {
+      "n_hits": 527,
+      "n": 32768,
+      "accuracy": 0.016083,
+      "clustered_ci": [
+        0.014679,
+        0.017456
+      ],
+      "wilson_ci_naive": [
+        0.014776,
+        0.017503
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "delta_s1": {
+      "n_hits": 539,
+      "n": 32768,
+      "accuracy": 0.016449,
+      "clustered_ci": [
+        0.015075,
+        0.017822
+      ],
+      "wilson_ci_naive": [
+        0.015127,
+        0.017884
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "none_s2": {
+      "n_hits": 526,
+      "n": 32768,
+      "accuracy": 0.016052,
+      "clustered_ci": [
+        0.014679,
+        0.017395
+      ],
+      "wilson_ci_naive": [
+        0.014747,
+        0.017471
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "plain_s2": {
+      "n_hits": 493,
+      "n": 32768,
+      "accuracy": 0.015045,
+      "clustered_ci": [
+        0.013702,
+        0.016296
+      ],
+      "wilson_ci_naive": [
+        0.013783,
+        0.016421
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    },
+    "delta_s2": {
+      "n_hits": 540,
+      "n": 32768,
+      "accuracy": 0.016479,
+      "clustered_ci": [
+        0.015228,
+        0.017822
+      ],
+      "wilson_ci_naive": [
+        0.015157,
+        0.017916
+      ],
+      "n_clusters": 4096,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 107,
+        "max": 240,
+        "median": 175,
+        "n": 32768,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.015625,
+      "n_batches": 64
+    }
+  },
+  "aux_ood_leg": {
+    "none_s0": {
+      "n_hits": 13,
+      "n": 1024,
+      "accuracy": 0.012695,
+      "clustered_ci": [
+        0.005859,
+        0.019531
+      ],
+      "wilson_ci_naive": [
+        0.007434,
+        0.021599
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 241,
+        "max": 255,
+        "median": 247,
+        "n": 1024,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.0,
+      "n_batches": 16
+    },
+    "plain_s0": {
+      "n_hits": 21,
+      "n": 1024,
+      "accuracy": 0.020508,
+      "clustered_ci": [
+        0.012695,
+        0.029321
+      ],
+      "wilson_ci_naive": [
+        0.013452,
+        0.031148
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 241,
+        "max": 255,
+        "median": 247,
+        "n": 1024,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.0,
+      "n_batches": 16
+    },
+    "delta_s0": {
+      "n_hits": 102,
+      "n": 1024,
+      "accuracy": 0.099609,
+      "clustered_ci": [
+        0.081055,
+        0.118164
+      ],
+      "wilson_ci_naive": [
+        0.082736,
+        0.119476
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 241,
+        "max": 255,
+        "median": 247,
+        "n": 1024,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.0,
+      "n_batches": 16
+    },
+    "none_s1": {
+      "n_hits": 5,
+      "n": 1024,
+      "accuracy": 0.004883,
+      "clustered_ci": [
+        0.000977,
+        0.009766
+      ],
+      "wilson_ci_naive": [
+        0.002087,
+        0.011379
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 241,
+        "max": 255,
+        "median": 247,
+        "n": 1024,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.0,
+      "n_batches": 16
+    },
+    "plain_s1": {
+      "n_hits": 4,
+      "n": 1024,
+      "accuracy": 0.003906,
+      "clustered_ci": [
+        0.000977,
+        0.007812
+      ],
+      "wilson_ci_naive": [
+        0.00152,
+        0.010001
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 241,
+        "max": 255,
+        "median": 247,
+        "n": 1024,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.0,
+      "n_batches": 16
+    },
+    "delta_s1": {
+      "n_hits": 43,
+      "n": 1024,
+      "accuracy": 0.041992,
+      "clustered_ci": [
+        0.03125,
+        0.054688
+      ],
+      "wilson_ci_naive": [
+        0.031323,
+        0.056085
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 241,
+        "max": 255,
+        "median": 247,
+        "n": 1024,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.0,
+      "n_batches": 16
+    },
+    "none_s2": {
+      "n_hits": 11,
+      "n": 1024,
+      "accuracy": 0.010742,
+      "clustered_ci": [
+        0.004883,
+        0.017578
+      ],
+      "wilson_ci_naive": [
+        0.006009,
+        0.019133
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 241,
+        "max": 255,
+        "median": 247,
+        "n": 1024,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.0,
+      "n_batches": 16
+    },
+    "plain_s2": {
+      "n_hits": 8,
+      "n": 1024,
+      "accuracy": 0.007812,
+      "clustered_ci": [
+        0.00293,
+        0.013672
+      ],
+      "wilson_ci_naive": [
+        0.003964,
+        0.01534
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 241,
+        "max": 255,
+        "median": 247,
+        "n": 1024,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.0,
+      "n_batches": 16
+    },
+    "delta_s2": {
+      "n_hits": 0,
+      "n": 1024,
+      "accuracy": 0.0,
+      "clustered_ci": [
+        0.0,
+        0.0
+      ],
+      "wilson_ci_naive": [
+        0.0,
+        0.003738
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 241,
+        "max": 255,
+        "median": 247,
+        "n": 1024,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.0,
+      "n_batches": 16
+    }
+  },
+  "sens_K4_leg": {
+    "none_s0": {
+      "n_hits": 58,
+      "n": 4096,
+      "accuracy": 0.01416,
+      "clustered_ci": [
+        0.010498,
+        0.018066
+      ],
+      "wilson_ci_naive": [
+        0.01097,
+        0.018261
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 183,
+        "max": 240,
+        "median": 217,
+        "n": 4096,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.027344,
+      "n_batches": 16
+    },
+    "plain_s0": {
+      "n_hits": 2182,
+      "n": 4096,
+      "accuracy": 0.532715,
+      "clustered_ci": [
+        0.520264,
+        0.54541
+      ],
+      "wilson_ci_naive": [
+        0.517412,
+        0.547957
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 183,
+        "max": 240,
+        "median": 217,
+        "n": 4096,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.027344,
+      "n_batches": 16
+    },
+    "delta_s0": {
+      "n_hits": 2179,
+      "n": 4096,
+      "accuracy": 0.531982,
+      "clustered_ci": [
+        0.518555,
+        0.544434
+      ],
+      "wilson_ci_naive": [
+        0.516678,
+        0.547226
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 183,
+        "max": 240,
+        "median": 217,
+        "n": 4096,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.027344,
+      "n_batches": 16
+    },
+    "none_s1": {
+      "n_hits": 59,
+      "n": 4096,
+      "accuracy": 0.014404,
+      "clustered_ci": [
+        0.010986,
+        0.017828
+      ],
+      "wilson_ci_naive": [
+        0.011184,
+        0.018535
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 183,
+        "max": 240,
+        "median": 217,
+        "n": 4096,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.027344,
+      "n_batches": 16
+    },
+    "plain_s1": {
+      "n_hits": 55,
+      "n": 4096,
+      "accuracy": 0.013428,
+      "clustered_ci": [
+        0.009766,
+        0.01709
+      ],
+      "wilson_ci_naive": [
+        0.010331,
+        0.017436
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 183,
+        "max": 240,
+        "median": 217,
+        "n": 4096,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.027344,
+      "n_batches": 16
+    },
+    "delta_s1": {
+      "n_hits": 1942,
+      "n": 4096,
+      "accuracy": 0.474121,
+      "clustered_ci": [
+        0.463373,
+        0.486084
+      ],
+      "wilson_ci_naive": [
+        0.458861,
+        0.48943
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 183,
+        "max": 240,
+        "median": 217,
+        "n": 4096,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.027344,
+      "n_batches": 16
+    },
+    "none_s2": {
+      "n_hits": 68,
+      "n": 4096,
+      "accuracy": 0.016602,
+      "clustered_ci": [
+        0.012695,
+        0.020996
+      ],
+      "wilson_ci_naive": [
+        0.013117,
+        0.020992
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 183,
+        "max": 240,
+        "median": 217,
+        "n": 4096,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.027344,
+      "n_batches": 16
+    },
+    "plain_s2": {
+      "n_hits": 54,
+      "n": 4096,
+      "accuracy": 0.013184,
+      "clustered_ci": [
+        0.009766,
+        0.01709
+      ],
+      "wilson_ci_naive": [
+        0.010119,
+        0.017161
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 183,
+        "max": 240,
+        "median": 217,
+        "n": 4096,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.027344,
+      "n_batches": 16
+    },
+    "delta_s2": {
+      "n_hits": 2193,
+      "n": 4096,
+      "accuracy": 0.5354,
+      "clustered_ci": [
+        0.523438,
+        0.548096
+      ],
+      "wilson_ci_naive": [
+        0.5201,
+        0.550634
+      ],
+      "n_clusters": 1024,
+      "wilson_naive_note": "按每条查询独立二项样本算 ⇒ 偏窄（复核 B2）；主 CI 用 clustered_ci",
+      "query_key_distance": {
+        "min": 183,
+        "max": 240,
+        "median": 217,
+        "n": 4096,
+        "frac_outside_window": 1.0
+      },
+      "local_prior": 0.027344,
+      "n_batches": 16
+    }
+  },
+  "leg_definitions": {
+    "main": {
+      "generator": "assoc_recall_multi_batch",
+      "K": 8,
+      "Q": 8,
+      "gap": 14,
+      "batch_size": 64,
+      "n_batches": 64,
+      "n_queries": 32768,
+      "query_key_distance": [
+        107,
+        240
+      ],
+      "in_training_distribution": true,
+      "gen_seed": 5000
+    },
+    "corrupt": {
+      "span": [
+        0,
+        16
+      ],
+      "gen_seed": 7000,
+      "note": "源片段换全新随机符号，其余逐位不变"
+    },
+    "aux_ood": {
+      "generator": "assoc_recall_batch",
+      "K": 8,
+      "batch_size": 64,
+      "n_batches": 16,
+      "query_key_distance": [
+        241,
+        255
+      ],
+      "in_training_distribution": false,
+      "role": "辅助腿（§17.18；不作判据）"
+    },
+    "sens_K4": {
+      "generator": "assoc_recall_multi_batch",
+      "K": 4,
+      "Q": 4,
+      "role": "敏感性（K/Q 变化即难度变化；不作判据）"
+    }
+  },
+  "effects": {
+    "delta_vs_none": {
+      "per_seed": [
+        {
+          "effect_pp": 34.927,
+          "paired_boot_ci_pp": [
+            34.473,
+            35.382
+          ],
+          "two_proportion_delta_pp": 34.927,
+          "two_proportion_diff_ci_pp": [
+            34.389,
+            35.465
+          ],
+          "two_proportion_ci_overlap": false,
+          "base_accuracy": 0.015503,
+          "target_accuracy": 0.364777,
+          "base_n_hits": 508,
+          "base_n": 32768,
+          "target_n_hits": 11953,
+          "target_n": 32768,
+          "seed": 0,
+          "base_arm": "none_s0",
+          "target_arm": "delta_s0"
+        },
+        {
+          "effect_pp": 34.323,
+          "paired_boot_ci_pp": [
+            33.89,
+            34.778
+          ],
+          "two_proportion_delta_pp": 34.323,
+          "two_proportion_diff_ci_pp": [
+            33.785,
+            34.861
+          ],
+          "two_proportion_ci_overlap": false,
+          "base_accuracy": 0.016479,
+          "target_accuracy": 0.359711,
+          "base_n_hits": 540,
+          "base_n": 32768,
+          "target_n_hits": 11787,
+          "target_n": 32768,
+          "seed": 1,
+          "base_arm": "none_s1",
+          "target_arm": "delta_s1"
+        },
+        {
+          "effect_pp": 35.08,
+          "paired_boot_ci_pp": [
+            34.634,
+            35.51
+          ],
+          "two_proportion_delta_pp": 35.08,
+          "two_proportion_diff_ci_pp": [
+            34.541,
+            35.619
+          ],
+          "two_proportion_ci_overlap": false,
+          "base_accuracy": 0.016052,
+          "target_accuracy": 0.366852,
+          "base_n_hits": 526,
+          "base_n": 32768,
+          "target_n_hits": 12021,
+          "target_n": 32768,
+          "seed": 2,
+          "base_arm": "none_s2",
+          "target_arm": "delta_s2"
+        }
+      ],
+      "range_pp": 0.757,
+      "mean_pp": 34.777,
+      "sd_pp": 0.4,
+      "sign_consistent": true,
+      "stability": {
+        "min_pp_threshold": 5.0,
+        "per_seed": [
+          {
+            "seed": 0,
+            "effect_pp": 34.927,
+            "ci_lo_pp": 34.473,
+            "passes": true
+          },
+          {
+            "seed": 1,
+            "effect_pp": 34.323,
+            "ci_lo_pp": 33.89,
+            "passes": true
+          },
+          {
+            "seed": 2,
+            "effect_pp": 35.08,
+            "ci_lo_pp": 34.634,
+            "passes": true
+          }
+        ],
+        "all_seeds_pass": true,
+        "n_seeds": 3,
+        "range_pp": 0.757,
+        "mean_pp": 34.777,
+        "sd_pp": 0.4,
+        "sign_consistent": true,
+        "stable": true
+      }
+    },
+    "delta_vs_plain": {
+      "per_seed": [
+        {
+          "effect_pp": 0.369,
+          "paired_boot_ci_pp": [
+            -0.15,
+            0.9
+          ],
+          "two_proportion_delta_pp": 0.369,
+          "two_proportion_diff_ci_pp": [
+            -0.367,
+            1.106
+          ],
+          "two_proportion_ci_overlap": true,
+          "base_accuracy": 0.361084,
+          "target_accuracy": 0.364777,
+          "base_n_hits": 11832,
+          "base_n": 32768,
+          "target_n_hits": 11953,
+          "target_n": 32768,
+          "seed": 0,
+          "base_arm": "plain_s0",
+          "target_arm": "delta_s0"
+        },
+        {
+          "effect_pp": 34.064,
+          "paired_boot_ci_pp": [
+            33.633,
+            34.509
+          ],
+          "two_proportion_delta_pp": 34.064,
+          "two_proportion_diff_ci_pp": [
+            33.523,
+            34.604
+          ],
+          "two_proportion_ci_overlap": false,
+          "base_accuracy": 0.019073,
+          "target_accuracy": 0.359711,
+          "base_n_hits": 625,
+          "base_n": 32768,
+          "target_n_hits": 11787,
+          "target_n": 32768,
+          "seed": 1,
+          "base_arm": "plain_s1",
+          "target_arm": "delta_s1"
+        },
+        {
+          "effect_pp": 35.187,
+          "paired_boot_ci_pp": [
+            34.762,
+            35.614
+          ],
+          "two_proportion_delta_pp": 35.187,
+          "two_proportion_diff_ci_pp": [
+            34.649,
+            35.725
+          ],
+          "two_proportion_ci_overlap": false,
+          "base_accuracy": 0.014984,
+          "target_accuracy": 0.366852,
+          "base_n_hits": 491,
+          "base_n": 32768,
+          "target_n_hits": 12021,
+          "target_n": 32768,
+          "seed": 2,
+          "base_arm": "plain_s2",
+          "target_arm": "delta_s2"
+        }
+      ],
+      "range_pp": 34.818,
+      "mean_pp": 23.207,
+      "sd_pp": 19.786,
+      "sign_consistent": true,
+      "stability": {
+        "min_pp_threshold": 3.0,
+        "per_seed": [
+          {
+            "seed": 0,
+            "effect_pp": 0.369,
+            "ci_lo_pp": -0.15,
+            "passes": false
+          },
+          {
+            "seed": 1,
+            "effect_pp": 34.064,
+            "ci_lo_pp": 33.633,
+            "passes": true
+          },
+          {
+            "seed": 2,
+            "effect_pp": 35.187,
+            "ci_lo_pp": 34.762,
+            "passes": true
+          }
+        ],
+        "all_seeds_pass": false,
+        "n_seeds": 3,
+        "range_pp": 34.818,
+        "mean_pp": 23.207,
+        "sd_pp": 19.786,
+        "sign_consistent": true,
+        "stable": false
+      }
+    },
+    "plain_vs_none": {
+      "per_seed": [
+        {
+          "effect_pp": 34.558,
+          "paired_boot_ci_pp": [
+            34.137,
+            35.013
+          ],
+          "two_proportion_delta_pp": 34.558,
+          "two_proportion_diff_ci_pp": [
+            34.021,
+            35.095
+          ],
+          "two_proportion_ci_overlap": false,
+          "base_accuracy": 0.015503,
+          "target_accuracy": 0.361084,
+          "base_n_hits": 508,
+          "base_n": 32768,
+          "target_n_hits": 11832,
+          "target_n": 32768,
+          "seed": 0,
+          "base_arm": "none_s0",
+          "target_arm": "plain_s0"
+        },
+        {
+          "effect_pp": 0.259,
+          "paired_boot_ci_pp": [
+            0.055,
+            0.458
+          ],
+          "two_proportion_delta_pp": 0.259,
+          "two_proportion_diff_ci_pp": [
+            0.057,
+            0.462
+          ],
+          "two_proportion_ci_overlap": true,
+          "base_accuracy": 0.016479,
+          "target_accuracy": 0.019073,
+          "base_n_hits": 540,
+          "base_n": 32768,
+          "target_n_hits": 625,
+          "target_n": 32768,
+          "seed": 1,
+          "base_arm": "none_s1",
+          "target_arm": "plain_s1"
+        },
+        {
+          "effect_pp": -0.107,
+          "paired_boot_ci_pp": [
+            -0.293,
+            0.082
+          ],
+          "two_proportion_delta_pp": -0.107,
+          "two_proportion_diff_ci_pp": [
+            -0.296,
+            0.083
+          ],
+          "two_proportion_ci_overlap": true,
+          "base_accuracy": 0.016052,
+          "target_accuracy": 0.014984,
+          "base_n_hits": 526,
+          "base_n": 32768,
+          "target_n_hits": 491,
+          "target_n": 32768,
+          "seed": 2,
+          "base_arm": "none_s2",
+          "target_arm": "plain_s2"
+        }
+      ],
+      "range_pp": 34.665,
+      "mean_pp": 11.57,
+      "sd_pp": 19.909,
+      "sign_consistent": false
+    }
+  },
+  "arm_accuracy_spread_across_seeds": {
+    "none": {
+      "per_seed": [
+        0.015503,
+        0.016479,
+        0.016052
+      ],
+      "per_seed_pp": [
+        1.55,
+        1.648,
+        1.605
+      ],
+      "range_pp": 0.098,
+      "mean_pp": 1.601,
+      "sd_pp": 0.049,
+      "mean_ci95_t": {
+        "n": 3,
+        "mean_pp": 1.601,
+        "sd_pp": 0.049,
+        "t": 4.303,
+        "ci95_pp": [
+          1.48,
+          1.723
+        ],
+        "note": "df=2 ⇒ t=4.303；n 小、CI 宽，只作描述量，不作判据线"
+      }
+    },
+    "plain": {
+      "per_seed": [
+        0.361084,
+        0.019073,
+        0.014984
+      ],
+      "per_seed_pp": [
+        36.108,
+        1.907,
+        1.498
+      ],
+      "range_pp": 34.61,
+      "mean_pp": 13.171,
+      "sd_pp": 19.865,
+      "mean_ci95_t": {
+        "n": 3,
+        "mean_pp": 13.171,
+        "sd_pp": 19.865,
+        "t": 4.303,
+        "ci95_pp": [
+          -36.18,
+          62.523
+        ],
+        "note": "df=2 ⇒ t=4.303；n 小、CI 宽，只作描述量，不作判据线"
+      }
+    },
+    "delta": {
+      "per_seed": [
+        0.364777,
+        0.359711,
+        0.366852
+      ],
+      "per_seed_pp": [
+        36.478,
+        35.971,
+        36.685
+      ],
+      "range_pp": 0.714,
+      "mean_pp": 36.378,
+      "sd_pp": 0.367,
+      "mean_ci95_t": {
+        "n": 3,
+        "mean_pp": 36.378,
+        "sd_pp": 0.367,
+        "t": 4.303,
+        "ci95_pp": [
+          35.465,
+          37.291
+        ],
+        "note": "df=2 ⇒ t=4.303；n 小、CI 宽，只作描述量，不作判据线"
+      }
+    }
+  },
+  "best_arm_per_seed": {
+    "0": "delta",
+    "1": "delta",
+    "2": "delta"
+  },
+  "premise_check": {
+    "0": {
+      "arm": "none_s0",
+      "accuracy": 0.015503,
+      "clustered_ci": [
+        0.01416,
+        0.016876
+      ],
+      "chance": 0.015625,
+      "significantly_above_chance": false
+    },
+    "1": {
+      "arm": "none_s1",
+      "accuracy": 0.016479,
+      "clustered_ci": [
+        0.015045,
+        0.017822
+      ],
+      "chance": 0.015625,
+      "significantly_above_chance": false
+    },
+    "2": {
+      "arm": "none_s2",
+      "accuracy": 0.016052,
+      "clustered_ci": [
+        0.014679,
+        0.017395
+      ],
+      "chance": 0.015625,
+      "significantly_above_chance": false
+    }
+  },
+  "corrupt_control": {
+    "chance": 0.015625,
+    "bound": 0.0625,
+    "factor": 4.0,
+    "per_arm": [
+      {
+        "arm": "none_s0",
+        "main_ci_lo": 0.01416,
+        "corrupt_ci_lo": 0.01416,
+        "main_is_high": false,
+        "ok": true
+      },
+      {
+        "arm": "plain_s0",
+        "main_ci_lo": 0.357177,
+        "corrupt_ci_lo": 0.01416,
+        "main_is_high": true,
+        "ok": true
+      },
+      {
+        "arm": "delta_s0",
+        "main_ci_lo": 0.360412,
+        "corrupt_ci_lo": 0.015289,
+        "main_is_high": true,
+        "ok": true
+      },
+      {
+        "arm": "none_s1",
+        "main_ci_lo": 0.015045,
+        "corrupt_ci_lo": 0.015045,
+        "main_is_high": false,
+        "ok": true
+      },
+      {
+        "arm": "plain_s1",
+        "main_ci_lo": 0.017578,
+        "corrupt_ci_lo": 0.014679,
+        "main_is_high": false,
+        "ok": true
+      },
+      {
+        "arm": "delta_s1",
+        "main_ci_lo": 0.355652,
+        "corrupt_ci_lo": 0.015075,
+        "main_is_high": true,
+        "ok": true
+      },
+      {
+        "arm": "none_s2",
+        "main_ci_lo": 0.014679,
+        "corrupt_ci_lo": 0.014679,
+        "main_is_high": false,
+        "ok": true
+      },
+      {
+        "arm": "plain_s2",
+        "main_ci_lo": 0.013641,
+        "corrupt_ci_lo": 0.013702,
+        "main_is_high": false,
+        "ok": true
+      },
+      {
+        "arm": "delta_s2",
+        "main_ci_lo": 0.362701,
+        "corrupt_ci_lo": 0.015228,
+        "main_is_high": true,
+        "ok": true
+      }
+    ],
+    "void_arms": [],
+    "ok": true
+  },
+  "sample_size_analysis": {
+    "target_min_pp": 3.0,
+    "plain_spread": 34.818,
+    "plain_sd_pp": 19.865,
+    "delta_sd_pp": 0.367,
+    "seeds_needed_using_plain_sd": 689,
+    "seeds_needed_using_delta_sd": 1,
+    "note": "「种子层面」均值检验的样本量（80% 功效、α=0.05 双侧、正态近似，σ 由 n=3 的样本 sd 估计 ⇒ 自身很不可靠，只作规划量级）；与它**并列**报「塌回地板比例」的 Wilson CI——后者才是 plain 双稳态的正确统计量（判据③不成立的机制是 plain 会塌，不是均值偏移）。"
+  },
+  "collapse_to_floor": {
+    "none": {
+      "n": 3,
+      "k": 3,
+      "rate": 1.0,
+      "wilson_ci": [
+        0.438494,
+        1.0
+      ],
+      "note": "k/n 很小或 n 很小时 Wilson CI 会很宽（如实报，不用点估计下结论）"
+    },
+    "plain": {
+      "n": 3,
+      "k": 2,
+      "rate": 0.666667,
+      "wilson_ci": [
+        0.207655,
+        0.93851
+      ],
+      "note": "k/n 很小或 n 很小时 Wilson CI 会很宽（如实报，不用点估计下结论）"
+    },
+    "delta": {
+      "n": 3,
+      "k": 0,
+      "rate": 0.0,
+      "wilson_ci": [
+        0.0,
+        0.561506
+      ],
+      "note": "k/n 很小或 n 很小时 Wilson CI 会很宽（如实报，不用点估计下结论）"
+    }
+  },
+  "criteria": {
+    "c1_premise_none_near_chance": true,
+    "c2_delta_vs_none_stable": true,
+    "c3_delta_vs_plain_stable": false,
+    "c4_corrupt_control_ok": true,
+    "c5_no_extrapolation": true,
+    "c6_sample_size_reported": true
+  },
+  "loss_slope": {
+    "none_s0": {
+      "n_points": 60,
+      "slope": -0.002689,
+      "first_loss": 4.7499,
+      "last_loss": 0.5055,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "plain_s0": {
+      "n_points": 60,
+      "slope": -0.084087,
+      "first_loss": 4.7499,
+      "last_loss": 0.3513,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "delta_s0": {
+      "n_points": 60,
+      "slope": -0.055746,
+      "first_loss": 4.7499,
+      "last_loss": 0.326,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "none_s1": {
+      "n_points": 60,
+      "slope": -0.002182,
+      "first_loss": 5.1102,
+      "last_loss": 0.5057,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "plain_s1": {
+      "n_points": 60,
+      "slope": -0.017486,
+      "first_loss": 5.1102,
+      "last_loss": 0.5055,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "delta_s1": {
+      "n_points": 60,
+      "slope": -0.050947,
+      "first_loss": 5.1102,
+      "last_loss": 0.3251,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "none_s2": {
+      "n_points": 60,
+      "slope": -0.002462,
+      "first_loss": 4.8371,
+      "last_loss": 0.5058,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "plain_s2": {
+      "n_points": 60,
+      "slope": -0.002811,
+      "first_loss": 4.8371,
+      "last_loss": 0.5062,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "delta_s2": {
+      "n_points": 60,
+      "slope": -0.057329,
+      "first_loss": 4.8371,
+      "last_loss": 0.3257,
+      "window_steps": [
+        200,
+        12000
+      ]
+    }
+  },
+  "train_log_tail": {
+    "none_s0": {
+      "last_step": 11999,
+      "last_loss": 0.5055,
+      "last_answer_ce": 4.2161,
+      "chance_ce": 4.1589,
+      "escaped_chance_line": false,
+      "answer_ce_last_window_slope": -0.018197,
+      "last_read_share": null
+    },
+    "plain_s0": {
+      "last_step": 11999,
+      "last_loss": 0.3513,
+      "last_answer_ce": 3.6825,
+      "chance_ce": 4.1589,
+      "escaped_chance_line": false,
+      "answer_ce_last_window_slope": -0.185109,
+      "last_read_share": {
+        "read_scale_absmean": 0.01183,
+        "read_share": 0.082451,
+        "mem_write_to_resid_ratio": 0.033319,
+        "state_fro": 38.446045,
+        "beta_mean": 0.220151,
+        "write_rel": 0.603108,
+        "read_norm": 6.420825,
+        "n_layer_samples": 144000,
+        "rule": "plain",
+        "carry_chunk": 64
+      }
+    },
+    "delta_s0": {
+      "last_step": 11999,
+      "last_loss": 0.326,
+      "last_answer_ce": 1.4733,
+      "chance_ce": 4.1589,
+      "escaped_chance_line": true,
+      "answer_ce_last_window_slope": -0.146176,
+      "last_read_share": {
+        "read_scale_absmean": 0.081078,
+        "read_share": 0.650279,
+        "mem_write_to_resid_ratio": 0.275499,
+        "state_fro": 2.661766,
+        "beta_mean": 0.461821,
+        "write_rel": 0.411404,
+        "read_norm": 16.099392,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 64
+      }
+    },
+    "none_s1": {
+      "last_step": 11999,
+      "last_loss": 0.5057,
+      "last_answer_ce": 4.196,
+      "chance_ce": 4.1589,
+      "escaped_chance_line": false,
+      "answer_ce_last_window_slope": -0.011936,
+      "last_read_share": null
+    },
+    "plain_s1": {
+      "last_step": 11999,
+      "last_loss": 0.5055,
+      "last_answer_ce": 4.1956,
+      "chance_ce": 4.1589,
+      "escaped_chance_line": false,
+      "answer_ce_last_window_slope": -0.011767,
+      "last_read_share": {
+        "read_scale_absmean": 0.006831,
+        "read_share": 0.025667,
+        "mem_write_to_resid_ratio": 0.022944,
+        "state_fro": 38.730442,
+        "beta_mean": 0.369244,
+        "write_rel": 0.566642,
+        "read_norm": 4.996194,
+        "n_layer_samples": 144000,
+        "rule": "plain",
+        "carry_chunk": 64
+      }
+    },
+    "delta_s1": {
+      "last_step": 11999,
+      "last_loss": 0.3251,
+      "last_answer_ce": 1.4737,
+      "chance_ce": 4.1589,
+      "escaped_chance_line": true,
+      "answer_ce_last_window_slope": -0.147152,
+      "last_read_share": {
+        "read_scale_absmean": 0.076586,
+        "read_share": 0.55018,
+        "mem_write_to_resid_ratio": 0.173943,
+        "state_fro": 3.106475,
+        "beta_mean": 0.47055,
+        "write_rel": 0.471273,
+        "read_norm": 17.897774,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 64
+      }
+    },
+    "none_s2": {
+      "last_step": 11999,
+      "last_loss": 0.5058,
+      "last_answer_ce": 4.1889,
+      "chance_ce": 4.1589,
+      "escaped_chance_line": false,
+      "answer_ce_last_window_slope": -0.002068,
+      "last_read_share": null
+    },
+    "plain_s2": {
+      "last_step": 11999,
+      "last_loss": 0.5062,
+      "last_answer_ce": 4.2207,
+      "chance_ce": 4.1589,
+      "escaped_chance_line": false,
+      "answer_ce_last_window_slope": -0.019755,
+      "last_read_share": {
+        "read_scale_absmean": 0.009582,
+        "read_share": 0.031934,
+        "mem_write_to_resid_ratio": 0.117452,
+        "state_fro": 46.716599,
+        "beta_mean": 0.395328,
+        "write_rel": 0.675421,
+        "read_norm": 6.313357,
+        "n_layer_samples": 144000,
+        "rule": "plain",
+        "carry_chunk": 64
+      }
+    },
+    "delta_s2": {
+      "last_step": 11999,
+      "last_loss": 0.3257,
+      "last_answer_ce": 1.455,
+      "chance_ce": 4.1589,
+      "escaped_chance_line": true,
+      "answer_ce_last_window_slope": -0.132058,
+      "last_read_share": {
+        "read_scale_absmean": 0.085633,
+        "read_share": 0.671322,
+        "mem_write_to_resid_ratio": 0.13354,
+        "state_fro": 2.750386,
+        "beta_mean": 0.510208,
+        "write_rel": 0.419612,
+        "read_norm": 11.100378,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 64
+      }
+    }
+  },
+  "train_meta": {
+    "none_s0": {
+      "wall_minutes": 9.07,
+      "peak_gpu_mem_mb": 2015.3,
+      "params": 13536768,
+      "seed": 0,
+      "carry_write": "none",
+      "window_mask": null,
+      "synth_task_config": {
+        "task": "assoc_recall_multi",
+        "seq_len": 256,
+        "n_pairs": 8,
+        "n_queries": 8,
+        "gap": 14,
+        "sym_vocab": 64,
+        "filler_token": 64,
+        "cue_token": 205,
+        "query_base": 120,
+        "query_block": 17,
+        "filler_span": [
+          16,
+          120
+        ],
+        "layout": "[k0 v0 … k{K-1} v{K-1}] filler [cue q_j a_j gap×filler]×Q （target = 下一个 token，答案行 = q_j 行）"
+      },
+      "carry_liveness_training": {
+        "carry_rule": null,
+        "enabled": false,
+        "carry_chunk": 64,
+        "block_python_class": "Block",
+        "shared_slots": false,
+        "params_added": 0,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "read_scale_absmean": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "alive": false,
+        "w_fro": null,
+        "alive_note": "无通道（carry_rule=None，U0 基线）：读出量为 0"
+      },
+      "origin": "2631（复用）"
+    },
+    "plain_s0": {
+      "wall_minutes": 13.08,
+      "peak_gpu_mem_mb": 2170.2,
+      "params": 13801064,
+      "seed": 0,
+      "carry_write": "plain",
+      "window_mask": null,
+      "synth_task_config": {
+        "task": "assoc_recall_multi",
+        "seq_len": 256,
+        "n_pairs": 8,
+        "n_queries": 8,
+        "gap": 14,
+        "sym_vocab": 64,
+        "filler_token": 64,
+        "cue_token": 205,
+        "query_base": 120,
+        "query_block": 17,
+        "filler_span": [
+          16,
+          120
+        ],
+        "layout": "[k0 v0 … k{K-1} v{K-1}] filler [cue q_j a_j gap×filler]×Q （target = 下一个 token，答案行 = q_j 行）"
+      },
+      "carry_liveness_training": {
+        "carry_rule": "plain",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 47.814197,
+        "state_fro": 13.318501,
+        "beta_mean": 0.346331,
+        "write_rel": 0.0,
+        "read_norm": 2.948447,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.01183,
+        "read_share": 0.082451,
+        "mem_write_to_resid_ratio": 0.033331,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.033006,
+        "rel_dev_vs_other_rule": 0.02294,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "origin": "2631（复用）"
+    },
+    "delta_s0": {
+      "wall_minutes": 15.32,
+      "peak_gpu_mem_mb": 2283.4,
+      "params": 13801064,
+      "seed": 0,
+      "carry_write": "delta",
+      "window_mask": null,
+      "synth_task_config": {
+        "task": "assoc_recall_multi",
+        "seq_len": 256,
+        "n_pairs": 8,
+        "n_queries": 8,
+        "gap": 14,
+        "sym_vocab": 64,
+        "filler_token": 64,
+        "cue_token": 205,
+        "query_base": 120,
+        "query_block": 17,
+        "filler_span": [
+          16,
+          120
+        ],
+        "layout": "[k0 v0 … k{K-1} v{K-1}] filler [cue q_j a_j gap×filler]×Q （target = 下一个 token，答案行 = q_j 行）"
+      },
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 83.25915,
+        "state_fro": 2.048969,
+        "beta_mean": 0.450404,
+        "write_rel": 0.0,
+        "read_norm": 4.61878,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.081082,
+        "read_share": 0.650289,
+        "mem_write_to_resid_ratio": 0.275588,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.089967,
+        "rel_dev_vs_other_rule": 1.229095,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "origin": "2631（复用）"
+    },
+    "none_s1": {
+      "wall_minutes": 8.57,
+      "peak_gpu_mem_mb": 2015.3,
+      "params": 13536768,
+      "seed": 1,
+      "carry_write": "none",
+      "window_mask": null,
+      "synth_task_config": {
+        "task": "assoc_recall_multi",
+        "seq_len": 256,
+        "n_pairs": 8,
+        "n_queries": 8,
+        "gap": 14,
+        "sym_vocab": 64,
+        "filler_token": 64,
+        "cue_token": 205,
+        "query_base": 120,
+        "query_block": 17,
+        "filler_span": [
+          16,
+          120
+        ],
+        "layout": "[k0 v0 … k{K-1} v{K-1}] filler [cue q_j a_j gap×filler]×Q （target = 下一个 token，答案行 = q_j 行）"
+      },
+      "carry_liveness_training": {
+        "carry_rule": null,
+        "enabled": false,
+        "carry_chunk": 64,
+        "block_python_class": "Block",
+        "shared_slots": false,
+        "params_added": 0,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "read_scale_absmean": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "alive": false,
+        "w_fro": null,
+        "alive_note": "无通道（carry_rule=None，U0 基线）：读出量为 0"
+      },
+      "origin": "2631（复用）"
+    },
+    "plain_s1": {
+      "wall_minutes": 12.83,
+      "peak_gpu_mem_mb": 2170.2,
+      "params": 13801064,
+      "seed": 1,
+      "carry_write": "plain",
+      "window_mask": null,
+      "synth_task_config": {
+        "task": "assoc_recall_multi",
+        "seq_len": 256,
+        "n_pairs": 8,
+        "n_queries": 8,
+        "gap": 14,
+        "sym_vocab": 64,
+        "filler_token": 64,
+        "cue_token": 205,
+        "query_base": 120,
+        "query_block": 17,
+        "filler_span": [
+          16,
+          120
+        ],
+        "layout": "[k0 v0 … k{K-1} v{K-1}] filler [cue q_j a_j gap×filler]×Q （target = 下一个 token，答案行 = q_j 行）"
+      },
+      "carry_liveness_training": {
+        "carry_rule": "plain",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 34.0065,
+        "state_fro": 7.410407,
+        "beta_mean": 0.451951,
+        "write_rel": 0.0,
+        "read_norm": 0.562205,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.006831,
+        "read_share": 0.025667,
+        "mem_write_to_resid_ratio": 0.022942,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.00244,
+        "rel_dev_vs_other_rule": 0.002386,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "origin": "2631（复用）"
+    },
+    "delta_s1": {
+      "wall_minutes": 15.79,
+      "peak_gpu_mem_mb": 2283.4,
+      "params": 13801064,
+      "seed": 1,
+      "carry_write": "delta",
+      "window_mask": null,
+      "synth_task_config": {
+        "task": "assoc_recall_multi",
+        "seq_len": 256,
+        "n_pairs": 8,
+        "n_queries": 8,
+        "gap": 14,
+        "sym_vocab": 64,
+        "filler_token": 64,
+        "cue_token": 205,
+        "query_base": 120,
+        "query_block": 17,
+        "filler_span": [
+          16,
+          120
+        ],
+        "layout": "[k0 v0 … k{K-1} v{K-1}] filler [cue q_j a_j gap×filler]×Q （target = 下一个 token，答案行 = q_j 行）"
+      },
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 86.962047,
+        "state_fro": 2.512499,
+        "beta_mean": 0.494496,
+        "write_rel": 0.0,
+        "read_norm": 5.787022,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.076584,
+        "read_share": 0.550191,
+        "mem_write_to_resid_ratio": 0.173915,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.058928,
+        "rel_dev_vs_other_rule": 0.106367,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "origin": "2631（复用）"
+    },
+    "none_s2": {
+      "wall_minutes": 13.89,
+      "peak_gpu_mem_mb": 2015.3,
+      "params": 13536768,
+      "seed": 2,
+      "carry_write": "none",
+      "window_mask": null,
+      "synth_task_config": {
+        "task": "assoc_recall_multi",
+        "seq_len": 256,
+        "n_pairs": 8,
+        "n_queries": 8,
+        "gap": 14,
+        "sym_vocab": 64,
+        "filler_token": 64,
+        "cue_token": 205,
+        "query_base": 120,
+        "query_block": 17,
+        "filler_span": [
+          16,
+          120
+        ],
+        "layout": "[k0 v0 … k{K-1} v{K-1}] filler [cue q_j a_j gap×filler]×Q （target = 下一个 token，答案行 = q_j 行）"
+      },
+      "carry_liveness_training": {
+        "carry_rule": null,
+        "enabled": false,
+        "carry_chunk": 64,
+        "block_python_class": "Block",
+        "shared_slots": false,
+        "params_added": 0,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "read_scale_absmean": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "alive": false,
+        "w_fro": null,
+        "alive_note": "无通道（carry_rule=None，U0 基线）：读出量为 0"
+      },
+      "origin": "2633（本实验新训）"
+    },
+    "plain_s2": {
+      "wall_minutes": 16.46,
+      "peak_gpu_mem_mb": 2170.2,
+      "params": 13801064,
+      "seed": 2,
+      "carry_write": "plain",
+      "window_mask": null,
+      "synth_task_config": {
+        "task": "assoc_recall_multi",
+        "seq_len": 256,
+        "n_pairs": 8,
+        "n_queries": 8,
+        "gap": 14,
+        "sym_vocab": 64,
+        "filler_token": 64,
+        "cue_token": 205,
+        "query_base": 120,
+        "query_block": 17,
+        "filler_span": [
+          16,
+          120
+        ],
+        "layout": "[k0 v0 … k{K-1} v{K-1}] filler [cue q_j a_j gap×filler]×Q （target = 下一个 token，答案行 = q_j 行）"
+      },
+      "carry_liveness_training": {
+        "carry_rule": "plain",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 35.115935,
+        "state_fro": 19.127144,
+        "beta_mean": 0.402689,
+        "write_rel": 0.0,
+        "read_norm": 2.924163,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.009581,
+        "read_share": 0.031935,
+        "mem_write_to_resid_ratio": 0.117515,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.025363,
+        "rel_dev_vs_other_rule": 0.024452,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "origin": "2633（本实验新训）"
+    },
+    "delta_s2": {
+      "wall_minutes": 19.41,
+      "peak_gpu_mem_mb": 2283.4,
+      "params": 13801064,
+      "seed": 2,
+      "carry_write": "delta",
+      "window_mask": null,
+      "synth_task_config": {
+        "task": "assoc_recall_multi",
+        "seq_len": 256,
+        "n_pairs": 8,
+        "n_queries": 8,
+        "gap": 14,
+        "sym_vocab": 64,
+        "filler_token": 64,
+        "cue_token": 205,
+        "query_base": 120,
+        "query_block": 17,
+        "filler_span": [
+          16,
+          120
+        ],
+        "layout": "[k0 v0 … k{K-1} v{K-1}] filler [cue q_j a_j gap×filler]×Q （target = 下一个 token，答案行 = q_j 行）"
+      },
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 80.723299,
+        "state_fro": 2.118309,
+        "beta_mean": 0.566986,
+        "write_rel": 0.0,
+        "read_norm": 4.998698,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.085633,
+        "read_share": 0.671323,
+        "mem_write_to_resid_ratio": 0.133543,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 2.689399,
+        "rel_dev_vs_other_rule": 0.937456,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "origin": "2633（本实验新训）"
+    }
+  },
+  "memory_analytic": {
+    "params": 13536768,
+    "params_bytes_fp32": 54147072,
+    "optimizer_bytes_adamw": 108294144,
+    "train_act_floats_per_sample_est": 3932160,
+    "train_act_bytes_bf16_batch": 480.0,
+    "window_attn_scores_floats_per_layer": 2097152,
+    "window_attn_scores_mb": 8.0,
+    "full_attn_scores_mb_for_contrast": 128.0,
+    "carry_state_floats": 8192,
+    "carry_state_bytes": 32768,
+    "carry_state_note": "单共享槽 H·dh·dh = 8192 floats/样本，**与 T 无关**",
+    "kv_cache_bytes_per_sample": 6291456
+  },
+  "reproducibility": {
+    "deterministic_reeval": {
+      "none_s2": {
+        "n": 512,
+        "hits_1": 5,
+        "hits_2": 5,
+        "bitwise_same": true
+      },
+      "delta_s2": {
+        "n": 512,
+        "hits_1": 190,
+        "hits_2": 190,
+        "bitwise_same": true
+      }
+    }
+  },
+  "cost": {
+    "wall_minutes_total_eval": 2.96,
+    "train_wall_minutes": {
+      "none_s0": 9.07,
+      "plain_s0": 13.08,
+      "delta_s0": 15.32,
+      "none_s1": 8.57,
+      "plain_s1": 12.83,
+      "delta_s1": 15.79,
+      "none_s2": 13.89,
+      "plain_s2": 16.46,
+      "delta_s2": 19.41
+    },
+    "new_arms_train_wall_minutes": {
+      "none_s2": 13.89,
+      "plain_s2": 16.46,
+      "delta_s2": 19.41
+    },
+    "eval_peak_gpu_mem_mb": 701.6,
+    "train_peak_gpu_mem_mb": {
+      "none_s0": 2015.3,
+      "plain_s0": 2170.2,
+      "delta_s0": 2283.4,
+      "none_s1": 2015.3,
+      "plain_s1": 2170.2,
+      "delta_s1": 2283.4,
+      "none_s2": 2015.3,
+      "plain_s2": 2170.2,
+      "delta_s2": 2283.4
+    },
+    "n_forward_batches": 1440,
+    "lock_note": "训练按臂取/放 /tmp/pathlm_gpu.lock、臂间 ≥60 s（§20.1）；评测由 `eval.sh` **整程持锁**（该驱动 <10 min）；前后空闲读数与自身峰值见 `lock_accounting.json`（文本口径见 analysis §20）",
+    "lock_accounting": {
+      "mode": "section_20_lock",
+      "lock_kind": "lock",
+      "lock_taken": true,
+      "lock_dir_touched": true,
+      "why": "评测由 `eval.sh` **整程持锁**（该驱动 <10 min）",
+      "free_gpu_mem_mib_before": 17670,
+      "free_gpu_mem_mib_after": 18059,
+      "free_headroom_gate_mib": 3072,
+      "headroom_ok": true,
+      "wall_s": 250,
+      "eval_peak_gpu_mem_mb": 701.6,
+      "returncode": 0
+    }
+  },
+  "code_hashes": {
+    "pathlm/depth_ar.py": "b304c234b82b51a49ba477285169b41ebf3fc4e24b087ec2bafdd9caa4423192",
+    "train_depth_ar.py": "218b63179e623d6a938e7cabe85a71c5c4a36f1831c6930e9c65b2e0a6673022",
+    "tools/evalkit/longrange_tasks.py": "4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b",
+    "tools/evalkit/carry_channel.py": "4dcd91facd60a512dcc983836fb29a7c91aad988bada1c95ada666824d226753",
+    "tools/evalkit/retention.py": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502",
+    "run.py": "46033e75ed390b745509cefc1ec40243c89f207fad9e21f3c143360d70928523",
+    "seed3_stats.py": "895005796f1a4b7f337799337070b00bd18c02b2eb8e242cc075e9f008ceba6d",
+    "equality_vs_2631.py": "950718f7dfb158f648b7e3cab36538dbde7494dbdbe0f46ff33fecd2bb13a319",
+    "config.json": "29e7881bd9eda91ed7830db68289ae1bd67f7f5cf3c4d4eca73ab60620ebf0f0",
+    "reseed_arms.py": "a53fb6a02d3a88bd25f81e69569efe89039d8bf0cef67a645b3e4d03d7f7e24e"
+  }
+}

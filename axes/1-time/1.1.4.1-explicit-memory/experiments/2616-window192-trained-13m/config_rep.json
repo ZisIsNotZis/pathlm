@@ -1,0 +1,212 @@
+{
+  "contract": "axes/M-carrier/M3-cross-step-assumption/experiments/2616-window192-trained-13m/README.md",
+  "contract_source": ".scratch/33-batch6/issues/01-batch6.md §「契约 Q」 + 开头统一纪律段",
+  "scope": "本研究只做单轴单格实验，基底恒为 stock 对照；不做组合实验（组合留白是显式声明，不是遗漏）。deps 只记录耦合方向。",
+  "intervention": {
+    "factor": "训练期可见窗口长度（唯一变量；唯一取值变化 = 192 vs 全可见）",
+    "arms": {
+      "full": "全可见（不重训：复用 2610 的 trunk.pt，配置等值性逐字段对照见 README §5）",
+      "window192": "训练时只允许看最近 192 个位置 + 8 个锚点（本实验训练；评测用同一掩码）"
+    },
+    "mask": "keep[i,j] = (j<=i) & ((i-j) < train_window | j < train_anchors)；对角恒开。实现 = pathlm.depth_ar.window_anchor_keep_mask（训练与评测共用同一函数）"
+  },
+  "baseline_checkpoint": {
+    "path": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "size_bytes": 54193675,
+    "role": "full 臂（复用，只读）：13.5M dense decoder-only 主干，12k 步，clean bpc 1.4836"
+  },
+  "trained_checkpoint": {
+    "path": "train/window192_rep/model.pt",
+    "sha256": "8e3c6fb1bcaa26c44292faec4dba707cf0c52c5f54de73146b77a2e083274a5e",
+    "size_bytes": 54193675,
+    "role": "window192 臂的**同配置重跑**（同 seed、同配方、同 12000 步）——只作训练侧噪声与结论复现的证据，不参与判据口径",
+    "train_dir": "train/window192_rep",
+    "command": "python3 train_depth_ar.py window192_rep --d 256 --layers 12 --heads 8 --mlp-mult 6 --dense --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --train-window 192 --train-anchors 8 --eval-batches 24 --out-root <expdir>/train",
+    "train_wall_minutes": 8.67
+  },
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true,
+    "train_window": 192,
+    "train_anchors": 8
+  },
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M train / 末 10M eval（本实验只用 eval 尾段做评测）",
+    "vocab_size": 206,
+    "n_real_tokens": 205,
+    "mask_token": 205
+  },
+  "train_window192": {
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0,
+    "exit_mode": "uniform",
+    "aux_weight": 1.0,
+    "final_weight": 1.0,
+    "shallow_stopgrad": false,
+    "dense_aux": false,
+    "exit_anneal": false,
+    "train_window": 192,
+    "train_anchors": 8
+  },
+  "train_full_reused_2610": {
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0,
+    "exit_mode": "uniform",
+    "aux_weight": 1.0,
+    "final_weight": 1.0,
+    "shallow_stopgrad": false,
+    "dense_aux": false,
+    "exit_anneal": false,
+    "train_window": 0,
+    "train_anchors": 0,
+    "source": "axes/H-horizon/H4-head-trunk-relation/experiments/2610-frozen-trunk-jumphead-13m/{config.json,trunk_train_log.jsonl}"
+  },
+  "recorded_2615_window32": {
+    "experiment": "axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2615-window-trained-retention-13m",
+    "results_json_sha256_note": "判据②并列表的 window32 训练点直接引用该实验的 results.json::criteria（同一件仪器、同一臂配方，只有窗口长度不同）",
+    "train_window": 32,
+    "train_anchors": 8,
+    "bpc_native_operating_point": 1.570135,
+    "bpc_release_path": 1.707367,
+    "tax_bpc_native": 0.086566,
+    "delta_bpc_release": -0.223798,
+    "beyond_recall_native": 0.458773,
+    "beyond_control_native": 0.454494,
+    "beyond_gap_vs_floor": 0.004279,
+    "train_wall_minutes": 7.62,
+    "rerun": {
+      "bpc_native_operating_point": 1.565637,
+      "tax_bpc_native": 0.082069,
+      "beyond_gap_vs_floor": -0.004565,
+      "train_wall_minutes": 8.27
+    }
+  },
+  "eval": {
+    "n_batches": 24,
+    "batch_size": 16,
+    "window_seed": 2,
+    "device": "cuda",
+    "note": "与 2614/2615（契约 I/O 的基线）同一窗口序：window_seed=2 + 24×16"
+  },
+  "curves": {
+    "distance": {
+      "d": [
+        1,
+        2,
+        4,
+        8,
+        16,
+        32,
+        64,
+        128,
+        255
+      ]
+    },
+    "prefix": {
+      "n_dropped": [
+        8,
+        16,
+        32,
+        64,
+        128,
+        192,
+        255
+      ]
+    },
+    "recent": {
+      "d": [
+        16,
+        32,
+        64,
+        128,
+        192,
+        255
+      ]
+    },
+    "anchored_budget": {
+      "d": [
+        32,
+        64,
+        128,
+        192
+      ],
+      "anchors": 8,
+      "note": "契约 Q 判据②的两套口径之一：与**训练掩码同一族**（window_anchor_keep_mask，含 8 锚点）的有界预算曲线，作用在 full 臂上 = 「评测期把一个全注意力模型限制到窗口 d」；与 recent 曲线的差别只有那 8 个锚点（SCHEMA §17.12 要求两套口径并报）"
+    },
+    "prefix_diagnostics": {
+      "query_min": 128
+    }
+  },
+  "needle": {
+    "construction": "phrase_needle_batch（needle v3，真实文本短语针，契约 M 产出的检索腿仪器；不得破坏既有行为）",
+    "n_needles": 8,
+    "phrase_len": 6,
+    "anchors": 8,
+    "anchor_frac": 0.25,
+    "n_batches": 32,
+    "batch_size": 16,
+    "seed": 3,
+    "noise_seeds": [
+      13,
+      23
+    ],
+    "distance_bands": [
+      [
+        0,
+        32
+      ],
+      [
+        32,
+        64
+      ],
+      [
+        64,
+        128
+      ],
+      [
+        128,
+        256
+      ]
+    ],
+    "note": "seed=3 + 32×16 与契约 M（2615-retention-retrieval-leg-13m）同一构造序列 ⇒ full 臂 release 口径可与 M 的基线逐位对账"
+  },
+  "reproducibility": {
+    "rerun": true,
+    "configs": [
+      "distance:8",
+      "distance:32",
+      "prefix:64",
+      "recent:32",
+      "native"
+    ],
+    "threshold": 0.005
+  },
+  "noise_floor": {
+    "window_seeds": [
+      3,
+      4,
+      5
+    ],
+    "configs": [
+      "distance:8",
+      "prefix:64",
+      "recent:32"
+    ]
+  },
+  "variance_band_bpc": 0.014,
+  "criterion_1_near_zero_tax_bpc": 0.014,
+  "criterion_1_cliff_tax_bpc": 0.05,
+  "criterion_3_recall_gap_pp": 0.1,
+  "note": "config_rep.json = 重跑臂的 resolved config（run.py --config config_rep.json --out-dir rep）"
+}

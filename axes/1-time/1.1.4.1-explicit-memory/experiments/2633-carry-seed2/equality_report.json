@@ -1,0 +1,427 @@
+{
+  "generated_by": "2633-carry-seed2/equality_vs_2631.py",
+  "target": "axes/1-time/1.1.4.1-explicit-memory/experiments/2631-carry-reseed",
+  "implementation": {
+    "pathlm/depth_ar.py": {
+      "recorded_at_2631_run": "45f946793835f2afadf3a10f727b02ee879682ef6024b23fa179d3351c28c585",
+      "working_tree_now": "b304c234b82b51a49ba477285169b41ebf3fc4e24b087ec2bafdd9caa4423192",
+      "runtime_version_commit": "9f125cf5edf577e82500afec9d4c6dbcd3b32e20",
+      "runtime_version_subject": "9f125cf ENG2：写入通道支持非 dense ragged/随机退出/填充路径（引擎 + 单测 + 冒烟）",
+      "n_matching_commits": 1,
+      "bytes_unchanged_since_2631_run": false,
+      "note": "字节不变只是信息项；判据见 `implementation_equivalent_to_2631_runtime`（两层行为等价）"
+    },
+    "train_depth_ar.py": {
+      "recorded_at_2631_run": "2d1863bbc4403e026d12b597d98a1da2b85f3606110073f2117a7dd1db2a1f35",
+      "working_tree_now": "218b63179e623d6a938e7cabe85a71c5c4a36f1831c6930e9c65b2e0a6673022",
+      "runtime_version_commit": "9f125cf5edf577e82500afec9d4c6dbcd3b32e20",
+      "runtime_version_subject": "9f125cf ENG2：写入通道支持非 dense ragged/随机退出/填充路径（引擎 + 单测 + 冒烟）",
+      "n_matching_commits": 1,
+      "bytes_unchanged_since_2631_run": false,
+      "note": "字节不变只是信息项；判据见 `implementation_equivalent_to_2631_runtime`（两层行为等价）"
+    },
+    "tools/evalkit/longrange_tasks.py": {
+      "recorded_at_2631_run": "4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b",
+      "working_tree_now": "4a02b93f19db8e99dbf3a555b2903205ee8ef2e5a27aaa0d2d66ed0382c5465b",
+      "runtime_version_commit": "cc641127371d80c8cd988b0a0d98e4f241099324",
+      "runtime_version_subject": "cc64112 35 第八批：首个正面结果——显式写入通道 + delta 写让信息真的被搬过去（M1 判入）",
+      "n_matching_commits": 1,
+      "bytes_unchanged_since_2631_run": true,
+      "note": "字节不变只是信息项；判据见 `implementation_equivalent_to_2631_runtime`（两层行为等价）"
+    },
+    "tools/evalkit/carry_channel.py": {
+      "recorded_at_2631_run": "4dcd91facd60a512dcc983836fb29a7c91aad988bada1c95ada666824d226753",
+      "working_tree_now": "4dcd91facd60a512dcc983836fb29a7c91aad988bada1c95ada666824d226753",
+      "runtime_version_commit": "cc641127371d80c8cd988b0a0d98e4f241099324",
+      "runtime_version_subject": "cc64112 35 第八批：首个正面结果——显式写入通道 + delta 写让信息真的被搬过去（M1 判入）",
+      "n_matching_commits": 1,
+      "bytes_unchanged_since_2631_run": true,
+      "note": "字节不变只是信息项；判据见 `implementation_equivalent_to_2631_runtime`（两层行为等价）"
+    },
+    "tools/evalkit/retention.py": {
+      "recorded_at_2631_run": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502",
+      "working_tree_now": "8320f03a2ecf74e32ab29b0f0af0ef610d7cf45116ae5dcdcdeb241c645e6502",
+      "runtime_version_commit": "4d4ecb0ba18c38329db19ff193d775704bb821e0",
+      "runtime_version_subject": "4d4ecb0 32 第五批收官：用户最初设想被判决（窗口训练：信息是「丢了」不是「搬了」）；LRU 优先级前提撤回；并修正我自己的入账错误（安全丢弃半径 32 是把单点曲线当累加外推）",
+      "n_matching_commits": 1,
+      "bytes_unchanged_since_2631_run": true,
+      "note": "字节不变只是信息项；判据见 `implementation_equivalent_to_2631_runtime`（两层行为等价）"
+    }
+  },
+  "implementation_equivalent_to_2631_runtime": true,
+  "implementation_note": "① 基准 = **2631 运行时版本**：按 2631 `results.json::code_hashes` 记录的 sha256 在 git 历史里定位到对应 commit（见每条的 `runtime_version_commit`）；② 判据 = 该版本与**当前工作树**的**行为**等价（两层）：`pathlm/**` 三档配置逐位 logits + `train_depth_ar.py` 同一 run 的若干日志点逐字段 loss 序列（点数见 `engine_equivalence.json::trainer.n_lines`）。**字节允许变**（并行线的默认关闭加性改动），开关关闭时行为必须逐位不变；只覆盖本实验用到的配置。",
+  "working_tree_drift_files": [
+    "pathlm/depth_ar.py",
+    "train_depth_ar.py"
+  ],
+  "engine_equivalence_working_tree_vs_head": {
+    "configs": [
+      null,
+      "plain",
+      "delta"
+    ],
+    "probe_seed": 1234,
+    "per_rule": {
+      "none": {
+        "n_params_base": 13536768,
+        "n_params_working_tree": 13536768,
+        "n_params_same": true,
+        "params_bitwise_same_at_same_seed": true,
+        "state_dict_keys_same": true,
+        "max_abs_logit_diff_same_weights": 0.0,
+        "bitwise_equal_forward": true
+      },
+      "plain": {
+        "n_params_base": 13801064,
+        "n_params_working_tree": 13801064,
+        "n_params_same": true,
+        "params_bitwise_same_at_same_seed": true,
+        "state_dict_keys_same": true,
+        "max_abs_logit_diff_same_weights": 0.0,
+        "bitwise_equal_forward": true
+      },
+      "delta": {
+        "n_params_base": 13801064,
+        "n_params_working_tree": 13801064,
+        "n_params_same": true,
+        "params_bitwise_same_at_same_seed": true,
+        "state_dict_keys_same": true,
+        "max_abs_logit_diff_same_weights": 0.0,
+        "bitwise_equal_forward": true
+      }
+    },
+    "comparison_base": "2631 运行时版本（按 2631/results.json::code_hashes 定位）",
+    "base_resolution": {
+      "rel": "pathlm/depth_ar.py",
+      "recorded_sha256": "45f946793835f2afadf3a10f727b02ee879682ef6024b23fa179d3351c28c585",
+      "commit": "9f125cf5edf577e82500afec9d4c6dbcd3b32e20",
+      "n_matching_commits": 1,
+      "commit_subject": "9f125cf ENG2：写入通道支持非 dense ragged/随机退出/填充路径（引擎 + 单测 + 冒烟）"
+    },
+    "bitwise_equivalent_on_this_experiments_configs": true,
+    "forward_layer_ok": true,
+    "trainer": {
+      "verified": true,
+      "base_resolution": {
+        "rel": "train_depth_ar.py",
+        "recorded_sha256": "2d1863bbc4403e026d12b597d98a1da2b85f3606110073f2117a7dd1db2a1f35",
+        "commit": "9f125cf5edf577e82500afec9d4c6dbcd3b32e20",
+        "n_matching_commits": 1,
+        "commit_subject": "9f125cf ENG2：写入通道支持非 dense ragged/随机退出/填充路径（引擎 + 单测 + 冒烟）"
+      },
+      "steps": 1001,
+      "compared_fields": [
+        "step",
+        "loss",
+        "gnorm",
+        "aux_w",
+        "final_w",
+        "window_mask",
+        "synth_answer_ce",
+        "synth_chance_ce"
+      ],
+      "n_lines": {
+        "base": 6,
+        "working_tree": 6
+      },
+      "n_log_points_compared": 6,
+      "log_points_note": "训练器每 200 步写一行 ⇒ 1001 步 = 6 个日志点（step 0/200/400/600/800/1000）；实际点数以 n_lines 为准",
+      "loss_sequence_base": [
+        4.5637,
+        0.5217,
+        0.4717,
+        0.4665,
+        0.4661,
+        0.4639
+      ],
+      "loss_sequence_working_tree": [
+        4.5637,
+        0.5217,
+        0.4717,
+        0.4665,
+        0.4661,
+        0.4639
+      ],
+      "n_field_diffs": 0,
+      "field_diffs": [],
+      "runs": {
+        "base": {
+          "returncode": 0,
+          "wall_s": 20.6,
+          "n_log_lines": 6,
+          "stderr_tail": null
+        },
+        "working_tree": {
+          "returncode": 0,
+          "wall_s": 19.6,
+          "n_log_lines": 6,
+          "stderr_tail": null
+        }
+      },
+      "note": "训练脚本层的行为等价证据；需要 GPU（§20.1.2 短任务例外，~1 min、<1 GB）。`working_tree.returncode != 0` ⇒ 只能降级声明（reuse_ok_pathlm_only）"
+    },
+    "trainer_layer_ok": true,
+    "coverage": "pathlm/**（逐位 logits）+ train_depth_ar.py（逐字段 loss 序列）",
+    "all_layers_ok": true,
+    "note": "**2631 运行时版本**（按记录 sha256 定位）与**当前工作树**在**本实验用到的**配置上逐位等价（前向三档逐位 logits + 训练脚本同一 run 的 6 个日志点逐字段相同，见 trainer.n_lines）；字节允许变（并行线的默认关闭加性改动），**开关关闭时行为必须逐位不变**；这只覆盖本实验的配置，不代表两版在所有配置上等价"
+  },
+  "git_head": "580b60c8c14e927c33b17601a4a9312081203a70",
+  "shared_config": {
+    "device": {
+      "2633": "cuda",
+      "2631": "cuda",
+      "equal": true
+    },
+    "model": {
+      "2633": {
+        "d_model": 256,
+        "n_layers": 12,
+        "n_heads": 8,
+        "seq_len": 256,
+        "mlp_mult": 6,
+        "dense": true,
+        "topology": "sequential",
+        "train_window": 16,
+        "train_anchors": 0,
+        "carry_chunk": 64
+      },
+      "2631": {
+        "d_model": 256,
+        "n_layers": 12,
+        "n_heads": 8,
+        "seq_len": 256,
+        "mlp_mult": 6,
+        "dense": true,
+        "topology": "sequential",
+        "train_window": 16,
+        "train_anchors": 0,
+        "carry_chunk": 64
+      },
+      "equal": true
+    },
+    "data": {
+      "2633": {
+        "vocab_size": 206,
+        "source": "合成多查询关联回忆（tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch；训练与主腿同一生成器）",
+        "enwik8": "未使用（本线不做真实文本腿）"
+      },
+      "2631": {
+        "vocab_size": 206,
+        "source": "合成多查询关联回忆（tools/evalkit/longrange_tasks.py::assoc_recall_multi_batch；训练与主腿同一生成器）",
+        "enwik8": "未使用（本线不做真实文本腿）"
+      },
+      "equal": true
+    },
+    "tokens": {
+      "2633": {
+        "sym_vocab": 64,
+        "filler_token": 64,
+        "cue_token": 205,
+        "local_k": 8
+      },
+      "2631": {
+        "sym_vocab": 64,
+        "filler_token": 64,
+        "cue_token": 205,
+        "local_k": 8
+      },
+      "equal": true
+    },
+    "task": {
+      "2633": {
+        "K": 8,
+        "Q": 8,
+        "gap": 14
+      },
+      "2631": {
+        "K": 8,
+        "Q": 8,
+        "gap": 14
+      },
+      "equal": true
+    },
+    "visibility": {
+      "2633": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "note": "训练与评测同一个 window_anchor_keep_mask(T,16,0)；非退化（可见对数 < T(T+1)/2）"
+      },
+      "2631": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "note": "训练与评测同一个 window_anchor_keep_mask(T,16,0)；非退化（可见对数 < T(T+1)/2）"
+      },
+      "equal": true
+    },
+    "eval": {
+      "2633": {
+        "batch_size": 64,
+        "n_batches": 64,
+        "gen_seed": 5000,
+        "corrupt_seed": 7000,
+        "note": "主腿：K=8/Q=8/gap=14，距离 107–240（训练分布内）；生成器 seed 与模型 seed 无关 ⇒ 六臂配对"
+      },
+      "2631": {
+        "batch_size": 64,
+        "n_batches": 64,
+        "gen_seed": 5000,
+        "corrupt_seed": 7000,
+        "note": "主腿：K=8/Q=8/gap=14，距离 107–240（训练分布内）；生成器 seed 与模型 seed 无关 ⇒ 六臂配对"
+      },
+      "equal": true
+    },
+    "aux_ood": {
+      "2633": {
+        "batch_size": 64,
+        "n_batches": 16,
+        "gen_seed": 9000,
+        "note": "辅助腿：单查询 assoc_recall_batch，距离 241–255（训练分布外，不作判据）"
+      },
+      "2631": {
+        "batch_size": 64,
+        "n_batches": 16,
+        "gen_seed": 9000,
+        "note": "辅助腿：单查询 assoc_recall_batch，距离 241–255（训练分布外，不作判据）"
+      },
+      "equal": true
+    },
+    "sensitivity_K4": {
+      "2633": {
+        "K": 4,
+        "Q": 4,
+        "batch_size": 64,
+        "n_batches": 16,
+        "gen_seed": 11000,
+        "note": "K/Q 敏感性（K 与 Q 同时变小即难度变化；不作判据）"
+      },
+      "2631": {
+        "K": 4,
+        "Q": 4,
+        "batch_size": 64,
+        "n_batches": 16,
+        "gen_seed": 11000,
+        "note": "K/Q 敏感性（K 与 Q 同时变小即难度变化；不作判据）"
+      },
+      "equal": true
+    }
+  },
+  "differing_fields": [],
+  "train_recipe_note": "2631 train_arms.sh 的 BASE 与本实验 train_recipe_seed2.cmd 逐 flag 对照；--seed 是本实验**新增的档**，--out-root 按实验不同",
+  "train_recipe_flags": {
+    "--batch-size": {
+      "2633": "32",
+      "2631": "32",
+      "equal": true
+    },
+    "--carry-write": {
+      "2633": "{none,plain,delta}",
+      "2631": null,
+      "equal": true,
+      "note": "臂变量（占位符），非配方差异"
+    },
+    "--d": {
+      "2633": "256",
+      "2631": "256",
+      "equal": true
+    },
+    "--dense": {
+      "2633": "",
+      "2631": "",
+      "equal": true
+    },
+    "--exit-mode": {
+      "2633": "uniform",
+      "2631": "uniform",
+      "equal": true
+    },
+    "--heads": {
+      "2633": "8",
+      "2631": "8",
+      "equal": true
+    },
+    "--layers": {
+      "2633": "12",
+      "2631": "12",
+      "equal": true
+    },
+    "--lr": {
+      "2633": "1e-3",
+      "2631": "1e-3",
+      "equal": true
+    },
+    "--mlp-mult": {
+      "2633": "6",
+      "2631": "6",
+      "equal": true
+    },
+    "--out-root": {
+      "2633": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/train",
+      "2631": null,
+      "equal": false,
+      "note": "输出目录按实验不同 ⇒ 允许不等（不进 equality 判据）"
+    },
+    "--seed": {
+      "2633": "2",
+      "2631": null,
+      "equal": false
+    },
+    "--seq-len": {
+      "2633": "256",
+      "2631": "256",
+      "equal": true
+    },
+    "--steps": {
+      "2633": "12000",
+      "2631": "12000",
+      "equal": true
+    },
+    "--synth-gap": {
+      "2633": "14",
+      "2631": "14",
+      "equal": true
+    },
+    "--synth-pairs": {
+      "2633": "8",
+      "2631": "8",
+      "equal": true
+    },
+    "--synth-queries": {
+      "2633": "8",
+      "2631": "8",
+      "equal": true
+    },
+    "--synth-task": {
+      "2633": "assoc-mqar",
+      "2631": "assoc-mqar",
+      "equal": true
+    },
+    "--topology": {
+      "2633": "sequential",
+      "2631": "sequential",
+      "equal": true
+    },
+    "--train-anchors": {
+      "2633": "0",
+      "2631": "0",
+      "equal": true
+    },
+    "--train-window": {
+      "2633": "16",
+      "2631": "16",
+      "equal": true
+    }
+  },
+  "train_recipe_differing_flags": [],
+  "reused_arm_checkpoint_sha256_at_2631_run": {
+    "none_s0": "5e04df917aa0336f84ad4849b917fe8bb2eda2e374e509f408ec2fdcef81444b",
+    "plain_s0": "91f8197027b2b1a370d7b5fb897ab28b6f6b568aa8fd99165ab02357282f4c33",
+    "delta_s0": "d6fff38ca2be1df4239730f89dd816dd242f48d3cb340c3f836e0d63fbe37c9b",
+    "none_s1": "8fd9dff445966025292375eb58633cb4556db6be8605f4d4d23c1568eb46d096",
+    "plain_s1": "09ff2fda8792e6029027ffb00b5d8271794a39f69b075e4cb7bbc7bf97652583",
+    "delta_s1": "7487540111e92cc8d065aa3ee590d7c967da3e4d68406355906b4c109049424e"
+  },
+  "caliber_note": "seed0/1 = 2631 的历史同配置对照（同一实现 sha256 + 同 token 预算 98.3M + 同评测仪器）；seed2 = 本次新训；七/九臂同快照口径（12k 步）",
+  "verdict": "reuse_ok",
+  "reuse_scope": "pathlm/** + train_depth_ar.py（两层行为等价）",
+  "runtime_version_ledger": "axes/1-time/1.1.4.1-explicit-memory/experiments/2633-carry-seed2/runtime_version_ledger.json"
+}

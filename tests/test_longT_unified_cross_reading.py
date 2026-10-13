@@ -16,7 +16,7 @@ import subprocess
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-EXP = os.path.join(ROOT, "axes", "A-mixing", "A6-mixing-operator",
+EXP = os.path.join(ROOT, "axes", "1-time", "1.1.1-hard-window",
                    "experiments", "2636-longT-unified")
 SCRIPT = os.path.join(EXP, "reconcile_numbers.py")
 INPUTS = ("results.json", "eval.json", "analysis.md")

@@ -1,0 +1,69 @@
+# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+id: "1.1.2"
+axis: "1 时间轴"
+title: "soft 衰减"
+dir: "axes/1-time/1.1.2-soft-decay"
+
+purpose: "在「硬丢远端」与「无差别全看」之间给一个连续插值：让远距离依赖变贵而非不可能，从而在给定可见量/算力预算下尽量保住长程可达性。"
+innovation: "相对普通 decoder-only transformer，只在全因果 attention 的 logits 上加距离相关的加性偏置或乘性衰减（软窗口），不改可见集合、不动主干。改动量级：固定偏置零新增参数；per-head 可学习 slope 时每头 1 个标量（可忽略）；attention FLOPs 不变。"
+expected_effect: "（a）以远小于硬窗口的质量税压低远距离注意的权重，使长程 head 仍可存在；（b）长序列上获得类似 ALiBi 的长度外推便利，缓解绝对位置嵌入的硬长度上界。"
+sota_baseline: "ALiBi（Press et al. 2022，per-head slope + 长度外推）与 T5 relative bias、soft-window 一族；本地锚 = 全因果注意力基线（A2 → axes/7-references，13M B0 = 1.5074 bpc 快照）。业界条目按 `记忆·未核` 标注。"
+gap: "业界报 ALiBi 在同分布 bpc 上中性、真实卖点在**长度外推**；旧格 A4 用固定 w、全头共用把 per-head slope 丢掉，且没测长度外推（55-review P10）。本项要补的是 (a) per-head 可学习 slope、(b) 训练短测长的外推判据、(c) per-head 平均注意距离分布，并把它放进同预算前沿。"
+method: "单因素：只在 attention logits 加距离偏置。臂 = {stock, 固定 w 全头共用（旧实现）, per-head 可学习 slope, 乘性衰减}，并加「训练短、评测长」的长度外推臂。基底恒为 stock decoder-only。"
+validation: "端到端：对照 = stock 全因果基线（归一为 100%）；客观判据 = clean bpc（该跌）+ per-head 平均注意距离分布（必须有 head 保持长程，该涨）+ 长度外推召回（训练短测长，该涨）；口径 = matched-step / 同 token 预算，禁墙钟。"
+objective_criteria: "该跌：clean bpc（相对 stock，须越 0.014 噪声带才算可排序）；该涨：训练短测长的长度外推召回（ALiBi 的真实卖点）；必须不变：因果性（无未来泄漏）、per-head 距离分布不得全部被推向局部（须有 head 保持长程）。"
+falsification: "若 per-head 可学习 slope 在同分布 bpc 与长度外推两项上都不越噪声带，且 per-head 距离分布仍全被推向局部（无 head 保持长程）⇒ 判 soft 衰减作为可见范围手段无净增量、不成立。"
+failure_analysis: ""
+conclusion: "旧格读数：固定 w、全头共用时 clean bpc = −0.0068（1.5006 vs B0 1.5074），落在 Δ<0.014 不可排序带内、不构成改善；且 per-head 平均注意距离 26–43（均值 ~33）无 head 保持长程。该读数按 55-review P10 判为**口径不全**（丢了 per-head slope 与长度外推），只作旧观测，不作本项结论。"
+conclusion_review: "看上去只能作「口径不全的旧观测」：判据用的是错口径（固定 w、无外推），不能据此判手段不成立。故 status 进行中；按正确口径的判决实验未做。独立复核未做。"
+experiments:
+  - ".scratch/07-x1-x3/evidence/attn_dist_telemetry.json @7b47555"
+  - "axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty"
+argument: "旧读数用 clean bpc（税）+ per-head 距离遥测，但没做长度外推、没给 per-head slope；因此只能证明「全头共用固定偏置下同分布 bpc 中性」，不能证明 soft 衰减这一手段本身不成立——这正是 55-review P10 指出的「无目的 + 用错口径」。"
+gaps:
+  - "per-head 可学习 slope 的判决未做（下一步最小实验：13M、T=256、{per-head slope vs 固定 w} 两臂 × 2 seed；成本按等效 FLOPs 与 token 预算计）"
+  - "长度外推（训练短测长）判决未做"
+  - "per-head 平均注意距离分布未报（旧遥测只在 .scratch）"
+  - "旧格 stub 无仓内 results.json/analysis.md，不能当基线用"
+cost_model: "等效理论量：soft 衰减把距离偏置加到 attention logits 上，attention 的 QKᵀ 与加权项仍是 O(T²)（FLOPs 与 layer-passes 不变）；相比硬窗口不省可见量，只改权重分布。固定偏置零新增参数、每 head 1 个 slope 的参数量 O(n_heads)。考虑 pipelining：prefill/decode 均为 dense attention，可按 chunk 流水。"
+
+role_map:
+  owner: "轴 1 时间轴 lead（待指派）"
+  writer: "1.1.2 worker（单一写入者）"
+  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
+  integrator: "研究树 integrator"
+
+milestone:
+  output: "一份「soft 衰减 vs stock」的判决包：{固定 w, per-head slope, 乘性衰减} × clean bpc + per-head 距离分布 + 长度外推召回，对照 stock 全因果，n≥2。"
+  acceptance: "per-head 距离分布与长度外推两列齐备；结论区分「同分布 bpc 中性」与「长度外推是否有净收益」，不混淆；口径按 matched-step 报。"
+
+work_packages:
+  - id: "WP1"
+    what: "per-head 可学习 slope 的判决实验"
+    goal: "把旧「固定 w、全头共用」口径换成 ALiBi 的正确口径"
+    means: "13M、T=256、{per-head slope vs 固定 w vs stock} 三臂 × 2 seed，报 clean bpc 与 per-head 距离分布"
+    acceptance: "三臂齐备、报告每 head 距离分布；结论按噪声带判定"
+    evidence: "axes/1-time/1.1.2-soft-decay/experiments/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
+    status: "未开始"
+  - id: "WP2"
+    what: "长度外推判决"
+    goal: "测 ALiBi 的真实卖点（训练短、评测长）"
+    means: "训练 T=256、评测 T∈{256,512,1024}，对照 stock 绝对位置嵌入"
+    acceptance: "外推臂相对 stock 可排序提升或明确无提升"
+    evidence: "axes/1-time/1.1.2-soft-decay/experiments/"
+    review: "fresh 复核"
+    status: "未开始"
+
+roadmap:
+  - "WP1：per-head slope 判决"
+  - "WP2：长度外推判决"
+  - "复核通过后写 conclusion，更新 status"
+
+status: "进行中"
+started: "2026-10-13T10:15:48+08:00"
+ended: ""
+change_log:
+  - date: "2026-10-13T10:15:48+08:00"
+    actor: "轴 1 §1.1 worker"
+    change: "由旧格 A4-soft-distance-penalty 迁移建立（A4 → 1.1.2 soft 衰减）；experiments 整目录搬入；按 55-review A-P10 修正——目的改为可见范围手段（时间轴省算力、尽量保住长程可达性），旧「−0.0068 无净增量」降为口径不全的旧观测，补 per-head slope 与长度外推判据；旧「ALiBi 是独立格」的结构错位修正为「轴 1 可见范围下的一项」。"

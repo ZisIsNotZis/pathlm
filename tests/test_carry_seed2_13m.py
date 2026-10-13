@@ -20,7 +20,7 @@ import sys
 import pytest
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-EXP = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type", "experiments",
+EXP = os.path.join(ROOT, "axes", "1-time", "1.1.4.1-explicit-memory", "experiments",
                    "2633-carry-seed2")
 sys.path.insert(0, ROOT)
 sys.path.insert(0, EXP)
@@ -250,7 +250,7 @@ def test_committed_lock_notes_match_their_accounting():
     """
     for exp in ("2633-carry-seed2", "2634-carry-realtext-13m",
                 "2635-recursive-carrier-13m"):
-        p = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type", "experiments",
+        p = os.path.join(ROOT, "axes", "1-time", "1.1.4.1-explicit-memory", "experiments",
                          exp, "results.json")
         if not os.path.exists(p):
             continue
@@ -272,7 +272,7 @@ def test_record_refreshes_both_fields_and_repairs_contradiction(tmp_path):
     「note 说例外 / accounting 说持锁」；`record()` 是唯一实现，单测在**临时目录**上验证它。）
     """
     import shutil
-    exp_src = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type", "experiments",
+    exp_src = os.path.join(ROOT, "axes", "1-time", "1.1.4.1-explicit-memory", "experiments",
                            "2633-carry-seed2")
     shutil.copy(os.path.join(exp_src, "results.json"), tmp_path / "results.json")
     shutil.copy(os.path.join(exp_src, "lock_accounting.json"), tmp_path / "lock_accounting.json")
@@ -329,7 +329,7 @@ def test_all_rating_drivers_use_the_single_recorder():
     for exp in ("2633-carry-seed2", "2634-carry-realtext-13m",
                 "2635-recursive-carrier-13m"):
         for drv in ("eval.sh", "eval_concurrent.sh"):
-            p = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type", "experiments",
+            p = os.path.join(ROOT, "axes", "1-time", "1.1.4.1-explicit-memory", "experiments",
                              exp, drv)
             if not os.path.exists(p):
                 continue
@@ -406,7 +406,7 @@ def test_engine_files_behaviorally_unchanged_since_2631_run():
 def _load_exp_module(exp: str, mod_name: str):
     """按路径加载某个实验目录里的模块（测试用；避免与仓库其它同名模块冲突）。"""
     import importlib.util
-    p = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type", "experiments",
+    p = os.path.join(ROOT, "axes", "1-time", "1.1.4.1-explicit-memory", "experiments",
                      exp, f"{mod_name}.py")
     spec = importlib.util.spec_from_file_location(f"{exp.replace('-', '_')}_{mod_name}", p)
     m = importlib.util.module_from_spec(spec)

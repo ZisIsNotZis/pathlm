@@ -23,9 +23,9 @@ from tools.evalkit.retention import masked_logits  # noqa: E402
 
 from importlib import import_module  # noqa: E402
 
-HERE = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type",
+HERE = os.path.join(ROOT, "axes", "1-time", "1.1.4.1-explicit-memory",
                     "experiments", "2625-ood-leg-variance")
-Z3_DIR = os.path.join(ROOT, "axes", "M-carrier", "M1-carrier-type",
+Z3_DIR = os.path.join(ROOT, "axes", "1-time", "1.1.4.1-explicit-memory",
                       "experiments", "2624-carry-under-compression-quality")
 for p in (HERE, Z3_DIR):
     sys.path.insert(0, p)
