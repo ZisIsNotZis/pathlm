@@ -187,10 +187,10 @@
 | N3 | 状态精度假设（fp16 vs 引擎 fp32）显式记账 | `README.md` §4a、`analysis.md` §3 脚注 |
 | N4 | `smoke/steps300/win24/…` → `smoke/steps300/smk24/…` | `README.md` §6 |
 | N5 | 区间「0.0009–0.0025」→「0.000875 / 0.002259 / 0.003920」 | `analysis.md` §3 |
-| N6 | 标题句加「点估计支配；σ_cell 边缘、0.014 带不显著」限定 | `analysis.md` §0、`project.yaml` `conclusion`、`TICKET.md` §5.3 |
+| N6 | 标题句加「点估计支配；σ_cell 边缘、0.014 带不显著」限定 | `analysis.md` §0、**`project.yaml` `conclusion_review`**（+ §5.3 本文件） |
 | N7 | `conclusion` 补 `T=256`；`conclusion_review` 回填复核判词 | `project.yaml` |
 | N8 | 新增实验目录内自包含单测 `test_2638_frontier.py`（**不改共享 `tests/`**，边界纪律） | 实验目录 |
-| N9 | 明示复用臂范围 = **eval-only**，等值性由「4 复用臂 bpc 逐位复现」佐证 | `README.md` §5、`analysis.md` §3 |
+| N9 | 明示复用臂范围 = **eval-only**，等值性由「4 复用臂 bpc 逐位复现」佐证 | `README.md` §5（§3 未加此句——R2-N6 指出，落点已订正） |
 | N10 | 复核者请求 supervisor 跑的检查由 axis1-lead 代跑并登记 | §8.3 |
 
 ### 8.3 复核者请求的检查（由 axis1-lead 代跑，`2026-10-13T15:50`）
@@ -205,8 +205,42 @@
 | 6 | `python3 -m pytest tests/ -q` | `834 passed`（本轮**未改共享文件**，包括 `tests/`） |
 | 7 | `python3 -m pytest .../2638-…/test_2638_frontier.py -q` | `5 passed`（新增自包含单测，钉住符号约定 B1） |
 
-### 8.4 round 2
+### 8.4 round 2（派发 `2026-10-13T15:54+08:00`；复核件落盘 15:56）
 
-- 复核对象 = round-1 修复后的 revision（见提交）；复核者 = **新的** fresh 上下文（不得为 round-1 复核者本身或本项 writer）；报告落 `.scratch/62-axis1-time/REVIEW-2.md`。
+- 复核者：**新的** fresh 上下文（非 round-1 复核者、非本项 writer）；复核件 = `.scratch/62-axis1-time/REVIEW-2.md`。
+- **能力限制**：无 shell ⇒ `summary.py --check`/`pytest`/`sha256sum` 仍全部未跑；`ab41bb9 → 12e5fb7`
+  提交区间亦未独立看过（只有内容层逐行重读）。
+- **判词**：round-1 的 **B1–B4 逐条独立复算后判「真修、方向自洽」**；科学结论逐项独立复算**仍成立**
+  （并再次独立复现「主结论不依赖追加臂」）。**总判词 = FAIL（窄范围）**：剩 1 blocking（R2-B1：
+  `MODEL.md` 与 `results.json` 对同一个 `run.py` 给出不同 sha256）+ 8 non-blocking（R2-B2/N1–N8）。
+- **处置（round-2 返工）**：
+  - R2-B1：`sha256sum run.py` = `2023f36d…`（= `results.json.code_hashes.run.py`，即**落盘 results.json
+    确由交付的 run.py 产生**）；`MODEL.md:41` 的 `eff58d515…` 是**陈旧值**（它写于 run.py 被 N1/N2 修改之前）
+    ⇒ 已按实际值重生成 `MODEL.md` 的 `run.py`/`config.json` 指纹。
+  - R2-B2：`README.md` §7 训练清单补为「默认 ARMS="24 32 128"；本实验另按 ARMS="17 18 24 32 128" 训练 5 臂」。
+  - R2-N1：删掉 `README.md` §4 与 `analysis.md` 首段的「复核修正记录」（事实文档只写当前状态；
+    历史归本 ticket 与 commit message）。
+  - R2-N2：`project.yaml` 的 2638 证据锚点前移到本轮落盘 commit（见 §8.6）。
+  - R2-N3：`WP1.means` 加半句「（本轮只交付质量轴 + 窗口点 + full 锚；召回轴与量化点见 gaps 首条）」。
+  - R2-N4：`analysis.md` 判据④ 栏把 seed1 的 `+0.001470` 标注为**跨 seed** 口径，并列出同 seed 配对口径 `+0.002453`。
+  - R2-N5：`test_2638_frontier.py` 的弱子串断言换成**实质断言**「`rel < 0 ⇔ 被支配` 与 `results.json`
+    的 `frontier.dominated_by` 逐臂一致」（方向写反即红；6 条单测）；文件**仍放实验目录**（本轴边界
+    不允许写共享 `tests/`——已在报告中登记为边界取舍）。
+  - R2-N6：本文件 §8.2 的 N6/N9 落点已订正（见上两行）。
+  - R2-N7：`README.md` 训练跨度改 8.4–8.53 min；评测墙钟改 0.30 min（`results.json.cost` 现为 0.3）。
+  - R2-N8：复用等值性已在 `README.md` §5 明示限 **eval 口径**；`analysis.md` §3 未加此句，故本项
+    以 README 为准（R2-N6 已订正落点）。
 
-（派发后追加。）
+### 8.5 复核者请求的检查（axis1-lead 代跑，round 2）
+
+| # | 命令 | 结果 |
+|---|---|---|
+| 1 | `sha256sum .../2638/run.py` | `2023f36d1a9694c8579bfab76c76da5e5b57ab215cfdba46f52f992164615778` = `results.json.code_hashes.run.py` ⇒ R2-B1 属「MODEL.md 陈旧值」分支，无需重跑 |
+| 2 | `python3 -m pytest .../test_2638_frontier.py -q` | `6 passed` |
+| 3 | `python3 tools/summary.py --check` | `OK：46 个 project.yaml 全部符合 docs/research-schema.md` |
+| 4 | `python3 -m pytest tests/ -q` | `834 passed`（共享底座未改） |
+
+### 8.6 round 3
+
+- 复核对象 = round-2 返工后的 revision；复核者 = **新的** fresh 上下文；报告落 `.scratch/62-axis1-time/REVIEW-3.md`。
+- 报告返回后回填判词与处置；若仍 FAIL，按「返工 ≤2 轮」登记 blocker 后返回。

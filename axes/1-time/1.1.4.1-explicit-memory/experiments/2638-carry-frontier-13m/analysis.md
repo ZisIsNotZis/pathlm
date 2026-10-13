@@ -1,9 +1,7 @@
 # 2638 · 显式记忆状态的质量-代价前沿 · 判读（analysis）
 
 > 契约 = 同目录 `README.md`（§4 判据线预登记）。原始数字 = `results.json`；
-> **复核修正记录（B1）**：§4 判据③ 的**判定线方向文字**初版与自身公式（`bpc_interp − bpc_carry`）
-> 及 `SCHEMA.md` §17.3（Δ = 对照 − 实验，正 = 改善）相反；现已改为「>0 ⇒ 改善；≈0 ⇒ 不可排序；
-> **<0 ⇒ 被支配**」。**判据本身、失效条件、数字与结论均未变**。
+> 权重清单 = `MODEL.md`；复核轨迹（历史）见 `.scratch/62-axis1-time/TICKET.md` 与 `REVIEW-*.md`。
 > 权重清单 = `MODEL.md`；入口 = `train_arms.sh`（训练）+ `run.py`（评测）。
 
 ## 0. 人话摘要
@@ -49,7 +47,7 @@ enwik8）下，「显式状态在同等内存下改善质量-代价前沿」**�
 | ① | 前提：口径一致（同 96×16 窗口序、同 token 数、掩码可见对数 = 声明值） | 逐臂断言通过 | `selfchecks[*].ok` 全 True；token = 391,680 全臂一致 | **通过** |
 | ② | 代价（该跌）：显式状态点 k_eff ≪ full | k_eff(carry16)≈17.3 vs 256 | 17.33 vs 256 | **通过**（前缀可丢、账单有界） |
 | ③ | 主判据（前沿定位）：`carry_minus_interp_window = bpc_interp − bpc_carry`（**正 = carry 更好**） | **>0 ⇒ 改善；≈0 ⇒ 不可排序；<0 ⇒ 被支配**（§17.3 约定） | carry16_s0 = 1.624979 vs 插值 **1.62272** ⇒ **−0.002259**（bpc_interp < bpc_carry ⇒ carry 更差）；且被 **win17 直接严格支配** | **被同预算纯窗口支配** |
-| ④ | 必要条件（该涨）：carry 相对同窗无通道的 Δbpc（2 seed 都 >0）且毁源 Δbpc_far >0 | 2 seed Δbpc >0；Δbpc_far >0（引 2634） | Δbpc = +0.003131 / +0.001470（2 seed 皆 >0）；Δbpc_far = +0.015784 / +0.014132（2634） | **通过**（状态确实被用、确实搬了窗外信息） |
+| ④ | 必要条件（该涨）：carry 相对同窗无通道的 Δbpc（2 seed 都 >0）且毁源 Δbpc_far >0 | 2 seed Δbpc >0；Δbpc_far >0（引 2634） | Δbpc = **+0.003131**（seed0 vs `win16_s0`）/ **+0.001470**（seed1 vs `win16_s0`，**跨 seed** 口径；同 seed 配对口径 = **+0.002453**）——两口径皆 >0；Δbpc_far = +0.015784 / +0.014132（2634） | **通过**（状态确实被用、确实搬了窗外信息） |
 | ⑤ | 禁外推 | 只适用 enwik8 / T=256 / 13M / 12k 快照 | 全部数字限本配置 | 遵守 |
 
 ## 2. 前沿与支配关系（`results.json.frontier`）
@@ -122,7 +120,7 @@ enwik8）下，「显式状态在同等内存下改善质量-代价前沿」**�
 - 训练：3+2 臂（win24/32/128 + win17/18，anchors=0），**按臂取/放** `/tmp/pathlm_gpu.lock`，
   臂间 ≥61 s（`train_arms.sh`）；逐臂 `wall_minutes` 见 `train/win{17,18,24,32,128}/results.json`。
   峰值显存 2015.1 MB/臂（`nvidia-smi` 前后空闲读数见 `gpu_free_before.txt` / `gpu_free_after.txt`）。
-- 评测：`run.py` **整程持锁**（实测 0.32 min ≪ 10 min），峰值 627.7 MB。
+- 评测：`run.py` **整程持锁**（实测 0.30 min ≪ 10 min），峰值 627.7 MB。
 - **本节数字只作过程记录，不进判据**（`docs/research-schema.md` §3 禁墙钟入判据）。
 
 ## 7. 未测项与下一步最小实验 + 成本（§23 七问第 6 条）

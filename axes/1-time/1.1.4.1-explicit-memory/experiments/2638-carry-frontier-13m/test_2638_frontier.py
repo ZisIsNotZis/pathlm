@@ -57,17 +57,37 @@ def test_interp_window_linear():
 
 
 def test_sign_convention_carry_minus_interp():
-    """复核 B1 的符号钉子：rel = bpc_interp − bpc_carry；rel < 0 ⇒ carry 被支配。"""
+    """符号钉子：rel = bpc_interp − bpc_carry；rel < 0 ⇒ carry 被同预算纯窗口支配。"""
     bpc_carry = 1.624979
     bpc_interp_dominated = 1.622720      # 纯窗口插值点更好
     bpc_interp_better = 1.630000         # 纯窗口插值点更差
-    rel_dom = bpc_interp_dominated - bpc_carry
-    rel_win = bpc_interp_better - bpc_carry
-    assert rel_dom < 0 and rel_win > 0
-    # 文档/契约的判定线必须与此一致：rel < 0 ⇒ 被同预算纯窗口支配
-    import inspect
-    loc_src = inspect.getsource(R.main)
-    assert "bpc_interp" in loc_src
+    assert (bpc_interp_dominated - bpc_carry) < 0
+    assert (bpc_interp_better - bpc_carry) > 0
+
+
+def test_results_json_domination_matches_documented_sign_rule():
+    """把文档约定的判定线（rel < 0 ⇒ 被支配）与落盘 `results.json` 的支配关系对起来。
+
+    这是**实质**断言（不是子串检查）：① 校验 `carry_minus_interp_window` = `bpc_interp − bpc_carry`；
+    ② 校验「rel < 0 ⇔ 被支配」与 `frontier.dominated_by` **逐臂一致**——若有人把判定线方向写反，
+    本条会红。
+    """
+    import json
+    import os
+    d = json.load(open(os.path.join(HERE, "results.json")))
+    rows = {r["name"]: r for r in d["rows"]}
+    dom = d["frontier"]["dominated_by"]
+    checked = 0
+    for name, loc in d["location"].items():
+        rel = loc["carry_minus_interp_window"]
+        if rel is None:
+            continue
+        interp = loc["window_curve_at_k_eff"]["bpc_interp"]
+        assert rel == pytest.approx(interp - rows[name]["bpc"], abs=1e-5), name
+        dominated = len(dom.get(name, [])) > 0
+        assert (rel < 0) == dominated, (name, rel, dominated)
+        checked += 1
+    assert checked >= 2
 
 
 def test_keep_mask_visible_pairs_formula():

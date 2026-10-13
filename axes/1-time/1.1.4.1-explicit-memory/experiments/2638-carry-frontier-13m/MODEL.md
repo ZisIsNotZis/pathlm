@@ -38,5 +38,5 @@ python3 train_depth_ar.py win<K> --d 256 --layers 12 --heads 8 --mlp-mult 6 \
 - `train_depth_ar.py`: `218b63179e623d6a938e7cabe85a71c5c4a36f1831c6930e9c65b2e0a6673022`
 - `tools/evalkit/retention.py`: `9ef983b70d666460de5d63d5d81c23c685ce708a55dfe1af66fc23187fd12f9a`
 - `pathlm/data.py`: `48e23520122a0b4591e71d0e3780dd1f34dc4a82744e14ca3414da8f43ba448a`
-- `run.py`: `eff58d5153f201c8bb591b25516bff032b9b14eb7733dddf6d5fdedf3d68c1d6`
+- `run.py`: `2023f36d1a9694c8579bfab76c76da5e5b57ab215cfdba46f52f992164615778`
 - `config.json`: `eb97327d6523eb2003d3821228223ff60ad62c6ba6941e4c961d693ee4227f55`
