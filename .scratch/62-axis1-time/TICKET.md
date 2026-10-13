@@ -142,9 +142,11 @@
 ### 5.3 WP1 判决（一句话）
 
 **显式记忆状态（单共享槽 delta）在其自身目的（质量-代价前沿）上被否证**：
-它被一个**只宽 1 个位置、内存更少**的纯窗口 `win17` **严格支配**
-（208,896 B < 212,992 B，bpc 1.624104 < 1.624979）；其全部收益（+0.0031 bpc = 窗口→全量差距的 2.5%）
-小于把窗口加宽 1 格（+0.0040 bpc = 3.2%）。详见实验目录 `analysis.md` §0/§1。
+它被一个**只宽 1 个位置、内存更少**的纯窗口 `win17` **支配**
+（208,896 B < 212,992 B，bpc 1.624104 < 1.624979；**点估计支配，σ_cell 读法下为边缘、0.014 带读法下不显著**）；
+其全部收益（+0.0031 bpc = 窗口→全量差距的 2.5%）小于把窗口加宽 1 格（+0.0040 bpc = 3.2%）。
+口径读法待 Main 裁（F1，见 §4）；**预登记点集下（win16→win24 弦插值到 k_eff=17.333 = 1.623401）同样判负**
+⇒ 主结论不依赖事后追加臂。详见实验目录 `analysis.md` §0/§1。
 
 ## 6 WP1（1.1.4.1 质量-代价前沿）设计与执行
 
@@ -157,5 +159,54 @@
 - 复核记录见 §8。
 
 ## 8 复核记录
+
+### 8.1 round 1（派发 `2026-10-13T15:33+08:00`；复核件落盘 `2026-10-13T15:41+08:00`）
+
+- 复核者：`reviewer`（fresh 独立上下文，非本项 writer）；复核件 = `.scratch/62-axis1-time/REVIEW-1.md`（复核者直接写入仓库）。
+- **能力限制（复核者自述，必须登记）**：该 run **无 shell** ⇒ `summary.py --check`/`pytest`/`sha256sum`/
+  `git show` **全部未运行**；且 revision 前移后 `watchdog_diff` 拒绝服务 ⇒ `a679170 → ab41bb9` 的
+  提交区间它**完全没看过**，对本报告的陈述依赖「逐行重读内容一致」。
+- **判词**：判词 1（支配）/2（gap-closing）/3（必要条件）/4（被否证归因）的**事实与算术独立复算后
+  成立**（10 臂逐数字、支配关系、下包络、gap-closing 全部对平）；并**额外独立证明主结论不依赖
+  事后追加臂**（只用预登记点集 win16→win24 弦插值到 k_eff=17.333 得 1.623401 > 1.624979）。
+- **总判词：FAIL / 科学结论 PASS**；blocking 4 条（B1–B4，均为文字与登记层面，**不需重跑 GPU**）：
+  B1 判据③ 判定线方向文字与自身公式相反；B2 `analysis.md` 引数 0.006157 无出处且应为 0.005026；
+  B3 契约臂集/预算/引用路径未同步、`win17/18` 追加未登记；B4 交付维度未达标却写成「齐备/已完成」。
+  non-blocking：N1–N10。
+
+### 8.2 round 1 处置（`2026-10-13T15:44–15:48`，actor：axis1-lead）
+
+| 编号 | 处置 | 落点 |
+|---|---|---|
+| B1 | 判据③ 判定线改为「`>0` ⇒ 改善；`≈0` ⇒ 不可排序；`<0` ⇒ 被支配」，与公式及 SCHEMA §17.3 一致 | `README.md` §4、`analysis.md` §1、`test_2638_frontier.py`（新增符号钉子） |
+| B2 | `0.006157` → **0.005026**（carry16_s0 对 win18_s0） | `analysis.md` §3 |
+| B3 | 补 `win17/18` 行 + 追加时点/理由；预算改实测 ≈48 min 并记账；§7「8 臂」→「10 臂」 | `README.md` §5/§6/§7、`analysis.md` §2（预登记点集加固句） |
+| B4 | `WP1.acceptance` 改陈述交付事实；`conclusion` 拆分「假设被否证」与「milestone 交付范围被裁剪」；`failure_analysis` 加 ④；`gaps` 首条记交付未达标 | `project.yaml` |
+| N1 | `results.json` 补 `liveness` 块（逐臂掩码活性 + 训练日志 window_mask + carry liveness） | `run.py`（并重跑） |
+| N2 | 非退化改**硬断言**；加评测期反事实探针 `window_mask_probe(win17)` | `run.py` |
+| N3 | 状态精度假设（fp16 vs 引擎 fp32）显式记账 | `README.md` §4a、`analysis.md` §3 脚注 |
+| N4 | `smoke/steps300/win24/…` → `smoke/steps300/smk24/…` | `README.md` §6 |
+| N5 | 区间「0.0009–0.0025」→「0.000875 / 0.002259 / 0.003920」 | `analysis.md` §3 |
+| N6 | 标题句加「点估计支配；σ_cell 边缘、0.014 带不显著」限定 | `analysis.md` §0、`project.yaml` `conclusion`、`TICKET.md` §5.3 |
+| N7 | `conclusion` 补 `T=256`；`conclusion_review` 回填复核判词 | `project.yaml` |
+| N8 | 新增实验目录内自包含单测 `test_2638_frontier.py`（**不改共享 `tests/`**，边界纪律） | 实验目录 |
+| N9 | 明示复用臂范围 = **eval-only**，等值性由「4 复用臂 bpc 逐位复现」佐证 | `README.md` §5、`analysis.md` §3 |
+| N10 | 复核者请求 supervisor 跑的检查由 axis1-lead 代跑并登记 | §8.3 |
+
+### 8.3 复核者请求的检查（由 axis1-lead 代跑，`2026-10-13T15:50`）
+
+| # | 命令 | 结果 |
+|---|---|---|
+| 1 | `git show --stat ab41bb9` | 只改 `axes/1-time/1.1.4.1-explicit-memory/project.yaml`（+23/−14）⇒ 消除了复核者「提交区间未看过」的残差风险 #1 的**上半** |
+| 2 | `git diff a679170 ab41bb9 --stat` | 同：唯一文件 = `project.yaml`；实验产物未变 ✓ |
+| 3 | `git status --short` | round-1 修复后的工作树（见提交）⇒ 解释了复核者残差 #1 的下半 |
+| 4 | `sha256sum <10 checkpoints>` | 10/10 前缀与 `MODEL.md` / `config.json` / `results.json.checkpoints` **逐位一致**（c17a1cf1/70f0acb9/39316ac0/ebd4ef84/dccc58c0/d9211482/b3d3cdbc/c3f6f08a/2bfe167c/86953dcb）⇒ 消除残差 #3 |
+| 5 | `python3 tools/summary.py --check` | `OK：46 个 project.yaml 全部符合 docs/research-schema.md` |
+| 6 | `python3 -m pytest tests/ -q` | `834 passed`（本轮**未改共享文件**，包括 `tests/`） |
+| 7 | `python3 -m pytest .../2638-…/test_2638_frontier.py -q` | `5 passed`（新增自包含单测，钉住符号约定 B1） |
+
+### 8.4 round 2
+
+- 复核对象 = round-1 修复后的 revision（见提交）；复核者 = **新的** fresh 上下文（不得为 round-1 复核者本身或本项 writer）；报告落 `.scratch/62-axis1-time/REVIEW-2.md`。
 
 （派发后追加。）

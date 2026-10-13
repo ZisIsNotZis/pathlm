@@ -32,7 +32,7 @@ if ROOT not in sys.path:
 
 from pathlm.data import load_enwik8_full                       # noqa: E402
 from pathlm.depth_ar import (DepthARConfig, DepthARModel,      # noqa: E402
-                             window_anchor_keep_mask)
+                             window_anchor_keep_mask, window_mask_probe)
 from tools.evalkit.retention import masked_bpc                 # noqa: E402
 
 
@@ -170,10 +170,13 @@ def main():
         s = int(km.sum().item())
         exp = sum(min(i + 1, int(spec["window"]))
                   for i in range(T))  # anchors=0 时每行可见 min(i+1, window)
+        causal = T * (T + 1) // 2
         selfchecks[spec["name"]] = {"visible_pairs": s, "expected": exp,
                                     "ok": s == exp,
-                                    "nondegenerate": s < T * (T + 1) // 2}
+                                    "nondegenerate": s < causal}
         assert s == exp, f"{spec['name']}: visible pairs {s} != {exp}"
+        # 非退化是**硬断言**（复核 N2）：掩码在 T=256 上不得是恒等算子
+        assert s < causal, f"{spec['name']}: mask is identity (visible==causal)"
 
     note(f"质量腿：bpc（{eb['n_batches']}×{eb['batch_size']}，window_seed={eb['window_seed']}）")
     rows = []
@@ -228,10 +231,51 @@ def main():
         n_ = by[f"win16_s{s}"]["bpc"]
         d_ = by[f"carry16_s{s}"]["bpc"]
         effects[str(s)] = {"win16": n_, "carry16": d_, "delta_bpc": round(n_ - d_, 6)}
+    # ---- 干预活性（SCHEMA §10）：掩码活性 + 训练日志 window_mask + carry liveness ----
+    g_probe = torch.Generator().manual_seed(11)
+    x_probe = torch.randint(0, vocab, (2, T), generator=g_probe).to(dev)
+    liveness = {}
+    for spec in cfg["arms"]:
+        name = spec["name"]
+        row = {"kind": spec["kind"], "window": spec["window"], "rule": spec["rule"]}
+        if spec["kind"] == "full":
+            row["note"] = "全因果锚：无掩码开关，活性量不适用"
+        else:
+            km = keep_mask_for(spec, T, dev)
+            s = int(km.sum().item())
+            row["mask"] = {"n_visible_pairs": s, "causal_pairs": T * (T + 1) // 2,
+                           "visible_frac": round(s / (T * (T + 1) // 2), 6),
+                           "alive": s < T * (T + 1) // 2}
+        tdir = os.path.dirname(resolve(spec["path"]))
+        tlog = os.path.join(tdir, "train_log.jsonl")
+        tres = os.path.join(tdir, "results.json")
+        if os.path.exists(tlog):
+            lines = [json.loads(x) for x in open(tlog) if x.strip()]
+            row["train_window_mask"] = lines[-1].get("window_mask")
+            row["train_read_share"] = lines[-1].get("attn_carry")
+        if os.path.exists(tres):
+            tr = json.load(open(tres))
+            if tr.get("carry_liveness"):
+                row["carry_liveness_training"] = tr["carry_liveness"]
+            row["train_wall_minutes"] = tr.get("wall_minutes")
+            row["train_peak_gpu_mem_mb"] = tr.get("peak_gpu_mem_mb")
+        liveness[name] = row
+    # 评测期反事实：掩码开/关是否真的改变前向（SCHEMA §10；复核 N2）
+    wprobe = None
+    for spec in cfg["arms"]:
+        if spec["kind"] == "window" and int(spec["window"]) == 17:
+            wprobe = {"arm": spec["name"],
+                      **window_mask_probe(arms[spec["name"]], x_probe)}
+            break
+    liveness["_mask_probe"] = {
+        "note": "评测期反事实：同一批输入在『掩码开 / 掩码关』两次前向的最后一层 logits 最大绝对差（>0 ⇔ 掩码真的改了前向）",
+        "window17_masked_vs_open": wprobe}
+
     results = {
         "config": cfg,
         "checkpoints": ck,
         "selfchecks": selfchecks,
+        "liveness": liveness,
         "rows": rows,
         "frontier": fr,
         "location": location,
