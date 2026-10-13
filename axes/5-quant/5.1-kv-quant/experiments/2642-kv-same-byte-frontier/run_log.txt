@@ -1,0 +1,21 @@
+parent results.json sha256 = 0e64b05b38cfd6154e2f0b1c52241bc0b52c146e044f10ba43a6d884fe3c3d2d
+parent config.json  sha256 = 63b47cbeb2aa702c4170eff42bd917a222901f0406394f43c458b0b1d34f4f05
+input axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/results.json: OK
+input axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/config.json: OK
+input axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt: OK
+input axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt: OK
+input axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt: OK
+input axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mqa-12k-s0/model.pt: OK
+必须不变：bpc / copy 召回（含 CI）与父实验逐位相等 = True
+父实验自证的非量化臂不变性：2632::reuse.nonquant_bitwise_preserved = True（max|Δbpc| = 0.0）
+G1 独立重算 vs 2632 记录：max|Δ部署字节| = 0 ⇒ PASS
+G2 量化臂标尺口径：非块标尺量化臂 = [] ⇒ PASS
+仅值口径核对：points[*].bytes_per_position 与独立重算的仅值字节不一致条目 = 0
+在力排序带 = 0.036324 bpc（2632::ranking_band）
+参数混杂 gqa: 磁盘实测 MHA−GQA = 1184256（= 8.7484%），解析 = 1184256 ⇒ 一致
+参数混杂 mqa: 磁盘实测 MHA−MQA = 1381632（= 10.2065%），解析 = 1381632 ⇒ 一致
+MHA 总参数量 = 13536768，trunk 参数量 = 13536768（同架构，差 0）
+Pareto（原始 bpc 序）：6 臂 = ['mqa_int4', 'gqa_win64', 'mqa_int8', 'mqa', 'int8', 'mha']
+Pareto（越 0.036324 带才算更好）：16 臂 = ['mqa_int4', 'gqa_win64', 'mqa_int8', 'mqa', 'gqa_win128', 'gqa_int8', 'gqa', 'int4', 'win128', 'int8', 'win144', 'win160', 'win176', 'win192', 'mha', 'fp16']
+输出：results.json（27 臂）、table.md（7 个同字节组）
+结论摘要：G1 PASS；同字节跨家族组 = 7；其中 bpc 越带 = 7；参数量混杂已拆 = True

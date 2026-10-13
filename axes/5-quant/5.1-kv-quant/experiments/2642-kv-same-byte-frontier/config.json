@@ -1,0 +1,54 @@
+{
+  "experiment": "2642-kv-same-byte-frontier",
+  "line": "axes/5-quant/5.1-kv-quant WP2 · 跨家族同字节预算重画（块标尺口径）",
+  "kind": "re-analysis（纯读数重排；无前向、无训练、不占 GPU 锁、不联网）",
+  "parent": {
+    "experiment": "2632-kv-block-scale",
+    "results": "../2632-kv-block-scale/results.json",
+    "role": "唯一数据源：块标尺口径下 27 臂的 (bpc, 值字节, 标尺方案, 两腿召回, 参数量无关列)"
+  },
+  "inputs_sha256": {
+    "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/results.json": "0e64b05b38cfd6154e2f0b1c52241bc0b52c146e044f10ba43a6d884fe3c3d2d",
+    "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/config.json": "63b47cbeb2aa702c4170eff42bd917a222901f0406394f43c458b0b1d34f4f05",
+    "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt": "557453eb12b56a453b29ea279cdbbc0969cfa6bf0dbe1cdbd9965cd6cec62528",
+    "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt": "bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00",
+    "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mqa-12k-s0/model.pt": "24bdfe7f1549107175e9343444372a6abe3aba7c6ba2423e8ab069a145b1ea97"
+  },
+  "axis_definition": {
+    "quantity": "每位置 KV 部署字节（值 + 标尺）",
+    "formula": "2(K,V) · L · n_kv_heads_eff · head_dim · (value_bytes + scale_bytes_per_value) · (positions_kept / T)",
+    "scale_bytes_per_value": "块标尺 G=32 ⇒ 2/32 = 0.0625 B/值；非量化臂 ⇒ 0",
+    "unit": "B/位置",
+    "T": 256,
+    "secondary": "staging 字节（仅非因果方案）单列，不计入主横轴",
+    "caveats": [
+      "points[*].bytes_per_position 是仅值口径（不含标尺），与本实验主横轴不同口径 ⇒ 不得混用",
+      "本网格 head_dim=32 ⇒ 沿 head_dim 的块上限 G=32，省幅在 46.875% 处封顶",
+      "bpc-字节前沿不光滑 ⇒ 禁在两点之间插值造点"
+    ]
+  },
+  "criterion": {
+    "verbatim": [
+      "G1 门禁：独立重算的 27 臂部署字节与 2632::deployment_caliber.per_arm[*].primary.bytes_per_position 逐位相等（max|Δ| = 0），否则本实验作废",
+      "G2 门禁：进入前沿表的量化臂全部为块标尺（scheme=block, G=32）；出现 per_value 量化数字 ⇒ 作废",
+      "必须报：每点 (部署字节, bpc, copy 召回, 参数量, 族) 五元组 + 同字节分组 + 被支配点清单 + fp8 解析点（quality_measured=false）",
+      "必须不变：非量化臂 bpc/召回与 2632 记录逐位相同",
+      "不得：插值造点；把 staging 混进主横轴；把仅值口径当部署口径；拿头共享字节优势下结论而不带参数量列"
+    ],
+    "variance_band_bpc_in_force": 0.036324,
+    "variance_band_source": "2632::ranking_band.in_force_band_bpc（单臂跨窗口极差；配对 Δ 口径需 ≥5 窗口，本批 3 个 ⇒ 退用更保守的单臂带）",
+    "recall_leg": "copy 召回 + Wilson 95% CI 重叠判定（不设绝对门槛；显著性以 CI 是否含对方点为据）",
+    "no_extrapolation": "T=256 单点；head_dim=32；窗口臂的 kept/T 与 T 有关"
+  },
+  "param_confound": {
+    "analytic_delta": "L · (2·d_model + 2) · (H − n_kv) · head_dim（含 k/v 投影偏置）",
+    "must_match": "磁盘 checkpoint 实测参数量之差（逐位）",
+    "meaning": "头共享族在字节轴上的优势部分由更少参数买来 ⇒ 同字节比较必须带参数列，等参数读数需另训（登记为下一步）"
+  },
+  "cost": {
+    "device": "cpu",
+    "gpu_lock": "not_taken（纯 CPU 再分析，SCHEMA.md §20 不适用）",
+    "network": "not_used"
+  }
+}

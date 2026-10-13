@@ -1,0 +1,1261 @@
+{
+  "experiment": "2642-kv-same-byte-frontier",
+  "kind": "re-analysis（纯读数重排；无前向、无训练、不占 GPU 锁、不联网）",
+  "contract": "axes/5-quant/5.1-kv-quant/experiments/2642-kv-same-byte-frontier/README.md",
+  "criterion": {
+    "verbatim": [
+      "G1 门禁：独立重算的 27 臂部署字节与 2632::deployment_caliber.per_arm[*].primary.bytes_per_position 逐位相等（max|Δ| = 0），否则本实验作废",
+      "G2 门禁：进入前沿表的量化臂全部为块标尺（scheme=block, G=32）；出现 per_value 量化数字 ⇒ 作废",
+      "必须报：每点 (部署字节, bpc, copy 召回, 参数量, 族) 五元组 + 同字节分组 + 被支配点清单 + fp8 解析点（quality_measured=false）",
+      "必须不变：非量化臂 bpc/召回与 2632 记录逐位相同",
+      "不得：插值造点；把 staging 混进主横轴；把仅值口径当部署口径；拿头共享字节优势下结论而不带参数量列"
+    ],
+    "variance_band_bpc_in_force": 0.036324,
+    "variance_band_source": "2632::ranking_band.in_force_band_bpc（单臂跨窗口极差；配对 Δ 口径需 ≥5 窗口，本批 3 个 ⇒ 退用更保守的单臂带）",
+    "recall_leg": "copy 召回 + Wilson 95% CI 重叠判定（不设绝对门槛；显著性以 CI 是否含对方点为据）",
+    "no_extrapolation": "T=256 单点；head_dim=32；窗口臂的 kept/T 与 T 有关"
+  },
+  "gates": {
+    "G1_independent_recompute_matches_2632": true,
+    "G1_max_abs_diff_deployment_bytes": 0.0,
+    "G2_all_quantized_arms_use_block_scale": true,
+    "G2_offenders": [],
+    "value_only_caliber_agrees": true,
+    "values_unchanged_bitwise_ok": true,
+    "parent_nonquant_bitwise_preserved": true,
+    "parent_nonquant_max_abs_delta_bpc": 0.0,
+    "verdict": "PROCEED"
+  },
+  "inputs_sha256": {
+    "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/results.json": "0e64b05b38cfd6154e2f0b1c52241bc0b52c146e044f10ba43a6d884fe3c3d2d",
+    "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/config.json": "63b47cbeb2aa702c4170eff42bd917a222901f0406394f43c458b0b1d34f4f05",
+    "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt": "557453eb12b56a453b29ea279cdbbc0969cfa6bf0dbe1cdbd9965cd6cec62528",
+    "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt": "bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00",
+    "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mqa-12k-s0/model.pt": "24bdfe7f1549107175e9343444372a6abe3aba7c6ba2423e8ab069a145b1ea97"
+  },
+  "rows": [
+    {
+      "arm": "mqa_int4",
+      "class": "quant_head",
+      "family": "头共享 × 量化",
+      "scheme": "block",
+      "group": 32,
+      "mode": "int4",
+      "quantized": true,
+      "values_per_position": 768.0,
+      "value_bytes_per_position": 384.0,
+      "scale_bytes_per_value": 0.0625,
+      "scale_bytes_per_position": 48.0,
+      "deployment_bytes_per_position": 432.0,
+      "recorded_deployment_bytes": 432.0,
+      "recorded_value_only_bytes": 384.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.64275,
+      "damage_bpc": 0.160724,
+      "quant_increment_bpc": 0.148987,
+      "recall_copy": 0.184896,
+      "recall_copy_ci": [
+        0.171564,
+        0.199014
+      ],
+      "positions_kept": 256.0,
+      "n_kv_heads_eff": 1.0,
+      "source": "2616 mqa-12k-s0 × R1 int4（本批组合，无单一来源）"
+    },
+    {
+      "arm": "win16_anchor16_int4",
+      "class": "combo_quant_window",
+      "family": "窗口 × 量化",
+      "scheme": "block",
+      "group": 32,
+      "mode": "int4",
+      "quantized": true,
+      "values_per_position": 768.0,
+      "value_bytes_per_position": 384.0,
+      "scale_bytes_per_value": 0.0625,
+      "scale_bytes_per_position": 48.0,
+      "deployment_bytes_per_position": 432.0,
+      "recorded_deployment_bytes": 432.0,
+      "recorded_value_only_bytes": 384.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.911669,
+      "damage_bpc": 0.428098,
+      "quant_increment_bpc": 0.053263,
+      "recall_copy": 0.05599,
+      "recall_copy_ci": [
+        0.0484,
+        0.064688
+      ],
+      "positions_kept": 32.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "2620 win16_anchor16 掩码 × R1 int4（本批组合，无单一来源）"
+    },
+    {
+      "arm": "gqa_win64",
+      "class": "combo_head_window",
+      "family": "头共享 × 窗口",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 384.0,
+      "value_bytes_per_position": 768.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 768.0,
+      "recorded_deployment_bytes": 768.0,
+      "recorded_value_only_bytes": 768.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.5591,
+      "damage_bpc": 0.077074,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.065755,
+      "recall_copy_ci": [
+        0.057522,
+        0.075073
+      ],
+      "positions_kept": 64.0,
+      "n_kv_heads_eff": 2.0,
+      "source": "2616 gqa-12k-s0 × 2615 win64 掩码（本批组合，无单一来源）"
+    },
+    {
+      "arm": "win16",
+      "class": "window",
+      "family": "trunk × 窗口",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 384.0,
+      "value_bytes_per_position": 768.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 768.0,
+      "recorded_deployment_bytes": 768.0,
+      "recorded_value_only_bytes": 768.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 2.085526,
+      "damage_bpc": 0.601955,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.014974,
+      "recall_copy_ci": [
+        0.011245,
+        0.019914
+      ],
+      "positions_kept": 16.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json"
+    },
+    {
+      "arm": "mqa_int8",
+      "class": "quant_head",
+      "family": "头共享 × 量化",
+      "scheme": "block",
+      "group": 32,
+      "mode": "int8",
+      "quantized": true,
+      "values_per_position": 768.0,
+      "value_bytes_per_position": 768.0,
+      "scale_bytes_per_value": 0.0625,
+      "scale_bytes_per_position": 48.0,
+      "deployment_bytes_per_position": 816.0,
+      "recorded_deployment_bytes": 816.0,
+      "recorded_value_only_bytes": 768.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.493933,
+      "damage_bpc": 0.011907,
+      "quant_increment_bpc": 0.00017,
+      "recall_copy": 0.244792,
+      "recall_copy_ci": [
+        0.229912,
+        0.260309
+      ],
+      "positions_kept": 256.0,
+      "n_kv_heads_eff": 1.0,
+      "source": "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json"
+    },
+    {
+      "arm": "win32_int8",
+      "class": "combo_quant_window",
+      "family": "窗口 × 量化",
+      "scheme": "block",
+      "group": 32,
+      "mode": "int8",
+      "quantized": true,
+      "values_per_position": 768.0,
+      "value_bytes_per_position": 768.0,
+      "scale_bytes_per_value": 0.0625,
+      "scale_bytes_per_position": 48.0,
+      "deployment_bytes_per_position": 816.0,
+      "recorded_deployment_bytes": 816.0,
+      "recorded_value_only_bytes": 768.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.695617,
+      "damage_bpc": 0.212046,
+      "quant_increment_bpc": 0.000233,
+      "recall_copy": 0.014323,
+      "recall_copy_ci": [
+        0.010687,
+        0.019172
+      ],
+      "positions_kept": 32.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "2615 win32 掩码 × R1 int8（本批组合，无单一来源）"
+    },
+    {
+      "arm": "gqa_int4",
+      "class": "quant_head",
+      "family": "头共享 × 量化",
+      "scheme": "block",
+      "group": 32,
+      "mode": "int4",
+      "quantized": true,
+      "values_per_position": 1536.0,
+      "value_bytes_per_position": 768.0,
+      "scale_bytes_per_value": 0.0625,
+      "scale_bytes_per_position": 96.0,
+      "deployment_bytes_per_position": 864.0,
+      "recorded_deployment_bytes": 864.0,
+      "recorded_value_only_bytes": 768.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.553126,
+      "damage_bpc": 0.0711,
+      "quant_increment_bpc": 0.056801,
+      "recall_copy": 0.146159,
+      "recall_copy_ci": [
+        0.134109,
+        0.159093
+      ],
+      "positions_kept": 256.0,
+      "n_kv_heads_eff": 2.0,
+      "source": "2616 gqa-12k-s0 × R1 int4（本批组合，无单一来源）"
+    },
+    {
+      "arm": "win32_anchor32_int4",
+      "class": "combo_quant_window",
+      "family": "窗口 × 量化",
+      "scheme": "block",
+      "group": 32,
+      "mode": "int4",
+      "quantized": true,
+      "values_per_position": 1536.0,
+      "value_bytes_per_position": 768.0,
+      "scale_bytes_per_value": 0.0625,
+      "scale_bytes_per_position": 96.0,
+      "deployment_bytes_per_position": 864.0,
+      "recorded_deployment_bytes": 864.0,
+      "recorded_value_only_bytes": 768.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.622484,
+      "damage_bpc": 0.138913,
+      "quant_increment_bpc": 0.031945,
+      "recall_copy": 0.080404,
+      "recall_copy_ci": [
+        0.071304,
+        0.090552
+      ],
+      "positions_kept": 64.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "2620 win32_anchor32 掩码 × R1 int4（本批组合，无单一来源）"
+    },
+    {
+      "arm": "mqa",
+      "class": "head",
+      "family": "头共享 GQA/MQA",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 768.0,
+      "value_bytes_per_position": 1536.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 1536.0,
+      "recorded_deployment_bytes": 1536.0,
+      "recorded_value_only_bytes": 1536.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.493763,
+      "damage_bpc": 0.011737,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.243164,
+      "recall_copy_ci": [
+        0.228321,
+        0.258649
+      ],
+      "positions_kept": 256.0,
+      "n_kv_heads_eff": 1.0,
+      "source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json"
+    },
+    {
+      "arm": "gqa_win128",
+      "class": "combo_head_window",
+      "family": "头共享 × 窗口",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 768.0,
+      "value_bytes_per_position": 1536.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 1536.0,
+      "recorded_deployment_bytes": 1536.0,
+      "recorded_value_only_bytes": 1536.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.512094,
+      "damage_bpc": 0.030068,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.136393,
+      "recall_copy_ci": [
+        0.12471,
+        0.148985
+      ],
+      "positions_kept": 128.0,
+      "n_kv_heads_eff": 2.0,
+      "source": "2616 gqa-12k-s0 × 2615 win128 掩码（本批组合，无单一来源）"
+    },
+    {
+      "arm": "win32",
+      "class": "window",
+      "family": "trunk × 窗口",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 768.0,
+      "value_bytes_per_position": 1536.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 1536.0,
+      "recorded_deployment_bytes": 1536.0,
+      "recorded_value_only_bytes": 1536.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.695384,
+      "damage_bpc": 0.211813,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.013997,
+      "recall_copy_ci": [
+        0.010409,
+        0.0188
+      ],
+      "positions_kept": 32.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json"
+    },
+    {
+      "arm": "win16_anchor16",
+      "class": "window_anchor",
+      "family": "trunk × 窗口+锚点",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 768.0,
+      "value_bytes_per_position": 1536.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 1536.0,
+      "recorded_deployment_bytes": 1536.0,
+      "recorded_value_only_bytes": 1536.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.858406,
+      "damage_bpc": 0.374835,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.061849,
+      "recall_copy_ci": [
+        0.053866,
+        0.070926
+      ],
+      "positions_kept": 32.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json"
+    },
+    {
+      "arm": "gqa_int8",
+      "class": "quant_head",
+      "family": "头共享 × 量化",
+      "scheme": "block",
+      "group": 32,
+      "mode": "int8",
+      "quantized": true,
+      "values_per_position": 1536.0,
+      "value_bytes_per_position": 1536.0,
+      "scale_bytes_per_value": 0.0625,
+      "scale_bytes_per_position": 96.0,
+      "deployment_bytes_per_position": 1632.0,
+      "recorded_deployment_bytes": 1632.0,
+      "recorded_value_only_bytes": 1536.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.496441,
+      "damage_bpc": 0.014415,
+      "quant_increment_bpc": 0.000116,
+      "recall_copy": 0.168294,
+      "recall_copy_ci": [
+        0.15548,
+        0.181937
+      ],
+      "positions_kept": 256.0,
+      "n_kv_heads_eff": 2.0,
+      "source": "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json"
+    },
+    {
+      "arm": "win64_int8",
+      "class": "combo_quant_window",
+      "family": "窗口 × 量化",
+      "scheme": "block",
+      "group": 32,
+      "mode": "int8",
+      "quantized": true,
+      "values_per_position": 1536.0,
+      "value_bytes_per_position": 1536.0,
+      "scale_bytes_per_value": 0.0625,
+      "scale_bytes_per_position": 96.0,
+      "deployment_bytes_per_position": 1632.0,
+      "recorded_deployment_bytes": 1632.0,
+      "recorded_value_only_bytes": 1536.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.564194,
+      "damage_bpc": 0.080623,
+      "quant_increment_bpc": 0.000117,
+      "recall_copy": 0.059896,
+      "recall_copy_ci": [
+        0.052042,
+        0.068849
+      ],
+      "positions_kept": 64.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "2615 win64 掩码 × R1 int8（本批组合，无单一来源）"
+    },
+    {
+      "arm": "win32_anchor8",
+      "class": "window_anchor",
+      "family": "trunk × 窗口+锚点",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 960.0,
+      "value_bytes_per_position": 1920.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 1920.0,
+      "recorded_deployment_bytes": 1920.0,
+      "recorded_value_only_bytes": 1920.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.633097,
+      "damage_bpc": 0.149526,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.028971,
+      "recall_copy_ci": [
+        0.023603,
+        0.035516
+      ],
+      "positions_kept": 40.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json"
+    },
+    {
+      "arm": "gqa",
+      "class": "head",
+      "family": "头共享 GQA/MQA",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 1536.0,
+      "value_bytes_per_position": 3072.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 3072.0,
+      "recorded_deployment_bytes": 3072.0,
+      "recorded_value_only_bytes": 3072.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.496325,
+      "damage_bpc": 0.014299,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.168945,
+      "recall_copy_ci": [
+        0.15611,
+        0.182607
+      ],
+      "positions_kept": 256.0,
+      "n_kv_heads_eff": 2.0,
+      "source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json"
+    },
+    {
+      "arm": "win64",
+      "class": "window",
+      "family": "trunk × 窗口",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 1536.0,
+      "value_bytes_per_position": 3072.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 3072.0,
+      "recorded_deployment_bytes": 3072.0,
+      "recorded_value_only_bytes": 3072.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.564077,
+      "damage_bpc": 0.080506,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.058919,
+      "recall_copy_ci": [
+        0.05113,
+        0.06781
+      ],
+      "positions_kept": 64.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/results.json"
+    },
+    {
+      "arm": "win32_anchor32",
+      "class": "window_anchor",
+      "family": "trunk × 窗口+锚点",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 1536.0,
+      "value_bytes_per_position": 3072.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 3072.0,
+      "recorded_deployment_bytes": 3072.0,
+      "recorded_value_only_bytes": 3072.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.590539,
+      "damage_bpc": 0.106968,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.093424,
+      "recall_copy_ci": [
+        0.083635,
+        0.10423
+      ],
+      "positions_kept": 64.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/results.json"
+    },
+    {
+      "arm": "int4",
+      "class": "quant",
+      "family": "trunk × 量化",
+      "scheme": "block",
+      "group": 32,
+      "mode": "int4",
+      "quantized": true,
+      "values_per_position": 6144.0,
+      "value_bytes_per_position": 3072.0,
+      "scale_bytes_per_value": 0.0625,
+      "scale_bytes_per_position": 384.0,
+      "deployment_bytes_per_position": 3456.0,
+      "recorded_deployment_bytes": 3456.0,
+      "recorded_value_only_bytes": 3072.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.506093,
+      "damage_bpc": 0.022522,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.130534,
+      "recall_copy_ci": [
+        0.119081,
+        0.14291
+      ],
+      "positions_kept": 256.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json"
+    },
+    {
+      "arm": "win128",
+      "class": "window",
+      "family": "trunk × 窗口",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 3072.0,
+      "value_bytes_per_position": 6144.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 6144.0,
+      "recorded_deployment_bytes": 6144.0,
+      "recorded_value_only_bytes": 6144.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.503634,
+      "damage_bpc": 0.020063,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.110026,
+      "recall_copy_ci": [
+        0.099444,
+        0.121582
+      ],
+      "positions_kept": 128.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json"
+    },
+    {
+      "arm": "int8",
+      "class": "quant",
+      "family": "trunk × 量化",
+      "scheme": "block",
+      "group": 32,
+      "mode": "int8",
+      "quantized": true,
+      "values_per_position": 6144.0,
+      "value_bytes_per_position": 6144.0,
+      "scale_bytes_per_value": 0.0625,
+      "scale_bytes_per_position": 384.0,
+      "deployment_bytes_per_position": 6528.0,
+      "recorded_deployment_bytes": 6528.0,
+      "recorded_value_only_bytes": 6144.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.483672,
+      "damage_bpc": 0.000101,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.140625,
+      "recall_copy_ci": [
+        0.12878,
+        0.153367
+      ],
+      "positions_kept": 256.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json"
+    },
+    {
+      "arm": "win144",
+      "class": "window",
+      "family": "trunk × 窗口",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 3456.0,
+      "value_bytes_per_position": 6912.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 6912.0,
+      "recorded_deployment_bytes": 6912.0,
+      "recorded_value_only_bytes": 6912.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.497328,
+      "damage_bpc": 0.013757,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.110026,
+      "recall_copy_ci": [
+        0.099444,
+        0.121582
+      ],
+      "positions_kept": 144.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json"
+    },
+    {
+      "arm": "win160",
+      "class": "window",
+      "family": "trunk × 窗口",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 3840.0,
+      "value_bytes_per_position": 7680.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 7680.0,
+      "recorded_deployment_bytes": 7680.0,
+      "recorded_value_only_bytes": 7680.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.492435,
+      "damage_bpc": 0.008864,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.108724,
+      "recall_copy_ci": [
+        0.098201,
+        0.120225
+      ],
+      "positions_kept": 160.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json"
+    },
+    {
+      "arm": "win176",
+      "class": "window",
+      "family": "trunk × 窗口",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 4224.0,
+      "value_bytes_per_position": 8448.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 8448.0,
+      "recorded_deployment_bytes": 8448.0,
+      "recorded_value_only_bytes": 8448.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.489695,
+      "damage_bpc": 0.006124,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.107422,
+      "recall_copy_ci": [
+        0.096958,
+        0.118866
+      ],
+      "positions_kept": 176.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json"
+    },
+    {
+      "arm": "win192",
+      "class": "window",
+      "family": "trunk × 窗口",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 4608.0,
+      "value_bytes_per_position": 9216.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 9216.0,
+      "recorded_deployment_bytes": 9216.0,
+      "recorded_value_only_bytes": 9216.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.487744,
+      "damage_bpc": 0.004173,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.106445,
+      "recall_copy_ci": [
+        0.096027,
+        0.117847
+      ],
+      "positions_kept": 192.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/results.json"
+    },
+    {
+      "arm": "mha",
+      "class": "baseline",
+      "family": "stock fp16（trunk / MHA）",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp32",
+      "quantized": false,
+      "values_per_position": 6144.0,
+      "value_bytes_per_position": 12288.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 12288.0,
+      "recorded_deployment_bytes": 12288.0,
+      "recorded_value_only_bytes": 12288.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.482026,
+      "damage_bpc": 0.0,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.152995,
+      "recall_copy_ci": [
+        0.140699,
+        0.166157
+      ],
+      "positions_kept": 256.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/results.json"
+    },
+    {
+      "arm": "fp16",
+      "class": "baseline",
+      "family": "stock fp16（trunk / MHA）",
+      "scheme": "block",
+      "group": 32,
+      "mode": "fp16",
+      "quantized": false,
+      "values_per_position": 6144.0,
+      "value_bytes_per_position": 12288.0,
+      "scale_bytes_per_value": 0.0,
+      "scale_bytes_per_position": 0.0,
+      "deployment_bytes_per_position": 12288.0,
+      "recorded_deployment_bytes": 12288.0,
+      "recorded_value_only_bytes": 12288.0,
+      "abs_diff_vs_recorded": 0.0,
+      "bpc": 1.483571,
+      "damage_bpc": 0.0,
+      "quant_increment_bpc": null,
+      "recall_copy": 0.141276,
+      "recall_copy_ci": [
+        0.129407,
+        0.154041
+      ],
+      "positions_kept": 256.0,
+      "n_kv_heads_eff": 8.0,
+      "source": "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json"
+    }
+  ],
+  "same_byte_groups": [
+    {
+      "bytes_per_position": 432.0,
+      "n_members": 2,
+      "families": [
+        "头共享 × 量化",
+        "窗口 × 量化"
+      ],
+      "members": [
+        {
+          "arm": "mqa_int4",
+          "family": "头共享 × 量化",
+          "bpc": 1.64275,
+          "recall_copy": 0.184896,
+          "recall_copy_ci": [
+            0.171564,
+            0.199014
+          ],
+          "quantized": true,
+          "positions_kept": 256.0,
+          "param_confounded": true
+        },
+        {
+          "arm": "win16_anchor16_int4",
+          "family": "窗口 × 量化",
+          "bpc": 1.911669,
+          "recall_copy": 0.05599,
+          "recall_copy_ci": [
+            0.0484,
+            0.064688
+          ],
+          "quantized": true,
+          "positions_kept": 32.0,
+          "param_confounded": false
+        }
+      ],
+      "bpc_spread": 0.26891900000000013,
+      "bpc_spread_exceeds_band": true,
+      "bpc_best_arm": "mqa_int4",
+      "bpc_best_is_param_confounded": true
+    },
+    {
+      "bytes_per_position": 768.0,
+      "n_members": 2,
+      "families": [
+        "trunk × 窗口",
+        "头共享 × 窗口"
+      ],
+      "members": [
+        {
+          "arm": "gqa_win64",
+          "family": "头共享 × 窗口",
+          "bpc": 1.5591,
+          "recall_copy": 0.065755,
+          "recall_copy_ci": [
+            0.057522,
+            0.075073
+          ],
+          "quantized": false,
+          "positions_kept": 64.0,
+          "param_confounded": true
+        },
+        {
+          "arm": "win16",
+          "family": "trunk × 窗口",
+          "bpc": 2.085526,
+          "recall_copy": 0.014974,
+          "recall_copy_ci": [
+            0.011245,
+            0.019914
+          ],
+          "quantized": false,
+          "positions_kept": 16.0,
+          "param_confounded": false
+        }
+      ],
+      "bpc_spread": 0.5264260000000003,
+      "bpc_spread_exceeds_band": true,
+      "bpc_best_arm": "gqa_win64",
+      "bpc_best_is_param_confounded": true
+    },
+    {
+      "bytes_per_position": 816.0,
+      "n_members": 2,
+      "families": [
+        "头共享 × 量化",
+        "窗口 × 量化"
+      ],
+      "members": [
+        {
+          "arm": "mqa_int8",
+          "family": "头共享 × 量化",
+          "bpc": 1.493933,
+          "recall_copy": 0.244792,
+          "recall_copy_ci": [
+            0.229912,
+            0.260309
+          ],
+          "quantized": true,
+          "positions_kept": 256.0,
+          "param_confounded": true
+        },
+        {
+          "arm": "win32_int8",
+          "family": "窗口 × 量化",
+          "bpc": 1.695617,
+          "recall_copy": 0.014323,
+          "recall_copy_ci": [
+            0.010687,
+            0.019172
+          ],
+          "quantized": true,
+          "positions_kept": 32.0,
+          "param_confounded": false
+        }
+      ],
+      "bpc_spread": 0.20168399999999997,
+      "bpc_spread_exceeds_band": true,
+      "bpc_best_arm": "mqa_int8",
+      "bpc_best_is_param_confounded": true
+    },
+    {
+      "bytes_per_position": 864.0,
+      "n_members": 2,
+      "families": [
+        "头共享 × 量化",
+        "窗口 × 量化"
+      ],
+      "members": [
+        {
+          "arm": "gqa_int4",
+          "family": "头共享 × 量化",
+          "bpc": 1.553126,
+          "recall_copy": 0.146159,
+          "recall_copy_ci": [
+            0.134109,
+            0.159093
+          ],
+          "quantized": true,
+          "positions_kept": 256.0,
+          "param_confounded": true
+        },
+        {
+          "arm": "win32_anchor32_int4",
+          "family": "窗口 × 量化",
+          "bpc": 1.622484,
+          "recall_copy": 0.080404,
+          "recall_copy_ci": [
+            0.071304,
+            0.090552
+          ],
+          "quantized": true,
+          "positions_kept": 64.0,
+          "param_confounded": false
+        }
+      ],
+      "bpc_spread": 0.06935800000000003,
+      "bpc_spread_exceeds_band": true,
+      "bpc_best_arm": "gqa_int4",
+      "bpc_best_is_param_confounded": true
+    },
+    {
+      "bytes_per_position": 1536.0,
+      "n_members": 4,
+      "families": [
+        "trunk × 窗口",
+        "trunk × 窗口+锚点",
+        "头共享 GQA/MQA",
+        "头共享 × 窗口"
+      ],
+      "members": [
+        {
+          "arm": "mqa",
+          "family": "头共享 GQA/MQA",
+          "bpc": 1.493763,
+          "recall_copy": 0.243164,
+          "recall_copy_ci": [
+            0.228321,
+            0.258649
+          ],
+          "quantized": false,
+          "positions_kept": 256.0,
+          "param_confounded": true
+        },
+        {
+          "arm": "gqa_win128",
+          "family": "头共享 × 窗口",
+          "bpc": 1.512094,
+          "recall_copy": 0.136393,
+          "recall_copy_ci": [
+            0.12471,
+            0.148985
+          ],
+          "quantized": false,
+          "positions_kept": 128.0,
+          "param_confounded": true
+        },
+        {
+          "arm": "win32",
+          "family": "trunk × 窗口",
+          "bpc": 1.695384,
+          "recall_copy": 0.013997,
+          "recall_copy_ci": [
+            0.010409,
+            0.0188
+          ],
+          "quantized": false,
+          "positions_kept": 32.0,
+          "param_confounded": false
+        },
+        {
+          "arm": "win16_anchor16",
+          "family": "trunk × 窗口+锚点",
+          "bpc": 1.858406,
+          "recall_copy": 0.061849,
+          "recall_copy_ci": [
+            0.053866,
+            0.070926
+          ],
+          "quantized": false,
+          "positions_kept": 32.0,
+          "param_confounded": false
+        }
+      ],
+      "bpc_spread": 0.36464300000000005,
+      "bpc_spread_exceeds_band": true,
+      "bpc_best_arm": "mqa",
+      "bpc_best_is_param_confounded": true
+    },
+    {
+      "bytes_per_position": 1632.0,
+      "n_members": 2,
+      "families": [
+        "头共享 × 量化",
+        "窗口 × 量化"
+      ],
+      "members": [
+        {
+          "arm": "gqa_int8",
+          "family": "头共享 × 量化",
+          "bpc": 1.496441,
+          "recall_copy": 0.168294,
+          "recall_copy_ci": [
+            0.15548,
+            0.181937
+          ],
+          "quantized": true,
+          "positions_kept": 256.0,
+          "param_confounded": true
+        },
+        {
+          "arm": "win64_int8",
+          "family": "窗口 × 量化",
+          "bpc": 1.564194,
+          "recall_copy": 0.059896,
+          "recall_copy_ci": [
+            0.052042,
+            0.068849
+          ],
+          "quantized": true,
+          "positions_kept": 64.0,
+          "param_confounded": false
+        }
+      ],
+      "bpc_spread": 0.06775300000000017,
+      "bpc_spread_exceeds_band": true,
+      "bpc_best_arm": "gqa_int8",
+      "bpc_best_is_param_confounded": true
+    },
+    {
+      "bytes_per_position": 3072.0,
+      "n_members": 3,
+      "families": [
+        "trunk × 窗口",
+        "trunk × 窗口+锚点",
+        "头共享 GQA/MQA"
+      ],
+      "members": [
+        {
+          "arm": "gqa",
+          "family": "头共享 GQA/MQA",
+          "bpc": 1.496325,
+          "recall_copy": 0.168945,
+          "recall_copy_ci": [
+            0.15611,
+            0.182607
+          ],
+          "quantized": false,
+          "positions_kept": 256.0,
+          "param_confounded": true
+        },
+        {
+          "arm": "win64",
+          "family": "trunk × 窗口",
+          "bpc": 1.564077,
+          "recall_copy": 0.058919,
+          "recall_copy_ci": [
+            0.05113,
+            0.06781
+          ],
+          "quantized": false,
+          "positions_kept": 64.0,
+          "param_confounded": false
+        },
+        {
+          "arm": "win32_anchor32",
+          "family": "trunk × 窗口+锚点",
+          "bpc": 1.590539,
+          "recall_copy": 0.093424,
+          "recall_copy_ci": [
+            0.083635,
+            0.10423
+          ],
+          "quantized": false,
+          "positions_kept": 64.0,
+          "param_confounded": false
+        }
+      ],
+      "bpc_spread": 0.09421400000000002,
+      "bpc_spread_exceeds_band": true,
+      "bpc_best_arm": "gqa",
+      "bpc_best_is_param_confounded": true
+    }
+  ],
+  "param_confound": {
+    "d_model": 256,
+    "n_heads": 8,
+    "head_dim": 32,
+    "n_layers": 12,
+    "measured": {
+      "trunk": {
+        "params": 13536768,
+        "n_kv_heads": 8,
+        "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt"
+      },
+      "mha": {
+        "params": 13536768,
+        "n_kv_heads": 8,
+        "path": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt"
+      },
+      "gqa": {
+        "params": 12352512,
+        "n_kv_heads": 2,
+        "path": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt"
+      },
+      "mqa": {
+        "params": 12155136,
+        "n_kv_heads": 1,
+        "path": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mqa-12k-s0/model.pt"
+      }
+    },
+    "analytic_delta_vs_mha": {
+      "gqa": 1184256,
+      "mqa": 1381632
+    },
+    "measured_delta_vs_mha": {
+      "gqa": 1184256,
+      "mqa": 1381632
+    },
+    "analytic_formula": "L · (2·d_model + 2) · (H − n_kv) · head_dim",
+    "rel_delta_vs_mha": {
+      "gqa": 0.08748439804833769,
+      "mqa": 0.10206513105639396
+    },
+    "analytic_matches_measured": true
+  },
+  "pareto": {
+    "raw_arm_order": [
+      "mqa_int4",
+      "gqa_win64",
+      "mqa_int8",
+      "mqa",
+      "int8",
+      "mha"
+    ],
+    "strict_over_band": [
+      "mqa_int4",
+      "gqa_win64",
+      "mqa_int8",
+      "mqa",
+      "gqa_win128",
+      "gqa_int8",
+      "gqa",
+      "int4",
+      "win128",
+      "int8",
+      "win144",
+      "win160",
+      "win176",
+      "win192",
+      "mha",
+      "fp16"
+    ],
+    "dominated_with_dominator": {
+      "win16_anchor16_int4": "mqa_int4",
+      "win16": "mqa_int4",
+      "win32_int8": "mqa_int4",
+      "gqa_int4": "mqa_int8",
+      "win32_anchor32_int4": "gqa_win64",
+      "win32": "mqa_int4",
+      "win16_anchor16": "mqa_int4",
+      "win64_int8": "mqa_int8",
+      "win32_anchor8": "gqa_win64",
+      "win64": "mqa_int8",
+      "win32_anchor32": "mqa_int8"
+    },
+    "raw_dominated_with_dominator": {
+      "win16_anchor16_int4": "mqa_int4",
+      "win16": "mqa_int4",
+      "win32_int8": "mqa_int4",
+      "gqa_int4": "mqa_int8",
+      "win32_anchor32_int4": "gqa_win64",
+      "gqa_win128": "mqa_int8",
+      "win32": "mqa_int4",
+      "win16_anchor16": "mqa_int4",
+      "gqa_int8": "mqa_int8",
+      "win64_int8": "gqa_win64",
+      "win32_anchor8": "gqa_win64",
+      "gqa": "mqa_int8",
+      "win64": "gqa_win64",
+      "win32_anchor32": "gqa_win64",
+      "int4": "mqa_int8",
+      "win128": "mqa_int8",
+      "win144": "mqa_int8",
+      "win160": "int8",
+      "win176": "int8",
+      "win192": "int8",
+      "fp16": "mha"
+    },
+    "band_bpc": 0.036324
+  },
+  "fp8_reference": {
+    "arm": "fp8（E4M3/E5M2，解析）",
+    "deployment_bytes_per_position": 6144.0,
+    "ratio_vs_fp16": 0.5,
+    "quality_measured": false,
+    "note": "fp8 是浮点格式，不需要显式标尺；解析 1 B/值 = fp16 的 ×0.50，比 int8+块标尺（1.0625 B/值）更省。质量未测。",
+    "vs_int8_block": {
+      "int8_bytes_per_position": 6528.0,
+      "saving_vs_int8_block_bytes": 384.0
+    }
+  },
+  "withdrawn_claim": {
+    "withdrawn": "「同 −75% 档 GQA 便宜 3.2×」——该说法建立在已作废的逐值标尺 int4 数字上（55-review W-08 / R8）。",
+    "replacement_reading": [
+      "块标尺口径下 −71.875% 的档位是 trunk int4 = 3456 B/位置（bpc 1.506093）；头共享 fp16 GQA = 3072 B/位置（bpc 1.496325），但其参数量比 MHA 少 1184256（8.75%）。",
+      "两族不再落在同一字节水平上（3456 vs 3072），故旧「同档便宜 3.2×」不能用；同字节比较改按 same_byte_groups 读。"
+    ]
+  },
+  "answer": {
+    "q": "在块标尺口径的同一「每位置部署字节」横轴上，跨家族可比什么？",
+    "g1_gate": "PASS",
+    "n_same_byte_groups": 7,
+    "n_groups_with_bpc_spread_over_band": 7,
+    "param_confound_resolved": true,
+    "cannot_claim": [
+      "不得把 points[*].bytes_per_position（仅值口径）当部署字节用",
+      "不得在两点之间插值造点",
+      "不得在无参数量列时断言头共享族的机制优势",
+      "不得断言 int8+块标尺是 8 位方案里字节最优的（fp8 解析更省、质量未测）",
+      "本实验不产生新的质量证据：结论强度上限 = 落盘读数在统一口径下的正确重排"
+    ]
+  },
+  "code": {
+    "axes/5-quant/5.1-kv-quant/experiments/2642-kv-same-byte-frontier/frontier_ledger.py": "d056fec6328249d2a2d67bebfbda9a5cd023c076106d6f4cec9a8cc80d05964e"
+  }
+}
