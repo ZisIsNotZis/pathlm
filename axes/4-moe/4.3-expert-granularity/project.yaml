@@ -10,9 +10,9 @@ expected_effect: "（a）细粒度提升专家组合数（同激活 FLOPs 下更
 sota_baseline: "DeepSeekMoE（细粒度专家 + 共享专家，arXiv 2401.06066）、Mixtral（8×top-2，arXiv 2401.04088）、Switch Transformer（粗粒度 top-1，arXiv 2101.03961）、GShard（top-2，arXiv 2006.16668）。出处已于本轮联网核实 arXiv 标题（`.scratch/65-axis4-moe/TICKET.md` §4）；机制系数/超参只作方向引用、不作判据。本地锚 = 同尺寸 stock dense（归一为 100%）与均匀粗粒度 MoE（`4.1`）。"
 gap: "本仓零经验（无旧格；MAPPING §2）。业界细粒度/共享专家配方成熟（DeepSeekMoE），**本项最高风险是造轮子**。**相对 DeepSeekMoE 的具体增量**：上游配方是**固定点**（给出一套专家数/粒度/共享比例，报大尺度质量），极少给「同激活算力下粒度/共享比例」的**连续受控扫描**；本项在**固定总参数 + 固定每 token 激活算力**下给该扫描（总参数与激活算力逐位对齐，否则会把「参数更多」记成「粒度更优」），并在 13M 上验证「细粒度是否值得」（小尺度证据缺）。不是把 DeepSeekMoE 在小尺度重跑一遍。"
 method: "单因素：固定总参数与每 token 激活 FLOPs，只改专家粒度与共享比例。臂 = {均匀粗粒度（E 小 k 小）, 细粒度（E 大 k 大）, 细粒度 + 共享专家}；每臂的总参数与每 token 激活算力逐位对齐。基底恒为 stock decoder-only，稀疏激活机制复用 `4.1`、均衡复用 `4.2`。"
-validation: "端到端：对照 = 同尺寸 stock dense（归一为 100%）+ 均匀粗粒度 MoE（同激活 FLOPs）；客观判据 = 序列级 clean bpc（该不跌/可排序，须越 0.014 噪声带）+ 每 token 等效 FLOPs 与总参数（必须逐位对齐，作对照列）+ 专家使用率分布（活性，防坍缩）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变 = 总参数与每 token 激活算力、因果性。"
+validation: "端到端：对照 = 同尺寸 stock dense（归一为 100%）+ 均匀粗粒度 MoE（同激活 FLOPs）；客观判据 = 序列级 clean bpc（该不跌/可排序，须越 0.014 噪声带）+ 每 token 等效 FLOPs 与总参数（必须逐位对齐，作对照列）+ 专家使用率分布（活性，防坍缩）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变 = 总参数与每 token 激活算力、因果性。 判据带（C1 裁决）：0.014 bpc 带限配对 Δ、≥5 窗口；使用率类指标按 prompt 聚类 bootstrap / Wilson CI 主判，不跨量纲借用 0.014。"
 objective_criteria: "该涨/可排序：细粒度 + 共享专家相对同激活算力粗粒度 MoE 的 clean bpc（须越 0.014 噪声带）；必须不变：总参数与每 token 激活 FLOPs（逐位对齐，否则比的是参数多少而非粒度）；必须报：专家使用率分布与共享专家占比；必须不变：因果性。"
-falsification: "若细粒度 + 共享专家在固定激活算力下相对粗粒度 MoE 的 clean bpc 不占优（越噪声带变差或持平）⇒ 判细粒度/异构在本尺度不产生增益；若细粒度导致使用率分布坍缩、且均衡机制无法修复 ⇒ 判该粒度在本尺度不可用；若细粒度只按参数分解比例变化、等激活算力对照下无优势 ⇒ 判该机制只是重参数化。"
+falsification: "若细粒度 + 共享专家在固定激活算力下相对粗粒度 MoE 的 clean bpc 不占优（越噪声带变差或持平）⇒ 判细粒度/异构在本尺度不产生增益；若细粒度导致使用率分布坍缩、且均衡机制无法修复 ⇒ 判该粒度在本尺度不可用；若细粒度只按参数分解比例变化、等激活算力对照下无优势 ⇒ 判该机制只是重参数化。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）；使用率类指标走配对 CI、不借用 0.014。"
 failure_analysis: ""
 conclusion: ""
 conclusion_review: "本项无本地判决（本仓零经验、无自有 experiments），故 `status: 未开始`；无终局结论可复核。当前自评 + 独立复核对象 = 预登记的字段与「同激活算力对照」的可满足性；复核判词见 `.scratch/65-axis4-moe/REVIEW-1.md`。判据按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），并把「总参数与激活算力逐位对齐」写死（否则粒度与参数量混淆，`SCHEMA.md` §15）与「使用率分布」列为活性对照列。"
@@ -23,6 +23,7 @@ gaps:
   - "与 4.1（稀疏激活本体）/ 4.2（均衡）的边界未整合（由 integrator 核不重复）"
   - "造轮子风险最高项：须明确「相对 DeepSeekMoE 细粒度 + 共享专家的增量」是什么"
   - "「激活更小专家而非更大专家」是出资人提出的子问题，本项须在最小判决里正面回答"
+  - "65-F1 裁决：本项降为 **Backlog**（不在 13M 花算力做 MoE 判决）；业界标准 MoE（Switch / GShard / DeepSeekMoE / Mixtral）的跑分线登记在 `axes/7-references/README.md`，将来做大 token 预算时以它为外部基线"
 cost_model: "等效理论量：总参数 P 固定 = E·(每专家参数) + 共享专家参数；每 token 激活 FLOPs 固定 = (k + 1)·2·d·h_ff（k 个路由专家 + 1 个共享专家）。细粒度把 E 增大、每专家 h_ff 减小，k 相应增大，使 (k+1)·h_ff（每 token 激活算力）与总参数 P 同时保持——每 token FFN 等效 FLOPs 不变（注：E 增大时每专家参数 P/E 必然下降，变的正是「专家数 × 每专家宽」的分解），改变的是专家组合数与专门化。layer-passes 每 token 仍为 L；tokens-per-forward 每步 1。考虑 pipelining：按专家粒度做稀疏 gather 是同一前向内的选择，不引入额外顺序依赖（共享专家对所有 token 恒激活，不增加顺序依赖；按期望负载报，不用时间量）。"
 
 role_map:
@@ -33,7 +34,7 @@ role_map:
 
 milestone:
   output: "一份「专家粒度 / 异构」判决包：13M matched-step 下固定总参数与激活算力时 {粗粒度, 细粒度, 细粒度+共享专家} 的 clean bpc + 专家使用率分布 + 共享专家占比，对照同激活算力粗粒度 MoE 与 stock dense（归一为 100%），含 n≥2。"
-  acceptance: "各臂总参数与每 token 激活算力逐位对齐；细粒度 + 共享专家相对粗粒度 MoE 的质量差同框可分（越 0.014 噪声带）或明确「不可分」；使用率分布齐备且非坍缩；结论停在「该尺度值不值」，不外推。"
+  acceptance: "各臂总参数与每 token 激活算力逐位对齐；细粒度 + 共享专家相对粗粒度 MoE 的质量差同框可分（越 0.014 噪声带）或明确「不可分」；使用率分布齐备且非坍缩；结论停在「该尺度值不值」，不外推。 实质验收（C2 裁决）：不被同算力最强基线支配（相对同激活算力粗粒度 MoE / stock dense 前沿超出量 ≤ 0）。"
 
 work_packages:
   - id: "WP1"
@@ -59,3 +60,6 @@ change_log:
   - date: "2026-10-13T19:25:15+08:00"
     actor: "axis4-lead"
     change: "Phase A（ticket 65）：role_map 实名；sota_baseline 改为可核实 arXiv 出处；gap 写死「相对 DeepSeekMoE 的增量」（固定总参数/激活算力下的连续粒度扫描，不是固定点配方重跑）。status 保持未开始（无本地工作）。"
+  - date: "2026-10-14T06:44:03+08:00"
+    actor: "framework-adjudication-writer（ticket 57）"
+    change: "落地 65-F1 / C1 / C2 裁决（不改数字、不删证据）：status 保持未开始（降为 Backlog，不在 13M 花算力做 MoE 判决）；`gaps` 记 65-F1（业界 MoE 跑分线指针）；`validation`/`falsification` 补「用哪个带」（C1）；`milestone.acceptance` 补实质验收（C2）。"

@@ -23,6 +23,7 @@ gaps:
   - "与 5.1（KV 量化）是否可叠加（低秩 + 量化）未测（组合默认留白，`SCHEMA.md` §4）"
   - "造轮子风险最高项：须明确「相对 DeepSeek-V2 MLA 的增量」是什么（本仓只做 13M 受控同字节前沿）"
   - "MLA 的确切质量/KV 公开数字 `记忆·未核`（`2617` §2），不作判据"
+  - "等参数臂归属（66-F4 裁决）：与 `5.1` 共用同一 WP（`5.1` 的 `WP3`，同一臂服务两格，不重复建格）——本项 WP1 的「低秩 vs 头共享同字节判决」用之"
 cost_model: "等效理论量：每位置 KV 值数由 MHA 的 L·2·n_heads·d_head 降到 L·(d_latent + d_rope)（低秩潜向量 + decoupled RoPE 分量），每值字节 fp16；每位置部署字节 = 值数 × 每值字节（可与 `5.1` 的 KV 量化叠加，另计）。解码期每 token 额外计算 = 上投影（d_latent → n_heads·d_head）；layer-passes 每 token 仍为 L；tokens-per-forward 每步 1。考虑 pipelining：上投影只依赖当前已生成位置的潜向量，严格前缀不变、不引入额外顺序依赖（按解析字节与等效 FLOPs 报，不用时间量）。"
 
 role_map:
@@ -46,7 +47,7 @@ work_packages:
     status: "未开始"
 
 roadmap:
-  - "WP1：低秩压缩 vs 头共享的同字节判决"
+  - "WP1：低秩压缩 vs 头共享的同字节判决（等参数臂与 `5.1` 共用，见 `5.1` `WP3`；66-F4 裁决）"
   - "复核通过后写 conclusion，更新 status"
 
 status: "未开始"
@@ -59,3 +60,6 @@ change_log:
   - date: "2026-10-13T11:06:24+08:00"
     actor: "轴 5 量化轴 worker"
     change: "新建研究项（无旧格，MAPPING §2）：低秩压缩（MLA 式） 承接旧格 R1-quantization / W3-kv-head-sharing 的 KV 压缩一面、按 docs/structure.md §5.4 单列（MLA 与头共享是两种不同机制）。按 docs/research-schema.md 预登记目的/基线/判据/否证条件，横轴统一「每位置 KV 字节」、上投影计算入账，并把与 5.1/7-references 的边界写死。"
+  - date: "2026-10-14T06:44:03+08:00"
+    actor: "framework-adjudication-writer（ticket 57）"
+    change: "落地 66-F4 裁决：登记等参数臂归属——与 `5.1` 共用同一 WP（`5.1` 的 `WP3`），本项 `WP1` 引用之（`gaps` + `roadmap`）。不改数字。"

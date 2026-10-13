@@ -221,9 +221,14 @@ change_log: [] # 变更
 
 | id | 标题（exact wording） | 目录 | 粒度 |
 |---|---|---|---|
-| 4.1 | 稀疏激活专家（top-k 路由） | `axes/4-moe/4.1-sparse-experts/` | 研究项 |
-| 4.2 | 路由与负载均衡 | `axes/4-moe/4.2-routing-balance/` | 研究项 |
-| 4.3 | 专家粒度 / 异构（细粒度、共享专家） | `axes/4-moe/4.3-expert-granularity/` | 研究项 |
+| 4.1 | 稀疏激活专家（top-k 路由） | `axes/4-moe/4.1-sparse-experts/` | Backlog |
+| 4.2 | 路由与负载均衡 | `axes/4-moe/4.2-routing-balance/` | Backlog |
+| 4.3 | 专家粒度 / 异构（细粒度、共享专家） | `axes/4-moe/4.3-expert-granularity/` | Backlog |
+
+> **65-F1 裁决（已裁决，2026-10-13）**：4.1/4.2/4.3 由「研究项」降为 **Backlog**（不在 13M 花算力做
+> MoE 判决；出资人裁决选项②「MoE 判决降为参照」）。它们**保留 `project.yaml` 与本仓等效代价口径记录**
+> （`status: 未开始`）；「参照」的那层含义由 `axes/7-references/README.md` 新增的业界标准 MoE
+> （Switch / GShard / DeepSeekMoE）跑分线条目承接（见 §13.6）。
 
 ### 轴 5 · 量化轴（目录 `axes/5-quant/`）
 
@@ -298,7 +303,8 @@ change_log: [] # 变更
    判定理由：它们是**同一个研究问题的手段**（一个 `milestone` 就能收口），不是可各自独立收口的问题。
 4. **参照 / 前提**：不写 `project.yaml`，进 `axes/7-references/README.md`（§12 标「参照」者：`1.3`、`6.1`）。
 5. **工程纪律**：进 `axes/8-engineering/README.md`（§12 标「工程」者）。
-6. **Backlog**：保留研究项形式（`status: 未开始`），`2.1.3` / `2.2.5` 挂本轴、其余进 `9-backlog`。
+6. **Backlog**：保留研究项形式（`status: 未开始`），`2.1.3` / `2.2.5` 与 `4.1` / `4.2` / `4.3` 挂本轴、
+   其余进 `9-backlog`。轴 4 的三项按 65-F1 裁决降为 Backlog（见 §12 轴 4 表下注）。
 
 ## 14 目录命名（`axes/` 布局）
 

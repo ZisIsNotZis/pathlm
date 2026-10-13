@@ -195,3 +195,77 @@
 - 程序级原条目亦见 `.scratch/56-restructure/TICKET.md` §8.6（遗留未决）。
 - 本表**只汇总，不作决定**；任一条一经出资人裁决，应在对应轴的 `project.yaml`（字段/口径）与该轴
   ticket 里落地，并在此表标记「已裁决 + 裁决内容 + 落地指针」。
+
+---
+
+## 6 裁决落地（21 条全部已裁决）
+
+> 出资人裁决：**按各条建议 / 默认处置推进**（2026-10-13 授权）。落地记录时间 = `2026-10-14T06:44:03+08:00`
+> （actor = framework-adjudication-writer，ticket 57）。本节逐条标「**已裁决**」并给落地指针；
+> **不改变任何测量数字、不删证据**。落地纪律全文见 `docs/research-schema.md` §12（C1 / 64-F1 / C3）
+> 与 `docs/methodology.md` §2。
+
+### 跨轴共性（C1–C5）
+
+- **C1 · 0.014 噪声带** — **已裁决**（2026-10-13 授权按建议推进；落地 2026-10-14T06:44:03+08:00）：
+  0.014 **仅限 bpc 口径**、且仅在「配对 Δ、≥5 窗口」条件下作参考门槛；概率 / 接受率类指标**单独定门**
+  （按 prompt 聚类的 bootstrap / Wilson 95% CI 不含 0 为主判）；**单格自测带优先于跨格 0.014**；
+  `falsification` 须显式声明「**用哪个带**」。
+  落地：`docs/research-schema.md` §12.1；`docs/methodology.md` §2；受影响 `project.yaml` 的
+  `validation`/`falsification`（`1.1.4.1`、`2.1.1`、`3.1.4`、`4.1`、`4.2`、`4.3`、`5.1`、`6.2`）。
+- **C2 · 验收口径** — **已裁决**（同上）：milestone 的**实质验收** = **不被同算力的朴素方案支配**
+  （相对同算力最强基线，超出量 ≤ 0）；**保留预登记文字**；`conclusion` 须**同时**写明
+  「**字面成立 / 实质成立或否证**」。
+  落地：`docs/research-schema.md` §5；`1.1.4.1` / `2.1.1` / `3.1.4` / `4.1` / `4.2` / `4.3` / `5.1` / `6.2`
+  的 `milestone.acceptance` + `conclusion`。
+- **C3 · 共享引擎** — **已裁决**（同上）：**授权建立受控引擎改动通道**（本轮**不改代码**）；新建
+  `.scratch/67-engine-changes/TICKET.md`，登记三项已上报的最小 patch 需求（轴 1 `CarryChannel` 逐层状态 +
+  内容相关写入门；轴 3 逐层 FFN 宽开关；轴 6 二级条件头 + 重训），约定「单一 engine-writer + 独立复核 +
+  `SCHEMA.md` §20/§22 锁」。
+  落地：`.scratch/67-engine-changes/TICKET.md`；`docs/research-schema.md` §12.3。
+- **C4 · 旧 wiki 退役** — **已裁决**（同上）：**追认**（已知悉/追认），文档保持现状。
+  落地：本表标记；`docs/structure.md` §15 / `AGENTS.md` §2.3（现状，无改）。
+- **C5 · `conclusion_review` 累积** — **已裁决**（同上）：保持现有 4 条原样（不删历轮判词）；字段纪律只
+  约束其后修订。
+  落地：`docs/research-schema.md` §11.1（现状，无改）；`1.1.4.1` 的 `conclusion_review` 保持原样。
+
+### 各轴独有（表 B）
+
+- **62-F2 · 代价主轴** — **已裁决**（同上）：采用「每位置等效 KV 字节」为主轴（与量化点同轴），
+  FLOPs 作副轴（确认）。落地：`axes/1-time/1.1.4.1-explicit-memory/project.yaml` : `method`。
+- **62-F3 · 形态税** — **已裁决**（同上）：只报前沿位置与支配关系，不把「形态税」写成结论。
+  落地：`1.1.4.1-explicit-memory/project.yaml` : `gaps`。
+- **62-F4 · 业界实现对齐** — **已裁决**（同上）：保留 milestone 文字；`gaps` 记「业界实现对齐未做」。
+  落地：`1.1.4.1-explicit-memory/project.yaml` : `gaps`（现状已具备，本次仅标记）。
+- **61-F1 · 序列级 perplexity 操作化** — **已裁决**（同上）：确认「序列级 perplexity = teacher-forcing
+  在线决策整段 bpc」（保留 `depth_curve` 作自洽锚点）。落地：`axes/2-depth/2.1.1-early-exit/project.yaml` : `validation`。
+- **61-F3 · WP 排期** — **已裁决**（同上）：**知悉**（先纯推理主判据、训练类后置）。落地：本表标记（无字段改）。
+- **61-F4 · 两格是否合并** — **已裁决**（同上）：**不合并**，`2.1.3` 与 `2.2.5` 维持 Backlog、`gaps` 互指。
+  落地：`axes/2-depth/2.1.3-repeating/project.yaml` : `gaps`；`axes/2-depth/2.2.5-weight-sharing/project.yaml` : `gaps`。
+- **64-F1 · 剪枝类标准对照** — **已裁决**（同上）：标准对照 = 「**等 FFN 预算 / 等算力位点**」（确认）。
+  落地：`docs/research-schema.md` §12.2；`axes/3-width/3.1.1-uniform-narrowing/project.yaml` : `method`；
+  `axes/3-width/3.1.4-ffn-ratio/project.yaml` : `validation`。
+- **64-F3 · 部分臂 n=1** — **已裁决**（同上）：接受部分臂 n=1，按既定递减。
+  落地：`3.1.1` / `3.1.4` 的 `validation`。
+- **65-F1 · MoE 判决降级** — **已裁决**（同上）：按建议选**选项②**，以 **Backlog（参照形式的实质）** 落地——
+  不在 13M 花算力做 MoE 判决，**保留 `project.yaml` 与本仓等效代价口径记录**（`status: 未开始`）；
+  业界标准 MoE（Switch / GShard / DeepSeekMoE）登记为 `axes/7-references/README.md` 的跑分线。
+  落地：`docs/structure.md` §12 轴 4 表（4.1/4.2/4.3 粒度 研究项→Backlog）+ §13.6；`axes/7-references/README.md`
+  （新增 MoE 跑分线行）；`axes/4-moe/{4.1,4.2,4.3}/project.yaml` : `status`（→未开始）+ `gaps`。
+- **65-F2 · GPU 协调** — **已裁决**（同上）：记录 GPU 协调事项。
+  落地：`axes/4-moe/4.1-sparse-experts/project.yaml` : `gaps`。
+- **66-F1 · 可排序带** — **已裁决**（同上）：用**本格在力带**（0.036324），两带关系写清、不得混用。
+  落地：`axes/5-quant/5.1-kv-quant/project.yaml` : `validation`/`falsification`（现状已具备 + C1 声明）。
+- **66-F2 · 头族优势** — **已裁决**（同上）：记为「**参数混杂的可见后果**」，**不算机制发现**。
+  落地：`axes/5-quant/5.1-kv-quant/project.yaml` : `gaps`。
+- **66-F3 · `5.1` status** — **已裁决**（同上）：保持 `已完成`（WP2 是项内过程 WP）。
+  落地：`axes/5-quant/5.1-kv-quant/project.yaml` : `status`（无改）。
+- **66-F4 · 等参数臂归属** — **已裁决**（同上）：作为 `5.1` 与 `5.4` **共用的 WP**（同一臂服务两格，不重复建格）。
+  落地：`axes/5-quant/5.1-kv-quant/project.yaml` : `work_packages`（新增 `WP3`）+ `gaps`/`roadmap`；
+  `axes/5-quant/5.4-low-rank/project.yaml` : `gaps`/`roadmap`。
+- **63-F2 · 多候选代价口径** — **已裁决**（同上）：多候选结论须附「等 FLOPs 对照臂」，不可得则注明。
+  落地：`axes/6-predict/6.2-speculative-decoding/project.yaml` : `validation`/`falsification`。
+- **63-F4 · `6.3.3` 判据归因** — **已裁决**（同上）：`6.3.3` 采用「(i) 直接发 / (ii) 当草稿再验证」两条
+  各作一臂、分开报代价。
+  落地：`axes/6-predict/6.3.3-latent-regression/project.yaml` : `method`/`milestone`/`validation`/
+  `objective_criteria`/`falsification`/`cost_model`。

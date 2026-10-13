@@ -10,12 +10,12 @@ expected_effect: "（a）专家使用率分布趋于均衡（活性判据，该�
 sota_baseline: "Switch Transformer aux loss（arXiv 2101.03961）、GShard capacity factor（arXiv 2006.16668）、Expert Choice Routing（arXiv 2202.09368）、ST-MoE router z-loss（arXiv 2202.08906）、DeepSeek-V3 aux-loss-free bias 均衡（arXiv 2412.19437）。出处已于本轮联网核实 arXiv 标题（`.scratch/65-axis4-moe/TICKET.md` §4）；机制系数/超参只作方向引用、不作判据。本地锚 = 同尺寸 stock dense（归一为 100%）与无均衡的朴素 top-k 路由（`4.1`）。"
 gap: "本仓零经验（无旧格；MAPPING §2）。业界均衡机制成熟（Switch/GShard/expert-choice），**本项最高风险是造轮子**。**相对 SOTA 的具体增量**：Upstream 多报大尺度吞吐与「均衡后不崩」，本项把「均衡强度 → (序列级质量, 使用率分布, 跨 seed 路由指派翻转率)」的**三元前沿**在 13M/单任务受控量化，并把「**小尺度上均衡是否必要**」做成可失败判据（50-review 已质疑 13M 尺度上专家数少、坍缩是否可观测）——小尺度「均衡收益 vs 均衡损失的主任务代价」是行业少报的空白，而不是把 Switch aux loss 再实一遍。前提探针（`4.1` 的 `2610`）：13M、top-1、无 aux loss 下使用率分布是否可观测坍缩。"
 method: "单因素：固定专家数、top-k 与主干形状，只改均衡机制。臂 = {无 aux loss（朴素 top-k 路由）, aux loss（λ 扫描）, capacity factor, expert-choice 路由}；各臂共享同一专家数与每 token 激活专家数 k。基底恒为 stock decoder-only，专家本体复用 `4.1` 的最小 MoE。"
-validation: "端到端：对照 = 无均衡的朴素 top-k 路由 + 同尺寸 stock dense（归一为 100%）；客观判据 = 专家使用率分布（熵上升 / 最大占比下降，该均衡）+ 序列级 clean bpc（该不跌/可排序，须越 0.014 噪声带）+ 跨 seed 路由指派稳定性（该稳定）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变 = 总参数与每 token 激活专家数 k。"
+validation: "端到端：对照 = 无均衡的朴素 top-k 路由 + 同尺寸 stock dense（归一为 100%）；客观判据 = 专家使用率分布（熵上升 / 最大占比下降，该均衡）+ 序列级 clean bpc（该不跌/可排序，须越 0.014 噪声带）+ 跨 seed 路由指派稳定性（该稳定）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变 = 总参数与每 token 激活专家数 k。 判据带（C1 裁决）：0.014 bpc 带限配对 Δ、≥5 窗口；使用率 / 路由类指标按 prompt 聚类 bootstrap / Wilson CI 主判，不跨量纲借用 0.014。"
 objective_criteria: "该均衡：专家使用率分布（熵上升 / 最大占比下降）；该不跌/可排序：clean bpc（相对朴素路由与 stock dense，须越 0.014 噪声带）；该稳定：跨 seed/batch 的路由指派（翻转率或 JS 散度下降）；必须不变：每 token 激活专家数 k 与总参数。"
-falsification: "若加均衡机制后使用率分布仍坍缩到少数专家（熵不升、最大占比不降）⇒ 判该机制在本尺度失效；注：前提探针（`2610`）显示**朴素 top-k 在本尺度（单臂/单 seed/1200 步）不自发坍缩**，故本条的「仍坍缩」分支在**本轮探针口径下尚无先验可触发性**；但探针是**无均衡**的单臂，capacity factor 截断 / expert-choice 指派**自身可制造偏斜**，该分支的前提（加均衡机制后）从未被测 ⇒ 均衡的真候选判据是「它是否提高质量 / 降低偏斜」而非「修复坍缩」。若均衡机制的 clean bpc 代价吃光全部容量收益（等 FLOPs 对照下不占优）⇒ 判均衡在本尺度不划算；若跨 seed 路由指派剧烈翻转、给不出稳定结论 ⇒ 判该尺度下路由不可作硬指标。"
+falsification: "若加均衡机制后使用率分布仍坍缩到少数专家（熵不升、最大占比不降）⇒ 判该机制在本尺度失效；注：前提探针（`2610`）显示**朴素 top-k 在本尺度（单臂/单 seed/1200 步）不自发坍缩**，故本条的「仍坍缩」分支在**本轮探针口径下尚无先验可触发性**；但探针是**无均衡**的单臂，capacity factor 截断 / expert-choice 指派**自身可制造偏斜**，该分支的前提（加均衡机制后）从未被测 ⇒ 均衡的真候选判据是「它是否提高质量 / 降低偏斜」而非「修复坍缩」。若均衡机制的 clean bpc 代价吃光全部容量收益（等 FLOPs 对照下不占优）⇒ 判均衡在本尺度不划算；若跨 seed 路由指派剧烈翻转、给不出稳定结论 ⇒ 判该尺度下路由不可作硬指标。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）；使用率 / 路由翻转率类指标走配对 CI、不借用 0.014。"
 failure_analysis: ""
 conclusion: "本项自身命题（均衡机制是否值得）的本地判决尚未做（无 aux loss/capacity factor/expert-choice 四臂读数）。当前已有本地工作：**前提探针**（`4.1` 的 `2610-moe-arm-ledger-13m/probe_collapse_1200.json` + `analysis.md` §4）——13M、top-1、**无 aux loss**、seed 0、1200 步：专家使用率归一化熵全程 **0.952–0.983**（几乎平，斜率 +1.5e-5/步）、最大占比 **0.178–0.214**（均匀值 0.125）、无专家死亡⇒ **在该尺度/该预算下朴素 top-k 路由不自发坍缩**（熵**全程不下移**，斜率 +1.5e-5/步；注：预登记阀值在随机初始化第 1 步即已满足、命中近乎必然，故以斜率与偏斜为主证）；但存在温和持久的偏斜（专家 3/7 长期约 1.3–1.5× 均匀份额）。使用率为**跨 12 层池化**口径（不分辨整层坍缩），逐层活性列已加进 `run.py` 供下一阶段。该探针为**单臂、1200 步快照、无质量对照**，不能当均衡机制判决也不能外推；它指向的意义是：本尺度下均衡的价值必须改从「它是否提高质量」去测，而不再能靠「修复坍缩」立论。"
-conclusion_review: "本项无终局结论（`status: 进行中`）：前提探针（单臂、无质量对照）不能当均衡机制判决。当前自评 + 独立复核对象 = 前提探针的证据与解释；复核判词见 `.scratch/65-axis4-moe/REVIEW-1.md`。判据按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），「专家使用率分布」与「跨 seed 路由稳定性」为必须报的活性对照列（`SCHEMA.md` 活性判据）。与 `4.1` 的边界：`4.1` 测 top-k 稀疏激活本身，本项只改均衡机制。"
+conclusion_review: "本项无终局结论（`status: 未开始`，65-F1 降为 Backlog）：前提探针（单臂、无质量对照）不能当均衡机制判决。当前自评 + 独立复核对象 = 前提探针的证据与解释；复核判词见 `.scratch/65-axis4-moe/REVIEW-1.md`。判据按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），「专家使用率分布」与「跨 seed 路由稳定性」为必须报的活性对照列（`SCHEMA.md` 活性判据）。与 `4.1` 的边界：`4.1` 测 top-k 稀疏激活本身，本项只改均衡机制。"
 experiments: []
 argument: "路由均衡是「保容量减计算」成立的前提：专家使用率一坍缩，总参数的优势就名存实亡，读到的质量只反映少数专家。因此活性（使用率分布）必须是**可失败的判据**而不是装饰读数（`SCHEMA.md` 活性判据）；「均衡收益」与「均衡损失的主任务代价」必须在同一质量-代价前沿上一起报。与 `4.1` 划界：`4.1` 的臂不含均衡机制（朴素 top-k），本项只改均衡机制、专家本体与 k 固定。"
 gaps:
@@ -25,6 +25,7 @@ gaps:
   - "与 4.1（稀疏激活本体）/ 4.3（专家粒度）的边界未整合（由 integrator 核不重复）"
   - "造轮子风险最高项：须明确「相对 Switch aux loss / GShard capacity factor / expert-choice 的增量」是什么"
   - "13M 尺度的负载均衡意义存疑（SCHEMA §7）：专家数少，坍缩是否可观测须先证明"
+  - "65-F1 裁决：本项降为 **Backlog**（不在 13M 花算力做 MoE 判决），保留本仓等效代价口径记录（前提探针 `2610`）；业界标准 MoE（Switch / GShard / DeepSeekMoE）的跑分线登记在 `axes/7-references/README.md`，将来做大 token 预算时以它为外部基线"
 cost_model: "等效理论量：均衡机制只改路由器与损失项——每 token 额外计算 = d×E 路由 logits + 一个 batch 级 aux/z-loss 归约；专家 FFN 的每 token 等效 FLOPs 与 `4.1` 相同（k 个专家 × 2·d·h_ff）；layer-passes 每 token 仍为 L；tokens-per-forward 每步 1。考虑 pipelining：capacity factor 的截断/重路由是同一前向内的稀疏指派，不引入额外顺序依赖；expert-choice 需要按专家排序 token，仍是同一步内的 gather（按期望负载报，不用时间量）。"
 
 role_map:
@@ -35,7 +36,7 @@ role_map:
 
 milestone:
   output: "一份「路由与负载均衡」判决包：13M matched-step 下 {朴素 top-k, aux loss, capacity factor, expert-choice} 的 clean bpc + 专家使用率分布（熵/最大占比）+ 跨 seed 路由翻转率，对照朴素路由与 stock dense（归一为 100%），含 n≥2。"
-  acceptance: "各臂 k 与总参数逐位对齐；均衡机制相对朴素路由能显著抬升使用率分布均衡度（越预登记门）或明确「不可分」；clean bpc 代价与均衡收益同框；结论停在「该尺度该机制值不值」，不外推。"
+  acceptance: "各臂 k 与总参数逐位对齐；均衡机制相对朴素路由能显著抬升使用率分布均衡度（越预登记门）或明确「不可分」；clean bpc 代价与均衡收益同框；结论停在「该尺度该机制值不值」，不外推。 实质验收（C2 裁决）：不被同算力最强基线支配（相对同算力朴素路由 / stock dense 前沿超出量 ≤ 0）。"
 
 work_packages:
   - id: "WP1"
@@ -51,7 +52,7 @@ roadmap:
   - "WP1：负载均衡机制最小判决（含活性/稳定性对照列）"
   - "复核通过与 4.1/4.3 边界整合后写 conclusion，更新 status"
 
-status: "进行中"
+status: "未开始"
 started: "2026-10-13T11:06:24+08:00"
 ended: ""
 change_log:
@@ -61,3 +62,6 @@ change_log:
   - date: "2026-10-13T19:25:15+08:00"
     actor: "axis4-lead"
     change: "Phase A（ticket 65）：role_map 实名；sota_baseline 改为可核实 arXiv 出处；gap 写死「相对 Switch aux loss / GShard capacity factor / expert-choice 的增量」（小尺度三元前沿 + 均衡必要性可失败判据）；status 未开始 → 进行中（前提探针已跑，见 conclusion）；按探针结果把 falsification 的「仍坍缩」分支降为「本轮探针口径下尚无先验可触发性」（而非「实际不可触发」）；按独立复核 `REVIEW-1.md` 把 conclusion 的主证改为熵斜率 + 持久偏斜，并注明使用率为跨 12 层池化口径。"
+  - date: "2026-10-14T06:44:03+08:00"
+    actor: "framework-adjudication-writer（ticket 57）"
+    change: "落地 65-F1 / C1 / C2 裁决（不改数字、不删证据）：status 进行中 → 未开始（降为 Backlog，不在 13M 花算力做 MoE 判决，保留坍缩探针记录）；`gaps` 记 65-F1（业界 MoE 跑分线指针）；`validation`/`falsification` 补「用哪个带」（C1）；`milestone.acceptance` 补实质验收（C2）。"
