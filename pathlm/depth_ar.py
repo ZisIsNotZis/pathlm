@@ -221,6 +221,27 @@ class DepthARConfig:
     # carry_state_dim = d_model / n_heads 与缺省逐位相同（单测钉住）。
     # 只在 carry_rule is not None 时有效（否则报错）。
     carry_state_dim: int | None = None
+    # 写入通道的**逐层独立状态**（E1，ticket 67 §2；55-review M-05/M-06）。
+    #   False（缺省）= 单共享槽：一个状态覆盖全部 L 层，写入只来自输入流 h₀，
+    #                  逐位还原 ticket 35/36 的 U1/U2（单测钉住）；
+    #   True         = 每层各写自己的状态，写入（键/值/写门 β）取自**该层当前的
+    #                  输入 hidden**（= 块输入 x，`CarryChannelBlock` 文档的
+    #                  「当前 hidden」），因此各层状态随各自的表征独立演化（业界
+    #                  Gated DeltaNet / GLA 都是逐层的；单共享槽是被墙钟逼出的退化
+    #                  实现，见 `CarryChannel` 文档）。读出增益本就逐层可学
+    #                  （`blocks[k].carry_scale`），本开关只补「写入侧」的逐层性。
+    # 实现落点：块自己按当前 hidden 调 `CarryChannel.write_read`（不像单共享槽那样
+    # 由 `_input_states` 在 h₀ 上扫一次），因此 `masked_logits` 等「逐块手动前向」的
+    # 评测仪器同样生效；`carry_read_mass_stats` 的 h₀ 派生态在逐层模式下不适用
+    # （显式返回 None，见其文档）。只在 carry_rule is not None 时有效（否则报错）。
+    carry_per_layer: bool = False
+    # 写入通道的**可选衰减 γ**（E1 第 ④ 项；GLA 式遗忘因子）。状态每位置先衰减再写：
+    # `S_t = γ·S_{t-1} + write_t`（delta 规则的 write 项用衰减后的状态算残差）。
+    #   1.0（缺省）= 不衰减，逐位还原当前实现（单测钉住：γ=1 走原公式，不加乘子）；
+    #   (0, 1)     = 打开遗忘。逐位置参考实现与分块实装都按同一递推，fp64 单测
+    #                对 `carry_scan_sequential` 钉到 1e-12（含多块，`test_carry_*`）。
+    # 只在 carry_rule is not None 时有效（否则报错）。
+    carry_decay: float = 1.0
     # 重建训练信号（ticket 36 波二 U2 线，F4「重建/充分性损失」）。0 = 关闭（缺省，
     # 逐位还原 v1）；> 0 = 建一个**单层线性解码头** d→V，训练时要求位置 i 的隐状态
     # 重建 `tokens[i − recon_window]`（刚掉出可见窗口的那一格，见
@@ -598,6 +619,11 @@ class ComposableBlock(KVHeadProjectionMixin, nn.Module):
             self.carry_heads = d // self.carry_head_dim
             self.carry_scale = nn.Parameter(torch.zeros(self.carry_heads))
             self._carry_box: dict = {}
+            # 逐层独立状态（E1，可选）：由 `_wire_carry` 在块建完后接线。
+            self._carry_channel = None
+            self._carry_per_layer = False
+            self._carry_layer_idx: int | None = None
+            self._carry_scan_tele: dict | None = None
 
     def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
                 dist_pen: float = 0.0, kv_from: torch.Tensor | None = None,
@@ -617,10 +643,15 @@ class ComposableBlock(KVHeadProjectionMixin, nn.Module):
         tele = None
         if self.carry_on:
             mem = self._carry_box.get("mem")
+            if self._carry_per_layer:
+                # E1：逐层独立状态，写自本层当前 hidden（与 `CarryChannelBlock` 同）。
+                mem, scan_tele = self._carry_channel.write_read(
+                    self._carry_channel.gate(x), layer_idx=self._carry_layer_idx)
+                self._carry_scan_tele = scan_tele
             if mem is None:
                 raise RuntimeError(
-                    "ComposableBlock 需要先经 `DepthARModel._input_states` 算好共享"
-                    "记忆槽（它把读出放进模型的 `_carry_box`）—— 直接调用单块不支持")
+                    "ComposableBlock 需要 `_input_states` 算好共享记忆槽，或启用"
+                    " carry_per_layer 由本块自算——直接调用单块且两者都没有时不支持")
             gain = self.carry_scale.float().repeat_interleave(
                 self.carry_head_dim).view(1, 1, d)
             scaled = mem * gain
@@ -1322,15 +1353,18 @@ def _carry_cast(t: torch.Tensor) -> torch.Tensor:
 
 
 def carry_scan_sequential(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
-                          beta: torch.Tensor, rule: str = "delta"
+                          beta: torch.Tensor, rule: str = "delta",
+                          decay: float = 1.0
                           ) -> tuple[torch.Tensor, dict]:
     """**逐位置参考实现**（O(T) 次 Python 迭代，只用于测试与可读性）。
 
     `q,k,v`：`[B,H,T,dh]`；`beta`：`[B,H,T]`；状态 `S ∈ R^{dh×dh}`，读出 `y_t = S_t q_t`。
     位置 t 的写入只用 `k_t, v_t`（来自 token t 自己）⇒ 读出只用 `S_{≤t}`，**严格因果**。
 
-    - `plain`：`S_t = S_{t−1} + β_t v_t k̂_tᵀ`（累加，无遗忘）；
-    - `delta`：`S_t = S_{t−1} + β_t (v_t − S_{t−1} k̂_t) k̂_tᵀ`（只写残差）。
+    - `plain`：`S_t = γ S_{t−1} + β_t v_t k̂_tᵀ`（累加，γ<1 时遗忘）；
+    - `delta`：`S_t = γ S_{t−1} + β_t (v_t − γ S_{t−1} k̂_t) k̂_tᵀ`（只写残差）。
+
+    `decay=1.0`（缺省）时不做任何衰减乘法 ⇒ 逐位还原无衰减实现。
     """
     if rule not in ("plain", "delta"):
         raise ValueError(f"rule must be 'plain' or 'delta', got {rule!r}")
@@ -1342,6 +1376,8 @@ def carry_scan_sequential(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
         kt = carry_norm_keys(k[:, :, t])
         vt = v[:, :, t]
         bt = beta[:, :, t].unsqueeze(-1)                     # [B,H,1]
+        if decay != 1.0:
+            S = S * decay                                    # 遗忘（γ=1 时不加乘）
         if rule == "plain":
             S = S + bt.unsqueeze(-1) * (vt.unsqueeze(-1) @ kt.unsqueeze(-2))
         else:
@@ -1354,21 +1390,37 @@ def carry_scan_sequential(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
                "beta_mean": beta.mean()}
 
 
-def _carry_chunk_plain(qc, kc, vc, bc, S):
+def _carry_chunk_plain(qc, kc, vc, bc, S, decay: float = 1.0):
     """一个块的 plain 累加写的精确并行形式（块内一次算出，块间串行）：
-    `y_i = S_0 q_i + Σ_{j≤i, j∈块} β_j (k̂_j·q_i) v_j`，`S_out = S_0 + Σ_j β_j v_j k̂_jᵀ`。"""
+    `y_i = S_0 q_i + Σ_{j≤i, j∈块} β_j (k̂_j·q_i) v_j`，`S_out = S_0 + Σ_j β_j v_j k̂_jᵀ`。
+
+    带衰减 γ 时（`decay != 1.0`）同一推导给出
+    `y_i = γ^{i+1} (S_0 q_i) + Σ_{j≤i} γ^{i−j} β_j (k̂_j·q_i) v_j`、
+    `S_out = γ^C S_0 + Σ_j γ^{C−1−j} β_j v_j k̂_jᵀ`（i、j 为**块内** 0 起下标）。
+    `decay=1.0` 走原公式（不加乘子）。
+    """
     B, H, C, dh = qc.shape
     kh = carry_norm_keys(kc)
     Gq = kh @ qc.transpose(-1, -2)                     # [j,i] = k̂_j·q_i
     keep = torch.triu(torch.ones(C, C, dtype=torch.bool, device=qc.device))
     Om = (Gq * bc.unsqueeze(-1)).masked_fill(~keep, 0.0)
+    if decay != 1.0:
+        idx = torch.arange(C, dtype=qc.dtype, device=qc.device)
+        Om = Om * (decay ** (idx.unsqueeze(0) - idx.unsqueeze(1))).masked_fill(
+            ~keep, 0.0)                                # γ^{i−j}（j ≤ i）
+        y_intra = Om.transpose(-1, -2) @ vc
+        y_state = (qc * (decay ** (idx + 1)).view(1, 1, C, 1)) @ S.transpose(-1, -2)
+        bcdec = bc * (decay ** (C - 1 - idx)).view(1, 1, C)
+        S_out = ((decay ** C) * S
+                 + (bcdec.unsqueeze(-1) * vc).transpose(-1, -2) @ kh)
+        return S_out, y_state + y_intra
     y_intra = Om.transpose(-1, -2) @ vc
     y_state = qc @ S.transpose(-1, -2)
     S_out = S + (bc.unsqueeze(-1) * vc).transpose(-1, -2) @ kh
     return S_out, y_state + y_intra
 
 
-def _carry_chunk_delta(qc, kc, vc, bc, S):
+def _carry_chunk_delta(qc, kc, vc, bc, S, decay: float = 1.0):
     """一个块的 **delta 规则精确并行形式**（WY 表示，O(C³) 三角求解）。
 
     推导（行约定：`y = S q`、`S ← S(I − βk̂k̂ᵀ) + βvk̂ᵀ`；块内 token 1..C）：
@@ -1384,6 +1436,12 @@ def _carry_chunk_delta(qc, kc, vc, bc, S):
     `M[j..i, j..i]`），因此 `y_i` 只用 `S_{≤i}`（单测 `test_carry_channel_is_causal_only`
     与变异验证 M1/M2 钉住）。数值一致性由 `test_carry_delta_chunked_matches_sequential`
     对 `carry_scan_sequential` 逐位（fp64 1e-14 内）钉住。
+
+    带衰减 γ 时（`decay != 1.0`）：读出侧的 `Ω` 乘 `γ^{i−j}`、`s_i` 乘 `γ^{i+1}`；
+    写侧用**衰减后的写强度** `β_i γ^{C−1−i}` 代入 `A` 得到 `S_out`（WY 表示里
+    「写项传播到块末」的步数正好是 `C−1−i`）——即把「写权重」与「转移（P 矩阵）」
+    解耦。`decay=1.0` 走原公式（不加乘子）；两种实现都在 fp64 单测
+    `test_carry_decay_chunked_matches_sequential` 下对逐位置参考实装钉到 1e-12。
     """
     B, H, C, dh = qc.shape
     kh = carry_norm_keys(kc)
@@ -1398,18 +1456,31 @@ def _carry_chunk_delta(qc, kc, vc, bc, S):
     A = Tv * bc.unsqueeze(-1)                          # A[i,j] = β_i T[i,j]
     Gq_keep = Gq.masked_fill(~keep, 0.0)               # 只留 k̂_j·q_i（j ≤ i）
     Om = ((Gq - (E - Tv) @ Gq_keep) * bc.unsqueeze(-1)).masked_fill(~keep, 0.0)
-    y_intra = Om.transpose(-1, -2) @ vc
     Sq = qc - (A @ Gq_keep).transpose(-1, -2) @ kh
+    W_ = A.transpose(-1, -2) @ kh                      # [C,dh]：Σ_j w_j k̂_jᵀ = I − Q
+    if decay != 1.0:
+        idx = torch.arange(C, dtype=qc.dtype, device=qc.device)
+        Om = Om * (decay ** (idx.unsqueeze(0) - idx.unsqueeze(1))).masked_fill(
+            ~keep, 0.0)                                # γ^{i−j}（j ≤ i）
+        y_intra = Om.transpose(-1, -2) @ vc
+        y_state = (Sq * (decay ** (idx + 1)).view(1, 1, C, 1)) @ S.transpose(-1, -2)
+        Adec = Tv * (bc * (decay ** (C - 1 - idx)).view(1, 1, C)).unsqueeze(-1)
+        Udec = Adec.transpose(-1, -2) @ vc
+        Sdec = (decay ** C) * S
+        S_out = (Sdec + Udec.transpose(-1, -2) @ kh
+                 - Sdec @ (W_.transpose(-1, -2) @ kh))
+        return S_out, y_state + y_intra
+    y_intra = Om.transpose(-1, -2) @ vc
     y_state = Sq @ S.transpose(-1, -2)
     U_ = A.transpose(-1, -2) @ vc
-    W_ = A.transpose(-1, -2) @ kh
     S_out = S + U_.transpose(-1, -2) @ kh - S @ (W_.transpose(-1, -2) @ kh)
     return S_out, y_state + y_intra
 
 
 def carry_scan_chunked(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
                        beta: torch.Tensor, rule: str = "delta",
-                       chunk: int = DEFAULT_CARRY_CHUNK
+                       chunk: int = DEFAULT_CARRY_CHUNK,
+                       decay: float = 1.0
                        ) -> tuple[torch.Tensor, dict]:
     """训练/评测用的**分块实装**：块内并行、块间串行（T/chunk 次迭代）。
 
@@ -1432,7 +1503,7 @@ def carry_scan_chunked(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
         chunk_fn = (_carry_chunk_plain if rule == "plain" else _carry_chunk_delta)
         S_in = S
         S, yc = chunk_fn(q[:, :, c0:c1], k[:, :, c0:c1], v[:, :, c0:c1],
-                         beta[:, :, c0:c1], S_in)
+                         beta[:, :, c0:c1], S_in, decay)
         ys.append(yc)
         n_chunks += 1
         # ‖ΔS‖/‖S‖ 只在**非首块**上有定义：第一块的 S_in = 0 ⇒ 比值无定义（会退化成
@@ -1456,12 +1527,16 @@ def carry_scan_chunked(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
 
 def carry_scan(q: torch.Tensor, k: torch.Tensor, v: torch.Tensor,
                beta: torch.Tensor, rule: str = "delta",
-               chunk: int | None = DEFAULT_CARRY_CHUNK
+               chunk: int | None = DEFAULT_CARRY_CHUNK, decay: float = 1.0
                ) -> tuple[torch.Tensor, dict]:
-    """通道状态扫描的统一入口：`chunk is None` ⇒ 逐位置参考实现（测试用）。"""
+    """通道状态扫描的统一入口：`chunk is None` ⇒ 逐位置参考实现（测试用）。
+
+    `decay`（默认 1.0 = 不衰减）贯穿两条路径：分块实装与逐位置参考实装都按
+    `S_t = γ S_{t−1} + write` 的同一递推，单测对拍（fp64 1e-12）。
+    """
     if chunk is None:
-        return carry_scan_sequential(q, k, v, beta, rule)
-    return carry_scan_chunked(q, k, v, beta, rule, chunk)
+        return carry_scan_sequential(q, k, v, beta, rule, decay)
+    return carry_scan_chunked(q, k, v, beta, rule, chunk, decay)
 
 
 class CarryChannel(nn.Module):
@@ -1484,6 +1559,12 @@ class CarryChannel(nn.Module):
       单测 `test_carry_read_convention_includes_own_write` 钉住，变异验证 M3
       （故意让位置 t 读到 t+1 的写入）必须抓红；
     - 读出量与「槽注意力质量」的活性证据见 `carry_read_mass_stats`。
+
+    **逐层独立状态（E1，可选）**：`cfg.carry_per_layer=True` 时，每层不是读同一个
+    共享槽，而是各自在该层**当前输入 hidden** 上调一次 `write_read`（写门 β 也用
+    当前 hidden 算）——即 `layer_idx` 指向的那一份状态。参不新增：写投影仍是同一套
+    （逐层差异来自各自的输入表征与读出增益），参数账与单共享槽一致。定死单共享的
+    原因（CUDA 派发开销）与业界形状（Gated DeltaNet / GLA 逐层）见上。
     """
 
     def __init__(self, cfg: DepthARConfig, rule: str,
@@ -1494,6 +1575,8 @@ class CarryChannel(nn.Module):
         d, nh = cfg.d_model, cfg.n_heads
         self.rule = rule
         self.chunk = int(chunk)
+        # 可选衰减 γ（E1；1.0 = 不衰减，逐位还原）。逐位置/分块两条路径都用它。
+        self.decay = float(getattr(cfg, "carry_decay", 1.0))
         # 状态宽度：缺省 = 与注意力头同宽（v1 口径）；契约 U1 的容量轴用它解耦
         # 状态宽度与注意力头（见 `DepthARConfig.carry_state_dim`）。
         self.head_dim = (int(cfg.carry_state_dim) if cfg.carry_state_dim
@@ -1511,11 +1594,20 @@ class CarryChannel(nn.Module):
                             ("gate_w", (d, d))):
             self.register_parameter(name, nn.Parameter(torch.zeros(*shape)))
 
-    def write_read(self, h0: torch.Tensor, rule: str | None = None
+    def write_read(self, h0: torch.Tensor, rule: str | None = None,
+                   decay: float | None = None,
+                   layer_idx: int | None = None
                    ) -> tuple[torch.Tensor, dict]:
-        """在 h₀ 上写状态并读出：返回 `(mem [B,T,d], tele)`。"""
+        """在 `h0` 上写状态并读出：返回 `(mem [B,T,d], tele)`。
+
+        `decay`（默认 `self.decay`）是可选衰减 γ；`layer_idx` 是**逐层模式**下
+        本槽的层号（`cfg.carry_per_layer=True` 时由块传入；单共享槽下为 None）。
+        层号不参与逐层模式的数学（状态本就逐次调用彼此独立），但写进 `write_read`
+        的契约供调用方与活性量对齐，避免「开关开着、层号没传」的死接。
+        """
         B, T, d = h0.shape
         rule = self.rule if rule is None else rule
+        decay = self.decay if decay is None else float(decay)
         hf = h0.float()
         shape = lambda t: t.view(B, T, self.n_heads, self.head_dim).transpose(1, 2)
         kk = shape(hf @ self.w_k.float().T)
@@ -1524,7 +1616,12 @@ class CarryChannel(nn.Module):
         beta = torch.sigmoid(
             torch.einsum("btd,hd->bth", hf, self.beta_w.float())
             + self.beta_b.float()).transpose(1, 2).contiguous()      # [B,H,T]
-        mem, tele = carry_scan(qq, kk, vv, beta, rule=rule, chunk=self.chunk)
+        mem, tele = carry_scan(qq, kk, vv, beta, rule=rule, chunk=self.chunk,
+                               decay=decay)
+        if layer_idx is not None:
+            # 逐层模式的遥测带层号（单共享槽不加键 ⇒ tele 形状与旧口径逐位相同，
+            # 训练日志的 float(v) 循环不受影响）。
+            tele["layer_idx"] = int(layer_idx)
         return mem.transpose(1, 2).reshape(B, T, d).to(h0.dtype), tele
 
     def gate(self, h0: torch.Tensor) -> torch.Tensor:
@@ -1566,6 +1663,13 @@ class CarryChannelBlock(Block):
     depth ≤ d_i 的层（更深层的块输出被冻结表征替换）。`proj_fill` 的 adapter
     是**注意力 KV 源**的 remap，**不**经过通道（通道有自己的 w_k/w_v/w_q/β）。
     单测 `test_carry_write_timing_ignores_exit_depths` 钉住「写入与退出模式无关」。
+
+    **逐层独立状态（E1，可选，`cfg.carry_per_layer=True`）**：不再是单共享槽，而是
+    每层在该层**当前输入 `x`** 上调 `self._carry_channel.write_read(gate(x),
+    layer_idx=本层号)` 得到 `mem`（写门 β 与键/值都取自当前 hidden）——与上段
+    「写入只来自 h₀、与退出模式无关」是**互斥的两种语义**：逐层模式下写入随该层
+    当前表征（在退出/填充路径下含冻结行）而变，是本开关的定义行为，不影响缺省路径。
+    接线由 `DepthARModel._wire_carry` 设置；无法拿到 `mem` 时显式报错（不静默）。
     """
 
     telemetry_kind = "carry_channel"
@@ -1580,6 +1684,12 @@ class CarryChannelBlock(Block):
         self.carry_heads = cfg.d_model // self.carry_head_dim
         self.carry_scale = nn.Parameter(torch.zeros(self.carry_heads))
         self._carry_box: dict = {}
+        # 逐层独立状态（E1，可选）：由 `DepthARModel._wire_carry` 在块建完后接线；
+        # 缺省 None/False ⇒ 与单共享槽逐位相同。
+        self._carry_channel = None
+        self._carry_per_layer = False
+        self._carry_layer_idx: int | None = None
+        self._carry_scan_tele: dict | None = None
 
     def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
                 dist_pen: float = 0.0,
@@ -1591,10 +1701,18 @@ class CarryChannelBlock(Block):
                 "CarryChannelBlock 只支持 stock 注意力路径，收到 dist_pen：写入通道"
                 "不支持距离惩罚读数")
         mem = self._carry_box.get("mem")
+        if self._carry_per_layer:
+            # E1：逐层独立状态——写入来自**本层当前 hidden**（写门 β 也随之），
+            # 而不是 h₀ 上的共享扫描。放在块内 ⇒ `masked_logits` 等逐块手动前向
+            # 的仪器路径也自动生效（不依赖 `_input_states` 预先放 mem）。
+            mem, scan_tele = self._carry_channel.write_read(
+                self._carry_channel.gate(x), layer_idx=self._carry_layer_idx)
+            self._carry_scan_tele = scan_tele
         if mem is None:
             raise RuntimeError(
-                "CarryChannelBlock 需要先经 `DepthARModel._input_states` 算好共享"
-                "记忆槽（它把读出放进模型的 `_carry_box`）—— 直接调用单块不支持")
+                "CarryChannelBlock 需要 `_input_states` 算好共享记忆槽"
+                "（放进模型的 `_carry_box`），或启用 carry_per_layer 由本块自算——"
+                "直接调用单块且两者都没有时不支持")
         B, T, d = x.shape
         x_in = x                                # gate_vec 的携带形式用
         q, k, v = self.qkv(self.ln1(x)).chunk(3, dim=-1)
@@ -1628,6 +1746,24 @@ class CarryChannelBlock(Block):
         return x, tele
 
 
+def _carry_scan_tele_mean(teles: list[dict | None]) -> dict | None:
+    """逐层模式的扫描遥测聚合（E1）：对 `carry_scan_*` 返回的标量活性量取层均值。
+
+    `write_rel_chunks` / `n_chunks` 各层相同（同 T、同 chunk）⇒ 取首层值；
+    其余四个标量（`state_fro`/`beta_mean`/`write_rel`/`read_norm`）取均值——
+    它们是 0 维张量，`carry_liveness` / 训练日志的 `float(...)` 口径不变。
+    """
+    teles = [t for t in teles if t]
+    if not teles:
+        return None
+    out = {k: torch.stack([t[k] for t in teles]).mean()
+           for k in ("state_fro", "beta_mean", "write_rel", "read_norm")}
+    out["write_rel_chunks"] = int(teles[0]["write_rel_chunks"])
+    out["n_chunks"] = float(teles[0]["n_chunks"])
+    out["n_layers"] = float(len(teles))
+    return out
+
+
 def carry_liveness(model: "DepthARModel", scan_tele: dict | None = None,
                    layer_stats: list[dict] | None = None,
                    prob: dict | None = None) -> dict:
@@ -1644,10 +1780,15 @@ def carry_liveness(model: "DepthARModel", scan_tele: dict | None = None,
     """
     cfg = model.cfg
     on = cfg.carry_rule is not None
+    per_layer = bool(getattr(cfg, "carry_per_layer", False))
     out = {"carry_rule": cfg.carry_rule, "enabled": on,
            "carry_chunk": int(cfg.carry_chunk),
            "block_python_class": type(model.blocks[0]).__name__,
-           "shared_slots": on,
+           # E1 后单共享槽不再是唯一形态：`shared_slots` / `per_layer` / `decay`
+           # 三者一起报，避免下游把逐层模式误读成单共享。
+           "shared_slots": bool(on and not per_layer),
+           "per_layer": per_layer,
+           "carry_decay": float(getattr(cfg, "carry_decay", 1.0)),
            "params_added": (sum(p.numel() for p in model.carry.parameters())
                             + sum(blk.carry_scale.numel()
                                   for blk in model.blocks)) if on else 0}
@@ -1794,10 +1935,15 @@ def carry_read_mass_stats(model: "DepthARModel", tokens: torch.Tensor,
        （一起报，便于两臂对照，**不**当作 delta 的精确分解）；
     3. `far_read_norm_frac`：`carry_far_read_norm_frac` 的精确「窗口外贡献份额」
        —— 读出里有多少来自**窗口之外**（窗口外内容只能经通道到达）。
+
+    E1（`carry_per_layer=True`）：逐层模式的写入来自各层当前 hidden（不是 h₀），
+    口径 2/3 的 h₀ 派生读数不再成立 ⇒ 显式返回 None（不静默报一个错数）；口径 1
+    来自真实前向的块遥测，仍然有效。
     """
     if model.cfg.carry_rule is None:
         return {"enabled": False, "read_share_per_layer": None,
                 "slot_score_mass_per_query": None, "far_read_norm_frac": None}
+    per_layer = bool(getattr(model.cfg, "carry_per_layer", False))
     B, T = tokens.shape
     h0 = model._input_states(tokens)
     carry = model.carry
@@ -1817,7 +1963,18 @@ def carry_read_mass_stats(model: "DepthARModel", tokens: torch.Tensor,
         mass = float(scores.abs().sum(-1).mean())
     _, aux = model(tokens)
     shares = [float(s["read_share"]) for s in aux["attn_carry"]]
+    if per_layer:
+        return {"enabled": True, "window": int(window),
+                "per_layer": True,
+                "read_share_per_layer": round(sum(shares) / len(shares), 6),
+                "read_share_by_layer": [round(v, 6) for v in shares],
+                "slot_score_mass_per_query": None,
+                "far_read_norm_frac": None,
+                "notes": ("逐层模式：写入来自各层当前 hidden（非 h₀）⇒ h₀ 派生的 "
+                          "slot_score_mass_per_query / far_read_norm_frac 不适用，"
+                          "显式置 None；read_share 仍来自真实前向的块遥测")}
     return {"enabled": True, "window": int(window),
+            "per_layer": False,
             "read_share_per_layer": round(sum(shares) / len(shares), 6),
             "read_share_by_layer": [round(v, 6) for v in shares],
             "slot_score_mass_per_query": round(mass, 6),
@@ -1940,6 +2097,22 @@ class DepthARModel(nn.Module):
                     "carry_state_dim 必须为正且整除 d_model，收到 "
                     f"carry_state_dim={cfg.carry_state_dim} / "
                     f"d_model={cfg.d_model}")
+        # E1（ticket 67 §2）：逐层状态与衰减只在开启通道时有效——否则就是「开开关
+        # 开着、什么也不做」的死干预（SCHEMA §10）。能力面（§22.8）：两者都不换
+        # block 类，也不与 carry_rule / topology / 退出填充 / GQA 互斥（逐层状态在
+        # `CarryChannelBlock` 与 `ComposableBlock` 两条路径上都接）。
+        if cfg.carry_per_layer and cfg.carry_rule is None:
+            raise ValueError(
+                "carry_per_layer 只在开启写入通道（carry_rule）时有意义，收到 "
+                f"carry_per_layer={cfg.carry_per_layer} 且 carry_rule=None")
+        if cfg.carry_decay != 1.0:
+            if cfg.carry_rule is None:
+                raise ValueError(
+                    "carry_decay 只在开启写入通道（carry_rule）时有意义，收到 "
+                    f"carry_decay={cfg.carry_decay} 且 carry_rule=None")
+            if not 0.0 < cfg.carry_decay <= 1.0:
+                raise ValueError(
+                    f"carry_decay 必须落在 (0, 1]，收到 {cfg.carry_decay}")
         if cfg.carry_rule is not None:
             if cfg.carry_rule not in CARRY_RULES:
                 raise ValueError(f"unknown carry_rule {cfg.carry_rule!r}; "
@@ -2145,16 +2318,23 @@ class DepthARModel(nn.Module):
             self.recon_head = build_recon_head(cfg, vocab_size)
 
     def _wire_carry(self, cfg: DepthARConfig) -> None:
-        """写入通道的**单共享记忆槽**接线（契约 U；ENG1 后 `CarryChannelBlock` 与
-        `ComposableBlock` 共用）：建共享槽 + 把同一个 box 挂到每层读出。
+        """写入通道接线（契约 U；ENG1 后 `CarryChannelBlock` 与
+        `ComposableBlock` 共用）：建槽 + 把同一个 box 挂到每层读出。
 
-        在块建完之后调用（`self.carry` 的三个参数在建在参数 init 循环之后——
+        E1（`cfg.carry_per_layer`）：额外把槽模块与层号挂到每块，让块在**本层当前
+        hidden** 上自算状态（而不再只读 `_carry_box`）；单共享槽下不挂、逐位不变。
+
+        在块建完之后调用（`self.carry` 的参数在建在参数 init 循环之后——
         不消耗其余参数的随机数 ⇒ 同 seed 下与 U0 臂主干参数逐位相同）。
         """
         self.carry = CarryChannel(cfg, cfg.carry_rule, cfg.carry_chunk)
         self._carry_box: dict = {}
-        for blk in self.blocks:
+        for k, blk in enumerate(self.blocks):
             blk._carry_box = self._carry_box
+            if cfg.carry_per_layer:
+                blk._carry_channel = self.carry
+                blk._carry_per_layer = True
+                blk._carry_layer_idx = k
 
     # ---------- 读出 ----------
 
@@ -2218,11 +2398,15 @@ class DepthARModel(nn.Module):
         退出模式下得到同一段记忆，可在 prefill 一次算好）。读出何时生效由调用方的
         `where(active, out, frozen)` 决定，不由写入决定；语义选择与理由见
         `CarryChannelBlock` 文档与实验 `2628-eng2-carry-ragged` 的 `analysis.md`。
+
+        E1（`cfg.carry_per_layer=True`）：共享槽的 h₀ 扫描**不做**（否则会把一份共享
+        结果留在 `_carry_box`，块会优先看到它），改由每块在本层当前 hidden 上自算
+        （块内完成）——因此本函数在逐层模式下与通道无关，逐位还原无扫描路径。
         """
         T = tokens.shape[1]
         h = self.embed(tokens) + self.pos_embed.weight[:T]
         h = cap_norm(h, self.cfg.norm_cap)
-        if self.cfg.carry_rule is not None:
+        if self.cfg.carry_rule is not None and not self.cfg.carry_per_layer:
             mem, tele = self.carry.write_read(self.carry.gate(h))
             self._carry_box["mem"] = mem
             self._carry_tele = tele
@@ -2328,6 +2512,13 @@ class DepthARModel(nn.Module):
                         attn_linear_layers.append(tele)
                     elif kind == "carry_channel":
                         attn_carry_layers.append(tele)
+
+        # E1：逐层模式下每块自算扫描遥测（单共享槽由 `_input_states` 一次性写入）。
+        # 聚合成一个 dict 挂到 `model._carry_tele`，供 `carry_liveness` / 训练日志
+        # 取用（两者接口不变；不聚合的话逐层模式下遥测会静默缺失、活性被误判为死）。
+        if self.cfg.carry_rule is not None and self.cfg.carry_per_layer:
+            self._carry_tele = _carry_scan_tele_mean(
+                [getattr(b, "_carry_scan_tele", None) for b in self.blocks])
 
         targets = tokens if targets is None else targets
         sg = bool(shallow_stopgrad)

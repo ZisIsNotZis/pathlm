@@ -39,7 +39,7 @@
 | 需要什么 | `pathlm/depth_ar.py::CarryChannel` 目前是**单共享槽**（`shared_slots=true`：一个状态覆盖全部 12 层、只从输入流 h0 写、无门控衰减）。要测完整机制需：① 逐层独立状态；② 写入门内容相关；③ 读出增益逐层可学（已存在）；④ 可选衰减 γS。 |
 | 为什么 | 单共享槽是**被引擎/墙钟开销逼出的退化实现**（per-layer 12 状态实测 207–425 ms/step，超预算 2.4×）；业界 Gated DeltaNet / GLA 都是**逐层**。不修就无法区分「机制不成立」与「本实现不成立」。 |
 | 最小 patch 描述 | 把 `CarryChannel` 的状态从 `[1, n_heads, hd, hd]` 扩到 `[n_layers, n_heads, hd, hd]`；`CarryChannelBlock` 各层持层号并索引自己的槽；`write_read` 增 `layer_idx` 参数；训练侧 `carry_scan_*` 按层循环（或一次性 batch）。**约 60–120 行，只动 `pathlm/depth_ar.py`**，不新增公开开关（先内部实验）。风险：墙钟会再超，需按 §20.3 缩步数。 |
-| 授权状态 | **未授权**（C3 已建通道；待出资人逐项批准） |
+| 授权状态 | **已执行**（`2026-10-14T07:17:34+08:00`，engine-writer，fresh 上下文；出资人「按默认处置推进」授权下由 Main 排期）。实际落点与最小 patch 描述的差异（显式实现决策）：**逐层状态由各层在本层当前 hidden 上自算**（不是把 h₀ 一次扫描按层索引——同一 h₀、同一套写投影下逐层槽会逐位相同，测不出「独立」）；`carry_per_layer` 与 `carry_decay` 两个 DepthARConfig 字段（缺省 `False`/`1.0`，未加 CLI，符合「不新增公开开关」）。见 `.scratch/67-engine-changes/E1-CARRYCHANNEL.md`（执行报告，含能力面/单测/复核待办）。 |
 
 ### E2 · 轴 3 · 逐层 FFN 宽开关（`mlp_mult` 全局标量 → 逐层 schedule）
 
@@ -70,3 +70,4 @@
 ## 4. 变更记录
 
 - `2026-10-14T06:44:03+08:00` · framework-adjudication-writer（ticket 57）· 按 C3 裁决建立受控通道，登记 E1/E2/E3 三项最小 patch 需求（未授权）；不改引擎代码。
+- `2026-10-14T07:17:34+08:00` · engine-writer（fresh，`pathlm/**` 单一写入者，code 锁 `/tmp/pathlm_code.lock`）· **E1 已执行**：`pathlm/depth_ar.py` 追加 `carry_per_layer`（逐层独立状态，写入取各层当前 hidden）+ `carry_decay`（可选衰减 γ ∈ (0,1]）；`carry_scan*` 加 `decay` 参数（缺省 1.0 逐位不变）；`CarryChannel.write_read` 加 `layer_idx`/`decay`；`CarryChannelBlock`/`ComposableBlock` 逐层支路；`carry_liveness`/`carry_read_mass_stats` 口径对齐逐层模式。配套单测 8 条（含默认逐位不变、逐层独立、内容写门、γ 分块==逐位置 fp64 1e-12、活性/梯度、能力面），`tests/test_engine_capability.py` + `docs/engine_capability.md` 事实表补 C17–C22。`pytest tests/ -q` 849 passed。**独立复核待 Main 派 fresh 复核者**（本 worker 无派发权，见报告「复核待办」）。

@@ -3230,3 +3230,245 @@ def test_eng2_decoder_rejects_carry_channel():
     m = _nd_carry("delta", fill_kv=True)
     with pytest.raises(ValueError, match="写入通道"):
         DepthARDecoder(m)
+
+
+# ================= E1（ticket 67 §2）：逐层状态 + 内容写门 + 可选衰减 ===========
+
+def test_carry_decay_one_is_bitwise_identity():
+    """E1 硬性要求：新开关**默认关闭、逐位不变**。
+
+    `carry_scan(..., decay=1.0)`（新参数缺省值）必须与不传 `decay` **逐位相同**；
+    两条规则、多个 chunk 都如此（γ=1 走原公式、不加任何衰减乘子）。"""
+    torch.manual_seed(3)
+    q = torch.randn(2, 2, 17, 4)
+    k = torch.randn(2, 2, 17, 4)
+    v = torch.randn(2, 2, 17, 4)
+    beta = torch.rand(2, 2, 17)
+    for rule in ("plain", "delta"):
+        for chunk in (1, 4, 17):
+            y_def, _ = carry_scan(q, k, v, beta, rule=rule, chunk=chunk)
+            y_one, _ = carry_scan(q, k, v, beta, rule=rule, chunk=chunk, decay=1.0)
+            assert torch.equal(y_def, y_one), (rule, chunk)
+            for t in (carry_scan_sequential,):
+                a, _ = t(q, k, v, beta, rule=rule)
+                b, _ = t(q, k, v, beta, rule=rule, decay=1.0)
+                assert torch.equal(a, b), rule
+
+
+def test_carry_default_flags_are_inert_bitwise():
+    """E1 硬性要求（模型级）：`carry_per_layer=False` + `carry_decay=1.0`（新字段
+    的缺省）与**不传新字段**的模型在参数字典与前向上**逐位相同** —— 等价性证明，
+    不是「近似一致」。"""
+    torch.manual_seed(0)
+    m0 = carry_model("delta")
+    m1 = carry_model("delta", carry_per_layer=False, carry_decay=1.0)
+    s0, s1 = m0.state_dict(), m1.state_dict()
+    assert sorted(s0) == sorted(s1)
+    for kname in s0:
+        assert torch.equal(s0[kname], s1[kname]), kname
+    for blk in m0.blocks:
+        blk.carry_scale.data.fill_(0.7)
+    for blk in m1.blocks:
+        blk.carry_scale.data.fill_(0.7)
+    x = torch.randint(0, 10, (2, 12))
+    m0.eval(); m1.eval()
+    with torch.no_grad():
+        for d in (None,):
+            a = m0(x, exit_depths=d)[1]["depth_logits"][-1]
+            b = m1(x, exit_depths=d)[1]["depth_logits"][-1]
+            assert torch.equal(a, b)
+    # 单共享槽的扫描遥测形状也不变：不新增 `layer_idx` 键（训练日志逐值 float 依赖它）
+    assert "layer_idx" not in m0._carry_tele
+    assert all(float(v) == float(v) for v in m0._carry_tele.values())
+
+
+def test_carry_decay_chunked_matches_sequential():
+    """E1：可选衰减 γ 的**分块实装 == 逐位置参考实现**（fp64 1e-12 内）。delta 的
+    带衰减 WY 表示不是靠直觉写的（写强度 `β_i γ^{C−1−i}`、读出侧 `γ^{i−j}` 两个
+    因子），靠这条测试对逐位置定义钉死；γ=1 也一并过（防回归）。"""
+    torch.set_default_dtype(torch.float64)
+    try:
+        torch.manual_seed(3)
+        B, H, T, dh = 2, 2, 21, 4
+        q = torch.randn(B, H, T, dh) * 0.7
+        k = torch.randn(B, H, T, dh)
+        v = torch.randn(B, H, T, dh)
+        beta = torch.rand(B, H, T)
+        for decay in (1.0, 0.999, 0.9, 0.5, 0.2):
+            for rule in ("plain", "delta"):
+                y_ref, _ = carry_scan_sequential(q, k, v, beta, rule, decay)
+                for chunk in (1, 3, 5, 8, 21):
+                    y, tele = carry_scan_chunked(q, k, v, beta, rule, chunk, decay)
+                    assert float((y - y_ref).abs().max()) < 1e-12, (decay, rule, chunk)
+                    assert torch.isfinite(tele["state_fro"])
+    finally:
+        torch.set_default_dtype(torch.float32)
+
+
+def test_carry_decay_forgets_and_matches_recurrence():
+    """E1：衰减的**语义**可观测——γ<1 时旧写入对读出的贡献随距离衰减（γ=1 不减）。
+    单键单值、β 恒定的解析式：位置 t 读出 = β·Σ_{j≤t} γ^{t−j}·(k̂·q)·v。"""
+    torch.manual_seed(5)
+    B, H, dh = 1, 1, 4
+    kh = torch.zeros(B, H, dh)
+    kh[..., 0] = 1.0
+    k = kh.unsqueeze(2).repeat(1, 1, 3, 1)
+    v = torch.zeros(B, H, 3, dh)
+    v[..., 0, 0] = 1.0                                # 只在 t=0 写一次
+    beta = torch.full((B, H, 3), 0.5)
+    q = kh.unsqueeze(2).repeat(1, 1, 3, 1)
+    for decay in (1.0, 0.5):
+        y, _ = carry_scan_sequential(q, k, v, beta, "plain", decay)
+        want = torch.tensor([0.5, 0.5 * decay, 0.5 * decay ** 2])
+        assert torch.allclose(y[0, 0, :, 0], want, atol=1e-12), decay
+    y1, _ = carry_scan_sequential(q, k, v, beta, "plain", 1.0)
+    yh, _ = carry_scan_sequential(q, k, v, beta, "plain", 0.5)
+    assert float(yh[0, 0, 2, 0]) < float(y1[0, 0, 2, 0])   # 衰减把旧写入压小
+
+
+def test_carry_per_layer_states_are_independent(monkeypatch):
+    """E1：逐层**独立状态**——每层的状态由**本层当前 hidden** 写入。
+
+    抓法：monkeypatch `CarryChannel.write_read` 记录 `(layer_idx, mem)`。断言
+    ① 每层各调一次、层号 0..L−1 都到；② 各层 state 张量两两不同（若只是同一次
+    h₀ 扫描的复本会逐位相同 ⇒ 抓红）；③ 与单共享槽（h₀ 上一次扫描）的 mem 不同
+    （证明写入源确实是当前 hidden，而不是 h₀）。"""
+    torch.manual_seed(0)
+    m = carry_model("delta", carry_per_layer=True)
+    for blk in m.blocks:
+        blk.carry_scale.data.normal_(std=1.0)
+    rec: dict = {}
+    orig = CarryChannel.write_read
+
+    def spy(self, h0, rule=None, decay=None, layer_idx=None):
+        mem, tele = orig(self, h0, rule=rule, decay=decay, layer_idx=layer_idx)
+        rec[layer_idx] = mem.detach().clone()
+        return mem, tele
+
+    monkeypatch.setattr(CarryChannel, "write_read", spy)
+    x = torch.randint(0, 10, (2, 12))
+    with torch.no_grad():
+        m(x)
+    L = m.cfg.n_layers
+    assert sorted(rec) == list(range(L)), sorted(rec)
+    mems = [rec[k] for k in range(L)]
+    for i in range(L):
+        for j in range(i + 1, L):
+            assert not torch.equal(mems[i], mems[j]), (i, j)
+    # 单共享槽（同一权重、h₀ 一次扫描）≠ 逐层状态
+    shared = m.carry.write_read(m.carry.gate(m._input_states(x)))[0]
+    assert not torch.equal(mems[-1], shared)
+
+
+def test_carry_write_gate_is_content_dependent():
+    """E1：写入门（β = σ(W_β h + b_β)）**内容相关**——同权重下不同 hidden 给不同
+    门；门随位置/内容变化（不是常数），因此「该不该写」由当前 hidden 决定。"""
+    torch.manual_seed(0)
+    m = carry_model("delta", carry_per_layer=True)
+    ch = m.carry
+
+    def gate(h):
+        hf = h.float()
+        return torch.sigmoid(
+            torch.einsum("btd,hd->bth", hf, ch.beta_w.float())
+            + ch.beta_b.float()).detach()
+
+    a, b = torch.randn(2, 6, 32), torch.randn(2, 6, 32)
+    ga, gb = gate(a), gate(b)
+    assert not torch.allclose(ga, gb)                   # 不同 hidden ⇒ 不同门
+    assert not torch.allclose(ga[:, 0], ga[:, 1])       # 门随内容/位置变化
+    assert float(ga.std()) > 1e-4                       # 不是退化常数门
+    # 端到端：改一个 token 改变该位置之后的写入状态（gate 真的进了状态）
+    m.eval()
+    x = torch.randint(0, 10, (2, 12))
+    y = x.clone()
+    y[:, 0] = (x[:, 0] + 1) % 10
+    with torch.no_grad():
+        la = m(x)[1]["depth_logits"][-1]
+        lb = m(y)[1]["depth_logits"][-1]
+    assert not torch.equal(la, lb)
+
+
+def test_carry_per_layer_changes_forward_and_gradients_flow():
+    """E1：① 逐层模式确实改了前向（与单共享槽不同）；② 活性/梯度——写入路径与
+    每层读出增益的梯度非零且有限（不是死路径）。"""
+    torch.manual_seed(0)
+    shared = carry_model("delta")
+    per = carry_model("delta", carry_per_layer=True)
+    for mm in (shared, per):
+        for blk in mm.blocks:
+            blk.carry_scale.data.normal_(std=1.0)
+    x = torch.randint(0, 10, (2, 12))
+    loss_p, aux_p = per(x, exit_depths=None)
+    with torch.no_grad():
+        logits_shared = shared(x, exit_depths=None)[1]["depth_logits"][-1]
+    assert not torch.equal(aux_p["depth_logits"][-1], logits_shared)
+    loss_p.backward()
+    for p in per.carry.parameters():
+        assert p.grad is not None and torch.isfinite(p.grad).all()
+        assert float(p.grad.abs().max()) > 0
+    for blk in per.blocks:
+        assert float(blk.carry_scale.grad.abs().max()) > 0
+    assert aux_p["attn_carry"] and len(aux_p["attn_carry"]) == per.cfg.n_layers
+
+
+def test_carry_per_layer_composes_with_gqa_and_liveness():
+    """能力面（§22.8）：逐层状态**不换 block 类、不与 GQA 互斥**——GQA × carry ×
+    per_layer 走 `ComposableBlock` 且前向有限；活性块报 `per_layer=True`、
+    `shared_slots=False`，扫描遥测按层聚合后仍非零。"""
+    torch.manual_seed(0)
+    m = carry_model("delta", n_kv_heads=2, carry_per_layer=True)
+    assert type(m.blocks[0]).__name__ == "ComposableBlock"
+    for blk in m.blocks:
+        blk.carry_scale.data.normal_(std=1.0)
+    m.eval()
+    x = torch.randint(0, 10, (2, 12))
+    with torch.no_grad():
+        _, aux = m(x, exit_depths=None)
+    assert torch.isfinite(aux["depth_logits"][-1]).all()
+    live = carry_liveness(m, m._carry_tele, aux["attn_carry"], prob=carry_probe(m, x))
+    assert live["per_layer"] is True and live["shared_slots"] is False
+    assert live["enabled"] and live["alive"]
+    assert float(m._carry_tele["n_layers"]) == m.cfg.n_layers
+    # 训练日志 `attn_carry_scan_mean` 会对 tele 的每个值 `float(v)`：逐层聚合后的
+    # 遥测必须全是可转 float 的标量（否则共享卡的训练日志会中途抛错）。
+    assert all(float(v) == float(v) for v in m._carry_tele.values())
+    # 单共享槽缺省下 `per_layer=False`、`shared_slots=True`（不被误报）
+    ms = carry_model("delta")
+    for blk in ms.blocks:
+        blk.carry_scale.data.fill_(0.7)
+    ms.eval()
+    with torch.no_grad():
+        _, auxs = ms(x, exit_depths=None)
+    lives = carry_liveness(ms, ms._carry_tele, auxs["attn_carry"])
+    assert lives["per_layer"] is False and lives["shared_slots"] is True
+
+
+def test_carry_e1_validation_and_decay_plumbing():
+    """能力面（§22.8）：新 flag 的死组合**显式报错**；正组合真的把 γ 接到模型上。
+
+    - `carry_per_layer=True` 而 `carry_rule=None` ⇒ 报错（否则是死开关）；
+    - `carry_decay` 离开 (0,1] 或 `carry_rule=None` ⇒ 报错；
+    - `carry_decay<1` 真的进 `CarryChannel.decay` 并改变前向。"""
+    with pytest.raises(ValueError, match="carry_per_layer"):
+        DepthARModel(DepthARConfig(d_model=32, n_layers=3, n_heads=4, seq_len=12,
+                                   dense=True, carry_per_layer=True), 10)
+    with pytest.raises(ValueError, match="carry_decay"):
+        DepthARModel(DepthARConfig(d_model=32, n_layers=3, n_heads=4, seq_len=12,
+                                   dense=True, carry_decay=0.5), 10)
+    for bad in (0.0, 1.5, -0.1):
+        with pytest.raises(ValueError, match="carry_decay"):
+            carry_model("delta", carry_decay=bad)
+    torch.manual_seed(0)
+    m1 = carry_model("delta", carry_decay=1.0)
+    m5 = carry_model("delta", carry_decay=0.5)
+    assert m1.carry.decay == 1.0 and m5.carry.decay == 0.5
+    for mm in (m1, m5):
+        for blk in mm.blocks:
+            blk.carry_scale.data.normal_(std=1.0)
+        mm.eval()
+    x = torch.randint(0, 10, (2, 12))
+    with torch.no_grad():
+        l1 = m1(x)[1]["depth_logits"][-1]
+        l5 = m5(x)[1]["depth_logits"][-1]
+    assert not torch.equal(l1, l5)

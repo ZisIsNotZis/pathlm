@@ -68,6 +68,16 @@ CASES = {
     "C14": {"kind": "model", "cfg": {"mod_ratio": 0.5}},
     "C15": {"kind": "model", "cfg": {"mod_ratio": 0.5, "dense": True}},
     "C16": {"kind": "model", "cfg": {"aux_mode": "mean"}},
+    # E1（ticket 67 §2）新增开关的能力面：逐层状态 / 可选衰减 γ
+    "C17": {"kind": "model", "cfg": {"carry_rule": "delta", "carry_per_layer": True},
+            "block": "CarryChannelBlock"},
+    "C18": {"kind": "model", "cfg": {"carry_rule": "delta", "carry_per_layer": True,
+            "n_kv_heads": 2, "dense": True}, "block": "ComposableBlock"},
+    "C19": {"kind": "model", "cfg": {"carry_rule": "delta", "carry_decay": 0.5},
+            "block": "CarryChannelBlock"},
+    "C20": {"kind": "model", "cfg": {"carry_per_layer": True}},
+    "C21": {"kind": "model", "cfg": {"carry_decay": 0.5}},
+    "C22": {"kind": "model", "cfg": {"carry_rule": "delta", "carry_decay": 0.0}},
 }
 
 
