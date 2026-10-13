@@ -1,0 +1,597 @@
+{
+  "config": {
+    "contract": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/README.md",
+    "scope": "只做单轴单格实验，基底恒为 stock decoder-only 全因果；组合默认留白。本实验把显式记忆状态（carry）放进『每位置等效 KV 字节 vs clean bpc』的质量-代价前沿，对照 stock 全因果（100% 质量锚）与同配方的纯窗口臂。",
+    "device": "cuda",
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true,
+      "topology": "sequential",
+      "carry_chunk": 64
+    },
+    "data": {
+      "name": "enwik8_full",
+      "path": "data/enwik8_full.npz",
+      "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）",
+      "vocab_size": 206,
+      "n_real_tokens": 205,
+      "mask_token": 205
+    },
+    "eval": {
+      "n_batches": 96,
+      "batch_size": 16,
+      "window_seed": 2,
+      "note": "全部臂（含 full 锚）走同一份 96×16 窗口序（window_seed=2），bpc token 数 = 96×16×255 = 391,680；臂间可比。"
+    },
+    "cost_axis": {
+      "bytes_per_elem": 2,
+      "note": "每位置等效 KV 字节 = n_layers × 2(K,V) × d_model × bytes_per_elem × k；carry 状态 = 8192 floats × bytes_per_elem（单共享槽，见 liveness.shared_slots）。横轴另报等效窗口位置数 k_eff = 总字节 / 12288。",
+      "kv_bytes_per_position_unit": 12288
+    },
+    "arms": [
+      {
+        "name": "full",
+        "kind": "full",
+        "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+        "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+        "window": 256,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "100% 质量/代价锚（stock 全因果 13.54M，12k 步 × bs32 × T256，复用 2610 主干；配置等值性见 2615/2616）",
+        "size_bytes": 54193675
+      },
+      {
+        "name": "win16_s0",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+        "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+        "window": 16,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "纯窗口 16（复用 2634 无通道臂）",
+        "size_bytes": 54193675
+      },
+      {
+        "name": "win16_s1",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+        "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+        "window": 16,
+        "anchors": 0,
+        "rule": null,
+        "seed": 1,
+        "role": "纯窗口 16（seed 1，作臂内噪声）",
+        "size_bytes": 54193675
+      },
+      {
+        "name": "win17_s0",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win17/model.pt",
+        "sha256": "70f0acb92067adba4f796612bab49ead7153c1b4b7e5bb3ea15a5219ab9cdc1c",
+        "window": 17,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "纯窗口 17（本实验训练；strict-dominance 测试点：内存 208,896 B < carry16 的 212,992 B）",
+        "size_bytes": 54193675
+      },
+      {
+        "name": "win18_s0",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win18/model.pt",
+        "sha256": "39316ac04f20e158a6833323888990d149bf22c8da76ca04c4aa642cdcfa5913",
+        "window": 18,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "纯窗口 18（本实验训练；近 16 的局部斜率点）",
+        "size_bytes": 54193675
+      },
+      {
+        "name": "win24_s0",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win24/model.pt",
+        "sha256": "ebd4ef84736355bc163479e702c34b1383708f90d39510756e38b2cf3fcf90d1",
+        "window": 24,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "纯窗口 24（本实验训练；近 16 的局部斜率点）",
+        "size_bytes": 54193675
+      },
+      {
+        "name": "win32_s0",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win32/model.pt",
+        "sha256": "dccc58c0065d70f0c202424b7f5f40e28929ffb238db3d3a3954d3095e43287b",
+        "window": 32,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "纯窗口 32（本实验训练）",
+        "size_bytes": 54193675
+      },
+      {
+        "name": "win128_s0",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win128/model.pt",
+        "sha256": "c17a1cf1747ca59e426eeb1378c90e50802e21401d7058e703a766e8cbe287f7",
+        "window": 128,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "纯窗口 128（本实验训练；宽窗点）",
+        "size_bytes": 54193675
+      },
+      {
+        "name": "carry16_s0",
+        "kind": "carry",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s0/model.pt",
+        "sha256": "d92114822c09f2f7538ea6a59802eed21b1297409fe91f66c031dec9d6c305eb",
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "seed": 0,
+        "state_floats": 8192,
+        "role": "显式状态（delta 写，窗口 16，复用 2634 delta 臂）",
+        "size_bytes": 55255619
+      },
+      {
+        "name": "carry16_s1",
+        "kind": "carry",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s1/model.pt",
+        "sha256": "b3d3cdbc57266109b6b461d18c2188c7d1712170f6760b35a48ff9b6170d6843",
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "seed": 1,
+        "state_floats": 8192,
+        "role": "显式状态（seed 1，作臂内噪声）",
+        "size_bytes": 55255619
+      }
+    ],
+    "train_recipe": {
+      "cmd": "python3 train_depth_ar.py <arm> --d 256 --layers 12 --heads 8 --mlp-mult 6 --seq-len 256 --dense --topology sequential --steps 12000 --batch-size 32 --lr 1e-3 --seed 0 --exit-mode uniform --train-window <K> --train-anchors 0 --eval-batches 4 --carry-write none --out-root axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train",
+      "note": "唯一变量 = 训练期可见窗口 K（anchors=0）；其余逐字段与 2634 的 win16 臂一致（同数据、同步数、同 seed、同 T）。",
+      "steps": 12000,
+      "batch_size": 32,
+      "seq_len": 256,
+      "tokens_per_arm": 98304000
+    }
+  },
+  "checkpoints": {
+    "full": {
+      "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+      "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "full",
+      "window": 256,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win16_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+      "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win16_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+      "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": null,
+      "seed": 1,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win17_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win17/model.pt",
+      "sha256": "70f0acb92067adba4f796612bab49ead7153c1b4b7e5bb3ea15a5219ab9cdc1c",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 17,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win18_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win18/model.pt",
+      "sha256": "39316ac04f20e158a6833323888990d149bf22c8da76ca04c4aa642cdcfa5913",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 18,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win24_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win24/model.pt",
+      "sha256": "ebd4ef84736355bc163479e702c34b1383708f90d39510756e38b2cf3fcf90d1",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 24,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win32_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win32/model.pt",
+      "sha256": "dccc58c0065d70f0c202424b7f5f40e28929ffb238db3d3a3954d3095e43287b",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 32,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win128_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win128/model.pt",
+      "sha256": "c17a1cf1747ca59e426eeb1378c90e50802e21401d7058e703a766e8cbe287f7",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 128,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "carry16_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s0/model.pt",
+      "sha256": "d92114822c09f2f7538ea6a59802eed21b1297409fe91f66c031dec9d6c305eb",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "seed": 0,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "carry16_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s1/model.pt",
+      "sha256": "b3d3cdbc57266109b6b461d18c2188c7d1712170f6760b35a48ff9b6170d6843",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "seed": 1,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    }
+  },
+  "selfchecks": {
+    "win16_s0": {
+      "visible_pairs": 3976,
+      "expected": 3976,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "win16_s1": {
+      "visible_pairs": 3976,
+      "expected": 3976,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "win17_s0": {
+      "visible_pairs": 4216,
+      "expected": 4216,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "win18_s0": {
+      "visible_pairs": 4455,
+      "expected": 4455,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "win24_s0": {
+      "visible_pairs": 5868,
+      "expected": 5868,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "win32_s0": {
+      "visible_pairs": 7696,
+      "expected": 7696,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "win128_s0": {
+      "visible_pairs": 24640,
+      "expected": 24640,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "carry16_s0": {
+      "visible_pairs": 3976,
+      "expected": 3976,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "carry16_s1": {
+      "visible_pairs": 3976,
+      "expected": 3976,
+      "ok": true,
+      "nondegenerate": true
+    }
+  },
+  "rows": [
+    {
+      "name": "full",
+      "kind": "full",
+      "seed": 0,
+      "window": 256,
+      "rule": null,
+      "bpc": 1.502689,
+      "kv_bytes": 3145728,
+      "state_bytes": 0,
+      "total_bytes": 3145728,
+      "k_eff": 256.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win16_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 16,
+      "rule": null,
+      "bpc": 1.62811,
+      "kv_bytes": 196608,
+      "state_bytes": 0,
+      "total_bytes": 196608,
+      "k_eff": 16.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win16_s1",
+      "kind": "window",
+      "seed": 1,
+      "window": 16,
+      "rule": null,
+      "bpc": 1.629093,
+      "kv_bytes": 196608,
+      "state_bytes": 0,
+      "total_bytes": 196608,
+      "k_eff": 16.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win17_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 17,
+      "rule": null,
+      "bpc": 1.624104,
+      "kv_bytes": 208896,
+      "state_bytes": 0,
+      "total_bytes": 208896,
+      "k_eff": 17.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win18_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 18,
+      "rule": null,
+      "bpc": 1.619953,
+      "kv_bytes": 221184,
+      "state_bytes": 0,
+      "total_bytes": 221184,
+      "k_eff": 18.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win24_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 24,
+      "rule": null,
+      "bpc": 1.599856,
+      "kv_bytes": 294912,
+      "state_bytes": 0,
+      "total_bytes": 294912,
+      "k_eff": 24.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win32_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 32,
+      "rule": null,
+      "bpc": 1.595823,
+      "kv_bytes": 393216,
+      "state_bytes": 0,
+      "total_bytes": 393216,
+      "k_eff": 32.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win128_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 128,
+      "rule": null,
+      "bpc": 1.513325,
+      "kv_bytes": 1572864,
+      "state_bytes": 0,
+      "total_bytes": 1572864,
+      "k_eff": 128.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "carry16_s0",
+      "kind": "carry",
+      "seed": 0,
+      "window": 16,
+      "rule": "delta",
+      "bpc": 1.624979,
+      "kv_bytes": 196608,
+      "state_bytes": 16384,
+      "total_bytes": 212992,
+      "k_eff": 17.3333,
+      "n_params": 13801064
+    },
+    {
+      "name": "carry16_s1",
+      "kind": "carry",
+      "seed": 1,
+      "window": 16,
+      "rule": "delta",
+      "bpc": 1.62664,
+      "kv_bytes": 196608,
+      "state_bytes": 16384,
+      "total_bytes": 212992,
+      "k_eff": 17.3333,
+      "n_params": 13801064
+    }
+  ],
+  "frontier": {
+    "sorted_by_bytes": [
+      "win16_s0",
+      "win16_s1",
+      "win17_s0",
+      "carry16_s0",
+      "carry16_s1",
+      "win18_s0",
+      "win24_s0",
+      "win32_s0",
+      "win128_s0",
+      "full"
+    ],
+    "dominated_by": {
+      "win16_s0": [],
+      "win16_s1": [
+        "win16_s0"
+      ],
+      "win17_s0": [],
+      "carry16_s0": [
+        "win17_s0"
+      ],
+      "carry16_s1": [
+        "win17_s0",
+        "carry16_s0"
+      ],
+      "win18_s0": [],
+      "win24_s0": [],
+      "win32_s0": [],
+      "win128_s0": [],
+      "full": []
+    },
+    "lower_envelope": [
+      "win16_s0",
+      "win17_s0",
+      "win18_s0",
+      "win24_s0",
+      "win32_s0",
+      "win128_s0",
+      "full"
+    ]
+  },
+  "location": {
+    "carry16_s0": {
+      "delta_bpc_vs_win16_s0": 0.003131,
+      "recovery_ratio_r": 0.025,
+      "window_curve_at_k_eff": {
+        "between": [
+          "win17_s0",
+          "win18_s0"
+        ],
+        "w": 0.3333,
+        "bpc_interp": 1.62272
+      },
+      "carry_minus_interp_window": -0.002259,
+      "note": "carry_minus_interp_window = bpc_interp − bpc_carry（正 = carry 更好）：< 0 ⇒ carry bpc 高于同 k_eff 的纯窗口插值点 ⇒ 被同预算纯窗口支配；> 0 ⇒ 前沿改善；≈0 ⇒ 不可排序；null ⇒ 无窗口点跨越该 k_eff（不外推）"
+    },
+    "carry16_s1": {
+      "delta_bpc_vs_win16_s0": 0.00147,
+      "recovery_ratio_r": 0.0117,
+      "window_curve_at_k_eff": {
+        "between": [
+          "win17_s0",
+          "win18_s0"
+        ],
+        "w": 0.3333,
+        "bpc_interp": 1.62272
+      },
+      "carry_minus_interp_window": -0.00392,
+      "note": "carry_minus_interp_window = bpc_interp − bpc_carry（正 = carry 更好）：< 0 ⇒ carry bpc 高于同 k_eff 的纯窗口插值点 ⇒ 被同预算纯窗口支配；> 0 ⇒ 前沿改善；≈0 ⇒ 不可排序；null ⇒ 无窗口点跨越该 k_eff（不外推）"
+    }
+  },
+  "gap_closing": {
+    "bpc_win16_s0": 1.62811,
+    "bpc_full": 1.502689,
+    "gap_win16_full": 0.125421,
+    "note": "gap = 窗口 16 相对全因果在 clean bpc 上的损失；recovery_ratio_r 见 location"
+  },
+  "effects_by_seed": {
+    "0": {
+      "win16": 1.62811,
+      "carry16": 1.624979,
+      "delta_bpc": 0.003131
+    },
+    "1": {
+      "win16": 1.629093,
+      "carry16": 1.62664,
+      "delta_bpc": 0.002453
+    }
+  },
+  "sigma_within_config": {
+    "win16": 0.000983,
+    "carry16": 0.001661,
+    "note": "同配置换种子的极差（2 样本 ⇒ 描述量，不是方差上界）"
+  },
+  "cost": {
+    "wall_minutes_total_eval": 0.31,
+    "eval_peak_gpu_mem_mb": 627.7,
+    "n_eval_windows": 1536,
+    "tokens_scored": 391680
+  },
+  "code_hashes": {
+    "pathlm/depth_ar.py": "1f8f9eb49aac46d3e076f2964b49cfceae8215c13640b65d10a3403ef6c10d7a",
+    "train_depth_ar.py": "218b63179e623d6a938e7cabe85a71c5c4a36f1831c6930e9c65b2e0a6673022",
+    "tools/evalkit/retention.py": "9ef983b70d666460de5d63d5d81c23c685ce708a55dfe1af66fc23187fd12f9a",
+    "pathlm/data.py": "48e23520122a0b4591e71d0e3780dd1f34dc4a82744e14ca3414da8f43ba448a",
+    "run.py": "eff58d5153f201c8bb591b25516bff032b9b14eb7733dddf6d5fdedf3d68c1d6",
+    "config.json": "eb97327d6523eb2003d3821228223ff60ad62c6ba6941e4c961d693ee4227f55"
+  }
+}
