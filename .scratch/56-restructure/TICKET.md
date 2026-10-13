@@ -274,3 +274,92 @@ $ python3 -m pytest tests/ -q
 6. **原始转录日志的旧路径**：`axes/**` 内 `.txt/.stdout/.runlog` 的旧轴路径已按 §7.3 一并改写为当前路径
    （`[run] <时间> ckpts=[…]` 这类行也随之变化）。理由：全树路径可解析一致；数字零改动。若下游偏好保留
    原始转录字面，可 revert 这 38 个文件（清单见 WP-M2.8 报告）。
+
+---
+
+## 8. WP-M2.9 审计留痕收口（M2 收尾）
+
+时间：2026-10-13T12:36:38+08:00 ｜ actor：worker（fresh 上下文，单一写入者，收尾小任务）
+触发：独立集成复核 `REVIEW-M2-integration.md`（revision `3861ea5`，PASS）指出的两项 non-blocking 审计可追溯性缺口。
+本 WP **只补留痕**，不改任何研究内容（未触碰 `axes/**`、测量数字或 `project.yaml`）。
+
+### 8.1 触发（集成复核的两项缺口）
+
+独立集成复核判 **PASS**，但指出两项**不影响数据、只影响审计可追溯性**的缺口：
+
+1. 整合报告 `WP-M2.8-integrator.md` 与集成复核报告 `REVIEW-M2-integration.md` 只在 subagent artifact 目录，**未入仓库**；
+2. 迁移依据台账 `.scratch/54-subproject-schema/`、`.scratch/55-review/` 为 **untracked**，
+   `MAPPING.md` / 工单大量引用其条目（如 `A-P08`、`55-R07`、R1–R8 处置），clone 后无法核对。
+
+### 8.2 本 WP 动作与证据
+
+- **报告入库**：`diff -q` 逐字节核对后，把上述 2 份报告**原样复制**进 `.scratch/56-restructure/wp-reports/`
+  （`diff -q` 报 SAME）；`wp1…wp7`、`rev-axis1/2/6/rest` 共 11 份经 `diff -q` 核对与 artifact 源**逐字节一致**，无需复制。
+  现 `wp-reports/` = **13 份**（11 源 + 整合报告 + 集成复核）。
+- **台账入库**：显式路径 `git add .scratch/54-subproject-schema .scratch/55-review`（2 + 9 = 11 文件），不含任何其它路径。
+
+### 8.3 M2 各提交范围（迁移窗口 `ab1d8d8..3861ea5`）
+
+M1.0 复核修复（4 提交，`ab1d8d8` 之后、M2 之前）：`dff555f`（FOUNDATION 记入 ab1d8d8）、
+`e63bcdc`（补 `failure_analysis` + 消账实不符）、`fb81a71`（structure.md 本轮为新建）、`a2bcffd`（docstring 去行尾空白）。
+
+M2 轴迁移 / 退役 / 整合（10 提交，`18a3e6b..3861ea5`）：
+
+| 提交 | 范围 |
+|---|---|
+| `18a3e6b` | 轴 1 §1.1：迁入时间轴 8 个研究项 + 按 MAPPING 迁证据 |
+| `65adaec` | 轴 1 §1.2+§1.3：建可见结构 4 项 + 迁 A6 证据 + 1.3 参照登记 |
+| `d6f099b` | 轴 2 §2.1–§2.3：建深度轴 10 项 + 迁 C 轴证据 |
+| `61e346b` | 轴 6 §6.2–§6.4：建预测轴 + 迁 H 轴证据 |
+| `1dcb5ce` | 轴 3 §3.1+§3.2：建宽度轴 9 项 + 迁 W 轴证据 |
+| `d76d997` | 轴 4/轴 5：建专家轴 3 项 + 量化轴 6 项 + 迁 R 轴证据 |
+| `bacaaeb` | 轴 7/8/9：建参照台账 + 工程纪律台账 + Backlog 2 项，迁 A2/A8/W3/R7/G/F/P5 证据 |
+| `3c03d0b` | 退役旧研究树（`archive/wiki-legacy/`，91 rename） |
+| `a79f207` | 更正：上一条退役提交未带上工作树未提交修订（4 文件） |
+| `3861ea5` | 整合 7 轴迁移：复核处置 + N1 全树路径改写 + 退役声明一致性（388 文件） |
+
+### 8.4 复核结论（4 份轴复核 + 集成复核，均 PASS）
+
+| 复核 | 报告 | 结论 |
+|---|---|---|
+| 轴 1 | `rev-axis1.md` | PASS（轴 1 两 WP 达迁移契约；无 blocking defect） |
+| 轴 2 | `rev-axis2.md` | PASS（就本次迁移验收面；无阻塞级错误） |
+| 轴 6 | `rev-axis6.md` | PASS（无 blocking defect；5 条 non-blocking） |
+| 轴 3/4/5/7/8/9 等其余轴 | `rev-rest.md` | PASS（可在有非阻断遗留项的前提下接受） |
+| 集成（全树） | `REVIEW-M2-integration.md` | PASS（唯一实质缺口为审计可追溯性，本 WP 补上） |
+
+### 8.5 证据零丢失核验口径（独立复核结果）
+
+- **口径**：旧 9 轴 `<格>/experiments/**` 的 **git 跟踪文件**（排除自动索引 `experiments/README.md`）= **1562**；
+  「逐字节相同」= 在整合器 N1 路径改写**之前**的 `bacaaeb` 上，与 `ab1d8d8` 旧 blob **内容哈希相同**的数量。
+- **独立复核结果**（`REVIEW-M2-integration.md` 判据 1；复核者自建内容哈希法，非照抄整合报告）：
+  - **1562/1562 全部有落盘新家**（1561 在 `-M` rename 表内且目标存在；1 个被 `-M` 误判为删除，
+    经「experiments 相对尾路径」定位实际存在于新家）；
+  - `bacaaeb` 上 **1380 个逐字节相同**、182 个按设计改了正文（迁移期 55-review 修正 + 路径改写）；
+  - `-M` rename：`ab1d8d8..bacaaeb -- axes` R 总 **1567**、**R100=1384**（复核逐个 blob 比对 1384/1384 相同）、R<100=183；
+  - **5 个真删除** = `A10/A3/A4/A9/M2` 的自动索引 `experiments/README.md`（旧 wiki 自动块，非研究证据；各新家各有新索引）；
+  - `STILL not located = 0`（无丢失）；
+  - `archive/wiki-legacy/` = **91 文件**（85 旧轴文件 + `catalog.yaml` + `INDEX.md` + 3 生成式工具 + 1 旧测试）。
+- 复核者另将整合报告关键数字**全部独立复现一致**：1562 / 1380 / 182 / pytest 815 / 827→815 差额 12 /
+  91 rename / 4 文件 / 388 文件 / 83 个 `*.md.md`。
+- **口径差异（non-blocking）**：整合报告称 N1 改写「324 文件 / 1474 处替换」，复核在其声明范围内测得
+  「280 文件 / 1372 处」；差额可由「部分引用被改写成归档路径（文本仍含 `axes/<旧轴>/`，被复核的严格正则排除）」
+  解释，属计数口径差异、非账实不符。
+
+### 8.6 遗留未决（待授权 / M3 接手）
+
+1. **`pathlm/config.py` `chain_mode` 默认 `"latent"`**：该默认选的是已被否证的旧 `T∘T` 路径；
+   改默认 = **行为变更**，本迁移窗口**只报告不擅改**，需产品/引擎 owner 定夺（改默认 or 代码标死）。
+2. **role_map 实名**：46 份 `project.yaml` 的 owner/writer/reviewer/integrator 仍为角色占位；
+   按计划**顺延 M3（轴 lead 指派时）**填实名（`docs/research-schema.md` §4 已注明）。
+3. **backfill 旧 schema stub（4 个）保留**：`axes/6-predict/{6.2,6.4}/experiments/{2512,2513,2521,2523e}-*/README.md`
+   含旧 schema front-matter 与旧轴 id，但正文含测量结论（如 2512「oracle 0.682 ≈ node-1 0.693；deploy 0.547 < direct 0.560」），
+   依「有证据者保留并说明」未删；要清须先把结论迁入新契约。
+4. **`0.014` 噪声带的跨轴身份**：仍被多轴当可排序阈值用（55-review P6 记其来源自否）；
+   属**框架性取舍**，非 integrator / 收尾方自决，**待出资人裁决**。
+
+### 8.7 下一步
+
+- **M3：按大类 spawn 轴 lead**（每轴一个 lead，负责本轴各研究项的 work_packages 派发、独立复核
+  与实名 role_map），见 `.scratch/57-program/TICKET.md`。
+- 本 WP 动作的提交哈希与文件清单记录于收尾报告 WP-M2.9（交付件）。
