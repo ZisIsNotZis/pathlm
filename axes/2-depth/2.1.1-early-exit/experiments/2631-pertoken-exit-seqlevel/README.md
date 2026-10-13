@@ -17,7 +17,7 @@
 
 **本实验的两件交付**：
 1. **承载体**：`DepthARDecoder.step_auto`（逐 token 退出判断进生产解码器）+ `pathlm/exit_policy.py`
-   （策略 / 序列级口径 / 校准表 / 算力账）；单测 `tests/test_axis2_exit_decision.py`（16 条）。
+   （策略 / 序列级口径 / 校准表 / 算力账）；单测 `tests/test_axis2_exit_decision.py`（19 条）。
 2. **主判据的第一次实测**：逐 token 门控退出在**自回归序列级**口径下的质量-算力账。
 
 ## 1 口径（预登记）

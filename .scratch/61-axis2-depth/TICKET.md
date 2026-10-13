@@ -149,8 +149,8 @@
   `score_stream` / `stream_bpc`；校准 `exit_calibration` / `risk_coverage`；算力账 `layerpass_ledger` /
   `depth_histogram`）；共享文件只加**一处**接线：`pathlm/depth_ar.py::DepthARDecoder.step_auto`
   （逐 token 退出判断，`SCHEMA.md` §22.7 的最小接线原则）。
-- 单测 `tests/test_axis2_exit_decision.py`：16 条，`python3 -m pytest tests/test_axis2_exit_decision.py -q`
-  ⇒ **16 passed**。钉住 ①prescribed 排程下 `score_stream` 逐位等于并行 `forward`；②`step_auto` 链与批量
+- 单测 `tests/test_axis2_exit_decision.py`：19 条，`python3 -m pytest tests/test_axis2_exit_decision.py -q`
+  ⇒ **19 passed**。钉住 ①prescribed 排程下 `score_stream` 逐位等于并行 `forward`；②`step_auto` 链与批量
   逐层给出同一套退出深度与读出；③在线策略下二者一致；④阈值边界（min/max、τ=1.0 永不过早退、τ=0 → min_depth）；
   ⑤因果性（改后面的 token 不影响前面位置的退出深度与读出）；⑥no-fill / proj-fill 语义；⑦算力账与直方图；
   ⑧`NeverExit` 的自由生成与既有全深度贪心生成逐 token 相同。
@@ -159,9 +159,9 @@
 
 **序列级实测（WP1-e2e）**：`axes/2-depth/2.1.1-early-exit/experiments/2631-pertoken-exit-seqlevel/`
 - 协议：13M checkpoint（sha256 校验通过）、`batch(seed=2)×20×16`、T=256 ⇒ 320 窗口 / 81,600 预测位置、
-  CPU 纯推理、不取 GPU 锁；11 条臂 + 4 类归因诊断；全部数字在 `results.json`。
+  CPU 纯推理、不取 GPU 锁；14 条臂 + 4 类归因诊断；全部数字在 `results.json`。
 - **口径自洽锚点（决定性）**：`prescribed-k`（k=2..7）与全深度臂逐步复现历史 `depth_curve[k]`，
-  **Δ = ±0.0000**（7 个深度全中）⇒ 新口径是既有判据的严格扩展，不是另起一套量。
+  **Δbpc = 7e-06…4.6e-05**（7 个深度全部在浮点噪声内重合，非 bitwise）⇒ 新口径是既有判据的严格扩展，不是另起一套量。
 - **主判据**：固定前缀前沿（折线插值）同算力比较 ⇒ 门控超出量
   τ=0.3 **+0.2593**、τ=0.6 **+0.1168**、τ=0.9 **+0.0117**、τ=0.95 +0.0035、τ=0.99 **+0.0000**、
   τ=0.999 −0.0002 bpc。⇒ 省得多时门控显著更差（0.25–18.5 倍噪声带），省得少时打平。
@@ -226,14 +226,14 @@
 | F8 | §4 表末列 0.99 行 `0.01×` → `0.00×`（该列定义为超出量/0.014） | `analysis.md` §4 |
 | F9 | 同位置配对新增**逐窗口 SE**与**两半样本**字段（`delta_window_se` / `delta_halves`）并重跑 | `run.py` + `results.json` |
 | F10 | §5 校准表补 depth 5 行；生成一致率区间改 28–71% | `analysis.md` §5/§9 |
-| F11 | `_layer_kv` 填充源改为经 `kv_adapters[k0]`（proj_fill 非恒等不再静默错语义）；新增 `_missing_mask` 让 `fill_kv=False` 的 no-fill 语义在解码器里成立；新增 2 条对拍单测 + 2 条活性断言 | `pathlm/depth_ar.py`、`tests/test_axis2_exit_decision.py` |
+| F11 | `_layer_kv` 填充源改为经 `kv_adapters[k0]`（proj_fill 非恒等不再静默错语义）；新增 `_missing_mask` 让 `fill_kv=False` 的 no-fill 语义在解码器里成立；新增 3 条单测（16→19，含对拍与活性断言） | `pathlm/depth_ar.py`、`tests/test_axis2_exit_decision.py` |
 | F12 | round 1 报告落盘；`conclusion_review` 改写成复核判词 + 处置 + 残余缺口（不再悬空） | `.scratch/61-axis2-depth/REVIEW-1.md`、`project.yaml` |
 | F13 | 臂数 11 → 14；`run_log.txt` 改覆盖模式；删 `bpc_per_window_rounded` 重复字段 | `TICKET §4.5`、`run.py` |
 | F14 | `generate_with_exit` 的 `stats["depths"]` 语义标注改正（= 产出该 token 的位置的退出深度；`layer_passes` 覆盖 prompt + n_new−1 个位置） | `pathlm/exit_policy.py` |
 
 **writer 自测补跑（round 1 未能运行的项；自测 ≠ 独立验收）**：
 
-1. `python3 -m pytest tests/test_axis2_exit_decision.py -q` ⇒ **19 passed**（含 F11 新增 2 条）；
+1. `python3 -m pytest tests/test_axis2_exit_decision.py -q` ⇒ **19 passed**（含 F11 新增 3 条）；
 2. **变异检查 6 处**（每次跑完立即恢复，`git diff` 复核干净）：A `want & ~decided` → `want` ✓抓红、
    B `step_auto` 的 `frozen_self` 取输入态 ✓抓红、C `min_depth` 判断反向 ✓抓红、
    D `_layer_kv` 绕过 `proj_fill` adapter ✓抓红、E `_missing_mask` 恒 None ✓抓红、
@@ -252,7 +252,31 @@
   （pytest / 变异测试 / 实验重跑 / `summary.py --check`）；②`233e978 → 本轮修订` 的**增量**
   （F1–F14 处置是否真的落盘、是否有新缺陷）；③口径与外推边界复查。
 - 依据父级 steering（2026-10-13）：**不长时间等待子 Agent**，先以已落盘结果为准交付；
-  round 2 的判词到达前，§7.2 的处置效力为「writer 自测 + round 1 静态复核」，**不是**新的独立验收。
+  round 2 判词到达前，§7.2 的处置效力为「writer 自测 + round 1 静态复核」，**不是**新的独立验收；round 2 已于 §7.4 返回。
+
+### 7.4 round 2 返回与处置（2026-10-13T14:12:36+08:00，actor：轴 2 lead / fresh 收口 writer）
+
+- 复核对象 = revision `483b181`；报告 = `.scratch/61-axis2-depth/REVIEW-2.md`，重跑证据 =
+  `.scratch/61-axis2-depth/repro-review2/`（`results.json`、`run_log.txt`）。**判词（两层）**：
+  运行证据与科学结论 **PASS**（19 条目标测试 · 全量 834 passed · 4/4 变异被抓红并逐位恢复 · 重跑
+  `results.json` 与仓内 sha256 逐位相同 · `summary.py --check` OK · `fill_kv=True` 生产语义逐位不变）；
+  **处置落盘自洽性 BLOCK**（B1–B4，均文本级账实不符，不改动任何测量数字与实现）。
+- **本轮（收口 writer，单一写入者）逐条处置**：
+  - **B1**：单测计数 16 → 19（`project.yaml` `conclusion`/`conclusion_review`/`change_log`、
+    `analysis.md` §0/§10、`README.md` §1、本文件 §4.5），并订正 §7.2 的「新增 2 条」→「新增 3 条」。
+  - **B2**：本文件 §4.5 臂数 11 → 14。
+  - **B3**：F2 残留区间改「0.0117–0.2593（0.84–18.5×）」并单列 τ=0.95（`analysis.md` §7②/§8、
+    `project.yaml` `argument`③/`failure_analysis`④）；倍数改「超出量是 8.3–18.5 倍」。
+  - **B4**：`analysis.md` §8 U4 与 `project.yaml` gaps 的生成一致率区间改为 **28–71%**（原区间把最高一致率 0.711 排除在外）。
+  - 同批（REVIEW-2 §⑥ non-blocking）：`analysis.md` §3 末「1e-05」按实测最大 4.6e-05 表述并删
+    重复标点；`project.yaml` `argument`② 与 `failure_analysis`④ 的「Δ=±0.0000」统一为「浮点噪声内
+    重合（Δbpc 7e-06…4.6e-05）」；`analysis.md` §0 第 5 点「损伤全部」→「主要」（对齐 §6）；
+    `project.yaml` `conclusion_review` 的「处置（全部已落盘）」改为「round-2 判 BLOCK、B1–B4 已修」。
+  - **N5（实现，未擅改）**：`pathlm/depth_ar.py::_missing_mask` 返回 `[1,1,S+1]` 未 expand 到 head 维
+    （同仓 `_ragged_mask` 显式 expand；CUDA SDPA 内核不广播 bool 掩码的 head 维）；本实验走 CPU、
+    `fill_kv=True` 生产路径未触发 ⇒ 登记为**待测项**（`analysis.md` §8 U7），不擅改实现。
+- 复核者自述的流程事故（并行变异 `depth_ar.py` 写冲突，已逐位还原并串行重跑）与残余未覆盖项见
+  `REVIEW-2.md` §③/§⑦。
 
 ## 8 上报与残余缺口
 
@@ -261,6 +285,8 @@
 - **F5（验收口径）**：`2.1.1` 的 milestone 验收文字（Δ ≤ 0.014）在本轮**字面成立**（τ≥0.99 省 6–12%、
   Δ ≤ 0.0002）但实质判决是否证（被同算力固定截断支配）。**未**自改 milestone 文字，只在 `conclusion`
   同时写明两面；是否把验收改成「相对同算力固定深度前沿的超出量 ≤ 0」请 Main 裁。
-- **残余缺口（不得当作已完成）**：①round 2 独立复核（有 shell）未返回 ⇒ 运行证据目前是 **writer 自测**；
+- **残余缺口（不得当作已完成）**：①round 2 独立复核（有 shell）已返回（§7.4）：运行证据（19/834 测试、
+  4 处变异全红、重跑逐位复现、`summary --check` OK）已获该轮**独立复现**，处置账实不符 B1–B4 已修；
+  仍未在 GPU 上验证 `_missing_mask` 的 head 维广播（§7.4 N5 / `analysis.md` §8 U7）；
   ②`TICKET §2.1` 表里对 `2.1.3`/`2.2.5` 的边界处置已落盘（见上）；③轴 2 其余 7 项、以及 `2.1.1` 的
   WP2/WP3/WP4/WP5/WP6 未执行；④GPU 训练类 WP 顺延（本 Phase 未做任何 GPU 工作、未取锁）。
