@@ -25,10 +25,10 @@ gaps:
 cost_model: "等效理论量：一次前向处理全段 T 个位置（layer-passes = L × T），一次填出 N = r·T 个 PAD 位置 ⇒ tokens-per-forward = N、每生成 token 等效 FLOPs = L × T / N = L / r（以 AR 每 token 的 L 为单位）；每 token 顺序前向次数由 1 降到 1/N。考虑 pipelining：被填位置在全段一次前向内互相并行，整段顺序依赖只剩 1 段。"
 
 role_map:
-  owner: "轴 6 预测轴 lead（待指派）"
-  writer: "6.3.2 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis6-lead（轴 6 预测轴 lead）"
+  writer: "axis6-w-6.3.2（6.3.2 worker，单一写入者）"
+  reviewer: "axis6-reviewer（fresh 独立上下文，不得为本项 writer；复核排在 writer 停止之后）"
+  integrator: "tree-integrator（研究树 integrator；本轴合并与跨轴一致性核对由 axis6-lead 代行）"
 
 milestone:
   output: "一份「一次性 pad 填充」判决包：{stock 因果 AR, pad 填空 r∈{10%,25%,50%}, 因果填空} 在 13M matched-step / 同 token 预算下的序列级 bpc + tokens-per-forward + 每 token 等效 FLOPs，对照全因果 AR，含 n≥2。"

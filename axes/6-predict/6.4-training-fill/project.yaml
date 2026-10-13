@@ -30,10 +30,10 @@ gaps:
 cost_model: "等效理论量：pad / 错误 token / self-fill 不改每 token 的 layer-passes（= L）与每层 FLOPs 主项；proj-fill 的逐层 adapter 额外参数量级每层 <1% d，每 token 额外 ≈ L·d FLOPs；tokens-per-forward 每步 1（填充不改该量）。考虑 pipelining：填充位置占比决定被填位置的同批并行度。"
 
 role_map:
-  owner: "轴 6 预测轴 lead（待指派）"
-  writer: "6.4 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis6-lead（轴 6 预测轴 lead）"
+  writer: "axis6-w-6.4（6.4 worker，单一写入者）"
+  reviewer: "axis6-reviewer（fresh 独立上下文，不得为本项 writer；复核排在 writer 停止之后）"
+  integrator: "tree-integrator（研究树 integrator；本轴合并与跨轴一致性核对由 axis6-lead 代行）"
 
 milestone:
   output: "一份「训练时未来位置填充语义」判决包：{无填充, pad / mask, 错误 token, self-fill, proj-fill, 软 latent} 在 13M matched-step（n≥2）下的 clean bpc + 填入位置可读性 + 提交质量（rescore），对照无填充与 stock 全因果。"

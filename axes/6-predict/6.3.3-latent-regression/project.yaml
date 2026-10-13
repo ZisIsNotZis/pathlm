@@ -25,10 +25,10 @@ gaps:
 cost_model: "等效理论量：一次前向主干 layer-passes = L、回归变换再产 k 个 latent ⇒ 一次前向产出 k 个位置、tokens-per-forward = k、每生成 token 的主干等效 FLOPs ≈ L/k、回归头分摊 ≈ d·d；每 token 顺序前向次数由 1 降到 1/k。考虑 pipelining：同一次前向内 k 个 latent 彼此无顺序依赖、可并行，轮与轮之间是顺序依赖。"
 
 role_map:
-  owner: "轴 6 预测轴 lead（待指派）"
-  writer: "6.3.3 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis6-lead（轴 6 预测轴 lead）"
+  writer: "axis6-w-6.3.3（6.3.3 worker，单一写入者）"
+  reviewer: "axis6-reviewer（fresh 独立上下文，不得为本项 writer；复核排在 writer 停止之后）"
+  integrator: "tree-integrator（研究树 integrator；本轴合并与跨轴一致性核对由 axis6-lead 代行）"
 
 milestone:
   output: "一份「latent regression 批量生成」判决包：{stock 全因果 AR, latent 回归 k∈{2,4} + 贪心读出, 同参数量离散跳头 k∈{2,4}} 在 13M 冻结主干 / 同读出下的 tokens-per-forward、τ、草稿接受率与序列级 bpc，配每 token 等效 FLOPs，含 n≥2。"

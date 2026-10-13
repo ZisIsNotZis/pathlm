@@ -25,10 +25,10 @@ gaps:
 cost_model: "等效理论量：一次去噪前向 = 全段一次双向前向（layer-passes = L × T），K 步 ⇒ 每 token 等效 FLOPs = K × L（以 AR 每 token 的 L 为单位）；tokens-per-forward ≈ T/K；每 token 顺序前向次数由 1 降到 K/T。考虑 pipelining：段内位置全并行、去噪步间是 K 段顺序依赖。"
 
 role_map:
-  owner: "轴 6 预测轴 lead（待指派）"
-  writer: "6.3.1 worker（单一写入者）"
-  reviewer: "fresh 复核者（reviewer 池，不得为本项 writer）"
-  integrator: "研究树 integrator"
+  owner: "axis6-lead（轴 6 预测轴 lead）"
+  writer: "axis6-w-6.3.1（6.3.1 worker，单一写入者）"
+  reviewer: "axis6-reviewer（fresh 独立上下文，不得为本项 writer；复核排在 writer 停止之后）"
+  integrator: "tree-integrator（研究树 integrator；本轴合并与跨轴一致性核对由 axis6-lead 代行）"
 
 milestone:
   output: "一份「扩散并行生成」判决包：{stock 因果 AR, 掩码扩散 K∈{1,4,8,16}, 离散扩散} 在 13M matched-step / 同 token 预算下的序列级 bpc + tokens-per-forward + 每 token 等效 FLOPs，对照全因果 AR，含 n≥2。"
