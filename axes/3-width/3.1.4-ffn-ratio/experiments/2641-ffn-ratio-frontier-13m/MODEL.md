@@ -1,6 +1,9 @@
 # 2641 · 权重与证据清单（权重本身不入库）
 
 本清单由 `collect_logs.py` 在训练结束后生成；`code_frozen_during_training = True`（各臂记录的 `run.py` 哈希逐位相同）。
+口径：该哈希是进程**结束时**从磁盘读到的 `run.py` 哈希；U4-s0 / U2-s0 两臂训练时加载的是修订前版本
+（差一个只用于评测阶段的派生审计字段），其哈希由训练后 `--no-train` 重评写入，bpc 与首评逐位一致
+（详见 `analysis.md` §5.3/§8 与 `.scratch/64-axis3-width/TICKET.md` §7.2.1）。
 
 ## 臂与逐层 FFN 隐藏维
 
