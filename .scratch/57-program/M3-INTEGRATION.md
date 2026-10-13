@@ -257,17 +257,17 @@ perplexity 操作化、WP 顺序、`2.1.3`/`2.2.5` 是否合并）、轴 3 ×2�
 
 分 2 个主题提交（均为**显式路径** `git add`，`git commit -F -` heredoc）：
 
-> 提交哈希与 `git show --stat` 见 §6.1 / §6.2（本报告落盘后执行；提交后工作树干净、staged 列表为空）。
-
 ### 6.1 提交 A · 审计留痕补齐
-路径：`.scratch/56-restructure/REVIEW-foundation-r2.md`、`.scratch/56-restructure/wp-reports/WP-M2.9-audit-commit.md`、
-`.scratch/61-axis2-depth/{PHASE-A-REPORT,REVIEW-4,REPAIR-round3}.md`、`.scratch/62-axis1-time/{PHASE-A-REPORT,CLEANUP-final}.md`、
-`.scratch/63-axis6-predict/PHASE-A-REPORT.md`、`.scratch/64-axis3-width/PHASE-A-REPORT.md`、
-`.scratch/65-axis4-moe/PHASE-A-REPORT.md`、`.scratch/66-axis5-quant/{PHASE-A-REPORT,REVIEW-2}.md`。
+`959a186da299412721cdc91159a8b589ef28a8d4`（`959a186`）· **12 files changed, 2175 insertions(+)**
+（12 个 create，见 §1.1 表 1–12；提交后 `git diff --cached --name-only | wc -l` = 0）。
 
 ### 6.2 提交 B · M3 集成产出
-路径：`.scratch/57-program/FRAMEWORK-DECISIONS.md`、`.scratch/57-program/M3-INTEGRATION.md`、
-`docs/research-schema.md`、`docs/structure.md`。
+`1c755f3b271dc8e8e8910a4a9aa4bc9f4216c26c`（`1c755f3`）· **4 files changed, 528 insertions(+), 2 deletions(-)**
+（`FRAMEWORK-DECISIONS.md`、`M3-INTEGRATION.md`、`docs/research-schema.md`、`docs/structure.md`）。
+
+> 另有一个后续小提交 C · 报告补记上述提交哈希（本 §6 的补记），不涉内容变更。
+> 两次主题提交后：`git status --short` 空、`git diff --cached --name-only | wc -l` = 0；
+> 提交后复跑 `check_tree.py` / `summary.py --check` 仍全绿（见 §2）。
 
 ---
 
