@@ -143,7 +143,9 @@ ended:         # 时间
 change_log: [] # 变更
 ```
 
-> 上表是**最小字段集**；**完整、权威**的字段/取值/纪律见 `docs/research-schema.md`。
+> 上表是**最小字段集**；**完整、权威**的字段/取值/纪律（含复核与收口纪律 `docs/research-schema.md` §11：
+> `conclusion_review` 只写当前判词、返回前兄弟字段一致性扫描、复核累计 ≤2 轮、按被改对象定验证门）
+> 见 `docs/research-schema.md`。
 
 ## 11 汇总脚本
 小脚本扫所有 `project.yaml` → 输出表：`id / 轴 / 起 / 止 / 完成? / 状态 / 结论 / 结论对不对 / 实验 / 论证 / 遗漏`。

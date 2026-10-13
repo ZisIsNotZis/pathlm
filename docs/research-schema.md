@@ -48,7 +48,7 @@
 | `status` | str | ✅ | `未开始` / `进行中` / `已完成` / `被否证`（见 §7） |
 | `conclusion` | str | 条件 | `status ∈ {已完成, 被否证}` 时必填；否则可空 |
 | `failure_analysis` | str | ✅ | **失败归因**：研究判失败/被否证时，必须先区分是 **设计问题 / 结构问题 / innovation 本身失败** 中的哪一类（可并列）并给证据，不得只说「没做出来」。触发与非空要求见 §7；未判失败时写 `""` |
-| `conclusion_review` | str | ✅ | 这个结论**看上去对吗**：自评 + 独立复核的判词 |
+| `conclusion_review` | str | ✅ | 这个结论**看上去对吗**：自评 + **当前（最后一轮）**独立复核判词；历轮判词写对应 ticket，不在本字段累积（见 §11.1） |
 | `experiments` | list | ✅ | 实验目录（仓库内相对路径，必须存在）；空列表合法 |
 | `argument` | str | ✅ | 结论**是怎么论证出来的**（逻辑链 + 对照） |
 | `gaps` | list | ✅ | 遗漏 / 未测项（列成「下一步最小实验 + 成本」或显式空列表） |
@@ -162,3 +162,39 @@ python3 tools/check_schema.py       # 兼容入口：转调 check_tree.py（生�
 - 不重复造轮子 / 先站巨人肩膀：`SCHEMA.md` §18 / §21（`sota_baseline` 字段即此处产物）。
 - 一格的「预算内极致」七问：`SCHEMA.md` §23。
 - 协作/编排制度与文档地图：`AGENTS.md`。
+
+## 11. 复核与收口纪律（字段级）
+
+> 与 `SCHEMA.md` §14 / §14b 的分工：§14/§14b 规定「**要不要**复核、**什么时候**复核」；
+> 本节规定复核**返工几轮、判词写哪、收口前扫什么、改动跑哪些门**。
+
+### 11.1 `conclusion_review` 只写当前判词
+
+- `conclusion_review` 写**自评 + 当前（最后一轮）**独立复核的判词；**历轮**判词及其处置过程写
+  对应 ticket（`.scratch/<ticket>/**`），**不得**在同一字段累积多轮判词。
+- 理由：同一字段累积多轮时，历轮的旧数字/旧结论会与正文（`conclusion` / `argument` / WP）冲突，
+  产生「账实不符」的收口级缺陷。
+- 既有已累积多轮的条目保持原样、不回填；本纪律约束其后的**每次修订**。
+
+### 11.2 返回前做「兄弟字段一致性扫描」
+
+- 改动某个字段后，**返回前**把**同一事实**在各兄弟字段逐处对平：`purpose` / `innovation` /
+  `expected_effect` / `validation` / `objective_criteria` / `falsification` / `conclusion` /
+  `failure_analysis` / `conclusion_review` / `argument` / `status` / `experiments`，以及该研究项的
+  `analysis.md`。数字区间一致、指针不悬空、同一事实不在两处各写一遍（一处写、他处指针，见
+  `AGENTS.md` §2.1）。
+
+### 11.3 复核轮数上限：累计 ≤2 轮
+
+- 一次派发内的独立复核（含返工后的再复核）**累计 ≤2 轮**；2 轮仍未 PASS ⇒ 如实登记 blocker 返回，
+  不再开第 3 轮；续做由**新的派发**（新预算）承担。
+- 每轮复核必须是**新的 fresh 上下文**（`SCHEMA.md` §14 / §14b）；返工后不得由同一个复核者自裁。
+
+### 11.4 改动的验证范围（按被改对象定门）
+
+- 改**共享文件**（`pathlm/**`、`tests/**`、`tools/**`）⇒ 必跑全量 `python3 -m pytest tests/ -q`
+  作为无回归门。
+- 只改**文本/指针**（`project.yaml` 正文、`.scratch/**` 留痕、文档，且不含上面三类共享文件）⇒
+  writer 自检的最低门 = `python3 tools/check_tree.py` + `python3 tools/summary.py --check` +
+  命中文件的目标单测 + §11.2 的兄弟字段扫描；**不必**重跑全量 `pytest tests/`。
+- 两类改动都必须过 `git diff --check`（文本）并如实记录命令与真实输出。
