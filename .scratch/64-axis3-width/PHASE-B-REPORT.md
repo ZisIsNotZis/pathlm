@@ -47,7 +47,7 @@
 | `3.1.4` 前馈隐藏比（含逐层变化） | **已完成**（复核门本轮闭合） | Phase A 的 2641 判决包（7 臂 × 12k）；本轮补：`REVIEW-2B.md` 实跑 6 项 = **PASS**；`conclusion_review` 按 §11.1 改为当前判词 | `REVIEW-1.md`（FAIL）+ `REVIEW-2.md`（FAIL，因复核者无 shell）+ `REVIEW-2B.md`（**PASS**） |
 | `3.1.5` 通道极化 / 稀疏激活 | 进行中（实现已落、臂未跑） | `experiments/2644-channel-sparsity-13m`：预登记契约 + FFN 前向 patch 实现（逐 token top-k / 固定前缀对照）+ 单测；**四臂未跑** | 无（无读数）；下一轮派 |
 | `3.2.1` 读出的重参数化 | **已完成** | 本轮只维持（旧格迁入的 5 个实验 + 判据）；`falsification`/`conclusion` 的带声明核对为已具备 | 此前轮次（本轮未重派） |
-| `3.2.2` 逐出口读出 | 见 §5（本轮末尾派单） | 契约 + 实现 + 单测（按 `DISPATCH-B.md` §W-B2） | 见 §5 |
+| `3.2.2` 逐出口读出 | 进行中（实现已落、60 步冒烟 rc=0、12k 臂未跑） | `experiments/2645-per-exit-readout-13m`：预登记契约 + depth-AR 形态实现（`T`/`PE`/`IND`/`LR`）+ 单测 + 三臂冒烟 | 无（无 12k 读数）；下一轮派 |
 | `3.2.3` tied vs untied embedding | 进行中（实现已落、臂未跑） | `experiments/2643-tied-untied-13m`：预登记契约 + 独立 unembed / 部分绑定两种读出的实验目录内实现 + 单测 + 与 `2641` 锚的**复用门**（逐位初始化对照 + 逐字段 config 对照）；**两臂未跑** | 无（无读数）；下一轮派 |
 
 ---
@@ -100,7 +100,9 @@ cd ../../3.2.3-tied-untied/experiments/2643-tied-untied-13m && python3 -m pytest
 
 - 契约 = `.scratch/64-axis3-width/DISPATCH-B.md` §W-B2（基底 = depth-AR 形态；锚 = `23c-H2-w0-12k` 的 1.8582 / `tf@4` 0.9694 / `tf@6` 0.9938；
   臂 = `T` 共享 tied / `PE` 每出口 d×d / `IND` 每出口独立表 / `LR` 每出口低秩；判据 = 各出口 tf@k 为主判（率类 CI）+ 末层质量不越带 + 读出参数量单列）。
-- 结果：见 `.scratch/64-axis3-width/TICKET.md` §11 与 `axes/3-width/3.2.2-per-exit-readout/project.yaml` 的当前事实。
+- 本轮结果：**契约 + 实现 + 单测 + 三臂（`T`/`PE`/`IND`）60 步冒烟 rc=0 已落**（`experiments/2645-per-exit-readout-13m`）；
+  **12k 臂因 GPU 互斥锁饥饿未跑出读数** ⇒ `status: 进行中`、`conclusion` 留空（`axes/3-width/3.2.2-per-exit-readout/project.yaml`），
+  下一步最小实验与等效成本见其 `gaps`。
 
 ---
 
