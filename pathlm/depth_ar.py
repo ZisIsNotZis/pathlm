@@ -48,6 +48,11 @@ class DepthARConfig:
     n_heads: int = 4
     seq_len: int = 256
     mlp_mult: int = 4
+    # 逐层 FFN 隐藏宽 schedule（ticket 67 E2/E4 统一）：None（缺省）= 所有层用
+    # cfg.mlp_mult·d_model（逐位还原现状）；给定时为**每层 FFN 隐藏宽**（任意正
+    # 整数，长度 == n_layers），直接用作 `mlp[0]` 的 out_features ⇒ 既表达「逐层
+    # mlp_mult」（值 = mult·d_model）也表达等参数对照所需的任意整数宽（E4）。
+    mlp_hidden_sched: list[int] | None = None
     dropout: float = 0.0
     # 输入侧 norm cap（与 PathLM 约定一致；只 cap embedding 输入，不 cap 残差流）
     norm_cap: float = 1.0
@@ -300,7 +305,8 @@ class ParallelBlock(nn.Module):
     dense=True 形态下开放，退出/填充语义下的并行接线未定义。
     """
 
-    def __init__(self, cfg: ModelConfig, share_ln: bool = True):
+    def __init__(self, cfg: ModelConfig, share_ln: bool = True,
+                 mlp_hidden: int | None = None):
         super().__init__()
         d = cfg.d_model
         self.n_heads = cfg.n_heads
@@ -310,9 +316,10 @@ class ParallelBlock(nn.Module):
             self.ln2 = nn.LayerNorm(d)
         self.qkv = nn.Linear(d, 3 * d)
         self.proj = nn.Linear(d, d)
+        h = cfg.mlp_mult * d if mlp_hidden is None else int(mlp_hidden)
         self.mlp = nn.Sequential(
-            nn.Linear(d, cfg.mlp_mult * d), nn.GELU(),
-            nn.Linear(cfg.mlp_mult * d, d), nn.Dropout(cfg.dropout),
+            nn.Linear(d, h), nn.GELU(),
+            nn.Linear(h, d), nn.Dropout(cfg.dropout),
         )
 
     def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
@@ -407,10 +414,11 @@ class TopKBlock(Block):
     #: `aux["attn_sparse"]`）；线性注意力块同名字段用 "attn_linear"。
     telemetry_kind = "attn_sparse"
 
-    def __init__(self, cfg: ModelConfig, topk: int):
+    def __init__(self, cfg: ModelConfig, topk: int,
+                 mlp_hidden: int | None = None):
         if topk < 1:
             raise ValueError(f"topk must be >= 1, got {topk}")
-        super().__init__(cfg)
+        super().__init__(cfg, mlp_hidden=mlp_hidden)
         self.topk = int(topk)
         self.register_buffer(
             "causal", torch.tril(torch.ones(cfg.seq_len, cfg.seq_len,
@@ -548,16 +556,18 @@ class GQABlock(KVHeadProjectionMixin, nn.Module):
       （无退出/无填充）形态下开放；评测期可见性掩码 `attn_mask` 支持。
     """
 
-    def __init__(self, cfg: ModelConfig, n_kv_heads: int):
+    def __init__(self, cfg: ModelConfig, n_kv_heads: int,
+                 mlp_hidden: int | None = None):
         super().__init__()
         d = cfg.d_model
         self.ln1 = nn.LayerNorm(d)
         self.ln2 = nn.LayerNorm(d)
         self._init_kv_projection(cfg, n_kv_heads)
         self.proj = nn.Linear(d, d)
+        h = cfg.mlp_mult * d if mlp_hidden is None else int(mlp_hidden)
         self.mlp = nn.Sequential(
-            nn.Linear(d, cfg.mlp_mult * d), nn.GELU(),
-            nn.Linear(cfg.mlp_mult * d, d), nn.Dropout(cfg.dropout),
+            nn.Linear(d, h), nn.GELU(),
+            nn.Linear(h, d), nn.Dropout(cfg.dropout),
         )
 
     def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
@@ -599,7 +609,8 @@ class ComposableBlock(KVHeadProjectionMixin, nn.Module):
     telemetry_kind = "carry_channel"
 
     def __init__(self, cfg: ModelConfig, n_kv_heads: int | None = None,
-                 carry_state_dim: int | None = None, carry_on: bool = False):
+                 carry_state_dim: int | None = None, carry_on: bool = False,
+                 mlp_hidden: int | None = None):
         super().__init__()
         d = cfg.d_model
         self.carry_on = bool(carry_on)
@@ -607,9 +618,10 @@ class ComposableBlock(KVHeadProjectionMixin, nn.Module):
         self.ln2 = nn.LayerNorm(d)
         self._init_kv_projection(cfg, n_kv_heads)
         self.proj = nn.Linear(d, d)
+        h = cfg.mlp_mult * d if mlp_hidden is None else int(mlp_hidden)
         self.mlp = nn.Sequential(
-            nn.Linear(d, cfg.mlp_mult * d), nn.GELU(),
-            nn.Linear(cfg.mlp_mult * d, d), nn.Dropout(cfg.dropout),
+            nn.Linear(d, h), nn.GELU(),
+            nn.Linear(h, d), nn.Dropout(cfg.dropout),
         )
         if self.carry_on:
             # 读出增益按**记忆槽**头结构定形（与 `CarryChannelBlock` 同口径；缺省
@@ -933,8 +945,9 @@ class LinearAttnBlock(Block):
 
     telemetry_kind = "attn_linear"
 
-    def __init__(self, cfg: ModelConfig, chunk: int = DEFAULT_LINEAR_CHUNK):
-        super().__init__(cfg)
+    def __init__(self, cfg: ModelConfig, chunk: int = DEFAULT_LINEAR_CHUNK,
+                 mlp_hidden: int | None = None):
+        super().__init__(cfg, mlp_hidden=mlp_hidden)
         self.chunk = int(chunk)
 
     def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,
@@ -1674,8 +1687,9 @@ class CarryChannelBlock(Block):
 
     telemetry_kind = "carry_channel"
 
-    def __init__(self, cfg: ModelConfig, carry_state_dim: int | None = None):
-        super().__init__(cfg)
+    def __init__(self, cfg: ModelConfig, carry_state_dim: int | None = None,
+                 mlp_hidden: int | None = None):
+        super().__init__(cfg, mlp_hidden=mlp_hidden)
         # 读出增益按**记忆槽**的头结构定形（不是注意力的头）：契约 U1 的容量轴
         # 让两者解耦（见 `DepthARConfig.carry_state_dim`）。缺省时两者相等，逐位
         # 还原 ticket 35 的 v1 口径。
@@ -2006,6 +2020,18 @@ class DepthARModel(nn.Module):
         if cfg.readout_dims is not None and not 0 < cfg.readout_dims <= d:
             raise ValueError(
                 f"readout_dims must be in (0, {d}], got {cfg.readout_dims}")
+        # 逐层 FFN 隐藏宽 schedule（E2/E4，ticket 67）：长度与层数对齐、每项为正
+        # 整数，否则拒绝——避免「长度错位/非正宽」静默产生退化块（缺省 None 不
+        # 触发任何分支，逐位还原现状）。
+        if cfg.mlp_hidden_sched is not None:
+            if len(cfg.mlp_hidden_sched) != cfg.n_layers:
+                raise ValueError(
+                    "mlp_hidden_sched 长度必须等于 n_layers，收到 "
+                    f"{len(cfg.mlp_hidden_sched)} vs {cfg.n_layers}")
+            for _i, _v in enumerate(cfg.mlp_hidden_sched):
+                if not isinstance(_v, int) or isinstance(_v, bool) or _v < 1:
+                    raise ValueError(
+                        f"mlp_hidden_sched[{_i}] 必须是 >= 1 的整数，收到 {_v!r}")
         # Tied E=U：embedding 行 norm ~1（init std = d^-0.5），U = E^T（fp32 头）
         self.embed = nn.Embedding(vocab_size, d)
         nn.init.normal_(self.embed.weight, std=d ** -0.5)
@@ -2164,37 +2190,45 @@ class DepthARModel(nn.Module):
         # 现在可组合——两者同时开时走 `ComposableBlock`（下面），单开时仍走
         # `GQABlock` / `CarryChannelBlock` 快路径（逐位不变）。
         _gqa = cfg.n_kv_heads is not None and cfg.n_kv_heads < cfg.n_heads
+        # 逐层 FFN 隐藏宽（E2/E4）：None = 缺省（各块回落 cfg.mlp_mult·d_model），
+        # 否则按层号取 schedule 值。缺省 None 时 _mh(i) 恒 None ⇒ 各块构造逐位不变。
+        _hid = None if cfg.mlp_hidden_sched is None else list(cfg.mlp_hidden_sched)
+
+        def _mh(i: int) -> int | None:
+            return None if _hid is None else _hid[i]
+
         if cfg.attn_sparse_k > 0:
-            self.blocks = nn.ModuleList(TopKBlock(mcfg, cfg.attn_sparse_k)
-                                        for _ in range(cfg.n_layers))
+            self.blocks = nn.ModuleList(TopKBlock(mcfg, cfg.attn_sparse_k, _mh(i))
+                                        for i in range(cfg.n_layers))
         elif cfg.attn_linear:
-            self.blocks = nn.ModuleList(LinearAttnBlock(mcfg, cfg.linear_chunk)
-                                        for _ in range(cfg.n_layers))
+            self.blocks = nn.ModuleList(LinearAttnBlock(mcfg, cfg.linear_chunk, _mh(i))
+                                        for i in range(cfg.n_layers))
         elif cfg.carry_rule is not None and _gqa:
             # GQA × 写入通道同时开——ENG1 前块类二选一 ⇒ 该组合在引擎里不存在
             self.blocks = nn.ModuleList(
                 ComposableBlock(mcfg, cfg.n_kv_heads, cfg.carry_state_dim,
-                                carry_on=True)
-                for _ in range(cfg.n_layers))
+                                carry_on=True, mlp_hidden=_mh(i))
+                for i in range(cfg.n_layers))
             self._wire_carry(cfg)
         elif _gqa:
             # KV 头共享（契约 S）：n_kv_heads == n_heads 时走下面的 stock Block，
             # 因此「缺省 / MHA」与 v1 逐位一致
-            self.blocks = nn.ModuleList(GQABlock(mcfg, cfg.n_kv_heads)
-                                        for _ in range(cfg.n_layers))
+            self.blocks = nn.ModuleList(GQABlock(mcfg, cfg.n_kv_heads, _mh(i))
+                                        for i in range(cfg.n_layers))
         elif cfg.carry_rule is not None:
             # 显式写入通道（契约 U）：与 stock `Block` 同构 + 每层一个读出增益
-            self.blocks = nn.ModuleList(CarryChannelBlock(mcfg, cfg.carry_state_dim)
-                                        for _ in range(cfg.n_layers))
+            self.blocks = nn.ModuleList(CarryChannelBlock(mcfg, cfg.carry_state_dim, _mh(i))
+                                        for i in range(cfg.n_layers))
             self._wire_carry(cfg)
         elif cfg.topology == "parallel":
-            self.blocks = nn.ModuleList(ParallelBlock(mcfg, share_ln=True)
-                                        for _ in range(cfg.n_layers))
+            self.blocks = nn.ModuleList(ParallelBlock(mcfg, share_ln=True, mlp_hidden=_mh(i))
+                                        for i in range(cfg.n_layers))
         elif cfg.topology == "parallel-dual-ln":
-            self.blocks = nn.ModuleList(ParallelBlock(mcfg, share_ln=False)
-                                        for _ in range(cfg.n_layers))
+            self.blocks = nn.ModuleList(ParallelBlock(mcfg, share_ln=False, mlp_hidden=_mh(i))
+                                        for i in range(cfg.n_layers))
         else:
-            self.blocks = nn.ModuleList(Block(mcfg) for _ in range(cfg.n_layers))
+            self.blocks = nn.ModuleList(Block(mcfg, mlp_hidden=_mh(i))
+                                        for i in range(cfg.n_layers))
         # dense 拓扑（契约 E）：层间加权和的层权 α，打包 1-D（层 k 的源 j 索引
         # k(k−1)/2 + j）。初始化为「只取当前层」（α_{k,k−1} = 1、其余 0）⇒ 层 k
         # 输入 = h_{k−1}，起步与 sequential 臂逐位等价（单测钉住）。该点**非鞍点**：

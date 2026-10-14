@@ -3472,3 +3472,112 @@ def test_carry_e1_validation_and_decay_plumbing():
         l1 = m1(x)[1]["depth_logits"][-1]
         l5 = m5(x)[1]["depth_logits"][-1]
     assert not torch.equal(l1, l5)
+
+
+# ---------- E2/E4（ticket 67）：逐层 FFN 隐藏宽 schedule ----------
+
+def _mlp_widths(model) -> list[int]:
+    """每层 FFN 隐藏宽（= `mlp[0]` 的 out_features）。"""
+    return [int(b.mlp[0].weight.shape[0]) for b in model.blocks]
+
+
+def test_mlp_hidden_sched_default_is_bitwise_identical():
+    """能力面硬门：缺省（`mlp_hidden_sched=None`）逐位还原现状。
+
+    把「缺省」与「显式逐层 = 全局 `mlp_mult·d`」两种写法对拍：参数全等、前向 loss
+    逐位相等。若缺省路径被新分支改变（例如误加了乘子/改了初始化顺序）即红。"""
+    base = dict(d_model=16, n_layers=3, n_heads=2, seq_len=12, mlp_mult=4)
+    torch.manual_seed(0)
+    m_def = DepthARModel(DepthARConfig(**base), vocab_size=10)
+    torch.manual_seed(0)
+    m_now = DepthARModel(DepthARConfig(**base, mlp_hidden_sched=None), vocab_size=10)
+    torch.manual_seed(0)
+    m_expl = DepthARModel(DepthARConfig(**base, mlp_hidden_sched=[64, 64, 64]),
+                          vocab_size=10)
+    sd_def, sd_now, sd_expl = (m.state_dict() for m in (m_def, m_now, m_expl))
+    assert set(sd_def) == set(sd_expl), "显式等价 schedule 不应增删参数"
+    for k in sd_def:
+        assert torch.equal(sd_def[k], sd_now[k]), f"缺省 vs None 不一致：{k}"
+        assert torch.equal(sd_def[k], sd_expl[k]), f"缺省 vs 显式等价 schedule 不一致：{k}"
+    torch.manual_seed(1)
+    x = torch.randint(0, 10, (2, 12))
+    for m in (m_def, m_now, m_expl):
+        m.eval()
+    with torch.no_grad():
+        loss_def, _ = m_def(x)
+        loss_now, _ = m_now(x)
+        loss_expl, _ = m_expl(x)
+    assert torch.equal(loss_def, loss_now) and torch.equal(loss_def, loss_expl)
+
+
+def test_mlp_hidden_sched_reaches_every_layer_and_changes_forward():
+    """schedule 真到达每层：`mlp[0].weight.shape[0]` / `mlp[2].weight.shape[1]` 逐层
+    等于 schedule 值，且 `mlp[2]` 回到 d_model；不同 schedule 真的改变前向（非死开关）。"""
+    sched = [64, 32, 48]
+    base = dict(d_model=16, n_layers=3, n_heads=2, seq_len=12, mlp_mult=4)
+    torch.manual_seed(0)
+    m = DepthARModel(DepthARConfig(**base, mlp_hidden_sched=sched), vocab_size=10)
+    assert _mlp_widths(m) == sched
+    for b, h in zip(m.blocks, sched):
+        assert int(b.mlp[2].weight.shape[1]) == h
+        assert int(b.mlp[2].weight.shape[0]) == 16
+    torch.manual_seed(0)
+    m_same = DepthARModel(DepthARConfig(**base, mlp_hidden_sched=[64, 64, 64]),
+                          vocab_size=10)
+    for mm in (m, m_same):
+        mm.eval()
+    x = torch.randint(0, 10, (2, 12))
+    with torch.no_grad():
+        out_a = m(x)[0]
+        out_b = m_same(x)[0]
+    assert not torch.equal(out_a, out_b), "schedule 改变了形状却没改变前向（死开关）"
+
+
+def test_mlp_hidden_sched_wires_all_block_variants():
+    """`Block` 的 4 个变体 + 其余块类都接受逐层隐藏宽（否则是「开关开着、某臂没接」）。"""
+    sched = [64, 32, 48]
+    variants = [
+        ({}, "Block"),
+        ({"dense": True, "topology": "parallel"}, "ParallelBlock"),
+        ({"dense": True, "n_kv_heads": 1}, "GQABlock"),
+        ({"dense": True, "attn_linear": True}, "LinearAttnBlock"),
+        ({"dense": True, "attn_sparse_k": 2}, "TopKBlock"),
+        ({"carry_rule": "plain"}, "CarryChannelBlock"),
+        ({"dense": True, "carry_rule": "delta", "n_kv_heads": 1}, "ComposableBlock"),
+    ]
+    for extra, cls in variants:
+        torch.manual_seed(0)
+        m = DepthARModel(DepthARConfig(d_model=16, n_layers=3, n_heads=2, seq_len=12,
+                                       mlp_mult=4, mlp_hidden_sched=sched, **extra),
+                         vocab_size=10)
+        assert type(m.blocks[0]).__name__ == cls
+        assert _mlp_widths(m) == sched, f"{cls} 未接 schedule"
+
+
+def test_mlp_hidden_sched_validation_and_cli_plumbing():
+    """能力面（§22.8）：长度错位/非正宽显式报错；CLI → config 真接通（开关不是死的）。"""
+    base = dict(d_model=16, n_layers=3, n_heads=2, seq_len=12, mlp_mult=4)
+    with pytest.raises(ValueError, match="mlp_hidden_sched 长度必须等于 n_layers"):
+        DepthARModel(DepthARConfig(**base, mlp_hidden_sched=[16, 16]), 10)
+    with pytest.raises(ValueError, match=r"mlp_hidden_sched\[1\]"):
+        DepthARModel(DepthARConfig(**base, mlp_hidden_sched=[16, 0, 16]), 10)
+    with pytest.raises(ValueError, match=r"mlp_hidden_sched\[0\]"):
+        DepthARModel(DepthARConfig(**base, mlp_hidden_sched=[-1, 16, 16]), 10)
+
+    import argparse
+    from train_depth_ar import build_depthar_config, _parse_int_sched
+    ns = argparse.Namespace(d=16, layers=3, heads=2, seq_len=12, mlp_mult=4,
+                            mlp_hidden_sched="64,32,48", dense=False,
+                            gate_bias_init=-2.0, topology="sequential",
+                            fill_kv=True, proj_fill=False, readout_dims=None,
+                            readout_gated=False, readout_linear_resid=False,
+                            attn_sparse_k=0, attn_linear=False, linear_chunk=64,
+                            train_window=0, train_anchors=0, n_kv_heads=None,
+                            carry_write="none", carry_chunk=64, carry_state_dim=None)
+    cfg = build_depthar_config(ns)
+    assert cfg.mlp_hidden_sched == [64, 32, 48]
+    # 历史 Namespace（无该字段）⇒ None（不误开、逐位还原）
+    ns_old = argparse.Namespace(**{k: v for k, v in vars(ns).items()
+                                   if k != "mlp_hidden_sched"})
+    assert build_depthar_config(ns_old).mlp_hidden_sched is None
+    assert _parse_int_sched(None) is None and _parse_int_sched("") is None

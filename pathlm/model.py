@@ -59,7 +59,7 @@ def repr_decorr_penalty(h_prev: torch.Tensor, h: torch.Tensor,
 class Block(nn.Module):
     """Pre-LN causal transformer block ('enhancer' in design terms)."""
 
-    def __init__(self, cfg: ModelConfig):
+    def __init__(self, cfg: ModelConfig, mlp_hidden: int | None = None):
         super().__init__()
         d = cfg.d_model
         self.n_heads = cfg.n_heads
@@ -67,9 +67,12 @@ class Block(nn.Module):
         self.ln2 = nn.LayerNorm(d)
         self.qkv = nn.Linear(d, 3 * d)
         self.proj = nn.Linear(d, d)
+        # FFN 隐藏宽（ticket 67 E2/E4）：mlp_hidden 给定时用它（逐层 schedule，任意
+        # 正整数），None 回落全局 cfg.mlp_mult（缺省 = 逐位还原现状）。
+        h = cfg.mlp_mult * d if mlp_hidden is None else int(mlp_hidden)
         self.mlp = nn.Sequential(
-            nn.Linear(d, cfg.mlp_mult * d), nn.GELU(),
-            nn.Linear(cfg.mlp_mult * d, d), nn.Dropout(cfg.dropout),
+            nn.Linear(d, h), nn.GELU(),
+            nn.Linear(h, d), nn.Dropout(cfg.dropout),
         )
 
     def forward(self, x: torch.Tensor, attn_mask: torch.Tensor | None = None,

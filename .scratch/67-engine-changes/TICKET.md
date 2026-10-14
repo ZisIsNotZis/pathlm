@@ -49,7 +49,7 @@
 | 需要什么 | `DepthARConfig` / `ModelConfig` 的 `mlp_mult` 由全局标量扩展为**逐层 schedule**（如 `mlp_mult_sched: list[int] | None`）。 |
 | 为什么 | 宽度轴 `3.1.2`（逐层 d_model）与 `3.1.4`（逐层 FFN 隐藏比）都以「逐层宽度」为核心干预；引擎没有该杠杆时，各实验只能在**实验目录内**用「构造后切片」自造（本轮 `3.1.4` 的 2641 即如此），代价是每个实验都要自证实现等值、且不同实验的切片实现可能不一致。 |
 | 最小 patch 描述 | `pathlm/depth_ar.py::DepthARModel.__init__` 构造 `self.blocks` 处逐层传入（`Block.__init__` 增可选 `mlp_mult: int | None = None`，缺省回落 `cfg.mlp_mult`）；`train_depth_ar.py` 加 `--mlp-mult-sched "4,3,2,2,2,1,1,1"`（缺省 None = 逐位还原现状）；配套单测 2 条（缺省与现状逐位同前向；schedule 真到达每层 `mlp[0].weight.shape[0]`）。**约 30–50 行，只动 `pathlm/depth_ar.py` + `train_depth_ar.py`**。风险：`Block` 有 4 个变体（`ParallelBlock`/`GQA`/`Composable`/`LinearAttn`）各自内联 `mlp_mult`，需一并接线。 |
-| 授权状态 | **未授权**（C3 已建通道；待出资人逐项批准） |
+| 授权状态 | **已执行**（`2026-10-14T21:15:00+08:00`，engine-writer，`pathlm/**` 单一写入者，code 锁 `/tmp/pathlm_code.lock`；Main 在本 run 授权 E2+E3）。实际落点（与 E4 统一，见下）：字段 = `DepthARConfig.mlp_hidden_sched: list[int] | None`（**逐层 FFN 隐藏宽，任意正整数**；缺省 None = 各层回落 `cfg.mlp_mult·d_model`，逐位还原现状）；值 = `mult·d` 即逐层 `mlp_mult`，任意整数即 E4 所需等参数宽度；CLI = `--mlp-hidden-sched`（逗号分隔）；`Block` 基类 + 4 变体（`ParallelBlock`/`GQABlock`/`ComposableBlock`/`LinearAttnBlock`）与继承类（`TopKBlock`/`CarryChannelBlock`）全部接线。见 `.scratch/67-engine-changes/E2-E3-ENGINE-REPORT.md`。 |
 
 ### E3 · 轴 6 · 二级条件头 + 树注意力验证（需重训头）
 
@@ -61,6 +61,18 @@
 | 最小 patch 描述 | 新增 `transforms_chain2`（d×d）与 `chain_cat2`（2d×d），输入 `chain_cat2(cat([h_{N+1}, embed(c)]))`（`h_{N+1}` = 验证前向已算出的 N+1 位置主干状态，EAGLE 式特征复用、不需额外主干前向）；损失 = 对 t_{i+3} 的 CE + conf BCE（复用 `_node_loss`），加进 `PathConfig` 开关（默认关）；配套 `Decoder`/`decode_spec` 的树验证路径（B=K 行 + 树注意力）。**须重训头**（~1 GPU 小时量级）。 |
 | 授权状态 | **未授权**（C3 已建通道；待出资人逐项批准） |
 
+### E4 · 轴 5 · 等参数对照的构造能力（逐层 FFN 隐藏宽 schedule，任意整数）
+
+| 项 | 内容 |
+|---|---|
+| 来源 | `.scratch/66-axis5-quant/TICKET.md` §9.1 / §13 F4（Phase B 登记）；`axes/5-quant/5.1-kv-quant/project.yaml::WP3`、`axes/5-quant/5.4-low-rank/project.yaml::gaps` |
+| 需要什么 | 一个能**逐位复原参数差**的构造杆：头共享族（GQA/MQA）比同形 MHA 少参数（实测 GQA −1 184 256 = −8.75%、MQA −1 381 632 = −10.21%），要把 Δparams 还给 FFN。GQA 需 +1 184 256 参数 = 每层 +98 688 = 每层 FFN 隐藏宽 +192.75（**非整数**）⇒ 需**逐层**隐藏宽 schedule（如 9 层 +193 / 3 层 +192 ⇒ Σ 精确相等），或等价的其他等参数补偿项。 |
+| 为什么 | `SCHEMA.md` §15 要求增益归因过等参数对照；`5.1` 的 7/7 同字节组最优臂全带头族参数混杂（−8.75%/−10.21%，`2642` 已精确拆开），若没有等参数臂，「同字节纯机制」读数不可得，`5.1::WP3` 与 `5.4::WP1` 的对照臂都做不出来。 |
+| 最小 patch 描述 | 把 FFN 隐藏宽由全局标量 `mlp_mult`（× d）扩展为可选**逐层隐藏宽 schedule** `mlp_hidden_sched: list[int] | None`（缺省 None = 逐位回落现状）；`train_depth_ar.py` 加 `--mlp-hidden-sched "1728,1729,..."`；单测 2 条（缺省与现状逐位同前向；schedule 真到达每层 `mlp[0].weight.shape[0]`）。**与 E2 同面**（E2 是 `mlp_mult` 的整数 schedule；本项要任意整数隐藏宽）——实现时宜一并做，只动 `pathlm/depth_ar.py` + `train_depth_ar.py`，`Block` 的 4 个变体（`ParallelBlock`/`GQA`/`Composable`/`LinearAttn`）各自内联 `mlp_mult` 需一并接线。风险：改 `mlp_mult` 面会动 E2 的接线 ⇒ 两项须同一 engine-writer 串行，不得两个写者并行。 |
+| 授权状态 | **由 E2 统一承接**（`2026-10-14T21:15:00+08:00`，Main 协调 + engine-writer 执行）：E2 的 schedule 已做成「逐层 FFN 隐藏宽，接受任意正整数」，字段 `mlp_hidden_sched`、CLI `--mlp-hidden-sched`，同时满足本项（轴 5 等参数宽度）；不另开第二套开关、不另派写者。 |
+
+> 备注（能力面，派发前必读）：**不改引擎就没有等参数臂** —— 现有 flag 只有 `--mlp-mult`（整数倍 d=256）、`--heads`、`--n-kv-heads`、`--d`、`--layers`，无法把 Δparams 精确还给 FFN。轴 5 本轮把该缺口如实登记为受阻项，**未擅改引擎**。
+
 ## 3. 与既有文档的关系
 
 - 判据/字段纪律：`docs/research-schema.md` §12.3（C3 通道指针）。
@@ -71,3 +83,5 @@
 
 - `2026-10-14T06:44:03+08:00` · framework-adjudication-writer（ticket 57）· 按 C3 裁决建立受控通道，登记 E1/E2/E3 三项最小 patch 需求（未授权）；不改引擎代码。
 - `2026-10-14T07:17:34+08:00` · engine-writer（fresh，`pathlm/**` 单一写入者，code 锁 `/tmp/pathlm_code.lock`）· **E1 已执行**：`pathlm/depth_ar.py` 追加 `carry_per_layer`（逐层独立状态，写入取各层当前 hidden）+ `carry_decay`（可选衰减 γ ∈ (0,1]）；`carry_scan*` 加 `decay` 参数（缺省 1.0 逐位不变）；`CarryChannel.write_read` 加 `layer_idx`/`decay`；`CarryChannelBlock`/`ComposableBlock` 逐层支路；`carry_liveness`/`carry_read_mass_stats` 口径对齐逐层模式。配套单测 9 条（含默认逐位不变、逐层独立、内容写门、γ 分块==逐位置 fp64 1e-12、活性/梯度、能力面），`tests/test_engine_capability.py` + `docs/engine_capability.md` 事实表补 C17–C22。`pytest tests/ -q` 849 passed。**独立复核待 Main 派 fresh 复核者**（本 worker 无派发权，见报告「复核待办」）。
+- `2026-10-14T20:56:00+08:00` · axis5-lead（轴 5 量化轴 lead，ticket 66 Phase B）· 登记 **E4**（等参数对照的构造能力：逐层 FFN 隐藏宽 schedule / 任意整数），来源 `5.1::WP3` + `5.4::gaps`（等参数头共享臂）。**未授权**（C3 已建通道）；本轴未改引擎代码，5.1-WP3 如实登记为受阻项。
+- `2026-10-14T21:15:00+08:00` · engine-writer（fresh，`pathlm/**` 单一写入者，code 锁 `/tmp/pathlm_code.lock`；纯 CPU，未取 GPU 锁）· **E2 已执行（与 E4 统一为一个实现）**：`pathlm/depth_ar.py` 追加 `DepthARConfig.mlp_hidden_sched: list[int] | None`（逐层 FFN 隐藏宽，任意正整数；缺省 None = 各层回落 `cfg.mlp_mult·d`，逐位不变）+ 建时校验（长度 == n_layers、每项 >= 1）；`pathlm/model.py::Block` 与 `pathlm/depth_ar.py` 的 `ParallelBlock`/`GQABlock`/`ComposableBlock`/`LinearAttnBlock`/`TopKBlock`/`CarryChannelBlock` 均加 `mlp_hidden` 可选参数（缺省 None 回落现状）；`train_depth_ar.py` 加 `--mlp-hidden-sched`（逗号分隔）+ `_parse_int_sched` 接入 `build_depthar_config`。配套单测 4 条（缺省逐位同参数/前向、schedule 真到达每层 `mlp[0].weight.shape[0]`、7 个块类全部接线、校验 + CLI 接通）+ 能力面事实表补 C23–C25。**E4 标记为由 E2 统一承接**。待全量 `pytest tests/ -q` 结果见提交时的报告。**独立复核待 Main 派 fresh 复核者**。

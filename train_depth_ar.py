@@ -442,6 +442,22 @@ def train(model: DepthARModel, train_arr, tcfg: dict, log_path: str,
             "kv_heads_n_logged_lines": n_log_writes if gqa_active else 0}
 
 
+def _parse_int_sched(raw):
+    """逗号分隔的正整数 schedule → `list[int]`（None/空 → None）。
+
+    E2/E4（ticket 67）：`--mlp-hidden-sched "1728,1729"` 这类 CLI 串转逐层隐藏宽；
+    空串/None 一律回 None（= 逐层回落 `--mlp-mult`，逐位还原现状），绝不返回空列表
+    （空列表会与「长度 == n_layers」校验冲突而误报）。非法项交给
+    `DepthARModel.__init__` 的正整数校验建时报错。
+    """
+    if raw is None:
+        return None
+    if isinstance(raw, (list, tuple)):
+        return [int(v) for v in raw] or None
+    parts = [p for p in str(raw).replace(" ", "").split(",") if p != ""]
+    return [int(p) for p in parts] or None
+
+
 def build_depthar_config(args) -> DepthARConfig:
     """CLI 参数 → `DepthARConfig`（单测钉住「CLI 开关不是死的」）。
 
@@ -450,6 +466,9 @@ def build_depthar_config(args) -> DepthARConfig:
     """
     return DepthARConfig(d_model=args.d, n_layers=args.layers, n_heads=args.heads,
                          seq_len=args.seq_len, mlp_mult=args.mlp_mult,
+                         # E2/E4（ticket 67）：历史单测用不带该字段的 Namespace ⇒ getattr。
+                         mlp_hidden_sched=_parse_int_sched(
+                             getattr(args, "mlp_hidden_sched", None)),
                          dense=args.dense,
                          gate_bias_init=args.gate_bias_init,
                          topology=args.topology,
@@ -588,6 +607,10 @@ def main():
     ap.add_argument("--seq-len", type=int, default=256)
     ap.add_argument("--mlp-mult", type=int, default=4,
                     help="MLP 隐层倍数（ticket 24：100M 规格用 6）")
+    ap.add_argument("--mlp-hidden-sched", default=None,
+                    help="逐层 FFN 隐藏宽（逗号分隔正整数，长度=层数；缺省 None = 各层"
+                         "回落 --mlp-mult×d，逐位还原现状）。E2/E4 统一标杆：值 = mult×d"
+                         " 即逐层 mlp_mult，任意整数即等参数对照所需宽度")
     ap.add_argument("--dense", action="store_true")
     # ---- R7「既有早退实现」对照开关（默认全为历史行为，逐位还原 v1）----
     ap.add_argument("--no-carry-gate", dest="carry_gate", action="store_false",
