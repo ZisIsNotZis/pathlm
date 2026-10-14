@@ -1,0 +1,138 @@
+{
+ "contract": "axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/README.md",
+ "scope": "只做单轴单格实验，基底恒为 stock decoder-only；组合默认留白。本实验用**已有 checkpoint、同一台仪器**（2634 的毁源敏感度探针 + needle v3 短语针 + clean bpc）在**同任务/同预算/同可见性**下正面比 {implicit = 纯窗口 16} 与 {explicit = 完备机制（E1 逐层独立状态 + 内容写门）}。纯推理，不训练。",
+ "device": "cuda",
+ "model": {
+  "d_model": 256,
+  "n_layers": 12,
+  "n_heads": 8,
+  "seq_len": 256,
+  "mlp_mult": 6,
+  "dense": true,
+  "topology": "sequential",
+  "train_window": 16,
+  "train_anchors": 0,
+  "carry_chunk": 64
+ },
+ "data": {
+  "name": "enwik8_full",
+  "path": "data/enwik8_full.npz",
+  "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）",
+  "vocab_size": 206,
+  "n_real_tokens": 205,
+  "mask_token": 205
+ },
+ "visibility": {
+  "train_window": 16,
+  "train_anchors": 0,
+  "note": "六臂训练与评测都用同一个 window_anchor_keep_mask(T,16,0)；非退化（可见对数 3976 < T(T+1)/2=32896）；锚点 0 ⇒ 前缀里没有可被锚区保住的针，桶只有 window / beyond"
+ },
+ "eval": {
+  "bpc": {
+   "n_batches": 96,
+   "batch_size": 16,
+   "window_seed": 2,
+   "note": "与 2634/2638/2639 同一 window_seed=2、同一 96×16 口径；token 数 = 96×16×255 = 391,680"
+  },
+  "probe": {
+   "n_batches": 96,
+   "batch_size": 16,
+   "window_seed": 2,
+   "corrupt_hi": 64,
+   "eval_lo": 244,
+   "eval_hi": 255,
+   "corrupt_seed": 2634,
+   "note": "毁源式窗外源敏感度探针：被毁前缀 [0,64)，被评行 [244,255)。eval_lo − rf ≥ corrupt_hi：L 层窗口 w 的因果注意力可跨层多跳看到 [i−L(w−1), i]，本配置 L=12/w=16 ⇒ rf=180（244−180=64 恰好满足）⇒ 被毁前缀只能经**显式状态**到达被评行。corrupt_seed 与 2634 相同 ⇒ carry16_s0 的读数可与 2634 逐位对拍（仪器一致性旁证）",
+   "rf": 180
+  }
+ },
+ "needle": {
+  "n_needles": 8,
+  "phrase_len": 6,
+  "anchors": 8,
+  "anchor_frac": 0.25,
+  "n_batches": 64,
+  "batch_size": 16,
+  "seed": 3,
+  "bucket_anchors": 0,
+  "note": "needle v3 真实文本短语针（retention.phrase_needle_batch）；placement anchors=8，归属桶按 anchors=0 判（无锚区）⇒ 桶只有 window / beyond；地板 = 同生成器序列 plant=False 的配对控制臂；跨臂比较一律在**同索引硬子集**上做"
+ },
+ "retention": {
+  "enabled": true,
+  "n_batches": 24,
+  "batch_size": 16,
+  "window_seed": 2,
+  "recent_d": [
+   4,
+   8,
+   16,
+   24,
+   32
+  ],
+  "prefix_drop": [
+   8,
+   16,
+   32,
+   64,
+   128
+  ],
+  "note": "腿 (d) 诊断（不作判据）：recent_keep_mask(近 d) 与 prefix_keep_mask(丢最远 N) 上的 damage_bpc + safe_radius。**口径限制**：显式状态固定大小、结构上不可截断 ⇒ 丢前缀只作用于 attention 的 KV，状态仍带前缀信息"
+ },
+ "seeds": [
+  0,
+  1
+ ],
+ "arms": [
+  {
+   "name": "win16_s0",
+   "kind": "window",
+   "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+   "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+   "size_bytes": 54193675,
+   "window": 16,
+   "anchors": 0,
+   "rule": null,
+   "seed": 0,
+   "reused_from": "2634-carry-realtext-13m",
+   "role": "implicit：纯窗口 16（negative control，无通道）",
+   "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/train_log.jsonl",
+   "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/results.json"
+  }
+ ],
+ "arm_roles": {
+  "implicit": [
+   "win16_s0",
+   "win16_s1"
+  ],
+  "explicit_complete": [
+   "carrypl16_s0",
+   "carrypl16d_s0"
+  ],
+  "explicit_degraded": [
+   "carry16_s0",
+   "carry16_s1"
+  ],
+  "primary_explicit": "carrypl16_s0",
+  "primary_implicit": "win16_s0"
+ },
+ "reproduction": {
+  "bpc_win16": {
+   "win16_s0": 1.62811,
+   "carry16_s0": 1.624979,
+   "carrypl16_s0": 1.527595,
+   "carrypl16d_s0": 1.585531
+  },
+  "probe_delta_bpc_far": {
+   "carry16_s0": 0.015784
+  },
+  "source": "2634/results.json（win16_s0 / carry16_s0 / probe）、2639/results.json（carrypl16_s0 / carrypl16d_s0）；本次在 6 位小数上逐位比对",
+  "note": "复用臂 = eval-only；同函数/同掩码/同窗口序/同 corrupt_seed ⇒ 期望逐位复现。不等即如实报差异并 FAIL（判据⑤）"
+ },
+ "bands": {
+  "sigma_cell": 0.00166,
+  "sigma_cell_source": "2634 同配置换种子极差（win16 / carry16）——本实验用同一 arm 对重算并核对",
+  "cross_cell_band": 0.014,
+  "cross_cell_source": "docs/methodology.md（13M 跨 run bpc 漂移界；限配对 Δ、≥5 窗口）",
+  "rule": "bpc 类：本格 σ_cell 为主判、0.014 为参考，两带并列报不得混用；召回/接受率类只走配对 bootstrap / Wilson 95% CI，不跨量纲借用 0.014"
+ }
+}
