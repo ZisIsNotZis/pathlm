@@ -2,7 +2,8 @@
 
 > 作者：axis6-lead（轴 6 预测轴 lead） ｜ 时间盒：`2026-10-14T09:14:52+08:00` → ≤2.5h
 > 范围：只动 `axes/6-predict/**` 与 `.scratch/63-axis6-predict/**`（`git diff 3e6248f..HEAD` 证明未碰 `pathlm/**`、`docs/**`、`tools/**`、2640、其它轴）。
-> 提交：`0c4dc01`（两个 WP + 事实文档）→ `167f199`（按复核 #3 修缺）→ `32e9b58`（独立执行验证 + 基线更正）。
+> 提交：`0c4dc01`（两个 WP + 事实文档）→ `167f199`（按复核 #3 修缺）→ `32e9b58`（独立执行验证 REVIEW-B4-EXEC + 基线更正）
+> → `b94bdc6`（把本报告入库到 `.scratch/63-axis6-predict/PHASE-B-REPORT.md`）。
 > 过程轨迹 = `.scratch/63-axis6-predict/TICKET.md` §B1–§B7；事实 = 两份 `project.yaml`。
 
 ---
