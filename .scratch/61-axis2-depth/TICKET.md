@@ -591,3 +591,14 @@
 复核 B 的 blocking `2.1.2-B1` 指出：2654 的**冒烟实际执行过**（`2654-skipping-seqlevel-13m/run_log.txt` 末几行），`stock`/`skip-mid`/`layers6` 三臂活性门通过（layer-passes = 8.0/6.0/6.0），**`layerdrop-pt` 活性门抓红**（实测 8.0 ≠ 设计 7.2 ⇒ 按 `2654/README.md` §4 的 P1 该臂作废、须先修接线）。
 - 因此 §9.11 表里 2.1.2 行「四臂未跑」应读作「**四臂未训练**（冒烟已跑：三臂活性过、`layerdrop-pt` 活性红）」；§9.12 的 2.1.2 行同此更正；§9.15 第 1 条对 2654 的表述同此更正。
 - 本更正的落盘由处置 writer（`d02f7540`）负责写入 `2.1.2` 的 `project.yaml`/`analysis.md`/`WP-2654-REPORT.md`；本条是 ticket 侧的同步更正（**不删原文、只加更正**）。
+
+### 9.22 Main 程序级 GPU 纪律（2026-10-14T23:21+08:00，照录并按此执行）
+
+- **GPU 作业一律 detached supervisor-retry**：`while :; do <job> --resume; rc=$?; [ $rc -eq 0 ] && break; sleep 20; done` 后台化（`setsid nohup`），锁超时后继续重试、不放弃；按 §20.1 逐臂释放、§20.1.2 纯推理并发插入；inline 等锁 ≤10 min 仅用于真短任务。
+- 本轮事实：我方三个 launcher（2651/2654/2655）**都已是这个形状**（`run_remaining.sh` 有界重试 + 逐臂取放锁），因此跨轴饥饿下仍拿过 1–2 次窗口；未跑的臂（2.2.3/2.2.4 的 3 条 s1 臂、2.1.2 的四条、2.2.2 的两条）保留为**可续跑的下一步**，等效算力账见 §9.11（合计 1081.3M token）。**注意**：2.1.2 的 `layerdrop-pt` 臂必须先修接线（§9.21），否则续跑仍会红。
+- 下一位 lead 的续跑入口：`2651-…/run_remaining.sh`、`2654-…/run_remaining.sh`、`2655-…/run_remaining.sh`（2655 三臂已全跑，无需续）；重启前先确认 `ps` 无本轴写入者、锁非陈旧。
+
+### 9.23 复核 C（2.1.2-B1 的 round 2）与 P2 残余处置（2026-10-14T23:27+08:00）
+
+- **复核 C（fresh，23:14–23:16；log `…/async-subagent-runs/8e80e0ec-520d-4cbc-862c-860bd3b1da9f/output-0.log`）判词**：`blocking：无`——`2.1.2-B1` 在三个点名落点（`2654/analysis.md`、`2.1.2/project.yaml`、`WP-2654-REPORT.md`）全部消除；四条 P1 小修全落；五项 `conclusion_review` 回填合规（只写当前轮判词 + 指针，符合 §11.1）；**未动任何测量数字**。merge verdict = **OK with notes**；其 4 条 P2 残余由 lead 当场处置：① `2654/MODEL.md` 的「未取到 GPU 锁」改为真实原因（冒烟红门）；② `2.1.2/project.yaml` 缺 `change` 键的 change_log 条目补齐；③ `2.2.1` 补一条 23:10 复核入账条目；④ 本条更正：§9.12/§9.15 的 2.3.1 行「`进行中` + blocker」已被 §9.19 取代为 **`被否证`**（`front-big` 更差 +0.0140、`growing` 不可排序），以 §9.19 为准。
+- 复核 C 未覆盖项（登记）：无 shell ⇒ 机械项未独立复现；无 committed-range diff ⇒ 无法归因到具体提交；`layerdrop-pt` 红门根因（smoke 记账 vs 训练接线）未定位（已在其下一步最小实验里）。

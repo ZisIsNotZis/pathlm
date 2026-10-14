@@ -5,7 +5,7 @@
 ## 状态
 
 **尚无权重**：四臂（`stock` / `skip-mid` / `layers6` / `layerdrop-pt`）本轮**未训练**
-（未取到 GPU 锁，见 `run_log.txt`）。`runs/` 目录为空。
+（第 4 轮取到锁后跑 20 步冒烟，`layerdrop-pt` 活性门抓红（实测 lp 8.0 ≠ 设计 7.2）、launcher 退出；见 `run_log.txt:2194-2195`）。`runs/` 目录为空。
 
 ## 生成命令（续跑时）
 
