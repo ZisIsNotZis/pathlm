@@ -492,3 +492,14 @@
 - **`3.2.3` / `3.1.5` 状态如实登记**：本轮已落「预登记契约 + 实验目录内实现 + 单测（含等值门/变异门）」+（3.2.3 另加与 `2641` 锚的复用门），
   但**新增臂一个都没跑**（GPU 互斥锁饥饿：22:18 `rc=9`、22:40 硬时限放弃）⇒ `status: 进行中`、`conclusion` 留空、`gaps` 写下一步最小实验。
   `3.1.2` / `3.1.3` / `3.2.2` 仍 `未开始`（本轮时间盒内未派到），未跑原因与下一步成本见 §11 收口报告。
+
+## 10.16 返回前的兄弟字段一致性扫描（`docs/research-schema.md` §11.2，2026-10-14T22:50+08:00，actor=axis3-lead）
+
+- 脚本化核对（读 SSOT + 落盘 JSON，逐值对平）：`3.1.1::conclusion/conclusion_review/failure_analysis` 里出现的
+  `1.5314`（锚 U4）/`1.5841`（D192）/`+0.0527`/`0.0486`（WD@192 − D192）/`1.6178`·`1.6327`·`1.7301`（WD256 三档）/`0.0132`（斜率差对应的 Δbpc 差）
+  **全部**与 `2642/results_*.json` 及 `2641/results_U4_s0.json` 的落盘值一致（8/8 命中）。
+- `results.json::P5_falsification.b_frontier_advantage` = 「不可排序（本尺度）…0.0132 < 0.014 噪声带…」
+  与 `P3_WD256_elastic_width.gate_verdict` = `{monotone: 成立, elastic_vs_uniform: 不成立（至少一档越 0.014 带）}` 与 SSOT 措辞一致。
+- `3.2.3` / `3.1.5`：`conclusion` 仍为空（进行中），`conclusion_review` 已改为「本轮已落契约+实现+单测、臂未跑、无读数」，
+  与 `2643/results.json::arms_run=[]`、`arms_unrun_reason` 及 `2644/run_log.txt` 对平（未出现任何未实测数字）。
+- `tools/summary.py --check` / `tools/check_tree.py` 全绿（46 份）。
