@@ -33,7 +33,7 @@ gaps:
   - "累计预算与单距离两列未拆（WP2）"
   - "per-head 平均注意距离分布未报"
   - "长 T 子线只覆盖 1.1.1 迁入的 8 个目录；T=1024/2048 无 seed 复本"
-  - "Phase C 的 WP（本项实验 `experiments/2662-hard-window-anchor-13m/`）已完成预登记契约、冒烟（300 步 rc=0）与 `win16a_s0`（窗口 16 + 锚点 8，seed 0）12000 步训练（rc=0），但第二 seed 与评测电池在 §20 GPU 锁队列里排队超时 ⇒ **尚无 clean bpc / 锚点召回读数**；下一步 = 锁空闲时跑 `run.py`（5 臂纯推理、0 训练 token）+ 视预算补 `win16a_s1`（1 臂 × 98.3M token）。"
+  - "Phase C 的 WP（本项实验 `experiments/2662-hard-window-anchor-13m/`）已完成预登记契约、冒烟（300 步 rc=0）与 `win16a_s0`（窗口 16 + 锚点 8，seed 0）12000 步训练（rc=0），但第二 seed 与评测电池在 §20 GPU 锁队列里排队超时 ⇒ **尚无 clean bpc / 锚点召回读数**；且本实验的评测**结构性依赖预登记的两条锚点臂都在场**（`run.py` 的跨臂统计会对 `win16a_s1` 取键：4 臂配置实测 `KeyError: 'win16a_s1'`，见 ticket 62 §10.22）⇒ 下一步 = ① 先补训 `win16a_s1`（1 臂 × 98.3M token，CLI 与 `win16a_s0` 逐字段相同、只换 seed 1），② 再用 `make_config --require-new` 回填两臂 sha256，③ 最后跑 `run.py`（5 臂纯推理）。已把这三步写成一个后台 driver。"
 cost_model: "等效理论量：窗口把每 token 的可见键数从 T 压到 k，attention 的 QKᵀ 与加权项由 O(T²) 降到 O(T·k)（layer-passes 不变、每层 FLOPs 按 k/T 缩放）；锚点 s 个时键数为 k+s。考虑 pipelining：prefill 段可按 chunk 流水，decode 段每步只算新增 query 对 k+s 个键。长 T 子线按同 step 记 tokens-per-forward 与每 token 等效 FLOPs。"
 
 role_map:
@@ -103,3 +103,6 @@ change_log:
   - date: "2026-10-14T20:51:00+08:00"
     actor: "axis1-lead-3"
     change: "按 `docs/research-schema.md` §12.1 的声明义务补 **`falsification` 字段**的判据带声明（ticket 62 §10.3 F11；此前 C1 回填只落在 `validation`，`falsification` 仍缺声明 ⇒ 判据不可判）：bpc 类走 0.014 bpc 带（限配对 Δ、≥5 窗口）、召回等率类走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014；不改数字、不改结论、不改判据线。"
+  - date: "2026-10-14T22:48:10+08:00"
+    actor: "axis1-lead-4"
+    change: "补记结构性依赖（ticket 62 §10.22）：本实验评测要求预登记的锚点臂 **两 seed 都在场**（4 臂配置实测 `run.py:394 KeyError: win16a_s1`；另修好 `make_config --require-new` 在缺臂时不落盘已训臂的缺陷）⇒ 下一步改为「①补训 `win16a_s1`（1 臂 × 98.3M token）→ ②回填 config → ③跑评测」，已落成一个后台 driver。不改数字、不改判据线。"

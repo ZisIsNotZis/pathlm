@@ -1,0 +1,130 @@
+{
+  "device": "cpu",
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true,
+    "topology": "sequential",
+    "train_window": 16,
+    "note": "train_window/train_anchors 是探针派生 rf 的模型规格（本实验全体干预臂都开窗 16）；逐臂的真实可见性由 arms[*].window/anchors + 掩码构造决定"
+  },
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）",
+    "vocab_size": 206,
+    "n_real_tokens": 205,
+    "mask_token": 205,
+    "note": "真实文本口径：训练与评测同一份 enwik8 字节流（与 train_depth_ar.py 同一路径）"
+  },
+  "eval": {
+    "bpc": {
+      "n_batches": 96,
+      "batch_size": 16,
+      "window_seed": 2,
+      "note": "与 2634 同一函数/批数/窗口序 ⇒ 复用臂应与 2634 落盘值逐位相同"
+    },
+    "probe": {
+      "n_batches": 96,
+      "batch_size": 16,
+      "window_seed": 2,
+      "corrupt_lo": 0,
+      "corrupt_hi": 64,
+      "eval_lo": 244,
+      "eval_hi": 255,
+      "corrupt_seed": 2634,
+      "rf": 180,
+      "note": "毁源探针默认布局（=2634）：被毁 [0,64)，被评行 [244,255)，rf=12·15=180（244−180=64 ≥ 64）。变体 B（beyond_anchor）在 run.py 里用 corrupt_lo=anchors=8 运行，保住锚点槽完整"
+    }
+  },
+  "needle": {
+    "n_needles": 8,
+    "phrase_len": 6,
+    "anchors": 8,
+    "anchor_frac": 0.25,
+    "n_batches": 64,
+    "batch_size": 16,
+    "seed": 3,
+    "bucket_anchors": 8,
+    "note": "needle v3 真实文本短语针（retention.phrase_needle_batch）；placement anchors=8，归属桶**一律 anchors=8**（五臂同索引）⇒ 桶 = anchor (p<8) / window（可见）/ beyond（有位置不可见）"
+  },
+  "seeds": [
+    0,
+    1
+  ],
+  "arms": [
+    {
+      "name": "win16a_s0",
+      "kind": "window",
+      "window": 16,
+      "anchors": 8,
+      "rule": "none",
+      "seed": 0,
+      "path": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s0/model.pt",
+      "sha256": "5a41ed069ee0ba784187b8d2adc054d334ed418c57ba5ff05fbf6347141cdb2d",
+      "size_bytes": 54193675,
+      "train_log": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s0/train_log.jsonl",
+      "train_results_json": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s0/results.json"
+    },
+    {
+      "name": "win16_s0",
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": "none",
+      "seed": 0,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+      "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+      "size_bytes": 54193675,
+      "reused_from": "2634-carry-realtext-13m/rt_none_s0",
+      "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/train_log.jsonl",
+      "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/results.json"
+    },
+    {
+      "name": "win16_s1",
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": "none",
+      "seed": 1,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+      "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+      "size_bytes": 54193675,
+      "reused_from": "2634-carry-realtext-13m/rt_none_s1",
+      "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/train_log.jsonl",
+      "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/results.json"
+    },
+    {
+      "name": "full",
+      "kind": "full",
+      "window": 256,
+      "anchors": 0,
+      "rule": "none",
+      "seed": 0,
+      "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+      "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+      "size_bytes": 54193675,
+      "reused_from": "2610-frozen-trunk-jumphead-13m/trunk.pt"
+    }
+  ],
+  "missing_new_arms": [
+    "win16a_s1"
+  ],
+  "bands": {
+    "sigma_cell": null,
+    "sigma_cell_note": "留空 ⇒ 由 run.py 用本实验自己的换种子极差填（本格带为主判）；跨格 0.014 带为参考，两带并列报、不混用（C1）",
+    "cross_cell_band": 0.014
+  },
+  "train_recipe": {
+    "cmd": "python3 train_depth_ar.py <arm> --d 256 --layers 12 --heads 8 --mlp-mult 6 --seq-len 256 --dense --topology sequential --steps 12000 --batch-size 32 --lr 1e-3 --seed {0,1} --exit-mode uniform --train-window 16 --train-anchors 8 --eval-batches 4 --out-root axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train",
+    "note": "唯一变量 = seed；与 2634 的 rt_none 臂只差 --train-anchors 8 vs 0",
+    "steps": 12000,
+    "batch_size": 32,
+    "seq_len": 256,
+    "tokens_per_arm": 98304000
+  },
+  "steptime_measured": null
+}

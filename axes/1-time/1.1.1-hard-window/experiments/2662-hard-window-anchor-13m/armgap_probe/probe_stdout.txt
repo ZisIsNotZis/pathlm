@@ -1,0 +1,29 @@
+[    0.0s] 加载 enwik8 尾段做评测（路径锚到仓库根）
+[    0.1s] 加载各臂（sha256 断言）
+[    0.6s]   win16a_s0: 5a41ed069ee0… kind=window w=16 anchors=8 seed=0 params=13536768
+[    1.0s]   win16_s0: c3f6f08a4fd1… kind=window w=16 anchors=0 seed=0 params=13536768
+[    1.5s]   win16_s1: 2bfe167c133c… kind=window w=16 anchors=0 seed=1 params=13536768
+[    1.8s]   full: 86953dcb7c90… kind=full w=256 anchors=0 seed=0 params=13536768
+[    1.8s] 自检①：掩码非退化 / 参数量 / 因果性 / 锚点掩码反事实
+[    2.2s]   win16a_s0: causal_prefix_diff=0.0 mask_counterfactual=17.072372
+[    2.5s]   win16_s0: causal_prefix_diff=0.0 mask_counterfactual=16.250914
+[    2.8s]   win16_s1: causal_prefix_diff=0.0 mask_counterfactual=18.459328
+[    2.9s]   full: causal_prefix_diff=0.0 mask_counterfactual=None
+[    2.9s] 质量腿②：clean bpc（每臂自己的训练可见性，2×4，window_seed=2）
+[    3.2s]   win16a_s0: bpc=1.601191
+[    3.5s]   win16_s0: bpc=1.637986
+[    3.7s]   win16_s1: bpc=1.612549
+[    4.2s]   full: bpc=1.404325
+[    4.2s] 锚点召回腿③：needle v3（2×4，8 针/行，seed=3，归属桶 anchors=8）
+Traceback (most recent call last):
+  File "/home/z/vibe/pathlm/axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/run.py", line 574, in <module>
+    main()
+  File "/home/z/vibe/pathlm/axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/run.py", line 355, in main
+    row[b] = paired_reading(p, c)
+             ^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/vibe/pathlm/axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/run.py", line 158, in paired_reading
+    pb = ns.paired_bootstrap_diff_pp(planted, control)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/z/vibe/pathlm/axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/needle_stats.py", line 48, in paired_bootstrap_diff_pp
+    raise ValueError("配对 bootstrap 至少需要 2 根针")
+ValueError: 配对 bootstrap 至少需要 2 根针

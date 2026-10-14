@@ -1,0 +1,3811 @@
+{
+  "config": {
+    "contract": "axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/README.md",
+    "scope": "只做单轴单格实验，基底恒为 stock decoder-only；组合默认留白。本实验用**已有 checkpoint、同一台仪器**（2634 的毁源敏感度探针 + needle v3 短语针 + clean bpc）在**同任务/同预算/同可见性**下正面比 {implicit = 纯窗口 16} 与 {explicit = 完备机制（E1 逐层独立状态 + 内容写门）}。纯推理，不训练。",
+    "device": "cuda",
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true,
+      "topology": "sequential",
+      "train_window": 16,
+      "train_anchors": 0,
+      "carry_chunk": 64
+    },
+    "data": {
+      "name": "enwik8_full",
+      "path": "data/enwik8_full.npz",
+      "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）",
+      "vocab_size": 206,
+      "n_real_tokens": 205,
+      "mask_token": 205
+    },
+    "visibility": {
+      "train_window": 16,
+      "train_anchors": 0,
+      "note": "六臂训练与评测都用同一个 window_anchor_keep_mask(T,16,0)；非退化（可见对数 3976 < T(T+1)/2=32896）；锚点 0 ⇒ 前缀里没有可被锚区保住的针，桶只有 window / beyond"
+    },
+    "eval": {
+      "bpc": {
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "note": "与 2634/2638/2639 同一 window_seed=2、同一 96×16 口径；token 数 = 96×16×255 = 391,680"
+      },
+      "probe": {
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "corrupt_hi": 64,
+        "eval_lo": 244,
+        "eval_hi": 255,
+        "corrupt_seed": 2634,
+        "note": "毁源式窗外源敏感度探针：被毁前缀 [0,64)，被评行 [244,255)。eval_lo − rf ≥ corrupt_hi：L 层窗口 w 的因果注意力可跨层多跳看到 [i−L(w−1), i]，本配置 L=12/w=16 ⇒ rf=180（244−180=64 恰好满足）⇒ 被毁前缀只能经**显式状态**到达被评行。corrupt_seed 与 2634 相同 ⇒ carry16_s0 的读数可与 2634 逐位对拍（仪器一致性旁证）",
+        "rf": 180
+      }
+    },
+    "needle": {
+      "n_needles": 8,
+      "phrase_len": 6,
+      "anchors": 8,
+      "anchor_frac": 0.25,
+      "n_batches": 1,
+      "batch_size": 8,
+      "seed": 3,
+      "bucket_anchors": 0,
+      "note": "needle v3 真实文本短语针（retention.phrase_needle_batch）；placement anchors=8，归属桶按 anchors=0 判（无锚区）⇒ 桶只有 window / beyond；地板 = 同生成器序列 plant=False 的配对控制臂；跨臂比较一律在**同索引硬子集**上做"
+    },
+    "retention": {
+      "enabled": true,
+      "n_batches": 1,
+      "batch_size": 8,
+      "window_seed": 2,
+      "recent_d": [
+        4,
+        8,
+        16,
+        24,
+        32
+      ],
+      "prefix_drop": [
+        8,
+        16,
+        32,
+        64,
+        128
+      ],
+      "note": "腿 (d) 诊断（不作判据）：recent_keep_mask(近 d) 与 prefix_keep_mask(丢最远 N) 上的 damage_bpc + safe_radius。**口径限制**：显式状态固定大小、结构上不可截断 ⇒ 丢前缀只作用于 attention 的 KV，状态仍带前缀信息"
+    },
+    "seeds": [
+      0,
+      1
+    ],
+    "arms": [
+      {
+        "name": "win16_s0",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+        "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+        "size_bytes": 54193675,
+        "window": 16,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "reused_from": "2634-carry-realtext-13m",
+        "role": "implicit：纯窗口 16（negative control，无通道）",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/results.json"
+      },
+      {
+        "name": "win16_s1",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+        "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+        "size_bytes": 54193675,
+        "window": 16,
+        "anchors": 0,
+        "rule": null,
+        "seed": 1,
+        "reused_from": "2634-carry-realtext-13m",
+        "role": "implicit：纯窗口 16（seed 1，作臂内噪声）",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/results.json"
+      },
+      {
+        "name": "carry16_s0",
+        "kind": "carry",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s0/model.pt",
+        "sha256": "d92114822c09f2f7538ea6a59802eed21b1297409fe91f66c031dec9d6c305eb",
+        "size_bytes": 55255619,
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "seed": 0,
+        "carry_chunk": 64,
+        "carry_per_layer": false,
+        "carry_decay": 1.0,
+        "reused_from": "2634-carry-realtext-13m",
+        "role": "explicit（退化实现）：单共享槽 delta，窗口 16",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s0/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s0/results.json"
+      },
+      {
+        "name": "carry16_s1",
+        "kind": "carry",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s1/model.pt",
+        "sha256": "b3d3cdbc57266109b6b461d18c2188c7d1712170f6760b35a48ff9b6170d6843",
+        "size_bytes": 55255619,
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "seed": 1,
+        "carry_chunk": 64,
+        "carry_per_layer": false,
+        "carry_decay": 1.0,
+        "reused_from": "2634-carry-realtext-13m",
+        "role": "explicit（退化实现）：单共享槽 delta（seed 1，作臂内噪声）",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s1/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s1/results.json"
+      },
+      {
+        "name": "carrypl16_s0",
+        "kind": "carry",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16/model.pt",
+        "sha256": "382a74aa0e417b229910cc44f55dcc949c225b3211434df488ee6a72d3036ec3",
+        "size_bytes": 55264963,
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "seed": 0,
+        "carry_chunk": 256,
+        "carry_per_layer": true,
+        "carry_decay": 1.0,
+        "reused_from": "2639-carry-perlayer-frontier-13m",
+        "role": "**explicit（完备机制）**：逐层独立状态 + 内容写门，γ=1 —— 主对撞臂",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16/results.json"
+      },
+      {
+        "name": "carrypl16d_s0",
+        "kind": "carry",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16d/model.pt",
+        "sha256": "cb1940ee2e97f2311998710870be0c86024ed7d65e2ce54c159fcffbca8fe386",
+        "size_bytes": 55264963,
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "seed": 0,
+        "carry_chunk": 256,
+        "carry_per_layer": true,
+        "carry_decay": 0.99,
+        "reused_from": "2639-carry-perlayer-frontier-13m",
+        "role": "explicit（完备机制 + 衰减 γ=0.99）",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16d/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16d/results.json"
+      }
+    ],
+    "arm_roles": {
+      "implicit": [
+        "win16_s0",
+        "win16_s1"
+      ],
+      "explicit_complete": [
+        "carrypl16_s0",
+        "carrypl16d_s0"
+      ],
+      "explicit_degraded": [
+        "carry16_s0",
+        "carry16_s1"
+      ],
+      "primary_explicit": "carrypl16_s0",
+      "primary_implicit": "win16_s0"
+    },
+    "reproduction": {
+      "bpc_win16": {
+        "win16_s0": 1.62811,
+        "carry16_s0": 1.624979,
+        "carrypl16_s0": 1.527595,
+        "carrypl16d_s0": 1.585531
+      },
+      "probe_delta_bpc_far": {
+        "carry16_s0": 0.015784
+      },
+      "source": "2634/results.json（win16_s0 / carry16_s0 / probe）、2639/results.json（carrypl16_s0 / carrypl16d_s0）；本次在 6 位小数上逐位比对",
+      "note": "复用臂 = eval-only；同函数/同掩码/同窗口序/同 corrupt_seed ⇒ 期望逐位复现。不等即如实报差异并 FAIL（判据⑤）"
+    },
+    "bands": {
+      "sigma_cell": 0.00166,
+      "sigma_cell_source": "2634 同配置换种子极差（win16 / carry16）——本实验用同一 arm 对重算并核对",
+      "cross_cell_band": 0.014,
+      "cross_cell_source": "docs/methodology.md（13M 跨 run bpc 漂移界；限配对 Δ、≥5 窗口）",
+      "rule": "bpc 类：本格 σ_cell 为主判、0.014 为参考，两带并列报不得混用；召回/接受率类只走配对 bootstrap / Wilson 95% CI，不跨量纲借用 0.014"
+    }
+  },
+  "checkpoints": {
+    "win16_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+      "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": null,
+      "carry_rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win16_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+      "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": null,
+      "carry_rule": null,
+      "seed": 1,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "carry16_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s0/model.pt",
+      "sha256": "d92114822c09f2f7538ea6a59802eed21b1297409fe91f66c031dec9d6c305eb",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "carry_rule": "delta",
+      "seed": 0,
+      "carry_chunk": 64,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 8192,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "carry16_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s1/model.pt",
+      "sha256": "b3d3cdbc57266109b6b461d18c2188c7d1712170f6760b35a48ff9b6170d6843",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "carry_rule": "delta",
+      "seed": 1,
+      "carry_chunk": 64,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 8192,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "carrypl16_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16/model.pt",
+      "sha256": "382a74aa0e417b229910cc44f55dcc949c225b3211434df488ee6a72d3036ec3",
+      "size_bytes": 55264963,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "carry_rule": "delta",
+      "seed": 0,
+      "carry_chunk": 256,
+      "carry_per_layer": true,
+      "carry_decay": 1.0,
+      "state_floats_actual": 98304,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "carrypl16d_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16d/model.pt",
+      "sha256": "cb1940ee2e97f2311998710870be0c86024ed7d65e2ce54c159fcffbca8fe386",
+      "size_bytes": 55264963,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "carry_rule": "delta",
+      "seed": 0,
+      "carry_chunk": 256,
+      "carry_per_layer": true,
+      "carry_decay": 0.99,
+      "state_floats_actual": 98304,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    }
+  },
+  "visibility": {
+    "train_window": 16,
+    "train_anchors": 0
+  },
+  "arm_roles": {
+    "implicit": [
+      "win16_s0",
+      "win16_s1"
+    ],
+    "explicit_complete": [
+      "carrypl16_s0",
+      "carrypl16d_s0"
+    ],
+    "explicit_degraded": [
+      "carry16_s0",
+      "carry16_s1"
+    ],
+    "primary_explicit": "carrypl16_s0",
+    "primary_implicit": "win16_s0"
+  },
+  "selfchecks": {
+    "window_mask_visible_pairs": 3976,
+    "window_mask_expected_pairs": 3976,
+    "window_mask_nondegenerate": true,
+    "trunk_bitwise_equal_carry_vs_none": {
+      "shared_seed0": {
+        "added_tensors": [
+          "blocks.0.carry_scale",
+          "blocks.1.carry_scale",
+          "blocks.10.carry_scale",
+          "blocks.11.carry_scale",
+          "blocks.2.carry_scale",
+          "blocks.3.carry_scale",
+          "blocks.4.carry_scale",
+          "blocks.5.carry_scale",
+          "blocks.6.carry_scale",
+          "blocks.7.carry_scale",
+          "blocks.8.carry_scale",
+          "blocks.9.carry_scale",
+          "carry.beta_b",
+          "carry.beta_w",
+          "carry.gate_w",
+          "carry.w_k",
+          "carry.w_q",
+          "carry.w_v"
+        ],
+        "missing_tensors": [],
+        "trunk_value_mismatch": [],
+        "trunk_bitwise_equal": true,
+        "n_params_added": 264296,
+        "n_params_carry_arm": 13801064,
+        "n_params_base_arm": 13536768
+      },
+      "shared_seed1": {
+        "added_tensors": [
+          "blocks.0.carry_scale",
+          "blocks.1.carry_scale",
+          "blocks.10.carry_scale",
+          "blocks.11.carry_scale",
+          "blocks.2.carry_scale",
+          "blocks.3.carry_scale",
+          "blocks.4.carry_scale",
+          "blocks.5.carry_scale",
+          "blocks.6.carry_scale",
+          "blocks.7.carry_scale",
+          "blocks.8.carry_scale",
+          "blocks.9.carry_scale",
+          "carry.beta_b",
+          "carry.beta_w",
+          "carry.gate_w",
+          "carry.w_k",
+          "carry.w_q",
+          "carry.w_v"
+        ],
+        "missing_tensors": [],
+        "trunk_value_mismatch": [],
+        "trunk_bitwise_equal": true,
+        "n_params_added": 264296,
+        "n_params_carry_arm": 13801064,
+        "n_params_base_arm": 13536768
+      },
+      "perlayer_seed0": {
+        "added_tensors": [
+          "blocks.0._carry_channel.beta_b",
+          "blocks.0._carry_channel.beta_w",
+          "blocks.0._carry_channel.gate_w",
+          "blocks.0._carry_channel.w_k",
+          "blocks.0._carry_channel.w_q",
+          "blocks.0._carry_channel.w_v",
+          "blocks.0.carry_scale",
+          "blocks.1._carry_channel.beta_b",
+          "blocks.1._carry_channel.beta_w",
+          "blocks.1._carry_channel.gate_w",
+          "blocks.1._carry_channel.w_k",
+          "blocks.1._carry_channel.w_q",
+          "blocks.1._carry_channel.w_v",
+          "blocks.1.carry_scale",
+          "blocks.10._carry_channel.beta_b",
+          "blocks.10._carry_channel.beta_w",
+          "blocks.10._carry_channel.gate_w",
+          "blocks.10._carry_channel.w_k",
+          "blocks.10._carry_channel.w_q",
+          "blocks.10._carry_channel.w_v",
+          "blocks.10.carry_scale",
+          "blocks.11._carry_channel.beta_b",
+          "blocks.11._carry_channel.beta_w",
+          "blocks.11._carry_channel.gate_w",
+          "blocks.11._carry_channel.w_k",
+          "blocks.11._carry_channel.w_q",
+          "blocks.11._carry_channel.w_v",
+          "blocks.11.carry_scale",
+          "blocks.2._carry_channel.beta_b",
+          "blocks.2._carry_channel.beta_w",
+          "blocks.2._carry_channel.gate_w",
+          "blocks.2._carry_channel.w_k",
+          "blocks.2._carry_channel.w_q",
+          "blocks.2._carry_channel.w_v",
+          "blocks.2.carry_scale",
+          "blocks.3._carry_channel.beta_b",
+          "blocks.3._carry_channel.beta_w",
+          "blocks.3._carry_channel.gate_w",
+          "blocks.3._carry_channel.w_k",
+          "blocks.3._carry_channel.w_q",
+          "blocks.3._carry_channel.w_v",
+          "blocks.3.carry_scale",
+          "blocks.4._carry_channel.beta_b",
+          "blocks.4._carry_channel.beta_w",
+          "blocks.4._carry_channel.gate_w",
+          "blocks.4._carry_channel.w_k",
+          "blocks.4._carry_channel.w_q",
+          "blocks.4._carry_channel.w_v",
+          "blocks.4.carry_scale",
+          "blocks.5._carry_channel.beta_b",
+          "blocks.5._carry_channel.beta_w",
+          "blocks.5._carry_channel.gate_w",
+          "blocks.5._carry_channel.w_k",
+          "blocks.5._carry_channel.w_q",
+          "blocks.5._carry_channel.w_v",
+          "blocks.5.carry_scale",
+          "blocks.6._carry_channel.beta_b",
+          "blocks.6._carry_channel.beta_w",
+          "blocks.6._carry_channel.gate_w",
+          "blocks.6._carry_channel.w_k",
+          "blocks.6._carry_channel.w_q",
+          "blocks.6._carry_channel.w_v",
+          "blocks.6.carry_scale",
+          "blocks.7._carry_channel.beta_b",
+          "blocks.7._carry_channel.beta_w",
+          "blocks.7._carry_channel.gate_w",
+          "blocks.7._carry_channel.w_k",
+          "blocks.7._carry_channel.w_q",
+          "blocks.7._carry_channel.w_v",
+          "blocks.7.carry_scale",
+          "blocks.8._carry_channel.beta_b",
+          "blocks.8._carry_channel.beta_w",
+          "blocks.8._carry_channel.gate_w",
+          "blocks.8._carry_channel.w_k",
+          "blocks.8._carry_channel.w_q",
+          "blocks.8._carry_channel.w_v",
+          "blocks.8.carry_scale",
+          "blocks.9._carry_channel.beta_b",
+          "blocks.9._carry_channel.beta_w",
+          "blocks.9._carry_channel.gate_w",
+          "blocks.9._carry_channel.w_k",
+          "blocks.9._carry_channel.w_q",
+          "blocks.9._carry_channel.w_v",
+          "blocks.9.carry_scale",
+          "carry.beta_b",
+          "carry.beta_w",
+          "carry.gate_w",
+          "carry.w_k",
+          "carry.w_q",
+          "carry.w_v"
+        ],
+        "missing_tensors": [],
+        "trunk_value_mismatch": [],
+        "trunk_bitwise_equal": true,
+        "n_params_added": 3434696,
+        "n_params_carry_arm": 13801064,
+        "n_params_base_arm": 13536768
+      }
+    },
+    "identity_start_logits_bitwise": {
+      "shared_seed0": {
+        "delta_matches_none_bitwise": true
+      },
+      "shared_seed1": {
+        "delta_matches_none_bitwise": true
+      },
+      "perlayer_seed0": {
+        "delta_matches_none_bitwise": true
+      }
+    },
+    "built_params": {
+      "none_seed0": 13536768,
+      "shared_seed0": 13801064,
+      "none_seed1": 13536768,
+      "shared_seed1": 13801064,
+      "perlayer_seed0": 13801064
+    },
+    "loaded_n_params": {
+      "win16_s0": 13536768,
+      "win16_s1": 13536768,
+      "carry16_s0": 13801064,
+      "carry16_s1": 13801064,
+      "carrypl16_s0": 13801064,
+      "carrypl16d_s0": 13801064
+    }
+  },
+  "quality_leg": {
+    "win16_s0": {
+      "bpc_win16": 1.637986,
+      "bpc_win16_channel_off": 1.637986,
+      "channel_off_grip": {
+        "applicable": false,
+        "max_abs_logit_diff_off_vs_on": null,
+        "grip": false,
+        "note": "无通道臂：channel_off 是空操作"
+      }
+    },
+    "win16_s1": {
+      "bpc_win16": 1.612549,
+      "bpc_win16_channel_off": 1.612549,
+      "channel_off_grip": {
+        "applicable": false,
+        "max_abs_logit_diff_off_vs_on": null,
+        "grip": false,
+        "note": "无通道臂：channel_off 是空操作"
+      }
+    },
+    "carry16_s0": {
+      "bpc_win16": 1.584657,
+      "bpc_win16_channel_off": 4.575535,
+      "channel_off_grip": {
+        "applicable": true,
+        "max_abs_logit_diff_off_vs_on": 14.888885,
+        "grip": true,
+        "note": "置零每层 carry_scale（+ 共享 gate_w）前后最后一层 logits 最大差；> 0 ⇔ 消融真的把每层读出增益置零（E1 逐层模式覆盖检查）"
+      }
+    },
+    "carry16_s1": {
+      "bpc_win16": 1.589881,
+      "bpc_win16_channel_off": 4.641074,
+      "channel_off_grip": {
+        "applicable": true,
+        "max_abs_logit_diff_off_vs_on": 20.091879,
+        "grip": true,
+        "note": "置零每层 carry_scale（+ 共享 gate_w）前后最后一层 logits 最大差；> 0 ⇔ 消融真的把每层读出增益置零（E1 逐层模式覆盖检查）"
+      }
+    },
+    "carrypl16_s0": {
+      "bpc_win16": 1.471589,
+      "bpc_win16_channel_off": 1.943846,
+      "channel_off_grip": {
+        "applicable": true,
+        "max_abs_logit_diff_off_vs_on": 8.069641,
+        "grip": true,
+        "note": "置零每层 carry_scale（+ 共享 gate_w）前后最后一层 logits 最大差；> 0 ⇔ 消融真的把每层读出增益置零（E1 逐层模式覆盖检查）"
+      }
+    },
+    "carrypl16d_s0": {
+      "bpc_win16": 1.515515,
+      "bpc_win16_channel_off": 4.673593,
+      "channel_off_grip": {
+        "applicable": true,
+        "max_abs_logit_diff_off_vs_on": 23.005728,
+        "grip": true,
+        "note": "置零每层 carry_scale（+ 共享 gate_w）前后最后一层 logits 最大差；> 0 ⇔ 消融真的把每层读出增益置零（E1 逐层模式覆盖检查）"
+      }
+    }
+  },
+  "reproduction_check": {
+    "checked_at_6dp": {
+      "win16_s0": {
+        "expected": 1.62811,
+        "got": 1.637986,
+        "equal": false
+      },
+      "carry16_s0": {
+        "expected": 1.624979,
+        "got": 1.584657,
+        "equal": false
+      },
+      "carrypl16_s0": {
+        "expected": 1.527595,
+        "got": 1.471589,
+        "equal": false
+      },
+      "carrypl16d_s0": {
+        "expected": 1.585531,
+        "got": 1.515515,
+        "equal": false
+      }
+    },
+    "all_equal": false,
+    "differences": {
+      "win16_s0": 0.009876,
+      "carry16_s0": -0.040322,
+      "carrypl16_s0": -0.056006,
+      "carrypl16d_s0": -0.070016
+    },
+    "smoke": true,
+    "note": "smoke 模式下批数极小 ⇒ 该比对无意义（不作判据）；全电池（非 --smoke）下才硬断言逐位一致",
+    "probe_delta_bpc_far": {
+      "carry16_s0": {
+        "expected": 0.015784,
+        "got": -0.005654,
+        "equal": false
+      }
+    }
+  },
+  "far_source_probe": {
+    "win16_s0": {
+      "delta_bpc_far": 0.0,
+      "ce_far_clean": 1.31902,
+      "ce_far_corrupt": 1.31902,
+      "delta_ci95_clustered": [
+        0.0,
+        0.0
+      ],
+      "max_abs_logit_diff_on_eval_rows": 0.0,
+      "n_tokens": 88,
+      "n_batches": 1,
+      "batch_size": 8,
+      "window_seed": 2,
+      "corrupt_seed": 2634,
+      "layout": {
+        "corrupt_prefix": [
+          0,
+          64
+        ],
+        "eval_rows": [
+          244,
+          255
+        ],
+        "receptive_field_positions": 180,
+        "required_min_eval_lo": 244,
+        "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+        "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+      },
+      "ce_by_row_clean": [
+        1.98615,
+        0.995177,
+        1.336522,
+        1.622767,
+        0.579481,
+        1.234174,
+        0.833775,
+        1.896623,
+        1.344765,
+        1.339702,
+        1.340085
+      ],
+      "ce_by_row_corrupt": [
+        1.98615,
+        0.995177,
+        1.336522,
+        1.622767,
+        0.579481,
+        1.234174,
+        0.833775,
+        1.896623,
+        1.344765,
+        1.339702,
+        1.340085
+      ],
+      "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）",
+      "with_channel_off": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 1.31902,
+        "ce_far_corrupt": 1.31902,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "n_tokens": 88,
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+        },
+        "ce_by_row_clean": [
+          1.98615,
+          0.995177,
+          1.336522,
+          1.622767,
+          0.579481,
+          1.234174,
+          0.833775,
+          1.896623,
+          1.344765,
+          1.339702,
+          1.340085
+        ],
+        "ce_by_row_corrupt": [
+          1.98615,
+          0.995177,
+          1.336522,
+          1.622767,
+          0.579481,
+          1.234174,
+          0.833775,
+          1.896623,
+          1.344765,
+          1.339702,
+          1.340085
+        ],
+        "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）"
+      }
+    },
+    "win16_s1": {
+      "delta_bpc_far": 0.0,
+      "ce_far_clean": 1.447652,
+      "ce_far_corrupt": 1.447652,
+      "delta_ci95_clustered": [
+        0.0,
+        0.0
+      ],
+      "max_abs_logit_diff_on_eval_rows": 0.0,
+      "n_tokens": 88,
+      "n_batches": 1,
+      "batch_size": 8,
+      "window_seed": 2,
+      "corrupt_seed": 2634,
+      "layout": {
+        "corrupt_prefix": [
+          0,
+          64
+        ],
+        "eval_rows": [
+          244,
+          255
+        ],
+        "receptive_field_positions": 180,
+        "required_min_eval_lo": 244,
+        "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+        "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+      },
+      "ce_by_row_clean": [
+        2.175489,
+        1.21583,
+        1.199506,
+        1.563846,
+        0.679549,
+        1.084177,
+        0.922705,
+        2.009507,
+        2.183162,
+        1.27875,
+        1.61165
+      ],
+      "ce_by_row_corrupt": [
+        2.175489,
+        1.21583,
+        1.199506,
+        1.563846,
+        0.679549,
+        1.084177,
+        0.922705,
+        2.009507,
+        2.183162,
+        1.27875,
+        1.61165
+      ],
+      "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）",
+      "with_channel_off": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 1.447652,
+        "ce_far_corrupt": 1.447652,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "n_tokens": 88,
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+        },
+        "ce_by_row_clean": [
+          2.175489,
+          1.21583,
+          1.199506,
+          1.563846,
+          0.679549,
+          1.084177,
+          0.922705,
+          2.009507,
+          2.183162,
+          1.27875,
+          1.61165
+        ],
+        "ce_by_row_corrupt": [
+          2.175489,
+          1.21583,
+          1.199506,
+          1.563846,
+          0.679549,
+          1.084177,
+          0.922705,
+          2.009507,
+          2.183162,
+          1.27875,
+          1.61165
+        ],
+        "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）"
+      }
+    },
+    "carry16_s0": {
+      "delta_bpc_far": -0.005654,
+      "ce_far_clean": 1.281501,
+      "ce_far_corrupt": 1.275847,
+      "delta_ci95_clustered": [
+        -0.054938,
+        0.033571
+      ],
+      "max_abs_logit_diff_on_eval_rows": 2.8934218883514404,
+      "n_tokens": 88,
+      "n_batches": 1,
+      "batch_size": 8,
+      "window_seed": 2,
+      "corrupt_seed": 2634,
+      "layout": {
+        "corrupt_prefix": [
+          0,
+          64
+        ],
+        "eval_rows": [
+          244,
+          255
+        ],
+        "receptive_field_positions": 180,
+        "required_min_eval_lo": 244,
+        "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+        "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+      },
+      "ce_by_row_clean": [
+        1.723817,
+        0.94948,
+        1.339139,
+        1.44321,
+        0.687317,
+        1.081767,
+        0.843842,
+        1.876205,
+        1.48669,
+        1.311829,
+        1.35321
+      ],
+      "ce_by_row_corrupt": [
+        1.806007,
+        0.936363,
+        1.424241,
+        1.38402,
+        0.671173,
+        1.085708,
+        0.884636,
+        1.810002,
+        1.491159,
+        1.174301,
+        1.366702
+      ],
+      "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）",
+      "with_channel_off": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 4.445313,
+        "ce_far_corrupt": 4.445313,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "n_tokens": 88,
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+        },
+        "ce_by_row_clean": [
+          3.946967,
+          3.339908,
+          4.599271,
+          4.380065,
+          4.378051,
+          4.105819,
+          4.642936,
+          4.601285,
+          4.73441,
+          5.014921,
+          5.15481
+        ],
+        "ce_by_row_corrupt": [
+          3.946967,
+          3.339908,
+          4.599271,
+          4.380065,
+          4.378051,
+          4.105819,
+          4.642936,
+          4.601285,
+          4.73441,
+          5.014921,
+          5.15481
+        ],
+        "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）"
+      }
+    },
+    "carry16_s1": {
+      "delta_bpc_far": 0.014516,
+      "ce_far_clean": 1.467335,
+      "ce_far_corrupt": 1.481851,
+      "delta_ci95_clustered": [
+        -0.011613,
+        0.041422
+      ],
+      "max_abs_logit_diff_on_eval_rows": 2.9046268463134766,
+      "n_tokens": 88,
+      "n_batches": 1,
+      "batch_size": 8,
+      "window_seed": 2,
+      "corrupt_seed": 2634,
+      "layout": {
+        "corrupt_prefix": [
+          0,
+          64
+        ],
+        "eval_rows": [
+          244,
+          255
+        ],
+        "receptive_field_positions": 180,
+        "required_min_eval_lo": 244,
+        "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+        "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+      },
+      "ce_by_row_clean": [
+        2.020377,
+        1.292788,
+        1.675163,
+        1.16678,
+        0.863517,
+        1.112872,
+        0.820159,
+        2.224886,
+        2.171297,
+        1.463286,
+        1.329559
+      ],
+      "ce_by_row_corrupt": [
+        2.134772,
+        1.325154,
+        1.666064,
+        1.249782,
+        0.841111,
+        1.170244,
+        0.889491,
+        2.098985,
+        2.132583,
+        1.419219,
+        1.372954
+      ],
+      "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）",
+      "with_channel_off": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 4.62519,
+        "ce_far_corrupt": 4.62519,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "n_tokens": 88,
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+        },
+        "ce_by_row_clean": [
+          4.048146,
+          3.882945,
+          4.505269,
+          4.631382,
+          5.375151,
+          5.090113,
+          4.782913,
+          4.566412,
+          4.204059,
+          5.021778,
+          4.768925
+        ],
+        "ce_by_row_corrupt": [
+          4.048146,
+          3.882945,
+          4.505269,
+          4.631382,
+          5.375151,
+          5.090113,
+          4.782913,
+          4.566412,
+          4.204059,
+          5.021778,
+          4.768925
+        ],
+        "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）"
+      }
+    },
+    "carrypl16_s0": {
+      "delta_bpc_far": 0.044757,
+      "ce_far_clean": 1.27958,
+      "ce_far_corrupt": 1.324337,
+      "delta_ci95_clustered": [
+        -0.006869,
+        0.10539
+      ],
+      "max_abs_logit_diff_on_eval_rows": 3.951368808746338,
+      "n_tokens": 88,
+      "n_batches": 1,
+      "batch_size": 8,
+      "window_seed": 2,
+      "corrupt_seed": 2634,
+      "layout": {
+        "corrupt_prefix": [
+          0,
+          64
+        ],
+        "eval_rows": [
+          244,
+          255
+        ],
+        "receptive_field_positions": 180,
+        "required_min_eval_lo": 244,
+        "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+        "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+      },
+      "ce_by_row_clean": [
+        1.983331,
+        0.987139,
+        1.074397,
+        1.516391,
+        0.697485,
+        0.919472,
+        0.91152,
+        1.877974,
+        1.579044,
+        1.297751,
+        1.230872
+      ],
+      "ce_by_row_corrupt": [
+        2.072808,
+        1.02531,
+        1.20899,
+        1.523123,
+        0.723735,
+        0.922934,
+        0.986871,
+        1.978181,
+        1.673428,
+        1.302453,
+        1.14987
+      ],
+      "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）",
+      "with_channel_off": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 1.558631,
+        "ce_far_corrupt": 1.558631,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "n_tokens": 88,
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+        },
+        "ce_by_row_clean": [
+          2.163804,
+          1.142289,
+          2.074695,
+          1.556625,
+          0.806657,
+          1.019104,
+          0.905191,
+          1.76757,
+          1.630169,
+          1.908195,
+          2.170642
+        ],
+        "ce_by_row_corrupt": [
+          2.163804,
+          1.142289,
+          2.074695,
+          1.556625,
+          0.806657,
+          1.019104,
+          0.905191,
+          1.76757,
+          1.630169,
+          1.908195,
+          2.170642
+        ],
+        "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）"
+      }
+    },
+    "carrypl16d_s0": {
+      "delta_bpc_far": 0.017235,
+      "ce_far_clean": 1.407721,
+      "ce_far_corrupt": 1.424955,
+      "delta_ci95_clustered": [
+        0.004814,
+        0.030048
+      ],
+      "max_abs_logit_diff_on_eval_rows": 1.755631923675537,
+      "n_tokens": 88,
+      "n_batches": 1,
+      "batch_size": 8,
+      "window_seed": 2,
+      "corrupt_seed": 2634,
+      "layout": {
+        "corrupt_prefix": [
+          0,
+          64
+        ],
+        "eval_rows": [
+          244,
+          255
+        ],
+        "receptive_field_positions": 180,
+        "required_min_eval_lo": 244,
+        "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+        "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+      },
+      "ce_by_row_clean": [
+        2.213989,
+        1.302956,
+        1.408344,
+        1.378871,
+        0.666991,
+        0.970219,
+        0.840535,
+        1.891207,
+        2.020061,
+        1.612534,
+        1.179218
+      ],
+      "ce_by_row_corrupt": [
+        2.257891,
+        1.387815,
+        1.413118,
+        1.392906,
+        0.674585,
+        0.984803,
+        0.84168,
+        1.899781,
+        2.045133,
+        1.630962,
+        1.145834
+      ],
+      "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）",
+      "with_channel_off": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 4.280997,
+        "ce_far_corrupt": 4.280997,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "n_tokens": 88,
+        "n_batches": 1,
+        "batch_size": 8,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i] 完全落在未毁区 (eval_lo−rf ≥ corrupt_hi) ⇒ 对**无通道**臂逐位不敏感（前提①）；对通道臂，被毁前缀只能经记忆槽到达被评行"
+        },
+        "ce_by_row_clean": [
+          3.156948,
+          3.937395,
+          4.64721,
+          4.210762,
+          5.390696,
+          3.89842,
+          3.895608,
+          4.667149,
+          4.62222,
+          4.729214,
+          3.935343
+        ],
+        "ce_by_row_corrupt": [
+          3.156948,
+          3.937395,
+          4.64721,
+          4.210762,
+          5.390696,
+          3.89842,
+          3.895608,
+          4.667149,
+          4.62222,
+          4.729214,
+          3.935343
+        ],
+        "note": "Δbpc_far > 0 = 窗外前缀内容对该模型有用（通道把它搬来了）；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 bpc_win16）"
+      }
+    }
+  },
+  "needle_leg": {
+    "conditions": {
+      "win16_s0|planted": {
+        "recall": 0.390625,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.390625,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.40625,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.2,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.4,
+            "n": 25
+          }
+        }
+      },
+      "win16_s0|control": {
+        "recall": 0.40625,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.40625,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.4375,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.2,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.4,
+            "n": 25
+          }
+        }
+      },
+      "win16_s1|planted": {
+        "recall": 0.4375,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.4375,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.5,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.4,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.36,
+            "n": 25
+          }
+        }
+      },
+      "win16_s1|control": {
+        "recall": 0.4375,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.4375,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.5,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.4,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.36,
+            "n": 25
+          }
+        }
+      },
+      "carry16_s0|planted": {
+        "recall": 0.46875,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.46875,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.5625,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.2,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.4,
+            "n": 25
+          }
+        }
+      },
+      "carry16_s0|control": {
+        "recall": 0.46875,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.46875,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.59375,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.0,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.4,
+            "n": 25
+          }
+        }
+      },
+      "carry16_s1|planted": {
+        "recall": 0.46875,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.46875,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.65625,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.2,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.28,
+            "n": 25
+          }
+        }
+      },
+      "carry16_s1|control": {
+        "recall": 0.46875,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.46875,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.625,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.2,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.32,
+            "n": 25
+          }
+        }
+      },
+      "carrypl16_s0|planted": {
+        "recall": 0.546875,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.546875,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 1.0,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.625,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.6,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.4,
+            "n": 25
+          }
+        }
+      },
+      "carrypl16_s0|control": {
+        "recall": 0.46875,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.46875,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.5,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.6,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.4,
+            "n": 25
+          }
+        }
+      },
+      "carrypl16d_s0|planted": {
+        "recall": 0.453125,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.453125,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.5625,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.2,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.36,
+            "n": 25
+          }
+        }
+      },
+      "carrypl16d_s0|control": {
+        "recall": 0.484375,
+        "n": 64,
+        "buckets": {
+          "beyond": {
+            "recall": 0.484375,
+            "n": 64
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.5,
+            "n": 2
+          },
+          "[128,256)": {
+            "recall": 0.5625,
+            "n": 32
+          },
+          "[32,64)": {
+            "recall": 0.6,
+            "n": 5
+          },
+          "[64,128)": {
+            "recall": 0.36,
+            "n": 25
+          }
+        }
+      }
+    },
+    "n_needles_total": 64,
+    "seed": 3,
+    "n_batches": 1,
+    "bucket_rule": "anchors=0 ⇒ 桶只有 window（短语全可见）与 beyond（有位置不可见）；本实验锚点 0，窗 16 ⇒ beyond 占绝大多数",
+    "paired_beyond_vs_floor": {
+      "win16_s0": {
+        "n": 64,
+        "planted_hits": 25,
+        "control_hits": 26,
+        "planted_recall": 0.390625,
+        "control_recall": 0.40625,
+        "delta_pp": -1.562,
+        "hard_subset_same_index": {
+          "intersection": {
+            "n": 23,
+            "hits": 0,
+            "recall": 0.0,
+            "wilson_ci": [
+              0.0,
+              0.143121
+            ],
+            "definition": "六臂 control 全答不出（同索引）"
+          },
+          "union": {
+            "n": 46,
+            "hits": 7,
+            "recall": 0.152174,
+            "wilson_ci": [
+              0.075722,
+              0.282244
+            ],
+            "definition": "至少一臂 control 答不出（同索引）"
+          }
+        }
+      },
+      "win16_s1": {
+        "n": 64,
+        "planted_hits": 28,
+        "control_hits": 28,
+        "planted_recall": 0.4375,
+        "control_recall": 0.4375,
+        "delta_pp": 0.0,
+        "hard_subset_same_index": {
+          "intersection": {
+            "n": 23,
+            "hits": 0,
+            "recall": 0.0,
+            "wilson_ci": [
+              0.0,
+              0.143121
+            ],
+            "definition": "六臂 control 全答不出（同索引）"
+          },
+          "union": {
+            "n": 46,
+            "hits": 10,
+            "recall": 0.217391,
+            "wilson_ci": [
+              0.122608,
+              0.35574
+            ],
+            "definition": "至少一臂 control 答不出（同索引）"
+          }
+        }
+      },
+      "carry16_s0": {
+        "n": 64,
+        "planted_hits": 30,
+        "control_hits": 30,
+        "planted_recall": 0.46875,
+        "control_recall": 0.46875,
+        "delta_pp": 0.0,
+        "hard_subset_same_index": {
+          "intersection": {
+            "n": 23,
+            "hits": 0,
+            "recall": 0.0,
+            "wilson_ci": [
+              0.0,
+              0.143121
+            ],
+            "definition": "六臂 control 全答不出（同索引）"
+          },
+          "union": {
+            "n": 46,
+            "hits": 12,
+            "recall": 0.26087,
+            "wilson_ci": [
+              0.156007,
+              0.402594
+            ],
+            "definition": "至少一臂 control 答不出（同索引）"
+          }
+        }
+      },
+      "carry16_s1": {
+        "n": 64,
+        "planted_hits": 30,
+        "control_hits": 30,
+        "planted_recall": 0.46875,
+        "control_recall": 0.46875,
+        "delta_pp": 0.0,
+        "hard_subset_same_index": {
+          "intersection": {
+            "n": 23,
+            "hits": 1,
+            "recall": 0.043478,
+            "wilson_ci": [
+              0.007716,
+              0.209916
+            ],
+            "definition": "六臂 control 全答不出（同索引）"
+          },
+          "union": {
+            "n": 46,
+            "hits": 13,
+            "recall": 0.282609,
+            "wilson_ci": [
+              0.17324,
+              0.425488
+            ],
+            "definition": "至少一臂 control 答不出（同索引）"
+          }
+        }
+      },
+      "carrypl16_s0": {
+        "n": 64,
+        "planted_hits": 35,
+        "control_hits": 30,
+        "planted_recall": 0.546875,
+        "control_recall": 0.46875,
+        "delta_pp": 7.812,
+        "hard_subset_same_index": {
+          "intersection": {
+            "n": 23,
+            "hits": 3,
+            "recall": 0.130435,
+            "wilson_ci": [
+              0.045376,
+              0.321279
+            ],
+            "definition": "六臂 control 全答不出（同索引）"
+          },
+          "union": {
+            "n": 46,
+            "hits": 18,
+            "recall": 0.391304,
+            "wilson_ci": [
+              0.26393,
+              0.535434
+            ],
+            "definition": "至少一臂 control 答不出（同索引）"
+          }
+        }
+      },
+      "carrypl16d_s0": {
+        "n": 64,
+        "planted_hits": 29,
+        "control_hits": 31,
+        "planted_recall": 0.453125,
+        "control_recall": 0.484375,
+        "delta_pp": -3.125,
+        "hard_subset_same_index": {
+          "intersection": {
+            "n": 23,
+            "hits": 0,
+            "recall": 0.0,
+            "wilson_ci": [
+              0.0,
+              0.143121
+            ],
+            "definition": "六臂 control 全答不出（同索引）"
+          },
+          "union": {
+            "n": 46,
+            "hits": 11,
+            "recall": 0.23913,
+            "wilson_ci": [
+              0.13912,
+              0.379354
+            ],
+            "definition": "至少一臂 control 答不出（同索引）"
+          }
+        }
+      }
+    },
+    "hard_index_sets": {
+      "n_indexed": 64,
+      "per_arm_control_miss": {
+        "win16_s0": 38,
+        "win16_s1": 36,
+        "carry16_s0": 34,
+        "carry16_s1": 34,
+        "carrypl16_s0": 34,
+        "carrypl16d_s0": 33
+      },
+      "n_intersection": 23,
+      "n_union": 46,
+      "intersection": [
+        1,
+        2,
+        4,
+        5,
+        6,
+        11,
+        12,
+        17,
+        18,
+        20,
+        21,
+        24,
+        25,
+        26,
+        31,
+        40,
+        43,
+        48,
+        50,
+        57,
+        59,
+        60,
+        62
+      ],
+      "union": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        11,
+        12,
+        13,
+        17,
+        18,
+        19,
+        20,
+        21,
+        24,
+        25,
+        26,
+        27,
+        28,
+        30,
+        31,
+        32,
+        35,
+        36,
+        37,
+        40,
+        43,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        57,
+        59,
+        60,
+        61,
+        62
+      ],
+      "definition": "intersection = 四臂 control 全部答不出（任何无记忆运行都答不出）；union = 至少一臂 control 答不出（敏感性）"
+    },
+    "hard_subset_same_index_cross_arm": {
+      "intersection": {
+        "per_arm_recall": {
+          "win16_s0": {
+            "n": 23,
+            "hits": 0,
+            "recall": 0.0,
+            "wilson_ci": [
+              0.0,
+              0.143121
+            ]
+          },
+          "win16_s1": {
+            "n": 23,
+            "hits": 0,
+            "recall": 0.0,
+            "wilson_ci": [
+              0.0,
+              0.143121
+            ]
+          },
+          "carry16_s0": {
+            "n": 23,
+            "hits": 0,
+            "recall": 0.0,
+            "wilson_ci": [
+              0.0,
+              0.143121
+            ]
+          },
+          "carry16_s1": {
+            "n": 23,
+            "hits": 1,
+            "recall": 0.043478,
+            "wilson_ci": [
+              0.007716,
+              0.209916
+            ]
+          },
+          "carrypl16_s0": {
+            "n": 23,
+            "hits": 3,
+            "recall": 0.130435,
+            "wilson_ci": [
+              0.045376,
+              0.321279
+            ]
+          },
+          "carrypl16d_s0": {
+            "n": 23,
+            "hits": 0,
+            "recall": 0.0,
+            "wilson_ci": [
+              0.0,
+              0.143121
+            ]
+          }
+        },
+        "explicit_minus_implicit": {
+          "carrypl16_s0_minus_win16_s0": {
+            "planted_recall": 0.130435,
+            "control_recall": 0.0,
+            "delta_pp": 13.043,
+            "diff_ci_95": [
+              -0.007204,
+              0.268073
+            ],
+            "diff_ci_95_pp": [
+              -0.72,
+              26.807
+            ],
+            "z": 1.791,
+            "p_value": 0.0732207,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carrypl16_s0_minus_win16_s1": {
+            "planted_recall": 0.130435,
+            "control_recall": 0.0,
+            "delta_pp": 13.043,
+            "diff_ci_95": [
+              -0.007204,
+              0.268073
+            ],
+            "diff_ci_95_pp": [
+              -0.72,
+              26.807
+            ],
+            "z": 1.791,
+            "p_value": 0.0732207,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carrypl16d_s0_minus_win16_s0": {
+            "planted_recall": 0.0,
+            "control_recall": 0.0,
+            "delta_pp": 0.0,
+            "diff_ci_95": [
+              0.0,
+              0.0
+            ],
+            "diff_ci_95_pp": [
+              0.0,
+              0.0
+            ],
+            "z": 0.0,
+            "p_value": 1.0,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carrypl16d_s0_minus_win16_s1": {
+            "planted_recall": 0.0,
+            "control_recall": 0.0,
+            "delta_pp": 0.0,
+            "diff_ci_95": [
+              0.0,
+              0.0
+            ],
+            "diff_ci_95_pp": [
+              0.0,
+              0.0
+            ],
+            "z": 0.0,
+            "p_value": 1.0,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carry16_s0_minus_win16_s0": {
+            "planted_recall": 0.0,
+            "control_recall": 0.0,
+            "delta_pp": 0.0,
+            "diff_ci_95": [
+              0.0,
+              0.0
+            ],
+            "diff_ci_95_pp": [
+              0.0,
+              0.0
+            ],
+            "z": 0.0,
+            "p_value": 1.0,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carry16_s0_minus_win16_s1": {
+            "planted_recall": 0.0,
+            "control_recall": 0.0,
+            "delta_pp": 0.0,
+            "diff_ci_95": [
+              0.0,
+              0.0
+            ],
+            "diff_ci_95_pp": [
+              0.0,
+              0.0
+            ],
+            "z": 0.0,
+            "p_value": 1.0,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carry16_s1_minus_win16_s0": {
+            "planted_recall": 0.043478,
+            "control_recall": 0.0,
+            "delta_pp": 4.348,
+            "diff_ci_95": [
+              -0.039866,
+              0.126823
+            ],
+            "diff_ci_95_pp": [
+              -3.987,
+              12.682
+            ],
+            "z": 1.011,
+            "p_value": 0.31199247,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carry16_s1_minus_win16_s1": {
+            "planted_recall": 0.043478,
+            "control_recall": 0.0,
+            "delta_pp": 4.348,
+            "diff_ci_95": [
+              -0.039866,
+              0.126823
+            ],
+            "diff_ci_95_pp": [
+              -3.987,
+              12.682
+            ],
+            "z": 1.011,
+            "p_value": 0.31199247,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          }
+        }
+      },
+      "union": {
+        "per_arm_recall": {
+          "win16_s0": {
+            "n": 46,
+            "hits": 7,
+            "recall": 0.152174,
+            "wilson_ci": [
+              0.075722,
+              0.282244
+            ]
+          },
+          "win16_s1": {
+            "n": 46,
+            "hits": 10,
+            "recall": 0.217391,
+            "wilson_ci": [
+              0.122608,
+              0.35574
+            ]
+          },
+          "carry16_s0": {
+            "n": 46,
+            "hits": 12,
+            "recall": 0.26087,
+            "wilson_ci": [
+              0.156007,
+              0.402594
+            ]
+          },
+          "carry16_s1": {
+            "n": 46,
+            "hits": 13,
+            "recall": 0.282609,
+            "wilson_ci": [
+              0.17324,
+              0.425488
+            ]
+          },
+          "carrypl16_s0": {
+            "n": 46,
+            "hits": 18,
+            "recall": 0.391304,
+            "wilson_ci": [
+              0.26393,
+              0.535434
+            ]
+          },
+          "carrypl16d_s0": {
+            "n": 46,
+            "hits": 11,
+            "recall": 0.23913,
+            "wilson_ci": [
+              0.13912,
+              0.379354
+            ]
+          }
+        },
+        "explicit_minus_implicit": {
+          "carrypl16_s0_minus_win16_s0": {
+            "planted_recall": 0.391304,
+            "control_recall": 0.152174,
+            "delta_pp": 23.913,
+            "diff_ci_95": [
+              0.064013,
+              0.414248
+            ],
+            "diff_ci_95_pp": [
+              6.401,
+              41.425
+            ],
+            "z": 2.578,
+            "p_value": 0.00993803,
+            "ci_overlap": true,
+            "passes": true,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carrypl16_s0_minus_win16_s1": {
+            "planted_recall": 0.391304,
+            "control_recall": 0.217391,
+            "delta_pp": 17.391,
+            "diff_ci_95": [
+              -0.010748,
+              0.358574
+            ],
+            "diff_ci_95_pp": [
+              -1.075,
+              35.857
+            ],
+            "z": 1.813,
+            "p_value": 0.06988521,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carrypl16d_s0_minus_win16_s0": {
+            "planted_recall": 0.23913,
+            "control_recall": 0.152174,
+            "delta_pp": 8.696,
+            "diff_ci_95": [
+              -0.074194,
+              0.248107
+            ],
+            "diff_ci_95_pp": [
+              -7.419,
+              24.811
+            ],
+            "z": 1.051,
+            "p_value": 0.29314847,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carrypl16d_s0_minus_win16_s1": {
+            "planted_recall": 0.23913,
+            "control_recall": 0.217391,
+            "delta_pp": 2.174,
+            "diff_ci_95": [
+              -0.149735,
+              0.193213
+            ],
+            "diff_ci_95_pp": [
+              -14.974,
+              19.321
+            ],
+            "z": 0.248,
+            "p_value": 0.80382338,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carry16_s0_minus_win16_s0": {
+            "planted_recall": 0.26087,
+            "control_recall": 0.152174,
+            "delta_pp": 10.87,
+            "diff_ci_95": [
+              -0.055247,
+              0.272639
+            ],
+            "diff_ci_95_pp": [
+              -5.525,
+              27.264
+            ],
+            "z": 1.288,
+            "p_value": 0.19783906,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carry16_s0_minus_win16_s1": {
+            "planted_recall": 0.26087,
+            "control_recall": 0.217391,
+            "delta_pp": 4.348,
+            "diff_ci_95": [
+              -0.130622,
+              0.217579
+            ],
+            "diff_ci_95_pp": [
+              -13.062,
+              21.758
+            ],
+            "z": 0.489,
+            "p_value": 0.62495752,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carry16_s1_minus_win16_s0": {
+            "planted_recall": 0.282609,
+            "control_recall": 0.152174,
+            "delta_pp": 13.043,
+            "diff_ci_95": [
+              -0.036017,
+              0.296886
+            ],
+            "diff_ci_95_pp": [
+              -3.602,
+              29.689
+            ],
+            "z": 1.517,
+            "p_value": 0.129374,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          },
+          "carry16_s1_minus_win16_s1": {
+            "planted_recall": 0.282609,
+            "control_recall": 0.217391,
+            "delta_pp": 6.522,
+            "diff_ci_95": [
+              -0.111247,
+              0.241682
+            ],
+            "diff_ci_95_pp": [
+              -11.125,
+              24.168
+            ],
+            "z": 0.722,
+            "p_value": 0.47010076,
+            "ci_overlap": true,
+            "passes": false,
+            "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+          }
+        }
+      }
+    },
+    "primary_hard_subset": {
+      "arm": "carrypl16_s0",
+      "subset": "intersection",
+      "n": 23,
+      "hits": 3,
+      "recall": 0.130435,
+      "wilson_ci": [
+        0.045376,
+        0.321279
+      ],
+      "vs_floor": {
+        "planted_recall": 0.130435,
+        "control_recall": 0.0,
+        "delta_pp": 13.043,
+        "diff_ci_95": [
+          -0.007204,
+          0.268073
+        ],
+        "diff_ci_95_pp": [
+          -0.72,
+          26.807
+        ],
+        "z": 1.791,
+        "p_value": 0.0732207,
+        "ci_overlap": true,
+        "passes": false,
+        "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+      },
+      "vs_primary_implicit": {
+        "planted_recall": 0.130435,
+        "control_recall": 0.0,
+        "delta_pp": 13.043,
+        "diff_ci_95": [
+          -0.007204,
+          0.268073
+        ],
+        "diff_ci_95_pp": [
+          -0.72,
+          26.807
+        ],
+        "z": 1.791,
+        "p_value": 0.0732207,
+        "ci_overlap": true,
+        "passes": false,
+        "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+      },
+      "note": "硬同索引子集 = 六臂 plant=False 全部答不出的针（该子集上地板恒为 0）；vs_floor = 植入 − 地板两比例差（判据①）；vs_primary_implicit = 跨臂对撞"
+    },
+    "judgement": {
+      "per_arm": {
+        "win16_s0": {
+          "planted_recall": 0.390625,
+          "control_recall": 0.40625,
+          "delta_pp": -1.562,
+          "diff_ci_95": [
+            -0.185233,
+            0.153983
+          ],
+          "diff_ci_95_pp": [
+            -18.523,
+            15.398
+          ],
+          "z": -0.181,
+          "p_value": 0.8567283,
+          "ci_overlap": true,
+          "passes": false,
+          "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+        },
+        "win16_s1": {
+          "planted_recall": 0.4375,
+          "control_recall": 0.4375,
+          "delta_pp": 0.0,
+          "diff_ci_95": [
+            -0.171882,
+            0.171882
+          ],
+          "diff_ci_95_pp": [
+            -17.188,
+            17.188
+          ],
+          "z": 0.0,
+          "p_value": 1.0,
+          "ci_overlap": true,
+          "passes": false,
+          "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+        },
+        "carry16_s0": {
+          "planted_recall": 0.46875,
+          "control_recall": 0.46875,
+          "delta_pp": 0.0,
+          "diff_ci_95": [
+            -0.172902,
+            0.172902
+          ],
+          "diff_ci_95_pp": [
+            -17.29,
+            17.29
+          ],
+          "z": 0.0,
+          "p_value": 1.0,
+          "ci_overlap": true,
+          "passes": false,
+          "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+        },
+        "carry16_s1": {
+          "planted_recall": 0.46875,
+          "control_recall": 0.46875,
+          "delta_pp": 0.0,
+          "diff_ci_95": [
+            -0.172902,
+            0.172902
+          ],
+          "diff_ci_95_pp": [
+            -17.29,
+            17.29
+          ],
+          "z": 0.0,
+          "p_value": 1.0,
+          "ci_overlap": true,
+          "passes": false,
+          "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+        },
+        "carrypl16_s0": {
+          "planted_recall": 0.546875,
+          "control_recall": 0.46875,
+          "delta_pp": 7.812,
+          "diff_ci_95": [
+            -0.094565,
+            0.250815
+          ],
+          "diff_ci_95_pp": [
+            -9.457,
+            25.082
+          ],
+          "z": 0.884,
+          "p_value": 0.37670086,
+          "ci_overlap": true,
+          "passes": false,
+          "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+        },
+        "carrypl16d_s0": {
+          "planted_recall": 0.453125,
+          "control_recall": 0.484375,
+          "delta_pp": -3.125,
+          "diff_ci_95": [
+            -0.204068,
+            0.141568
+          ],
+          "diff_ci_95_pp": [
+            -20.407,
+            14.157
+          ],
+          "z": -0.354,
+          "p_value": 0.72315457,
+          "ci_overlap": true,
+          "passes": false,
+          "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+        }
+      },
+      "intervention_arms": [
+        "carry16_s0",
+        "carry16_s1",
+        "carrypl16_s0",
+        "carrypl16d_s0"
+      ],
+      "intervention_arms_all_pass": false,
+      "any_arm_passes": false,
+      "all_arms_pass": false,
+      "rule": "预登记口径 = 逐个**干预臂**（delta）都要通过；`any_arm_passes`/`all_arms_pass` 只作旁证，不作判据"
+    },
+    "criterion_rule": "判据①② = 逐臂：explicit（carrypl16_s0）的 beyond 植入召回 > 其配对地板、差值 95% CI 下界 > 0（硬同索引子集上）；implicit（win16_*）不越地板（负对照）"
+  },
+  "causality": {
+    "win16_s0": {
+      "perturbed_from": 128,
+      "max_abs_logit_diff_prefix": 0.0,
+      "causal_no_future_leak": true,
+      "changed_suffix_max_abs_logit_diff": 24.348558,
+      "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+    },
+    "win16_s1": {
+      "perturbed_from": 128,
+      "max_abs_logit_diff_prefix": 0.0,
+      "causal_no_future_leak": true,
+      "changed_suffix_max_abs_logit_diff": 28.211535,
+      "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+    },
+    "carry16_s0": {
+      "perturbed_from": 128,
+      "max_abs_logit_diff_prefix": 0.0,
+      "causal_no_future_leak": true,
+      "changed_suffix_max_abs_logit_diff": 22.77022,
+      "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+    },
+    "carry16_s1": {
+      "perturbed_from": 128,
+      "max_abs_logit_diff_prefix": 0.0,
+      "causal_no_future_leak": true,
+      "changed_suffix_max_abs_logit_diff": 24.475739,
+      "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+    },
+    "carrypl16_s0": {
+      "perturbed_from": 128,
+      "max_abs_logit_diff_prefix": 0.0,
+      "causal_no_future_leak": true,
+      "changed_suffix_max_abs_logit_diff": 22.79406,
+      "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+    },
+    "carrypl16d_s0": {
+      "perturbed_from": 128,
+      "max_abs_logit_diff_prefix": 0.0,
+      "causal_no_future_leak": true,
+      "changed_suffix_max_abs_logit_diff": 25.263943,
+      "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+    }
+  },
+  "retention": {
+    "enabled": true,
+    "config": {
+      "n_batches": 1,
+      "batch_size": 8,
+      "window_seed": 2,
+      "recent_d": [
+        4,
+        8,
+        16,
+        24,
+        32
+      ],
+      "prefix_drop": [
+        8,
+        16,
+        32,
+        64,
+        128
+      ]
+    },
+    "caliber_note": "显式状态固定大小、结构上不可截断 ⇒ prefix/recent 掩码只删attention 的 KV，carrypl16 臂每层状态仍完整携带前缀信息；damage_bpc = bpc_掩码 − bpc_clean；正 = 变差",
+    "curves": {
+      "win16_s0": {
+        "bpc_clean_window16": 1.637986,
+        "recent": [
+          {
+            "d": 4,
+            "bpc": 2.743461,
+            "damage_bpc": 1.105475,
+            "delta_bpc": -1.105475
+          },
+          {
+            "d": 8,
+            "bpc": 1.899646,
+            "damage_bpc": 0.26166,
+            "delta_bpc": -0.26166
+          },
+          {
+            "d": 16,
+            "bpc": 1.637986,
+            "damage_bpc": 0.0,
+            "delta_bpc": -0.0
+          },
+          {
+            "d": 24,
+            "bpc": 1.791709,
+            "damage_bpc": 0.153723,
+            "delta_bpc": -0.153723
+          },
+          {
+            "d": 32,
+            "bpc": 4.062463,
+            "damage_bpc": 2.424477,
+            "delta_bpc": -2.424477
+          }
+        ],
+        "prefix": [
+          {
+            "d": 8,
+            "bpc": 4.775894,
+            "damage_bpc": 3.137908,
+            "delta_bpc": -3.137908
+          },
+          {
+            "d": 16,
+            "bpc": 4.612048,
+            "damage_bpc": 2.974062,
+            "delta_bpc": -2.974062
+          },
+          {
+            "d": 32,
+            "bpc": 4.681553,
+            "damage_bpc": 3.043567,
+            "delta_bpc": -3.043567
+          },
+          {
+            "d": 64,
+            "bpc": 4.768084,
+            "damage_bpc": 3.130098,
+            "delta_bpc": -3.130098
+          },
+          {
+            "d": 128,
+            "bpc": 5.126545,
+            "damage_bpc": 3.488559,
+            "delta_bpc": -3.488559
+          }
+        ],
+        "safe_radius_recent": {
+          "sigma_cell": {
+            "value": 16,
+            "delta_bpc": -0.0,
+            "band": 0.00166,
+            "n_safe": 1,
+            "param": "d"
+          },
+          "band_0.014": {
+            "value": 16,
+            "delta_bpc": -0.0,
+            "band": 0.014,
+            "n_safe": 1,
+            "param": "d"
+          }
+        },
+        "safe_radius_prefix": {
+          "sigma_cell": {
+            "value": null,
+            "delta_bpc": null,
+            "band": 0.00166,
+            "n_safe": 0,
+            "param": "d"
+          },
+          "band_0.014": {
+            "value": null,
+            "delta_bpc": null,
+            "band": 0.014,
+            "n_safe": 0,
+            "param": "d"
+          }
+        }
+      },
+      "win16_s1": {
+        "bpc_clean_window16": 1.612549,
+        "recent": [
+          {
+            "d": 4,
+            "bpc": 2.628905,
+            "damage_bpc": 1.016356,
+            "delta_bpc": -1.016356
+          },
+          {
+            "d": 8,
+            "bpc": 1.87011,
+            "damage_bpc": 0.257561,
+            "delta_bpc": -0.257561
+          },
+          {
+            "d": 16,
+            "bpc": 1.612549,
+            "damage_bpc": -0.0,
+            "delta_bpc": 0.0
+          },
+          {
+            "d": 24,
+            "bpc": 2.602417,
+            "damage_bpc": 0.989868,
+            "delta_bpc": -0.989868
+          },
+          {
+            "d": 32,
+            "bpc": 4.307255,
+            "damage_bpc": 2.694706,
+            "delta_bpc": -2.694706
+          }
+        ],
+        "prefix": [
+          {
+            "d": 8,
+            "bpc": 4.716216,
+            "damage_bpc": 3.103667,
+            "delta_bpc": -3.103667
+          },
+          {
+            "d": 16,
+            "bpc": 4.701523,
+            "damage_bpc": 3.088974,
+            "delta_bpc": -3.088974
+          },
+          {
+            "d": 32,
+            "bpc": 4.789359,
+            "damage_bpc": 3.17681,
+            "delta_bpc": -3.17681
+          },
+          {
+            "d": 64,
+            "bpc": 4.901442,
+            "damage_bpc": 3.288893,
+            "delta_bpc": -3.288893
+          },
+          {
+            "d": 128,
+            "bpc": 5.202176,
+            "damage_bpc": 3.589627,
+            "delta_bpc": -3.589627
+          }
+        ],
+        "safe_radius_recent": {
+          "sigma_cell": {
+            "value": 16,
+            "delta_bpc": 0.0,
+            "band": 0.00166,
+            "n_safe": 1,
+            "param": "d"
+          },
+          "band_0.014": {
+            "value": 16,
+            "delta_bpc": 0.0,
+            "band": 0.014,
+            "n_safe": 1,
+            "param": "d"
+          }
+        },
+        "safe_radius_prefix": {
+          "sigma_cell": {
+            "value": null,
+            "delta_bpc": null,
+            "band": 0.00166,
+            "n_safe": 0,
+            "param": "d"
+          },
+          "band_0.014": {
+            "value": null,
+            "delta_bpc": null,
+            "band": 0.014,
+            "n_safe": 0,
+            "param": "d"
+          }
+        }
+      },
+      "carry16_s0": {
+        "bpc_clean_window16": 1.584657,
+        "recent": [
+          {
+            "d": 4,
+            "bpc": 2.114543,
+            "damage_bpc": 0.529886,
+            "delta_bpc": -0.529886
+          },
+          {
+            "d": 8,
+            "bpc": 1.74678,
+            "damage_bpc": 0.162123,
+            "delta_bpc": -0.162123
+          },
+          {
+            "d": 16,
+            "bpc": 1.584656,
+            "damage_bpc": -1e-06,
+            "delta_bpc": 1e-06
+          },
+          {
+            "d": 24,
+            "bpc": 1.621398,
+            "damage_bpc": 0.036741,
+            "delta_bpc": -0.036741
+          },
+          {
+            "d": 32,
+            "bpc": 1.650028,
+            "damage_bpc": 0.065371,
+            "delta_bpc": -0.065371
+          }
+        ],
+        "prefix": [
+          {
+            "d": 8,
+            "bpc": 2.077317,
+            "damage_bpc": 0.49266,
+            "delta_bpc": -0.49266
+          },
+          {
+            "d": 16,
+            "bpc": 2.146718,
+            "damage_bpc": 0.562061,
+            "delta_bpc": -0.562061
+          },
+          {
+            "d": 32,
+            "bpc": 2.272546,
+            "damage_bpc": 0.687889,
+            "delta_bpc": -0.687889
+          },
+          {
+            "d": 64,
+            "bpc": 2.634027,
+            "damage_bpc": 1.04937,
+            "delta_bpc": -1.04937
+          },
+          {
+            "d": 128,
+            "bpc": 3.321942,
+            "damage_bpc": 1.737285,
+            "delta_bpc": -1.737285
+          }
+        ],
+        "safe_radius_recent": {
+          "sigma_cell": {
+            "value": 16,
+            "delta_bpc": 1e-06,
+            "band": 0.00166,
+            "n_safe": 1,
+            "param": "d"
+          },
+          "band_0.014": {
+            "value": 16,
+            "delta_bpc": 1e-06,
+            "band": 0.014,
+            "n_safe": 1,
+            "param": "d"
+          }
+        },
+        "safe_radius_prefix": {
+          "sigma_cell": {
+            "value": null,
+            "delta_bpc": null,
+            "band": 0.00166,
+            "n_safe": 0,
+            "param": "d"
+          },
+          "band_0.014": {
+            "value": null,
+            "delta_bpc": null,
+            "band": 0.014,
+            "n_safe": 0,
+            "param": "d"
+          }
+        }
+      },
+      "carry16_s1": {
+        "bpc_clean_window16": 1.589881,
+        "recent": [
+          {
+            "d": 4,
+            "bpc": 2.085617,
+            "damage_bpc": 0.495736,
+            "delta_bpc": -0.495736
+          },
+          {
+            "d": 8,
+            "bpc": 1.769647,
+            "damage_bpc": 0.179766,
+            "delta_bpc": -0.179766
+          },
+          {
+            "d": 16,
+            "bpc": 1.589881,
+            "damage_bpc": -0.0,
+            "delta_bpc": 0.0
+          },
+          {
+            "d": 24,
+            "bpc": 1.61789,
+            "damage_bpc": 0.028009,
+            "delta_bpc": -0.028009
+          },
+          {
+            "d": 32,
+            "bpc": 1.646497,
+            "damage_bpc": 0.056616,
+            "delta_bpc": -0.056616
+          }
+        ],
+        "prefix": [
+          {
+            "d": 8,
+            "bpc": 2.057021,
+            "damage_bpc": 0.46714,
+            "delta_bpc": -0.46714
+          },
+          {
+            "d": 16,
+            "bpc": 2.112372,
+            "damage_bpc": 0.522491,
+            "delta_bpc": -0.522491
+          },
+          {
+            "d": 32,
+            "bpc": 2.245347,
+            "damage_bpc": 0.655466,
+            "delta_bpc": -0.655466
+          },
+          {
+            "d": 64,
+            "bpc": 2.548369,
+            "damage_bpc": 0.958488,
+            "delta_bpc": -0.958488
+          },
+          {
+            "d": 128,
+            "bpc": 3.180242,
+            "damage_bpc": 1.590361,
+            "delta_bpc": -1.590361
+          }
+        ],
+        "safe_radius_recent": {
+          "sigma_cell": {
+            "value": 16,
+            "delta_bpc": 0.0,
+            "band": 0.00166,
+            "n_safe": 1,
+            "param": "d"
+          },
+          "band_0.014": {
+            "value": 16,
+            "delta_bpc": 0.0,
+            "band": 0.014,
+            "n_safe": 1,
+            "param": "d"
+          }
+        },
+        "safe_radius_prefix": {
+          "sigma_cell": {
+            "value": null,
+            "delta_bpc": null,
+            "band": 0.00166,
+            "n_safe": 0,
+            "param": "d"
+          },
+          "band_0.014": {
+            "value": null,
+            "delta_bpc": null,
+            "band": 0.014,
+            "n_safe": 0,
+            "param": "d"
+          }
+        }
+      },
+      "carrypl16_s0": {
+        "bpc_clean_window16": 1.471589,
+        "recent": [
+          {
+            "d": 4,
+            "bpc": 2.087743,
+            "damage_bpc": 0.616154,
+            "delta_bpc": -0.616154
+          },
+          {
+            "d": 8,
+            "bpc": 1.555755,
+            "damage_bpc": 0.084166,
+            "delta_bpc": -0.084166
+          },
+          {
+            "d": 16,
+            "bpc": 1.471589,
+            "damage_bpc": -0.0,
+            "delta_bpc": 0.0
+          },
+          {
+            "d": 24,
+            "bpc": 1.80018,
+            "damage_bpc": 0.328591,
+            "delta_bpc": -0.328591
+          },
+          {
+            "d": 32,
+            "bpc": 3.985581,
+            "damage_bpc": 2.513992,
+            "delta_bpc": -2.513992
+          }
+        ],
+        "prefix": [
+          {
+            "d": 8,
+            "bpc": 4.469791,
+            "damage_bpc": 2.998202,
+            "delta_bpc": -2.998202
+          },
+          {
+            "d": 16,
+            "bpc": 4.435826,
+            "damage_bpc": 2.964237,
+            "delta_bpc": -2.964237
+          },
+          {
+            "d": 32,
+            "bpc": 4.455048,
+            "damage_bpc": 2.983459,
+            "delta_bpc": -2.983459
+          },
+          {
+            "d": 64,
+            "bpc": 4.547706,
+            "damage_bpc": 3.076117,
+            "delta_bpc": -3.076117
+          },
+          {
+            "d": 128,
+            "bpc": 4.832539,
+            "damage_bpc": 3.36095,
+            "delta_bpc": -3.36095
+          }
+        ],
+        "safe_radius_recent": {
+          "sigma_cell": {
+            "value": 16,
+            "delta_bpc": 0.0,
+            "band": 0.00166,
+            "n_safe": 1,
+            "param": "d"
+          },
+          "band_0.014": {
+            "value": 16,
+            "delta_bpc": 0.0,
+            "band": 0.014,
+            "n_safe": 1,
+            "param": "d"
+          }
+        },
+        "safe_radius_prefix": {
+          "sigma_cell": {
+            "value": null,
+            "delta_bpc": null,
+            "band": 0.00166,
+            "n_safe": 0,
+            "param": "d"
+          },
+          "band_0.014": {
+            "value": null,
+            "delta_bpc": null,
+            "band": 0.014,
+            "n_safe": 0,
+            "param": "d"
+          }
+        }
+      },
+      "carrypl16d_s0": {
+        "bpc_clean_window16": 1.515515,
+        "recent": [
+          {
+            "d": 4,
+            "bpc": 1.847269,
+            "damage_bpc": 0.331754,
+            "delta_bpc": -0.331754
+          },
+          {
+            "d": 8,
+            "bpc": 1.633444,
+            "damage_bpc": 0.117929,
+            "delta_bpc": -0.117929
+          },
+          {
+            "d": 16,
+            "bpc": 1.515515,
+            "damage_bpc": -0.0,
+            "delta_bpc": 0.0
+          },
+          {
+            "d": 24,
+            "bpc": 1.539586,
+            "damage_bpc": 0.024071,
+            "delta_bpc": -0.024071
+          },
+          {
+            "d": 32,
+            "bpc": 1.56858,
+            "damage_bpc": 0.053065,
+            "delta_bpc": -0.053065
+          }
+        ],
+        "prefix": [
+          {
+            "d": 8,
+            "bpc": 1.843635,
+            "damage_bpc": 0.32812,
+            "delta_bpc": -0.32812
+          },
+          {
+            "d": 16,
+            "bpc": 1.928719,
+            "damage_bpc": 0.413204,
+            "delta_bpc": -0.413204
+          },
+          {
+            "d": 32,
+            "bpc": 2.055,
+            "damage_bpc": 0.539485,
+            "delta_bpc": -0.539485
+          },
+          {
+            "d": 64,
+            "bpc": 2.336792,
+            "damage_bpc": 0.821277,
+            "delta_bpc": -0.821277
+          },
+          {
+            "d": 128,
+            "bpc": 2.980281,
+            "damage_bpc": 1.464766,
+            "delta_bpc": -1.464766
+          }
+        ],
+        "safe_radius_recent": {
+          "sigma_cell": {
+            "value": 16,
+            "delta_bpc": 0.0,
+            "band": 0.00166,
+            "n_safe": 1,
+            "param": "d"
+          },
+          "band_0.014": {
+            "value": 16,
+            "delta_bpc": 0.0,
+            "band": 0.014,
+            "n_safe": 1,
+            "param": "d"
+          }
+        },
+        "safe_radius_prefix": {
+          "sigma_cell": {
+            "value": null,
+            "delta_bpc": null,
+            "band": 0.00166,
+            "n_safe": 0,
+            "param": "d"
+          },
+          "band_0.014": {
+            "value": null,
+            "delta_bpc": null,
+            "band": 0.014,
+            "n_safe": 0,
+            "param": "d"
+          }
+        }
+      }
+    }
+  },
+  "sigma_cell": {
+    "bpc_win16": 0.025437,
+    "pair_spreads": {
+      "win16_s0|win16_s1": 0.025437,
+      "carry16_s0|carry16_s1": 0.005224
+    },
+    "note": "同配置换种子的极差（2 样本 ⇒ 描述量，不是方差上界）"
+  },
+  "effects": {
+    "bpc_win16": {
+      "win16_s0": 1.637986,
+      "win16_s1": 1.612549,
+      "carry16_s0": 1.584657,
+      "carry16_s1": 1.589881,
+      "carrypl16_s0": 1.471589,
+      "carrypl16d_s0": 1.515515
+    },
+    "explicit_minus_implicit": [
+      {
+        "explicit": "carrypl16_s0",
+        "implicit": "win16_s0",
+        "bpc_implicit": 1.637986,
+        "bpc_explicit": 1.471589,
+        "delta_bpc": 0.166397,
+        "paired_delta_bpc_ci95_bits": [
+          0.080714,
+          0.28013
+        ],
+        "paired_note": "配对 CI（同窗口序）：只含同批窗口的测量噪声，不含训练种子方差（后者由 σ_cell 描述）；正 = explicit 更好"
+      },
+      {
+        "explicit": "carrypl16_s0",
+        "implicit": "win16_s1",
+        "bpc_implicit": 1.612549,
+        "bpc_explicit": 1.471589,
+        "delta_bpc": 0.14096,
+        "paired_delta_bpc_ci95_bits": [
+          0.05694,
+          0.237916
+        ],
+        "paired_note": "配对 CI（同窗口序）：只含同批窗口的测量噪声，不含训练种子方差（后者由 σ_cell 描述）；正 = explicit 更好"
+      },
+      {
+        "explicit": "carrypl16d_s0",
+        "implicit": "win16_s0",
+        "bpc_implicit": 1.637986,
+        "bpc_explicit": 1.515515,
+        "delta_bpc": 0.122471,
+        "paired_delta_bpc_ci95_bits": [
+          0.073913,
+          0.180103
+        ],
+        "paired_note": "配对 CI（同窗口序）：只含同批窗口的测量噪声，不含训练种子方差（后者由 σ_cell 描述）；正 = explicit 更好"
+      },
+      {
+        "explicit": "carrypl16d_s0",
+        "implicit": "win16_s1",
+        "bpc_implicit": 1.612549,
+        "bpc_explicit": 1.515515,
+        "delta_bpc": 0.097034,
+        "paired_delta_bpc_ci95_bits": [
+          0.056501,
+          0.139996
+        ],
+        "paired_note": "配对 CI（同窗口序）：只含同批窗口的测量噪声，不含训练种子方差（后者由 σ_cell 描述）；正 = explicit 更好"
+      },
+      {
+        "explicit": "carry16_s0",
+        "implicit": "win16_s0",
+        "bpc_implicit": 1.637986,
+        "bpc_explicit": 1.584657,
+        "delta_bpc": 0.053329,
+        "paired_delta_bpc_ci95_bits": [
+          0.021767,
+          0.089005
+        ],
+        "paired_note": "配对 CI（同窗口序）：只含同批窗口的测量噪声，不含训练种子方差（后者由 σ_cell 描述）；正 = explicit 更好"
+      },
+      {
+        "explicit": "carry16_s0",
+        "implicit": "win16_s1",
+        "bpc_implicit": 1.612549,
+        "bpc_explicit": 1.584657,
+        "delta_bpc": 0.027892,
+        "paired_delta_bpc_ci95_bits": [
+          0.001865,
+          0.058787
+        ],
+        "paired_note": "配对 CI（同窗口序）：只含同批窗口的测量噪声，不含训练种子方差（后者由 σ_cell 描述）；正 = explicit 更好"
+      },
+      {
+        "explicit": "carry16_s1",
+        "implicit": "win16_s0",
+        "bpc_implicit": 1.637986,
+        "bpc_explicit": 1.589881,
+        "delta_bpc": 0.048105,
+        "paired_delta_bpc_ci95_bits": [
+          -0.007094,
+          0.122826
+        ],
+        "paired_note": "配对 CI（同窗口序）：只含同批窗口的测量噪声，不含训练种子方差（后者由 σ_cell 描述）；正 = explicit 更好"
+      },
+      {
+        "explicit": "carry16_s1",
+        "implicit": "win16_s1",
+        "bpc_implicit": 1.612549,
+        "bpc_explicit": 1.589881,
+        "delta_bpc": 0.022668,
+        "paired_delta_bpc_ci95_bits": [
+          -0.015685,
+          0.076221
+        ],
+        "paired_note": "配对 CI（同窗口序）：只含同批窗口的测量噪声，不含训练种子方差（后者由 σ_cell 描述）；正 = explicit 更好"
+      }
+    ],
+    "delta_bpc_far": {
+      "win16_s0": 0.0,
+      "win16_s1": 0.0,
+      "carry16_s0": -0.005654,
+      "carry16_s1": 0.014516,
+      "carrypl16_s0": 0.044757,
+      "carrypl16d_s0": 0.017235
+    }
+  },
+  "criteria": {
+    "arms": {
+      "implicit": [
+        "win16_s0",
+        "win16_s1"
+      ],
+      "explicit_complete": [
+        "carrypl16_s0",
+        "carrypl16d_s0"
+      ],
+      "explicit_degraded": [
+        "carry16_s0",
+        "carry16_s1"
+      ],
+      "primary_explicit": "carrypl16_s0",
+      "primary_implicit": "win16_s0"
+    },
+    "c1_explicit_recall_above_floor_hard_subset": false,
+    "c1b_explicit_minus_implicit_hard_subset": {
+      "carrypl16_s0_minus_win16_s0": false,
+      "carrypl16_s0_minus_win16_s1": false
+    },
+    "c2_implicit_stops_at_floor_negative_control": {
+      "win16_s0": {
+        "passes_above_floor": false,
+        "stops_at_floor": true
+      },
+      "win16_s1": {
+        "passes_above_floor": false,
+        "stops_at_floor": true
+      }
+    },
+    "c3_explicit_delta_bpc_far_positive_ci": {
+      "carrypl16_s0": {
+        "delta_bpc_far": 0.044757,
+        "ci95": [
+          -0.006869,
+          0.10539
+        ],
+        "positive_ci": false
+      },
+      "carrypl16d_s0": {
+        "delta_bpc_far": 0.017235,
+        "ci95": [
+          0.004814,
+          0.030048
+        ],
+        "positive_ci": true
+      }
+    },
+    "c4_premise_implicit_bitwise_insensitive": true,
+    "c5_quality_reproduction_all_equal": false,
+    "c6_causality_prefix_bitwise_invariant": {
+      "win16_s0": true,
+      "win16_s1": true,
+      "carry16_s0": true,
+      "carry16_s1": true,
+      "carrypl16_s0": true,
+      "carrypl16d_s0": true
+    },
+    "c6_all_causal": true,
+    "bands": {
+      "sigma_cell": 0.00166,
+      "sigma_cell_source": "2634 同配置换种子极差（win16 / carry16）——本实验用同一 arm 对重算并核对",
+      "cross_cell_band": 0.014,
+      "cross_cell_source": "docs/methodology.md（13M 跨 run bpc 漂移界；限配对 Δ、≥5 窗口）",
+      "rule": "bpc 类：本格 σ_cell 为主判、0.014 为参考，两带并列报不得混用；召回/接受率类只走配对 bootstrap / Wilson 95% CI，不跨量纲借用 0.014"
+    },
+    "no_extrapolation": true,
+    "bands_note": "bpc 类：本格 σ_cell 为主判、0.014 为参考，两带并列报不得混用；召回/接受率类只走配对 bootstrap / Wilson 95% CI，不跨量纲借用 0.014"
+  },
+  "liveness": {
+    "carry16_s0": {
+      "enabled": true,
+      "window": 16,
+      "per_layer": false,
+      "read_share_per_layer": 0.301669,
+      "read_share_by_layer": [
+        0.696631,
+        0.329385,
+        0.3543,
+        0.257039,
+        0.250585,
+        0.20314,
+        0.199666,
+        0.218815,
+        0.15944,
+        0.283319,
+        0.264226,
+        0.403487
+      ],
+      "slot_score_mass_per_query": 33.948303,
+      "far_read_norm_frac": 0.9687,
+      "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）",
+      "eval_recheck": {
+        "note": "评测期反事实：关通道 / 换写入规则是否改变前向",
+        "probe": {
+          "enabled": true,
+          "rel_dev_vs_channel_off": 0.517422,
+          "rel_dev_vs_other_rule": 0.911008,
+          "other_rule": "plain",
+          "alive": true
+        }
+      }
+    },
+    "carry16_s1": {
+      "enabled": true,
+      "window": 16,
+      "per_layer": false,
+      "read_share_per_layer": 0.303836,
+      "read_share_by_layer": [
+        0.69433,
+        0.321099,
+        0.307208,
+        0.219393,
+        0.205962,
+        0.232386,
+        0.167159,
+        0.178925,
+        0.327429,
+        0.23704,
+        0.355361,
+        0.399736
+      ],
+      "slot_score_mass_per_query": 30.133707,
+      "far_read_norm_frac": 0.960435,
+      "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）",
+      "eval_recheck": {
+        "note": "评测期反事实：关通道 / 换写入规则是否改变前向",
+        "probe": {
+          "enabled": true,
+          "rel_dev_vs_channel_off": 0.44496,
+          "rel_dev_vs_other_rule": 0.910877,
+          "other_rule": "plain",
+          "alive": true
+        }
+      }
+    },
+    "carrypl16_s0": {
+      "enabled": true,
+      "window": 16,
+      "per_layer": true,
+      "read_share_per_layer": 0.440374,
+      "read_share_by_layer": [
+        0.015678,
+        0.155314,
+        0.507713,
+        0.384408,
+        0.3838,
+        0.658522,
+        0.617874,
+        0.500866,
+        0.438771,
+        0.72263,
+        0.395136,
+        0.503776
+      ],
+      "slot_score_mass_per_query": null,
+      "far_read_norm_frac": null,
+      "notes": "逐层模式：写入来自各层当前 hidden（非 h₀）⇒ h₀ 派生的 slot_score_mass_per_query / far_read_norm_frac 不适用，显式置 None；read_share 仍来自真实前向的块遥测",
+      "eval_recheck": {
+        "note": "评测期反事实：关通道 / 换写入规则是否改变前向",
+        "probe": {
+          "enabled": true,
+          "rel_dev_vs_channel_off": 0.301585,
+          "rel_dev_vs_other_rule": 0.64787,
+          "other_rule": "plain",
+          "alive": true
+        }
+      }
+    },
+    "carrypl16d_s0": {
+      "enabled": true,
+      "window": 16,
+      "per_layer": true,
+      "read_share_per_layer": 0.613526,
+      "read_share_by_layer": [
+        0.02682,
+        0.931174,
+        0.855134,
+        0.749493,
+        0.695453,
+        0.570235,
+        0.624912,
+        0.745306,
+        0.471381,
+        0.499097,
+        0.648033,
+        0.545272
+      ],
+      "slot_score_mass_per_query": null,
+      "far_read_norm_frac": null,
+      "notes": "逐层模式：写入来自各层当前 hidden（非 h₀）⇒ h₀ 派生的 slot_score_mass_per_query / far_read_norm_frac 不适用，显式置 None；read_share 仍来自真实前向的块遥测",
+      "eval_recheck": {
+        "note": "评测期反事实：关通道 / 换写入规则是否改变前向",
+        "probe": {
+          "enabled": true,
+          "rel_dev_vs_channel_off": 0.542506,
+          "rel_dev_vs_other_rule": null,
+          "other_rule": "plain",
+          "alive": true
+        }
+      }
+    }
+  },
+  "loss_slope": {
+    "win16_s0": {
+      "n_points": 60,
+      "slope": -0.185685,
+      "first_loss": 5.4405,
+      "last_loss": 1.0551,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "win16_s1": {
+      "n_points": 60,
+      "slope": -0.182565,
+      "first_loss": 5.4312,
+      "last_loss": 1.1448,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "carry16_s0": {
+      "n_points": 60,
+      "slope": -0.188982,
+      "first_loss": 5.4405,
+      "last_loss": 1.0456,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "carry16_s1": {
+      "n_points": 60,
+      "slope": -0.185349,
+      "first_loss": 5.4312,
+      "last_loss": 1.1503,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "carrypl16_s0": {
+      "n_points": 60,
+      "slope": -0.203636,
+      "first_loss": 5.4405,
+      "last_loss": 1.004,
+      "window_steps": [
+        200,
+        12000
+      ]
+    },
+    "carrypl16d_s0": {
+      "n_points": 60,
+      "slope": -0.189873,
+      "first_loss": 5.4405,
+      "last_loss": 1.0253,
+      "window_steps": [
+        200,
+        12000
+      ]
+    }
+  },
+  "train_log_tail": {
+    "win16_s0": {
+      "last_step": 11999,
+      "last_loss": 1.0551,
+      "last_read_share": null
+    },
+    "win16_s1": {
+      "last_step": 11999,
+      "last_loss": 1.1448,
+      "last_read_share": null
+    },
+    "carry16_s0": {
+      "last_step": 11999,
+      "last_loss": 1.0456,
+      "last_read_share": {
+        "read_scale_absmean": 0.10894,
+        "read_share": 0.416451,
+        "mem_write_to_resid_ratio": 0.280406,
+        "state_fro": 5.628774,
+        "beta_mean": 0.43521,
+        "write_rel": 0.74698,
+        "read_norm": 7.684108,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 64
+      }
+    },
+    "carry16_s1": {
+      "last_step": 11999,
+      "last_loss": 1.1503,
+      "last_read_share": {
+        "read_scale_absmean": 0.097681,
+        "read_share": 0.418284,
+        "mem_write_to_resid_ratio": 0.282898,
+        "state_fro": 5.663551,
+        "beta_mean": 0.435345,
+        "write_rel": 0.757782,
+        "read_norm": 8.440881,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 64
+      }
+    },
+    "carrypl16_s0": {
+      "last_step": 11999,
+      "last_loss": 1.004,
+      "last_read_share": {
+        "read_scale_absmean": 0.010183,
+        "read_share": 0.386007,
+        "mem_write_to_resid_ratio": 0.091003,
+        "state_fro": 28.75518,
+        "beta_mean": 0.124989,
+        "write_rel": 0.0,
+        "read_norm": 114.603516,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 256
+      }
+    },
+    "carrypl16d_s0": {
+      "last_step": 11999,
+      "last_loss": 1.0253,
+      "last_read_share": {
+        "read_scale_absmean": 0.013529,
+        "read_share": 0.637789,
+        "mem_write_to_resid_ratio": 0.226672,
+        "state_fro": 21.991028,
+        "beta_mean": 0.242459,
+        "write_rel": 0.0,
+        "read_norm": 169.703674,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 256
+      }
+    }
+  },
+  "train_meta": {
+    "win16_s0": {
+      "wall_minutes": 11.94,
+      "peak_gpu_mem_mb": 2015.1,
+      "params": 13536768,
+      "seed": 0,
+      "carry_write": "none",
+      "window_mask": null
+    },
+    "win16_s1": {
+      "wall_minutes": 8.48,
+      "peak_gpu_mem_mb": 2015.1,
+      "params": 13536768,
+      "seed": 1,
+      "carry_write": "none",
+      "window_mask": null
+    },
+    "carry16_s0": {
+      "wall_minutes": 16.93,
+      "peak_gpu_mem_mb": 2282.5,
+      "params": 13801064,
+      "seed": 0,
+      "carry_write": "delta",
+      "window_mask": null,
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 77.291214,
+        "state_fro": 4.218829,
+        "beta_mean": 0.575763,
+        "write_rel": 0.0,
+        "read_norm": 3.58686,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.108947,
+        "read_share": 0.41645,
+        "mem_write_to_resid_ratio": 0.280412,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.467817,
+        "rel_dev_vs_other_rule": 0.692098,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      }
+    },
+    "carry16_s1": {
+      "wall_minutes": 15.11,
+      "peak_gpu_mem_mb": 2282.5,
+      "params": 13801064,
+      "seed": 1,
+      "carry_write": "delta",
+      "window_mask": null,
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 75.697095,
+        "state_fro": 3.861761,
+        "beta_mean": 0.568923,
+        "write_rel": 0.0,
+        "read_norm": 3.664171,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.097681,
+        "read_share": 0.418283,
+        "mem_write_to_resid_ratio": 0.28289,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.459198,
+        "rel_dev_vs_other_rule": 0.684534,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      }
+    },
+    "carrypl16_s0": {
+      "wall_minutes": 28.56,
+      "peak_gpu_mem_mb": 9443.6,
+      "params": 13801064,
+      "seed": 0,
+      "carry_write": "delta",
+      "window_mask": null,
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 256,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": false,
+        "per_layer": true,
+        "carry_decay": 1.0,
+        "params_added": 264296,
+        "w_fro": 58.353621,
+        "state_fro": 24.922056,
+        "beta_mean": 0.156961,
+        "write_rel": 0.0,
+        "read_norm": 107.709862,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.010183,
+        "read_share": 0.386035,
+        "mem_write_to_resid_ratio": 0.091003,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.257826,
+        "rel_dev_vs_other_rule": 0.292065,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / write_rel 单块无定义（write_rel_chunks=0，不计入判定） + 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      }
+    },
+    "carrypl16d_s0": {
+      "wall_minutes": 30.7,
+      "peak_gpu_mem_mb": 10281.2,
+      "params": 13801064,
+      "seed": 0,
+      "carry_write": "delta",
+      "window_mask": null,
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 256,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": false,
+        "per_layer": true,
+        "carry_decay": 0.99,
+        "params_added": 264296,
+        "w_fro": 56.792384,
+        "state_fro": 26.307892,
+        "beta_mean": 0.308386,
+        "write_rel": 0.0,
+        "read_norm": 116.203812,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.013529,
+        "read_share": 0.63779,
+        "mem_write_to_resid_ratio": 0.226673,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.51472,
+        "rel_dev_vs_other_rule": null,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / write_rel 单块无定义（write_rel_chunks=0，不计入判定） + 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      }
+    }
+  },
+  "cost": {
+    "wall_minutes_total_eval": 0.19,
+    "eval_peak_gpu_mem_mb": 487.7,
+    "n_eval_windows_bpc": 8,
+    "n_probe_windows": 8,
+    "n_needle_batches": 1,
+    "retention_enabled": true,
+    "lock_note": "纯推理评测，由驱动整程持 /tmp/pathlm_gpu.lock（SCHEMA §20），取/放时间戳见 run_log.txt"
+  },
+  "code_hashes": {
+    "pathlm/depth_ar.py": "45b7d40673eed8844f5e094f8e40bd5a98bd8b8a195a3c41efa116ca14e3de01",
+    "tools/evalkit/retention.py": "9ef983b70d666460de5d63d5d81c23c685ce708a55dfe1af66fc23187fd12f9a",
+    "tools/evalkit/carry_channel.py": "18d201a57019880230b80040c76748dcaa5c5f5e380c0ab4c7b5a3caae000717",
+    "pathlm/data.py": "48e23520122a0b4591e71d0e3780dd1f34dc4a82744e14ca3414da8f43ba448a",
+    "run.py": "58a1bb57ea1abac229abfc59e3ce1666f0e20641aa4bbe65e7b7bd4d4fdd1304",
+    "realtext_probe.py": "828225b37f665b01809a2c1014c6bb10db795c0dadffeb5485c578e5ee9df2fb",
+    "needle_stats.py": "cd11bb7cdb3b3e60534f102b2df3d396a1a71b8ab0b471776d62b87584d33d4c",
+    "config.json": "5a6856cb6f108941f3a31469bd4458490034f04e7bfdea2a8aee675393284cfb"
+  }
+}

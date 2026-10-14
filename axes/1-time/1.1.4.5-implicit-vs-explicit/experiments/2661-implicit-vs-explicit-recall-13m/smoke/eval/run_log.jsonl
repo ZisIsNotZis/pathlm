@@ -1,0 +1,64 @@
+{"t": 0.01, "msg": "加载 enwik8 尾段做评测"}
+{"t": 0.15, "msg": "加载六臂（sha256 断言）"}
+{"t": 0.72, "msg": "  win16_s0: c3f6f08a4fd1… kind=window rule=None per_layer=False chunk=None state_floats=0 params=13536768"}
+{"t": 1.16, "msg": "  win16_s1: 2bfe167c133c… kind=window rule=None per_layer=False chunk=None state_floats=0 params=13536768"}
+{"t": 1.67, "msg": "  carry16_s0: d92114822c09… kind=carry rule=delta per_layer=False chunk=64 state_floats=8192 params=13801064"}
+{"t": 2.07, "msg": "  carry16_s1: b3d3cdbc5726… kind=carry rule=delta per_layer=False chunk=64 state_floats=8192 params=13801064"}
+{"t": 2.51, "msg": "  carrypl16_s0: 382a74aa0e41… kind=carry rule=delta per_layer=True chunk=256 state_floats=98304 params=13801064"}
+{"t": 3.08, "msg": "  carrypl16d_s0: cb1940ee2e97… kind=carry rule=delta per_layer=True chunk=256 state_floats=98304 params=13801064"}
+{"t": 3.08, "msg": "自检①：窗口掩码非退化 + none/delta(共享+逐层) 主干逐位 + 单边零起步 + 参数量账"}
+{"t": 5.2, "msg": "  可见对数 3976；主干逐位=True；单边零起步=True；参数 纯窗=13536768 通道=13801064"}
+{"t": 5.2, "msg": "质量腿：bpc_win16（窗口 16/0，1×8，~2040 token）+ 通道消融抓力"}
+{"t": 5.41, "msg": "  win16_s0: bpc_win16=1.637986 通道消融=1.637986 抓力=False"}
+{"t": 5.43, "msg": "  win16_s1: bpc_win16=1.612549 通道消融=1.612549 抓力=False"}
+{"t": 5.69, "msg": "  carry16_s0: bpc_win16=1.584657 通道消融=4.575535 抓力=True"}
+{"t": 5.81, "msg": "  carry16_s1: bpc_win16=1.589881 通道消融=4.641074 抓力=True"}
+{"t": 5.98, "msg": "  carrypl16_s0: bpc_win16=1.471589 通道消融=1.943846 抓力=True"}
+{"t": 6.21, "msg": "  carrypl16d_s0: bpc_win16=1.515515 通道消融=4.673593 抓力=True"}
+{"t": 6.21, "msg": "  复现 win16_s0: 期望 1.62811 实测 1.637986 ⇒ 差异 +0.009876"}
+{"t": 6.21, "msg": "  复现 carry16_s0: 期望 1.624979 实测 1.584657 ⇒ 差异 -0.040322"}
+{"t": 6.21, "msg": "  复现 carrypl16_s0: 期望 1.527595 实测 1.471589 ⇒ 差异 -0.056006"}
+{"t": 6.21, "msg": "  复现 carrypl16d_s0: 期望 1.585531 实测 1.515515 ⇒ 差异 -0.070016"}
+{"t": 6.21, "msg": "腿(a)：Δbpc_far 探针（毁前缀 [0,64)，被评行 [244,255)，rf=180，1×8）"}
+{"t": 6.28, "msg": "  win16_s0: Δbpc_far=+0.000000 CI[0.0, 0.0] clean=1.3190 max|Δlogit|被评行=0.000e+00 | 通道消融后 Δ=+0.000000"}
+{"t": 6.33, "msg": "  win16_s1: Δbpc_far=+0.000000 CI[0.0, 0.0] clean=1.4477 max|Δlogit|被评行=0.000e+00 | 通道消融后 Δ=+0.000000"}
+{"t": 6.42, "msg": "  carry16_s0: Δbpc_far=-0.005654 CI[-0.054938, 0.033571] clean=1.2815 max|Δlogit|被评行=2.893e+00 | 通道消融后 Δ=+0.000000"}
+{"t": 6.5, "msg": "  carry16_s1: Δbpc_far=+0.014516 CI[-0.011613, 0.041422] clean=1.4673 max|Δlogit|被评行=2.905e+00 | 通道消融后 Δ=+0.000000"}
+{"t": 6.67, "msg": "  carrypl16_s0: Δbpc_far=+0.044757 CI[-0.006869, 0.10539] clean=1.2796 max|Δlogit|被评行=3.951e+00 | 通道消融后 Δ=+0.000000"}
+{"t": 6.87, "msg": "  carrypl16d_s0: Δbpc_far=+0.017235 CI[0.004814, 0.030048] clean=1.4077 max|Δlogit|被评行=1.756e+00 | 通道消融后 Δ=+0.000000"}
+{"t": 6.87, "msg": "腿(b)：真实文本短语针（needle v3，1×8，8 针/行，seed=3）"}
+{"t": 7.15, "msg": "needle batch 0"}
+{"t": 7.15, "msg": "  win16_s0: beyond 植入 0.3906 vs 地板 0.4062 ⇒ Δ=-1.562pp CI[-18.523, 15.398]pp passes=False；同索引交子集 n=23 植入召回=0.0"}
+{"t": 7.15, "msg": "  win16_s1: beyond 植入 0.4375 vs 地板 0.4375 ⇒ Δ=0.0pp CI[-17.188, 17.188]pp passes=False；同索引交子集 n=23 植入召回=0.0"}
+{"t": 7.15, "msg": "  carry16_s0: beyond 植入 0.4688 vs 地板 0.4688 ⇒ Δ=0.0pp CI[-17.29, 17.29]pp passes=False；同索引交子集 n=23 植入召回=0.0"}
+{"t": 7.15, "msg": "  carry16_s1: beyond 植入 0.4688 vs 地板 0.4688 ⇒ Δ=0.0pp CI[-17.29, 17.29]pp passes=False；同索引交子集 n=23 植入召回=0.043478"}
+{"t": 7.15, "msg": "  carrypl16_s0: beyond 植入 0.5469 vs 地板 0.4688 ⇒ Δ=7.812pp CI[-9.457, 25.082]pp passes=False；同索引交子集 n=23 植入召回=0.130435"}
+{"t": 7.15, "msg": "  carrypl16d_s0: beyond 植入 0.4531 vs 地板 0.4844 ⇒ Δ=-3.125pp CI[-20.407, 14.157]pp passes=False；同索引交子集 n=23 植入召回=0.0"}
+{"t": 7.15, "msg": "  硬同索引子集 n=23；carrypl16_s0 植入召回=0.130435 Wilson[0.045376, 0.321279]；vs 地板 diff_ci=[-0.007204, 0.268073]"}
+{"t": 7.15, "msg": "  carrypl16_s0 − win16_s0（同索引子集）：diff=13.043pp CI[-0.72, 26.807]pp passes=False"}
+{"t": 7.15, "msg": "腿(e)：严格因果性探针（只改后半段 token ⇒ 前半段 logits 逐位不变）"}
+{"t": 7.17, "msg": "  win16_s0: 前半段 max|Δlogit|=0.000e+00 因果=True 后半段抓力=24.348558"}
+{"t": 7.18, "msg": "  win16_s1: 前半段 max|Δlogit|=0.000e+00 因果=True 后半段抓力=28.211535"}
+{"t": 7.21, "msg": "  carry16_s0: 前半段 max|Δlogit|=0.000e+00 因果=True 后半段抓力=22.77022"}
+{"t": 7.25, "msg": "  carry16_s1: 前半段 max|Δlogit|=0.000e+00 因果=True 后半段抓力=24.475739"}
+{"t": 7.32, "msg": "  carrypl16_s0: 前半段 max|Δlogit|=0.000e+00 因果=True 后半段抓力=22.79406"}
+{"t": 7.41, "msg": "  carrypl16d_s0: 前半段 max|Δlogit|=0.000e+00 因果=True 后半段抓力=25.263943"}
+{"t": 7.41, "msg": "腿(d) 诊断：KV 损伤曲线（1×8，recent_d=[4, 8, 16, 24, 32]，prefix_drop=[8, 16, 32, 64, 128]）"}
+{"t": 7.48, "msg": "  win16_s0: recent damage=d4:+1.1055,d8:+0.2617,d16:+0.0000,d24:+0.1537,d32:+2.4245 | prefix damage=N8:+3.1379,N16:+2.9741,N32:+3.0436,N64:+3.1301,N128:+3.4886"}
+{"t": 7.56, "msg": "  win16_s1: recent damage=d4:+1.0164,d8:+0.2576,d16:-0.0000,d24:+0.9899,d32:+2.6947 | prefix damage=N8:+3.1037,N16:+3.0890,N32:+3.1768,N64:+3.2889,N128:+3.5896"}
+{"t": 7.75, "msg": "  carry16_s0: recent damage=d4:+0.5299,d8:+0.1621,d16:-0.0000,d24:+0.0367,d32:+0.0654 | prefix damage=N8:+0.4927,N16:+0.5621,N32:+0.6879,N64:+1.0494,N128:+1.7373"}
+{"t": 7.94, "msg": "  carry16_s1: recent damage=d4:+0.4957,d8:+0.1798,d16:-0.0000,d24:+0.0280,d32:+0.0566 | prefix damage=N8:+0.4671,N16:+0.5225,N32:+0.6555,N64:+0.9585,N128:+1.5904"}
+{"t": 8.33, "msg": "  carrypl16_s0: recent damage=d4:+0.6162,d8:+0.0842,d16:-0.0000,d24:+0.3286,d32:+2.5140 | prefix damage=N8:+2.9982,N16:+2.9642,N32:+2.9835,N64:+3.0761,N128:+3.3609"}
+{"t": 8.77, "msg": "  carrypl16d_s0: recent damage=d4:+0.3318,d8:+0.1179,d16:-0.0000,d24:+0.0241,d32:+0.0531 | prefix damage=N8:+0.3281,N16:+0.4132,N32:+0.5395,N64:+0.8213,N128:+1.4648"}
+{"t": 8.77, "msg": "噪声带（σ_cell 同配置换种子极差）与跨臂配对效应"}
+{"t": 8.82, "msg": "判据① explicit 硬子集召回越地板：False（跨臂 {'carrypl16_s0_minus_win16_s0': False, 'carrypl16_s0_minus_win16_s1': False}）"}
+{"t": 8.82, "msg": "判据② implicit 负对照停在地板：{'win16_s0': True, 'win16_s1': True}"}
+{"t": 8.82, "msg": "判据③ explicit Δbpc_far>0 且 CI 排除 0：{'carrypl16_s0': {'delta_bpc_far': 0.044757, 'ci95': [-0.006869, 0.10539], 'positive_ci': False}, 'carrypl16d_s0': {'delta_bpc_far': 0.017235, 'ci95': [0.004814, 0.030048], 'positive_ci': True}}"}
+{"t": 8.82, "msg": "判据④ 前提（implicit 逐位不敏感）：True；判据⑤ 逐位复现：False；判据⑥ 因果：{'win16_s0': True, 'win16_s1': True, 'carry16_s0': True, 'carry16_s1': True, 'carrypl16_s0': True, 'carrypl16d_s0': True}"}
+{"t": 8.82, "msg": "活性量与训练侧读数"}
+{"t": 8.82, "msg": "  win16_s0: wall=11.94min peak=2015.1MB loss末=1.0551 read_share=None"}
+{"t": 8.82, "msg": "  win16_s1: wall=8.48min peak=2015.1MB loss末=1.1448 read_share=None"}
+{"t": 10.61, "msg": "  carry16_s0: wall=16.93min peak=2282.5MB loss末=1.0456 read_share=0.301669"}
+{"t": 10.92, "msg": "  carry16_s1: wall=15.11min peak=2282.5MB loss末=1.1503 read_share=0.303836"}
+{"t": 11.09, "msg": "  carrypl16_s0: wall=28.56min peak=9443.6MB loss末=1.0040 read_share=0.440374"}
+{"t": 11.27, "msg": "  carrypl16d_s0: wall=30.7min peak=10281.2MB loss末=1.0253 read_share=0.613526"}

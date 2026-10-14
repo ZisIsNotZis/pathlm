@@ -1,0 +1,2248 @@
+{
+  "config": {
+    "device": "cuda",
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true,
+      "topology": "sequential",
+      "train_window": 16,
+      "note": "train_window/train_anchors 是探针派生 rf 的模型规格（本实验全体干预臂都开窗 16）；逐臂的真实可见性由 arms[*].window/anchors + 掩码构造决定"
+    },
+    "data": {
+      "name": "enwik8_full",
+      "path": "data/enwik8_full.npz",
+      "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）",
+      "vocab_size": 206,
+      "n_real_tokens": 205,
+      "mask_token": 205,
+      "note": "真实文本口径：训练与评测同一份 enwik8 字节流（与 train_depth_ar.py 同一路径）"
+    },
+    "eval": {
+      "bpc": {
+        "n_batches": 96,
+        "batch_size": 16,
+        "window_seed": 2,
+        "note": "与 2634 同一函数/批数/窗口序 ⇒ 复用臂应与 2634 落盘值逐位相同"
+      },
+      "probe": {
+        "n_batches": 96,
+        "batch_size": 16,
+        "window_seed": 2,
+        "corrupt_lo": 0,
+        "corrupt_hi": 64,
+        "eval_lo": 244,
+        "eval_hi": 255,
+        "corrupt_seed": 2634,
+        "rf": 180,
+        "note": "毁源探针默认布局（=2634）：被毁 [0,64)，被评行 [244,255)，rf=12·15=180（244−180=64 ≥ 64）。变体 B（beyond_anchor）在 run.py 里用 corrupt_lo=anchors=8 运行，保住锚点槽完整"
+      }
+    },
+    "needle": {
+      "n_needles": 8,
+      "phrase_len": 6,
+      "anchors": 8,
+      "anchor_frac": 0.25,
+      "n_batches": 64,
+      "batch_size": 16,
+      "seed": 3,
+      "bucket_anchors": 8,
+      "note": "needle v3 真实文本短语针（retention.phrase_needle_batch）；placement anchors=8，归属桶**一律 anchors=8**（五臂同索引）⇒ 桶 = anchor (p<8) / window（可见）/ beyond（有位置不可见）"
+    },
+    "seeds": [
+      0,
+      1
+    ],
+    "arms": [
+      {
+        "name": "win16a_s0",
+        "kind": "window",
+        "window": 16,
+        "anchors": 8,
+        "rule": "none",
+        "seed": 0,
+        "path": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s0/model.pt",
+        "sha256": "5a41ed069ee0ba784187b8d2adc054d334ed418c57ba5ff05fbf6347141cdb2d",
+        "size_bytes": 54193675,
+        "train_log": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s0/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s0/results.json"
+      },
+      {
+        "name": "win16a_s1",
+        "kind": "window",
+        "window": 16,
+        "anchors": 8,
+        "rule": "none",
+        "seed": 1,
+        "path": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s1/model.pt",
+        "sha256": "eb6c9d4a8693c45848d55c672f466aa42f92e4c8586011862ca2f2cdf0a55ffb",
+        "size_bytes": 54193675,
+        "train_log": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s1/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s1/results.json"
+      },
+      {
+        "name": "win16_s0",
+        "kind": "window",
+        "window": 16,
+        "anchors": 0,
+        "rule": "none",
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+        "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+        "size_bytes": 54193675,
+        "reused_from": "2634-carry-realtext-13m/rt_none_s0",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/results.json"
+      },
+      {
+        "name": "win16_s1",
+        "kind": "window",
+        "window": 16,
+        "anchors": 0,
+        "rule": "none",
+        "seed": 1,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+        "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+        "size_bytes": 54193675,
+        "reused_from": "2634-carry-realtext-13m/rt_none_s1",
+        "train_log": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/train_log.jsonl",
+        "train_results_json": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/results.json"
+      },
+      {
+        "name": "full",
+        "kind": "full",
+        "window": 256,
+        "anchors": 0,
+        "rule": "none",
+        "seed": 0,
+        "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+        "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+        "size_bytes": 54193675,
+        "reused_from": "2610-frozen-trunk-jumphead-13m/trunk.pt"
+      }
+    ],
+    "missing_new_arms": [],
+    "bands": {
+      "sigma_cell": null,
+      "sigma_cell_note": "留空 ⇒ 由 run.py 用本实验自己的换种子极差填（本格带为主判）；跨格 0.014 带为参考，两带并列报、不混用（C1）",
+      "cross_cell_band": 0.014
+    },
+    "train_recipe": {
+      "cmd": "python3 train_depth_ar.py <arm> --d 256 --layers 12 --heads 8 --mlp-mult 6 --seq-len 256 --dense --topology sequential --steps 12000 --batch-size 32 --lr 1e-3 --seed {0,1} --exit-mode uniform --train-window 16 --train-anchors 8 --eval-batches 4 --out-root axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train",
+      "note": "唯一变量 = seed；与 2634 的 rt_none 臂只差 --train-anchors 8 vs 0",
+      "steps": 12000,
+      "batch_size": 32,
+      "seq_len": 256,
+      "tokens_per_arm": 98304000
+    },
+    "steptime_measured": null
+  },
+  "checkpoints": {
+    "win16a_s0": {
+      "path": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s0/model.pt",
+      "sha256": "5a41ed069ee0ba784187b8d2adc054d334ed418c57ba5ff05fbf6347141cdb2d",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 16,
+      "anchors": 8,
+      "rule": "none",
+      "seed": 0,
+      "reused_from": null,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win16a_s1": {
+      "path": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s1/model.pt",
+      "sha256": "eb6c9d4a8693c45848d55c672f466aa42f92e4c8586011862ca2f2cdf0a55ffb",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 16,
+      "anchors": 8,
+      "rule": "none",
+      "seed": 1,
+      "reused_from": null,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win16_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+      "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": "none",
+      "seed": 0,
+      "reused_from": "2634-carry-realtext-13m/rt_none_s0",
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win16_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+      "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": "none",
+      "seed": 1,
+      "reused_from": "2634-carry-realtext-13m/rt_none_s1",
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "full": {
+      "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+      "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "full",
+      "window": 256,
+      "anchors": 0,
+      "rule": "none",
+      "seed": 0,
+      "reused_from": "2610-frozen-trunk-jumphead-13m/trunk.pt",
+      "block_class": "Block",
+      "n_params": 13536768
+    }
+  },
+  "selfchecks": {
+    "win16a_s0": {
+      "kind": "window",
+      "window": 16,
+      "anchors": 8,
+      "n_params": 13536768,
+      "mask": {
+        "visible_pairs": 5868,
+        "expected": 5868,
+        "ok": true,
+        "causal_pairs": 32896,
+        "nondegenerate": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 29.915577,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄漏）；后半段必须真的变（否则探针没抓力）"
+      },
+      "mask_counterfactual": {
+        "max_abs_logit_diff_masked_vs_open": 17.072369,
+        "alive": true
+      }
+    },
+    "win16a_s1": {
+      "kind": "window",
+      "window": 16,
+      "anchors": 8,
+      "n_params": 13536768,
+      "mask": {
+        "visible_pairs": 5868,
+        "expected": 5868,
+        "ok": true,
+        "causal_pairs": 32896,
+        "nondegenerate": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 26.880716,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄漏）；后半段必须真的变（否则探针没抓力）"
+      },
+      "mask_counterfactual": {
+        "max_abs_logit_diff_masked_vs_open": 15.342586,
+        "alive": true
+      }
+    },
+    "win16_s0": {
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "n_params": 13536768,
+      "mask": {
+        "visible_pairs": 3976,
+        "expected": 3976,
+        "ok": true,
+        "causal_pairs": 32896,
+        "nondegenerate": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 25.331936,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄漏）；后半段必须真的变（否则探针没抓力）"
+      },
+      "mask_counterfactual": {
+        "max_abs_logit_diff_masked_vs_open": 16.25091,
+        "alive": true
+      }
+    },
+    "win16_s1": {
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "n_params": 13536768,
+      "mask": {
+        "visible_pairs": 3976,
+        "expected": 3976,
+        "ok": true,
+        "causal_pairs": 32896,
+        "nondegenerate": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 25.646366,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄漏）；后半段必须真的变（否则探针没抓力）"
+      },
+      "mask_counterfactual": {
+        "max_abs_logit_diff_masked_vs_open": 18.459326,
+        "alive": true
+      }
+    },
+    "full": {
+      "kind": "full",
+      "window": 256,
+      "anchors": 0,
+      "n_params": 13536768,
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 24.587456,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄漏）；后半段必须真的变（否则探针没抓力）"
+      }
+    }
+  },
+  "quality_leg": {
+    "bpc": {
+      "win16a_s0": 1.622527,
+      "win16a_s1": 1.621799,
+      "win16_s0": 1.62811,
+      "win16_s1": 1.629093,
+      "full": 1.502689
+    },
+    "price": {
+      "0": {
+        "bpc_win16a": 1.622527,
+        "bpc_win16": 1.62811,
+        "price_bpc": -0.005583,
+        "sortable_vs_sigma_cell": true,
+        "sortable_vs_0.014": false,
+        "sign": "锚点是质量收益（更好）"
+      },
+      "1": {
+        "bpc_win16a": 1.621799,
+        "bpc_win16": 1.629093,
+        "price_bpc": -0.007294,
+        "sortable_vs_sigma_cell": true,
+        "sortable_vs_0.014": false,
+        "sign": "锚点是质量收益（更好）"
+      }
+    },
+    "sigma_cell_own_cell": 0.000983,
+    "sigma_cell_per_kind": {
+      "win16a": 0.000728,
+      "win16": 0.000983
+    },
+    "bands": {
+      "sigma_cell": 0.000983,
+      "cross_cell_band": 0.014,
+      "note": "本格自测带为主判、跨格 0.014 为参考；两带并列报、不混用（C1）"
+    },
+    "reuse_equivalence": {
+      "note": "复用臂（eval-only）clean bpc 必须与 2634 落盘值逐位相同（判据⑥）",
+      "win16_s0": {
+        "bpc": 1.62811,
+        "bpc_2634": 1.62811,
+        "equal": true,
+        "reused_from": "2634-carry-realtext-13m/rt_none_s0"
+      },
+      "win16_s1": {
+        "bpc": 1.629093,
+        "bpc_2634": 1.629093,
+        "equal": true,
+        "reused_from": "2634-carry-realtext-13m/rt_none_s1"
+      }
+    },
+    "gap_win16_full": 0.125421,
+    "gap_win16a_full": 0.119838
+  },
+  "needle_leg": {
+    "conditions": {
+      "win16a_s0|planted": {
+        "recall": 0.468628,
+        "n": 8192,
+        "buckets": {
+          "beyond": {
+            "recall": 0.466481,
+            "n": 7175
+          },
+          "anchor": {
+            "recall": 0.481555,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.642857,
+            "n": 14
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.544776,
+            "n": 268
+          },
+          "[128,256)": {
+            "recall": 0.463882,
+            "n": 3447
+          },
+          "[32,64)": {
+            "recall": 0.450605,
+            "n": 992
+          },
+          "[64,128)": {
+            "recall": 0.46799,
+            "n": 2468
+          }
+        }
+      },
+      "win16a_s0|control": {
+        "recall": 0.464111,
+        "n": 8192,
+        "buckets": {
+          "beyond": {
+            "recall": 0.465505,
+            "n": 7175
+          },
+          "anchor": {
+            "recall": 0.455633,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.357143,
+            "n": 14
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.507463,
+            "n": 268
+          },
+          "[128,256)": {
+            "recall": 0.468523,
+            "n": 3447
+          },
+          "[32,64)": {
+            "recall": 0.439516,
+            "n": 992
+          },
+          "[64,128)": {
+            "recall": 0.46718,
+            "n": 2468
+          }
+        }
+      },
+      "win16a_s1|planted": {
+        "recall": 0.46936,
+        "n": 8192,
+        "buckets": {
+          "beyond": {
+            "recall": 0.467178,
+            "n": 7175
+          },
+          "anchor": {
+            "recall": 0.482552,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.642857,
+            "n": 14
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.55597,
+            "n": 268
+          },
+          "[128,256)": {
+            "recall": 0.465912,
+            "n": 3447
+          },
+          "[32,64)": {
+            "recall": 0.44254,
+            "n": 992
+          },
+          "[64,128)": {
+            "recall": 0.469206,
+            "n": 2468
+          }
+        }
+      },
+      "win16a_s1|control": {
+        "recall": 0.468384,
+        "n": 8192,
+        "buckets": {
+          "beyond": {
+            "recall": 0.467735,
+            "n": 7175
+          },
+          "anchor": {
+            "recall": 0.471585,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.571429,
+            "n": 14
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.518657,
+            "n": 268
+          },
+          "[128,256)": {
+            "recall": 0.467073,
+            "n": 3447
+          },
+          "[32,64)": {
+            "recall": 0.441532,
+            "n": 992
+          },
+          "[64,128)": {
+            "recall": 0.473663,
+            "n": 2468
+          }
+        }
+      },
+      "win16_s0|planted": {
+        "recall": 0.463501,
+        "n": 8192,
+        "buckets": {
+          "beyond": {
+            "recall": 0.462997,
+            "n": 7175
+          },
+          "anchor": {
+            "recall": 0.467597,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.428571,
+            "n": 14
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.503731,
+            "n": 268
+          },
+          "[128,256)": {
+            "recall": 0.463592,
+            "n": 3447
+          },
+          "[32,64)": {
+            "recall": 0.459677,
+            "n": 992
+          },
+          "[64,128)": {
+            "recall": 0.459076,
+            "n": 2468
+          }
+        }
+      },
+      "win16_s0|control": {
+        "recall": 0.462891,
+        "n": 8192,
+        "buckets": {
+          "beyond": {
+            "recall": 0.462439,
+            "n": 7175
+          },
+          "anchor": {
+            "recall": 0.467597,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.357143,
+            "n": 14
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.518657,
+            "n": 268
+          },
+          "[128,256)": {
+            "recall": 0.463592,
+            "n": 3447
+          },
+          "[32,64)": {
+            "recall": 0.454637,
+            "n": 992
+          },
+          "[64,128)": {
+            "recall": 0.457861,
+            "n": 2468
+          }
+        }
+      },
+      "win16_s1|planted": {
+        "recall": 0.473755,
+        "n": 8192,
+        "buckets": {
+          "beyond": {
+            "recall": 0.474704,
+            "n": 7175
+          },
+          "anchor": {
+            "recall": 0.467597,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.428571,
+            "n": 14
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.503731,
+            "n": 268
+          },
+          "[128,256)": {
+            "recall": 0.480708,
+            "n": 3447
+          },
+          "[32,64)": {
+            "recall": 0.460685,
+            "n": 992
+          },
+          "[64,128)": {
+            "recall": 0.468801,
+            "n": 2468
+          }
+        }
+      },
+      "win16_s1|control": {
+        "recall": 0.474854,
+        "n": 8192,
+        "buckets": {
+          "beyond": {
+            "recall": 0.476237,
+            "n": 7175
+          },
+          "anchor": {
+            "recall": 0.467597,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.285714,
+            "n": 14
+          }
+        },
+        "beyond_by_distance_band": {
+          "[0,32)": {
+            "recall": 0.496269,
+            "n": 268
+          },
+          "[128,256)": {
+            "recall": 0.480418,
+            "n": 3447
+          },
+          "[32,64)": {
+            "recall": 0.460685,
+            "n": 992
+          },
+          "[64,128)": {
+            "recall": 0.474473,
+            "n": 2468
+          }
+        }
+      },
+      "full|planted": {
+        "recall": 0.690796,
+        "n": 8192,
+        "buckets": {
+          "window": {
+            "recall": 0.697037,
+            "n": 7189
+          },
+          "anchor": {
+            "recall": 0.646062,
+            "n": 1003
+          }
+        },
+        "beyond_by_distance_band": {}
+      },
+      "full|control": {
+        "recall": 0.437866,
+        "n": 8192,
+        "buckets": {
+          "window": {
+            "recall": 0.436918,
+            "n": 7189
+          },
+          "anchor": {
+            "recall": 0.444666,
+            "n": 1003
+          }
+        },
+        "beyond_by_distance_band": {}
+      }
+    },
+    "n_needles_total": 8192,
+    "seed": 3,
+    "n_batches": 64,
+    "bucket_anchors": 8,
+    "bucket_rule": "归属桶一律 anchors=8：anchor = 针植入 p<8（锚点槽恒可见区）；window = 非锚针且短语全可见；beyond = 非锚针且有位置不可见。五臂同归属规则 ⇒ 同索引可比",
+    "per_arm_bucket_planted_vs_floor": {
+      "win16a_s0": {
+        "anchor": {
+          "n": 1003,
+          "planted_hits": 483,
+          "control_hits": 457,
+          "planted_recall": 0.481555,
+          "control_recall": 0.455633,
+          "delta_pp": 2.592,
+          "newcombe_diff_ci95": [
+            -0.017738,
+            0.069582
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.774,
+            6.958
+          ],
+          "newcombe_ci_overlap": true,
+          "z": 1.163,
+          "p_value": 0.24470286,
+          "paired_bootstrap_pp": [
+            1.196,
+            4.187
+          ],
+          "paired_bootstrap_mean_pp": 2.592,
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": true,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        },
+        "window": {
+          "n": 14,
+          "planted_hits": 9,
+          "control_hits": 5,
+          "planted_recall": 0.642857,
+          "control_recall": 0.357143,
+          "delta_pp": 28.571,
+          "newcombe_diff_ci95": [
+            -0.069251,
+            0.640679
+          ],
+          "newcombe_diff_ci95_pp": [
+            -6.925,
+            64.068
+          ],
+          "newcombe_ci_overlap": true,
+          "z": 1.512,
+          "p_value": 0.13057002,
+          "paired_bootstrap_pp": [
+            0.0,
+            57.143
+          ],
+          "paired_bootstrap_mean_pp": 28.571,
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        },
+        "beyond": {
+          "n": 7175,
+          "planted_hits": 3347,
+          "control_hits": 3340,
+          "planted_recall": 0.466481,
+          "control_recall": 0.465505,
+          "delta_pp": 0.098,
+          "newcombe_diff_ci95": [
+            -0.015348,
+            0.017299
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.535,
+            1.73
+          ],
+          "newcombe_ci_overlap": true,
+          "z": 0.117,
+          "p_value": 0.90674832,
+          "paired_bootstrap_pp": [
+            -0.334,
+            0.502
+          ],
+          "paired_bootstrap_mean_pp": 0.098,
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        }
+      },
+      "win16a_s1": {
+        "anchor": {
+          "n": 1003,
+          "planted_hits": 484,
+          "control_hits": 473,
+          "planted_recall": 0.482552,
+          "control_recall": 0.471585,
+          "delta_pp": 1.097,
+          "newcombe_diff_ci95": [
+            -0.032746,
+            0.05468
+          ],
+          "newcombe_diff_ci95_pp": [
+            -3.275,
+            5.468
+          ],
+          "newcombe_ci_overlap": true,
+          "z": 0.492,
+          "p_value": 0.62292005,
+          "paired_bootstrap_pp": [
+            -0.299,
+            2.592
+          ],
+          "paired_bootstrap_mean_pp": 1.097,
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        },
+        "window": {
+          "n": 14,
+          "planted_hits": 9,
+          "control_hits": 8,
+          "planted_recall": 0.642857,
+          "control_recall": 0.571429,
+          "delta_pp": 7.143,
+          "newcombe_diff_ci95": [
+            -0.289404,
+            0.432261
+          ],
+          "newcombe_diff_ci95_pp": [
+            -28.94,
+            43.226
+          ],
+          "newcombe_ci_overlap": true,
+          "z": 0.387,
+          "p_value": 0.69879101,
+          "paired_bootstrap_pp": [
+            0.0,
+            21.429
+          ],
+          "paired_bootstrap_mean_pp": 7.143,
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        },
+        "beyond": {
+          "n": 7175,
+          "planted_hits": 3352,
+          "control_hits": 3356,
+          "planted_recall": 0.467178,
+          "control_recall": 0.467735,
+          "delta_pp": -0.056,
+          "newcombe_diff_ci95": [
+            -0.016885,
+            0.01577
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.689,
+            1.577
+          ],
+          "newcombe_ci_overlap": true,
+          "z": -0.067,
+          "p_value": 0.94664171,
+          "paired_bootstrap_pp": [
+            -0.474,
+            0.348
+          ],
+          "paired_bootstrap_mean_pp": -0.056,
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        }
+      },
+      "win16_s0": {
+        "anchor": {
+          "n": 1003,
+          "planted_hits": 469,
+          "control_hits": 469,
+          "planted_recall": 0.467597,
+          "control_recall": 0.467597,
+          "delta_pp": 0.0,
+          "newcombe_diff_ci95": [
+            -0.043669,
+            0.043669
+          ],
+          "newcombe_diff_ci95_pp": [
+            -4.367,
+            4.367
+          ],
+          "newcombe_ci_overlap": true,
+          "z": 0.0,
+          "p_value": 1.0,
+          "paired_bootstrap_pp": [
+            -1.097,
+            1.097
+          ],
+          "paired_bootstrap_mean_pp": 0.0,
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        },
+        "window": {
+          "n": 14,
+          "planted_hits": 6,
+          "control_hits": 5,
+          "planted_recall": 0.428571,
+          "control_recall": 0.357143,
+          "delta_pp": 7.143,
+          "newcombe_diff_ci95": [
+            -0.289404,
+            0.432261
+          ],
+          "newcombe_diff_ci95_pp": [
+            -28.94,
+            43.226
+          ],
+          "newcombe_ci_overlap": true,
+          "z": 0.387,
+          "p_value": 0.69879101,
+          "paired_bootstrap_pp": [
+            -28.571,
+            35.714
+          ],
+          "paired_bootstrap_mean_pp": 7.143,
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        },
+        "beyond": {
+          "n": 7175,
+          "planted_hits": 3322,
+          "control_hits": 3318,
+          "planted_recall": 0.462997,
+          "control_recall": 0.462439,
+          "delta_pp": 0.056,
+          "newcombe_diff_ci95": [
+            -0.015759,
+            0.016874
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.576,
+            1.687
+          ],
+          "newcombe_ci_overlap": true,
+          "z": 0.067,
+          "p_value": 0.94660627,
+          "paired_bootstrap_pp": [
+            -0.321,
+            0.418
+          ],
+          "paired_bootstrap_mean_pp": 0.056,
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        }
+      },
+      "win16_s1": {
+        "anchor": {
+          "n": 1003,
+          "planted_hits": 469,
+          "control_hits": 469,
+          "planted_recall": 0.467597,
+          "control_recall": 0.467597,
+          "delta_pp": 0.0,
+          "newcombe_diff_ci95": [
+            -0.043669,
+            0.043669
+          ],
+          "newcombe_diff_ci95_pp": [
+            -4.367,
+            4.367
+          ],
+          "newcombe_ci_overlap": true,
+          "z": 0.0,
+          "p_value": 1.0,
+          "paired_bootstrap_pp": [
+            -1.097,
+            0.997
+          ],
+          "paired_bootstrap_mean_pp": 0.0,
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        },
+        "window": {
+          "n": 14,
+          "planted_hits": 6,
+          "control_hits": 4,
+          "planted_recall": 0.428571,
+          "control_recall": 0.285714,
+          "delta_pp": 14.286,
+          "newcombe_diff_ci95": [
+            -0.208141,
+            0.493856
+          ],
+          "newcombe_diff_ci95_pp": [
+            -20.814,
+            49.386
+          ],
+          "newcombe_ci_overlap": true,
+          "z": 0.789,
+          "p_value": 0.43022269,
+          "paired_bootstrap_pp": [
+            0.0,
+            35.714
+          ],
+          "paired_bootstrap_mean_pp": 14.286,
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        },
+        "beyond": {
+          "n": 7175,
+          "planted_hits": 3406,
+          "control_hits": 3417,
+          "planted_recall": 0.474704,
+          "control_recall": 0.476237,
+          "delta_pp": -0.153,
+          "newcombe_diff_ci95": [
+            -0.017875,
+            0.014809
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.787,
+            1.481
+          ],
+          "newcombe_ci_overlap": true,
+          "z": -0.184,
+          "p_value": 0.85411241,
+          "paired_bootstrap_pp": [
+            -0.516,
+            0.209
+          ],
+          "paired_bootstrap_mean_pp": -0.153,
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        }
+      },
+      "full": {
+        "anchor": {
+          "n": 1003,
+          "planted_hits": 648,
+          "control_hits": 446,
+          "planted_recall": 0.646062,
+          "control_recall": 0.444666,
+          "delta_pp": 20.14,
+          "newcombe_diff_ci95": [
+            0.158715,
+            0.244076
+          ],
+          "newcombe_diff_ci95_pp": [
+            15.871,
+            24.408
+          ],
+          "newcombe_ci_overlap": false,
+          "z": 9.058,
+          "p_value": 0.0,
+          "paired_bootstrap_pp": [
+            17.547,
+            22.832
+          ],
+          "paired_bootstrap_mean_pp": 20.14,
+          "passes_newcombe": true,
+          "passes_paired_bootstrap": true,
+          "passes_both": true,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        },
+        "window": {
+          "n": 7189,
+          "planted_hits": 5011,
+          "control_hits": 3141,
+          "planted_recall": 0.697037,
+          "control_recall": 0.436918,
+          "delta_pp": 26.012,
+          "newcombe_diff_ci95": [
+            0.244489,
+            0.27575
+          ],
+          "newcombe_diff_ci95_pp": [
+            24.449,
+            27.575
+          ],
+          "newcombe_ci_overlap": false,
+          "z": 31.474,
+          "p_value": 0.0,
+          "paired_bootstrap_pp": [
+            24.941,
+            27.111
+          ],
+          "paired_bootstrap_mean_pp": 26.012,
+          "passes_newcombe": true,
+          "passes_paired_bootstrap": true,
+          "passes_both": true,
+          "direction_note": "正 = 植入高于地板（判据②要的方向）"
+        },
+        "beyond": {
+          "n": 0,
+          "note": "空桶"
+        }
+      }
+    },
+    "anchor_bucket_visibility_split": {
+      "win16a_s0": {
+        "fully_visible": {
+          "n": 304,
+          "recall": 0.5625
+        },
+        "partially_visible": {
+          "n": 699,
+          "recall": 0.446352
+        },
+        "note": "锚点槽 [0,8) 只有 8 格，而短语占 L+1=7 格 ⇒ 只有 p∈{0,1} 的针「短语全可见」，p∈{2..7} 只部分可见；此拆分只作诊断"
+      },
+      "win16a_s1": {
+        "fully_visible": {
+          "n": 304,
+          "recall": 0.555921
+        },
+        "partially_visible": {
+          "n": 699,
+          "recall": 0.450644
+        },
+        "note": "锚点槽 [0,8) 只有 8 格，而短语占 L+1=7 格 ⇒ 只有 p∈{0,1} 的针「短语全可见」，p∈{2..7} 只部分可见；此拆分只作诊断"
+      },
+      "win16_s0": {
+        "fully_visible": {
+          "n": 0,
+          "recall": null
+        },
+        "partially_visible": {
+          "n": 1003,
+          "recall": 0.467597
+        },
+        "note": "锚点槽 [0,8) 只有 8 格，而短语占 L+1=7 格 ⇒ 只有 p∈{0,1} 的针「短语全可见」，p∈{2..7} 只部分可见；此拆分只作诊断"
+      },
+      "win16_s1": {
+        "fully_visible": {
+          "n": 0,
+          "recall": null
+        },
+        "partially_visible": {
+          "n": 1003,
+          "recall": 0.467597
+        },
+        "note": "锚点槽 [0,8) 只有 8 格，而短语占 L+1=7 格 ⇒ 只有 p∈{0,1} 的针「短语全可见」，p∈{2..7} 只部分可见；此拆分只作诊断"
+      },
+      "full": {
+        "fully_visible": {
+          "n": 1003,
+          "recall": 0.646062
+        },
+        "partially_visible": {
+          "n": 0,
+          "recall": null
+        },
+        "note": "锚点槽 [0,8) 只有 8 格，而短语占 L+1=7 格 ⇒ 只有 p∈{0,1} 的针「短语全可见」，p∈{2..7} 只部分可见；此拆分只作诊断"
+      }
+    },
+    "hard_subset_same_index": {
+      "anchor": {
+        "n_intersection": 359,
+        "n_union": 712,
+        "n_indexed": 1003,
+        "per_arm": {
+          "win16a_s0": {
+            "own_recall": 0.481555,
+            "intersection": {
+              "n": 359,
+              "hits": 17,
+              "recall": 0.047354,
+              "wilson_ci": [
+                0.029772,
+                0.07452
+              ]
+            },
+            "union": {
+              "n": 712,
+              "hits": 198,
+              "recall": 0.27809,
+              "wilson_ci": [
+                0.246436,
+                0.312126
+              ]
+            }
+          },
+          "win16a_s1": {
+            "own_recall": 0.482552,
+            "intersection": {
+              "n": 359,
+              "hits": 9,
+              "recall": 0.02507,
+              "wilson_ci": [
+                0.013244,
+                0.046952
+              ]
+            },
+            "union": {
+              "n": 712,
+              "hits": 198,
+              "recall": 0.27809,
+              "wilson_ci": [
+                0.246436,
+                0.312126
+              ]
+            }
+          },
+          "win16_s0": {
+            "own_recall": 0.467597,
+            "intersection": {
+              "n": 359,
+              "hits": 4,
+              "recall": 0.011142,
+              "wilson_ci": [
+                0.004341,
+                0.028295
+              ]
+            },
+            "union": {
+              "n": 712,
+              "hits": 183,
+              "recall": 0.257022,
+              "wilson_ci": [
+                0.226287,
+                0.290366
+              ]
+            }
+          },
+          "win16_s1": {
+            "own_recall": 0.467597,
+            "intersection": {
+              "n": 359,
+              "hits": 5,
+              "recall": 0.013928,
+              "wilson_ci": [
+                0.005963,
+                0.032185
+              ]
+            },
+            "union": {
+              "n": 712,
+              "hits": 180,
+              "recall": 0.252809,
+              "wilson_ci": [
+                0.222269,
+                0.286002
+              ]
+            }
+          },
+          "full": {
+            "own_recall": 0.646062,
+            "intersection": {
+              "n": 359,
+              "hits": 113,
+              "recall": 0.314763,
+              "wilson_ci": [
+                0.268897,
+                0.364552
+              ]
+            },
+            "union": {
+              "n": 712,
+              "hits": 363,
+              "recall": 0.509831,
+              "wilson_ci": [
+                0.473157,
+                0.5464
+              ]
+            }
+          }
+        },
+        "cross_arm_anchor_vs_window": {
+          "win16a_s0_minus_win16_s0": {
+            "intersection": {
+              "planted_recall": 0.047354,
+              "control_recall": 0.011142,
+              "delta_pp": 3.621,
+              "diff_ci_95": [
+                0.011704,
+                0.060719
+              ],
+              "diff_ci_95_pp": [
+                1.17,
+                6.072
+              ],
+              "z": 2.879,
+              "p_value": 0.00398621,
+              "ci_overlap": false,
+              "passes": true,
+              "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+            },
+            "union": {
+              "planted_recall": 0.27809,
+              "control_recall": 0.257022,
+              "delta_pp": 2.107,
+              "diff_ci_95": [
+                -0.024906,
+                0.06704
+              ],
+              "diff_ci_95_pp": [
+                -2.491,
+                6.704
+              ],
+              "z": 0.898,
+              "p_value": 0.36922383,
+              "ci_overlap": true,
+              "passes": false,
+              "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+            }
+          },
+          "win16a_s1_minus_win16_s1": {
+            "intersection": {
+              "planted_recall": 0.02507,
+              "control_recall": 0.013928,
+              "delta_pp": 1.114,
+              "diff_ci_95": [
+                -0.009069,
+                0.031353
+              ],
+              "diff_ci_95_pp": [
+                -0.907,
+                3.135
+              ],
+              "z": 1.08,
+              "p_value": 0.28031039,
+              "ci_overlap": true,
+              "passes": false,
+              "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+            },
+            "union": {
+              "planted_recall": 0.27809,
+              "control_recall": 0.252809,
+              "delta_pp": 2.528,
+              "diff_ci_95": [
+                -0.020571,
+                0.071133
+              ],
+              "diff_ci_95_pp": [
+                -2.057,
+                7.113
+              ],
+              "z": 1.08,
+              "p_value": 0.2800403,
+              "ci_overlap": true,
+              "passes": false,
+              "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+            }
+          }
+        }
+      },
+      "beyond": {
+        "note": "该桶在至少一臂为空，跳过同索引"
+      }
+    }
+  },
+  "far_source_probe": {
+    "win16a_s0": {
+      "far_all": {
+        "delta_bpc_far": 0.012885,
+        "ce_far_clean": 1.57505,
+        "ce_far_corrupt": 1.587935,
+        "delta_ci95_clustered": [
+          0.008525,
+          0.016972
+        ],
+        "max_abs_logit_diff_on_eval_rows": 6.319242477416992,
+        "premise_holds": false,
+        "visible_set_overlaps_corrupt_region": true,
+        "require_no_overlap": false,
+        "n_tokens": 16896,
+        "n_batches": 96,
+        "batch_size": 16,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i]（∪ 锚点槽 [0,anchors)）完全落在未毁区 ⇒ 对**看不到被毁区**的臂逐位不敏感（前提①）；锚点槽落在被毁区内时 premise_holds=False，逐位敏感（直接注意力，不是搬运）"
+        },
+        "ce_by_row_clean": [
+          1.579202,
+          1.545347,
+          1.624568,
+          1.638491,
+          1.555735,
+          1.622067,
+          1.555134,
+          1.604365,
+          1.484141,
+          1.569904,
+          1.546599
+        ],
+        "ce_by_row_corrupt": [
+          1.599534,
+          1.559837,
+          1.632895,
+          1.653337,
+          1.558159,
+          1.635297,
+          1.573443,
+          1.621499,
+          1.500232,
+          1.585006,
+          1.548047
+        ],
+        "note": "Δbpc_far > 0 = 被毁区内容对该模型有用；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 clean bpc）"
+      },
+      "beyond_anchor": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 1.57505,
+        "ce_far_corrupt": 1.57505,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "premise_holds": true,
+        "visible_set_overlaps_corrupt_region": false,
+        "require_no_overlap": true,
+        "n_tokens": 16896,
+        "n_batches": 96,
+        "batch_size": 16,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            8,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i]（∪ 锚点槽 [0,anchors)）完全落在未毁区 ⇒ 对**看不到被毁区**的臂逐位不敏感（前提①）；锚点槽落在被毁区内时 premise_holds=False，逐位敏感（直接注意力，不是搬运）"
+        },
+        "ce_by_row_clean": [
+          1.579202,
+          1.545347,
+          1.624568,
+          1.638491,
+          1.555735,
+          1.622067,
+          1.555134,
+          1.604365,
+          1.484141,
+          1.569904,
+          1.546599
+        ],
+        "ce_by_row_corrupt": [
+          1.579202,
+          1.545347,
+          1.624568,
+          1.638491,
+          1.555735,
+          1.622067,
+          1.555134,
+          1.604365,
+          1.484141,
+          1.569904,
+          1.546599
+        ],
+        "note": "Δbpc_far > 0 = 被毁区内容对该模型有用；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 clean bpc）"
+      }
+    },
+    "win16a_s1": {
+      "far_all": {
+        "delta_bpc_far": 0.013123,
+        "ce_far_clean": 1.579639,
+        "ce_far_corrupt": 1.592762,
+        "delta_ci95_clustered": [
+          0.009294,
+          0.016628
+        ],
+        "max_abs_logit_diff_on_eval_rows": 6.108980178833008,
+        "premise_holds": false,
+        "visible_set_overlaps_corrupt_region": true,
+        "require_no_overlap": false,
+        "n_tokens": 16896,
+        "n_batches": 96,
+        "batch_size": 16,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i]（∪ 锚点槽 [0,anchors)）完全落在未毁区 ⇒ 对**看不到被毁区**的臂逐位不敏感（前提①）；锚点槽落在被毁区内时 premise_holds=False，逐位敏感（直接注意力，不是搬运）"
+        },
+        "ce_by_row_clean": [
+          1.585389,
+          1.537893,
+          1.624944,
+          1.661598,
+          1.568989,
+          1.610862,
+          1.532815,
+          1.61162,
+          1.497756,
+          1.599751,
+          1.544413
+        ],
+        "ce_by_row_corrupt": [
+          1.601216,
+          1.548289,
+          1.634766,
+          1.676725,
+          1.583567,
+          1.615907,
+          1.540693,
+          1.628799,
+          1.522051,
+          1.614245,
+          1.554123
+        ],
+        "note": "Δbpc_far > 0 = 被毁区内容对该模型有用；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 clean bpc）"
+      },
+      "beyond_anchor": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 1.579639,
+        "ce_far_corrupt": 1.579639,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "premise_holds": true,
+        "visible_set_overlaps_corrupt_region": false,
+        "require_no_overlap": true,
+        "n_tokens": 16896,
+        "n_batches": 96,
+        "batch_size": 16,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            8,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i]（∪ 锚点槽 [0,anchors)）完全落在未毁区 ⇒ 对**看不到被毁区**的臂逐位不敏感（前提①）；锚点槽落在被毁区内时 premise_holds=False，逐位敏感（直接注意力，不是搬运）"
+        },
+        "ce_by_row_clean": [
+          1.585389,
+          1.537893,
+          1.624944,
+          1.661598,
+          1.568989,
+          1.610862,
+          1.532815,
+          1.61162,
+          1.497756,
+          1.599751,
+          1.544413
+        ],
+        "ce_by_row_corrupt": [
+          1.585389,
+          1.537893,
+          1.624944,
+          1.661598,
+          1.568989,
+          1.610862,
+          1.532815,
+          1.61162,
+          1.497756,
+          1.599751,
+          1.544413
+        ],
+        "note": "Δbpc_far > 0 = 被毁区内容对该模型有用；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 clean bpc）"
+      }
+    },
+    "win16_s0": {
+      "far_all": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 1.588565,
+        "ce_far_corrupt": 1.588565,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "premise_holds": true,
+        "visible_set_overlaps_corrupt_region": false,
+        "require_no_overlap": true,
+        "n_tokens": 16896,
+        "n_batches": 96,
+        "batch_size": 16,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i]（∪ 锚点槽 [0,anchors)）完全落在未毁区 ⇒ 对**看不到被毁区**的臂逐位不敏感（前提①）；锚点槽落在被毁区内时 premise_holds=False，逐位敏感（直接注意力，不是搬运）"
+        },
+        "ce_by_row_clean": [
+          1.616158,
+          1.556293,
+          1.632026,
+          1.624872,
+          1.584745,
+          1.656735,
+          1.542459,
+          1.610348,
+          1.520878,
+          1.593339,
+          1.536357
+        ],
+        "ce_by_row_corrupt": [
+          1.616158,
+          1.556293,
+          1.632026,
+          1.624872,
+          1.584745,
+          1.656735,
+          1.542459,
+          1.610348,
+          1.520878,
+          1.593339,
+          1.536357
+        ],
+        "note": "Δbpc_far > 0 = 被毁区内容对该模型有用；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 clean bpc）"
+      },
+      "beyond_anchor": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 1.588565,
+        "ce_far_corrupt": 1.588565,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "premise_holds": true,
+        "visible_set_overlaps_corrupt_region": false,
+        "require_no_overlap": true,
+        "n_tokens": 16896,
+        "n_batches": 96,
+        "batch_size": 16,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i]（∪ 锚点槽 [0,anchors)）完全落在未毁区 ⇒ 对**看不到被毁区**的臂逐位不敏感（前提①）；锚点槽落在被毁区内时 premise_holds=False，逐位敏感（直接注意力，不是搬运）"
+        },
+        "ce_by_row_clean": [
+          1.616158,
+          1.556293,
+          1.632026,
+          1.624872,
+          1.584745,
+          1.656735,
+          1.542459,
+          1.610348,
+          1.520878,
+          1.593339,
+          1.536357
+        ],
+        "ce_by_row_corrupt": [
+          1.616158,
+          1.556293,
+          1.632026,
+          1.624872,
+          1.584745,
+          1.656735,
+          1.542459,
+          1.610348,
+          1.520878,
+          1.593339,
+          1.536357
+        ],
+        "note": "Δbpc_far > 0 = 被毁区内容对该模型有用；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 clean bpc）"
+      }
+    },
+    "win16_s1": {
+      "far_all": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 1.579653,
+        "ce_far_corrupt": 1.579653,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "premise_holds": true,
+        "visible_set_overlaps_corrupt_region": false,
+        "require_no_overlap": true,
+        "n_tokens": 16896,
+        "n_batches": 96,
+        "batch_size": 16,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i]（∪ 锚点槽 [0,anchors)）完全落在未毁区 ⇒ 对**看不到被毁区**的臂逐位不敏感（前提①）；锚点槽落在被毁区内时 premise_holds=False，逐位敏感（直接注意力，不是搬运）"
+        },
+        "ce_by_row_clean": [
+          1.586053,
+          1.54401,
+          1.604478,
+          1.632385,
+          1.568377,
+          1.636703,
+          1.531345,
+          1.598914,
+          1.529305,
+          1.590501,
+          1.554106
+        ],
+        "ce_by_row_corrupt": [
+          1.586053,
+          1.54401,
+          1.604478,
+          1.632385,
+          1.568377,
+          1.636703,
+          1.531345,
+          1.598914,
+          1.529305,
+          1.590501,
+          1.554106
+        ],
+        "note": "Δbpc_far > 0 = 被毁区内容对该模型有用；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 clean bpc）"
+      },
+      "beyond_anchor": {
+        "delta_bpc_far": 0.0,
+        "ce_far_clean": 1.579653,
+        "ce_far_corrupt": 1.579653,
+        "delta_ci95_clustered": [
+          0.0,
+          0.0
+        ],
+        "max_abs_logit_diff_on_eval_rows": 0.0,
+        "premise_holds": true,
+        "visible_set_overlaps_corrupt_region": false,
+        "require_no_overlap": true,
+        "n_tokens": 16896,
+        "n_batches": 96,
+        "batch_size": 16,
+        "window_seed": 2,
+        "corrupt_seed": 2634,
+        "layout": {
+          "corrupt_prefix": [
+            0,
+            64
+          ],
+          "eval_rows": [
+            244,
+            255
+          ],
+          "receptive_field_positions": 180,
+          "required_min_eval_lo": 244,
+          "min_distance_of_corrupted_prefix_from_eval_rows": 180,
+          "note": "被评行的 L 层多跳感受野 [i−rf, i]（∪ 锚点槽 [0,anchors)）完全落在未毁区 ⇒ 对**看不到被毁区**的臂逐位不敏感（前提①）；锚点槽落在被毁区内时 premise_holds=False，逐位敏感（直接注意力，不是搬运）"
+        },
+        "ce_by_row_clean": [
+          1.586053,
+          1.54401,
+          1.604478,
+          1.632385,
+          1.568377,
+          1.636703,
+          1.531345,
+          1.598914,
+          1.529305,
+          1.590501,
+          1.554106
+        ],
+        "ce_by_row_corrupt": [
+          1.586053,
+          1.54401,
+          1.604478,
+          1.632385,
+          1.568377,
+          1.636703,
+          1.531345,
+          1.598914,
+          1.529305,
+          1.590501,
+          1.554106
+        ],
+        "note": "Δbpc_far > 0 = 被毁区内容对该模型有用；它测的是**敏感度**（必要条件），不是「帮上了忙」（看 clean bpc）"
+      }
+    }
+  },
+  "criteria": {
+    "c2_anchor_bucket_above_floor": {
+      "win16a_s0": {
+        "n": 1003,
+        "planted_hits": 483,
+        "control_hits": 457,
+        "planted_recall": 0.481555,
+        "control_recall": 0.455633,
+        "delta_pp": 2.592,
+        "newcombe_diff_ci95": [
+          -0.017738,
+          0.069582
+        ],
+        "newcombe_diff_ci95_pp": [
+          -1.774,
+          6.958
+        ],
+        "newcombe_ci_overlap": true,
+        "z": 1.163,
+        "p_value": 0.24470286,
+        "paired_bootstrap_pp": [
+          1.196,
+          4.187
+        ],
+        "paired_bootstrap_mean_pp": 2.592,
+        "passes_newcombe": false,
+        "passes_paired_bootstrap": true,
+        "passes_both": false,
+        "direction_note": "正 = 植入高于地板（判据②要的方向）"
+      },
+      "win16a_s1": {
+        "n": 1003,
+        "planted_hits": 484,
+        "control_hits": 473,
+        "planted_recall": 0.482552,
+        "control_recall": 0.471585,
+        "delta_pp": 1.097,
+        "newcombe_diff_ci95": [
+          -0.032746,
+          0.05468
+        ],
+        "newcombe_diff_ci95_pp": [
+          -3.275,
+          5.468
+        ],
+        "newcombe_ci_overlap": true,
+        "z": 0.492,
+        "p_value": 0.62292005,
+        "paired_bootstrap_pp": [
+          -0.299,
+          2.592
+        ],
+        "paired_bootstrap_mean_pp": 1.097,
+        "passes_newcombe": false,
+        "passes_paired_bootstrap": false,
+        "passes_both": false,
+        "direction_note": "正 = 植入高于地板（判据②要的方向）"
+      },
+      "win16a_both_seeds_pass_both_ci": false,
+      "intervention_arms_all_pass_newcombe": false
+    },
+    "c3_beyond_bucket_stays_at_floor": {
+      "win16a_s0": {
+        "delta_pp": 0.098,
+        "newcombe_diff_ci95_pp": [
+          -1.535,
+          1.73
+        ],
+        "ci_contains_0": true
+      },
+      "win16a_s1": {
+        "delta_pp": -0.056,
+        "newcombe_diff_ci95_pp": [
+          -1.689,
+          1.577
+        ],
+        "ci_contains_0": true
+      },
+      "win16_s0": {
+        "delta_pp": 0.056,
+        "newcombe_diff_ci95_pp": [
+          -1.576,
+          1.687
+        ],
+        "ci_contains_0": true
+      },
+      "win16_s1": {
+        "delta_pp": -0.153,
+        "newcombe_diff_ci95_pp": [
+          -1.787,
+          1.481
+        ],
+        "ci_contains_0": true
+      }
+    },
+    "c4_far_source": {
+      "win16a_s0": {
+        "far_all": {
+          "delta_bpc_far": 0.012885,
+          "max_abs_logit_diff_on_eval_rows": 6.319242477416992,
+          "premise_holds": false
+        },
+        "beyond_anchor": {
+          "delta_bpc_far": 0.0,
+          "max_abs_logit_diff_on_eval_rows": 0.0,
+          "premise_holds": true
+        }
+      },
+      "win16a_s1": {
+        "far_all": {
+          "delta_bpc_far": 0.013123,
+          "max_abs_logit_diff_on_eval_rows": 6.108980178833008,
+          "premise_holds": false
+        },
+        "beyond_anchor": {
+          "delta_bpc_far": 0.0,
+          "max_abs_logit_diff_on_eval_rows": 0.0,
+          "premise_holds": true
+        }
+      },
+      "win16_s0": {
+        "far_all": {
+          "delta_bpc_far": 0.0,
+          "max_abs_logit_diff_on_eval_rows": 0.0,
+          "premise_holds": true
+        },
+        "beyond_anchor": {
+          "delta_bpc_far": 0.0,
+          "max_abs_logit_diff_on_eval_rows": 0.0,
+          "premise_holds": true
+        }
+      },
+      "win16_s1": {
+        "far_all": {
+          "delta_bpc_far": 0.0,
+          "max_abs_logit_diff_on_eval_rows": 0.0,
+          "premise_holds": true
+        },
+        "beyond_anchor": {
+          "delta_bpc_far": 0.0,
+          "max_abs_logit_diff_on_eval_rows": 0.0,
+          "premise_holds": true
+        }
+      }
+    },
+    "c4_beyond_anchor_bitwise_insensitive": true,
+    "c4_far_all_window_bitwise_insensitive": true,
+    "c5_causality_no_future_leak": true,
+    "c6_mask_nondegenerate_and_reuse_equal": true
+  },
+  "rows": [
+    {
+      "name": "win16a_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 16,
+      "anchors": 8,
+      "k_eff": 24,
+      "kv_bytes_per_position": 294912,
+      "bpc": 1.622527,
+      "n_params": 13536768
+    },
+    {
+      "name": "win16a_s1",
+      "kind": "window",
+      "seed": 1,
+      "window": 16,
+      "anchors": 8,
+      "k_eff": 24,
+      "kv_bytes_per_position": 294912,
+      "bpc": 1.621799,
+      "n_params": 13536768
+    },
+    {
+      "name": "win16_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 16,
+      "anchors": 0,
+      "k_eff": 16,
+      "kv_bytes_per_position": 196608,
+      "bpc": 1.62811,
+      "n_params": 13536768
+    },
+    {
+      "name": "win16_s1",
+      "kind": "window",
+      "seed": 1,
+      "window": 16,
+      "anchors": 0,
+      "k_eff": 16,
+      "kv_bytes_per_position": 196608,
+      "bpc": 1.629093,
+      "n_params": 13536768
+    },
+    {
+      "name": "full",
+      "kind": "full",
+      "seed": 0,
+      "window": 256,
+      "anchors": 0,
+      "k_eff": 256,
+      "kv_bytes_per_position": 3145728,
+      "bpc": 1.502689,
+      "n_params": 13536768
+    }
+  ],
+  "liveness": {
+    "win16a_s0": {
+      "kind": "window",
+      "window": 16,
+      "anchors": 8,
+      "mask": {
+        "visible_pairs": 5868,
+        "expected": 5868,
+        "ok": true,
+        "causal_pairs": 32896,
+        "nondegenerate": true
+      },
+      "mask_counterfactual": {
+        "max_abs_logit_diff_masked_vs_open": 17.072369,
+        "alive": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 29.915577,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄漏）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 16,
+        "train_anchors": 8,
+        "params_added": 0,
+        "n_visible_pairs": 5868,
+        "causal_pairs": 32896,
+        "visible_frac": 0.17838,
+        "dropped_frac": 0.82162,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 1.131538
+      },
+      "train_last_loss": 1.0572,
+      "train_wall_minutes": 13.07,
+      "train_peak_gpu_mem_mb": 2015.1,
+      "train_window_liveness": null
+    },
+    "win16a_s1": {
+      "kind": "window",
+      "window": 16,
+      "anchors": 8,
+      "mask": {
+        "visible_pairs": 5868,
+        "expected": 5868,
+        "ok": true,
+        "causal_pairs": 32896,
+        "nondegenerate": true
+      },
+      "mask_counterfactual": {
+        "max_abs_logit_diff_masked_vs_open": 15.342586,
+        "alive": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 26.880716,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄漏）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 16,
+        "train_anchors": 8,
+        "params_added": 0,
+        "n_visible_pairs": 5868,
+        "causal_pairs": 32896,
+        "visible_frac": 0.17838,
+        "dropped_frac": 0.82162,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 0.996982
+      },
+      "train_last_loss": 1.1466,
+      "train_wall_minutes": 9.43,
+      "train_peak_gpu_mem_mb": 2015.1,
+      "train_window_liveness": null
+    },
+    "win16_s0": {
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "mask": {
+        "visible_pairs": 3976,
+        "expected": 3976,
+        "ok": true,
+        "causal_pairs": 32896,
+        "nondegenerate": true
+      },
+      "mask_counterfactual": {
+        "max_abs_logit_diff_masked_vs_open": 16.25091,
+        "alive": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 25.331936,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄漏）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "dropped_frac": 0.879134,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 2.106155
+      },
+      "train_last_loss": 1.0551,
+      "train_wall_minutes": 11.94,
+      "train_peak_gpu_mem_mb": 2015.1,
+      "train_window_liveness": null
+    },
+    "win16_s1": {
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "mask": {
+        "visible_pairs": 3976,
+        "expected": 3976,
+        "ok": true,
+        "causal_pairs": 32896,
+        "nondegenerate": true
+      },
+      "mask_counterfactual": {
+        "max_abs_logit_diff_masked_vs_open": 18.459326,
+        "alive": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 25.646366,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄漏）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "dropped_frac": 0.879134,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 1.441366
+      },
+      "train_last_loss": 1.1448,
+      "train_wall_minutes": 8.48,
+      "train_peak_gpu_mem_mb": 2015.1,
+      "train_window_liveness": null
+    },
+    "full": {
+      "kind": "full",
+      "window": 256,
+      "anchors": 0,
+      "mask": null,
+      "mask_counterfactual": null,
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 24.587456,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄漏）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_wall_minutes": null,
+      "train_peak_gpu_mem_mb": null,
+      "train_window_liveness": null
+    }
+  },
+  "code_hashes": {
+    "pathlm/depth_ar.py": "45b7d40673eed8844f5e094f8e40bd5a98bd8b8a195a3c41efa116ca14e3de01",
+    "train_depth_ar.py": "cddbbe0d3a758016308ecd9e501a7a0a946f0844b45d3f06a54aaeec9722b6a3",
+    "tools/evalkit/retention.py": "9ef983b70d666460de5d63d5d81c23c685ce708a55dfe1af66fc23187fd12f9a",
+    "tools/evalkit/carry_channel.py": "18d201a57019880230b80040c76748dcaa5c5f5e380c0ab4c7b5a3caae000717",
+    "pathlm/data.py": "48e23520122a0b4591e71d0e3780dd1f34dc4a82744e14ca3414da8f43ba448a",
+    "run.py": "7061936b2dc3d3359531c1365d8abe0b274d39c2f5faae665064b9ffe7937260",
+    "realtext_probe.py": "dbddeb5f8dc3a7bebe6eda6e2d977ce6581fade2b5db7231bc3f0116addd6402",
+    "needle_stats.py": "d27638b872d4bf2b28a9223b8a376f9a29d98693da8c9cc6d9c9ee115f099477",
+    "make_config.py": "ef6e6e8c823bb96b858c8d9d52cca6f03dafb15f7a052f3f6fa482b592d9d88a",
+    "config.json": "d7ee235c8594a26c287f460b91bbd05b39a66b63cbc714917ef6459c4831e2ad",
+    "train_arms.sh": "4b36af233cdb23795c3e11c07f55bc54ca212e64f200ae4ca7fb87b810f74547"
+  },
+  "cost": {
+    "wall_minutes_total_eval": 1.32,
+    "eval_peak_gpu_mem_mb": 354.2,
+    "n_eval_windows_bpc": 1536,
+    "n_probe_windows": 1536,
+    "n_needle_batches": 64,
+    "note": "墙钟只作过程指标，不进判据"
+  }
+}

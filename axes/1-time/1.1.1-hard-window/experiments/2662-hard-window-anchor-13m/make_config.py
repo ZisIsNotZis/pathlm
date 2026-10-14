@@ -8,8 +8,9 @@
 2. 把评测口径常量写死（bpc 96×16 / window_seed=2；探针 96×16 / rf=180 / 被评行
    [244,255)；needle n_needles=8 / phrase_len=6 / anchor_frac=0.25 / seed=3 / bucket_anchors=8）。
 
-`--require-new`：两个新臂（`win16a_s0/s1`）的 checkpoint 尚未训练出来时**非零退出**
-（防止拿空 sha256 去评测）。复用臂的 sha256 若已写死则逐位校验。
+`--require-new` 的语义（逐臂独立判定，不再整体降级）：**已存在且 sha256 可核的臂一律写入
+`arms`**（新臂 `win16a_s0/s1` 现算 sha256，复用臂逐位校验写死值）；**缺失的新臂只记入
+`missing_new_arms` 并告警**（`--require-new` 时同时打到 stderr），**不因此丢弃已训好的臂**。
 """
 from __future__ import annotations
 
@@ -70,15 +71,15 @@ def arm(name, kind, window, anchors, rule, seed, path, *, reused_from=None,
     return d
 
 
-def build(require_new: bool) -> dict:
-    new_arms = []
+def build() -> dict:
+    new_arms, missing_new = [], []
     for s in (0, 1):
         run = f"win16a_s{s}"
         d = os.path.join(NEW, run)
         ck = os.path.join(d, "model.pt")
         if not os.path.exists(ck):
-            if require_new:
-                raise SystemExit(f"--require-new：{rel(ck)} 尚未训练出来")
+            # 逐臂独立判定：缺哪臂只记哪臂，别的臂照写（不整体降级）。
+            missing_new.append(run)
             continue
         new_arms.append(arm(run, "window", 16, 8, "none", s, ck,
                             train_log=rel(os.path.join(d, "train_log.jsonl")),
@@ -133,6 +134,7 @@ def build(require_new: bool) -> dict:
         },
         "seeds": [0, 1],
         "arms": new_arms + reused,
+        "missing_new_arms": missing_new,
         "bands": {
             "sigma_cell": None,
             "sigma_cell_note": ("留空 ⇒ 由 run.py 用本实验自己的换种子极差填（本格带为主判）；"
@@ -156,21 +158,24 @@ def build(require_new: bool) -> dict:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--require-new", action="store_true",
-                    help="两个新臂（win16a_s0/s1）checkpoint 缺失则非零退出")
+                    help=("新臂（win16a_s0/s1）缺失时把告警同时打到 stderr；"
+                          "不再非零退出——缺臂一律记入 missing_new_arms，其余臂照写"))
     ap.add_argument("--out", default=os.path.join(HERE, "config.json"))
     args = ap.parse_args()
-    cfg = build(args.require_new)
-    names = [a["name"] for a in cfg["arms"]]
+    cfg = build()
     for a in cfg["arms"]:
         print(f"  {a['name']:10s} kind={a['kind']:6s} w={a['window']:3d} "
               f"anchors={a['anchors']} seed={a['seed']} sha256={a['sha256'][:16]}…")
-    missing = [n for n in ("win16a_s0", "win16a_s1", "win16_s0", "win16_s1", "full")
-               if n not in names]
+    missing = cfg["missing_new_arms"]
     if missing:
-        print(f"[warn] 缺臂（未训练）：{missing}", file=sys.stderr)
+        warn = (f"[warn] 新臂 checkpoint 未训练：{missing} ⇒ 记入 config.json 的 "
+                f"missing_new_arms；其余 {len(cfg['arms'])} 臂照常写入（不整体降级）")
+        print(warn)
+        if args.require_new:
+            print(warn, file=sys.stderr)
     with open(args.out, "w") as f:
         json.dump(cfg, f, indent=2, ensure_ascii=False)
-    print(f"写入 {rel(args.out)}（{len(cfg['arms'])} 臂）")
+    print(f"写入 {rel(args.out)}（{len(cfg['arms'])} 臂，缺 {len(missing)} 个新臂）")
 
 
 if __name__ == "__main__":
