@@ -475,3 +475,22 @@ batch>1 与完整二级树需另立 WP / 重训头）。**下一步最小动作*
 （`chain_second`）重训二级条件头并测完整树（GPU ≈1 h 量级）；③ 53.9M 对抗臂（≈1.5 min）。
 - **更正（`2026-10-14T23:11:41+08:00` 实测 · axis6-lead）**：上面收口表与 `6.3.1/project.yaml` 里我写的 `23:16:00` 是**估算值**（写作时未看时钟）；真实落盘时刻按本条的 `date -Iseconds` 实测为 `2026-10-14T23:11:41+08:00`。已把 `6.3.1/project.yaml` 的 `ended` 与 `change_log` 的 `23:16:00` 改为 `23:10:00`（两处，取该文件实际写入时刻的保守值）。事件内容、结论与判据均不变。此前 `6.2` 的若干条同样采用「先跑 `date -Iseconds` 再写」的纪律。
 - `2026-10-14T23:12+08:00` · axis6-lead · **C1 审计工具的范围修正（如实登记）**：`.scratch/63-axis6-predict/c1_band_audit.py` 的「未在同字段声明带」判定原是对**全部字段**（含 `conclusion` / `conclusion_review` / `argument` 这些**报告字段**）做的启发式扫描；在把 6.3.3 的 `conclusion_review`、6.3.2 的 WP1 `acceptance` 两处补齐声明后，复扫仍有 `conclusion` 类报告字段命中——那是报告字段引用**已测到的 bpc 数**，`docs/research-schema.md` §12.1 的声明义务落在 `falsification` 与**设门槛的字段**上。故把脚本范围显式收窄为「判据/门槛字段」，并在脚本内写明该范围与理由（不静默放宽：脚本文件本身可审）。收窄后复扫 = 命中 19 处、**未声明 0 处、跨量纲 0 处**。另：6.3.2 的 WP1 `acceptance` 已补「用哪个带」声明；6.3.3 的 `conclusion_review` 已补判据带声明。
+
+---
+
+# Phase D（ticket 63 · 第四轮 · Main 裁决落地 + 6.2 收口）
+
+## D1 Main 裁决的落地（`2026-10-14T23:30+08:00` 起）
+
+| 裁决 | 落地动作 | 证据 |
+|---|---|---|
+| ① C1 审计范围：**强制只覆盖 `falsification`**；`validation`/`objective_criteria` 建议；报告字段不强制 | **维持现有范围**（判据/门槛字段），不回填报告字段；脚本 `.scratch/63-axis6-predict/c1_band_audit.py` 的范围注释已在上一轮写明 | 复扫：命中 19、未声明 0、跨量纲 0 |
+| ② 规模标签更正**批准**，但必须逐条披露 | 6.4 `change_log` 加「预登记为 13M、实测 6,962,688；仅正名、未改判据」；6.3.2 `change_log` 加「预登记为 13M、实测 12,813,312；仅正名」 | 脚本 `apply_main_rulings.py` + 两文件 `change_log` 末条 |
+| ③ B5.4-2 **批准改写 `6.3.3` 的 `innovation`** | `innovation` 改写为「latent 匹配监督（把 `z_j` 拉向主干未来真值隐状态）」+ 写明「与离散分类头同参数量、共享 tied 读出下**数学等价且同种子逐位相同**（2660 的 L0）」；并按 §11.2 把 `gap` 的同义句对齐 | `apply_main_rulings.py` + 一致性补齐脚本 + 两处 `change_log` |
+
+## D2 6.2 收口（唯一未终局项）
+
+- **D2.1 WP 6.2.5「完整二级树」**（`experiments/2675-second-tree-13m/`，契约已先写死）：E3（`fa6a1ad`，独立复核 PASS）已给 `chain_second` / `transforms_chain2` / `chain_cat2` / `conf_chain3` / `Decoder.step_tree_multi`；本 WP 负责**重训头**并判「N+3 以被接受的 N+2 候选为条件」是否抬高 τ。臂 = `native` / `ar_1step` / `direct1` / `lvl1_tree(K=2,4)` / `lvl2_tree(K=2,4)`；n≥2 = 头种子 {0,1} × 主干 {13m_s0, 13m_s1}；**无损性硬门**（发出流逐位 == native）+ 两条可失败机械检查（父指针对齐、不看兄弟）；代价轴注明**等 FLOPs 臂不可得**（63-F2）。writer run `f2fc2ac9`，GPU ≤60 min，detached supervisor-retry 排队在锁后。
+- **D2.2 WP 6.2.4「温度>0 无损投机采样 + 53.9M 对抗臂」**（`experiments/2673-robustness-13m/`，契约先写死）：writer run `080e3d27`，GPU ≤15 min；`L0 gate probe`（错误接受规则必须让无损性检验变红）是 P1 判据成立的前提。
+- **D2.3 batch>1 ⇒ E5 登记（不擅改引擎）**：`.scratch/67-engine-changes/TICKET.md` 新增 `### E5 · 轴 6 · 批量验证（B>1）`（需要什么 / 为什么 / 最小 patch 描述 / 预计 3 条单测：B=2 逐序列等价、批内独立性 gate probe、B=1 逐位还原 / 风险与显存记账），授权状态 = **未授权**，待 Main 派唯一 engine-writer。登记动作 = `.scratch/63-axis6-predict/register_e5.py`（插入 + 变更记录各一处，命中计数断言）。
+- **D2.4 GPU 纪律**：两个 WP 均按 §20 逐 run 取放锁 + detached supervisor-retry（后台 `nohup` + 短轮询），不前台阻塞等锁；抢不到按 blocker 如实记。
