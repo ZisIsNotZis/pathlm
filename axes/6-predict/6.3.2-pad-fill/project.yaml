@@ -11,7 +11,7 @@ sota_baseline: "填空 / 非自回归生成族：Mask-Predict 与非自回归翻
 gap: "本仓零经验（MAPPING §2 无旧格）。增量 = 在同尺寸 stock 主干、同 token 预算下，把「一次填空（K=1）」与全因果 AR、以及 6.3.1 的「K 步去噪」放在同一质量-代价前沿上，量化**一次并行填充**的质量代价随 PAD 比例的形状；不是重造 masking 目标本身。"
 method: "单因素：固定主干 / 数据 / token 预算，只改「PAD 比例与可见性」。臂 = {stock 因果 AR, 一次性 pad 填空（PAD 比例 r∈{10%,25%,50%}，双向可见）, 因果填空（PAD 只可见左侧，作「可见性」对照）}。基底恒为 stock decoder-only。"
 validation: "端到端：对照 = 同尺寸 stock 全因果 AR（归一为 100%）+ 因果填空臂（可见性对照）；客观判据 = 序列级 bpc（质量，该不跌 / 该跌）+ tokens-per-forward（一次填出的位置数，该涨）+ 每 token 等效 FLOPs（代价轴，如实报）+ 每 token 顺序前向次数（该跌）；口径 = matched-step / 同 token 预算，禁墙钟；必须不变 = 未填位置的因果性（不得让被填位置看到未来真值）、评测口径与 AR 同框。"
-objective_criteria: "该涨：tokens-per-forward（一次前向填出的位置数）；该跌：每 token 顺序前向次数；该不跌：序列级 bpc（相对全因果 AR，须越 0.014 噪声带才算可排序）；必须报：每 token 等效 FLOPs（随 r 变化）；必须不变：未填位置的因果性、评测口径与 AR 同框。"
+objective_criteria: "该涨：tokens-per-forward（一次前向填出的位置数）；该跌：每 token 顺序前向次数；该不跌：序列级 bpc（相对全因果 AR，须越 0.014 噪声带才算可排序）；必须报：每 token 等效 FLOPs（随 r 变化）；必须不变：未填位置的因果性、评测口径与 AR 同框。 用哪个带（C1 裁决）：bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口）；tokens-per-forward 等率类指标走配对 bootstrap / Wilson 95% CI、**不跨量纲借用** 0.014。"
 falsification: "若在 matched-step、同 token 预算下，一次性 pad 填空的序列级 bpc 相对全因果 AR 越噪声带恶化且随 PAD 比例 r 单调恶化、因果填空臂又救不回 ⇒ 判「一次填充」（K=1 并行填充）在本尺度 / 本任务上不成立。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 failure_analysis: ""
 conclusion: ""
@@ -32,7 +32,7 @@ role_map:
 
 milestone:
   output: "一份「一次性 pad 填充」判决包：{stock 因果 AR, pad 填空 r∈{10%,25%,50%}, 因果填空} 在 13M matched-step / 同 token 预算下的序列级 bpc + tokens-per-forward + 每 token 等效 FLOPs，对照全因果 AR，含 n≥2。"
-  acceptance: "各臂预算对齐、未填位置因果性单测通过；序列级 bpc 相对全因果 AR 的差可分（越 0.014 噪声带）或明确「不越带」；结论停在「该 r / 该尺度值不值」，不外推。"
+  acceptance: "各臂预算对齐、未填位置因果性单测通过；序列级 bpc 相对全因果 AR 的差可分（越 0.014 噪声带：bpc 口径专用、限配对 Δ、≥5 窗口；率类走配对 bootstrap / Wilson 95% CI、不跨量纲借用——C1 裁决）或明确「不越带」；结论停在「该 r / 该尺度值不值」，不外推。"
 
 work_packages:
   - id: "WP1"
@@ -58,3 +58,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-14T20:52:40+08:00"
+    actor: "axis6-lead（ticket 63 续 · C1 声明回填第二轮）"
+    change: "C1 声明回填第二轮（不改数字 / 不改结论 / 不改证据）：按 docs/research-schema.md §12.1，本项 milestone.acceptance 与 objective_criteria 引用 0.014 噪声带但未在同字段声明用哪个带，现补声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），tokens-per-forward 等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用。"

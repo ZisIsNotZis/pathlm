@@ -367,3 +367,55 @@ F4 压成当前事实 + 指针；F5 补半句。修复后复跑：`pytest` 22 pa
   - 事实数字抽查：6.2 结论 (j) 与 6.3.3 结论 (b)/(c) 的 12 个量**逐值对账通过**。
 - **它的 1 条 info（我采纳并更正配方）**：我在派单里给的「Phase B 基线 = `21f390d`」是**错的**——那是 Phase A 的提交，`21f390d..HEAD` 之间夹着别的 ticket 的提交（`e894f20` 改 `pathlm/depth_ar.py`、`e98a26c`/`1c755f3` 改 docs、`cfee001` 改 2640），所以那两条范围命令非空并不代表本轴越界。**Phase B 的正确基线 = `3e6248f`（= `0c4dc01^`）**，用该基线两条命令均空。此更正已记入本工单，后续复核配方一律用 `3e6248f`。
 - 至此本轮的**执行类验收已有独立见证**（B4 之前三轮复核者均无 shell，该缺口由 B4 关闭；B4 自身是 fresh、未参与写作、只读）。
+
+---
+
+# Phase C（ticket 63 · 第三轮 · 自主推进到终局）
+
+> 时间盒 ≤3h（`2026-10-14T20:50+08:00` 起）；并发子 Agent ≤2；GPU 按 `SCHEMA.md` §20 串行。
+> 目标：把本轴**非 Backlog** 研究项（6.2 / 6.3.1 / 6.3.2 / 6.3.3 / 6.4）推进到唯一 milestone 的终局
+> （`status ∈ {已完成, 被否证}`，含 `conclusion` + 落盘 `experiments` + fresh 独立复核判词）。
+> 边界：只写 `axes/6-predict/**` 与 `.scratch/63-axis6-predict/**`。引擎 E3（二级条件头 + 树验证路径）已授权、
+> 由唯一 engine-writer 落地中，**重训由本轴负责**但本轮不排进时间盒。
+
+## C1 范围与契约（Phase C）
+
+| 项 | 值 |
+|---|---|
+| owner / writer（文档 + `project.yaml`） | axis6-lead |
+| WP writer | 每 WP 一名 fresh `worker`（不得为本项 reviewer） |
+| reviewer | fresh 独立上下文（`reviewer` 或只读化的 `worker`），复核排在 writer 停止之后；累计 ≤2 轮 |
+| 判据口径 | 只允许**等效理论算力**（FLOPs / layer-passes / tokens-per-forward）；**墙钟 / 吞吐禁入判据与 `cost_model`** |
+| 判据带 | 按 `docs/research-schema.md` §12.1：bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口）；τ / 接受率 / 命中率 / rescore 峰值等**率类**走 prompt 聚类配对 bootstrap / Wilson 95% CI 不含 0 为主判，**不跨量纲借用** 0.014 |
+
+## C2 非 Backlog 项枚举：milestone 差距 + 下一步最高价值 WP
+
+| id | 当前 status | milestone 差距（读现状后） | 下一步最高价值 WP（按价值排序） |
+|---|---|---|---|
+| **6.2** 多位置预测 = 投机解码 | 进行中 | `milestone.acceptance`（免费路线 τ 显著高于单 argmax 且质量不越带）**已成立**（WP 6.2.2 结论 (g)）；`output` 包缺「温度>0 / batch>1 的稳健性点」；E3 二级条件树未实装（引擎授权中）；53.9M 只 3 臂 | ① 温度>0 / batch>1 稳健性（eval-only，须实验侧实装无损投机采样）② 53.9M 对抗臂（约 1.5 min GPU）③ E3 重训（授权后在 67 通道排期） |
+| **6.3.1** diffusion | 未开始 | 全部：本仓零读数、零实验目录 | WP1 最小判决（13M、{AR, 掩码扩散 K=1/4/8/16}）；需**非因果**注意力（引擎硬编码因果 ⇒ 实验目录自带 harness） |
+| **6.3.2** 一次性批量 pad 填充 | 未开始 | 全部：本仓零读数、零实验目录 | WP1 最小判决（13M、{AR, fill_bidir r=10/25/50, fill_causal r=25}），须过「不受未来泄漏」硬门 |
+| **6.3.3** latent regression | 进行中 | WP1 已完成（teacher-forced 命中率 + 草稿接受率两条路径）；缺 `milestone.output` 的**序列级 bpc** | WP2 free-run 序列级 bpc（复用 2660 头，不重训；GPU ≤10 min） |
+| **6.4** 训练时未来位置填充语义 | 进行中 | 缺 13M matched-step 的 **n≥2** 复本 + WP2（软提交 OOD 污染的等参数剥离） | WP1b n≥2 复跑（depth-ar matched-step）+ WP2 剥离 |
+
+- 排序理由：**6.3.3（无训练、纯评测、直接补齐 milestone 缺项）> 6.3.2（零读数、判据最严的「不受未来泄漏」硬门可测、单 harness 单因素）> 6.4（复跑 + 剥离，成本中等）> 6.2（主判已答，剩稳健性点）> 6.3.1（最贵、需新采样器与 K 扫描）**。
+- **不依赖 E3 的项**（6.3.1 / 6.3.2 / 6.3.3 / 6.4）先行。
+
+## C3 C1 判据带声明回填（第二轮 · 脚本枚举）
+
+- 工具：`.scratch/63-axis6-predict/c1_band_audit.py`（只读枚举 + 非零退出提示；口径 = `docs/research-schema.md` §12.1）。
+- 首扫（回填前）：命中 27 处、**未在同字段声明带 13 处**、**跨量纲风险 5 处**；逐项清单见脚本输出（ticket 不复制数字表）。
+- 处置（actor=axis6-lead）：逐项补声明，并把**跨量纲借用**改写成「率类走配对 bootstrap / Wilson 95% CI 为主判、0.014 只用于 bpc 口径」：
+  - 6.2：`objective_criteria`、`milestone.acceptance`、`work_packages[6.2.1].acceptance`、`work_packages[6.2.2].acceptance`、`validation`（内层「草稿接受率须越 0.014 噪声带」改为 CI 口径）。
+  - 6.3.1 / 6.3.2：`objective_criteria`、`milestone.acceptance`。
+  - 6.3.3：`objective_criteria`、`milestone.acceptance`（τ / tokens-per-forward 的「越 0.014 带」改为 CI 口径）。
+  - 6.4：`objective_criteria`、`milestone.acceptance`、`work_packages[WP2].acceptance`（rescore 峰值属率类）。
+- 复扫：命中 21 处、**未声明 0 处、跨量纲 0 处**；`python3 tools/summary.py --check` / `check_tree.py` 全绿。
+- 脚本口径声明：`change_log` 是过程台账（历史），不作判据字段，已在脚本内显式跳过。
+
+## C4 Phase C 时间线
+
+- `2026-10-14T20:50+08:00` · axis6-lead · 接手；读本工单 Phase A/B 全轨迹、`docs/structure.md` §12、`docs/research-schema.md`（§5 C2 / §12.1）、`SCHEMA.md` §14/§14b/§20/§22/§23、本轴 5 份 `project.yaml`、`.scratch/67-engine-changes/TICKET.md`（E3 状态 = 未授权）。
+- `2026-10-14T20:51–20:52+08:00` · axis6-lead · 写死两份预登记契约（**先于派遣**）：`6.3.3.../experiments/2670-freerun-bpc-13m/README.md`、`6.3.2.../experiments/2671-padfill-13m/README.md`（含 S1/S2 两阶段）。`date -Iseconds` 实测写入。
+- `2026-10-14T20:52:40+08:00` · axis6-lead · C1 声明回填第二轮落盘（5 份 `project.yaml`）+ 枚举脚本；复扫 0 未声明 / 0 跨量纲；`summary.py --check` 全绿。
+- `2026-10-14T20:53+08:00` · axis6-lead · 派 wave 1 两个 fresh worker（并发 2）：WP-6.3.3-WP2（2670 free-run bpc，≤20 min，run `f41f2174`）与 WP-6.3.2-S1（2671 harness + 单测 + 步时冒烟，≤25 min，run `ce397280`）。

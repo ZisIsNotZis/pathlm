@@ -11,7 +11,7 @@ sota_baseline: "主流 MTP 训练**不填充**右侧——DeepSeek-V3 MTP 用独
 gap: "业界系统比较「self-fill / proj-fill / mask / 错误 token / 软 latent」这组填充方案的税**未找到**直接前例（55-review PRIOR_ART §H2）。本仓增量 = 同引擎、同 seed、matched-step 的单因素扫描 + 「proj-fill（逐层恒等初始化 adapter）最优、全深度逐深度支配 fill」的受控结论 + 「软提交 OOD 污染」三度复现 + 首验「填充是负分量 +0.167」被 matched-step 检验反转的纠错；不重造填充机制本身。"
 method: "单因素：固定引擎 / seed / matched-step，只改填充语义。臂 = {无填充（ragged nofill）, pad / mask, 错误 token, self-fill（用自己上一轮预测 / 已退出位置的冻结表征）, proj-fill（逐层恒等初始化 adapter）, 软 latent（Σp·E）, 纯噪声 latent}。基底恒为 stock decoder-only。"
 validation: "端到端：对照 = 无填充（ragged nofill）与 stock 全因果 AR（归一为 100%）；客观判据 = clean bpc（质量税，该跌 / 该不跌）+ 填入位置的可读性（出口 / 草稿命中，该涨）+ 提交质量（rescore，软提交 OOD 污染该低）；口径 = matched-step / 同 token 预算，禁墙钟；必须报活性 = 填充位置占比与 adapter 是否真被用到。"
-objective_criteria: "该跌：各填充语义相对无填充的 clean bpc（税，须越 0.014 噪声带才算可排序）+ 软提交的 rescore 峰值（OOD 污染该低）；该涨：填入位置的可读性（出口 / 草稿命中）；必须不变：非填充位置的 teacher forcing 语义（不污染主干 clean 分布）；必须报：填充位置占比与 adapter 活性。"
+objective_criteria: "该跌：各填充语义相对无填充的 clean bpc（税，须越 0.014 噪声带才算可排序）+ 软提交的 rescore 峰值（OOD 污染该低）；该涨：填入位置的可读性（出口 / 草稿命中）；必须不变：非填充位置的 teacher forcing 语义（不污染主干 clean 分布）；必须报：填充位置占比与 adapter 活性。 用哪个带（C1 裁决）：bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口）；rescore 峰值 / 命中率等率类指标走配对 bootstrap / Wilson 95% CI、**不跨量纲借用** 0.014。"
 falsification: "若 proj-fill / self-fill 相对无填充的 clean bpc 优势全由额外参数解释（等参数对照后消失），或「软提交 OOD 污染」不可复现 ⇒ 判填充语义在本尺度不是独立有增益的维度。"
 failure_analysis: ""
 conclusion: "已有本地读数（旧格 H2 迁入，按 55-review H-I7 归位并写明目的）：保留式填充（self-fill）1.8582 胜 ragged nofill 1.9438（+0.0856，>0.014 可排序）；proj-fill（逐层恒等初始化 adapter）1.8356 = 13M matched-step 族内最优且全深度逐深度支配 fill；mask / 错误 token 替换分别 +0.059 / +0.127（更贵）；软 latent（Σp·E）提交有 OOD 污染（rescore 峰值三度复现：首验 6.9 vs hard 1.2、@100M 8.42 vs 0.79、C 臂 3.36 vs 0.74）；embedding noise ±0.000。⇒ 本尺度下「未来 / 已退出位置的填充语义」是独立有影响的一维，且「不注入分布外内容」比「填得看起来像」更重要（软提交 OOD 污染）。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
@@ -37,7 +37,7 @@ role_map:
 
 milestone:
   output: "一份「训练时未来位置填充语义」判决包：{无填充, pad / mask, 错误 token, self-fill, proj-fill, 软 latent} 在 13M matched-step（n≥2）下的 clean bpc + 填入位置可读性 + 提交质量（rescore），对照无填充与 stock 全因果。"
-  acceptance: "各填充语义相对无填充的 clean bpc 可分（越 0.014 噪声带）或明确「无差别」；软提交的 OOD 污染被显式量化；结论不越尺度外推。"
+  acceptance: "各填充语义相对无填充的 clean bpc 可分（用哪个带（C1 裁决）：bpc 口径用 0.014 bpc 带、限配对 Δ、≥5 窗口）或明确「无差别」；软提交的 OOD 污染被显式量化；结论不越尺度外推。"
 
 work_packages:
   - id: "WP1"
@@ -52,7 +52,7 @@ work_packages:
     what: "软提交 OOD 污染复现与剥离"
     goal: "把「软提交污染上下文」从单次现象升格为可复现判据，并剥离 adapter 容量成分"
     means: "同 checkpoint 三度复现点 + 等参数 hard/soft 对照，报 rescore 峰值分布"
-    acceptance: "软提交 rescore 峰值显著高于 hard（越噪声带）且复现；等参数对照下仍成立或明确归因容量"
+    acceptance: "软提交 rescore 峰值显著高于 hard（rescore 峰值差走配对 bootstrap / Wilson 95% CI 为主判，不跨量纲借用 0.014 bpc 带——C1 裁决）且复现；等参数对照下仍成立或明确归因容量"
     evidence: "axes/6-predict/6.4-training-fill/experiments/"
     review: "跑完另派 fresh 复核"
     status: "未开始"
@@ -75,3 +75,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-14T20:52:40+08:00"
+    actor: "axis6-lead（ticket 63 续 · C1 声明回填第二轮）"
+    change: "C1 声明回填第二轮（不改数字 / 不改结论 / 不改证据）：按 docs/research-schema.md §12.1，本项 milestone.acceptance / objective_criteria / WP2.acceptance 引用 0.014 噪声带但未在同字段声明用哪个带，且 WP2 的 rescore 峰值属率类（跨量纲风险），现改为——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口）；rescore 峰值 / 命中率等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用。"
