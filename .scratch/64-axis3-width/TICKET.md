@@ -280,3 +280,91 @@
 
 （§9 由本工单在复核后补写：历轮判词只留本工单；`project.yaml` 的 `conclusion_review` 只写**当前
 最后一轮**判词 —— 沿用 ticket 62 §8.8 的纪律。）
+
+---
+
+# 10 Phase B（自主推进 · 本轮）· 2026-10-14 20:45+08:00 起
+
+> 本轮 = 「把本轴所有非 Backlog 研究项推到终局」。actor = axis3-lead；执行与复核**全部派 fresh 子 Agent**，
+> lead 只做编排、事实文档（`project.yaml`/README）与工单。硬上限 3h（≈23:45），并发子 Agent ≤2，GPU 按 §20 串行。
+> 边界不变：只写 `axes/3-width/**` 与 `.scratch/64-axis3-width/**`。
+
+## 10.1 起点盘点（2026-10-14T20:49+08:00）
+
+| 项 | 状态 | 已有证据 | milestone 差距 |
+|---|---|---|---|
+| 3.1.4 | 已完成 | 2641（7 臂 × 12k） | 复核门未闭合（第 1 轮 FAIL 已修、第 2 轮未派）⇒ 本轮派第 2 轮 |
+| 3.2.1 | 已完成 | 2610/2611/2612/2613/2621 | 已终局（WP4「更长训练/更大尺寸」留白） |
+| 3.1.1 | 未开始 | 无（旧 2525 属读出域，不算） | WP1（减宽前沿 + 同算力位点对照）+ WP2（width dropout 弹性宽度） |
+| 3.1.2 | 未开始 | 无 | WP1（逐层 d_model schedule，固定总参数）——**实现前置**：引擎无逐层 d_model（E2 只覆盖 FFN 宽） |
+| 3.1.3 | 未开始 | 无 | WP1（同层内位置相关宽度 + 长程召回对照列） |
+| 3.1.5 | 未开始 | 无 | WP1（通道稀疏激活 + 活性对照列） |
+| 3.2.2 | 未开始 | 无 | WP1（逐出口读出 + 各出口 tf@k + 末层质量） |
+| 3.2.3 | 未开始 | 无 | WP1（tied vs untied + 参数量/语义可用性列） |
+
+**共同代价锚（本轴复用，不再重训）**：`2641` 的 dense 13M/8L/d=256/heads=8/mlp_mult=4/12k/seed0 全宽臂
+`U4-s0 = 1.5314`；同配置历史 dense 13M/12k run 散布极差 0.0057（1.5257 / 1.5287 / 1.5298 / 1.5314）；
+`2641` 的 `U2-s0 = 1.5709`（每 token MACs 5.2956M）为「等算力位点」参照。复用按 `SCHEMA.md` §9 三道门
+（开关关闭逐位等值 / 逐字段配置对照 / 口径标注）。
+
+## 10.2 本轮派单契约（lead 写契，worker 先落预登记再跑）
+
+| 单 | 项 | fresh worker | WP | 臂（新增；stock 锚复用 U4-s0） | GPU 等效预算 |
+|---|---|---|---|---|---|
+| W-A1 | 3.1.1 | axis3-w-3.1.1 | WP1+WP2 合并判决包 | D192 / D128（uniform 减宽）+ WD256（嵌套宽度 dropout，一 checkpoint 多档推理） | 3 臂 × 12k ≈ 25 min |
+| W-A2 | 3.1.5 | axis3-w-3.1.5 | WP1 | K50 / K25（逐 token top-k 通道激活，k=50%/25%）+ F50（固定前缀半通道对照，测「条件性」本身） | 3 臂 × 12k ≈ 25 min |
+| W-B1 | 3.2.3 | axis3-w-3.2.3 | WP1 | U（独立 unembed [206,256]）+ PR（tied + rank-32 低秩校正） | 2 臂 × 12k ≈ 17 min |
+| W-B2 | 3.2.2 | axis3-w-3.2.2 | WP1 | PE（共享 tied + 每出口 d×d）+ IND（每出口独立表）+ LR（每出口低秩）+ T（共享 tied 同配置重训，作同批锚） | 4 臂 × 12k ≈ 33 min |
+
+- **干净边界**：worker 只写自己的实验目录；`project.yaml` / 轴与分组 README / 本工单由 lead 写（唯一写入者纪律）。
+- **预登记纪律**：worker 必须**先写 `README.md` 契约（判据线 P1..Pn + 否证线 + 带声明）再起跑**，
+  跑后不改契约（口径差异改在 `analysis.md` 声明）；`README.md` 里写明「用哪个带」（`docs/research-schema.md` §12.1）。
+- **口径**：判据只用等效理论算力（每 token MACs / 参数量 / layer-passes），**墙钟/吞吐只在过程日志里、禁入判据与 `cost_model`**；
+  剪枝类对照按 §12.2（等 FFN 预算 / 等算力位点，并列报参数量与每 token 等效算力）。
+- **实现纪律**：引擎 E2（逐层 FFN 宽）**尚未落入工作树**（`git log pathlm/depth_ar.py` 最新为 E1）⇒ 本轴按 C3
+  在实验目录内自造（切片 / monkeypatch），**须自证实现等值门**（与引擎原生路径逐位同前向）；不得改 `pathlm/**`。
+- **GPU 纪律**：逐臂取/放 `/tmp/pathlm_gpu.lock`（§20），臂间 ≥60 s，锁被占则等待或登记稍后重试，
+  **绝不杀他人进程**；两单并发时按臂互斥交错，日志各自落盘。
+
+## 10.3 复核计划（每项一份 fresh 复核，writer 停止后派）
+
+- 复核目标 = 该项 `README.md` 契约 + `run.py` + 落盘 `results*.json` 与 `analysis.md` 的**一致性**：
+  ①判据线未被事后编辑（契约文件哈希 + mtime 早于起跑）②数字与落盘 JSON 逐条对账（复核者自算，不引用 worker 自报值）
+  ③单因素/等预算位点是否逐位成立 ④活性与等值性门非恒真 ⑤口径无墙钟 ⑥越界扫描。
+- 判词落 `.scratch/64-axis3-width/REVIEW-<项>.md`；缺陷 ⇒ 派 writer 修 ⇒ **新的** fresh 复核；累计 ≤2 轮。
+- 复核者无 shell 时其未跑项记为「未跑 = 不计通过」（`SCHEMA.md` §14b / AGENTS「不跑不算过」）。
+
+## 10.4 引擎（E2）状态核对（2026-10-14T20:50+08:00，actor=axis3-lead）
+
+- `git log --oneline -1 -- pathlm/depth_ar.py` = `e894f20`（ticket 67 · E1）；`grep mlp_mult_sched pathlm/depth_ar.py` 无命中；
+  `.scratch/67-engine-changes/TICKET.md` 里 E2 的「授权状态」仍写 **未授权**。⇒ 本轮按 C3 在实验目录内自造，并再次记录该事实。
+
+## 10.5 C1 声明回填核对（2026-10-14T20:52+08:00，actor=axis3-lead）
+
+- 脚本枚举本轴 8 份 `project.yaml` 的 `validation` / `objective_criteria` / `falsification` / `conclusion`，
+  检查「引用噪声带/阈值」与「声明用哪个带」两件事；ticket 57 的 `c1-backfill-writer` 已于 `2026-10-14T06:59` 回填 7 项。
+- **唯一缺口 = `3.1.5` 的 `falsification`**（原文无带声明）⇒ 本轮补「用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）
+  为主判；通道使用率 / 激活比例等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014」。
+- `3.2.1`（已完成项）的 `falsification` 已带声明（「用哪个带（C1 裁决）」）⇒ 无需回填。
+
+## 10.6 执行记录（本轮，追加）
+
+- `2026-10-14T20:52:28+08:00` · axis3-lead · 读权威输入（ticket 64 §3/§6/§9、`docs/structure.md` §12 轴 3 表 + §13、
+  `docs/research-schema.md` 全文、`SCHEMA.md`、本轴 8 份 `project.yaml`、`.scratch/67-engine-changes/TICKET.md`）；
+  `git status --short` 干净、`HEAD=fb8a576`、`/tmp/pathlm_gpu.lock` 不存在、GPU 余量 23.6 GiB。
+- `2026-10-14T20:53+08:00` · axis3-lead · 派 **第 2 轮 fresh 复核者**（subagent run `d0fe4f22-42ce-4d01-86ff-dabfafad9bfa`）
+  闭合 3.1.4 复核门，交付 `.scratch/64-axis3-width/REVIEW-2.md`。
+- `2026-10-14T20:5x+08:00` · axis3-lead · 补 `3.1.5` 的 `falsification` 带声明（§10.5）。
+
+## 10.7 本轮派单用的「不变量」事实（lead 核过，worker 直接用，别自己重推）
+
+| 事实 | 值 / 指针 |
+|---|---|
+| dense 13M 训练 CLI（2641 逐字） | `train_depth_ar.py <run_name> --d 256 --layers 8 --heads 8 --seq-len 256 --mlp-mult 4 --dense --topology sequential --exit-mode uniform --steps 12000 --batch-size 32 --lr 1e-3 --seed 0 --eval-batches 20 --out-root <dir>` |
+| harness 复用模式 | 实验目录内替换 `train_depth_ar.DepthARModel` 为工厂 + 调 `train_depth_ar.main()`（见 `2641/run.py` §训练）⇒ 训练循环/checkpoint/`results.json` 全走共享实现 |
+| clean bpc 口径 | `pathlm.depth_ar.depth_curve(model, eval_arr, n_batches=20, batch_size=16)` 的**最终深度** bpc（`2641/run.py::evaluate`） |
+| dense 锚 | `2641` `U4-s0` = 1.5314（每 token MACs 7,392,768、参数 6,962,688）；`U2-s0` = 1.5709（MACs 5,295,616） |
+| depth-AR（非 dense，变深度 + 逐层读出）锚 | `.scratch/23-depth-ar/evidence/23c-H2-w0-12k`：clean bpc **1.8582**、`tf@4 = 0.9694`、`tf@6 = 0.9938`、ECE 0.0066；逐深度 `tf_acceptance` 曲线见 `2610` 的 `results.json::A_arm` |
+| 读出挂点（3.2.3 解绑用） | `pathlm/depth_ar.py::DepthARModel.readout(h, depth=None)`（tied `h·Eᵀ`，fp32 头）——实验目录内 monkeypatch 成独立 `U` 即可，不改引擎 |
+| 逐 token top-k 通道（3.1.5） | 无引擎开关，实验目录内 patch 各块 FFN 前向（`blk.mlp` = [Linear, GELU, Linear...]） |
+| 逐层 FFN 宽（E2） | `grep mlp_mult_sched pathlm/depth_ar.py` = 无命中 ⇒ **未落树**；本轴一律实验目录内自造 |
