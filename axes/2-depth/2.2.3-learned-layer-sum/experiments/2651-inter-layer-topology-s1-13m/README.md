@@ -107,8 +107,10 @@ tokens-per-forward，考虑 pipelining），**墙钟/吞吐不得进判据或 `c
 - 四臂**自包含双跑**（同一脚本、同一代码、同一 seed、同一数据切分、同一评测电池），
   不复用历史 run 作判据臂（`SCHEMA.md` §9）。
 - **n = 2 seed**：s0 = 2613（seed 0，`2613-inter-layer-topology-13m/results.json`），
-  s1 = 本实验（seed 1）。s0 与本实验的评测口径一致性由 `results.json::s0_anchor_remeasured`
-  证明（用当前电池重测 s0 四条 checkpoint，clean_bpc 与 2613 记录逐位一致）。
+  s1 = 本实验（seed 1）。s0 与本实验的评测口径一致性用**当前电池重测 s0 四条 checkpoint**
+  证明（clean_bpc 与 2613 记录逐位一致）；实际存证在 `run_log-attempt1-crash.txt:3`
+  （`[s0] remeasured all_bitwise_equal=True`），`results.json::s0_anchor_remeasured`
+  待下次全跑落盘（本轮冒烟走 `--skip-s0-anchor`，该字段尚未生成）。
 - 方差带 **0.014**；另报同 seed 内窗口级配对 Δ 的 SE 与两半样本（`results.json::paired_delta_s1`）。
 - 历史 `23d-dense-B-12k`（同配置 sequential 接线）只作**交叉核对**（2613 已重测复现 1.5287）。
 

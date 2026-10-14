@@ -32,7 +32,7 @@
    无净增量」），密集跨层线性聚合在本尺度被否证。干预是活的（层权 α fro 3.305、36 个权重
    全非零、浅层输入被放大 2.36×），所以不是「干预没生效」。
 2. **2.2.4 并行子层 = 场景依赖的取舍（`已完成`）**：质量面要付**可排序的代价**
-   （+0.0458 / +0.0402，都是 0.014 带的 3 倍以上）；代价面给出**真实收益**——层内串行链
+   （+0.0458 = 3.27× 带、+0.0402 = 2.87× 带）；代价面给出**真实收益**——层内串行链
    从 **2 段砍到 1 段**、每 token 串行步数 **16 → 8**（同一时间能并起来的活儿多一倍），
    而算力只差 **0.055%**（等参数臂与基线**逐位相同**）。⇒ 以可排序的质量代价换层内并行度
    翻倍：**本尺度上不是免费的，是否采纳取决于场景**。
@@ -114,7 +114,7 @@ s1 全部 **missing**。**换 seed 噪声**（`sequential` s0→s1）= **0.0034 
   **设计问题（次因、可修、非主因）** α 无单纯形约束、无中间监督，但干预活性成立 ⇒ null 不能
   归因于「干预没生效」；**非 innovation 本身失败**（更大规模未复核）；**非实现/口径假象**
   （等值门 + 参数量账逐位核对通过）。**边界 n=1**。
-- **2.2.4 并行子层 = `已完成`**：质量代价可排序（+0.0458/+0.0402，>3× 带）+ 代价面真实收益
+- **2.2.4 并行子层 = `已完成`**：质量代价可排序（+0.0458 = 3.27× 带 / +0.0402 = 2.87× 带）+ 代价面真实收益
   （串行链 2→1 段、行步数 16→8、算力差 0.055%）⇒ 不满足 falsification 的「代价面无收益」条件
   ⇒ 结论 = **以可排序的质量代价换层内并行度翻倍，本尺度上不是免费的，是否采纳取决于场景**。
   **边界 n=1**。
@@ -131,11 +131,9 @@ python3 -m py_compile "$EXP/run.py"                       # -> COMPILE OK
 python3 -m pytest "$EXP/test_run_persistence.py" -q       # -> 4 passed in 2.06s
 
 # 2) 重建规范 config.json（冒烟把 --steps 20/2 臂写回了它；用 run.py 自己的 config_vs_2613 重建）
-python3 - <<'EOF'
-# 以 steps=12000 / seed=1 / 四臂重建 cfg_dump，调 run.py::config_vs_2613 后写回 config.json
-EOF
-# -> unequal_fields = ['seed', 'experiment']; only_seed_and_name_differ = True; n_rows = 29
-#    （重建后 `config.json` 的 steps = 12000、arms = 四臂）
+#    重建脚本未留档，内容已逐字段核对（29 行、unequal_fields = ['seed', 'experiment']、
+#    only_seed_and_name_differ = True、s0 列与 2613/config.json 逐项吻合；steps = 12000、四臂）。
+#    规范态由 `--steps 12000` 的全跑启动时经 run.py::main 写回。
 
 # 3) 产物/契约校验（只校验，不改）
 python3 tools/check_tree.py                               # -> OK：46 个 project.yaml 全部符合 docs/research-schema.md。
@@ -213,3 +211,47 @@ tail -4 "$EXP/run_stdout-smoke.txt"  # -> 多轮 "[sh] smoke attempt N smoke_ok=
 ②`results.json::completed_arms == 四臂`；③每臂 `train_tokens == 98,304,000`（否则是冒烟残臂，
 当 missing 处理）；④重算后同步 `analysis.md` §2/§4/§9 与两份 `project.yaml` 的 `conclusion`
 （`gaps` 里对应条目可删）。
+
+## 9. 复核 A 处置 + 机械输出（2026-10-14T22:59+08:00）
+
+复核 A（fresh 上下文独立复核，判词文件 `REVIEW-WP2651.md`，本轮**未改**该文件）对本轮的判词：
+**2.2.3 = PASS**（3 条 non-blocking）、**2.2.4 = FAIL**（1 条 blocking），Merge verdict = **BLOCK**。
+唯一 blocking B1 是**纯文本倍数错误**（不改任何结论、不需重训、不动 `results.json`）。处置如下：
+
+| 项 | 类别 | 处置 | 落点 |
+|---|---|---|---|
+| **B1 倍数** | blocking | `+0.0402 = **2.87×** 0.014 带`（原写「均 >3× 带」，而 3×0.014 = 0.042 > 0.0402，不成立）；`+0.0458 = **3.27×** 带` 本来正确，保留 | `2.2.4/project.yaml`（`conclusion` / `conclusion_review` / `change_log`）、`2651/analysis.md`（§0、§9.2）、本报告（§0、§4）、既有资产 `2613/analysis.md`（§4 裁决、§7 局限，注明「措辞更正，数字未变」） |
+| N1 区间 | non-blocking | 中间深度换 seed 散度 `0.010–0.121` → **`0.006–0.121`**（0.010 是 depth 0 的值）；倍数限定 `2–5 倍` → **逐深度 2.5–46 倍** | `2.2.3/project.yaml::failure_analysis`、`2651/analysis.md::§9.1` |
+| N3 措辞 | non-blocking | 删「均在界内」（`log₂(206) = 7.69` 是参考值，不是理论上界） | `2651/analysis.md::§6.1` |
+| N4① 指针 | non-blocking | s0 等值证据指针落到**实际存在**的 `run_log-attempt1-crash.txt:3`，并注明 `results.json::s0_anchor_remeasured` 待下次全跑落盘 | `2651/README.md::§5` |
+| N4② 自检 | non-blocking | 补「下游读 `results.json` 必须执行 `train_tokens != 98,304,000 ⇒ 当 missing` 自检」 | `2651/analysis.md::§1` |
+| N4③ 生成步骤 | non-blocking | 本报告 §5 命令 2 的假 heredoc 换成显式注明「重建脚本未留档，内容已逐字段核对」；`2651/analysis.md::§1` 同步写明 `run.py::main` 是按当次 `--steps/--arms` 重写 config.json | 本报告 §5、`2651/analysis.md::§1` |
+| N6 体例 | non-blocking | `gaps[0]`「无自有实验（只指针 see 2.2.3）」是事实/指针不是缺口 ⇒ 挪进 `argument`，`gaps` 删除该条 | `2.2.4/project.yaml` |
+| N5 状态 | **lead 已裁** | `2.2.3` / `2.2.4` 的 WP1 `status` 由「已完成」改回 **「进行中」**（WP 自己的预登记 `acceptance`/`means` 要求 n≥2，本轮止于 n=1）；item 级 `status`（`被否证` / `已完成`）与结论不变；预登记 `acceptance` 文字**未动** | 两份 `project.yaml::work_packages[0].status` + `change_log` |
+| N7 / N8 | 登记不判 | N7 `run.py::run_name` 与步数无关（N4② 的自检兜住）；N8 `TICKET.md §9.12` 指向不存在的 `§9.13`（ticket 属 lead，writer 边界禁改） | 本轮未改 |
+
+**未改**：任何测量数字（`results.json` / `2613/results.json` 只读）、`run.py` / `smoke.py` /
+`test_run_persistence.py` / `config.json` 内容、判据线与预登记 `acceptance` 文字、`TICKET.md`、
+`REVIEW-WP2651.md`、`pathlm/**`、`tools/**`、`docs/**`。两份 `project.yaml` 的 `change_log` 各记一条
+（date / actor / change），说明「只改文本与状态语义，未动任何测量数字」。
+
+### 9.1 机械输出（复核 A 无 shell，由其指定的收口方代跑；原始输出 + 退出码）
+
+```
+$ python3 tools/summary.py --check
+OK：46 个 project.yaml 全部符合 docs/research-schema.md。
+EXIT=0
+
+$ python3 -m pytest axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/test_run_persistence.py -q
+....                                                                     [100%]
+4 passed in 1.61s
+EXIT=0
+
+$ git diff --check
+（无输出）
+EXIT=0
+```
+
+⇒ 三项全绿；复核 A §②「4 passed」「summary --check OK（46 份）」两个数字由本小节独立复现。
+**未跑**（留作残余）：committed-range diff（`git diff <baseline>..HEAD`）不在本轮边界内；
+`pytest tests/ -q`（共享底座测试）未跑。
