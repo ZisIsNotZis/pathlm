@@ -164,6 +164,9 @@
 
 #### 7.2.2 逐臂读数（读数时间见各臂 `runs/*/results.json` 的完成时刻）
 
+> 口径提醒：本节表内 `FFN 参数` 列的 2,099,200 是 `18:2x` 的**中途快照**（= 2,097,152 + 2,048 的 `lin2` 偏置），
+> 当时的审计字段还在旧口径；**最终读数见 §7.3 表**（2,103,296 = MACs 2,097,152 + lin1 偏置 4,096 + lin2 偏置 2,048）。
+
 | 臂 | clean bpc | Σr | FFN 参数 | 总参数 | 逐层隐藏维（实测） |
 |---|---|---|---|---|---|
 | U4-s0 | 1.5314 | 32 | 4,204,544 | 6,962,688 | [1024]×8 |
@@ -368,3 +371,22 @@
 | 读出挂点（3.2.3 解绑用） | `pathlm/depth_ar.py::DepthARModel.readout(h, depth=None)`（tied `h·Eᵀ`，fp32 头）——实验目录内 monkeypatch 成独立 `U` 即可，不改引擎 |
 | 逐 token top-k 通道（3.1.5） | 无引擎开关，实验目录内 patch 各块 FFN 前向（`blk.mlp` = [Linear, GELU, Linear...]） |
 | 逐层 FFN 宽（E2） | `grep mlp_mult_sched pathlm/depth_ar.py` = 无命中 ⇒ **未落树**；本轴一律实验目录内自造 |
+
+## 10.8 执行记录（续）
+
+- `2026-10-14T21:0x+08:00` · axis3-lead · 第 2 轮复核结束（subagent run `d0fe4f22…`，builtin `reviewer`）：
+  **判词 = FAIL（窄范围）**，原因 = 该 agent 环境**只有 read/grep/find/ls/watchdog_diff：无 shell、无写文件工具**，
+  派单要求的 6 项执行类检查一项未跑（按其自述「未跑 = 不计通过，命令全跑过才 PASS」）。其静态复核结论：
+  第 1 轮 B1/B2/B3 三处**已真改**、7 臂数字保真、Δ 与判词自洽、结论未越证据（H0 明确为阈值判词 + 两条反假设限定在位）；
+  另有两条非阻塞 P2：① `analysis.md` §0「一个真信号」条目未标 seed（已补「seed 0」）；② 本工单 §7.2.2 表的
+  `FFN 参数` 2,099,200 是 18:2x 中途快照（已加口径提醒，指向 §7.3 的 2,103,296）。报告全文原样落盘
+  `.scratch/64-axis3-width/REVIEW-2.md`（复核者无写工具，由 lead 落盘，未改一字）。
+- `2026-10-14T21:1x+08:00` · axis3-lead · **工具面教训（后续派单必须遵守）**：builtin `reviewer` agent **没有 shell**，
+  凡要求「自跑/自算」的复核必须派 **`worker` agent**（有 bash），派单里写死「只读 + 只写一份报告、不改被审产物、不提交」。
+- `2026-10-14T21:1x+08:00` · axis3-lead · 据此派 **第 2B 轮 fresh 复核**（`worker`，subagent run `3269e36c-838b-4789-9019-e9a016168789`）：
+  实跑 T1（pytest 13）/T2（自算 Δ 与等预算）/T3（B1–B3 事实）/T5（build_model 逐位初始化控制）/T6（契约三件与 `49f697f` 逐位 + mtime）
+  /T9（`git diff 49f697f..9e9b291` 本轴越界扫描 + `summary.py --check`，并明确不用 `..HEAD` 以免混入并发其它轴的提交），
+  交付 `.scratch/64-axis3-width/REVIEW-2B.md`。
+- `2026-10-14T21:0x+08:00` · axis3-lead · 派 **W-A1**（`3.1.1` WP1+WP2，fresh worker，run `71318038-19d5-4aac-b15c-7fa15cd8dade`），
+  实验目录 `axes/3-width/3.1.1-uniform-narrowing/experiments/2642-uniform-narrowing-13m/`（新建），过程文件
+  `.scratch/64-axis3-width/2642-uniform-narrowing-process.md` 已落盘（worker 自述见该文件）。
