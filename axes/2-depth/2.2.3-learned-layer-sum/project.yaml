@@ -19,6 +19,7 @@ conclusion_review: "status = 进行中：旧格 C3 判 `judged`（「层间学�
 experiments:
   - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m"
   - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m/analysis.md @b3c2484"
+  - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m"
 argument: "旧格 C3 的 `2613` 四臂（sequential / parallel / parallel-dual-ln / dense）唯一变量 = 层间接法，其余逐字段相同；dense 臂的层权确实被学起（fro 3.305、偏离恒等起步 1.361、浅层被放大 2.36×）但质量中性（−0.0008，|Δ| < 0.014），这排除了「干预没生效」的替代解释。故本项的判断是「有本地中性观测但未收口」，需扩 seed/规模，并把 2.2.2 的注意力版与 2.2.4 的并行子层作为同组对照。"
 gaps:
   - "n=1 seed、13M/12k 单快照（55-review：快照不能当渐近结论）"
@@ -45,7 +46,7 @@ work_packages:
     acceptance: "两规模各自有 n≥2；结论停在「本 n/本尺度可判/不可判」"
     evidence: "axes/2-depth/2.2.3-learned-layer-sum/experiments/"
     review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
-    status: "未开始"
+    status: "进行中"
   - id: "WP2"
     what: "与 2.2.2 层间 causal attention 的同预算对照"
     goal: "区分「线性学习加权和」与「内容相关注意力聚合」的增量"
@@ -70,3 +71,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-14T21:41:51+08:00"
+    actor: "WP-2651 续做 writer（ticket 61 §9.2；fresh 上下文）"
+    change: "WP-2651（2.2.3+2.2.4 的 seed=1 复核）续做轮：修 `.../2651-inter-layer-topology-s1-13m/run.py` 从训练脚本产物 `results.json` 取 `bpc` 的崩溃（上一轮 `KeyError: 'bpc'`；`clean_bpc` 唯一来源＝`run_battery → depth_curve[-1]['bpc']`，缺键显式报错不静默填 0），并加逐臂增量落盘（每臂写 `results.json` + append `run_log.txt`）；`experiments` 加入本 WP 实验目录。当前事实：`sequential` 臂（seed=1）已训完，其余三臂待 GPU 锁；四臂齐后的判词、`conclusion` / `failure_analysis` / `conclusion_review` / `argument` / `gaps` 未落。"

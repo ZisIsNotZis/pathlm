@@ -16,7 +16,8 @@ falsification: "若并行子层在质量面相对 stock 串行子层有可排序
 failure_analysis: ""
 conclusion: ""
 conclusion_review: "status = 进行中：旧格 C3 只有质量面读数（parallel +0.0458、等参数 dual-LN +0.0402，n=1），按 55-review C-P18 这不足以判「并行子层有害」——业界采用它的理由是吞吐，质量面单测就下结论是只量了一半。本项证据**只指针** see `2.2.3` 的 `2613-inter-layer-topology-13m`（一格一份家、不复制），本项不另收文件（MAPPING §3）。独立复核未做。"
-experiments: []
+experiments:
+  - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m"
 argument: "（证据只指针，见 2.2.3 的实验目录。）并行子层是「层内怎么排」的问题：串行版把注意力结果当 MLP 输入，并行版让二者同层输入并行；两者的质量差与流水收益必须同框看。旧 C3 用质量面单测判「有害」，本项要补的正是它被跳过的代价面——若并行版在等效代价面（层内串行依赖缩短）拿到真实收益，则它能以可接受质量代价换吞吐。"
 gaps:
   - "无自有实验（按 MAPPING §3 只指针 see 2.2.3；并行读数即 2.2.3 证据目录里的 parallel / parallel-dual-ln 臂）"
@@ -42,7 +43,7 @@ work_packages:
     acceptance: "三臂等参数对齐；质量代价与代价面收益同框；结论明确划算/不划算"
     evidence: "axes/2-depth/2.2.3-learned-layer-sum/experiments/"
     review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
-    status: "未开始"
+    status: "进行中"
 
 roadmap:
   - "WP1：补代价面并与质量面同框（证据复用 2.2.3）"
@@ -58,3 +59,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-14T21:41:51+08:00"
+    actor: "WP-2651 续做 writer（ticket 61 §9.2；fresh 上下文）"
+    change: "WP-2651（2.2.3+2.2.4 的 seed=1 复核）续做轮：按 WP 契约把 `experiments` 加指向 2.2.3 的 `2651-inter-layer-topology-s1-13m`（只指针，不复制文件）；该目录内 `run.py` 已修崩溃并加逐臂增量落盘。当前事实：`sequential` 臂（seed=1）已训完，其余三臂待 GPU 锁；质量面（clean bpc）与代价面同框的质量代价未齐，`conclusion` / `failure_analysis` / `conclusion_review` / `argument` / `gaps` 未落。"

@@ -1,0 +1,361 @@
+{
+  "steps": 20,
+  "config": {
+    "d": 256,
+    "layers": 8,
+    "heads": 8,
+    "seq": 256,
+    "mlp_mult": 4
+  },
+  "checks": {
+    "vocab_size": 206,
+    "params": {
+      "sequential": 6962688,
+      "parallel": 6958592,
+      "parallel-dual-ln": 6962688,
+      "dense": 6962724
+    },
+    "params_delta_vs_sequential": {
+      "sequential": 0,
+      "parallel": -4096,
+      "parallel-dual-ln": 0,
+      "dense": 36
+    },
+    "params_expected_delta": {
+      "sequential": 0,
+      "parallel": -4096,
+      "parallel-dual-ln": 0,
+      "dense": 36
+    },
+    "nonzero_element_diff_vs_sequential": {
+      "sequential": 0,
+      "parallel": 0,
+      "parallel-dual-ln": 0,
+      "dense": 0
+    },
+    "extra_keys_dense": [
+      "layer_mix"
+    ],
+    "missing_keys_parallel": [
+      "blocks.0.ln2.bias",
+      "blocks.0.ln2.weight",
+      "blocks.1.ln2.bias",
+      "blocks.1.ln2.weight",
+      "blocks.2.ln2.bias",
+      "blocks.2.ln2.weight",
+      "blocks.3.ln2.bias",
+      "blocks.3.ln2.weight",
+      "blocks.4.ln2.bias",
+      "blocks.4.ln2.weight",
+      "blocks.5.ln2.bias",
+      "blocks.5.ln2.weight",
+      "blocks.6.ln2.bias",
+      "blocks.6.ln2.weight",
+      "blocks.7.ln2.bias",
+      "blocks.7.ln2.weight"
+    ],
+    "identity_start_bitwise_vs_sequential": {
+      "sequential": true,
+      "parallel": false,
+      "parallel-dual-ln": false,
+      "dense": true
+    },
+    "wiring_rel_dev_vs_sequential_at_init": {
+      "sequential": 0.0,
+      "parallel": 0.490307,
+      "parallel-dual-ln": 0.490307,
+      "dense": 0.0
+    },
+    "alpha_at_init_dense": [
+      [
+        1.0
+      ],
+      [
+        0.0,
+        1.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "cli_effective": {
+      "parallel": {
+        "cfg_topology": "parallel",
+        "params": 6958592,
+        "params_delta_vs_expected": -4096,
+        "train_tokens": 163840,
+        "wall_min": 0.206,
+        "min_per_12k_extrapolated": 123.61,
+        "peak_child_mem_gb": 1.41,
+        "loss_first": 5.3316,
+        "loss_last": 3.2475,
+        "topology_liveness": {
+          "topology": "parallel",
+          "params_added": -4096,
+          "parameterized": false,
+          "params_identical_to_sequential": false,
+          "start_bitwise_equals_sequential": false,
+          "w_fro": null,
+          "w_absmax": null,
+          "nonzero_frac": null,
+          "alive": true
+        }
+      },
+      "parallel-dual-ln": {
+        "cfg_topology": "parallel-dual-ln",
+        "params": 6962688,
+        "params_delta_vs_expected": 0,
+        "train_tokens": 163840,
+        "wall_min": 0.172,
+        "min_per_12k_extrapolated": 103.29,
+        "peak_child_mem_gb": 1.41,
+        "loss_first": 5.3316,
+        "loss_last": 3.2475,
+        "topology_liveness": {
+          "topology": "parallel-dual-ln",
+          "params_added": 0,
+          "parameterized": false,
+          "params_identical_to_sequential": true,
+          "start_bitwise_equals_sequential": false,
+          "w_fro": null,
+          "w_absmax": null,
+          "nonzero_frac": null,
+          "alive": true
+        }
+      },
+      "dense": {
+        "cfg_topology": "dense",
+        "params": 6962724,
+        "params_delta_vs_expected": 36,
+        "train_tokens": 163840,
+        "wall_min": 0.171,
+        "min_per_12k_extrapolated": 102.75,
+        "peak_child_mem_gb": 1.53,
+        "loss_first": 5.2982,
+        "loss_last": 3.3781,
+        "topology_liveness": {
+          "topology": "dense",
+          "params_added": 36,
+          "parameterized": true,
+          "params_identical_to_sequential": false,
+          "start_bitwise_equals_sequential": true,
+          "w_fro": 2.830052,
+          "w_absmax": 1.000994,
+          "nonzero_frac": 1.0,
+          "max_dev_from_identity_init": 0.001033,
+          "alpha_by_layer": [
+            [
+              1.000014
+            ],
+            [
+              -0.00014,
+              1.000124
+            ],
+            [
+              -0.000561,
+              0.00012,
+              1.000246
+            ],
+            [
+              -0.00054,
+              0.000187,
+              0.000239,
+              1.000612
+            ],
+            [
+              -0.000527,
+              0.00011,
+              0.000279,
+              0.000684,
+              1.000762
+            ],
+            [
+              -0.000295,
+              0.000671,
+              0.000478,
+              0.0008,
+              0.000802,
+              1.000994
+            ],
+            [
+              -0.000298,
+              0.000782,
+              0.000856,
+              0.000968,
+              0.000838,
+              0.000999,
+              1.000916
+            ],
+            [
+              -0.000198,
+              0.000767,
+              0.001027,
+              0.001033,
+              0.000916,
+              0.00102,
+              0.000935,
+              1.000922
+            ]
+          ],
+          "alive": true
+        }
+      }
+    },
+    "dense_alpha_activity_after_20steps": {
+      "topology": "dense",
+      "params_added": 36,
+      "parameterized": true,
+      "params_identical_to_sequential": false,
+      "start_bitwise_equals_sequential": true,
+      "w_fro": 2.830052,
+      "w_absmax": 1.000994,
+      "nonzero_frac": 1.0,
+      "max_dev_from_identity_init": 0.001033,
+      "alpha_by_layer": [
+        [
+          1.000014
+        ],
+        [
+          -0.00014,
+          1.000124
+        ],
+        [
+          -0.000561,
+          0.00012,
+          1.000246
+        ],
+        [
+          -0.00054,
+          0.000187,
+          0.000239,
+          1.000612
+        ],
+        [
+          -0.000527,
+          0.00011,
+          0.000279,
+          0.000684,
+          1.000762
+        ],
+        [
+          -0.000295,
+          0.000671,
+          0.000478,
+          0.0008,
+          0.000802,
+          1.000994
+        ],
+        [
+          -0.000298,
+          0.000782,
+          0.000856,
+          0.000968,
+          0.000838,
+          0.000999,
+          1.000916
+        ],
+        [
+          -0.000198,
+          0.000767,
+          0.001027,
+          0.001033,
+          0.000916,
+          0.00102,
+          0.000935,
+          1.000922
+        ]
+      ],
+      "alive": true
+    },
+    "dense_states_norm_rel_spread": 15.515576,
+    "parallel_branch_activity_after_20steps": [
+      {
+        "layer": 1,
+        "attn_delta_rel": 0.294026,
+        "mlp_delta_rel": 1.808441
+      },
+      {
+        "layer": 2,
+        "attn_delta_rel": 0.273137,
+        "mlp_delta_rel": 0.908857
+      },
+      {
+        "layer": 3,
+        "attn_delta_rel": 0.351216,
+        "mlp_delta_rel": 0.690103
+      },
+      {
+        "layer": 4,
+        "attn_delta_rel": 0.343179,
+        "mlp_delta_rel": 0.555325
+      },
+      {
+        "layer": 5,
+        "attn_delta_rel": 0.278859,
+        "mlp_delta_rel": 0.402457
+      },
+      {
+        "layer": 6,
+        "attn_delta_rel": 0.263959,
+        "mlp_delta_rel": 0.337832
+      },
+      {
+        "layer": 7,
+        "attn_delta_rel": 0.156645,
+        "mlp_delta_rel": 0.260647
+      },
+      {
+        "layer": 8,
+        "attn_delta_rel": 0.183723,
+        "mlp_delta_rel": 0.241
+      }
+    ]
+  },
+  "cli": {
+    "parallel": "/home/z/.venv/bin/python3 train_depth_ar.py smoke-parallel --d 256 --layers 8 --heads 8 --seq-len 256 --mlp-mult 4 --dense --topology parallel --steps 20 --batch-size 32 --seed 1 --exit-mode uniform --eval-batches 2 --out-root /home/z/vibe/pathlm/axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/smoke",
+    "parallel-dual-ln": "/home/z/.venv/bin/python3 train_depth_ar.py smoke-parallel-dual-ln --d 256 --layers 8 --heads 8 --seq-len 256 --mlp-mult 4 --dense --topology parallel-dual-ln --steps 20 --batch-size 32 --seed 1 --exit-mode uniform --eval-batches 2 --out-root /home/z/vibe/pathlm/axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/smoke",
+    "dense": "/home/z/.venv/bin/python3 train_depth_ar.py smoke-dense --d 256 --layers 8 --heads 8 --seq-len 256 --mlp-mult 4 --dense --topology dense --steps 20 --batch-size 32 --seed 1 --exit-mode uniform --eval-batches 2 --out-root /home/z/vibe/pathlm/axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/smoke"
+  }
+}
