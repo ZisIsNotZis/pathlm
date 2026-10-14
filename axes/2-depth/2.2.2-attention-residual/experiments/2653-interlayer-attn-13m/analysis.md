@@ -85,3 +85,12 @@ stock 单残差（`sequential`，1.5254）。判据线（预登记、未改）�
 ## 独立复核
 
 **独立复核未做**（fresh 复核者排在 writer 停止之后，`SCHEMA.md` §14/§14b；本轮窗口内未启动）。
+
+## 回归与可复算的校验命令
+
+| 命令 | 结果 |
+|---|---|
+| `python3 smoke.py` | 三道门（等值 / 活性 / 参数账）全过，报告落 `smoke_report.json` |
+| `python3 -m pytest …/test_2653_interlayer_attn.py -q` | 9 passed |
+| `python3 tools/summary.py --check` | OK（46 份 `project.yaml`） |
+| `python3 -m pytest tests/ -q` | 865 passed / 1 failed —— 失败为 `test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`，涉 `axes/6-predict/**` 的三个 `mutate.py`（**非本 WP 引入、与本 WP 无关**，预存失败分开登记） |
