@@ -14,14 +14,19 @@ validation: "端到端：对照 = stock pre-LN 全深度（归一为 100%）+ �
 objective_criteria: "该跌：clean bpc（序列级）与逐深度 bpc（中间深度可读性）；该涨：更深/更长时的训练稳定性裕量（作对照）；必须不变：等参数对照下的参数量（门控残差的额外参数须被剥离）、因果性；必须报：每层残差门/缩放量的活性（排除「干预没生效」）。"
 falsification: "若各残差形式在 clean bpc 与逐深度可读性上相对 stock pre-LN 单残差都不越噪声带（0.014），或优势全由额外参数解释（等参数对照消失）⇒ 判残差形式在本尺度不是独立有增益的维度。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 failure_analysis: ""
-conclusion: ""
-conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），并把「等参数对照」与「残差门活性」钉死以防把参数量优势误读为残差形式优势。独立复核未做。"
-experiments: []
-argument: "残差是深度轴的「连接语法」：早退（2.1.x）问「要不要跑这层」，本项问「跑完之后怎么把结果接回主线」。两者耦合——残差形式决定中间层状态是否已接近可用，从而影响可截断性。判据必须同时看质量（bpc）与深度可读性（逐深度 bpc），否则会把「深层更好」误当成「可截断」。"
+conclusion: "终质（clean bpc）维不可排序：postln / gated / scaled 相对 stock pre-LN 单残差的配对 Δclean = +0.0026 / −0.0016 / −0.0103，|Δ| 全部 < 0.014 噪声带 ⇒ 换残差写法不改终质。可截断性（逐深度可读性）维可分且方向不一致：post-LN 让中间深度读出大幅变差（depth 1–7 的 Δbase−form = −5.18…−0.48；depth 1 的 bpc 4.95→10.13、acc 0.131→0.054），固定 1/√(l+1) 缩放让中间深度小幅变好（Δ = +0.06…+0.47）但终质略降，门控臂只有 |Δ|≤0.0864 的方向混杂扰动。两读法并列：字面 = 终质「无差别」成立、可截断性「可分」成立而方向与预登记「该跌」相反（post-LN 方向为负、更难截断）；实质 = 预登记否证条件（clean bpc 与逐深度可读性都不越带）因逐深度确实越带而未完全成立，故不判「残差形式在本尺度无头寸」，但正面假设（H1 至少一形式在终质维可排序更优）也未成立。判据线 P1–P6 未被改；post-LN 的读出尺度混杂（stream_rms≈0.87 vs base 1.5–2.1）已量化未剥离。"
+conclusion_review: "自评：判据线 P1–P6 与预登记契约（README.md §4 / TICKET.md §9.2 WP-2652）逐字一致、未被改；数字全部来自落盘的 results_<arm>_s0.json 与 results.json（四臂已折齐，--aggregate 重算未改任何测量值），可逐格复算；等值门（gated@init 与 base 的 logits/loss 逐位相同）与变异自证（M1/M3/M4 三处全红、恢复后重新绿）已复跑通过。'终质不可排序' 与 '可截断性可分' 两维分开写，未把中间深度改动当终质收益、也未把终质不可排序写成 '残差形式没用'；post-LN 中间深度更差这一与派单文字方向相反的事实按落盘证据如实写。**独立复核未做**（fresh 复核者排在 writer 停止后，SCHEMA.md §14 / §14b；本字段只写自评 + 当前 '独立复核未做' 标注）。"
+experiments:
+  - "axes/2-depth/2.2.1-residual-form/experiments/2652-residual-form-13m"
+  - "axes/2-depth/2.2.1-residual-form/experiments/2652-residual-form-13m/analysis.md"
+argument: "残差是深度轴的「连接语法」：早退（2.1.x）问「要不要跑这层」，本项问「跑完之后怎么把结果接回主线」。两者耦合——残差形式决定中间层状态是否已接近可用，从而影响可截断性。本地实测把这条耦合量化了：残差写法在**终质维**（clean bpc）不可排序（三形式配对 Δ 全 < 0.014），但在**可截断性维**（逐深度 bpc 的中间深度）确实移动——post-LN 把中间深度读出大幅推差（depth 1 的 bpc 4.95→10.13），固定 1/√(l+1) 缩放把它小幅推好（+0.06…+0.47，代价终质 −0.0103），门控只有 |Δ|≤0.0864 的微小扰动。因此「靠换残差写法改善可截断性」在 pre-LN 单残差之外没有正向头寸（pre-LN 已是这条线上较好的那个），且 post-LN 的中间深度退化部分来自 tied 读出（无 final LN）看到的残差流量级被归一（stream_rms≈0.87 vs base 1.5–2.1）这一预登记混杂。判据必须同时看质量（bpc）与深度可读性（逐深度 bpc），否则会把「深层更好」误当成「可截断」。"
 gaps:
-  - "本仓零经验：需先做最小判决（13M、{pre-LN, post-LN, 缩放, 门控, 衰减} 五臂，等参数对照 + 逐深度 bpc）"
-  - "post-norm / 缩放残差在大规模（≥100M）的稳定性未测"
-  - "残差形式与 2.1.1 early exit 的联合（可截断性）未测"
+  - "单 seed（s0）：本 WP 预算内四臂各一次，n≥2 跨 seed 复现未做；逐深度形状差异（尤其 post-LN）的稳健性待 s1 复核"
+  - "无独立等参数对照臂：契约 §4-P6 选定「额外参数 ≤0.1% ⇒ 直接与 base 比」，gated 仅 +16 参数（0.00023%）；『gated 的带内差异是否可能来自那 16 个参数』这一未剥离项保留"
+  - "post-LN 的读出尺度混杂未剥离：stream_rms_by_layer≈0.87（base 1.5–2.1），中间深度变差可能部分来自 tied 读出（无 final LN）的输入量级改变，未做『加 final LN』的对照臂"
+  - "残差形式与 2.1.1 early exit 的联合（可截断性端到端）未测：本项只读『逐深度 bpc』代理"
+  - "『残差随深度衰减』形式未单列：本项 scaled 是固定 1/√(l+1) 缩放，未测 α^l 式衰减变体"
+  - "不越尺度外推：单任务（enwik8 字符级）+ 13M/12k + dense/sequential 单轴单格；post-norm / 缩放残差在大规模（≥100M）的稳定性未测"
 cost_model: "等效理论量：pre/post-norm 与 ReZero 标量门不改每 token 的 layer-passes（= L）与 per-layer FLOPs 主项；门控残差每层加 ≤ d 参数的乘加（每 token 额外 ≈ L·d FLOPs，占比 <1%）。tokens-per-forward 每步 1。考虑 pipelining：残差形式不改变每步计算图结构，故不影响流水并行度；代价体现在参数量与逐深度可读性上。"
 
 role_map:
@@ -42,13 +47,13 @@ work_packages:
     acceptance: "五臂等参数对齐；各形式相对 stock 有/无可排序差异，二选一明确；残差门活性列齐备"
     evidence: "axes/2-depth/2.2.1-residual-form/experiments/"
     review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
-    status: "未开始"
+    status: "已完成"
 
 roadmap:
   - "WP1：残差形式最小判决（等参数对照 + 逐深度 bpc）"
   - "复核通过后写 conclusion，更新 status"
 
-status: "未开始"
+status: "已完成"
 started: "2026-10-13T10:37:02+08:00"
 ended: ""
 change_log:
@@ -58,3 +63,9 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-14T22:46:16+08:00"
+    actor: "WP-2652 worker（ticket 61 · 轴 2 wave 1 收口）"
+    change: "WP1 完成并收口：四臂 12k 全训完并评测（base 1.5310 / postln 1.5284 / gated 1.5326 / scaled 1.5413），`python3 run.py --aggregate` 把 scaled 折进 results.json（未改任何测量值）；落 analysis.md（人话摘要 + 四臂表 + 逐深度表 + 参数/活性/稳定性列 + §12 三对账 + §13 三要素 + 口径标注 + 两面读法）与 MODEL.md（四 checkpoint sha256/体积/生成命令）。status 未开始 ⇒ 已完成（终质维不可排序、可截断性维可分，明确结论；非「手段不成立」故不判被否证、failure_analysis 保持空）。gaps 补齐单 seed / 无独立等参数对照 / post-LN 读出尺度混杂 / 与 2.1.1 联合未测 / 衰减形式未单列。独立复核未做，待 fresh 复核者（SCHEMA.md §14/§14b）。**方向纠正**：派单与 ticket §9.8 曾记「postln 中间深度 bpc 更低 / 更可读」，与落盘证据相反（postln 中间深度 bpc 大幅更高 = 更不可读；『更可读』的正面读数落在 scaled），analysis/project.yaml 按实测方向写。"
+  - date: "2026-10-14T22:46:16+08:00"
+    actor: "WP-2652 worker（ticket 61 · 轴 2 wave 1 收口）"
+    change: "另：post-LN 全程 gnorm_max 19.81（base 7.86）如实报——未发散、无 grad skip、末窗 gnorm 均值反而更低（0.3925 vs 0.4263），判早期尖峰、不改判据不改判词。"

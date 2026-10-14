@@ -1,0 +1,184 @@
+{
+  "arm": "base",
+  "seed": 0,
+  "steps": 12000,
+  "run_dir": "axes/2-depth/2.2.1-residual-form/experiments/2652-residual-form-13m/runs/base-s0-12k",
+  "eval": {
+    "metric": "clean bpc（最终深度、无退出、序列级、越低越好）",
+    "protocol": "engine depth_curve(n_batches=20, batch_size=16, 固定 generator seed 2)",
+    "clean_bpc": 1.531,
+    "bpc_by_depth": [
+      {
+        "depth": 0,
+        "bpc": 7.4079,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "bpc": 4.9516,
+        "acc": 0.1313
+      },
+      {
+        "depth": 2,
+        "bpc": 4.4377,
+        "acc": 0.1895
+      },
+      {
+        "depth": 3,
+        "bpc": 3.8648,
+        "acc": 0.2811
+      },
+      {
+        "depth": 4,
+        "bpc": 3.2078,
+        "acc": 0.3904
+      },
+      {
+        "depth": 5,
+        "bpc": 2.6131,
+        "acc": 0.4975
+      },
+      {
+        "depth": 6,
+        "bpc": 2.1649,
+        "acc": 0.5751
+      },
+      {
+        "depth": 7,
+        "bpc": 1.72,
+        "acc": 0.6588
+      },
+      {
+        "depth": 8,
+        "bpc": 1.531,
+        "acc": 0.6882
+      }
+    ]
+  },
+  "params": {
+    "total": 6962688,
+    "form_added": 0,
+    "gates": 0
+  },
+  "residual_form_liveness": {
+    "form": "base",
+    "is_control": true,
+    "params_added": 0,
+    "alive": null,
+    "note": "对照臂本身 = 引擎 stock pre-LN 单残差（无干预）",
+    "stream_rms_by_layer": [
+      1.4963,
+      1.6111,
+      1.7511,
+      1.8612,
+      1.9577,
+      2.0257,
+      2.1002,
+      2.0897
+    ]
+  },
+  "stability": {
+    "loss_slope": {
+      "n_points": 16,
+      "step_first": 9000,
+      "step_last": 11999,
+      "slope_per_1k_steps": 0.00204,
+      "window": "末 25%"
+    },
+    "gnorm_mean_last_window": 0.4263,
+    "gnorm_max": 7.86,
+    "grad_skips": 0,
+    "divergence": {
+      "first_nonfinite_loss_step": null,
+      "n_nonfinite_loss_rows": 0,
+      "first_gnorm_over_1e3_step": null,
+      "diverged": false
+    }
+  },
+  "shared_train_results": {
+    "params": 6962688,
+    "train_tokens": 98304000,
+    "wall_minutes": 6.36,
+    "peak_gpu_mem_mb": 935.3,
+    "config": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 4,
+      "mlp_hidden_sched": null,
+      "dropout": 0.0,
+      "norm_cap": 1.0,
+      "gate_bias_init": -2.0,
+      "dense": true,
+      "carry_gate": true,
+      "aux_mode": "renorm",
+      "mod_ratio": 0.0,
+      "fill_kv": true,
+      "proj_fill": false,
+      "readout_dims": null,
+      "readout_gated": false,
+      "readout_linear_resid": false,
+      "readout_perdepth": false,
+      "readout_wide_shared": 0,
+      "topology": "sequential",
+      "attn_sparse_k": 0,
+      "train_window": 0,
+      "train_anchors": 0,
+      "attn_linear": false,
+      "linear_chunk": 64,
+      "n_kv_heads": null,
+      "carry_rule": null,
+      "carry_chunk": 64,
+      "carry_state_dim": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "recon_window": 0
+    },
+    "topology_liveness": {
+      "topology": "sequential",
+      "params_added": 0,
+      "parameterized": false,
+      "params_identical_to_sequential": true,
+      "start_bitwise_equals_sequential": true,
+      "w_fro": null,
+      "w_absmax": null,
+      "nonzero_frac": null,
+      "alive": false
+    }
+  },
+  "argv_template": [
+    "/home/z/vibe/pathlm/train_depth_ar.py",
+    "<RUN>",
+    "--d",
+    "256",
+    "--layers",
+    "8",
+    "--heads",
+    "8",
+    "--seq-len",
+    "256",
+    "--mlp-mult",
+    "4",
+    "--dense",
+    "--topology",
+    "sequential",
+    "--exit-mode",
+    "uniform",
+    "--steps",
+    "12000",
+    "--batch-size",
+    "32",
+    "--lr",
+    "0.001",
+    "--seed",
+    "0",
+    "--eval-batches",
+    "20",
+    "--out-root",
+    "<OUT>"
+  ],
+  "train_wall_s": 382.2,
+  "code_hash_run_py": "5d176d7f36b0b924677124429496fcd1a6d65e070b711b33372a02fd2034fb58",
+  "code_hash_residual_block": "79ba94f7433720f67be80e3c1b57358e5edaaba9da1c2fcfc1a7d98937759078"
+}
