@@ -212,3 +212,117 @@ F4 压成当前事实 + 指针；F5 补半句。修复后复跑：`pytest` 22 pa
   节点共享树未实装」；R 区间标为「union2 / K=2」）；② 已改实验侧 `mutate.py`（`_strip_timing()` 去耗时）+ 重跑
   `mutation_report.json`（现为确定性：连续两次重跑后工作树不再变化，`all_caught_red`/`all_restored_bitwise` 仍 true）；
   ③ 属工单只增不改的既定并发写入，被审 artifact 未受影响，如实登记在本节与复核报告里。
+
+---
+
+# Phase B（ticket 63 · 第二轮）
+
+> 时间盒 ≤2.5h；本轮选 2 个最高价值 WP：**WP 6.2.3**（验证门禁 / 失败模式 / 验证开销）与
+> **WP 6.3.3-WP1 最小判决**（latent 回归 vs 离散跳头，按 63-F4 两臂分报）。Phase A 的结论见上文。
+
+## B1 范围与契约（Phase B）
+
+| 项 | 值 |
+|---|---|
+| 轴 | 6 预测轴（`axes/6-predict/`） |
+| owner / writer（文档+`project.yaml`） | axis6-lead |
+| WP writer | WP 6.2.3 = `2650-verify-gate-13m` worker；WP 6.3.3 = `2660-latentreg-vs-disc-13m` 阶段-1 worker（+ 阶段-2 worker 做「当草稿再验证」臂） |
+| reviewer | fresh 独立上下文（不得为本轮 writer），报告落 `.scratch/63-axis6-predict/REVIEW-B*.md` |
+| 新增实验 | `axes/6-predict/6.2-speculative-decoding/experiments/2650-verify-gate-13m/`（WP 6.2.3）；`axes/6-predict/6.3.3-latent-regression/experiments/2660-latentreg-vs-disc-13m/`（WP 6.3.3-WP1） |
+| 预登记 | 两份 `README.md` 由 axis6-lead 在派单**之前**写死（判据 / 臂 / 否证 / 口径 / 预算），worker 不得改 |
+| 边界 | 只动 `axes/6-predict/**` + `.scratch/63-axis6-predict/**`；不碰 `pathlm/**`、`docs/**`、其它轴、共享工具 |
+| 判据口径 | 多候选 / 接受率类走 prompt 聚类配对 bootstrap 95% CI + Wilson CI；不借用 0.014（C1）；开销只用等效理论量（tokens-per-forward / FLOPs / 主干位置数），**禁墙钟**；C2 实质验收 = 不被同算力朴素方案支配 |
+
+## B2 选点理由（为什么是这两个）
+
+1. **WP 6.2.3（验证）**：Phase A 只证了 K≤4、`window=0` 的合法候选集下无损；`spec_tree.tree_forward`
+   对 `window>0` **直接抛 `NotImplementedError`**（带驱逐的树验证未测）⇒ 失败模式目录有真空；
+   另「验证开销是否吞掉 τ 收益」是出资人列出的直接问题，可用等效理论量在现有 harness 上回答。
+   代价低（只评不训，GPU ~15 min）。
+2. **WP 6.3.3（latent 回归）**：本仓零读数的整条产出方式路线，且 63-F4 已裁决须两臂分报；
+   冻结主干 + 共享 tied 读出下它可被压成一个**单因素**实验（唯一变量 = 监督项 λ），
+   并自带 `λ=0` 实现等价自检；若 λ>0 无增益 ⇒ 对 6.3.3 的机制描述给出可核更正（不是重定义 milestone）。
+
+## B3 Phase B 时间线
+
+- `2026-10-14T09:14:52+08:00` · axis6-lead · 接手 Phase B；读 `6.2/6.3.2/6.3.3 project.yaml`、`PHASE-A-REPORT.md`、
+  `REVIEW-1/2.md`、`2640` 预登记与判读、`pathlm/decode.py`/`model.py`（只读）。
+- `2026-10-14T09:52:00+08:00` · axis6-lead · 写死两份预登记契约（`2650-verify-gate-13m/README.md`、
+  `2660-latentreg-vs-disc-13m/README.md`），然后派 2 个 fresh writer（并发 ≤2）：WP 6.2.3 worker（≤25 min）
+  与 WP 6.3.3 阶段-1 worker（≤25 min）。
+
+- **更正（`2026-10-14T09:19:40+08:00` · axis6-lead）**：上一条时间线里「`09:52:00` 写死两份预登记契约 + 派单」
+  的**时间戳是我写错的**（凭估算写、未看时钟）；实际日期时间以本条为准：预登记两文件落盘与两个 writer
+  派单发生在 `2026-10-14T09:16–09:19+08:00` 区间（`date -Iseconds` 实测 09:19:19）。事件内容不变，只有时刻更正。
+
+- **更正（`2026-10-14T09:51:48+08:00` · axis6-lead）**：本工单与 `2650-verify-gate-13m/README.md` 里我手写的两个时间戳
+  （`09:19:40` 与 `10:00`）是**凭估算写**的，不是时钟读数。真实时刻：前者事件发生在 `2026-10-14T09:19:23+08:00`
+  （`date -Iseconds` 实测），后者（契约更正记录）发生在 **本条命令的实测时刻**（已按 `date -Iseconds` 回写进
+  README 的更正记录）。事件内容与判据均不变，只有时刻更正。此后本工单所有时间戳一律先跑 `date -Iseconds` 再写。
+
+## B4 Phase B 执行结果（两个 WP）
+
+### B4.1 WP 6.2.3 · （writer = WP6.2.3 worker，fresh）
+
+- `2026-10-14T10:02:39+08:00` · axis6-lead · 读数来源 = `2650/results.json` + `cycle_log.jsonl` + `run_log.txt`；判据 = `analysis.md` 的 V0–V6；
+  预登记契约 = `2650/README.md`（mtime 09:18，早于 run 开始 09:27）。
+- **V0 harness 复现门**：通过（`repro_topk4`/`repro_combo_pw` 与 2640 `tree_topk4`/`combo_pw` 逐 prompt 逐轮 accepts 逐位相同）。
+- **V1/V2/V3**：通过——全臂发出流逐位 == native 贪心、`n_forward == n_rounds`；对抗臂 `adv_random_k4` α₁ = 0.0185（13m_s0）/ 0.0212（13m_s1）（≈ 均匀随机假接受率 4/206 = 0.0194）、`adv_bottomk4` α₁ = 0.0；`single_k1_ctl` = `dup_k4` = `combo_pw`（退化等价）。
+- **V4/V5**：K=4→8 Δα₁ = +0.0467 CI [+0.0296, +0.0629]（未饱和）；但边际 Δτ/ΔK = 0.1158（K1→2）/ 0.0552（2→4）/ **0.0193（4→8）** < 阈值 0.5×0.1158 = 0.0579 ⇒ **判「K>4 的验证开销不划算」**；硬指标上验证**不吞** τ 收益（1/(1+τ)：0.411→0.365）；τ 已达 oracle 上界 1.7672 的 0.982。R（定稿口径）= 1.233/2.355/4.514/8.773。
+- **V6**：失败模式目录 (a)–(g) 逐条给出证据；(f) 二级条件头（N+3 候选）与 (g) `window>0` 带驱逐树验证**未测**（后者运行即抛 `NotImplementedError`），已登记为引擎/实现需求与我方 gaps。
+- **口径裁决（本工单内，已上报 Main）**：`2650/README.md` V5 原式有因子 3 笔误（我出题写错），worker 拒绝擅改、两套数并列落盘；定稿口径 = `R_K = K·(1+γ)/(1+τ_K) = 3K/(1+τ_K)`（与 2640 一致），已在契约文件内加「契约更正记录」，判据（V0–V4/V6、Δτ/ΔK）不受影响。
+- 未做：53.9M 对抗臂（≈1.5 min GPU 可补）、带驱逐树验证实现。单测 11 passed；变异 M1–M3 全抓红 + 逐字节还原。
+
+### B4.2 WP 6.3.3 · （writer = 阶段-1 + 阶段-2 worker，fresh ×2）
+
+- `2026-10-14T10:02:39+08:00` · axis6-lead · 阶段 1（路径 i = 直接发）+ 阶段 2（路径 ii = 当草稿再验证）均已落盘；n≥2（头种子 0/1）、13m_s0 + 13m_s1 复现点、k∈{2,4}。
+- **L0 实现保真**：`lat_k2_lam0` == `disc_k2` 同种子**逐位相同**（命中率 / CE / 头权重）；冻结断言通过；两臂共用同一份 tied 读出。
+- **L1（路径 i）**：λ=1.0 把 t+2 teacher-forced 命中率 0.4572 → **0.4880**（Δ +0.0313 CI [+0.0296, +0.0330]）；λ=0.1 → 0.4688；13m_s1 复现 +0.0329；k=4 +0.0284；`disc_k4` ≈ `disc_k2` ⇒ 增益来自监督项而非头数。参照：主干自身 t+1 = 0.6714。
+- **L2（路径 ii，63-F4 第二臂）**：保真硬门 `repro_direct1` 与 2640 `direct1` 逐位相同（α₁ 0.802243 / τ 1.453619）；`lat_k2_lam1` α₁ 0.7337（s0）/ 0.7537（s1）vs `disc_k2` 0.6421 / 0.6682 ⇒ Δα₁ **+0.0916** CI [+0.0525, +0.1310]、Δτ **+0.1464** CI [+0.0971, +0.1973]。
+- **机制限定（对 6.3.3 标题式描述）**：共享 tied 读出 + 同参数量下 λ=0 两臂数学等价 ⇒ 独立自由度只有**监督目标**；结论须表述为「latent（隐状态）匹配监督带来独立增益」，**不**等于「回归机制优于分类机制」。是否据此微调 `innovation` 文本 = 待 Main 裁决（本轴不自选）。
+- 未做：free-run 序列级 bpc（只有 teacher-forced 命中率 / CE + 草稿接受率）、53.9M、与 6.3.1/6.3.2 同框。单测 11 passed；变异 8 条全抓红 + 逐字节还原。
+
+- **更正（时刻见上一条命令输出 / 本条实测）2026-10-14T10:03+08:00** · axis6-lead · 上面 B4.1/B4.2 两个小标题里
+  的实验目录名被 shell 展开吃掉（我这次用**未加引号**的 heredoc，行内反引号被当命令执行，报了两条
+  "No such file or directory"；未造成任何文件改动）。正确标题：
+  `### B4.1 WP 6.2.3 · experiments/2650-verify-gate-13m/（writer = WP6.2.3 worker，fresh）`、
+  `### B4.2 WP 6.3.3 · experiments/2660-latentreg-vs-disc-13m/（writer = 阶段-1 + 阶段-2 worker，fresh ×2）`。
+  正文内容未受影响。此后本工单一律用 `<<'EOF'`（引号 heredoc），与 `AGENTS.md` §8 的纪律一致。
+
+## B5 Phase B 独立复核与轴 lead 代跑补证
+
+### B5.1 复核 #1（WP 6.2.3）· 报告 `.scratch/63-axis6-predict/REVIEW-B1.md`
+
+- 复核者 = fresh / 未参与写作（上下文**无 shell、无写文件工具**）；其完整报告由 axis6-lead **逐字落盘**（文件头注明来源与约束，内容未改一字）。
+- **VERDICT: PASS（OK with notes）**：blocker 0 · normal 2 · info 5。已动手核过的：V0 复现门（逐 prompt 逐轮 accepts 与 2640 逐位）、V1 无损（全臂 `stream_identical_to_native` + `n_forward == n_rounds`）、V2（Wilson 复算与量级）、V3（退化等价）、V4/V5（Δα₁ 点值与 Δτ/ΔK=0.0193 < 0.0579 手算一致，判词不受 V5 笔误污染）、V6（`window>0` 确抛 `NotImplementedError`、`n_mtp=3` 登记诚实）。
+- 它提出的两条 normal：
+  - **N1**：`2650/results.json::config.budget_min = 25.0`（runner 缺省）与契约「GPU ≤15 min 硬时间盒」冲突 ⇒ 交修缺 worker 更正为 15.0（不改任何测量）。
+  - **N2**：同一事实两个家（README §4 错误原式 + §8 更正并存）⇒ **axis6-lead 已修**：§4 改为定稿口径，§8 只留「更正内容 + 指向本工单」的指针（过程史归本工单）。
+- 它的 info：I2（`criteria.V5_cost_ledger` 是离线派生字段，README §5 已加注）、I4（`2650/README.md` mtime 晚于 run 开始——因 lead 跑后追加 §8 更正；判据未见放宽）、I3（`imported_2640_sha256.run.py` 缺旁证 → 见下 B5.3）、I5（工作树含兄弟 WP 的未跟踪文件，提交必须按显式路径）。
+
+### B5.2 复核 #2（WP 6.3.3）· 报告 `.scratch/63-axis6-predict/REVIEW-B2.md`
+
+- 同上：fresh / 无 shell / 无写工具，报告由 axis6-lead 逐字落盘。
+- **VERDICT: FAIL**（明确声明**无 blocker 级科学缺陷**）：判 FAIL 的两个理由 = (i) 交付物内部 1 处账实不符必须修（F1）；(ii) 任务点名的确定性重跑 / pytest / mutate / summary 在**无 shell 的复核上下文不可执行**（基础设施阻断，「未知验收不是 PASS」）。findings：normal 2 · info 4。
+- **F1（normal，账实不符）**：主 `results.json::supplementary_runs.k4_13m_s0` 仍写 `L0_all_pass=false` / `verdicts=blocker…`，而 `second-k4-13m_s0/results.json::L0.all_pass=true` ⇒ 首跑手工汇总未随重跑回写。⇒ 交修缺 worker 按重跑目录实际值回写（不重跑）。
+- **F2（normal，证据链冲突，已由 lead 钉死分支）**：λ=0 两臂的 `.pt` **文件** sha256 互不相同，而 L0 的「权重逐位相同」只比了 1 个张量 ⇒ 两种可能：(a) 文件字节不含内容同一性、(b) 权重真的不同（后者=blocker）。**axis6-lead 复算（本条命令实测）**：
+  `heads/disc_k2_s0.pt` vs `lat_k2_lam0_s0.pt` ⇒ **两个头的 8/8 个张量 `torch.equal` 全为真**；s1 对同样 8/8 为真；两文件 zip entry 时间均为 `1980-01-01`（非「保存时间戳」差异）⇒ 判定 **(a) 内容相同、文件字节不同**，(b) 排除，**无 blocker**。⇒ 交修缺 worker 把 L0 的权重比较改为整份 state_dict 逐键比较、`MODEL.md` 加「sha256 只标识文件」注记、更正 LOG 里那条过强的 sha256 断言。
+- F3（`disc_k4 ≈ disc_k2` 缺配对 CI）、F4（补 MSE 目标位移单测/变异）、F5（`lat_k4_lam0`=L0 自检臂须注明）、F6（analysis 须复述「同一参数化上的辅助监督」限定）⇒ 一并交修缺 worker。
+- 其 not-run 的 6 项（确定性重跑、pytest、mutate、summary、sha256、mtime）必须由**带 shell 的复核 #3** 亲自补跑（本轴不用自检代替独立复核）。
+
+### B5.3 axis6-lead 的代跑与自查（带 shell；只做 reviewer 无法执行的那类检查）
+
+| 时刻（`date -Iseconds` 实测） | 命令 / 动作 | 结果 |
+|---|---|---|
+| 2026-10-14T10:09:18+08:00 | `pytest .../2650/test_verify_gate.py -q`；`pytest .../2660/test_latent_reg.py -q` | 两处各 **11 passed** |
+| 2026-10-14T10:09:47+08:00 | 第三方复算 `.scratch/63-axis6-predict/recompute_phaseB_2650.py`（不复用 worker 代码） | V0/V3 逐位相同 = **True**（4 对 × 2 ckpt）；V2 α₁ = 0.0185（Wilson [0.0138, 0.0248]）/ 0.0（上界 0.0016）；台账 τ = 1.4323/1.5481/1.6586/1.7358、R = 1.233/2.355/4.514/8.772、Δτ/ΔK = 0.1158/0.0552/0.0193、阈值 0.0579、`k4_to_k8_worth_it=False` ⇒ 与 worker 判词一致 |
+| 2026-10-14T10:09:47+08:00 | `sha256sum 2640/{spec_tree.py,results.json,cycle_log.jsonl,run_log.txt}` | 与 `run1-snapshot/README.md` **逐一相同** ⇒ 2640 的已 PASS 证据未被本轮污染 |
+| 2026-10-14T10:16:52+08:00 | `sha256sum 2640/{spec_tree.py,run.py}` vs `2650/results.json::imported_2640_sha256` | **逐位相同** ⇒ 复核 #1 的 I3 已补旁证 |
+| 2026-10-14T10:16:57+08:00 | `torch.equal` 逐张量复算 λ=0 两臂的 `.pt`（8 张量 × 2 seed） | **全为真** ⇒ 复核 #2 F2 判为分支 (a)，无 blocker |
+| 2026-10-14T10:16:57+08:00 | `consistency_scan_phaseB.py`（dir/experiments/README 表行数/结论数字 vs 落盘/兄弟字段） | **FAIL=0**（含 6.2 的 5 个结论数字与 6.3.3 的 4 个数字逐项对账） |
+| 2026-10-14T10:16:57+08:00 | 跨轴冲突粗筛：`grep` 2640/2650/2660 出现在别的轴/`docs/**` | **无命中**（除 `.scratch/63-*`）⇒ 本轴事实单一之家；`docs/methodology.md`、`docs/structure.md`、`axes/7-references/README.md` 对本轴的引用均为指针/基线命名，无冲突 |
+
+### B5.4 框架性取舍（上报 Main，不自选）
+
+1. **`R_K` 口径笔误的处置**：定稿口径 = `K·(1+γ)/(1+τ_K)`（= 每轮 3K 个主干位置 ÷ 每轮发出 `1+τ_K` 个 token，与 2640 逐字一致）；原「`3K·(1+γ)/(1+τ_K)`」是出题人笔误，已在本轴契约文件内以「更正内容 + 指向本工单」记录，未改任何判据。（判据不受影响，故本轴直接执行并上报。）
+2. **6.3.3 的机制描述是否要改 `project.yaml` 的 `innovation`/`method`**：本实验证明在共享 tied 读出 + 同参数量下 λ=0 两臂**数学等价** ⇒ 独立自由度只有**监督目标**；结论只能写「latent（隐状态）匹配监督有独立增益」。**是否把 `innovation` 从「回归产出方式」改写为「latent 匹配监督」= 待 Main 裁决**，本轴未擅自改（只在 `conclusion` 里写明限定与建议）。

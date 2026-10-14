@@ -14,14 +14,17 @@ validation: "端到端：对照 = 同尺寸 stock 全因果 AR（归一为 100%�
 objective_criteria: "该涨：tokens-per-forward 与平均接受长度 τ；该不跌：序列级 bpc 与草稿接受率（相对全因果 AR 与同参数量离散跳头，须越 0.014 噪声带才算可排序）；必须报：每 token 等效 FLOPs（≈ L/k + d·d）；必须不变：读出共享、冻结主干断言（grad is None）。必须并行记（63-F4 裁决）：(i) 直接发（无接受率，每 token 主干 FLOPs ≈ L/k）与 (ii) 当草稿再验证（有接受率，每 token 主干 FLOPs ≈ (1+k)/k×L ≈ L）两条各作一臂、分开报代价。"
 falsification: "若 latent 回归臂在同参数量离散跳头对照下，既不涨 tokens-per-forward / τ（不越噪声带），质量又不优于离散跳头 ⇒ 判「回归到连续 latent 再贪心」相对直接分类在本尺度没有独立增益；若质量越带恶化且提高 k 更差 ⇒ 判该回归式批量生成在本尺度不成立。 63-F4 裁决：(i) 直接发 与 (ii) 当草稿再验证 两条路径各作一臂、分开报代价，判据分别适用。 用哪个带（C1 裁决）：τ / tokens-per-forward 等率类指标走配对 bootstrap / Wilson 95% CI 为主判；序列级 bpc 差用 0.014 bpc 带（限配对 Δ、≥5 窗口）、不跨量纲借用。"
 failure_analysis: ""
-conclusion: ""
+conclusion: "本地读数（WP1 最小判决；冻结主干 `2631-spec-three-arms/train/13m_s0` + `13m_s1` 复现点，char enwik8，同参数量 / 同 tied 共享读出（embed sha256 566ec50c… + da5b5d33…）/ 同训练预算 3000 步 Adam lr1e-3 batch4096 数据序 seed2660、头种子 {0,1}）：(a) **实现保真（L0）**——`lat_k2_lam0` 与 `disc_k2` 同种子**逐位相同**（命中率 / CE / 头权重），冻结断言（主干 `requires_grad=False` 且 backward 后 `.grad is None`）通过，两臂共用同一份 tied 读出；(b) **路径 (i) 直接发（估计得贪心）成立**：加上「回归到主干未来真值隐状态」的辅助项（λ·MSE(z_j, h_true_{i+1+j})）后，t+2 teacher-forced 命中率从 `disc_k2` **0.4572**（种子 0）/ 0.4573（种子 1）抬到 λ=1.0 的 **0.4878** / **0.4892**（13m_s0；配对聚类 bootstrap 95% CI：种子 0 Δ=**+0.0306** [+0.0285, +0.0326]、种子 1 Δ=**+0.0319** [+0.0296, +0.0343]、跟种子合并 Δ=**+0.0313** [+0.0296, +0.0330]）、λ=0.1 的 0.4688 / 0.4685（合并 Δ=+0.0114 [+0.0101, +0.0127]）；13m_s1 复现 **+0.0329**（CI [+0.0312, +0.0345]）；k=4 同向（+0.0284，CI [+0.0268, +0.0302]），而 `disc_k4` ≈ `disc_k2` ⇒ **增益来自监督项而不是头数**。参照量级：同主干自身 t+1 命中率 `ar_t1` = **0.6714** [0.6688, 0.6740] ⇒ 一次前向直接发 2 个位置的质量代价明确（0.488 / 0.366 vs 0.671），而代价面 = 每 token 主干等效 FLOPs ≈ L/k（k=2 时 ≈ 0.5×）。(c) **路径 (ii) 当草稿再验证（63-F4 第二臂）成立**：用该头第 1 个变换头的 argmax 当位置 N+2 草稿、走生产 `decode_spec`（保真硬门：同 harness 的 `repro_direct1` 与 2640 `direct1` 逐 prompt 逐轮 accepts **逐位相同**，α₁ 0.802243 / τ 1.453619），`lat_k2_lam1` α₁ = **0.7337**（s0）/ **0.7537**（s1）vs `disc_k2` 0.6421 / 0.6682 ⇒ Δα₁ = **+0.0916** CI [+0.0525, +0.1310]、Δτ = **+0.1464** CI [+0.0971, +0.1973]（s1 同向：+0.0855 / +0.1375）；代价面 = 主干等效 FLOPs ≈ (1+k)/k·L ≈ L。(d) **机制归因（对 6.3.3 标题式描述的可核限定）**：在**共享 tied 读出 + 同参数量**下 λ=0 的两臂**数学等价且实测逐位相同** ⇒ 「回归到连续 latent 再贪心」与「直接分类到词表」不是两套参数化，本实验的独立自由度只是**监督目标**（把 `z_j` 拉向主干未来真值隐状态）；因此本尺度成立的结论应表述为「**latent（隐状态）匹配监督**带来独立增益（t+2 命中率 +0.031，相对提升约 +6.8%；草稿接受率 +0.092）」，**不是**「回归机制优于分类机制」。(e) 未测：自由跑（free-run）序列级 bpc 未测（只有 teacher-forced 命中率 / CE 与草稿接受率）、只有 13M 冻结主干一种规模、无低局部先验对照、与 6.2 主干内联合训练头（α₁ 0.802）的差距（本轮冻结特征训头整体弱于它，−0.069…−0.160，因训练 regime 不同**不作判据**）、与 6.3.1/6.3.2 的边界未同框。故 status = 进行中（milestone 输出包的序列级 bpc 未齐）。"
 conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据按 docs/research-schema.md 预登记，并把「同参数量离散跳头对照」与「读出共享」写死，以防把参数量 / 读出容量差异记成回归式路线的增益（SCHEMA.md §15 的等参数纪律）。外部基线条目均为 `记忆·未核`，不得当判据。独立复核未做。"
-experiments: []
+experiments:
+  - "axes/6-predict/6.3.3-latent-regression/experiments/2660-latentreg-vs-disc-13m"
 argument: "回归式与离散式的差别只在最后一跳：前者把「预测未来位置」变成连续回归 + 共享读出贪心，后者直接对词表分类。因此判据必须把两件事分开：tokens-per-forward / τ（该涨）与质量（该不跌），并在同参数量、同读出的条件下比，否则参数量差异会被误记成机制差异。与 6.2 的关系是：6.2 测离散草稿来源与组合，本项测「回归到 latent」这一产出方式的增量。"
 gaps:
-  - "本仓零经验：需先做最小判决（13M、{AR, latent 回归 k=2/4, 同参数量离散跳头 k=2/4}，冻结主干 + 同读出）"
-  - "latent 一致性项是否必要未定，需在最小判决里做有无消融"
-  - "与 6.2（离散草稿）/ 6.3.1（K 步去噪）的边界未在同一实验里排开"
+  - "自由跑（free-run）序列级 bpc 未测：只有 teacher-forced 命中率 / CE 与草稿接受率；下一步最小实验 = 用同一批头做 12 prompt × 200 token 的自由生成并按 token 计 bpc（与 stock AR 同框），成本约 5–10 min GPU"
+  - "只有 13M 冻结主干一种规模（53.9M 未跑）；无低局部先验对照任务（SCHEMA.md §19），命中率 / α₁ 水平不得外推"
+  - "与 6.2（主干内联合训练离散头）/ 6.3.1（K 步去噪）/ 6.3.2（一次填空）的边界未在同一实验里排开"
+  - "λ 网格只到 {0, 0.1, 1.0} 且只正向（增益随 λ 单调上升，最优 λ 与饱和点未探）；k 只到 4"
+  - "冻结特征训头相对主干内联合训练头（2640 `direct1` α₁ 0.802）整体弱（−0.069…−0.160）：该差是训练 regime 的差，未做「把同一监督项加进主干内头训练」的对照"
 cost_model: "等效理论量：一次前向主干 layer-passes = L、回归变换再产 k 个 latent ⇒ 一次前向产出 k 个位置、tokens-per-forward = k、每生成 token 的主干等效 FLOPs ≈ L/k、回归头分摊 ≈ d·d；每 token 顺序前向次数由 1 降到 1/k。考虑 pipelining：同一次前向内 k 个 latent 彼此无顺序依赖、可并行，轮与轮之间是顺序依赖。 (63-F4 裁决) 两条路径各作一臂、分开报代价：路径 (i) 直接发（估计得贪心，无接受率）每 token 主干等效 FLOPs ≈ L/k；路径 (ii) 当草稿再验证（有接受率）每 token 主干等效 FLOPs ≈ (1+k)/k×L ≈ L。"
 
 role_map:
@@ -40,18 +43,21 @@ work_packages:
     goal: "判定「回归到连续 latent 再贪心」相对直接分类在本尺度是否有独立增益"
     means: "13M 冻结主干 + 共享读出，{AR, latent 回归 k=2/4, 同参数量离散跳头 k=2/4}，报 tokens-per-forward / τ / 草稿接受率 / bpc / 每 token 等效 FLOPs，n≥2；含 latent 一致性项有无消融"
     acceptance: "同参数量、同读出对齐；冻结断言（grad is None）通过；增益归因可分（回归式 vs 容量）"
-    evidence: "axes/6-predict/6.3.3-latent-regression/experiments/"
-    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b，复核排在执行之后）"
-    status: "未开始"
+    evidence: "axes/6-predict/6.3.3-latent-regression/experiments/2660-latentreg-vs-disc-13m/"
+    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b，复核排在执行之后）——已做：`.scratch/63-axis6-predict/REVIEW-B2.md`（fresh、只读，见 conclusion_review）"
+    status: "已完成"
 
 roadmap:
   - "WP1：同参数量最小判决（latent 回归 vs 离散跳头 + 读出共享 + 一致性项消融）"
   - "复核通过后写 conclusion，更新 status"
 
-status: "未开始"
+status: "进行中"
 started: "2026-10-13T10:47:00+08:00"
 ended: ""
 change_log:
+  - date: "2026-10-14T10:02:06+08:00"
+    actor: "axis6-lead"
+    change: "WP1 最小判决执行并收口（Phase B）：实验 `experiments/2660-latentreg-vs-disc-13m` 入库；conclusion 落地（a）–（e）：L0 实现保真（λ=0 两臂逐位相同）、路径 (i) 命中率 +0.031（λ=1.0，CI 不含 0，两主干点/两种子/k∈{2,4} 同向）、路径 (ii) 草稿接受率 Δα₁ +0.0916 / Δτ +0.1464（CI 不含 0，保真硬门 = repro_direct1 与 2640 direct1 逐位相同）、机制限定（共享 tied 读出下两臂同参数化，独立自由度只是监督目标 ⇒ 增益应表述为「latent 匹配监督」而非「回归机制」）；gaps 换成剩余项（free-run bpc 未测 / 单一规模 / 边界未排开 / λ 网格只正向 / 与主干内联合训练头的 regime 差）；WP1 status 未开始→已完成；status 未开始→进行中（milestone 输出包的序列级 bpc 未齐）。"
   - date: "2026-10-13T10:47:00+08:00"
     actor: "轴 6 §6.3 worker"
     change: "新建研究项（无旧格，MAPPING §2）：latent regression 批量生成（估计得贪心）归 6.3 整段并行生成（不止 AR）；按 docs/research-schema.md 预登记目的 / 基线 / 判据 / 否证条件，并把「同参数量离散跳头对照 + 读出共享」写死以防把容量差异记成机制增益。"

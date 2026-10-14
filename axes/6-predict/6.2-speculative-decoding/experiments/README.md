@@ -14,6 +14,7 @@
 | [`2631-spec-three-arms`](2631-spec-three-arms/README.md) | 目录内 README | 旧格 H3 迁入 → WP 6.2.2：direct / chain / 固定 λ=0.5 combined 三臂 |
 | [`2632-alpha1-attribution`](2632-alpha1-attribution/README.md) | 目录内 README | 旧格 H3 迁入 → WP 6.2.2：同一 checkpoint 换 N+2 头/条件的归因与 cross-K 探针 |
 | [`2640-tree-conf-13m`](2640-tree-conf-13m/README.md) | 目录内 README | WP 6.2.2 主判：概率多候选 / 树 + 路径概率加权组合（臂 = native/direct1/chain1/combined_fixed/combo_pw/tree_union2/tree_direct_k2/tree_qpw_k2/tree_topk4/oracle 上界） |
+| [`2650-verify-gate-13m`](2650-verify-gate-13m/README.md) | 目录内 README | WP 6.2.3：批量验证的正确性门禁 / 失败模式 / 验证开销（对抗与退化候选集、K=1/2/4/8 代价台账、边际收益阈值） |
 | [`2613-self-gated-composition-13m`](2613-self-gated-composition-13m/README.md) | 目录内 README | 旧格 H3 迁入 → WP 6.2.2 背景实验（冻结表征上的重复潜在映射与自门控，非本命题） |
 | [`2512-overnight-causal-chain`](2512-overnight-causal-chain/README.md) | 目录内 README | 旧格 H3 迁入 → WP 6.2.2：条件链 deploy 首验 |
 | [`2513-four-experiments`](2513-four-experiments/README.md) | 目录内 README | 旧格 H5 迁入 → WP 6.2.3：批量验证可用性（含 Medusa 批量验证） |
