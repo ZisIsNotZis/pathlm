@@ -419,3 +419,14 @@ F4 压成当前事实 + 指针；F5 补半句。修复后复跑：`pytest` 22 pa
 - `2026-10-14T20:51–20:52+08:00` · axis6-lead · 写死两份预登记契约（**先于派遣**）：`6.3.3.../experiments/2670-freerun-bpc-13m/README.md`、`6.3.2.../experiments/2671-padfill-13m/README.md`（含 S1/S2 两阶段）。`date -Iseconds` 实测写入。
 - `2026-10-14T20:52:40+08:00` · axis6-lead · C1 声明回填第二轮落盘（5 份 `project.yaml`）+ 枚举脚本；复扫 0 未声明 / 0 跨量纲；`summary.py --check` 全绿。
 - `2026-10-14T20:53+08:00` · axis6-lead · 派 wave 1 两个 fresh worker（并发 2）：WP-6.3.3-WP2（2670 free-run bpc，≤20 min，run `f41f2174`）与 WP-6.3.2-S1（2671 harness + 单测 + 步时冒烟，≤25 min，run `ce397280`）。
+- `2026-10-14T20:54–20:55+08:00` · axis6-lead · 另写两份预登记契约（仍先于派遣）：`6.4-training-fill/experiments/2672-fill-n2-13m/README.md`（n≥2 复本 + 软提交 OOD 污染的**等参数剥离**：同一 checkpoint 只改提交规则 ⇒ 容量因素被剥离）与 `6.2-speculative-decoding/experiments/2673-robustness-13m/README.md`（温度>0 的**无损投机采样** + 53.9M 对抗臂；含 gate probe 要求与 batch>1 的显式 out-of-scope 声明）。
+
+## C5 框架项（B5.4 / 63-F2 / 63-F4）的默认处置（本轴采用并记录，不改变研究树结构或目标）
+
+| 项 | 轴建议默认处置 | 本轮动作 |
+|---|---|---|
+| **63-F2**（多候选 / 树结论是否强制附「等 FLOPs 对照臂」） | 不把 `R_tree` 与单臂 `R` 的对比写成硬判据；τ / tokens-per-forward 是硬指标、每 token 等效 FLOPs 是代价轴；本引擎 `n_mtp=3` 上限下等 FLOPs 臂不可得 ⇒ **如实注明** | **已采用**：6.2 的 `validation`/`falsification`/`conclusion`(g)(j) 均以「如实双报 + 注明等 FLOPs 臂不可得」表述；本轮不新增等 FLOPs 臂（不可得） |
+| **63-F4**（6.3.3 的 (i) 直接发 / (ii) 当草稿再验证两臂） | 两条路**各作一臂、分开报代价** | **已执行**（Phase B 的 2660 阶段 1/2）；本轮的 2670 只补路径 (i) 的序列级 bpc，不重定义两臂 |
+| **B5.4-1**（`R_K` 口径笔误） | 定稿口径 `K·(1+γ)/(1+τ_K)`，判据不受影响 ⇒ 本轴直接执行并上报 | **已执行**（Phase B） |
+| **B5.4-2**（6.3.3 的 `innovation` 是否改写为「latent 匹配监督」） | 待 Main 裁决；本轴只在 `conclusion` 写明限定 | **仍未擅自改**；2670 的结论会再给一条独立读数支撑该限定 |
+| **本次新增（须上报）**：6.4 的 milestone 措辞写「13M matched-step」，而既有 2523e / 23e 协议的**实测参数量 = 6,962,688（≈6.96M，d=256/L=8/h=8/mlp_mult=4）** | 属**事实文档与证据的规模措辞不一致**（非降目标、非改判据） | **待本轮 2672 落盘后按落盘实测值更正措辞**（改 `milestone.output` 的规模标签 + `change_log` 记原因）；**不**改判据、不删证据。若 Main 认为该措辞属预登记文字不得动，请裁决 |
