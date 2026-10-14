@@ -1,0 +1,330 @@
+{
+  "arm": "uniform",
+  "seed": 0,
+  "steps": 12000,
+  "hidden_by_layer": [
+    1024,
+    1024,
+    1024,
+    1024,
+    1024,
+    1024,
+    1024,
+    1024
+  ],
+  "sum_hidden": 8192,
+  "eval": {
+    "metric": "clean bpc（最终深度、无退出、序列级、越低越好）",
+    "n_batches": 20,
+    "batch_size": 16,
+    "eval_generator_seed": 2,
+    "bpc_by_depth": [
+      {
+        "depth": 0,
+        "bpc": 7.408,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "bpc": 4.8269,
+        "acc": 0.1505
+      },
+      {
+        "depth": 2,
+        "bpc": 4.3204,
+        "acc": 0.2117
+      },
+      {
+        "depth": 3,
+        "bpc": 3.827,
+        "acc": 0.2861
+      },
+      {
+        "depth": 4,
+        "bpc": 3.186,
+        "acc": 0.3935
+      },
+      {
+        "depth": 5,
+        "bpc": 2.6197,
+        "acc": 0.5
+      },
+      {
+        "depth": 6,
+        "bpc": 2.0646,
+        "acc": 0.5976
+      },
+      {
+        "depth": 7,
+        "bpc": 1.7233,
+        "acc": 0.6579
+      },
+      {
+        "depth": 8,
+        "bpc": 1.5291,
+        "acc": 0.6894
+      }
+    ],
+    "clean_bpc": 1.5291,
+    "clean_bpc_from_depth_curve": 1.5291,
+    "clean_bpc_two_paths_agree": true,
+    "windows": {
+      "window_bpc": [
+        1.51628,
+        1.573976,
+        1.534932,
+        1.510489,
+        1.509815
+      ],
+      "clean_bpc": 1.5291,
+      "n_windows": 5,
+      "batches_per_window": 4,
+      "batch_size": 16,
+      "eval_generator_seed": 2,
+      "note": "窗口 = 同一 generator seed 顺序下的连续数据批；所有臂共用该顺序 ⇒ 逐窗配对可比（窗口间 SE 是抽样噪声，0.014 是跨 run 训练漂移带）。"
+    },
+    "acc_by_depth": [
+      {
+        "depth": 0,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "acc": 0.1505
+      },
+      {
+        "depth": 2,
+        "acc": 0.2117
+      },
+      {
+        "depth": 3,
+        "acc": 0.2861
+      },
+      {
+        "depth": 4,
+        "acc": 0.3935
+      },
+      {
+        "depth": 5,
+        "acc": 0.5
+      },
+      {
+        "depth": 6,
+        "acc": 0.5976
+      },
+      {
+        "depth": 7,
+        "acc": 0.6579
+      },
+      {
+        "depth": 8,
+        "acc": 0.6894
+      }
+    ]
+  },
+  "params": {
+    "params_total": 6962688,
+    "params_ffn": 4204544,
+    "params_attn_and_rest": 2758144,
+    "hidden_by_layer": [
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024
+    ],
+    "hidden_matches_schedule": true
+  },
+  "cost": {
+    "d_model": 256,
+    "seq_len": 256,
+    "n_layers": 8,
+    "vocab": 206,
+    "macs_per_token": {
+      "attention": 3145728,
+      "ffn": 4194304,
+      "readout_tied": 52736,
+      "total": 7392768
+    },
+    "ffn_macs_per_token_by_layer": [
+      524288,
+      524288,
+      524288,
+      524288,
+      524288,
+      524288,
+      524288,
+      524288
+    ],
+    "hidden_by_layer": [
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024
+    ],
+    "sum_hidden": 8192,
+    "ffn_params_analytic": 4204544,
+    "ffn_share_of_total_macs": 0.567352,
+    "ffn_macs_rel_to_uniform": 1.0,
+    "note": "等效理论量：MACs/token（乘加）。attention 的 T·d 项随序列长度线性、FFN 的 h·d 项与 T 无关；两列分开报，不用任何时间量。tokens-per-forward = 1（本格不涉及多 token 前向）。各臂 Σh 逐位相等 ⇒ ffn 列与 ffn_params_analytic 逐位相等。",
+    "ffn_params_measured": 4204544,
+    "ffn_params_analytic_matches_measured": true
+  },
+  "liveness": {
+    "hidden_by_layer": [
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024
+    ],
+    "ffn_out_rel_mag_by_layer": [
+      2.013784,
+      0.635516,
+      0.613216,
+      0.535703,
+      0.514483,
+      0.483055,
+      0.473345,
+      0.484469
+    ],
+    "note": "隐藏维 = 逐层审计（必须逐位等于 schedule）；相对幅度 = 真实前向中 ‖mlp_out‖/‖mlp_in‖ 的逐位置均值（>0 ⇒ 该层 FFN 真的参与前向，不是死路径）"
+  },
+  "loss_slope": {
+    "n_points": 16,
+    "step_first": 9000,
+    "step_last": 11999,
+    "slope_per_1k_steps": 0.00219,
+    "window": "末 25%"
+  },
+  "train_log_rows": 61,
+  "shared_train_results": {
+    "params": 6962688,
+    "train_tokens": 98304000,
+    "wall_minutes": 8.18,
+    "peak_gpu_mem_mb": 932.6,
+    "config": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 4,
+      "mlp_hidden_sched": [
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024
+      ],
+      "dropout": 0.0,
+      "norm_cap": 1.0,
+      "gate_bias_init": -2.0,
+      "dense": true,
+      "carry_gate": true,
+      "aux_mode": "renorm",
+      "mod_ratio": 0.0,
+      "fill_kv": true,
+      "proj_fill": false,
+      "readout_dims": null,
+      "readout_gated": false,
+      "readout_linear_resid": false,
+      "readout_perdepth": false,
+      "readout_wide_shared": 0,
+      "topology": "sequential",
+      "attn_sparse_k": 0,
+      "train_window": 0,
+      "train_anchors": 0,
+      "attn_linear": false,
+      "linear_chunk": 64,
+      "n_kv_heads": null,
+      "carry_rule": null,
+      "carry_chunk": 64,
+      "carry_state_dim": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "recon_window": 0
+    },
+    "gnorm_monitor": {
+      "gnorm_max": 7.86,
+      "gnorm_mean": 0.553,
+      "grad_skips": 0,
+      "attn_sparse_mean": null,
+      "attn_sparse_layer_samples": 0,
+      "attn_linear_mean": null,
+      "attn_linear_layer_samples": 0,
+      "attn_carry_mean": null,
+      "attn_carry_layer_samples": 0,
+      "attn_carry_layer_stats": null,
+      "attn_carry_scan_mean": null,
+      "recon_window": 0,
+      "recon_lambda": 0.0,
+      "recon_mean": null,
+      "synth_answer_ce_mean": null,
+      "synth_answer_ce_n_steps": 0,
+      "synth_chance_ce": null,
+      "window_mask": null,
+      "window_mask_probe": null,
+      "kv_heads": null,
+      "kv_heads_n_logged_lines": 0
+    }
+  },
+  "resolved_config": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "mlp_hidden_sched": [
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024,
+      1024
+    ],
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "gate_bias_init": -2.0,
+    "dense": true,
+    "carry_gate": true,
+    "aux_mode": "renorm",
+    "mod_ratio": 0.0,
+    "fill_kv": true,
+    "proj_fill": false,
+    "readout_dims": null,
+    "readout_gated": false,
+    "readout_linear_resid": false,
+    "readout_perdepth": false,
+    "readout_wide_shared": 0,
+    "topology": "sequential",
+    "attn_sparse_k": 0,
+    "train_window": 0,
+    "train_anchors": 0,
+    "attn_linear": false,
+    "linear_chunk": 64,
+    "n_kv_heads": null,
+    "carry_rule": null,
+    "carry_chunk": 64,
+    "carry_state_dim": null,
+    "carry_per_layer": false,
+    "carry_decay": 1.0,
+    "recon_window": 0
+  },
+  "run_dir": "axes/2-depth/2.3.1-layer-capacity/experiments/2655-layer-capacity-13m/runs/uniform-s0-12k",
+  "code_hash_run_py": "94f57485022267dac755d26a36a67ca126bbcf45cedf6dd1f68f8d27ba1db4fe"
+}

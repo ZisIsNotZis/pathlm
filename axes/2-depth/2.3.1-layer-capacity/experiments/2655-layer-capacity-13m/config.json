@@ -1,0 +1,67 @@
+{
+  "experiment": "2655-layer-capacity-13m",
+  "research_node": "axes/2-depth/2.3.1-layer-capacity",
+  "wp": "WP-2655",
+  "ticket": ".scratch/61-axis2-depth/TICKET.md §9.2 WP-2655",
+  "entry": "axes/2-depth/2.3.1-layer-capacity/experiments/2655-layer-capacity-13m/run.py",
+  "engine": "train_depth_ar.py + pathlm.depth_ar（未改共享代码；`--mlp-hidden-sched` 由 ticket 67 E2 实装，提交 4638882）",
+  "seed": 0,
+  "steps": 12000,
+  "batch_size": 32,
+  "lr": 0.001,
+  "eval_batches": 20,
+  "eval_batch_size": 16,
+  "warmup_steps": 200,
+  "optimizer": "AdamW(wd=0.01) + warmup 200 步 + cosine 到 0.1×",
+  "data": "data/enwik8_full.npz",
+  "data_split": "first 90M train / last 10M eval, vocab from full file",
+  "vocab_size": 206,
+  "train_tokens": 98304000,
+  "base": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "dense": true,
+    "topology": "sequential",
+    "exit_mode": "uniform",
+    "loss": "仅最终深度 CE（stock AR）",
+    "readout": "tied h·Eᵀ，无 final LayerNorm（共享底座偏离 1）"
+  },
+  "intervention": "逐层 FFN 隐藏宽 schedule h_l（Σ_l h_l 逐位相等 = 8192；其余参数/接线逐位相同）",
+  "arms": [
+    {
+      "arm": "uniform",
+      "hidden_by_layer": [1024, 1024, 1024, 1024, 1024, 1024, 1024, 1024],
+      "mlp_hidden_sched": "1024,1024,1024,1024,1024,1024,1024,1024",
+      "role": "引擎缺省形态（h_l = mlp_mult·d = 1024）；等值门的显式 schedule 侧 + 对照臂",
+      "run": "runs/uniform-12k-s0"
+    },
+    {
+      "arm": "front-big",
+      "hidden_by_layer": [1792, 1536, 1280, 1024, 768, 768, 512, 512],
+      "mlp_hidden_sched": "1792,1536,1280,1024,768,768,512,512",
+      "role": "前大后小（浅层宽、深层窄）",
+      "run": "runs/front-big-12k-s0"
+    },
+    {
+      "arm": "growing",
+      "hidden_by_layer": [512, 512, 768, 768, 1024, 1280, 1536, 1792],
+      "mlp_hidden_sched": "512,512,768,768,1024,1280,1536,1792",
+      "role": "逐渐放大（front-big 的逐位镜像）",
+      "run": "runs/growing-12k-s0"
+    }
+  ],
+  "sum_hidden_all_arms": 8192,
+  "variance_bound_bpc": 0.014,
+  "historical_anchors_same_recipe_s0": {
+    "2613_sequential_12k_s0": 1.5254,
+    "2641_U4_12k_s0": 1.5314
+  },
+  "gpu_wall_budget_min": 35,
+  "cut_order_if_over_budget": ["growing（只留 uniform 对 front-big）"],
+  "criterion_frozen": true
+}

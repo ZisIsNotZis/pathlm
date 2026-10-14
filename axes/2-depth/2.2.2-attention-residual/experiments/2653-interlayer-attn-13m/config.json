@@ -1,0 +1,64 @@
+{
+  "experiment": "2653-interlayer-attn-13m",
+  "research_node": "axes/2-depth/2.2.2-attention-residual",
+  "wp": "WP-2653",
+  "ticket": ".scratch/61-axis2-depth/TICKET.md §9.2 WP-2653",
+  "entry": "axes/2-depth/2.2.2-attention-residual/experiments/2653-interlayer-attn-13m/run.py",
+  "engine": "train_depth_ar.py + pathlm.depth_ar（`topology=\"dense\"` 前向路径；聚合实现 = 本目录 interlayer_attn.py 工厂替换，不改共享代码）",
+  "seed": 0,
+  "steps": 12000,
+  "batch_size": 32,
+  "lr": 0.001,
+  "eval_batches": 20,
+  "eval_batch_size": 16,
+  "warmup_steps": 200,
+  "optimizer": "AdamW(wd=0.01) + warmup 200 步 + cosine 到 0.1×",
+  "data": "data/enwik8_full.npz",
+  "data_split": "first 90M train / last 10M eval, vocab from full file",
+  "vocab_size": 206,
+  "train_tokens": 98304000,
+  "base": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "dense": true,
+    "exit_mode": "uniform",
+    "loss": "仅最终深度 CE（stock AR）",
+    "readout": "tied h·Eᵀ，无 final LayerNorm（共享底座偏离 1）"
+  },
+  "intervention": "层间聚合：h_k = Block_k(softmax_j(τ_k·⟨q(h_{k−1}), k(h_j)⟩/√d)·v(h_j)), j = 0..k−1（层索引因果）；j = k−1 = 紧邻上一层 = stock 的输入",
+  "arms": [
+    {
+      "arm": "attn-scalar",
+      "aggregation": "q/k/v 恒等（无学习投影）+ 每层可学习标量温度 tau_k",
+      "params_added": 8,
+      "extra_macs_per_token_interlayer": 18432,
+      "extra_over_base_attention": 0.005859,
+      "role": "与 2.2.3 的 dense（+36）同量级参数的等参数对照",
+      "run": "runs/attn-scalar-12k-s0"
+    },
+    {
+      "arm": "attn-qkv",
+      "aggregation": "可学习共享 W_q/W_k/W_v（bias=False，init=I）+ 每层 tau_k",
+      "params_added": 196616,
+      "extra_macs_per_token_interlayer": 5261312,
+      "extra_over_base_attention": 1.672526,
+      "role": "判「内容相关权重是否值那份额外参数/算力」",
+      "run": "runs/attn-qkv-12k-s0"
+    }
+  ],
+  "reused_baselines_2613_s0": {
+    "sequential": {"clean_bpc": 1.5254, "params": 6962688, "role": "stock 单残差"},
+    "dense": {"clean_bpc": 1.5246, "params": 6962724, "params_added": 36, "role": "2.2.3 线性学习加权和"},
+    "source": "axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m/results.json",
+    "equality_proof": "SCHEMA §9 三条：实现层（test_2653_interlayer_attn.py 的 one-hot 逐位等值门 + 同一构造顺序 ⇒ trunk 权重逐位相同）/ 配置层（run.py baseline_equivalence 逐字段对照）/ 口径标注（analysis.md）"
+  },
+  "variance_bound_bpc": 0.014,
+  "gpu_wall_budget_min": 30,
+  "cut_order_if_over_budget": ["attn-qkv（只报 attn-scalar 与两基线；「内容相关权重」入 gaps）"],
+  "criterion_frozen": true
+}

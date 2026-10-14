@@ -1,0 +1,90 @@
+{
+  "A_engine_equivalence": {
+    "default_vs_explicit_uniform_state_dict_bitwise_equal": true,
+    "default_vs_explicit_uniform_forward_bitwise_equal": true,
+    "probe_perturbed_schedule_state_dict_differs": true,
+    "probe_perturbed_schedule_forward_differs": true,
+    "pass": true
+  },
+  "B_equal_budget": {
+    "per_arm": {
+      "uniform": {
+        "sum_hidden": 8192,
+        "params_ffn": 4204544,
+        "params_total": 6962688,
+        "ffn_params_analytic": 4204544
+      },
+      "front-big": {
+        "sum_hidden": 8192,
+        "params_ffn": 4204544,
+        "params_total": 6962688,
+        "ffn_params_analytic": 4204544
+      },
+      "growing": {
+        "sum_hidden": 8192,
+        "params_ffn": 4204544,
+        "params_total": 6962688,
+        "ffn_params_analytic": 4204544
+      }
+    },
+    "all_sum_hidden_equal_to_8192": true,
+    "all_ffn_params_equal": true,
+    "all_total_params_equal": true,
+    "analytic_matches_measured": true,
+    "probe_off_budget_schedule_params_differ": true,
+    "equal_budget_triples": {
+      "uniform": [
+        8192,
+        4204544,
+        6962688
+      ],
+      "front-big": [
+        8192,
+        4204544,
+        6962688
+      ],
+      "growing": [
+        8192,
+        4204544,
+        6962688
+      ]
+    },
+    "pass": true
+  },
+  "C_liveness": {
+    "hidden_matches_schedule": {
+      "uniform": true,
+      "front-big": true,
+      "growing": true
+    },
+    "nonuniform_forward_differs_from_uniform": {
+      "uniform": false,
+      "front-big": true,
+      "growing": true
+    },
+    "probe_uniform_seed1_differs_from_seed0": true,
+    "pass": true
+  },
+  "D_cli_wiring": {
+    "argv": [
+      "front-big-s0-12k",
+      "--d",
+      "256"
+    ],
+    "parsed_front_big": [
+      1792,
+      1536,
+      1280,
+      1024,
+      768,
+      768,
+      512,
+      512
+    ],
+    "parsed_equals_schedule": true,
+    "probe_empty_string_returns_none": true,
+    "note": "本门只钉 CLI 串解析；cfg→模型的事实由 P6 的 hidden_by_layer 实测覆盖",
+    "pass": true
+  },
+  "pass": true
+}

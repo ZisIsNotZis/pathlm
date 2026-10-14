@@ -15,14 +15,17 @@ objective_criteria: "该跌：clean bpc（序列级，相对 stock 单残差与 
 falsification: "若层间 causal attention 相对 stock 单残差与 2.2.3 线性聚合在 clean bpc 上不越噪声带，或优势全由额外参数/额外算力解释（等参数或同算力对照下消失）⇒ 判用 causal attention 代替残差在本尺度无净增量，应退化为 2.2.3 的线性聚合或并入之。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 failure_analysis: ""
 conclusion: ""
-conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件）；把「等参数/同算力对照」与「层间因果性」钉死，以防把额外算力买到的小幅改善误读为连接方式本身的优势。独立复核未做。"
-experiments: []
-argument: "把出资人的 C3 批注转成可证伪命题：跨层注意力与 2.2.3 的线性学习加权和价差在「聚合函数是否有内容相关权重（q·kᵀ）」与「额外算力」上。若质量收益不足以覆盖门控/注意力的额外算力，则注意力版退化。旧 C3 的 dense 学习加权和已测到中性（−0.0008），故本项的核心对照就是「把加权和升级成 causal attention 是否能越过那条中性线」。"
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status = 进行中（实现与门已完成，判决待两臂训练）。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件）；把「等参数/同算力对照」与「层间因果性」钉死，以防把额外算力买到的小幅改善误读为连接方式本身的优势。**当前本地事实**：层间 causal attention 聚合已在实验内实装（`experiments/2653-interlayer-attn-13m/interlayer_attn.py`，复用引擎 `topology=dense` 的前向路径，不改共享代码）；等值门（把层维权重强制成「只取紧邻上一层」时前向/损失与 stock 单残差**逐位一致**，探针：不强制时必须不同）、活性门（k ≥ 2 的层权重非退化：`w_immediate_prev < 1`、熵 > 0）、参数账（额外参数 = +8（scalar，与 2.2.3 的 dense +36 同量级）/ +196 616（qkv），与解析值一致）均已实测落盘；两臂的 clean bpc 与配对 Δbpc 未测（本轮共享 4090 被外部任务占用，等锁未取到；等效成本 2 × 98.3M token 已登记）。独立复核未做。"
+experiments:
+  - "axes/2-depth/2.2.2-attention-residual/experiments/2653-interlayer-attn-13m"
+  - "axes/2-depth/2.2.2-attention-residual/experiments/2653-interlayer-attn-13m/analysis.md"
+argument: "把出资人的 C3 批注转成可证伪命题：跨层注意力与 2.2.3 的线性学习加权和价差在「聚合函数是否有内容相关权重（q·kᵀ）」与「额外算力」上。已实测的价差（等效理论量，解析且与实测参数一致）：`attn-scalar`（q/k/v 恒等 + 每层一个温度 τ）额外参数 +8、每 token 层间聚合额外 18 432 MACs（= stock 每层注意力 3 145 728 MACs/token 的 +0.59%）；`attn-qkv`（可学习共享 W_q/W_k/W_v + τ）额外参数 +196 616、额外 5 261 312 MACs/token（+167.3%）。故「内容相关权重是否值那份额外算力」在本尺度有一个可读的价签：scalar 臂与 2.2.3 的 dense（+36 参数）几乎同价，qkv 臂要贵约 2.7 万倍的参数与约 1.7 倍的注意力算力。旧 C3 的 dense 学习加权和已测到中性（−0.0008），故本项的核心对照就是「把加权和升级成 causal attention 是否能越过那条中性线」。缺口：机制性事实「层间聚合的起点并不等于 stock 起点」已如实落盘（`q = h_{k−1}` 与 key 里的自相似使起点处权重即已偏离「只取上一层」，k ≥ 2 的层熵 ≈ 1.6–2.1），因此结论只能来自训练后的 B 表。"
 gaps:
-  - "本仓零经验：跨层注意力从未实装（旧 C3 自认未测，C-P10）"
-  - "层间注意力的额外参数/FLOPs 与质量收益的同框账未做"
-  - "与 2.2.3 线性学习加权和的同预算正面对撞未做"
-  - "跨层注意力的长度/层数外推未测"
+  - "本仓零经验：跨层注意力从未实装（旧 C3 自认未测，C-P10）——**本轮已实装并过等值门/活性门/参数账，训练判决未做**"
+  - "两臂（attn-scalar / attn-qkv）的 clean bpc 与相对 stock / 相对 dense 的配对 Δbpc 未测（等锁未取到 GPU；等效成本 2 × 98.3M token）"
+  - "qkv 臂的相对增益是否覆盖其 +3d² 参数与 +167.3% 注意力算力未测（须以相对 scalar 臂的增量为归因基线）"
+  - "n≥2 与长度/层数外推未测"
+  - "基线复用（2613 s0 的 sequential / dense）已备齐 SCHEMA §9 三条等值证明的 ①② 面（实现层逐位单测 + 配置逐字段对照），③口径标注已写进 analysis.md；若出现不等字段则回退自包含双跑"
 cost_model: "等效理论量：每 token 的 layer-passes 仍为 L（层数不变），但每层额外一次对 L 个历史层的 causal attention ⇒ 每 token 额外 ≈ L（层）× O(L·d) FLOPs（层间注意力），相对单残差基线为 O(L²·d) 的额外项；层间注意力可用低秩/共享投影降本。tokens-per-forward 每步 1。考虑 pipelining：层间注意力把「当前层依赖其全部历史层」，增加层间串行依赖（不利于跨层流水），该依赖须与 2.2.3 的线性聚合对照量化。"
 
 role_map:
@@ -41,15 +44,15 @@ work_packages:
     goal: "判定「把历史层输出 stack 做 causal attention 聚合」是否值那份额外算力"
     means: "13M、matched-step、{stock 单残差, 层间 causal attention, 2.2.3 线性学习加权和} 三臂，逐位等参数/同算力对照，报 clean bpc + 额外参数/FLOPs"
     acceptance: "三臂参数/算力代价列齐备；attention 版相对另两臂有/无净增量，二选一明确"
-    evidence: "axes/2-depth/2.2.2-attention-residual/experiments/"
+    evidence: "axes/2-depth/2.2.2-attention-residual/experiments/2653-interlayer-attn-13m"
     review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
-    status: "未开始"
+    status: "进行中"
 
 roadmap:
   - "WP1：层间 causal attention 最小判决（与单残差、线性聚合三方对照）"
   - "复核通过后写 conclusion，更新 status"
 
-status: "未开始"
+status: "进行中"
 started: "2026-10-13T10:37:02+08:00"
 ended: ""
 change_log:
@@ -59,3 +62,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-14T22:00:00+08:00"
+    actor: "WP-2653 worker（ticket 61 · 轴 2 wave 2）"
+    change: "WP1 进行中：按 `.scratch/61-axis2-depth/TICKET.md` §9.2 WP-2653 落 `experiments/2653-interlayer-attn-13m/`（README 预登记 P1–P6 / config.json / run.py（支持 --arms/--no-train/--aggregate）/ interlayer_attn.py（实验内工厂替换，不改共享代码）/ smoke.py / test_2653_interlayer_attn.py / gpu_lock.py / run_remaining.sh / analysis.md / MODEL.md）；实装层间 causal attention 聚合（层索引因果：只取 states[0..k−1]）并实测三件事：①等值门（one-hot 强制 ⇒ 前向/损失与 stock 单残差逐位一致，带必红探针）；②活性（k ≥ 2 的层权重非退化）；③参数账（+8 / +196 616，含每 token 额外 MACs 18 432 / 5 261 312）。status 未开始 ⇒ 进行中；两臂训练未跑成（等锁超时，等效成本 2 × 98.3M token 已登记），判据线未改、未砍。"

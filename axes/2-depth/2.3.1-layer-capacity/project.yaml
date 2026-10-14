@@ -15,13 +15,17 @@ objective_criteria: "该跌：clean bpc（序列级，相对 stock uniform）；
 falsification: "若非均匀容量在固定总参数下相对 uniform 的 clean bpc 不越噪声带（0.014）⇒ 判逐层容量变化在本尺度不是独立有增益的维度，并入 3.1.2 的宽度轴读数。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 failure_analysis: ""
 conclusion: ""
-conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），把「总参数量逐位对齐」钉死以防把参数量优势误读为深度形状优势。独立复核未做。"
-experiments: []
-argument: "均匀容量默认「所有深度同等重要」；本项检验该假设。判据必须钉在「固定总参数」上，否则无法把「重分配」与「单纯加参数」区分开。它与宽度轴的 3.1.2 是同一族问题的两个记账面，故把边界写进 gap、由 integrator 统一。"
+conclusion_review: "本项无旧格、本仓零经验，status = 进行中（`uniform` 臂已训完并落盘，两个非均匀臂待跑）。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），把「总参数量逐位对齐」钉死以防把参数量优势误读为深度形状优势。**当前本地事实**：`experiments/2655-layer-capacity-13m/` 三臂均通过 CLI `--mlp-hidden-sched` 表达（引擎 E2，提交 4638882；共享代码未改）；等预算门实测通过——三臂 Σh = 8192、FFN 参数 4 204 544、总参数 6 962 688、每 token FFN MACs 4 194 304 **逐位相等**（解析值与实测值两条路径互核）；引擎等值门通过——显式 uniform schedule 与引擎缺省（`--mlp-mult 4`）的 state_dict 与前向**逐位一致**（单测钉住 + 必红探针）；活性通过——逐层隐藏维 == schedule、每层 FFN 相对幅度 > 0.47。`uniform` 臂 clean bpc = **1.5291**（同配方历史锚：2613 sequential-s0 1.5254、差 +0.0037；2641 U4-s0 1.5314、差 −0.0023，均 <0.005）。**主判据未测**：`front-big` / `growing` 相对 `uniform` 的配对 Δbpc 未跑成（共享 4090 被外部任务持续占用、等锁未取到；等效成本 2 × 98.3M token 已登记），故本项尚无可下判词。独立复核未做。"
+experiments:
+  - "axes/2-depth/2.3.1-layer-capacity/experiments/2655-layer-capacity-13m"
+  - "axes/2-depth/2.3.1-layer-capacity/experiments/2655-layer-capacity-13m/analysis.md"
+argument: "均匀容量默认「所有深度同等重要」；本项检验该假设。判据必须钉在「固定总参数」上，否则无法把「重分配」与「单纯加参数」区分开。本 WP 的选择是把「固定预算」做成**逐位相等**的两条独立账（Σ_h = 8192 ⇒ FFN 参数与每 token FFN MACs 逐位相等），并用引擎等值门（显式 uniform schedule == 引擎缺省，逐位）把「开关本身是否改变别的东西」排除——这两条都是可失败的检查（`smoke.py` 各带必红探针）。它与宽度轴的 3.1.2 是同一族问题的两个记账面，故把边界写进 gap、由 integrator 统一。可读副产品：层间不等宽会使各层 FLOPs 不同，层间流水的最慢层决定节拍——每层 FFN MACs 分布已逐层落盘（4 194 304 总量在两臂间不变，只是分布不同）。"
 gaps:
-  - "本仓零经验：需先做最小判决（13M、同总参数、{uniform, 前大后小, 逐渐放大, hourglass} 四臂，clean bpc）"
+  - "本仓零经验：需先做最小判决（13M、同总参数、{uniform, 前大后小, 逐渐放大, hourglass} 四臂，clean bpc）——**本轮做了 3 臂中的 uniform，`front-big` / `growing` 未测，hourglass 未列**"
+  - "主判据未测：`front-big` / `growing` 相对 `uniform` 的配对 Δbpc（0.014 带，限配对 Δ、≥5 窗口）未有读数；等效成本 2 × 98.3M token 已登记"
   - "与 3.1.2 逐层宽度变化的边界已由 integrator 核对为不矛盾（按轴分工各记一面）"
   - "逐层容量 schedule 与 2.1.1 早退的联合（浅层容量是否影响可截断性）未测"
+  - "n=1（seed=0）：任何判词只能到「可排序 / 不可排序」二分，不支撑 trend；seed=1 未跑"
 cost_model: "等效理论量：各臂总参数量固定，每 token 的 layer-passes 仍为 L，总 FLOPs 近似不变（只把每层乘加规模在层间重分配）；tokens-per-forward 每步 1。考虑 pipelining：非均匀层宽使各层计算量不同，层间流水的最慢层决定节拍，须以每层 FLOPs 分布（而非任何时间量）评估。"
 
 role_map:
@@ -40,15 +44,15 @@ work_packages:
     goal: "判定「深度形状」是否是独立于宽度的有增益维度"
     means: "13M、同总参数、{uniform, 前大后小, 逐渐放大, hourglass} 四臂，报 clean bpc + 每层容量分布"
     acceptance: "四臂总参数逐位相等；非均匀相对 uniform 有/无越噪声带差异，二选一明确"
-    evidence: "axes/2-depth/2.3.1-layer-capacity/experiments/"
+    evidence: "axes/2-depth/2.3.1-layer-capacity/experiments/2655-layer-capacity-13m"
     review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
-    status: "未开始"
+    status: "进行中"
 
 roadmap:
   - "WP1：逐层容量最小判决（固定总参数）"
   - "复核通过后写 conclusion，更新 status"
 
-status: "未开始"
+status: "进行中"
 started: "2026-10-13T10:37:02+08:00"
 ended: ""
 change_log:
@@ -58,3 +62,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-14T22:15:00+08:00"
+    actor: "WP-2655 worker（ticket 61 · 轴 2 wave 2）"
+    change: "WP1 进行中：按 `.scratch/61-axis2-depth/TICKET.md` §9.2 WP-2655 落 `experiments/2655-layer-capacity-13m/`（README 预登记 P1–P6 / config.json / run.py（支持 --arms/--no-train/--aggregate）/ smoke.py + smoke_report.json / test_2655_layer_capacity.py（8 passed）/ gpu_lock.py / run_remaining.sh / analysis.md / MODEL.md）；三臂改用纯 CLI `--mlp-hidden-sched`（E2，提交 4638882）表达逐层 FFN 隐藏宽，共享代码未改。实测：等预算门（三臂 Σh/FFN 参数/总参数/FFN MACs 逐位相等）、引擎等值门（显式 uniform schedule == 引擎缺省，state_dict 与前向逐位一致，带必红探针）、活性（逐层隐藏维 == schedule、FFN 相对幅度 > 0.47）全过；`uniform` 臂 clean bpc = 1.5291（与 2613 sequential-s0 差 +0.0037、与 2641 U4-s0 差 −0.0023，均 <0.005）。status 未开始 ⇒ 进行中；`front-big` / `growing` 两臂未跑成（等锁超时，等效成本 2 × 98.3M token 已登记），判据线未改、未砍（按契约砍臂不砍判据线）。"

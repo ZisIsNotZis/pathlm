@@ -1,0 +1,81 @@
+{
+  "experiment": "2655-layer-capacity-13m",
+  "criterion": "P1 Δ_front = bpc_uniform − bpc_front-big；P2 Δ_grow = bpc_uniform − bpc_growing（正 = 该臂更好）；P3 逐窗配对 Δ + 窗间 SE；P4 等 FFN 预算门（Σh / FFN 参数 / FFN MACs 逐位相等）；P5 引擎等值门；P6 活性（隐藏维审计）。方差带 0.014（限配对 Δ）。",
+  "variance_bound": 0.014,
+  "steps": 12000,
+  "arms": {
+    "uniform-s0": {
+      "clean_bpc": 1.5291,
+      "sum_hidden": 8192,
+      "hidden_by_layer": [
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024,
+        1024
+      ],
+      "macs_per_token": 7392768,
+      "macs_ffn": 4194304,
+      "params_total": 6962688,
+      "params_ffn": 4204544,
+      "slope_per_1k": 0.00219
+    }
+  },
+  "P1_P2_deltas_by_seed": {
+    "0": {
+      "front-big": null,
+      "growing": null
+    }
+  },
+  "P1_P2_verdict_by_seed": {
+    "0": {
+      "front-big": null,
+      "growing": null
+    }
+  },
+  "P3_window_paired_delta": {},
+  "P4_equal_ffn_budget_check": {
+    "rule": "各臂 Σh = 8192、FFN 参数、每 token FFN MACs 必须逐位相等",
+    "values_by_arm": {
+      "uniform": {
+        "ffn_macs": 4194304,
+        "params_ffn": 4204544,
+        "sum_hidden": 8192
+      }
+    },
+    "status": "insufficient_arms",
+    "pass": false,
+    "note": "<2 臂落盘时 status=insufficient_arms（不判过也不判不过）；模型层的三臂等预算核对见 `smoke_report.json:B_equal_budget`"
+  },
+  "P5_engine_equivalence_gate": {
+    "uniform_s0_clean_bpc": 1.5291,
+    "vs_2613_sequential_s0": 0.0037,
+    "vs_2641_U4_s0": -0.0023,
+    "pass": true,
+    "rule": "显式 uniform schedule 与引擎缺省（`--mlp-mult 4`）逐位一致的**模型层**证明见 `smoke.py`（state_dict + 前向逐位）；本行是**训练层**旁证：与同配方历史臂之差 < 0.005 ⇒ 同引擎同配方"
+  },
+  "P6_liveness": {
+    "uniform-s0": {
+      "hidden_matches_schedule": true,
+      "ffn_params_analytic_matches_measured": true,
+      "ffn_out_rel_mag_by_layer": [
+        2.013784,
+        0.635516,
+        0.613216,
+        0.535703,
+        0.514483,
+        0.483055,
+        0.473345,
+        0.484469
+      ]
+    }
+  },
+  "source_files": [
+    "results_uniform_s0.json"
+  ],
+  "code_hash_run_py": "9baed65e49673e8b877a1e0bac01fd8a73ab3aa79c9b433dbe19ad4d1c339af2",
+  "generated_at": "2026-10-14T22:18:09+0800"
+}
