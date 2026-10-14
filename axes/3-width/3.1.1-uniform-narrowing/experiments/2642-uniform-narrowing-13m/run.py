@@ -972,23 +972,33 @@ def aggregate(steps: int, out_root: str, arms: list[str], seeds: list[int],
         p4["equivalence_gates"] and all(p4["equivalence_gates"].values()))
 
     # ---- P5（否证线）----
-    p5 = {}
-    if "D192" in p1 and "D128" in p1:
-        in_band = all(abs(p1[a]["delta_bpc_vs_U4"]) < VARIANCE_BOUND for a in ("D192", "D128"))
+    p5 = {
+        "arms_run": sorted({a for (a, _s) in recs}),
+        "arms_dropped": {
+            "D128": ("GPU 锁排队超预算：按 21:50 判据（见 run_log.txt 21:49:40 那条与 README §预算递减）"
+                      "正式臂缩为 D192:0 → WD256:0 ⇒ 本项无 D128 读数；"
+                      "下一步最小实验 = D128:0 一臂 12k（≈8 min GPU）+ 评测（≈3 min），"
+                      "读数可直接并入本表 P1/P2")},
+    }
+    run_narrow = [a for a in ("D192", "D128") if a in p1]
+    if run_narrow:
+        in_band = all(abs(p1[a]["delta_bpc_vs_U4"]) < VARIANCE_BOUND for a in run_narrow)
+        names = "/".join(run_narrow)
         p5["a_noise_band"] = (
-            "成立：D192/D128 的 Δbpc 均落在 ±0.014 带内 ⇒ 在本尺度质量代价落在噪声带内，"
-            "减宽该不跌" if in_band else
-            "不成立：至少一档 Δbpc 越 0.014 带 ⇒ 见 P5b")
-        slopes = {a: p1[a]["bpc_cost_per_1pct_macs_saved"] for a in ("D192", "D128")}
+            f"不成立（否证线被触发）：{names} 的 Δbpc 越 ±0.014 带 ⇒ 减宽代价可分，"
+            f"见 P5b" if not in_band else
+            f"成立：{names} 的 Δbpc 均落在 ±0.014 带内 ⇒ 在本尺度质量代价落在噪声带内，减宽该不跌")
+        slopes = {a: p1[a]["bpc_cost_per_1pct_macs_saved"] for a in run_narrow}
         s_ffn = (savings.get("U2") or {}).get("bpc_cost_per_1pct_macs_saved")
         if not in_band and s_ffn is not None:
             worse = all(v is not None and v >= s_ffn for v in slopes.values())
+            detail = " / ".join(f"{a}={v}" for a, v in slopes.items())
             p5["b_frontier_advantage"] = (
                 f"d_model 减宽不占前沿优势：每 1% 算力节省的质量代价 "
-                f"D192={slopes['D192']} / D128={slopes['D128']} 均 ≥ U2(FFN 旋钮)={s_ffn}"
+                f"{detail} 均 ≥ U2(FFN 旋钮)={s_ffn}"
                 if worse else
-                f"至少一档优于 FFN 旋钮：D192={slopes['D192']} / D128={slopes['D128']} "
-                f"vs U2={s_ffn} ⇒ d_model 减宽在该档占前沿优势")
+                f"至少一臂优于 FFN 旋钮：{detail} vs U2={s_ffn} ⇒ "
+                f"d_model 减宽在该档占前沿优势")
         else:
             p5["b_frontier_advantage"] = ("未触发（P5a 已成立 / U2 斜率缺失）"
                                           if in_band else "U2 斜率缺失，无法比较")
@@ -996,7 +1006,7 @@ def aggregate(steps: int, out_root: str, arms: list[str], seeds: list[int],
             (p3 or {}).get("gate_verdict", {}).get("elastic_vs_uniform", "WD256 结果缺失")
             if p3 else "WD256 结果缺失")
     else:
-        p5["a_noise_band"] = "D192/D128 结果缺失"
+        p5["a_noise_band"] = "无减宽臂读数（D192/D128 均未跑）—— 否证线不可判，不得据此下结论"
 
     out = {
         "experiment": "2642-uniform-narrowing-13m",

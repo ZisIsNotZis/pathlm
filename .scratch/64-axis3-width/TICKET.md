@@ -443,3 +443,17 @@
     提到 0.014 但未写「用哪个带」——按 `docs/research-schema.md` §12.1 声明义务**落在 `falsification`**，故不构成缺口（如实登记，不改）。
   - 唯一本轮实修 = `3.1.5::falsification`（ticket 57 的 c1-backfill-writer 只回填到它的 `validation`），已补（提交 `43e88ad`）。
   - `3.2.1`（已完成项、判词以「差 < 0.014」为否证线）的 `falsification` 与 `conclusion` 都**已带声明** ⇒ 无需回填。
+
+## 10.13 `3.1.1`（2642）执行收口与一处 lead 侧事实修补（2026-10-14T22:41+08:00，actor=axis3-lead）
+
+- W-A1b（fresh worker，run `84284b58…`）按 21:50 判据把正式臂缩为 `D192:0` + `WD256:0`（`D128:0` 因 GPU 锁排队超预算放弃，见 `2642/run_log.txt` 21:49:40 那条），
+  两臂各 12k 均 rc=0，提交 `04be624`（README/run.py/单测/analysis/results_*.json/重评产物）。
+- 读数：`D192-s0` clean bpc **1.5841**（d=192/heads=6；每 token MACs 4,364,928 = stock 的 59.0%；总参数 3,944,064）vs 锚 `U4-s0` **1.5314**
+  ⇒ **Δ = +0.0527（3.8× 0.014 带，可分）**；`WD256-s0` 同一 checkpoint 三档：**w=256 → 1.6178 / w=192 → 1.6327 / w=128 → 1.7301**（单调 ✓，越宽越好），
+  且同宽比较 `WD256@192 − D192 = +0.0486`、`WD256@256 − U4 = +0.0864` ⇒ 弹性宽度**付额外代价**。
+- 前沿读法（每省 1% 每 token 算力的 bpc 代价）：D192 = **0.001287** vs FFN 旋钮 U2 = **0.001392** ⇒ 本尺度上 d_model 减宽**不劣于**（略优于）FFN 比例这只旋钮。
+- **lead 侧事实修补**：W-A1b 的 `results.json::P5_falsification` 因「D128 未跑」落进了 `else` 分支，写成「D192/D128 结果缺失」——
+  与事实矛盾（D192 有读数）。writer 已停止（run 已 complete，无法 steer）⇒ 由 axis3-lead 最小修 `run.py` 的 P5 段：
+  新增 `arms_run` / `arms_dropped`（含放弃理由与下一步最小实验与 GPU 等效成本），把判据串改成按**已跑臂**`run_narrow` 计算，
+  并重跑 `python3 run.py --aggregate --arms D192,D128,WD256 --seeds 0` 从落盘 JSON 重新生成（未手工录数字）。修后该字段 =
+  「a_noise_band 不成立（D192 越带）」「b_frontier_advantage 至少一臂优于 FFN 旋钮」「c_wd256_elasticity 不成立」。
