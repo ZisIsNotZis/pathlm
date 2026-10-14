@@ -26,6 +26,7 @@ gaps:
   - "缺「前缀可丢」的端到端协议（训练期右移 → 推理期真丢前缀 KV → 目标仍可测）"
   - "缺 AR 仍 causal 的验收条件（丢前缀后是否长出非因果捷径）"
   - "explicit 半边依赖 1.1.4.1 的修复（逐层状态、前沿）"
+  - "Phase C 的 WP（本项实验 `experiments/2661-implicit-vs-explicit-recall-13m/`）已建好预登记契约（8 条判据线）与入口脚本，并在 §20 GPU 锁队列里排队，但本轮共享卡被其它轴的训练占满、排队超时退让 ⇒ **尚无读数**；下一步 = 锁空闲时直接跑 `run.py`（6 臂纯推理、0 训练 token，约 390k token 的评测），把读数写进 `analysis.md` 并回填本项 `conclusion` 的召回腿。"
 cost_model: "等效理论量：implicit 零新增参数、attention 可见键数由 T 降到 k（O(T²)→O(T·k)）；explicit 每 token 额外 O(d·d_state) 写读、状态与 T 无关（见 1.1.4.1）。两者在同 token 预算下比。考虑 pipelining：implicit 走 chunk 流水；explicit 状态更新并入 decode 流水。"
 
 role_map:

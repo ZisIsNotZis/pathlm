@@ -62,6 +62,8 @@ gaps:
   - "组合实验（carry×depth、carry×量化、carry×GQA×窗口）违反单轴单格，应移出本项 scope（M-14）"
   - "实验编号在同格内不唯一（2617×3、2624×2、2630×2），复现锚点无法唯一定位（M-16）"
   - "「形态税」不作为判据项（62-F3 裁决）：只报前沿位置与支配关系，不把「显式状态点相对同预算纯窗口的质量差」写成结论（本项 conclusion 已按此执行）"
+  - "Phase C 的 WP（1.1.4.1/1.1.4.5 共用实验 `axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/`）已建好预登记契约与入口脚本并在 §20 GPU 锁队列里排队，但本轮共享卡被其它轴的训练占满、排队超时退让 ⇒ **尚无读数**；下一步 = 直接跑该目录的 `run.py`（6 臂纯推理，0 训练 token，建议在锁空闲时一次跑完），把读数写进 `analysis.md` 并回填本项 `conclusion` 的召回轴一半。"
+
 cost_model: "等效理论量：状态 S 大小固定（8192 floats），读/写各一次与 T 无关的 matvec，每 token 额外 FLOPs O(d·d_state)；相对全因果 attention 每层 O(T·d)，在 T 大时该预算点在前沿上左移。考虑 pipelining：状态更新是逐 token 递推，可并入 decode 流水、与 attention 并行。"
 
 role_map:

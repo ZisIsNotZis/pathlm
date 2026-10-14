@@ -33,6 +33,7 @@ gaps:
   - "累计预算与单距离两列未拆（WP2）"
   - "per-head 平均注意距离分布未报"
   - "长 T 子线只覆盖 1.1.1 迁入的 8 个目录；T=1024/2048 无 seed 复本"
+  - "Phase C 的 WP（本项实验 `experiments/2662-hard-window-anchor-13m/`）已完成预登记契约、冒烟（300 步 rc=0）与 `win16a_s0`（窗口 16 + 锚点 8，seed 0）12000 步训练（rc=0），但第二 seed 与评测电池在 §20 GPU 锁队列里排队超时 ⇒ **尚无 clean bpc / 锚点召回读数**；下一步 = 锁空闲时跑 `run.py`（5 臂纯推理、0 训练 token）+ 视预算补 `win16a_s1`（1 臂 × 98.3M token）。"
 cost_model: "等效理论量：窗口把每 token 的可见键数从 T 压到 k，attention 的 QKᵀ 与加权项由 O(T²) 降到 O(T·k)（layer-passes 不变、每层 FLOPs 按 k/T 缩放）；锚点 s 个时键数为 k+s。考虑 pipelining：prefill 段可按 chunk 流水，decode 段每步只算新增 query 对 k+s 个键。长 T 子线按同 step 记 tokens-per-forward 与每 token 等效 FLOPs。"
 
 role_map:
