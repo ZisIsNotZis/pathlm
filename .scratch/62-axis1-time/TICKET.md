@@ -349,7 +349,7 @@
 |---|---|---|---|---|
 | `pl16`（完备机制 γ=1） | 07:40:07 | 08:08:45 | 28.56 min | rc=0；`carry_liveness.alive=true`、`per_layer=true`、`shared_slots=false`、`carry_chunk=256`；训练 CE 1.2389 |
 | `c16`（单共享槽 c256） | 08:09:47 | 08:20:39 | 10.77 min | rc=0；`shared_slots=true`、`chunk=256`；训练 CE 1.2902 |
-| `pl16d`（完备机制 γ=0.99） | 08:21:40 | 08:52:27 | 30.0 min | rc=0；训练 CE（末段）见 `train/pl16d/results.json` |
+| `pl16d`（完备机制 γ=0.99） | 08:21:40 | 08:52:27 | 30.7 min | rc=0；训练 CE（末段）见 `train/pl16d/results.json` |
 
 - `08:54:59–08:55:24` `make_config.py --require-new` ⇒ 13 臂 config（复用臂 sha256 逐个与 2638 config 核对通过）+ `run.py` 评测（0.49 min、峰值 1019 MB、rc=0）。
 - `08:56:23–08:56:54` **给评测补两个反否证探针后重跑**（见 §9.7）：结构因果探针 + 换评测窗口序鲁棒性。
@@ -387,3 +387,52 @@ logits **逐位不变**，12/12 掩码臂 `max_abs_logit_diff_prefix = 0.0`，�
 writer（axis1-lead-2）停止写入 ⇒ 派 **fresh、独立上下文** 复核者（只读，具备 shell），
 复核对象 = 提交 `ccdc91a`（2639 实验全套）+ 其后 `project.yaml`/本 ticket 的改动；
 复核件由复核者**直接写进** `.scratch/62-axis1-time/REVIEW-5.md`。返工 ≤2 轮。
+
+### 9.10 复核记录 round 1（派发 `2026-10-14T09:01:30`（`c77cc0b` 之后）；报告返回并入库 ≤`2026-10-14T09:07:00`）
+
+- 复核者：`reviewer`（fresh、独立上下文、**非本项 writer**）；复核件 = `.scratch/62-axis1-time/REVIEW-5.md`
+  （复核者无写文件工具，报告以最终回复交付，由 axis1-lead-2 **原样复制**入仓；sha256 =
+  `f29a427e3313375e46c08ff8e7a1473e73efaa7f5633a07786fa00de43028d01`，与工件目录源逐位一致）。
+- **能力限制（复核者自述，必须登记）**：该 run **无 shell/执行工具** ⇒ `sha256sum` / `pytest` /
+  `summary.py --check` / `git diff` / GPU 重跑**全部未运行**；它只能读盘 + 手工复算 +
+  `watchdog_diff`（且该工具不含已提交区间）。
+- **判词**：**FAIL（窄范围）** —— **科学主张与数值证据 = PASS**（14 组数字独立复算逐位一致：主判据
+  `+0.068228`、`r=0.80143`、完备度 `0.097384`、chunk 匹配 `0.101345`、chunk 敏感性 `0.003961`、
+  换窗口序 `0.071912`、41.1×σ_cell、4.87×0.014、γ 残留 0.99²⁵⁶=7.63%、窗 111.4 等；
+  状态字节记账 `98304 floats × 2 = 196,608` 与 `run.py` 从**加载后的模型**读数一致；
+  10/10 复用臂与 2638 逐位相同；口径未被软化；12/12 掩码臂 `max_abs_logit_diff_prefix = 0.0`）；
+  **唯一 blocking = B1（记录 ≠ 文件）**：`project.yaml` 的 `experiments:` 列表**没有** 2639，
+  而同一文件的 `change_log`（`2026-10-14T09:10:00`）与该提交信息都写「experiments 新增 2639」。
+- **复核者独立发现（本轮采纳）**：`carry16_s0` 与 `carrypl16_s0` 的**参数量完全相同**
+  （均为 13,801,064）⇒「退化实现压掉 0.0974 bpc」是**等参数对照**，不能被「参数更多」解释。
+- **三个要否证的关键点，复核者的结论**：① 等字节点比较**公平**（且按 fp32 记状态时仍占优）；
+  ② `win32` 在 393,216 B 预算内确为最强纯窗口基线，`carrypl16` 确在包络上；
+  ③ chunk 敏感性 0.003961 **不削减**主判据（最坏方向仍剩 0.064267 = 38.7×σ_cell，而对照臂
+  `win32` 不含 carry 路径、chunk 与它无关）。
+- **non-blocking**：P2-1（`analysis.md` §8 成本表两处记账）、P2-2（`results.json` 含裸 `NaN`、
+  非严格 JSON）、P2-3（`project.yaml` 的「同算力」vs 判据体「同字节」术语不齐，属 C2 落地时的历史文本）。
+
+### 9.11 round-1 处置（actor：axis1-lead-2，`2026-10-14T09:06–09:10`）
+
+| 编号 | 处置 | 落点 |
+|---|---|---|
+| **B1** | `experiments:` 补两行 `2639-carry-perlayer-frontier-13m/analysis.md @ccdc91a`、`…/results.json @ccdc91a`（现 29 条） | `project.yaml` |
+| P2-1 | `pl16d` 墙钟 `30.0 → 30.7` min（= 臂内 `wall_minutes`）；评测墙钟按最新落盘值 0.49 min；合计 ≈75.5 min | `analysis.md` §8、本文件 §9.6 |
+| P2-2 | `run.py` 落盘边界加 `_strict()`（非有限浮点 → `null`）+ `allow_nan=False`；重跑评测 ⇒ `results.json` 现为**严格 JSON**（`pl16d` 的 `rel_dev_vs_other_rule = null`）；**共享代码未改**（源头 `train/pl16d/results.json` 的 `NaN` 是共享 runner 在 γ≠1 时的遥测产物，已在 `analysis.md` §8 记账） | `run.py`、`results.json`、`MODEL.md`（run.py 指纹 `62690cc2… → f04d59da…`）、`analysis.md` §8 |
+| P2-3 | **不自行改**：该措辞来自跨轴裁决 C2 的落地文本（`project.yaml` 的 `milestone.acceptance`/`objective_criteria`），本轴不改裁决用词；登记在 §9.8 的框架项中待 Main 裁 | 本 § |
+
+### 9.12 round-1 复核者请求的代跑检查（axis1-lead-2 代跑，`2026-10-14T09:08–09:10`）
+
+| # | 命令 | 结果 |
+|---|---|---|
+| 1 | `sha256sum train/{pl16,c16,pl16d}/model.pt config.json` | 4/4 与 `config.json` / `results.json.checkpoints` / `MODEL.md` 逐位一致（`382a74aa…`/`3e935b33…`/`cb1940ee…`/`28ba9485…`） |
+| 2 | `pytest …/test_2639_frontier.py -q` | `6 passed` |
+| 3 | `python3 tools/summary.py --check` | `OK：46 个 project.yaml 全部符合 docs/research-schema.md` |
+| 4 | `python3 tools/check_tree.py` | 同上 `OK` |
+| 5 | `git diff --cached --name-only \| wc -l` | `0` |
+| 6 | `git diff d3d33eb..HEAD --stat` | 38 文件；**越界文件数 = 0**（脚本过滤：只允许 2639 实验目录 / `1.1.4.1/project.yaml` / `.scratch/62-axis1-time/**` / 两份 E1 报告） |
+| 7 | 评测重跑（取/放 §20 锁，`run.py`） | rc=0；`pl_minus_win32` 与 `pl_minus_win32_alt_seed` 逐位复现（`0.068228` / `0.071912`） |
+
+### 9.13 round 2（派发与判词）
+
+见本节之后的追加记录。

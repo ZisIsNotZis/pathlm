@@ -22,6 +22,7 @@
 import argparse
 import hashlib
 import json
+import math
 import os
 import sys
 import time
@@ -108,6 +109,24 @@ def keep_mask_for(spec: dict, T: int, dev: str):
         return None
     return window_anchor_keep_mask(T, int(spec["window"]), int(spec.get("anchors", 0)),
                                    device=dev)
+
+
+def _strict(obj):
+    """把非有限浮点（NaN/Inf）换成 None，保证落盘 JSON 严格可解析。
+
+    来源：共享 runner 在 `carry_decay != 1.0` 时会把一个遥测标量写成 `NaN`
+    （`train/pl16d/results.json` 的 `carry_liveness.rel_dev_vs_other_rule`），
+    本文件把它转抄进 `liveness[*].carry_liveness_training` ⇒ 若直接 `json.dump`
+    会写出裸 `NaN`（Python 能读、`jq`/`JSON.parse` 不能）。本轴不改共享代码，
+    只在自己的落盘边界做严格化（复核 REVIEW-5 的 P2-2）。
+    """
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
+    if isinstance(obj, dict):
+        return {k: _strict(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_strict(v) for v in obj]
+    return obj
 
 
 def causality_probe(model, x: torch.Tensor, keep_mask=None) -> dict:
@@ -512,8 +531,9 @@ def main():
         rel: sha256_file(os.path.join(HERE, rel)) for rel in
         ("run.py", "config.json", "train_pl.py", "train_arms.sh")
         if os.path.exists(os.path.join(HERE, rel))})
+    results = _strict(results)          # 非有限浮点 -> null（严格 JSON）
     with open(os.path.join(args.out_dir, "results.json"), "w") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
+        json.dump(results, f, indent=2, ensure_ascii=False, allow_nan=False)
     with open(os.path.join(args.out_dir, "run_log.jsonl"), "w") as f:
         for r in log:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
