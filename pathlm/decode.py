@@ -108,11 +108,17 @@ class Decoder:
             self.layer_pos[i] = [pos[j] for j in keep]
         self.n = after_pos + 1
 
-    def _run_stack_multi(self, h: torch.Tensor) -> torch.Tensor:
+    def _run_stack_multi(self, h: torch.Tensor,
+                         tree_parents: list[int] | None = None) -> torch.Tensor:
         """Run the full stack over K > 1 new positions in ONE forward, each
         query using its own eviction cutoff so the per-position logits are
         reproduced (early exit is not supported here: skipping layers mid-batch
-        would desynchronise the K per-position caches). Returns the final h."""
+        would desynchronise the K per-position caches). Returns the final h.
+
+        `tree_parents` (E3, ticket 67): when given, the new-key attention is the
+        row's ANCESTOR chain (parent pointers; < 0 = root) instead of the plain
+        causal mask. Rows are still placed at consecutive positions p0+j.
+        None (default) = exact causal path, bit-identical to before."""
         model = self.model
         B, K, d = h.shape
         from pathlm.model import Block  # local import: typing only
@@ -141,9 +147,21 @@ class Decoder:
             v_all = torch.cat([cv, v], dim=2)
             L = k_all.shape[2]
             mask = torch.zeros(K, L, dtype=torch.bool, device=h.device)
-            # new keys are causal (position p0 + j attends new keys 0..j)
-            mask[:, L - K:] = torch.ones(K, K, dtype=torch.bool,
-                                         device=h.device).tril()
+            if tree_parents is None:
+                # new keys are causal (position p0 + j attends new keys 0..j)
+                mask[:, L - K:] = torch.ones(K, K, dtype=torch.bool,
+                                             device=h.device).tril()
+            else:
+                # E3（ticket 67）：树注意力——行 j 只看它的**祖先链**（含自身），
+                # 父指针 tree_parents[j]（< 0 = 根，只注意自己）。链结构
+                # （parents[j] = j-1）退化回上面的因果掩码。
+                new_mask = torch.zeros(K, K, dtype=torch.bool, device=h.device)
+                for j in range(K):
+                    l = j
+                    while l >= 0:
+                        new_mask[j, l] = True
+                        l = tree_parents[l]
+                mask[:, L - K:] = new_mask
             if self.window > 0:
                 # per-query eviction of the old keys, vectorised: keep old
                 # position p for query q iff p < anchors or q - p < window.
@@ -187,10 +205,12 @@ class Decoder:
             self.layer_pos[i] = all_pos
         return h
 
-    def step_multi(self, tokens: list[int]) -> tuple[torch.Tensor, dict]:
+    def step_multi(self, tokens: list[int],
+                   tree_parents: list[int] | None = None) -> tuple[torch.Tensor, dict]:
         """Process K > 1 tokens in one batched forward. Returns (final h,
         per-position MTP nodes). Updates the KV cache; `self.n` advances by K.
-        `last_nodes` is set to the LAST position only (the plain path's form)."""
+        `last_nodes` is set to the LAST position only (the plain path's form).
+        `tree_parents` (E3) forwards to `_run_stack_multi`'s tree attention."""
         model = self.model
         K = len(tokens)
         if K < 1:
@@ -203,11 +223,25 @@ class Decoder:
         idx = torch.tensor([list(tokens)], device=dev)
         h = model.embed(idx) + model.pos_embed.weight[self.n:self.n + K]
         h = cap_norm(h, model.mcfg.norm_cap)
-        h = self._run_stack_multi(h)
+        h = self._run_stack_multi(h, tree_parents=tree_parents)
         self.n += K
         nodes = model._mtp_nodes(h)
         self.last_nodes = _slice_nodes(nodes, K - 1)
         return h, nodes
+
+    def step_tree_multi(self, tokens: list[int],
+                        parents: list[int]) -> tuple[torch.Tensor, dict]:
+        """K 个树节点的**一次**验证前向（E3，ticket 67）：行 j 的新键注意力 = 它的
+        祖先链（含自身），父指针 `parents[j]`（< 0 = 根，只注意自己）。
+
+        与 `step_multi` 的唯一差别 = 新键注意力按树结构（而非纯因果）；行的位置仍
+        按顺序 p0+j 记（扁平铺开）。链结构 `parents = [-1, 0, 1, ...]` 时与
+        `step_multi` 的因果掩码逐位一致（单测钉住）。返回 (final h, per-position
+        MTP nodes)；`last_nodes` 置为最后一个位置。"""
+        if len(parents) != len(tokens):
+            raise ValueError(
+                f"parents 长度 ({len(parents)}) 必须等于 tokens 长度 ({len(tokens)})")
+        return self.step_multi(tokens, tree_parents=parents)
 
     def retry(self, h: torch.Tensor) -> torch.Tensor:
         """One latent-retry round: pop the current position from every layer
@@ -328,6 +362,11 @@ def decode_spec(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfi
         if draft_fn is None:
             drafts = [int(nodes[k]["logits"][0, 0].argmax())
                       for k in range(2, 2 + max_drafts)]
+            if (model.pcap.chain_second and max_drafts >= 2
+                    and "chain3" in nodes.get(1, {})):
+                # E3（ticket 67）：位置 N+3 的草稿改由二级条件头 chain3 给出
+                # （条件 = t_{N+2} 的候选）。其余位置仍用直连头。
+                drafts[-1] = int(nodes[1]["chain3"]["logits"][0, 0].argmax())
         else:
             drafts = [int(t) for t in draft_fn(nodes, max_drafts)]
         inputs = [v1] + drafts
@@ -337,7 +376,14 @@ def decode_spec(model: PathLM, prompt: torch.Tensor, n_new: int, pcap: PathConfi
             break  # position budget exhausted; caller sees a short sequence
         # full depth: per-position exit inside a batched forward would
         # desynchronise the per-position caches (engine limitation, documented)
-        h_multi, fnodes = dec.step_multi(inputs)
+        if model.pcap.chain_second:
+            # E3（ticket 67）：二级条件链的验证走树注意力路径（B=K 行；父指针 = 前一
+            # 行 ⇒ 因果链的祖先掩码，与 `step_multi` 逐位一致）。分支树（同级多候选）
+            # 的草稿/接受策略属轴 6 实验，引擎只提供 `step_tree_multi` 这一验证原语。
+            h_multi, fnodes = dec.step_tree_multi(
+                inputs, [-1] + list(range(len(inputs) - 1)))
+        else:
+            h_multi, fnodes = dec.step_multi(inputs)
         n_forward += 1
         n_acc = 0
         while n_acc < len(drafts):

@@ -19,7 +19,8 @@
 ## 1. 接受矩阵 / 拒绝点（受控块：机器核对）
 
 列含义：**结果** = `DepthARModel(cfg)` 或 `DepthARDecoder(model)` 构造结果；
-**拒绝点** = 抛出该 `ValueError` 的 `raise` 所在行（`file:line`）；
+**拒绝点** = 抛出该 `ValueError` 的 `raise` 所在行（`file:line`，`file` ∈
+`pathlm/depth_ar.py` / `pathlm/model.py`）；
 **源码字面片段** = 该行起 4 行内在源码里出现的字面量（f-string 模板按模板写）；
 **运行时消息片段** = 实际抛出的 `str(e)` 里必须出现的子串。
 
@@ -51,6 +52,9 @@
 | C23 | `mlp_hidden_sched=[256, 128]`（逐层 FFN 隐藏宽 schedule，E2/E4 统一面） | 接受 | Block | — | — |
 | C24 | `mlp_hidden_sched` 长度 != n_layers | 拒绝 | pathlm/depth_ar.py:2028 | mlp_hidden_sched 长度必须等于 n_layers | mlp_hidden_sched 长度必须等于 n_layers |
 | C25 | `mlp_hidden_sched=[0, 4]`（非正隐藏宽） | 拒绝 | pathlm/depth_ar.py:2033 | mlp_hidden_sched[{_i}] 必须是 >= 1 的整数 | mlp_hidden_sched[0] 必须是 >= 1 的整数 |
+| C26 | `chain_second=True` + `chain_mode="token"` + `n_mtp=3`（E3 二级条件头） | 接受 | PathLM | — | — |
+| C27 | `chain_second=True` + `chain_mode="latent"`（二级头没有一级 token 链） | 拒绝 | pathlm/model.py:151 | chain_second（二级条件头）建在一级 token 条件链之上 | chain_second（二级条件头）建在一级 token 条件链之上 |
+| C28 | `chain_second=True` + `chain_mode="token"` + `n_mtp=1`（二级头没有一级条件链） | 拒绝 | pathlm/model.py:157 | chain_second（二级条件头）需要一级条件链 | chain_second（二级条件头）需要一级条件链 |
 <!-- CAPABILITY:end -->
 
 ## 2. 边界的三条要点

@@ -4,6 +4,7 @@ can fail on it (M0 lesson: a test that cannot fail is not a test)."""
 import json, math, os, random, sys
 
 import numpy as np
+import pytest
 import torch
 import torch.nn.functional as F
 
@@ -1065,3 +1066,151 @@ def test_exit_probe_depth_supervision_leaves_trunk_untouched():
     assert abs(g_probe[0] - g_base) < 1e-6 * max(g_probe[0], g_base, 1.0), (
         "exit_probe trunk grad must equal the no-dense baseline "
         f"(probe {g_probe[0]} vs base {g_base})")
+
+
+# ---------- E3 (ticket 67): second-level conditional head + tree attention ----------
+
+def _chain_model(chain_second: bool, n_mtp: int = 3) -> PathLM:
+    torch.manual_seed(0)
+    return PathLM(M1, PathConfig(n_mtp=n_mtp, chain_mode="token",
+                                 chain_second=chain_second), vocab_size=50)
+
+
+def test_chain_second_default_off_is_bitwise_inert():
+    """E3 能力面硬门：缺省关（`chain_second=False`）不建任何新参数、不产生 chain3
+    节点，参数/前向与缺省 PathConfig 逐位相同。"""
+    m_off = _chain_model(False)
+    torch.manual_seed(0)
+    m_def = PathLM(M1, PathConfig(n_mtp=3, chain_mode="token"), vocab_size=50)
+    assert m_off.transforms_chain2 is None and m_off.chain_cat2 is None
+    assert m_off.conf_chain3 is None
+    sd_off, sd_def = m_off.state_dict(), m_def.state_dict()
+    assert set(sd_off) == set(sd_def)
+    for k in sd_off:
+        assert torch.equal(sd_off[k], sd_def[k]), f"缺省关时参数漂移：{k}"
+    h = torch.randn(2, 8, M1.d_model)
+    cond = torch.randint(0, 49, (2, 7))
+    with torch.no_grad():
+        a = m_off._mtp_nodes(h, condition=cond)
+        b = m_def._mtp_nodes(h, condition=cond)
+    assert "chain3" not in a[1], "关时不应产生 chain3 节点"
+    for k in a:
+        for key, av in a[k].items():
+            bv = b[k][key]
+            if torch.is_tensor(av):
+                assert torch.equal(av, bv), f"缺省关时节点漂移：{k}.{key}"
+    # 前向 loss 也逐位相同
+    x = torch.randint(0, 49, (2, M1.seq_len))
+    p = tiny_paths(m_off.pcap)[0]
+    with torch.no_grad():
+        l1, _ = m_off(x, [p], x)
+        l2, _ = m_def(x, [p], x)
+    assert torch.equal(l1, l2)
+
+
+def test_chain_second_adds_only_its_three_heads():
+    """打开时新增的只有二级头的 3 个模块（transforms_chain2/chain_cat2/conf_chain3）；
+    其余主干与一级头参数逐位不变（新头建在参数 init 循环之前，不扰动既有随机数流）。"""
+    m_off = _chain_model(False)
+    m_on = _chain_model(True)
+    sd_off, sd_on = m_off.state_dict(), m_on.state_dict()
+    added = set(sd_on) - set(sd_off)
+    assert added == {"transforms_chain2.weight", "transforms_chain2.bias",
+                     "chain_cat2.weight", "chain_cat2.bias",
+                     "conf_chain3.weight", "conf_chain3.bias"}, added
+    assert set(sd_off) - set(sd_on) == set()
+    for k in sd_off:
+        assert torch.equal(sd_off[k], sd_on[k]), f"打开二级头扰动了既有参数 {k}"
+    assert m_on.transforms_chain2.weight.shape == (M1.d_model, M1.d_model)
+    assert m_on.chain_cat2.weight.shape == (M1.d_model, 2 * M1.d_model)
+    assert m_on.conf_chain3.weight.shape == (1, M1.d_model)
+
+
+def test_chain_second_conditions_on_t_i_plus_2_not_t_i_plus_1():
+    """二级条件真的生效：chain3 的条件列对齐比 chain2 **右移一位**。
+
+    只改 `condition[:, 1]`（= 行 0 的 t_{i+2}，也是行 1 的 t_{i+1}）：
+    - chain2 行 1 变（它的条件正是 t_{i+1}），行 0 不变；
+    - chain3 行 0 变（它的条件正是 t_{i+2}），行 1 不变（其条件 = 列 2，未改）。
+    该对齐正是「二级链多推一位」的定义性证据（非死开关）。"""
+    m = _chain_model(True)
+    h = torch.randn(2, 8, M1.d_model)
+    cond_a = torch.zeros(2, 7, dtype=torch.long)
+    cond_b = cond_a.clone()
+    cond_b[:, 1] = 7
+    with torch.no_grad():
+        na = m._mtp_nodes(h, condition=cond_a)
+        nb = m._mtp_nodes(h, condition=cond_b)
+    c2a, c2b = na[1]["chain2"]["logits"], nb[1]["chain2"]["logits"]
+    c3a, c3b = na[1]["chain3"]["logits"], nb[1]["chain3"]["logits"]
+    assert not torch.equal(c2a[0, 1], c2b[0, 1]), "chain2 行 1 应对 t_{i+1} 敏感"
+    assert torch.equal(c2a[0, 0], c2b[0, 0]), "chain2 行 0 不该被列 1 改变"
+    assert not torch.equal(c3a[0, 0], c3b[0, 0]), "chain3 行 0 应对 t_{i+2} 敏感"
+    assert torch.equal(c3a[0, 1], c3b[0, 1]), "chain3 行 1 的条件是列 2，不该被列 1 改变"
+
+
+def test_chain_second_requires_token_chain():
+    """能力面（§22.8）：`chain_second` 只能建在一级 token 条件链之上——latent 模式
+    或 n_mtp<2（没有一级链）下开启它都是死干预，建时报错。"""
+    with pytest.raises(ValueError, match="chain_second"):
+        PathLM(M1, PathConfig(n_mtp=3, chain_mode="latent", chain_second=True),
+               vocab_size=50)
+    with pytest.raises(ValueError, match="chain_second"):
+        PathLM(M1, PathConfig(n_mtp=1, chain_mode="token", chain_second=True),
+               vocab_size=50)
+
+
+def test_step_tree_multi_chain_parents_matches_causal():
+    """树注意力原语：链结构父指针（parents[j]=j-1）退化为因果，与 `step_multi`
+    逐位一致（树代码路径不改变链语义）。"""
+    from pathlm.decode import Decoder
+    m = tiny_model(PathConfig(n_mtp=2)).eval()
+    toks = [int(t) for t in torch.randint(0, 49, (5,))]
+    with torch.no_grad():
+        h1, n1 = Decoder(m).step_multi(toks)
+        h2, n2 = Decoder(m).step_tree_multi(toks, [-1, 0, 1, 2, 3])
+    assert torch.equal(h1, h2)
+    assert torch.equal(n1[1]["logits"], n2[1]["logits"])
+
+
+def test_step_tree_multi_attention_follows_parents_not_causal():
+    """树注意力：行只看祖先链，不看兄弟。父指针 [−1, 0, 0]（行 1、2 是行 0 的两个
+    子节点）下改行 1 的输入**不影响行 2**（兄弟不可见）；因果路径下同改会影响行 2。"""
+    from pathlm.decode import Decoder
+    m = tiny_model(PathConfig(n_mtp=2)).eval()
+
+    def run_tree(row1_tok):
+        with torch.no_grad():
+            d = Decoder(m)
+            for t in (1, 2, 3):
+                d.step(t)
+            h, _ = d.step_tree_multi([5, row1_tok, 7], [-1, 0, 0])
+        return h
+
+    h_a, h_b = run_tree(6), run_tree(9)   # 只有行 1 的输入变
+    assert torch.equal(h_a[:, 2], h_b[:, 2]), \
+        "行 2 是行 0 的子节点，不该看到兄弟行 1"
+    # 因果对照：step_multi 下同样改行 1 会改变行 2
+    def run_causal(row1_tok):
+        with torch.no_grad():
+            d = Decoder(m)
+            for t in (1, 2, 3):
+                d.step(t)
+            h, _ = d.step_multi([5, row1_tok, 7])
+        return h
+
+    assert not torch.equal(run_causal(6)[:, 2], run_causal(9)[:, 2]), \
+        "因果路径下行 2 应看到行 1"
+
+
+def test_decode_spec_tree_path_matches_greedy_with_chain_second():
+    """E3 端到端：打开二级条件头后 `decode_spec` 走树验证路径（B=K 行 + 树注意力），
+    发出流仍与逐 token 贪心逐位相同（验证是精确的，草稿只影响速度）。"""
+    from pathlm.decode import decode, decode_spec
+    m = _chain_model(True).eval()
+    prompt = torch.randint(0, 49, (6,))
+    with torch.no_grad():
+        ref, _ = decode(m, prompt, 12, m.pcap)
+        got, st = decode_spec(m, prompt, 12, m.pcap)
+    assert got == ref, f"tree spec {got} != greedy {ref}"
+    assert st["drafts_offered"] > 0, "至少应提供过草稿（树路径确实在跑）"

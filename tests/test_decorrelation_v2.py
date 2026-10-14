@@ -70,7 +70,10 @@ def test_ladder_configs_differ_only_in_declared_knobs(scale, path_keys):
     if scale == "13m":
         assert path_delta("l1", "repr01") == {"w_repr_decorr": (0.0, 0.1)}
         assert path_delta("repr", "repr01") == {"w_repr_decorr": (1.0, 0.1)}
-    all_keys = {f.name for f in fields(PathConfig)}
+    # 归档后新增的 PathConfig 字段（缺省关、不改变这些臂的行为）允许不在归档配置里显式
+    # 钉住——沿用 `test_decorrelation_at_scale` 对 `w_repr_decorr` 的先例：`chain_second`
+    # （ticket 67 E3 二级条件头）晚于归档，各臂正确地吃它的 False 默认值。
+    all_keys = {f.name for f in fields(PathConfig)} - {"chain_second"}
     for a in path_keys:
         assert all_keys - set(cfgs[a]["path"]) == set(), f"{a} 未钉住全部 path 键"
 

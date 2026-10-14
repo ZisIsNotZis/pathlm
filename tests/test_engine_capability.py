@@ -81,10 +81,22 @@ CASES = {
     "C23": {"kind": "model", "cfg": {"mlp_hidden_sched": [256, 128]}},
     "C24": {"kind": "model", "cfg": {"mlp_hidden_sched": [256]}},
     "C25": {"kind": "model", "cfg": {"mlp_hidden_sched": [0, 128]}},
+    # E3（ticket 67 §2）二级条件头：PathLM 层（不是 DepthARModel）
+    "C26": {"kind": "pathlm", "cfg": {"chain_second": True, "chain_mode": "token",
+            "n_mtp": 3}},  # block = PathLM 自身
+    "C27": {"kind": "pathlm", "cfg": {"chain_second": True, "chain_mode": "latent",
+            "n_mtp": 3}},
+    "C28": {"kind": "pathlm", "cfg": {"chain_second": True, "chain_mode": "token",
+            "n_mtp": 1}},
 }
 
 
 def _build(case: dict):
+    if case["kind"] == "pathlm":
+        from pathlm.config import ModelConfig, PathConfig
+        from pathlm.model import PathLM
+        mcfg = ModelConfig(d_model=32, n_layers=2, n_heads=4, seq_len=32, mlp_mult=2)
+        return PathLM(mcfg, PathConfig(**case["cfg"]), vocab_size=50)
     cfg = DepthARConfig(**_BASE, **case["cfg"])
     model = DepthARModel(cfg, vocab_size=32)
     if case["kind"] == "decoder":
@@ -101,8 +113,10 @@ def test_fact_table_row_matches_engine(rid):
     row, case = _parse_rows()[rid], CASES[rid]
     if row["outcome"] == "接受":
         model = _build(case)
-        assert type(model.blocks[0]).__name__ == row["point"], (
-            f"{rid} 期望产物 {row['point']}，实际 {type(model.blocks[0]).__name__}")
+        got = (type(model).__name__ if case["kind"] == "pathlm"
+               else type(model.blocks[0]).__name__)
+        assert got == row["point"], (
+            f"{rid} 期望产物 {row['point']}，实际 {got}")
         assert row["src_frag"] == "—" and row["msg_frag"] == "—"
         return
     assert row["outcome"] == "拒绝", f"{rid}: 结果列只能是 接受/拒绝，收到 {row['outcome']}"
@@ -110,9 +124,8 @@ def test_fact_table_row_matches_engine(rid):
         _build(case)
     assert row["msg_frag"] in str(ei.value), (
         f"{rid}: 运行时消息不含表里的片段\n  got : {ei.value}\n  want: {row['msg_frag']}")
-    rel, lineno = row["point"].split(":")
-    assert rel == SRC_REL, f"{rid}: 拒绝点必须写 {SRC_REL}，收到 {rel}"
-    src_lines = open(SRC, encoding="utf-8").read().splitlines()
+    rel, lineno = row["point"].rsplit(":", 1)
+    src_lines = open(os.path.join(ROOT, rel), encoding="utf-8").read().splitlines()
     line = int(lineno)
     assert "raise ValueError(" in src_lines[line - 1], (
         f"{rid}: {row['point']} 不是 raise 行（实际内容：{src_lines[line - 1].strip()!r}）")

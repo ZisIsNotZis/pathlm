@@ -81,6 +81,12 @@ class PathConfig:
     # token under teacher forcing / node-1's argmax at inference (design §3,
     # "chain through node-1's sampled token, re-embed + re-predict").
     chain_mode: str = "latent"
+    # E3（ticket 67）：二级条件头开关（默认 False = 关，逐位还原现状）。
+    # True = 在一级 token 条件链（chain2，预测 t_{i+2}）之上追加二级条件头
+    # chain3（预测 t_{i+3}，条件 = t_{i+2} 的候选，context = h 右移一位 =
+    # 验证前向已算出的 N+1 位置主干状态，EAGLE 式复用）。只与
+    # chain_mode="token" 同开（二级链建在一级链之上）——否则建时报错。
+    chain_second: bool = False
     transport: str = "none"        # "none" | "direct" | "linear" | "soft"
     p_retry: float = 0.0           # P(at least one latent-retry round) — the
                                    # count is geometric: P(n>=k) = p_retry**k,

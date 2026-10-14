@@ -145,6 +145,18 @@ class PathLM(nn.Module):
     def __init__(self, mcfg: ModelConfig, pcap: PathConfig, vocab_size: int):
         super().__init__()
         self.mcfg, self.pcap = mcfg, pcap
+        # E3（ticket 67）：二级条件头（chain3，预测 t_{i+3}）建在一级 token 条件链
+        # （chain2）之上 ⇒ 非 token 链时开启它是死干预，显式报错（SCHEMA §10）。
+        if pcap.chain_second and pcap.chain_mode != "token":
+            raise ValueError(
+                "chain_second（二级条件头）建在一级 token 条件链之上：需要 "
+                f"chain_mode='token'，收到 chain_mode={pcap.chain_mode!r}")
+        # E3（ticket 67）：二级头也要求一级条件链真的存在（n_mtp >= 2）——否则
+        # `_mtp_nodes` 根本进不了 chain2 分支，开关就是死的（SCHEMA §10）。
+        if pcap.chain_second and pcap.n_mtp < 2:
+            raise ValueError(
+                "chain_second（二级条件头）需要一级条件链：n_mtp >= 2，收到 "
+                f"n_mtp={pcap.n_mtp}")
         # Seeded RNG for in-forward path sampling (token-retry round): derived
         # from the construction-time torch seed, so training is reproducible.
         self._path_rng = random.Random(torch.initial_seed() ^ 0x5EED)
@@ -186,6 +198,21 @@ class PathLM(nn.Module):
                 nn.init.normal_(m.weight, std=0.02)
                 if m.bias is not None:
                     nn.init.zeros_(m.bias)
+        # E3（ticket 67）：二级条件头（预测 t_{i+3}，条件 = t_{i+2} 的候选）。默认
+        # 关（chain_second=False）⇒ 不建任何参数 ⇒ 逐位还原现状；打开时才建，且建
+        # 在参数 init 循环**之后** ⇒ 不消耗其余参数的随机数（同 seed 下「开/关」两
+        # 臂其余参数逐位一致，单测钉住），新头自己按 std=0.02 初始化。
+        if pcap.chain_second:
+            self.transforms_chain2 = nn.Linear(d, d)
+            self.chain_cat2 = nn.Linear(2 * d, d)
+            self.conf_chain3 = nn.Linear(d, 1)
+            for m in (self.transforms_chain2, self.chain_cat2, self.conf_chain3):
+                nn.init.normal_(m.weight, std=0.02)
+                nn.init.zeros_(m.bias)
+        else:
+            self.transforms_chain2 = None
+            self.chain_cat2 = None
+            self.conf_chain3 = None
 
     # ---------- stages 0/1 ----------
 
@@ -361,6 +388,24 @@ class PathLM(nn.Module):
                 chain = self.transforms[0](h_c)
                 node["chain2"] = {"latent": chain, "logits": chain @ self.embed.weight.T,
                                   "conf": self.conf_chain2(chain).squeeze(-1)}
+                if self.pcap.chain_second:
+                    # E3（ticket 67）：二级条件头——把一级 token 条件链再加深一层：
+                    # 预测 t_{i+3}，条件 = t_{i+2} 的候选。context = h 右移一位
+                    # （h_{N+1}，EAGLE 式复用验证前向已算出的 N+1 位置主干状态，
+                    # 不需额外主干前向）；condition = t_next 右移一位（训练 = 真值
+                    # t_{i+2}；推理 = node-1 候选）。右端用最后一行补齐（与 t_next
+                    # 的补齐同款）——补齐行本就没有监督目标（targets[:, 3:]）。
+                    def _shift_left(x: torch.Tensor) -> torch.Tensor:
+                        return (torch.cat([x[:, 1:], x[:, -1:]], dim=1)
+                                if x.shape[1] > 1 else x)
+                    h_ctx = _shift_left(h)
+                    t_next2 = _shift_left(t_next)
+                    h_c2 = self.chain_cat2(
+                        torch.cat([h_ctx, self.embed(t_next2)], dim=-1))
+                    chain3 = self.transforms_chain2(h_c2)
+                    node["chain3"] = {
+                        "latent": chain3, "logits": chain3 @ self.embed.weight.T,
+                        "conf": self.conf_chain3(chain3).squeeze(-1)}
             nodes[k] = node
         return nodes
 
@@ -467,6 +512,10 @@ class PathLM(nn.Module):
                 loss = self._node_loss(loss, node, tgt, self.vocab_size)
                 if "chain2" in node:
                     loss = self._node_loss(loss, node["chain2"], targets[:, 2:], self.vocab_size)
+                if "chain3" in node:
+                    # E3（ticket 67）：二级条件头对 t_{i+3} 的 CE + conf BCE（复用
+                    # `_node_loss`）。`_node_loss` 内部把 logits 切到 targets 行数。
+                    loss = self._node_loss(loss, node["chain3"], targets[:, 3:], self.vocab_size)
             if r == 0 and pc.w_consistency > 0 and pc.n_mtp >= 2:
                 cons = 1 - F.cosine_similarity(nodes[2]["latent"], nodes[1]["chain2"]["latent"],
                                                dim=-1).mean()

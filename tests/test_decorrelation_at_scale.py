@@ -68,11 +68,12 @@ def test_ladder_configs_differ_only_in_declared_knobs():
     assert path_delta("l1", "divl1") == {"w_diversity": (0.0, 0.05)}
     # 每个 PathConfig 字段都必须被配置文件**显式钉住**（SCHEMA §D2：不许静默吃默认值）。
     # 例外：`w_repr_decorr` 由 ticket 39（2622 去相关 v2）引入，2620 三臂早于它、
-    # 正确地吃它的 0.0 默认值；其余字段一律必须显式。
+    # 正确地吃它的 0.0 默认值；`chain_second`（ticket 67 E3 二级条件头）同理晚于 2620
+    # 归档，三臂吃它的 False 默认（缺省关、不改行为）；其余字段一律必须显式。
     from dataclasses import fields
     all_keys = {f.name for f in fields(PathConfig)}
     for a in ("stock", "l1", "divl1"):
-        assert all_keys - set(cfgs[a]["path"]) == {"w_repr_decorr"}, \
+        assert all_keys - set(cfgs[a]["path"]) == {"w_repr_decorr", "chain_second"}, \
             f"{a} 未钉住全部 path 键"
 
 
