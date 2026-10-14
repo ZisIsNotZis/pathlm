@@ -136,11 +136,19 @@ python3 run.py --aggregate                            # 汇总 P1–P4 → resul
 
 * 预登记与实现已入库：本文件（`README.md`）+ `run.py` + `test_2645_per_exit_readout.py`
   + `train_arms.sh` + `drive.sh`；`pytest -q` 17 项全绿（CPU 门，见 §7）。
-* **实测臂：一条也没跑**（`T` / `PE` / `IND` / `LR` 全部「未跑」）。两条独立原因：
+* **60 步冒烟**（`STEPS=60 HOLD_ALL=1`，`runs` → `smoke/`）：`T` rc=0（22:57，训练 17.9 s）、
+  `PE` rc=0、`IND` rc=0（23:09，训练 19.7 s / 17.9 s，含全电池）；`LR` 训练段跑通
+  （wall 20.1 s，`LR-s0-0k/model.pt` 落盘）但评测电池被**单命令 70 s 上限**截断 ⇒
+  无 `results_LR_s0_0k.json`。冒烟读数（如 PE clean bpc 4.9994、读出参数量 589,824）
+  **只是接线证据**，60 步模型无质量含义，**不入判据**，且被 `--aggregate` 的步数校验排除。
+  冒烟抓到一个真缺陷：`tf_acceptance_engine_agrees` 原按 6 位小数与引擎的 4 位比较 ⇒ 假阴性；
+  已改为 4 位比较并在单测里加计数一致性，见 `analysis.md` §4.4。
+* **12k 臂：一条也没跑**（`T` / `PE` / `IND` / `LR` 全部「未跑」）。两条独立原因：
   ①本单硬约束「单条命令 ≤180 s」vs 同规模实测 12k 墙钟 12.69 min（`2610/run_log.txt`），
-  且引擎无 `--resume` ⇒ 前台无法承载也无法分块续训；②GPU 锁被其它轴长任务连续占用，
-  两次共约 4 min 前台等锁（110 s + 140 s）均未取到（不杀他人进程、不回收他人锁）。
-  ③冒烟（60 步）与 `--stage anchor` 同样需锁 ⇒ 未执行。
+  且引擎无 `--resume` ⇒ 前台无法承载也无法分块续训；②GPU 锁被其它轴长任务反复占用，
+  等锁尝试多次（含 95 s、130 s、140 s 前台等待）均未取到（不杀他人进程、不回收他人锁）。
+* **`--stage anchor`（锚重测，SCHEMA §9 第③道门）未执行**：需一次 GPU 前向电池与锁；
+  `anchor_recheck.json` 不存在，`results.json::anchor.recheck_*` 为 `null`。
 * `results.json` = `--aggregate` 的**纯 CPU 聚合**（每个臂 `status: "未跑"`，无任何读数）；
   `analysis.md` 首段人话摘要 + §4 受阻原因 + §5 与 `3.2.1` 的边界 + §6 下一步最小实验。
 

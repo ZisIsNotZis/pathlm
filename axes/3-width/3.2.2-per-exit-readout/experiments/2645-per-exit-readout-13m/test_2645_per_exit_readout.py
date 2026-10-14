@@ -253,8 +253,15 @@ def test_T8_tf_acceptance_paired_matches_engine_tf_acceptance():
     mine = tf_acceptance_paired(m, eval_arr, n_batches=2, batch_size=2,
                                 device="cpu")
     ref = tf_acceptance(m, eval_arr, n_batches=2, batch_size=2, device="cpu")
-    assert [r["accept"] for r in mine["by_depth"]] == [r["accept"] for r in ref]
+    # 引擎只保留 4 位小数 ⇒ 按 4 位比（自持电池保留 6 位；舍入口径差异不算不等）
+    assert [round(r["accept"], 4) for r in mine["by_depth"]] == \
+        [r["accept"] for r in ref]
     assert mine["n_total"] == 2 * 2 * (SEQ_LEN - 1)
+    assert mine["n_per_batch"] == 2 * (SEQ_LEN - 1)
+    # 计数一致（不是只靠小数位碰巧相等）：逐深度计数 = accept × n 必为整数
+    for row in mine["by_depth"]:
+        c = row["accept"] * row["n"]
+        assert abs(c - round(c)) < 1e-6, (row["depth"], c)
 
 
 def test_T8_depth_curve_and_tf_acceptance_shapes():

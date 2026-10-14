@@ -431,8 +431,11 @@ def evaluate(arm: str, seed: int, steps: int, out_root: str,
                  "eval_generator_seed": 2, "bpc_by_depth": curve,
                  "clean_bpc": curve[-1]["bpc"]},
         "tf_acceptance": tf["by_depth"],
+        # 引擎 tf_acceptance 只保留 4 位小数 ⇒ 按 4 位比较（否则是舍入假阴性，
+        # 见 smoke 抓到的 defect：2610 同款函数）。
         "tf_acceptance_engine_agrees": bool(
-            [r["accept"] for r in tf_ref] == [r["accept"] for r in tf["by_depth"]]),
+            [round(r["accept"], 4) for r in tf["by_depth"]]
+            == [r["accept"] for r in tf_ref]),
         "tf_per_batch_agree": tf["per_batch_agree"],
         "tf_n_per_batch": tf["n_per_batch"],
         "params": param_audit(model),
