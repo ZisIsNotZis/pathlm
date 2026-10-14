@@ -1,68 +1,98 @@
-# WP-2655 · 2.3.1 逐层容量 schedule 最小判决 · 执行报告
+# WP-2655 · 2.3.1 逐层容量 schedule 最小判决 · 收口报告
 
 > 过程工单（`ticket 61 · 轴 2 深度轴`）。事实文档 = `axes/2-depth/2.3.1-layer-capacity/project.yaml`
-> + `axes/2-depth/2.3.1-layer-capacity/experiments/2655-layer-capacity-13m/`。
-> writer = WP-2655 worker（fresh 上下文，唯一写入者）。
+> + `experiments/2655-layer-capacity-13m/`。writer = WP-2655 收口 writer（fresh 上下文，唯一写入者）。
 
-## 0 一句话
+## 0 人话摘要
 
-三臂的相对宽 schedule 与**等预算门/引擎等值门/活性门**都已做完并落盘；`uniform` 臂训完
-（clean bpc **1.5291**，与同配方历史锚差 <0.005）；**`front-big` / `growing` 两臂未跑**
-（共享 4090 被外部任务持续占用、等锁未取到；等效成本 2 × 98.3M token 已登记），
-故主判据（配对 Δbpc）本轮无读数。判据线**未改、未砍**。
+普通 transformer 每层 FFN 一样宽。本实验问：在**总参数、每 token 算力都逐位不变**的前提下，
+把 FFN 隐藏宽沿深度重新分配能不能把质量（clean bpc，越低越好）拉好。三臂都训完了：
 
-## 1 交付物（落盘清单）
+- **前大后小**（浅层宽 1792 → 深层窄 512）：bpc **1.5431**，比 uniform（**1.5291**）**差 0.0140**，
+  正好压在噪声带边界上；逐窗 5/5 都比 uniform 差，方向一致。
+- **逐渐放大**（512 → 1792）：bpc **1.5309**，比 uniform 差 0.0018，远在带宽内 ⇒ **分不出**。
+
+两种非均匀分配都**没有比「每层一样宽」更好**（一种略差、一种不可分）。所以「按深度更聪明地
+分配有限容量能免费换质量」这个假设，在本尺度（8 层 / d256 / 12k 步 / 仅最终深度 CE 监督）
+**没有得到本地证据支持** ⇒ 本项判 **被否证**（预登记否证条件成立）。
+
+## 1 判据与读数（P1–P3）
+
+符号：`Δ = bpc_uniform − bpc_该臂`，**正 = 该臂更好**；噪声带 0.014（限配对 Δ、≥5 窗口）。
+
+| 臂 | clean bpc | Δ（4dp / 全精度） | 逐窗配对 Δ 均值 | 窗间 SE | t | 判词 |
+|---|---|---|---|---|---|---|
+| `uniform` | 1.5291 | — | — | — | — | 对照（stock） |
+| `front-big` | 1.5431 | −0.0140 / −0.0140016 | −0.014002 | 0.003062 | −4.57 | **可排序更差（边界）** |
+| `growing` | 1.5309 | −0.0018 / −0.0018288 | −0.001829 | 0.001794 | −1.02 | **不可排序（H0）** |
+
+- 全精度：`uniform` clean_bpc = 1.5290984、`front-big` 1.5431000、`growing` 1.5309272。
+- `front-big` 边界：全精度配对窗均 Δ = −0.0140016，`|Δ|` 名义超带 1.6×10⁻⁶（4dp 报数恰为
+  −0.0140 = 带界）；5/5 窗口配对 Δ 全负。按预登记 `Δ ≤ −0.014 ⇒ 可分更差` 判「可排序更差」；
+  即便按更保守的 `|Δ| ≤ 0.014 ⇒ 不可排序` 读法，也**得不到正面增益**——H1 在任一读法下都被否定。
+- P3 逐窗配对 Δ（`uniform − 该臂`，同一 generator seed 同一批序，5 窗口 × 4 批）：
+  - `front-big`：[−0.011519, −0.015335, −0.021190, −0.018388, −0.003576]
+  - `growing`：[+0.000331, +0.001921, −0.005843, −0.006500, +0.000947]
+
+## 2 三道门（P4–P6，全过）
+
+| 门 | 结果 |
+|---|---|
+| **P4 等 FFN 预算** | 三臂 Σh = 8192、FFN 参数 4 204 544、总参数 6 962 688、每 token FFN MACs 4 194 304 **逐位相等**；解析式（`Σ(2·h·d+h+d)` / `Σ2·h·d`）与实测互核一致。`results.json:P4.pass=true` |
+| **P5 引擎等值** | 显式 uniform schedule == 引擎缺省（`--mlp-mult 4`）：state_dict + 前向**逐位一致**（带必红探针，`smoke_report.json:A`）；训练层旁证：`uniform` 与 2613 sequential-s0 差 +0.0037、与 2641 U4-s0 差 −0.0023（均 <0.005）。`results.json:P5.pass=true` |
+| **P6 活性** | 逐层隐藏维 == schedule（三臂 true）；逐层 ‖FFN_out‖/‖FFN_in‖ 全 >0：uniform 0.484–2.014、front-big 0.375–2.410、growing 0.442–1.875 |
+
+## 3 交付物
 
 | 文件 | 状态 |
 |---|---|
-| `README.md`（预登记契约，SCHEMA §6 九节，P1–P6 判据线） | ✅ |
-| `config.json`（resolved config + 三臂 schedule + 历史锚） | ✅ |
-| `run.py`（一条命令复现全臂；`--arms` 按臂续跑；`--no-train`；`--aggregate`；按臂取/释放锁） | ✅ |
-| `smoke.py` + `smoke_report.json`（等预算门 / 引擎等值门 / 活性门 / CLI 接线，各带必红探针） | ✅ 全过 |
-| `test_2655_layer_capacity.py`（8 passed） | ✅ |
-| `gpu_lock.py`（`SCHEMA.md` §20 协议） / `run_remaining.sh`（有界 launcher：8 轮、每臂最多等锁 10 min、已完成臂自动跳过） | ✅（在跑） |
-| `results_uniform_s0.json`（逐臂增量） / `results.json`（汇总，已含 P4/P5 复核块） | ✅（仅 uniform 臂） |
-| `analysis.md` / `MODEL.md` / `run_log.txt` | ✅ |
-| `results_front-big_s0.json` / `results_growing_s0.json` | ⏳ 待两臂跑完（run.py 按臂增量落盘） |
+| `README.md`（预登记契约，P1–P6） | ✅ 判据线未改 |
+| `config.json` / `run.py`（`--arms`/`--no-train`/`--aggregate`）/ `smoke.py` + `smoke_report.json` / `test_2655_layer_capacity.py`（8 passed）/ `gpu_lock.py` | ✅ |
+| `results_uniform_s0.json` / `results_front-big_s0.json` / `results_growing_s0.json`（逐臂增量） | ✅ 三臂齐全 |
+| `results.json`（汇总 P1–P6） | ✅ 三臂，`P4.pass=true`、`P5.pass=true` |
+| `analysis.md`（人话摘要 + 三臂表 + 配对 Δ/SE + 三道门 + §12/§13 + C2 两读法 + 跨轴旁证）/ `MODEL.md`（三臂 sha256） | ✅ |
+| `runs/<arm>-s0-12k/model.pt`（三臂权重，不入库） | ✅ 见 `MODEL.md` 哈希 |
 
-## 2 实测（已落盘）
+## 4 命令与真实输出
 
-| 项 | 结果 |
-|---|---|
-| 三臂 Σh | 8192（逐位相等） |
-| 三臂总参数 | 6 962 688（逐位相等） |
-| 三臂 FFN 参数 | 4 204 544（逐位相等；解析式与实测互核一致） |
-| 三臂每 token FFN MACs | 4 194 304（逐位相等；总 MACs 7 392 768） |
-| **引擎等值门**（显式 `1024,…,1024` == 引擎缺省 `--mlp-mult 4`） | ✅ state_dict + 前向**逐位一致**；探针（改一位 ⇒ 必不等）✅ |
-| 活性 | ✅ 逐层隐藏维 == schedule；逐层 ‖FFN_out‖/‖FFN_in‖ = 0.484–2.014 |
-| `uniform` 臂 clean bpc | **1.5291**（窗口法 == `depth_curve` 末深度；逐深度 acc 0.6894） |
-| `uniform` 逐窗 bpc（配对 Δ 用） | [1.5163, 1.5740, 1.5349, 1.5105, 1.5098] |
-| 同配方历史锚对照（P5 训练层旁证） | 2613 sequential-s0 1.5254（Δ=+0.0037）；2641 U4-s0 1.5314（Δ=−0.0023）；均 <0.005 ✅ |
-| 非零 loss 斜率 | 末 25% 窗 +0.00219 /1k 步（仍非零 ⇒ 只作快照口径） |
-| 过程量（**不进判据**） | 训练 98.3M token；峰值显存 932.6 MB；墙钟 8.18 min/臂 |
+```text
+$ date -Iseconds
+2026-10-14T22:55:05+08:00
 
-## 3 阻塞与剩余（诚实登记）
+$ # 三臂完整性（results.json 的 generated_at）
+as of 2026-10-14T22:53:04+08:00；arms = {uniform-s0: 1.5291, front-big-s0: 1.5431, growing-s0: 1.5309}
 
-- **阻塞**：`/tmp/pathlm_gpu.lock` 在本轮窗口内被他人 launcher 持续取用（`wp6.3.2-*` 系列、
-  2651 的 smoke 进程、另有进程 `2420657` 长时间训练）。本 WP 的 `run.py` 每臂最多等锁 10 min
-  （`SCHEMA.md` §20），等不到即记 `gpu_lock_timeout`，**不抢锁、不杀进程、不动他人锁**。
-- **环境异常（登记，未处置）**：uniform 臂训练期间观察到**两个进程同时占用 GPU**
-  （我的 `run.py` 1.5GB + 他人 pid 2420657 4.9GB），而锁目录的 `name` 由他人 launcher 改写：
-  多方 launcher 并发「按臂释放/重取」时锁协议存在竞态（一方 `rmdir` 后另一方继续训练）。
-  我方按 §20 不回收、不动他人锁，仅如实登记；该现象只让我方步时变慢（外因，只影响排期）。
-- **等效成本（不进判据）**：每臂 12k × batch32 × seq256 = **98.3M token**；两臂剩余 **196.6M token**
-  （≈ 2 × 7–9 min 卡时）。等锁超时**没有消耗任何 token** ⇒ 判「受阻」，不是「失败」。
-- **剩余步骤（一条命令，可续跑）**：
-  `bash axes/2-depth/2.3.1-layer-capacity/experiments/2655-layer-capacity-13m/run_remaining.sh`
-  （或 `python3 run.py --arms front-big,growing --seed 0 --steps 12000`），跑完 `results.json`
-  的 P1/P2/P3 与 `P4…pass` 会自动补齐（`--aggregate`）。
-- **收口决定（22:24，lead 指令）**：GPU 锁被轴 6 的多臂驱动长期独占（释放后 1 秒内重取，
-  非 §20.1 的 ≥60 s 窗口），等锁不会在本轮窗口内解决 ⇒ **不再等锁**，本 WP 收口。
-  `run_remaining.sh`（最多 8 轮、每轮每臂最多等锁 10 min、已完成臂自动跳过）保持**可在有窗口时**
-  按臂续跑；它会自行终止，不需要人工清理。
+$ python3 -c "import json; d=json.load(open('results.json')); print(d['P4_equal_ffn_budget_check']['pass'], d['P5_engine_equivalence_gate']['pass'])"
+True True
 
-## 4 复核
+$ python3 -c "import json,statistics,math
+W={a:json.load(open(f'results_{a}_s0.json'))['eval']['windows']['window_bpc'] for a in ['uniform','front-big','growing']}
+for a in ['front-big','growing']:
+    d=[u-v for u,v in zip(W['uniform'],W[a])]
+    print(a,'mean',round(statistics.mean(d),7),'se',round(statistics.stdev(d)/math.sqrt(5),7))"
+front-big mean -0.0140016 se 0.0030623
+growing mean -0.0018288 se 0.0017939
+```
 
-**独立复核未做**（`SCHEMA.md` §14/§14b：复核排在 writer 停止之后、须 fresh 上下文；本轮未启动）。
-writer 自我核对：所有已报数字都有 `results_uniform_s0.json` / `smoke_report.json` / `run_log.txt`
-可回溯；未跑出的臂一律标「未测」，未填占位数字；判据线与 README 预登记原文逐条一致。
+`run_log.txt`（本窗口）：
+```text
+{"arm": "uniform",  "status": "ok", "eval": {"clean_bpc": 1.5291}}
+{"arm": "front-big","status": "ok", "eval": {"clean_bpc": 1.5431}}
+{"arm": "growing",  "status": "ok", "eval": {"clean_bpc": 1.5309}}
+```
+（此前两次 `gpu_lock_timeout` = 等锁超时、**未消耗 token**，非失败；最终三臂均 `status=ok`。）
+
+## 5 残余缺口（诚实登记）
+
+- **`hourglass`（中段大）臂未列**：本 WP 只做前大后小 / 逐渐放大两种非均匀形态。
+- **只重分配 FFN 隐藏宽**：逐层 `d_model` / 注意力头数逐位不变（后者属 `2.3.2` 轴）。
+- **n=1（seed=0）**：判词只到「可排序 / 不可排序」二分，不支撑 trend；seed=1 未跑。
+- **不外推**：只在本尺度（8 层 / d256 / 12k / 仅最终深度 CE）内判读。
+- **跨轴旁证**：`3.1.4 / 2641`（同引擎同配方、等 FFN 预算、n=2）同得 H0；「跨轴证据能否作本项
+  终局判据 / 2.3.1 与 3.1.4 是否同题」属框架性取舍，**已上报 Main 待裁决**，本目录不自行合并或改名。
+
+## 6 复核
+
+**独立复核未做**（`SCHEMA.md` §14/§14b：复核排在 writer 停止之后、须 fresh 上下文）。writer 自我
+核对：所有报告数字都有 `results_<arm>_s0.json` / `results.json` / `smoke_report.json` / `run_log.txt`
+可回溯；判据线与 README 预登记原文逐条一致，未改；未跑出的项一律标「未测 / 未列」。

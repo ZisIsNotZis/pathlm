@@ -4,6 +4,44 @@
   "variance_bound": 0.014,
   "steps": 12000,
   "arms": {
+    "front-big-s0": {
+      "clean_bpc": 1.5431,
+      "sum_hidden": 8192,
+      "hidden_by_layer": [
+        1792,
+        1536,
+        1280,
+        1024,
+        768,
+        768,
+        512,
+        512
+      ],
+      "macs_per_token": 7392768,
+      "macs_ffn": 4194304,
+      "params_total": 6962688,
+      "params_ffn": 4204544,
+      "slope_per_1k": 0.00263
+    },
+    "growing-s0": {
+      "clean_bpc": 1.5309,
+      "sum_hidden": 8192,
+      "hidden_by_layer": [
+        512,
+        512,
+        768,
+        768,
+        1024,
+        1280,
+        1536,
+        1792
+      ],
+      "macs_per_token": 7392768,
+      "macs_ffn": 4194304,
+      "params_total": 6962688,
+      "params_ffn": 4204544,
+      "slope_per_1k": 0.00314
+    },
     "uniform-s0": {
       "clean_bpc": 1.5291,
       "sum_hidden": 8192,
@@ -26,17 +64,42 @@
   },
   "P1_P2_deltas_by_seed": {
     "0": {
-      "front-big": null,
-      "growing": null
+      "front-big": -0.014,
+      "growing": -0.0018
     }
   },
   "P1_P2_verdict_by_seed": {
     "0": {
-      "front-big": null,
-      "growing": null
+      "front-big": "可分（反向）：front-big 在等 FFN 预算下劣于 uniform",
+      "growing": "不可排序（H0）：|Δ| < 0.014 ⇒ 逐层容量分配在本尺度无独立增益"
     }
   },
-  "P3_window_paired_delta": {},
+  "P3_window_paired_delta": {
+    "front-big": {
+      "delta_bpc_uniform_minus_arm_by_window": [
+        -0.011519,
+        -0.015335,
+        -0.02119,
+        -0.018388,
+        -0.003576
+      ],
+      "mean_delta": -0.014002,
+      "se_across_windows": 0.003062,
+      "n_windows": 5
+    },
+    "growing": {
+      "delta_bpc_uniform_minus_arm_by_window": [
+        0.000331,
+        0.001921,
+        -0.005843,
+        -0.0065,
+        0.000947
+      ],
+      "mean_delta": -0.001829,
+      "se_across_windows": 0.001794,
+      "n_windows": 5
+    }
+  },
   "P4_equal_ffn_budget_check": {
     "rule": "各臂 Σh = 8192、FFN 参数、每 token FFN MACs 必须逐位相等",
     "values_by_arm": {
@@ -44,10 +107,20 @@
         "ffn_macs": 4194304,
         "params_ffn": 4204544,
         "sum_hidden": 8192
+      },
+      "front-big": {
+        "ffn_macs": 4194304,
+        "params_ffn": 4204544,
+        "sum_hidden": 8192
+      },
+      "growing": {
+        "ffn_macs": 4194304,
+        "params_ffn": 4204544,
+        "sum_hidden": 8192
       }
     },
-    "status": "insufficient_arms",
-    "pass": false,
+    "status": "pass",
+    "pass": true,
     "note": "<2 臂落盘时 status=insufficient_arms（不判过也不判不过）；模型层的三臂等预算核对见 `smoke_report.json:B_equal_budget`"
   },
   "P5_engine_equivalence_gate": {
@@ -58,6 +131,34 @@
     "rule": "显式 uniform schedule 与引擎缺省（`--mlp-mult 4`）逐位一致的**模型层**证明见 `smoke.py`（state_dict + 前向逐位）；本行是**训练层**旁证：与同配方历史臂之差 < 0.005 ⇒ 同引擎同配方"
   },
   "P6_liveness": {
+    "front-big-s0": {
+      "hidden_matches_schedule": true,
+      "ffn_params_analytic_matches_measured": true,
+      "ffn_out_rel_mag_by_layer": [
+        2.409587,
+        0.681205,
+        0.617298,
+        0.556648,
+        0.467887,
+        0.474526,
+        0.37485,
+        0.389067
+      ]
+    },
+    "growing-s0": {
+      "hidden_matches_schedule": true,
+      "ffn_params_analytic_matches_measured": true,
+      "ffn_out_rel_mag_by_layer": [
+        1.87506,
+        0.441981,
+        0.559165,
+        0.531337,
+        0.532964,
+        0.537012,
+        0.630938,
+        0.681598
+      ]
+    },
     "uniform-s0": {
       "hidden_matches_schedule": true,
       "ffn_params_analytic_matches_measured": true,
@@ -74,8 +175,10 @@
     }
   },
   "source_files": [
+    "results_front-big_s0.json",
+    "results_growing_s0.json",
     "results_uniform_s0.json"
   ],
   "code_hash_run_py": "9baed65e49673e8b877a1e0bac01fd8a73ab3aa79c9b433dbe19ad4d1c339af2",
-  "generated_at": "2026-10-14T22:18:09+0800"
+  "generated_at": "2026-10-14T22:53:04+0800"
 }
