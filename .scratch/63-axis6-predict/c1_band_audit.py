@@ -54,9 +54,12 @@ def main():
             doc = yaml.safe_load(f)
         flat = []
         walk(doc, "", flat)
+        # 审计范围（本轮 C1 回填只审判据/门槛字段）：change_log 是过程台账（历史）；
+        # conclusion / conclusion_review / argument 是**报告字段**——它们引用的是「已测到的 bpc 数」，
+        # 0.014 在此是 bpc 口径下的参考带（§12.1 的声明义务落在 falsification 与设门槛的字段上）。
+        SKIP_PREFIX = (".change_log", ".conclusion", ".conclusion_review", ".argument")
         for path, text in flat:
-            if path.startswith(".change_log"):
-                # change_log 是过程台账（历史），不是判据字段；本轮 C1 回填只审判据字段。
+            if path.startswith(SKIP_PREFIX):
                 continue
             if not BAND_HIT.search(text):
                 continue
