@@ -311,3 +311,27 @@ def test_width_dropout_model_stock_init_and_prefix_forward():
         ref, _ = R.prefix_forward_full(wd, x, w)
     assert torch.equal(aux["depth_logits"][-1], ref)
     assert loss.ndim == 0 and float(loss) > 0
+
+
+# ---------------------------------------------------------------- P5b 带内判据（复核 N-5）
+# 这三条是本 WP 期内新增判据（`p5b_frontier_verdict`）的红-绿门：带内 ⇒ **取消**方向性宣称，
+# 越带才允许方向性判词。若有人把带内分支改回「占前沿优势 / 不落下风」，本组必红。
+def test_p5b_in_band_cancels_directional_claim():
+    txt = R.p5b_frontier_verdict({"D192": 0.001287}, 0.001392, in_band=False,
+                                 delta_bpc_gap=0.0132, bound=0.014)
+    assert "不可排序" in txt
+    assert "0.0132" in txt
+    for bad in ("占前沿优势", "不占前沿优势", "略优于", "不落下风"):
+        assert bad not in txt, f"带内判词不得出现方向性措辞：{bad}"
+
+
+def test_p5b_out_of_band_keeps_directional_claim_worse():
+    txt = R.p5b_frontier_verdict({"D192": 0.003000}, 0.001392, in_band=False,
+                                 delta_bpc_gap=0.0500, bound=0.014)
+    assert "不占前沿优势" in txt and "不可排序" not in txt
+
+
+def test_p5b_out_of_band_keeps_directional_claim_better():
+    txt = R.p5b_frontier_verdict({"D192": 0.000500}, 0.001392, in_band=False,
+                                 delta_bpc_gap=0.0500, bound=0.014)
+    assert "至少一臂优于 FFN 旋钮" in txt and "不可排序" not in txt

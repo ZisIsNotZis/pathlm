@@ -753,6 +753,32 @@ def anchor_config_parity(steps: int, batch_size: int, lr: float) -> dict:
 
 # ---------------------------------------------------------------- 汇总（P1–P5）
 
+def p5b_frontier_verdict(slopes: dict, s_ffn, *, in_band: bool,
+                         delta_bpc_gap, bound: float = VARIANCE_BOUND) -> str:
+    """P5b 判词：两只旋钮的斜率差**回乘算力节省 %** 后才与噪声带同量纲。
+
+    口径来源（复核 R-3.1.1 的 blocking B1）：D192 的 0.001287 与 U2 的 0.001392 都是
+    「相对 U4 的 Δbpc ÷ 算力节省 %」；把 beide 相减得到的 0.000105 本身不是 bpc 量纲，
+    要乘以相应算力节省 % 得到 `delta_bpc_gap`（本实验 = 0.0132）才能与 0.014 带比。
+    带内 ⇒ 只输出「不可排序」，**取消**方向性宣称；越带才允许方向性判词。
+    本函数是 P5b 的**唯一**判词入口，供 `aggregate()` 与单测共用（红-绿门）。
+    """
+    if in_band:
+        return "未触发（P5a 已成立）"
+    if s_ffn is None:
+        return "U2 斜率缺失，无法比较"
+    detail = " / ".join(f"{a}={v}" for a, v in slopes.items())
+    if delta_bpc_gap is not None and delta_bpc_gap < bound:
+        return (f"不可排序（本尺度）：每 1% 算力节省的质量代价 {detail} vs "
+                f"U2(FFN 旋钮)={s_ffn} 的差，对应 Δbpc 差 {round(delta_bpc_gap, 4)} "
+                f"< {bound} 噪声带 ⇒ d_model 减宽与 FFN 比例不可排序；"
+                f"能确定的只是两者互不支配")
+    worse = all(v is not None and v >= s_ffn for v in slopes.values())
+    return (f"d_model 减宽不占前沿优势：每 1% 算力节省的质量代价 {detail} "
+            f"均 ≥ U2(FFN 旋钮)={s_ffn}"
+            if worse else
+            f"至少一臂优于 FFN 旋钮：{detail} vs U2={s_ffn}（Δbpc 差越带）")
+
 def _verdict(arm_bpc: float | None, anchor_bpc: float | None) -> str | None:
     if arm_bpc is None or anchor_bpc is None:
         return None
@@ -975,7 +1001,8 @@ def aggregate(steps: int, out_root: str, arms: list[str], seeds: list[int],
     p5 = {
         "arms_run": sorted({a for (a, _s) in recs}),
         "arms_dropped": {
-            "D128": ("GPU 锁排队超预算：按 21:50 判据（见 run_log.txt 21:49:40 那条与 README §预算递减）"
+            "D128": ("GPU 锁排队超预算：按 README §5「预算与显存」里写的砍臂次序"
+                      "（`README.md:122`；决策点见 `run_log.txt` 中带 `接手者调度调整` 的几行）"
                       "正式臂缩为 D192:0 → WD256:0 ⇒ 本项无 D128 读数；"
                       "下一步最小实验 = D128:0 一臂 12k（98.3M token 匹配步数）+ 同口径评测，"
                       "读数可直接并入本表 P1/P2（排程代价见 ticket 64 §10）")},
@@ -990,27 +1017,14 @@ def aggregate(steps: int, out_root: str, arms: list[str], seeds: list[int],
             f"成立：{names} 的 Δbpc 均落在 ±0.014 带内 ⇒ 在本尺度质量代价落在噪声带内，减宽该不跌")
         slopes = {a: p1[a]["bpc_cost_per_1pct_macs_saved"] for a in run_narrow}
         s_ffn = (savings.get("U2") or {}).get("bpc_cost_per_1pct_macs_saved")
+        s_ffn_delta = (savings.get("U2") or {}).get("delta_bpc")
         if not in_band and s_ffn is not None:
-            worse = all(v is not None and v >= s_ffn for v in slopes.values())
-            detail = " / ".join(f"{a}={v}" for a, v in slopes.items())
-            # 判据口径（复核 B1）：斜率差本身要乘上「算力节省 %」才能与 0.014 bpc 带比较，
-            # 落在带内 ⇒ 两只旋钮在本尺度不可排序，不得写成任一方占优势。
-            delta_bpc_gap = max(abs(p1[a]["delta_bpc_vs_U4"]
-                                    - (savings.get("U2") or {}).get("delta_bpc"))
-                                for a in run_narrow) \
-                if (savings.get("U2") or {}).get("delta_bpc") is not None else None
-            if delta_bpc_gap is not None and delta_bpc_gap < VARIANCE_BOUND:
-                p5["b_frontier_advantage"] = (
-                    f"不可排序（本尺度）：每 1% 算力节省的质量代价 {detail} vs "
-                    f"U2(FFN 旋钮)={s_ffn} 的差，对应 Δbpc 差 {round(delta_bpc_gap, 4)} "
-                    f"< {VARIANCE_BOUND} 噪声带 ⇒ d_model 减宽与 FFN 比例不可排序；"
-                    f"能确定的只是两者互不支配")
-            else:
-                p5["b_frontier_advantage"] = (
-                    f"d_model 减宽不占前沿优势：每 1% 算力节省的质量代价 "
-                    f"{detail} 均 ≥ U2(FFN 旋钮)={s_ffn}"
-                    if worse else
-                    f"至少一臂优于 FFN 旋钮：{detail} vs U2={s_ffn}（Δbpc 差越带）")
+            delta_bpc_gap = (max(abs(p1[a]["delta_bpc_vs_U4"] - s_ffn_delta)
+                                 for a in run_narrow)
+                             if s_ffn_delta is not None else None)
+            p5["b_frontier_advantage"] = p5b_frontier_verdict(
+                slopes, s_ffn, in_band=False,
+                delta_bpc_gap=delta_bpc_gap, bound=VARIANCE_BOUND)
         else:
             p5["b_frontier_advantage"] = ("未触发（P5a 已成立 / U2 斜率缺失）"
                                           if in_band else "U2 斜率缺失，无法比较")
