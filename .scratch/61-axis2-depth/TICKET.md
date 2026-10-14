@@ -451,3 +451,143 @@
 - **下一步最小实验（等效算力成本，墙钟口径不进判据）**：三臂 {全长等分辨率, 先粗后细（浅层 2× 池化 → 深层还原）, 层级式合并}，13M/12k，**对齐总注意力 FLOPs**（`Σ_l O(n_l²·d)`）与总 layer-passes（= L 不变）；每臂 12k 步 ≈ 6–8 min GPU（等效 12k×32×256 = 98.3M token/臂），三臂 ≈ 20–25 min GPU + 本地前向实现（或登记 `.scratch/67-engine-changes`）≈ 60–90 min 工时。
 - **判据**（已预登记在本项 `project.yaml`，不改）：clean bpc 该不跌/可排序（0.014 bpc 带，限配对 Δ、≥5 窗口）+ 每层平均处理 token 数与 attention FLOPs 该跌 + 长程召回（`tools/evalkit/longrange_tasks.assoc_recall_multi_batch`）该不变，率类指标走配对 bootstrap / Wilson CI。
 - **本轮处置**：如实登记为 blocker，不谎报 PASS；`status` 维持 `未开始`（本项无本地工作）。
+
+### 9.8 wave 2 派发 + 2651 等锁超时处置（2026-10-14T22:00+08:00，actor：轴 2 深度轴 lead）
+
+**2651 的「等锁超过 10 min」超时（如实登记 + 处置）**：
+- 现象：`2651/run_log.txt` 与 `run_stdout-smoke.txt` 各记一次 `TimeoutError: 等锁超过 10 min，未取到 GPU 锁`（§20 的 40×15s 上限）；同时段 `/tmp/pathlm_gpu.lock` 先后被他人 worker（轴 1 的 1.1.1 hard-window、轴 5 的 2651-weight-quant）与我自己的 2652 worker 持有。
+- **等效算力成本**（不涉墙钟判据）：三条待训臂 × 12k 步 × batch32 × seq256 = **每臂 98.3M token**，三臂合计 **294.9M token**（≈ 3 × 6–8 min 卡时）；等锁超时**没有消耗任何 token**，只是把这三臂推迟 ⇒ 判「受阻」，不是「失败」。
+- 处置：**重试**（不谎报）：上一轮 writer 留下的**有界**后台 launcher `run_remaining.sh`（最多 12 轮、每轮最多等锁 10 min，`setsid` 脱离）仍在跑，其 smoke 子进程在锁外排队；2652 的 `scaled` 臂同款 wrapper 也在跑（该臂**正在训**：锁 `holder_pid=2421676`、显存 1526 MiB）。
+- **协议偏离（登记）**：2652 的 wrapper 在锁目录里同时写了 `holder_pid` 与 `name`（§20 只要求 `holder_pid`+`heartbeat`）；已按 §20 自愈规则核对**不判陈旧**（holder_pid 存活、有 heartbeat），不影响他人。
+- 待办：三臂齐后由后续 worker 做「四臂电池 + `analysis.md`/`MODEL.md` + 两份 `project.yaml` 判词」。
+
+`2026-10-14T22:02+08:00` 派发 **wave 2**（并发 2）：WP-2654（2.1.2 skipping，`a97a94fd`）、WP-2655（2.3.1，纯 CLI 三臂）→ WP-2653（2.2.2，`dcc53336`）。
+`2026-10-14T21:51+08:00` 2652 已完成 3/4 臂并聚合（`base-s0` 1.5310 / `postln-s0` 1.5284 / `gated-s0` 1.5326，全深度 |Δ| ≤ 0.0026 ≪ 0.014 ⇒ 不可排序）；但 **postln 的逐深度 bpc 在中深度显著更低**（depth 1–7 的 `Δbase−form` = −5.18…−0.48，mid-depth absmax 5.18）⇒ 残差形式不改终质、**显著改中间深度可读性**（2.2.1 的「可截断性」判据线拿到正面读数，须与 2.1.1 早退的耦合一起解读）。
+
+### 9.9 复核派单契约（fresh 复核者用；`SCHEMA.md` §14/§14b + `docs/research-schema.md` §11）
+
+- **对象**（逐 WP 给判词，可一人覆盖多 WP）：本轴本轮新增/改动的**实验目录全套** + 对应 `axes/2-depth/<项>/project.yaml` 改动 + 本 ticket §9；覆盖清单由派单时点名（已完成的 WP 才入复核范围）。
+- **机械项（复核者自己跑，不向 writer 要结论）**：`python3 tools/summary.py --check`；命中实验的目标单测/自检脚本（如 `2651/test_run_persistence.py`）；`analysis.md` 的每个数字与 `results.json` **逐一对账**；`git diff`（revision 级）；实验目录七件套是否齐（README/config/run.py/results.json/run_log/analysis.md/MODEL.md）。
+- **判断项（只判程序判不了的）**：
+  1. **判据线是否被改过**（对照各实验 `README.md` 的预登记判据与 `TICKET.md` §9.2；改过即 FAIL）；
+  2. §12 三对账（算术 / 任务 / 口径）；
+  3. §13 对照臂三要素（输入分布 / 预测什么 / 部署对应）+ 是否同一任务定义同一位置集；
+  4. §10 干预活性是否非零且与训练日志一致（活性量是否周期性落盘）；
+  5. 口径标注（快照/matched-step；**墙钟是否混进判据或 `cost_model`** = FAIL）；
+  6. `status`/`conclusion`/`failure_analysis` 是否与证据一致（**判失败必须 `被否证` + 归因非空且先区分设计/结构/innovation**；不谎报 PASS）；
+  7. §11.2 兄弟字段一致性（区间/数字/指针在 `purpose…argument` 与 `analysis.md` 间对平，不悬空、不双家）。
+- **判词格式**：逐 WP `PASS / FAIL` + **blocking 1..n**（位置 + 违反的判据 + 复现/证据）+ non-blocking 1..n；同时列出**你自己未能覆盖的项**（不得静默）。
+- **轮数上限**：累计 ≤2 轮；返工后由**新的** fresh 复核者复核，不得同一人自裁。
+- **预算**：每个复核者 ≤25 min 有效工时；不得为复核跑 GPU 训练（可用已落盘结果 + CPU 重算）。
+
+### 9.10 暂存纪律（Main 2026-10-14 通报的并发事故 + 本轴纪律）
+
+- **事故**：本轴 WP-2654 的提交 `8037839` 把他人（引擎通道）**已暂存**的 `.scratch/67-engine-changes/TICKET.md` 一并提交（内容对、溯源错）。
+  根因：`git commit` 会提交**索引里已有的全部内容**，包括他人先 `git add` 进来的路径 —— 不是「扫掠式 `git add`」也会出事。
+- **本轴纪律（此后每次提交都做）**：① 只 `git add <显式路径>`（永不 `-A/-u/.`）；② 提交前 `git diff --cached --name-only`
+  **逐条核对**，出现非本轴路径（`.scratch/67-engine-changes/**`、其它轴目录、共享文件如 `pathlm/**`、`train_*.py`、`tools/**`、`docs/**`）
+  立即 `git restore --staged <它>`；③ 提交信息只描述**已验证落地**的本轴改动；④ 不 amend、不 rewrite（要改就补更正提交）。
+- 已核：`c90857d`（WP-2655/2653）与 `8037839`（WP-2654）之后的索引已空，`git diff --cached --name-only` 无残留他人路径。
+
+### 9.11 跨轴 GPU 锁饥饿：本轮实际吞吐与诚实降级（2026-10-14T22:30+08:00，actor：轴 2 lead）
+
+**事实**：`/tmp/pathlm_gpu.lock` 自 21:57 起被**轴 6** 的多臂监督驱动长期持有（holder_pid 2420657/2499655/2511559 等，`name=wp6.3.2-*`），其 run_log 显示**释放后 1 秒内重取**（例：22:12:41 `lock_released` → 22:12:42 `lock_acquired`），不是 `SCHEMA.md` §20.1 要求的「每臂释放 + ≥60 秒窗口」。
+**后果**：我轴三个**有界**launcher（2651 的 `run_remaining.sh`、2654 的 `run_remaining.sh`、2655 的 `run.py --arms …`）连续 5 轮等锁超时（每次 ≤10 min，符合 §20），**只在轴 6 换 stage/seed 的缝隙里拿到过 1–2 次窗口**。已上报 Main（progress_update，22:15），等候裁决；**未杀他人进程、未动他人锁**（轴 6 的锁 holder 存活、非陈旧）。
+
+**等效算力账（不涉墙钟）**：每条 13M/12k 臂 = 12k×32×256 = **98.3M token**。本轮因饥饿**未拿到**的臂：
+| 项 | 未跑臂 | 等效成本 |
+|---|---|---|
+| 2.2.3 / 2.2.4（2651） | `parallel-s1` / `parallel-dual-ln-s1` / `dense-s1` | 3 × 98.3M = **294.9M token** |
+| 2.3.1（2655） | `front-big` / `growing` | 2 × 98.3M = **196.6M token** |
+| 2.1.2（2654） | `stock` / `skip-mid` / `layers6` / `layerdrop-pt` | 4 × 98.3M = **393.2M token** |
+| 2.2.2（2653） | `attn-scalar` / `attn-qkv` | 2 × 98.3M = **196.6M token** |
+合计未跑的等效算力 = **1081.3M token**（≈ 11 条臂）。
+
+**本轮已完成（可作终局判据的本地证据）**：2652 四臂（2.2.1）✓；2651 的 s0 四臂（2613，**既有**）+ `sequential-s1` 电池 ✓；2655 的 `uniform` 臂 + 三门 ✓；2653 的实装 + 等值门/活性门/参数账 ✓；2654 的实装 + 契约 ✓；2.2.4 代价面（解析等效量）✓。
+
+**降级口径（诚实）**：本轮结束时，**不得**把「臂未跑」写成 PASS。逐项终局状态按 §9.12 登记。
+
+### 9.12 逐项终局/受阻登记（本轮结束时的事实）
+
+| 项 | 本轮终局状态 | 依据 / 缺口 |
+|---|---|---|
+| 2.1.1 | `被否证`（本轮前已终局，未动） | `2631-pertoken-exit-seqlevel` + 复核 1–4 |
+| 2.2.1 | 见 §9.13（2652 四臂齐后的判词） | 四臂齐 ✓ |
+| 2.2.3 | 见 §9.13（2651 收口） | s0 四臂 + s1 `sequential` 电池；s1 三臂未跑 |
+| 2.2.4 | 见 §9.13（2651 收口） | s0 质量面 + 代价面 |
+| 2.3.1 | `进行中` + blocker | 本地只测 `uniform` 锚臂；**跨轴证据（轴 3 的 `2641`，同引擎同配方同干预、n=2，H0 不可排序）可用作旁证，但「跨轴干预证据能否当本项终局判据」属框架性取舍 ⇒ 待 Main 裁（同时 2.3.1↔3.1.4 是否同题待裁）** |
+| 2.1.2 | `进行中` + blocker | 实装 + 契约 ✓，四臂未跑 |
+| 2.2.2 | `进行中` + blocker | 实装 + 等值门/活性门 ✓，两臂未跑 |
+| 2.3.2 | `未开始` + blocker | 引擎无逐层分辨率算子；见 §9.7（成本 20–25 min GPU + 60–90 min 实现） |
+
+### 9.14 bash 时长纪律（Main 2026-10-14 通报）
+
+- **单次 bash 总时长（含多段 `sleep`、`for`）≤180s**（我一度用 `sleep 175; sleep 175` = 350s 触发 Main 唤醒，已改）。轮询用**单段 ≤150s**，并在同一次调用里顺带做 CPU 小工作（`tail` 日志、更新本 ticket）。
+- 逐臂 release 锁、纯推理并发插入（§20.1）等既有良好做法继续保持。
+
+### 9.15 冻结与再分配（2026-10-14T22:46+08:00，actor：轴 2 lead）
+
+- **停止两个我方的有界 launcher**：2651 的 `run_remaining.sh`（含其 run.py 子进程）与 2654 的 `run_remaining.sh`。① 若 2651 的三条 s1 臂在**复核期间**落盘，会使 `analysis.md`/两份 `project.yaml` 与 `results.json` 不一致（触发 `SCHEMA.md` invalidate），故必须冻结；缺臂已按等效算力 294.9M token 如实登记。② 2654（2.1.2）在本轮剩余预算内无法达成终局（四臂 ≈36 min GPU + 分析与复核），继续抢锁只会挤掉仍可能终局的项。两条 launcher 的剩余臂与成本已在各自 `project.yaml` 的 `gaps` 里。
+- **保留 2655 的 runner**（唯一仍可能把 blocker 变成终局的项：`front-big`/`growing` 两臂），它按 §20 逐臂取放锁（`name=wp2655-layer-capacity`，holder 存活、非陈旧）。
+- 操作事故（登记）：`pkill -f "2651-inter-layer-topology-s1-13m"` **命中了发起该命令的 shell 自身**（cmdline 含同样字符串）⇒ 命令以 143 结束；与 `SCHEMA.md` §20「不得用 pgrep 判据」同源的反模式。教训：杀进程一律按 **PID**（`ps` + `kill <pid>`），或把模式写成不含字面路径的自匹配规避形式。最终两个 launcher 已停止、锁无残留（holder 仍为 2655 runner）。
+- 复核 A（WP-2651：2.2.3/2.2.4）已派发（writer 22:37 停后）。复核 B 计划覆盖：2.2.1（2652 四臂齐）+ 2.3.1（若两臂落地）+ **受阻项的诚实性**（2.1.2 / 2.2.2 / 2.3.2 的 `project.yaml` 是否如实、无 PASS 谎报）。
+
+### 9.16 结构与提交状态（2026-10-14T22:52+08:00）
+
+- 删除冗余散落文件 `axes/2-depth/2.3.1-layer-capacity/gpu_lock.py`：与 `…/experiments/2655-layer-capacity-13m/gpu_lock.py` **逐字节相同**（`diff -q` 判 IDENTICAL），其内容有正当归宿（实验目录内），散落在研究项目录根属结构缺陷；**证据未删**（同一文件仍在实验目录）。`run.py` 的 `from gpu_lock import …` 由脚本目录（实验目录）解析，不受影响。
+- 已入库（本轴）：`ae1952d` + `7f319f5`（WP-2651 收口，2.2.3 被否证 / 2.2.4 已完成）、`79eec69`（WP-2652 收口，2.2.1 已完成）、`c90857d`/`8a00487`/`906d9d5`（WP-2655/WP-2653）、`8037839`（WP-2654 实装 + 契约）。
+- 未入库（本轮收尾时统一提交）：`TICKET.md`、`2654/run_log.txt`、`2651/run_stdout-*.txt`、`2655/{results*,run_log,run_stdout}.txt`（后三者由仍在跑的 2655 runner 实时写入，**提交前需等它停**）。
+
+### 9.13 WP-2651 / WP-2652 终局判词摘要（§9.12 表里三行所指向的小节）
+
+（本节由 lead 于 2026-10-14T23:00+08:00 补写；复核 A 的 N8 指出 §9.12 三行悬空指向不存在的 §9.13。判词全文见各自 `project.yaml` 与 `analysis.md`。）
+
+| 项 | 终局 status | 判词（一句话） | 臂完整性 |
+|---|---|---|---|
+| 2.2.3 层间学习加权和 | **被否证** | 13M/12k + 0.014 带下，`dense` 相对 stock 单残差**无可排序差异**（s0 配对 Δ = −0.0008），且**逐深度可读性无改善**（中间深度反而更差：depth 1–7 的 Δ = +0.226…+0.544）⇒ 密集跨层线性聚合在本尺度无净增量；归因 = **结构问题为主**（L=8 太浅 + 只有最终深度监督，DenseFormer 要缓解的「串联瓶颈」在本尺度不成立）、设计问题为次（α 无单纯形约束）、非 innovation 本身失败、非统计假象 | **n=1**：s1 只完成基线 `sequential`（1.5288）；`parallel`/`parallel-dual-ln`/`dense` 三臂因跨轴锁饥饿未跑（294.9M token） |
+| 2.2.4 并行子层 | **已完成** | 质量代价**可排序**（s0 配对 Δ = +0.0458 / +0.0402，即 3.27× / **2.87×** 带；review A 阻塞项：0.0402 曾被写成「>3×」）；代价面给出**真实收益**（层内串行链 2 段→1 段、每 token 串行步数 16→8，算力仅差 0.055%，`parallel-dual-ln` 与基线逐位等参）⇒ 结论 = **以可排序的质量代价换层内并行度翻倍：本尺度上不是免费的，是否采纳取决于场景** | **n=1**：s1 的 `parallel`/`parallel-dual-ln` 两臂未跑（196.6M token） |
+| 2.2.1 残差的形式 | **已完成** | 终质维**不可排序**（postln +0.0026 / gated −0.0016 / scaled −0.0103，|Δ| 全 < 0.014）；**可截断性维可分且方向与预登记相反**：post-LN 让中间深度读出**大幅变差**（depth 1 bpc 4.95→10.13、acc 0.131→0.054），固定 1/√(l+1) 缩放让中间深度略好（+0.06…+0.47）但终质略降；post-LN 的读出尺度混杂（`stream_rms` ≈0.87 vs base 1.5–2.1）已量化未剥离 | 四臂齐（s0，n=1） |
+
+### 9.17 冻结复核（2026-10-14T23:05+08:00）
+
+- 发现 2651 的 launcher（`2385245 bash run_remaining.sh`，我 22:46 的 `pkill` 因命中自身 shell 而未真正终止它）在 22:56 又起了全跑（`--arms sequential,parallel,parallel-dual-ln,dense`），一直等锁中（`runs/` 仍只有 `sequential-12k-s1`）。**按 PID 终止**（`kill -TERM 2590916 2385245`）⇒ 本轴 2 不再有任何后台进程；锁无残留（holder 仍是轴 6）；2651 的落盘状态与 `analysis.md`/复核对象**保持一致**。
+- 教训（与 9.15 同源）：`pkill -f "<路径>"` 会命中发起命令的 shell；**杀进程一律 `ps` 找 PID + `kill <pid>`**，并且在「冻结供复核」的场景必须在派复核前确认 `ps` 里已无本轴写入者。
+
+### 9.18 复核记录（本轮，`SCHEMA.md` §14/§14b + `docs/research-schema.md` §11.3）
+
+**先登记一条能力限制（对两轮复核都成立）**：本轮所有复核子 Agent **都没有 shell 与写文件工具** ⇒ 机械项（`summary.py --check`、pytest、`git diff`、sha256）它们**一条都没跑**，判词建立在静态复核 + 逐数字对账上；判词原文落在各自的 run output log（文件系统路径见下），由 lead 代落盘在此处。
+
+| 复核 | 对象 | 判词 | 处置 |
+|---|---|---|---|
+| **A · round 1**（fresh，22:40–22:46；log `…/async-subagent-runs/542d340f-f39d-42fc-9758-57a6cdd5a15a/output-0.log`） | WP-2651（2.2.3 + 2.2.4） | **1 blocking**：`+0.0402` 被写成「均 >3× 带」（实为 **2.87×**；3×0.014 = 0.042 > 0.0402）；+ 8 non-blocking（N1 seed 散度区间、N2、N3「在界内」、N4 三小项、N5 WP1 状态语义、N6 `gaps` 指针、N8 §9.13 悬空指针） | 派处置 writer ⇒ 提交 `f4c991f`：B1 六处落点全改（含既有资产 `2613/analysis.md`）+ N1/N3/N4/N6 + N5（WP1 状态改「进行中」，item 级终局不变，理由入 `change_log`）；lead 补 §9.13（消除悬空指针） |
+| **A · round 2**（fresh，23:01–23:04；log `…/async-subagent-runs/d1e77c71-5a2b-4012-a207-e8d0cb5366d7/output-0.log`） | 同上（处置后） | **blocking：无**——B1 已消除、N1/N3/N4/N6 已落、倍数/区间跨字段一致、无新账实不符；4 条 non-blocking（本字段旧文本「独立复核未做」与 `change_log` 打架——**lead 已按 §11.1 用本轮判词改写 `conclusion_review`**；「3.3 倍」两处四舍五入——**lead 已改为 3.27×**；`2.2.3` 缺 `2613` 改动的 change_log 线索；第 1 轮 N2 未处置） | 其余按 non-blocking 登记 |
+| **B · round 1**（fresh，22:59–23:04；log `…/async-subagent-runs/faa0c3c7-7744-470e-803d-eee344a04636/output-0.log`） | WP-2652（2.2.1）+ WP-2655（2.3.1）+ 受阻项诚实性（2.1.2 / 2.2.2 / 2.3.2） | 逐项：2.2.1 **PASS**、2.3.1 **PASS**（带边界用全精度值判、两侧读法都无正面增益）、2.2.2 **PASS**、2.3.2 **PASS**；**2.1.2 = 1 blocking**：2654 的**冒烟实际跑过**且 `layerdrop-pt` 活性门抓红（layer-passes 8.0 ≠ 设计 7.2），而文档（`analysis.md`/`WP-2654-REPORT.md`/`project.yaml`/本 ticket §9.11–§9.15）全写成「未执行」⇒ 账实不符；+ 12 non-blocking | 派处置 writer（`d02f7540`）：P0 = 2.1.2 全处置（含 393.2M token 账、修接线后再排 GPU 的下一步）；P1 = 2.2.2/2.3.2/2.3.1 小修 + 五项 `conclusion_review` 回填本轮判词 |
+| **lead 机械项**（复核者无 shell，由 lead 跑并在此留原始输出） | — | `python3 tools/summary.py --check` ⇒ `OK：46 个 project.yaml 全部符合 docs/research-schema.md`（exit 0）；`…/2651…/test_run_persistence.py -q` ⇒ **4 passed**；`…/2655…/test_2655_layer_capacity.py -q` ⇒ **8 passed**；`…/2653…/test_2653_interlayer_attn.py -q` ⇒ **9 passed**；`git diff --check` ⇒ 干净 | 与各文档自述**逐条一致**（复核 A round 2 §⑤ 已独立核对 4 passed 那条） |
+
+**未覆盖项（两轮复核共同，不得静默）**：① 无 shell ⇒ 机械项与 sha256 未由复核者独立复现（已由 lead 代跑并留原始输出，但这**不是**独立复现）；② 训练期活性中间轨迹未验（`train_log.jsonl` 不含逐 200 步层权）；③ 未重算 20 窗口 bpc、未重跑 s0 等值门（`all_bitwise_equal=True` 取自日志）；④ 实现代码未逐行审；⑤ `2654` 红门的**根因未定位**（smoke 路径记账错 vs 训练前向没接线）——已写进其下一步最小实验；⑥ 未审 `axes/2-depth/README.md` 轴级表。
+
+### 9.19 本轮终局/受阻总表（as of 2026-10-14T23:15+08:00）
+
+| 项 | status | 一句话结论 | 实验证据 | 独立复核 |
+|---|---|---|---|---|
+| 2.1.1 early exit | **被否证** | 逐 token 早退被同算力固定截断支配（本轮前已终局，本轮未动） | `2631-pertoken-exit-seqlevel` 等 7 项 | REVIEW-1…4（前轮） |
+| 2.2.1 残差的形式 | **已完成** | 终质维不可排序（|Δ| ≤ 0.0103 < 0.014）；**可截断性维可分且方向相反**：post-LN 让中间深度读出大幅变差（depth 1 bpc 4.95→10.13） | `2652-residual-form-13m`（四臂 s0） | B round 1 = PASS |
+| 2.2.3 层间学习加权和 | **被否证** | 无可排序差异（Δ = −0.0008）且逐深度无改善 ⇒ 本尺度无净增量；结构问题为主因 | `2651-inter-layer-topology-s1-13m` + `2613`（s0 四臂） | A round 1（1 blocking）→ 处置 → **round 2 = 无 blocking** |
+| 2.2.4 并行子层 | **已完成** | 质量代价可排序（+0.0458 = 3.27× / +0.0402 = **2.87×** 带）换层内并行度翻倍（串行 16→8 步，算力差 0.055%）⇒ 场景依赖取舍 | 同上（含代价面） | 同上 |
+| 2.3.1 逐层容量变化 | **被否证** | `front-big` 更差 +0.0140（全精度判为可排序更差）、`growing` 不可排序 ⇒ 本尺度无正面增益 | `2655-layer-capacity-13m`（三臂 s0） | B round 1 = PASS |
+| 2.1.2 skipping | `进行中`（**blocker**） | 实装 + 契约已落；冒烟三臂活性过、`layerdrop-pt` 活性红（接线待修）⇒ 四臂未训 | `2654-skipping-seqlevel-13m`（实装+契约+冒烟） | B round 1 = **BLOCKING（已处置，待新一轮 fresh 复核）** |
+| 2.2.2 层间 causal attention | `进行中`（**blocker**） | 实装 + 等值门/活性门/参数账已落；两臂未训（锁饥饿） | `2653-interlayer-attn-13m` | B round 1 = PASS |
+| 2.3.2 逐层分辨率 | `未开始`（**blocker**） | 引擎无逐层分辨率算子；成本 20–25 min GPU + 60–90 min 实现 | 无（`experiments: []`） | B round 1 = PASS |
+
+### 9.20 未满足判据 / 需 Main 裁决（本轮结束）
+
+1. **未满足的 milestone 判据（诚实登记，不谎报 PASS）**：2.1.2（四臂未训，WP1 验收未达）、2.2.2（两臂未训）、2.3.2（未执行）；2.2.3/2.2.4 的「n≥2」未达（WP1 状态已按严格读法改「进行中」，item 级终局判词不变）。未跑臂的等效算力账合计 **1081.3M token**（§9.11）。
+2. **主因 = 跨轴 GPU 锁饥饿**（轴 6 多臂驱动 `lock_released`→1s→`lock_acquired`，非 §20.1 的 ≥60s 窗口）——已 22:15 上报 Main，本轮未获处置回执；**建议**：由 Main 明确「臂间窗口」纪律（§20.1）或给各轴的优先级配额。
+3. **待 Main 裁的框架性取舍**：① **2.3.1 的跨轴旁证可用性**（轴 3 的 `2641` 同干预、同引擎、n=2 得 H0）以及 **2.3.1 ↔ 3.1.4 是否同题**；② **2.1.2 与 2.2.2 的终局化路径**（是否允许把「实现+门已过、臂因锁饥饿未跑」记为终局，或必须等臂）。
+4. **复审未完成**：2.1.2 的 B1 处置由处置 writer 落盘后，**尚未有新的 fresh 复核轮**（`docs/research-schema.md` §11.3 允许累计 ≤2 轮，本轮 2.1.2 只用了 1 轮）⇒ 下一轮派发时应优先补上。
+
+### 9.21 更正（2026-10-14T23:10+08:00）：§9.11/§9.12/§9.15 关于 2654 的「未跑」表述不准
+
+复核 B 的 blocking `2.1.2-B1` 指出：2654 的**冒烟实际执行过**（`2654-skipping-seqlevel-13m/run_log.txt` 末几行），`stock`/`skip-mid`/`layers6` 三臂活性门通过（layer-passes = 8.0/6.0/6.0），**`layerdrop-pt` 活性门抓红**（实测 8.0 ≠ 设计 7.2 ⇒ 按 `2654/README.md` §4 的 P1 该臂作废、须先修接线）。
+- 因此 §9.11 表里 2.1.2 行「四臂未跑」应读作「**四臂未训练**（冒烟已跑：三臂活性过、`layerdrop-pt` 活性红）」；§9.12 的 2.1.2 行同此更正；§9.15 第 1 条对 2654 的表述同此更正。
+- 本更正的落盘由处置 writer（`d02f7540`）负责写入 `2.1.2` 的 `project.yaml`/`analysis.md`/`WP-2654-REPORT.md`；本条是 ticket 侧的同步更正（**不删原文、只加更正**）。
