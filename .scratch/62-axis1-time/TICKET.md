@@ -281,3 +281,109 @@
   - `test_2638_frontier.py` module docstring：`钉住三件事（复核 N8 / B1）` → `钉住以下事项（复核 N8 / B1）`（不写死数量；实际 6 个 `test_*`）。
   - `.scratch/62-axis1-time/REVIEW-4.md` 复制入仓（与 REVIEW-1/2/3 落盘模式一致）。
 - **流程规则（本轮反复账实不符的根因，登记为纪律）**：`conclusion_review` **只写当前（最后一轮）判词**；**历轮判词写本 ticket**（§8.1/8.4/8.6/8.8）；**不得**在同一字段累积多轮判词。本条为**自本轮起**的纪律；本项 `conclusion_review` 现有那段（已写全 R1/R2/R3）按 Main 裁定保留、不再改，自下一次修订起该字段只留最后一轮判词。
+
+---
+
+## 9 Phase B（第二轮）：用**完整机制**重测 1.1.4.1（E1 通道已就绪）
+
+> 触发：`.scratch/67-engine-changes/` 的 **E1**（`CarryChannel` 逐层独立状态 + 内容相关写入门 +
+> 可选衰减 γ，附加式、默认关闭、默认逐位不变；独立复核 **PASS** `REVIEW-E1.md`）。
+> 上一轮 2638 的否证归因是「单共享槽 = 实现退化，完整机制未测」；本轮**消掉这个借口**。
+
+### 9.1 读入的权威输入（`2026-10-14T07:28:58+08:00`，actor：axis1-lead-2）
+
+| 路径 | 读到的关键事实 |
+|---|---|
+| `.scratch/67-engine-changes/TICKET.md` / `E1-CARRYCHANNEL.md`（工件目录）/ `REVIEW-E1.md`（工件目录） | E1 新增 `DepthARConfig.carry_per_layer=False` / `carry_decay=1.0`；逐层模式下每层在**本层当前 hidden** 上写自己的 8192-float 状态（写门 β/键/值随之）；γ 走 `S←γS+write`（分块实现在 fp64 下与逐位置参考对到 <1e-12）；默认路径逐位不变；全量 `849 passed`；独立复核 PASS（含 4 处变异均 RED、默认逐位不变跨 3 树 × 多配置） |
+| `axes/1-time/1.1.4.1-explicit-memory/project.yaml` | `status: 被否证`；否证点 = `carry16` 被 `win17` 严格支配（212,992 B vs 208,896 B，1.624979 vs 1.624104）；`failure_analysis` ①实现退化 ②结构 ③非 innovation 失败 ④交付裁剪 |
+| `.scratch/62-axis1-time/TICKET.md` §4 F5 / §5–§8 | F5 = 「需要改共享引擎」的最小 patch 申请，**本轴不执行**；本轮 E1 已由引擎线完成 ⇒ F5 **关闭**（见 9.8） |
+| `2638/results.json` | 复用臂基线与前沿：`win16_s0 1.628110` / `win17_s0 1.624104` / `win18_s0 1.619953` / `win24_s0 1.599856` / `win32_s0 1.595823` / `win128_s0 1.513325` / `full 1.502689` / `carry16_s0 1.624979`（k_eff 17.33） |
+
+### 9.2 契约的**执行前**修订（`2026-10-14T07:35–07:39`，actor：axis1-lead-2）
+
+预登记契约 = `axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/README.md`
+（判据线 §4 与 §4a 在**任何训练启动之前**写死；下列修订同样发生在训练启动之前）：
+
+1. **`carry_chunk` 记账**：E1 文档把 chunk 定义为「只改浮点累加顺序、不改语义」（复核在 fp64 下
+   对拍到 <1e-12）。300/600 步冒烟实测（`07:30:40–07:39:26`）：`chunk=64` **350 ms/step**、
+   `chunk=256` **153 ms/step**（2.3×）⇒ 新臂一律 `chunk=256`；并**另训一个 chunk=256 的单共享槽
+   对照臂**（`c16c256_s0`），既给「完备 vs 退化」的 chunk 匹配对照、也充当 chunk 敏感性探针。
+2. **臂集与砍序**：主臂 `pl16`（完备机制，γ=1）不可砍；其次 `c16`（9 min）；`pl16d`（γ=0.99）
+   若不能在 `08:30` 前启动则**不跑**并列入 gaps；**种子臂本轮不跑**（臂内噪声由 σ_cell 覆盖，
+   列入 gaps）。
+3. **主判据的结构变化**：`carrypl16` 的每位置等效字节 = 196,608（窗口 16）+ 196,608
+   （12 层 × 8192 floats fp16）= **393,216 B = `win32_s0` 的字节数** ⇒ 主判据是**等预算点的直接点比**
+   （`pl_minus_win32 = bpc(win32) − bpc(carrypl)`），**不依赖任何插值**。
+
+### 9.3 GPU 锁与冒烟（`2026-10-14T07:30–07:39`，actor：axis1-lead-2）
+
+- `07:28:58` `nvidia-smi` ⇒ 676 MiB / 24564 MiB，util 0%；`/tmp/pathlm_gpu.lock` **不存在**
+  （其它 `*.lock` 属别线）⇒ 本轴按 `SCHEMA.md` §20 取 `pathlm_gpu.lock`。
+- 冒烟 4 次（每次都**取锁→跑→放锁**，逐条 rc=0）：`smk_pl16`（300 步 chunk64，118 s）、
+  `smk_pl16_c256`（300 步 chunk256，48 s）、`smk600_c64`（600 步，223 s）、`smk600_c256`（94 s）。
+  步时：**c64 350 ms/step、c256 153 ms/step**；峰值显存 4.87 GB（c64）/ 9.44 GB（c256）。
+  冒烟的 `carry_liveness` 已证开关真的开：`per_layer=true`、`shared_slots=false`、
+  `n_layers_sampled=12`、`alive=true`。
+
+### 9.4 训练执行（`2026-10-14T07:40:07` 起，actor：axis1-lead-2）
+
+`nohup env ARMS="pl16 c16 pl16d" bash train_arms.sh > train_driver.log &`，逐臂取/放锁、臂间 61 s。
+见 §9.6 的实测落地记录。
+
+### 9.5 执行前的两处补充登记（`2026-10-14T07:42–07:44`，均在**评测跑起来之前**）
+
+1. **`run.py` 的 CPU dry-run 验证**（`07:42:00–07:43:25`）：用只含 6 个**复用臂**的临时 config
+   （`/tmp/2639_cfg_cpu.json`，`device=cpu`，2×2 批）把评测链路端到端跑通
+   （sha256 断言 → 掩码自检 → bpc → 前沿 → location → liveness → 复用等值块 → 落盘），
+   确认分节与键名无 bug ⇒ 正式评测只需换 config。dry-run 产物落在 `/tmp/2639_eval_check/`
+   （**不进仓库**，只作过程证据；其 bpc 是 2×2 批的粗口径，不可引用）。
+2. **敏感性口径（`sensitivity`）执行前登记**：状态的固定成本与 T 无关、窗口 KV 随 T 线性增长，
+   冻结口径（62-F2 / 2638）= 状态整块计作等效字节（同 T 同 footprint）。本轮另报**摊平口径**
+   （`k_eff_amort = (kv + state/T)/12288`）作**敏感性**，**不构成判据**；两口径的读数在
+   `results.json.sensitivity` 与 `analysis.md` 并列。真实长上下文（T≫256）未测 ⇒ 进 `gaps`。
+   （契约文本落 `2639/README.md` §4a 末条，时间戳同上。）
+
+### 9.6 训练与评测实测（`2026-10-14T08:52:27–08:58:55`，actor：axis1-lead-2）
+
+| 臂 | 取锁 | 放锁 | 墙钟 | 结果 |
+|---|---|---|---|---|
+| `pl16`（完备机制 γ=1） | 07:40:07 | 08:08:45 | 28.56 min | rc=0；`carry_liveness.alive=true`、`per_layer=true`、`shared_slots=false`、`carry_chunk=256`；训练 CE 1.2389 |
+| `c16`（单共享槽 c256） | 08:09:47 | 08:20:39 | 10.77 min | rc=0；`shared_slots=true`、`chunk=256`；训练 CE 1.2902 |
+| `pl16d`（完备机制 γ=0.99） | 08:21:40 | 08:52:27 | 30.0 min | rc=0；训练 CE（末段）见 `train/pl16d/results.json` |
+
+- `08:54:59–08:55:24` `make_config.py --require-new` ⇒ 13 臂 config（复用臂 sha256 逐个与 2638 config 核对通过）+ `run.py` 评测（0.49 min、峰值 1019 MB、rc=0）。
+- `08:56:23–08:56:54` **给评测补两个反否证探针后重跑**（见 §9.7）：结构因果探针 + 换评测窗口序鲁棒性。
+- `08:58:23–08:58:55` 因修正 `make_config.py` 的 `reused_from` 标签（把 2634 来源的 4 个臂标错成 2638）重生成 config 并**第三次**跑评测 ⇒ 结构化数值逐位复现（`+0.068228` 等全部相同）。
+
+### 9.7 主结果与两读法（`2026-10-14T08:55`）
+
+**完备机制在等字节点上翻转了上一轮的否证**：`carrypl16`（窗口 16 + 12×8192 floats 状态 =
+393,216 B = `win32` 的字节数）clean bpc **1.527595** vs `win32` **1.595823** ⇒
+`pl_minus_win32 = +0.068228`（41×σ_cell=0.00166、4.9×0.014 带）；下包络 =
+`win16 → win17 → win18 → win24 → win32 → **carrypl16** → win128 → full`；补回
+「窗口 16 → 全量」差距（0.125421）的 **80.1%**（单共享槽实现只有 2.5%）；完备度本身
+= `carry16_s0 (1.624979) − carrypl16 (1.527595) = 0.0974 bpc`（chunk 匹配口径 0.1013）。
+`pl16d`（γ=0.99）1.585531：仍优于等字节窗口（+0.010292）但比 γ=1 差 0.0579。
+
+**看到第一轮评测后的两个补充探针（如实登记：判据/臂集/数字均未改，只加反否证检查）**：
+① **结构因果探针**（`objective_criteria` 的「必须不变」项）：只改后半段 token ⇒ 前半段
+logits **逐位不变**，12/12 掩码臂 `max_abs_logit_diff_prefix = 0.0`，且探针有抓力
+（后半段差 21.6–26.7）⇒ 完备机制**无未来泄漏**；
+② **换评测窗口序**（`window_seed=7`）：`pl_minus_win32 = +0.071912`（同号、同量级）
+⇒ 不是窗口序运气。
+两探针均**加强**而非软化判定，且落在 `results.json` 的 `liveness.*.causality` 与
+`robustness_alt_window_seed`。
+
+### 9.8 上报 Main 的框架性取舍（本轮新增）
+
+| # | 取舍 | 我的处置 | 状态 |
+|---|---|---|---|
+| F6 | **状态的「每位置等效字节」口径**：冻结口径（62-F2/2638）= 状态整块计作等效字节（同 T 同 footprint）；另一口径 = 状态是固定成本、按 T 摊平（`k_eff_amort`）⇒ 完备臂 16.06 而非 32.00。两口径回答不同问题（「同上下文长度同内存」vs「长上下文下摊平」） | 判据**一律**用冻结口径；摊平口径在 `results.json.sensitivity` 与 `analysis.md` §3 **并列报数**（+0.100265，同号）⇒ 主结论不依赖该口径选择 | 记录待裁（不改判据） |
+| F7 | **1.1.4.1 的 `status` 标法**：主问题已有明确结论（完备机制在前沿上占优），但 milestone 字面验收（每预算点两轴 + 与业界实现对齐）仍未交付 ⇒ 记 `进行中`（schema §7：「做到多少」写 conclusion/gaps，状态只回答「做完没有」），不记 `已完成`（避免对 milestone 过度声明）、更不记 `被否证` | `status: 进行中` + `failure_analysis: ""`（schema：未判失败时写空）+ `conclusion` 里两读法并列 | 待 Main 裁 |
+| F8 | **E1 的两半绑在一个开关**：`carry_per_layer` 同时打开「逐层独立状态」与「写门/键/值取自本层当前 hidden」⇒ 0.0974 bpc 的增益不能归因到哪一半 | 不擅自改共享引擎加开关（边界纪律）；记入 `gaps` 首条 + `analysis.md` §5/§7 | 待补实验 |
+
+### 9.9 复核计划（本轮）
+
+writer（axis1-lead-2）停止写入 ⇒ 派 **fresh、独立上下文** 复核者（只读，具备 shell），
+复核对象 = 提交 `ccdc91a`（2639 实验全套）+ 其后 `project.yaml`/本 ticket 的改动；
+复核件由复核者**直接写进** `.scratch/62-axis1-time/REVIEW-5.md`。返工 ≤2 轮。
