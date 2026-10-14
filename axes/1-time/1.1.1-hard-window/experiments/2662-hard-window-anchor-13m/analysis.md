@@ -36,9 +36,9 @@
    ——是「多花 50% 可见键」换来的质量，不是「同可见集下免费变好」。
 2. **召回腿（锚点区能不能被取回）**：仪器把一条 6 字节短语扎在 `p<8`（锚点槽内），看模型能不能接出
    下一个字节；对照 = 同一序列**不植入**短语的配对地板（只剩语料先验）。锚点臂锚点桶植入召回
-   种子 0 = **48.16% vs 地板 45.56% = +2.592pp**（Newcombe 95% CI **[−1.774, 6.958]** 含 0；
+   种子 0 = **48.16% vs 地板 45.56% = +2.592pp**（两比例差（正态近似/未 pooling） 95% CI **[−1.774, 6.958]** 含 0；
    按针配对 bootstrap CI **[1.196, 4.187]** **不含 0**，`passes_both=false`）；
-   种子 1 = **48.26% vs 47.16% = +1.097pp**（Newcombe **[−3.275, 5.468]**、配对 bootstrap **[−0.299, 2.592]** **都含 0**）。
+   种子 1 = **48.26% vs 47.16% = +1.097pp**（两比例差（正态近似/未 pooling） **[−3.275, 5.468]**、配对 bootstrap **[−0.299, 2.592]** **都含 0**）。
    ⇒ 按预登记「**两个 seed 都过才算该腿有区分力**」，`win16a_both_seeds_pass_both_ci = false`
    ⇒ **该腿在本 n 下不可判**（不是「被否证」，也不是「成立」）。
 3. **负对照（窗外仍停地板）**：窗外桶（`p≥8` 且有位置不可见）两个种子的植入 vs 地板差
@@ -86,7 +86,7 @@
 | # | 判据 | 方向 | 预登记判定线 | 实测（键路径） | 是否过线 |
 |---|---|---|---|---|---|
 | ① | **质量腿（价格）** | 该涨（或如实报税） | 报 `price_bpc`；越本格自测带可排序；0.014 并列 | `quality_leg.price.0.price_bpc = −0.005583`、`.1.price_bpc = −0.007294`（两种子同向 = **收益**）；`sortable_vs_sigma_cell=true`、`sortable_vs_0.014=false` | ✅ 过（越本格带、不越 0.014 带） |
-| ② | **锚点召回（主判据）** | 该涨 | 逐臂 CI 下界 > 0；**两 seed 都过**才算有区分力 | s0 `delta_pp=2.592`、Newcombe `[−1.774,6.958]`、配对 bootstrap `[1.196,4.187]`；s1 `delta_pp=1.097`、Newcombe `[−3.275,5.468]`、配对 `[−0.299,2.592]`；`criteria.c2_anchor_bucket_above_floor.win16a_both_seeds_pass_both_ci=false` | ❌ **未过**（s1 两套 CI 都含 0；预登记门槛 = 两 seed 都过） |
+| ② | **锚点召回（主判据）** | 该涨 | 逐臂 CI 下界 > 0；**两 seed 都过**才算有区分力 | s0 `delta_pp=2.592`、两比例差（正态近似/未 pooling） `[−1.774,6.958]`、配对 bootstrap `[1.196,4.187]`；s1 `delta_pp=1.097`、两比例差（正态近似/未 pooling） `[−3.275,5.468]`、配对 `[−0.299,2.592]`；`criteria.c2_anchor_bucket_above_floor.win16a_both_seeds_pass_both_ci=false` | ❌ **未过**（s1 两套 CI 都含 0；预登记门槛 = 两 seed 都过） |
 | ③ | **负对照：窗外停地板** | 该跌（停地板） | 植入 vs 地板差 95% CI 含 0 | s0 `+0.098pp CI[−1.535,1.73]`、s1 `−0.056pp CI[−1.689,1.577]`；`criteria.c3_beyond_bucket_stays_at_floor.*.ci_contains_0=true` | ✅ 过（窗外无区分力） |
 | ④ | **毁源敏感度** | 必须不变 | 变体 B（毁 `[8,64)`）：锚点臂 `max|Δlogit|==0`；变体 A（毁 `[0,64)`）：锚点臂 `>0` 且 `premise_holds=false` | `far_source_probe.win16a_*.beyond_anchor.max_abs_logit_diff_on_eval_rows = 0.0`、`premise_holds=true`；`.far_all.max_abs_logit_diff_on_eval_rows = 6.319/6.109`、`premise_holds=false`；`criteria.c4_beyond_anchor_bitwise_insensitive=true` | ✅ 过（与预登记预言逐条相符） |
 | ⑤ | **因果性** | 必须不变 | 前半段 logits 逐位不变（`max|Δlogit_prefix|==0`） | `selfchecks.*.causality.max_abs_logit_diff_prefix = 0.0`（5 臂全 0）；`criteria.c5_causality_no_future_leak=true`；后半段确实变（`changed_suffix_max_abs_logit_diff` 24.6–29.9，非死探针） | ✅ 过 |
@@ -141,7 +141,7 @@
 
 ### 4a. 锚点桶（针植入 `p<8`，`n=1003`）
 
-| 臂 | 植入命中/n | 植入召回 | 配对地板召回 | 差 `delta_pp` | Newcombe 95% CI (pp) | 按针配对 bootstrap CI (pp) | 两套都过？ |
+| 臂 | 植入命中/n | 植入召回 | 配对地板召回 | 差 `delta_pp` | 两比例差（正态近似/未 pooling） 95% CI (pp) | 按针配对 bootstrap CI (pp) | 两套都过？ |
 |---|---|---|---|---|---|---|---|
 | `win16a_s0` | 483/1003 | 0.481555 | 0.455633 | **+2.592** | **[−1.774, 6.958]**（含 0） | **[1.196, 4.187]**（不含 0） | 否（`passes_newcombe=false`） |
 | `win16a_s1` | 484/1003 | 0.482552 | 0.471585 | **+1.097** | **[−3.275, 5.468]**（含 0） | **[−0.299, 2.592]**（含 0） | 否 |
@@ -166,7 +166,7 @@
 
 ### 4b. 负对照：beyond 桶（窗外，`p≥8` 且有位置不可见）
 
-| 臂 | 植入召回 | 配对地板召回 | 差 `delta_pp` | Newcombe 95% CI (pp) | CI 含 0？ |
+| 臂 | 植入召回 | 配对地板召回 | 差 `delta_pp` | 两比例差（正态近似/未 pooling） 95% CI (pp) | CI 含 0？ |
 |---|---|---|---|---|---|
 | `win16a_s0` | 0.466481 | 0.465505 | **+0.098** | [−1.535, 1.73] | ✅ 含 0 |
 | `win16a_s1` | 0.467178 | 0.467735 | **−0.056** | [−1.689, 1.577] | ✅ 含 0 |
@@ -257,3 +257,7 @@
   `results.json::checkpoints.<arm>.sha256`（5 臂全部 `sha256_verified=true`）与
   `driver_all.log` 中，但独立的权重清单文件缺失。列为交付缺口（不影响本判读数字）。
 - 本判读**不改**任何预登记判据线；数字只取自 `results.json` / `run_log.txt` / `driver_all.log`。
+
+---
+
+> **命名订正（本轮复核 F4，2026-10-14T23:40:11+08:00）**：文中原写的「Newcombe」实为**两比例差的正态近似（未 pooling）** CI ——即引擎 `tools/evalkit/carry_channel.py::two_proportion` 的实现口径（`diff ± 1.96·√(p_aq_a/n_a + p_bq_b/n_b)`），真 Newcombe 与它在**本次被判的每一个格子上同号、同「含 0 / 排除 0」**（独立复算见 `.scratch/62-axis1-time/REVIEW-9.md`）。预登记写的就是「Newcombe」，本实验以该变体交付，差异已在 ticket 62 §10.28 登记（共享工具的命名缺陷不在本轴边界内）。

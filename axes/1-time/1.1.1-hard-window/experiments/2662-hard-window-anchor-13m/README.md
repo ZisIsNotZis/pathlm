@@ -123,6 +123,11 @@
    判据④变体 A 对锚点臂传 False 并记录 `premise_holds=False`）。`probe_kwargs` 同步带上
    `corrupt_lo`。`win16_bpc` / `channel_off` / `paired_cluster_bootstrap_ci` 一字不改。
 
+## 5a 交付口径备注（不改 §4 判据线）
+
+- 判据② 的「CI 用 Newcombe 两比例差」在交付实现里是**正态近似（未 pooling）**变体（`tools/evalkit/carry_channel.py::two_proportion`，`diff ± 1.96·√(p_aq_a/n_a + p_bq_b/n_b)`）。两法在本次被判的所有格子上**同号、同「含 0 / 排除 0」**，故 §4 的判定线**未变**；差异见 ticket 62 §10.28。
+- 判据② 同时并列报了**配对 bootstrap**（逐针配对、口径与 §12.1 一致），其结论与上一条一致/更严的情况已在 `analysis.md` 逐格标出。
+
 ## 6 训练配方与命令原文
 
 ```
