@@ -1,0 +1,70 @@
+{
+  "experiment": "2654-skipping-seqlevel-13m",
+  "grid": "axes/2-depth/2.1.2-skipping",
+  "ticket": ".scratch/61-axis2-depth/TICKET.md §9.2 WP-2654",
+  "engine": "pathlm/depth_ar.py (depth-ar/dense) + train_depth_ar.py (shared main)",
+  "intervention": "per-token skip/identity-bypass of whole layers (factory replacement of train_depth_ar.DepthARModel)",
+  "shared_code_unchanged": ["pathlm/**", "train_depth_ar.py", "tools/**", "docs/**"],
+  "base": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dense": true,
+    "topology": "sequential",
+    "exit_mode": "uniform",
+    "dropout": 0.0,
+    "loss": "final-depth CE only (stock AR)"
+  },
+  "train": {
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0,
+    "optimizer": "AdamW(wd=0.01) + warmup 200 steps + cosine to 0.1x (shared train())",
+    "train_tokens": 98304000
+  },
+  "data": {
+    "path": "data/enwik8_full.npz",
+    "loader": "pathlm.data.load_enwik8_full",
+    "split": "first 90M train / last 10M eval, vocab from full file",
+    "vocab_size": 206,
+    "cache": ".tmp/enwik8"
+  },
+  "skip_semantics": {
+    "definition": "skipped layer output for that token = its input (identity bypass, causal-preserving); implemented as out = where(skip_mask[B,T,1], x, block_out)",
+    "layer_passes_per_token": "number of non-skipped layers that token actually traverses; averaged over tokens",
+    "implementation": "experiment-local SkipBlock wraps each stock Block; factory replaces train_depth_ar.DepthARModel"
+  },
+  "arms": [
+    {"arm": "stock", "layers": 8, "mode": "none", "skip_layers_0idx": [], "layerdrop_p": null, "layer_passes_design": 8.0, "role": "8-layer full-depth control"},
+    {"arm": "skip-mid", "layers": 8, "mode": "fixed", "skip_layers_0idx": [3, 4], "layerdrop_p": null, "layer_passes_design": 6.0, "role": "fixed skip of the two middle layers (human layers 4,5), all tokens, train=eval distribution"},
+    {"arm": "layers6", "layers": 6, "mode": "none", "skip_layers_0idx": [], "layerdrop_p": null, "layer_passes_design": 6.0, "role": "same-budget fixed-depth opponent: train a 6-layer dense model directly"},
+    {"arm": "layerdrop-pt", "layers": 8, "mode": "drop", "skip_layers_0idx": [], "layerdrop_p": 0.1, "layer_passes_design": 7.2, "role": "per-token per-layer independent Bernoulli(0.1) bypass, train=eval distribution"}
+  ],
+  "eval": {
+    "metric": "clean bpc = final-depth readout, sequence-level, lower better",
+    "n_windows": 20,
+    "batch_size": 16,
+    "eval_generator_seed": 2,
+    "positions_per_window": 4080
+  },
+  "criteria": {
+    "variance_bound": 0.014,
+    "P0_engine_equivalence_anchor": {"2613_s0_sequential_bpc": 1.5254, "23d_dense_B_12k_bpc": 1.5287, "tolerance": 0.005},
+    "P2_decision_line": "delta_clean_bpc(skip-mid vs layers6) paired, 0.014 band",
+    "delta_sign_convention": "delta(x vs y) = bpc_y - bpc_x; positive = x better",
+    "rate_metrics": "paired bootstrap / Wilson 95% CI, do not borrow 0.014"
+  },
+  "gpu_wall_budget_min": 45,
+  "peak_gpu_mem_budget_mb": 5000,
+  "gpu_lock": "/tmp/pathlm_gpu.lock (SCHEMA.md §20, released per arm §20.1)",
+  "entrypoints": {
+    "run": "python3 run.py --arms <arm,...>",
+    "continue": "python3 run.py --arms <remaining,...>",
+    "smoke": "python3 run.py --smoke",
+    "aggregate": "python3 run.py --aggregate",
+    "launcher": "bash run_remaining.sh"
+  }
+}
