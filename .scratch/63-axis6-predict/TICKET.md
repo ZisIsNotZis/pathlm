@@ -503,3 +503,13 @@ batch>1 与完整二级树需另立 WP / 重训头）。**下一步最小动作*
   1. **运行中的 driver（Phase D 的两个 WP）**：已 steer 要求「臂间 / 训练-评测之间 `sleep 60` 再取锁；只有整程 <10 min 才可整程持锁」，并在 `run_log.txt` 留让出窗口行。
   2. **已完成的实验（2660/2670/2671/2672/2674）**：其 driver 已被 `MODEL.md` 的 sha256 **钉死为判读绑定 revision**，**不回改**（改了就破坏证据绑定）；改为在本工单登记该偏离，并在各自 `RESUME.md` 记一句「若重跑本 driver，须在臂间插 ≥60 s 让出窗口（§20.1）」。**证据不删、数字不动**。
   3. **本轴 standing rule**（此后所有新 driver）：臂间 `sleep 60`；纯推理 <2 min/≤1 GB 的臂按 §20.1.2 并发插入并在报告登记为例外。
+
+## D4 WP 6.2.5 实现前发现引擎能力缺口 ⇒ 登记 E6（`2026-10-14T23:44:36+08:00` 实测）
+
+- **发现（writer 在写代码前实测，非事后）**：E3 的 `Decoder.step_tree_multi` / `step_multi` 把扁平序列第 j 个节点放在**绝对位置 `p0+j`**（`pathlm/decode.py:224`）。这对**链**（`parents=[-1,0,1,…]`）与因果逐位一致，但**同深度多兄弟**（K 个 N+2 候选，正确位置都是 N+2）表达不了 ⇒ 候选 i≥2 的 N+3 验证与 KV 写回位置都错，L3 无损性硬门必红。
+- **实测证据**（CPU tiny-model probe，落盘在本 WP 目录）：扁平布局第 2 个候选的 logits 与「位置正确的条件分布」的**总变差距离 TV = 0.0116（mean）/ 0.0133（max）**，而 fp 重排噪声 3e-8（差 10^6 量级）；根节点与第 1 个候选只剩 3e-8 ⇒ 误差**恰好**来自兄弟/草稿节点的位置错位。
+- **处置（我裁决 + 已执行）**：
+  1. **不擅改 `pathlm/**`**：按 `SCHEMA.md` §22.8 降到**引擎可达的忠实子问题**——两臂主判改用 **2640 `spec_tree.tree_forward` 的「位置忠实 K 行平铺」**（每行 = 一条根到叶路径 `[v1,c_i,d_i]`），**唯一变量恰是「N+3 草稿是否以 N+2 候选为条件」**；字面 `step_tree_multi` 分支路径降为**诊断臂** `lvl2_flat` 并如实报 L3。
+  2. **登记 E6**（受控通道，`.scratch/67-engine-changes/TICKET.md`）：最小 patch = 给 `step_multi`/`_run_stack_multi`/`step_tree_multi` 增可选 `positions: list[int] | None`（缺省逐位不变）+ 3 条单测（缺省逐位还原 / `positions` 下逐节点等价于对应路径读数 / 兄弟不可见）；**未授权**，待 Main 派唯一 engine-writer。登记脚本 `.scratch/63-axis6-predict/register_e6.py`。
+  3. 把「引擎缺口 + 未测因子（`h_{N+1}` 严格对齐版、K/seed/主干扩展）」写进该 WP 的 `GAPS.md` / `RESUME.md`，供后续轮次接手。
+- 另：该 writer 一度两次 `contact_supervisor`（超时未回）阻塞约 20 min；我已 steer 直接裁决并要求它先落盘问题（`QUESTIONS.md`）再继续——**教训**：WP 级语义裁决应由轴 lead 出，不上升到 supervisor。

@@ -83,6 +83,17 @@
 | 最小 patch 描述 | 只动 `pathlm/decode.py`（`_mtp_nodes` 无需改）：① `Decoder` 的 `h`、每层 KV 由 `[1, ...]` 扩到 `[B, ...]`（缺省 B=1 逐位还原现状）；② `_run_stack_multi(rows, tree_parents, seq_idx)` 支持同一前向内多序列的行，写回按 `(seq_idx, row)`；③ `decode_spec(..., prompts: list[Tensor])` 入口 + per-sequence 返回；④ `step_tree_multi` 的 `tree_parents` 接受「每序列一棵树」。**约 80–150 行**。单测 3 条：**(a) 等价性**——B=2 的两条序列取同一批 prompt 时，逐序列读数与各自 B=1 运行**逐位相同**；**(b) 独立性（gate probe）**——把其中一条序列的草稿改错，另一条的接受行 / 发出流不得变化；**(c) 缺省 B=1 逐位还原**。风险：显存随 B 线性增长（须逐臂报 `peak_gpu_mem_mb`）；KV 写回索引易错 ⇒ 以 (a) 的等价性单测为准。 |
 | 授权状态 | **未授权**（C3 已建通道；待 Main 派唯一 engine-writer）。轴 6 本轮**未改** `pathlm/**`：只交付 B=1 的温度>0 无损投机采样与 53.9M 对抗臂，batch>1 作为受阻项登记。 |
 
+### E6 · 轴 6 · 位置忠实的「多兄弟」树验证原语（`step_multi` / `step_tree_multi` 的绝对位置表）
+
+| 项 | 内容 |
+|---|---|
+| 来源 | `axes/6-predict/6.2-speculative-decoding/experiments/2675-second-tree-13m/GAPS.md` §G1（WP 6.2.5 在实现前实测发现；该 WP 的 `QUESTIONS.md` 记同一事实）。 |
+| 需要什么 | `pathlm/decode.py` 的 `step_multi`（= `step_tree_multi` 的唯一实现）把**扁平序列第 j 个节点放在绝对位置 `p0+j`**（`model.pos_embed.weight[self.n:self.n+K]`，`decode.py:224`）。这在**链**（`parents=[-1,0,1,…]`）上与因果逐位一致，但**不能表达同深度多兄弟**：K 个 N+2 候选的正确位置**都是 N+2**，扁平布局只能给 p0+1、p0+2… ⇒ 候选 i≥2 的 N+3 验证用的是**错误位置**上的模型输出，且接受节点的 KV 写回位置也错。 |
+| 为什么 | 这是「完整二级树（N+3 以被接受的 N+2 候选为条件）」的**最后一个机制缺口**：引擎能给**一条**链做精确树验证（E3 的 `decode_spec` 二级链正是如此），但**不能**做分支树。不修 ⇒ 轴 6 只能用实验侧的「位置忠实 K 行平铺」替代（2640 `spec_tree.tree_forward`，本轴已这么做），任何走引擎原语的 K≥2 分支树读数都**不是精确验证**（L3 无损性硬门会红）。 |
+| 实测证据 | WP 6.2.5 的 CPU tiny-model probe：扁平布局里第 2 个候选节点的 logits 与「位置正确的条件分布」（同前缀 2 节点链）的**总变差距离 TV mean = 0.0116 / max = 0.0133**，而 fp 重排噪声仅 **3e-8**（差 10^6 量级）；根节点与第 1 个候选只剩 3e-8 ⇒ 误差恰好来自**兄弟/草稿节点的位置错位**。见 `2675-second-tree-13m/test_second_tree.py::test_flat_tree_siblings_are_not_position_faithful` 与 `QUESTIONS.md` §3。 |
+| 最小 patch 描述 | 给 `Decoder.step_multi` / `_run_stack_multi` / `step_tree_multi` 增一个**可选** `positions: list[int] | None = None`（缺省 `None` ⇒ 保持现状 `p0+j`，**逐位不变**），把它用于 `model.pos_embed.weight[positions]` 与 `self.layer_pos[i] = list(positions)`；树的每个节点用**真实生成位置**（根 N+1、候选 N+2、草稿 N+3）。配套 3 条单测：① 缺省 `None` 与现状**逐位相同**；② `parents=[-1,0,0]` + `positions=[N+1,N+2,N+2]` 下每个节点的 logits **等于**对应根到叶路径（`step_multi`）的读数；③ 兄弟不可见（改兄弟行内容不改本行 logits）。无新增参数；位置表长度 = 节点数。**只动 `pathlm/decode.py`，预计 20–40 行**。 |
+| 授权状态 | **未授权**（C3 已建通道；待 Main 派唯一 engine-writer）。轴 6 本 WP **未改** `pathlm/**`：改用实验侧「位置忠实的 K 行平铺」（2640 `spec_tree.tree_forward`，只读复用）实现两臂主判，并把字面 `step_tree_multi` 分支路径降为**诊断臂**（`lvl2_flat`）如实报 L3。 |
+
 ## 3. 与既有文档的关系
 
 - 判据/字段纪律：`docs/research-schema.md` §12.3（C3 通道指针）。
@@ -105,3 +116,4 @@
   - **收尾提交**：`b7f1a34`（主收尾，5 文件）；紧随 `bc4c684` 补记哈希；轴 1 的锚点修复 = `676c858`。
 - `2026-10-14T22:18:00+08:00` · engine-writer（收尾，同 code 锁；纯 CPU）· **通道闭环记录**：N1/N2 属**非行为改动**（测试格式 / 删死代码 / 报告计数口径），**不触发引擎面复核重跑**；最终 M3 集成复核会再对齐。E2/E3 独立复核件 `REVIEW-E2E3.md` 入库（提交 `0f77564`）。**E2/E3 受控引擎通道到此关闭。**
 - `2026-10-14T23:30:00+08:00` · axis6-lead（轴 6 预测轴 lead，ticket 63 Phase D）· 登记 **E5**（批量验证 B>1）：来源 = `6.2` 的 `milestone.output`「batch>1 稳健性点」；本轴**未改引擎代码**，只登记「需要什么 + 为什么 + 最小 patch 描述 + 预计单测（等价性 / 独立性 gate probe / B=1 逐位还原）」；**未授权**，待 Main 派唯一 engine-writer。
+- `2026-10-14T23:45:00+08:00` · axis6-lead（轴 6 预测轴 lead，ticket 63 Phase D）· 登记 **E6**（位置忠实的多兄弟树验证原语）：来源 = WP 6.2.5 在实现前实测发现的引擎能力缺口（`step_tree_multi` 的扁平节点位置 = `p0+j`，对同深度兄弟不正确；TV 0.0116 vs fp 噪声 3e-8）；本轴**未改引擎代码**，只登记「需要什么 + 为什么 + 最小 patch 描述 + 预计 3 条单测」；**未授权**，待 Main 派唯一 engine-writer。
