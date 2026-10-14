@@ -1,0 +1,34 @@
+[2026-10-14T21:08:53+08:00] lock acquired pid=2296283 (D192-s99)
+[2026-10-14T21:08:53+08:00] free before D192-s99: 16560 MiB
+[2026-10-14T21:09:06+08:00] lock released
+[2026-10-14T21:09:06+08:00] arm D192 seed 99 done rc=1
+[2026-10-14T21:09:06+08:00] arm D192-99 FAILED (见 smoke_D192_s99.log)
+[2026-10-14T21:10:26+08:00] lock acquired pid=2319388 (D192-s99)
+[2026-10-14T21:10:26+08:00] free before D192-s99: 17362 MiB
+[2026-10-14T21:10:38+08:00] lock released
+[2026-10-14T21:10:38+08:00] arm D192 seed 99 done rc=1
+[2026-10-14T21:10:38+08:00] arm D192-99 FAILED (见 smoke_D192_s99.log)
+[2026-10-14T21:33:00+08:00] 修正说明（接手 2642）：活性 hook 原写 `y = out.detach()`，但 `Block.forward` 返回 `(block_out, telemetry)` 元组 ⇒ 训练后的活性测量抛 AttributeError（smoke_D192_s99.log 两次 rc=1）。hook 统一取 `out[0]`（tuple 主输出），不触碰任何训练/评测数值路径；回归门见 test_2642_uniform_narrowing.py::test_p4_liveness_hook_accepts_block_tuple_output（变异版 `out_t = out` 已验证会变红：AttributeError）。
+[2026-10-14T21:30:16+08:00] smoke D192-s99 steps=60
+[2026-10-14T21:30:28+08:00] smoke D192-s99 rc=0
+[2026-10-14T21:30:28+08:00] smoke WD256-s99 steps=60
+[2026-10-14T21:30:40+08:00] smoke WD256-s99 rc=1
+[2026-10-14T21:31:24+08:00] smoke D192-s99 steps=60
+[2026-10-14T21:31:35+08:00] smoke D192-s99 rc=0
+[2026-10-14T21:31:35+08:00] smoke WD256-s99 steps=60
+[2026-10-14T21:31:53+08:00] smoke WD256-s99 rc=0
+[2026-10-14T21:49:40+08:00] 接手者调度调整：(a) 队列里 2652/2662/2643 均在等锁 ⇒ 按主管 21:50 判据放弃 D128:0，正式臂缩为 D192:0 → WD256:0（先 WP1 最小判决，再 WP2 弹性曲线）；(b) train_arms.sh/reeval_check.sh 的取锁轮询 15s→4s、单次等待上限 20min→25min（仍遵守「不杀他人进程、不动他人锁」，仅提高本单排队命中率）。
+[2026-10-14T21:49:48+08:00] lock acquired pid=2416699 (D192-s0)
+[2026-10-14T21:49:48+08:00] free before D192-s0: 21022 MiB
+[2026-10-14T21:57:30+08:00] lock released
+[2026-10-14T21:57:30+08:00] arm D192 seed 0 done rc=0
+[2026-10-14T21:58:31+08:00] all arms done
+[2026-10-14T22:14:53+08:00] lock acquired pid=2462257 (WD256-s0 fast-poll)
+[2026-10-14T22:14:53+08:00] free before WD256-s0: 16458 MiB
+[2026-10-14T22:24:11+08:00] arm WD256 seed 0 done rc=0
+[2026-10-14T22:30:37+08:00] tight reeval lock acquired pid=2517564 (D192)
+[2026-10-14T22:30:40+08:00] tight reeval D192 rc=0
+[2026-10-14T22:32:00+08:00] reeval D192 give up at deadline
+[2026-10-14T22:32:00+08:00] reeval runner done
+[2026-10-14T22:32:22+08:00] tight reeval lock acquired pid=2523786 (WD256)
+[2026-10-14T22:32:27+08:00] tight reeval WD256 rc=0

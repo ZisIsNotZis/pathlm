@@ -1,0 +1,611 @@
+{
+  "experiment": "2642-uniform-narrowing-13m",
+  "grid": "3.1.1-uniform-narrowing",
+  "criterion": "P1 减宽 Δbpc vs U4（带 0.014）；P2 前沿对照（d_model 旋钮 vs FFN 旋钮，等算力位点，参数量与 MACs 并列）；P3 WD256 同 checkpoint 三档质量曲线 + 与同宽 uniform 比较；P4 评测确定性/因果性/活性/参数与维数审计；P5 否证线",
+  "variance_bound": 0.014,
+  "variance_bound_declaration": "docs/research-schema.md §12.1 / C1：0.014 bpc 带，限配对 Δ、≥5 窗口；率类指标才走 bootstrap/Wilson",
+  "steps": 12000,
+  "seeds_available": {
+    "D192": [
+      0
+    ],
+    "D128": [],
+    "WD256": [
+      0
+    ]
+  },
+  "history_same_config_dense_13m_12k_spread": {
+    "values": {
+      "1.5257": "2641 run.py HIST_2613_BASELINE_S0（2613 全新重训 baseline-s0）",
+      "1.5287": "2641 run.py HIST_DENSE_BPC（.scratch/23-depth-ar/evidence/23d-dense-B-12k）",
+      "1.5298": "2641 run.py HIST_2613_BASELINE_S1（2613 baseline-s1）",
+      "1.5314": "2641 results_U4_s0.json（本实验复用锚）"
+    },
+    "range": 0.0057,
+    "note": "参照（非预登记门槛）；0.014 带来自 methodology §2 的跨 run 漂移界"
+  },
+  "anchors_reused": {
+    "U4": {
+      "arm": "U4",
+      "seed": 0,
+      "clean_bpc": 1.5314,
+      "clean_bpc_by_depth": [
+        {
+          "depth": 0,
+          "bpc": 7.4044,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "bpc": 4.8523,
+          "acc": 0.1458
+        },
+        {
+          "depth": 2,
+          "bpc": 4.3626,
+          "acc": 0.1938
+        },
+        {
+          "depth": 3,
+          "bpc": 3.8279,
+          "acc": 0.2808
+        },
+        {
+          "depth": 4,
+          "bpc": 3.1984,
+          "acc": 0.3872
+        },
+        {
+          "depth": 5,
+          "bpc": 2.6146,
+          "acc": 0.4981
+        },
+        {
+          "depth": 6,
+          "bpc": 2.1943,
+          "acc": 0.5682
+        },
+        {
+          "depth": 7,
+          "bpc": 1.7257,
+          "acc": 0.6587
+        },
+        {
+          "depth": 8,
+          "bpc": 1.5314,
+          "acc": 0.6879
+        }
+      ],
+      "macs_per_token": 7392768,
+      "macs_attn": 3145728,
+      "macs_ffn": 4194304,
+      "macs_readout": 52736,
+      "params_total": 6962688,
+      "params_ffn": 4204544,
+      "source": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/results_U4_s0.json",
+      "sha256": "7b2ab70948cfb5a27440deff9588e5a25367869dc894223d6f473417cf54696b",
+      "run_dir": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/runs/U4-s0-12k",
+      "code_hash_run_py": "cdf48604d32613ecf7ee226105390787c3e841bba442033c1a51483b40fddfbe",
+      "reuse": "不重训：本实验逐字段沿用 2641 的 dense 配方（见 anchor_config_parity）"
+    },
+    "U2": {
+      "arm": "U2",
+      "seed": 0,
+      "clean_bpc": 1.5709,
+      "clean_bpc_by_depth": [
+        {
+          "depth": 0,
+          "bpc": 7.3896,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "bpc": 4.9497,
+          "acc": 0.145
+        },
+        {
+          "depth": 2,
+          "bpc": 4.5879,
+          "acc": 0.192
+        },
+        {
+          "depth": 3,
+          "bpc": 4.1503,
+          "acc": 0.2595
+        },
+        {
+          "depth": 4,
+          "bpc": 3.4863,
+          "acc": 0.362
+        },
+        {
+          "depth": 5,
+          "bpc": 2.8299,
+          "acc": 0.4667
+        },
+        {
+          "depth": 6,
+          "bpc": 2.3338,
+          "acc": 0.5486
+        },
+        {
+          "depth": 7,
+          "bpc": 1.7887,
+          "acc": 0.6456
+        },
+        {
+          "depth": 8,
+          "bpc": 1.5709,
+          "acc": 0.6802
+        }
+      ],
+      "macs_per_token": 5295616,
+      "macs_attn": 3145728,
+      "macs_ffn": 2097152,
+      "macs_readout": 52736,
+      "params_total": 4861440,
+      "params_ffn": 2103296,
+      "source": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/results_U2_s0.json",
+      "sha256": "5a4ca63623cf7e4b002fb94a240f5283e59b678eb91847c344f9b63a82bb62d0",
+      "run_dir": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/runs/U2-s0-12k",
+      "code_hash_run_py": "cdf48604d32613ecf7ee226105390787c3e841bba442033c1a51483b40fddfbe",
+      "reuse": "不重训：本实验逐字段沿用 2641 的 dense 配方（见 anchor_config_parity）"
+    }
+  },
+  "anchor_config_parity": {
+    "anchor_config": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/config.json",
+    "fields_compared": {
+      "d_model": [
+        256,
+        256
+      ],
+      "n_layers": [
+        8,
+        8
+      ],
+      "n_heads": [
+        8,
+        8
+      ],
+      "seq_len": [
+        256,
+        256
+      ],
+      "mlp_mult": [
+        4,
+        4
+      ],
+      "dense": [
+        true,
+        true
+      ],
+      "dropout": [
+        0.0,
+        0.0
+      ],
+      "norm_cap": [
+        1.0,
+        1.0
+      ],
+      "topology": [
+        "sequential",
+        "sequential"
+      ],
+      "exit_mode": [
+        "uniform",
+        "uniform"
+      ],
+      "fill_kv": [
+        true,
+        true
+      ],
+      "steps": [
+        12000,
+        12000
+      ],
+      "batch_size": [
+        32,
+        32
+      ],
+      "lr": [
+        0.001,
+        0.001
+      ]
+    },
+    "mismatched_fields": {},
+    "all_equal": true,
+    "note": "D192/D128 的**唯一**偏离 = d_model/n_heads（契约 §2：唯一变量 = 宽度）；WD256 的训练配置与 U4 逐字段相同，干预在前向（宽度前缀）而非配置"
+  },
+  "frontier": {
+    "U4-s0(anchor)": {
+      "clean_bpc": 1.5314,
+      "macs_per_token": 7392768,
+      "params_total": 6962688,
+      "params_ffn": 4204544,
+      "source": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/results_U4_s0.json",
+      "anchor": true
+    },
+    "U2-s0(anchor)": {
+      "clean_bpc": 1.5709,
+      "macs_per_token": 5295616,
+      "params_total": 4861440,
+      "params_ffn": 2103296,
+      "source": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/results_U2_s0.json",
+      "anchor": true
+    },
+    "D192-s0": {
+      "clean_bpc": 1.5841,
+      "macs_per_token": 4364928,
+      "params_total": 3944064,
+      "params_ffn": 2366976,
+      "anchor": false
+    },
+    "WD256-s0@256": {
+      "clean_bpc": 1.6178,
+      "macs_per_token": 7392768,
+      "params_total": 6962688,
+      "params_ffn": 4204544,
+      "anchor": false
+    },
+    "WD256-s0@192": {
+      "clean_bpc": 1.6327,
+      "macs_per_token": 4364928,
+      "params_total": 3944064,
+      "params_ffn": 2366976,
+      "anchor": false
+    },
+    "WD256-s0@128": {
+      "clean_bpc": 1.7301,
+      "macs_per_token": 2123520,
+      "params_total": 1777408,
+      "params_ffn": 1053696,
+      "anchor": false
+    }
+  },
+  "P1_uniform_narrowing_vs_U4": {
+    "D192": {
+      "delta_bpc_vs_U4": 0.0527,
+      "macs_cut_pct": 40.957,
+      "bpc_cost_per_1pct_macs_saved": 0.001287,
+      "params_total": 3944064,
+      "params_ffn": 2366976,
+      "verdict": "可分：+0.0527 bpc（更差，越 0.014 带）"
+    }
+  },
+  "P2_frontier_vs_FFN_knob": {
+    "plane": "x = 每 token 等效 MACs，y = clean bpc（越低越好）",
+    "table": {
+      "U4-s0(anchor)": {
+        "clean_bpc": 1.5314,
+        "macs_per_token": 7392768,
+        "params_total": 6962688,
+        "params_ffn": 4204544,
+        "source": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/results_U4_s0.json",
+        "anchor": true
+      },
+      "U2-s0(anchor)": {
+        "clean_bpc": 1.5709,
+        "macs_per_token": 5295616,
+        "params_total": 4861440,
+        "params_ffn": 2103296,
+        "source": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/results_U2_s0.json",
+        "anchor": true
+      },
+      "D192-s0": {
+        "clean_bpc": 1.5841,
+        "macs_per_token": 4364928,
+        "params_total": 3944064,
+        "params_ffn": 2366976,
+        "anchor": false
+      },
+      "WD256-s0@256": {
+        "clean_bpc": 1.6178,
+        "macs_per_token": 7392768,
+        "params_total": 6962688,
+        "params_ffn": 4204544,
+        "anchor": false
+      },
+      "WD256-s0@192": {
+        "clean_bpc": 1.6327,
+        "macs_per_token": 4364928,
+        "params_total": 3944064,
+        "params_ffn": 2366976,
+        "anchor": false
+      },
+      "WD256-s0@128": {
+        "clean_bpc": 1.7301,
+        "macs_per_token": 2123520,
+        "params_total": 1777408,
+        "params_ffn": 1053696,
+        "anchor": false
+      }
+    },
+    "slopes_from_U4": {
+      "U2": {
+        "macs_cut_pct": 28.368,
+        "delta_bpc": 0.0395,
+        "bpc_cost_per_1pct_macs_saved": 0.001392
+      },
+      "D192": {
+        "macs_cut_pct": 40.957,
+        "delta_bpc": 0.0527,
+        "bpc_cost_per_1pct_macs_saved": 0.001287
+      },
+      "WD256@256": null,
+      "WD256@192": {
+        "macs_cut_pct": 40.957,
+        "delta_bpc": 0.1013,
+        "bpc_cost_per_1pct_macs_saved": 0.002473
+      },
+      "WD256@128": {
+        "macs_cut_pct": 71.276,
+        "delta_bpc": 0.1987,
+        "bpc_cost_per_1pct_macs_saved": 0.002788
+      }
+    },
+    "U2_macs_diff_vs_D192": -930688,
+    "note": "U2 = d_model 固定、FFN 预算减半的等算力近似位点（另一只旋钮）；D192 = 整体减宽到 0.75² 算力位点。参数量与 MACs 两列并列，防把「减参数」记成「减宽度」"
+  },
+  "P3_WD256_elastic_width": {
+    "clean_bpc_by_width": {
+      "128": 1.7301,
+      "192": 1.6327,
+      "256": 1.6178
+    },
+    "monotone_wider_is_better": true,
+    "adjacent_gaps": {
+      "128_vs_192": 0.0974,
+      "192_vs_256": 0.0149
+    },
+    "gaps_within_band": {
+      "128_vs_192": false,
+      "192_vs_256": false
+    },
+    "vs_same_width_uniform": {
+      "D192_vs_WD256@192": {
+        "delta_bpc": 0.0486,
+        "verdict": "WD256 更差 ≥ 带 ⇒ 弹性宽度付额外代价"
+      },
+      "U4_vs_WD256@256": {
+        "delta_bpc": 0.0864,
+        "note": "描述列（非判据）：宽度 dropout 作为正则对全宽档的影响"
+      }
+    },
+    "same_checkpoint_evidence": {
+      "n_checkpoints": 1,
+      "model_pt_sha256": "27a8f90387748a0b880f11bdc23ebd7b5491aef3a2ccb81bc5e90956d6748d0a",
+      "slices": [
+        {
+          "width": 256,
+          "params_total": 6962688,
+          "macs_per_token": 7392768
+        },
+        {
+          "width": 192,
+          "params_total": 3944064,
+          "macs_per_token": 4364928
+        },
+        {
+          "width": 128,
+          "params_total": 1777408,
+          "macs_per_token": 2123520
+        }
+      ],
+      "note": "三档来自同一 model.pt 的前缀子矩阵（build_sliced_model），不是分别训练"
+    },
+    "gate_verdict": {
+      "monotone": "成立",
+      "elastic_vs_uniform": "不成立（至少一档越 0.014 带）"
+    }
+  },
+  "P4_invariants_and_liveness": {
+    "eval_determinism": {
+      "D192-s0": {
+        "arm": "D192",
+        "seed": 0,
+        "steps": 12000,
+        "prev_clean_bpc": 1.5841,
+        "now_clean_bpc": 1.5841,
+        "bitwise_equal": true,
+        "bpc_by_depth_bitwise_equal": true
+      },
+      "WD256-s0": {
+        "arm": "WD256",
+        "seed": 0,
+        "steps": 12000,
+        "clean_bpc_by_width_bitwise_equal": true,
+        "per_width": {
+          "128": {
+            "prev_clean_bpc": 1.7301,
+            "now_clean_bpc": 1.7301,
+            "bitwise_equal": true,
+            "bpc_by_depth_bitwise_equal": true
+          },
+          "192": {
+            "prev_clean_bpc": 1.6327,
+            "now_clean_bpc": 1.6327,
+            "bitwise_equal": true,
+            "bpc_by_depth_bitwise_equal": true
+          },
+          "256": {
+            "prev_clean_bpc": 1.6178,
+            "now_clean_bpc": 1.6178,
+            "bitwise_equal": true,
+            "bpc_by_depth_bitwise_equal": true
+          }
+        }
+      }
+    },
+    "causality": {
+      "D192-s0": true,
+      "WD256-s0": {
+        "128": true,
+        "192": true,
+        "256": true
+      }
+    },
+    "liveness": {
+      "D192-s0": {
+        "min_block_out_over_in": 1.056682,
+        "hidden_by_layer": [
+          768,
+          768,
+          768,
+          768,
+          768,
+          768,
+          768,
+          768
+        ]
+      },
+      "WD256-s0": {
+        "128": {
+          "min_block_out_over_in": 1.07122,
+          "hidden_by_layer": [
+            512,
+            512,
+            512,
+            512,
+            512,
+            512,
+            512,
+            512
+          ]
+        },
+        "192": {
+          "min_block_out_over_in": 1.023659,
+          "hidden_by_layer": [
+            768,
+            768,
+            768,
+            768,
+            768,
+            768,
+            768,
+            768
+          ]
+        },
+        "256": {
+          "min_block_out_over_in": 1.005907,
+          "hidden_by_layer": [
+            1024,
+            1024,
+            1024,
+            1024,
+            1024,
+            1024,
+            1024,
+            1024
+          ]
+        }
+      }
+    },
+    "param_audit": {
+      "D192-s0": {
+        "measured": 3944064,
+        "analytic": 3944064,
+        "matches": true,
+        "ffn_matches": true
+      },
+      "WD256-s0": {
+        "128": {
+          "measured": 1777408,
+          "analytic": 1777408,
+          "matches": true
+        },
+        "192": {
+          "measured": 3944064,
+          "analytic": 3944064,
+          "matches": true
+        },
+        "256": {
+          "measured": 6962688,
+          "analytic": 6962688,
+          "matches": true
+        }
+      }
+    },
+    "active_width_audit": {
+      "D192-s0": {
+        "target_width": 192,
+        "d_model": 192,
+        "hidden_by_layer": [
+          768,
+          768,
+          768,
+          768,
+          768,
+          768,
+          768,
+          768
+        ],
+        "active_dim_matches_target": true
+      },
+      "WD256-s0": {
+        "128": {
+          "target_width": 128,
+          "d_model": 128,
+          "hidden_by_layer": [
+            512,
+            512,
+            512,
+            512,
+            512,
+            512,
+            512,
+            512
+          ],
+          "no_full_width_tensor": true,
+          "active_dim_matches_target": true
+        },
+        "192": {
+          "target_width": 192,
+          "d_model": 192,
+          "hidden_by_layer": [
+            768,
+            768,
+            768,
+            768,
+            768,
+            768,
+            768,
+            768
+          ],
+          "no_full_width_tensor": true,
+          "active_dim_matches_target": true
+        },
+        "256": {
+          "target_width": 256,
+          "d_model": 256,
+          "hidden_by_layer": [
+            1024,
+            1024,
+            1024,
+            1024,
+            1024,
+            1024,
+            1024,
+            1024
+          ],
+          "no_full_width_tensor": true,
+          "active_dim_matches_target": true
+        }
+      }
+    },
+    "equivalence_gates": {
+      "0": true
+    },
+    "equivalence_gates_all_pass": true
+  },
+  "P5_falsification": {
+    "a_noise_band": "D192/D128 结果缺失"
+  },
+  "source_files": [
+    "results_D192_s0.json",
+    "results_WD256_s0.json",
+    "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/results_U4_s0.json",
+    "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/results_U2_s0.json"
+  ],
+  "code_hash_run_py": "f23a66fc69eaed8571b4b3e1f7f7334372e687e0f28705961eb9eba665b6e6f3",
+  "generated_at": "2026-10-14T22:32:40+0800"
+}

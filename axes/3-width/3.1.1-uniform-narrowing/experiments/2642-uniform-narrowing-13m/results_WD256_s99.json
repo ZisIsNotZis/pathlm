@@ -1,0 +1,571 @@
+{
+  "arm": "WD256",
+  "seed": 99,
+  "steps": 60,
+  "kind": "width_dropout",
+  "training_widths": [
+    128,
+    192,
+    256
+  ],
+  "training_sample_distribution": "每步等概率采样（torch.Generator，seed+7）",
+  "width_samples": {
+    "n_train_steps": 60,
+    "counts": {
+      "128": 16,
+      "192": 20,
+      "256": 24
+    },
+    "fracs": {
+      "128": 0.2667,
+      "192": 0.3333,
+      "256": 0.4
+    },
+    "n_post_train_probe_forwards_ignored": 0,
+    "first_24": [
+      192,
+      192,
+      256,
+      192,
+      192,
+      128,
+      128,
+      192,
+      256,
+      128,
+      128,
+      256,
+      256,
+      256,
+      192,
+      256,
+      192,
+      256,
+      192,
+      256,
+      128,
+      256,
+      256,
+      128
+    ]
+  },
+  "per_width": {
+    "128": {
+      "width": 128,
+      "n_heads": 4,
+      "head_dim": 32,
+      "eval": {
+        "metric": "clean bpc（切片后原生 d=w 模型，同评测批）",
+        "n_batches": 20,
+        "batch_size": 16,
+        "eval_generator_seed": 2,
+        "bpc_by_depth": [
+          {
+            "depth": 0,
+            "bpc": 7.6329,
+            "acc": 0.0536
+          },
+          {
+            "depth": 1,
+            "bpc": 7.4887,
+            "acc": 0.0566
+          },
+          {
+            "depth": 2,
+            "bpc": 7.2043,
+            "acc": 0.1628
+          },
+          {
+            "depth": 3,
+            "bpc": 6.75,
+            "acc": 0.2076
+          },
+          {
+            "depth": 4,
+            "bpc": 6.2358,
+            "acc": 0.2069
+          },
+          {
+            "depth": 5,
+            "bpc": 5.7287,
+            "acc": 0.1883
+          },
+          {
+            "depth": 6,
+            "bpc": 5.3196,
+            "acc": 0.1776
+          },
+          {
+            "depth": 7,
+            "bpc": 5.0618,
+            "acc": 0.1705
+          },
+          {
+            "depth": 8,
+            "bpc": 4.9506,
+            "acc": 0.1693
+          }
+        ],
+        "clean_bpc": 4.9506
+      },
+      "params": {
+        "params_total_measured": 1777408,
+        "params_ffn_measured": 1053696,
+        "analytic": {
+          "embedding": 26368,
+          "pos_embedding": 32768,
+          "embedding_total": 59136,
+          "ffn": 1053696,
+          "attention_and_ln": 532480,
+          "gates_dead_in_dense": 132096,
+          "params_total": 1777408,
+          "params_live": 1645312,
+          "mlp_hidden": 512,
+          "note": "解析参数量（dense 形态、carry_gate=True 原生构造）。gates_dead_in_dense = 引擎照建但在 dense 前向中不用的门参数，与 2641 params_total 同口径"
+        },
+        "params_total_matches_analytic": true,
+        "max_tensor_dim": 512,
+        "no_full_width_tensor": true,
+        "hidden_by_layer": [
+          512,
+          512,
+          512,
+          512,
+          512,
+          512,
+          512,
+          512
+        ],
+        "active_dim_matches_target": true
+      },
+      "cost": {
+        "width": 128,
+        "mlp_mult": 4,
+        "seq_len": 256,
+        "n_layers": 8,
+        "vocab": 206,
+        "macs_per_token": {
+          "attention": 1048576,
+          "ffn": 1048576,
+          "readout_tied": 26368,
+          "total": 2123520
+        },
+        "note": "等效理论量：MACs/token（乘加）。attention 的 T·w 项随序列长度线性、FFN 的 w² 项与 T 无关；不用任何时间量。tokens-per-forward = 1。width = 该档活跃残差通道数（uniform 臂 = d_model）"
+      },
+      "liveness": {
+        "active_width": 128,
+        "hidden_by_layer": [
+          512,
+          512,
+          512,
+          512,
+          512,
+          512,
+          512,
+          512
+        ],
+        "block_out_over_in_by_layer": [
+          1.601732,
+          1.776177,
+          1.751051,
+          1.636219,
+          1.49936,
+          1.372311,
+          1.288919,
+          1.227222
+        ],
+        "min_ratio": 1.227222,
+        "note": "逐层 ‖block_out‖/‖in‖ 的逐位置均值（>0 ⇒ 该层真的参与前向）；hidden_by_layer 必须逐位等于 4×活跃宽度"
+      },
+      "causality": {
+        "max_abs_dlogit_past_positions": 0.0,
+        "max_abs_dlogit_last_position": 0.840817928314209,
+        "pass": true,
+        "note": "改末位 token：之前位置逐位不变（因果掩码真的在）、末位必须变（活性对照）"
+      }
+    },
+    "192": {
+      "width": 192,
+      "n_heads": 6,
+      "head_dim": 32,
+      "eval": {
+        "metric": "clean bpc（切片后原生 d=w 模型，同评测批）",
+        "n_batches": 20,
+        "batch_size": 16,
+        "eval_generator_seed": 2,
+        "bpc_by_depth": [
+          {
+            "depth": 0,
+            "bpc": 7.6164,
+            "acc": 0.0536
+          },
+          {
+            "depth": 1,
+            "bpc": 7.3702,
+            "acc": 0.0901
+          },
+          {
+            "depth": 2,
+            "bpc": 6.9553,
+            "acc": 0.1637
+          },
+          {
+            "depth": 3,
+            "bpc": 6.4277,
+            "acc": 0.1919
+          },
+          {
+            "depth": 4,
+            "bpc": 5.8118,
+            "acc": 0.1995
+          },
+          {
+            "depth": 5,
+            "bpc": 5.2513,
+            "acc": 0.2061
+          },
+          {
+            "depth": 6,
+            "bpc": 4.8152,
+            "acc": 0.2066
+          },
+          {
+            "depth": 7,
+            "bpc": 4.5608,
+            "acc": 0.2169
+          },
+          {
+            "depth": 8,
+            "bpc": 4.4828,
+            "acc": 0.2181
+          }
+        ],
+        "clean_bpc": 4.4828
+      },
+      "params": {
+        "params_total_measured": 3944064,
+        "params_ffn_measured": 2366976,
+        "analytic": {
+          "embedding": 39552,
+          "pos_embedding": 49152,
+          "embedding_total": 88704,
+          "ffn": 2366976,
+          "attention_and_ln": 1191936,
+          "gates_dead_in_dense": 296448,
+          "params_total": 3944064,
+          "params_live": 3647616,
+          "mlp_hidden": 768,
+          "note": "解析参数量（dense 形态、carry_gate=True 原生构造）。gates_dead_in_dense = 引擎照建但在 dense 前向中不用的门参数，与 2641 params_total 同口径"
+        },
+        "params_total_matches_analytic": true,
+        "max_tensor_dim": 768,
+        "no_full_width_tensor": true,
+        "hidden_by_layer": [
+          768,
+          768,
+          768,
+          768,
+          768,
+          768,
+          768,
+          768
+        ],
+        "active_dim_matches_target": true
+      },
+      "cost": {
+        "width": 192,
+        "mlp_mult": 4,
+        "seq_len": 256,
+        "n_layers": 8,
+        "vocab": 206,
+        "macs_per_token": {
+          "attention": 1966080,
+          "ffn": 2359296,
+          "readout_tied": 39552,
+          "total": 4364928
+        },
+        "note": "等效理论量：MACs/token（乘加）。attention 的 T·w 项随序列长度线性、FFN 的 w² 项与 T 无关；不用任何时间量。tokens-per-forward = 1。width = 该档活跃残差通道数（uniform 臂 = d_model）"
+      },
+      "liveness": {
+        "active_width": 192,
+        "hidden_by_layer": [
+          768,
+          768,
+          768,
+          768,
+          768,
+          768,
+          768,
+          768
+        ],
+        "block_out_over_in_by_layer": [
+          2.157162,
+          1.66125,
+          1.472973,
+          1.458981,
+          1.419244,
+          1.382125,
+          1.327572,
+          1.267024
+        ],
+        "min_ratio": 1.267024,
+        "note": "逐层 ‖block_out‖/‖in‖ 的逐位置均值（>0 ⇒ 该层真的参与前向）；hidden_by_layer 必须逐位等于 4×活跃宽度"
+      },
+      "causality": {
+        "max_abs_dlogit_past_positions": 0.0,
+        "max_abs_dlogit_last_position": 3.017364501953125,
+        "pass": true,
+        "note": "改末位 token：之前位置逐位不变（因果掩码真的在）、末位必须变（活性对照）"
+      }
+    },
+    "256": {
+      "width": 256,
+      "n_heads": 8,
+      "head_dim": 32,
+      "eval": {
+        "metric": "clean bpc（切片后原生 d=w 模型，同评测批）",
+        "n_batches": 20,
+        "batch_size": 16,
+        "eval_generator_seed": 2,
+        "bpc_by_depth": [
+          {
+            "depth": 0,
+            "bpc": 7.6083,
+            "acc": 0.0536
+          },
+          {
+            "depth": 1,
+            "bpc": 7.2037,
+            "acc": 0.1196
+          },
+          {
+            "depth": 2,
+            "bpc": 6.5712,
+            "acc": 0.1815
+          },
+          {
+            "depth": 3,
+            "bpc": 5.9169,
+            "acc": 0.1956
+          },
+          {
+            "depth": 4,
+            "bpc": 5.319,
+            "acc": 0.197
+          },
+          {
+            "depth": 5,
+            "bpc": 4.8951,
+            "acc": 0.2072
+          },
+          {
+            "depth": 6,
+            "bpc": 4.5704,
+            "acc": 0.2193
+          },
+          {
+            "depth": 7,
+            "bpc": 4.4071,
+            "acc": 0.222
+          },
+          {
+            "depth": 8,
+            "bpc": 4.3741,
+            "acc": 0.218
+          }
+        ],
+        "clean_bpc": 4.3741
+      },
+      "params": {
+        "params_total_measured": 6962688,
+        "params_ffn_measured": 4204544,
+        "analytic": {
+          "embedding": 52736,
+          "pos_embedding": 65536,
+          "embedding_total": 118272,
+          "ffn": 4204544,
+          "attention_and_ln": 2113536,
+          "gates_dead_in_dense": 526336,
+          "params_total": 6962688,
+          "params_live": 6436352,
+          "mlp_hidden": 1024,
+          "note": "解析参数量（dense 形态、carry_gate=True 原生构造）。gates_dead_in_dense = 引擎照建但在 dense 前向中不用的门参数，与 2641 params_total 同口径"
+        },
+        "params_total_matches_analytic": true,
+        "max_tensor_dim": 1024,
+        "no_full_width_tensor": true,
+        "hidden_by_layer": [
+          1024,
+          1024,
+          1024,
+          1024,
+          1024,
+          1024,
+          1024,
+          1024
+        ],
+        "active_dim_matches_target": true
+      },
+      "cost": {
+        "width": 256,
+        "mlp_mult": 4,
+        "seq_len": 256,
+        "n_layers": 8,
+        "vocab": 206,
+        "macs_per_token": {
+          "attention": 3145728,
+          "ffn": 4194304,
+          "readout_tied": 52736,
+          "total": 7392768
+        },
+        "note": "等效理论量：MACs/token（乘加）。attention 的 T·w 项随序列长度线性、FFN 的 w² 项与 T 无关；不用任何时间量。tokens-per-forward = 1。width = 该档活跃残差通道数（uniform 臂 = d_model）"
+      },
+      "liveness": {
+        "active_width": 256,
+        "hidden_by_layer": [
+          1024,
+          1024,
+          1024,
+          1024,
+          1024,
+          1024,
+          1024,
+          1024
+        ],
+        "block_out_over_in_by_layer": [
+          3.010982,
+          1.68441,
+          1.447629,
+          1.372412,
+          1.344132,
+          1.320473,
+          1.269495,
+          1.236678
+        ],
+        "min_ratio": 1.236678,
+        "note": "逐层 ‖block_out‖/‖in‖ 的逐位置均值（>0 ⇒ 该层真的参与前向）；hidden_by_layer 必须逐位等于 4×活跃宽度"
+      },
+      "causality": {
+        "max_abs_dlogit_past_positions": 0.0,
+        "max_abs_dlogit_last_position": 4.797585964202881,
+        "pass": true,
+        "note": "改末位 token：之前位置逐位不变（因果掩码真的在）、末位必须变（活性对照）"
+      }
+    }
+  },
+  "clean_bpc_by_width": {
+    "128": 4.9506,
+    "192": 4.4828,
+    "256": 4.3741
+  },
+  "monotone_wider_is_better": true,
+  "adjacent_gaps": {
+    "128_vs_192": 0.4678,
+    "192_vs_256": 0.1087
+  },
+  "equivalence_gates_after_training": {
+    "fp32": {
+      "T1_prefix_w_eq_d_vs_stock": {
+        "bitwise_equal_logits": true,
+        "bitwise_equal_loss": true,
+        "max_abs_logit_diff": 0.0,
+        "max_abs_loss_diff": 0.0
+      },
+      "T2_sliced_vs_prefix_by_width": {
+        "128": {
+          "bitwise_equal_logits": true,
+          "bitwise_equal_loss": true,
+          "max_abs_logit_diff": 0.0,
+          "max_abs_loss_diff": 0.0
+        },
+        "192": {
+          "bitwise_equal_logits": true,
+          "bitwise_equal_loss": true,
+          "max_abs_logit_diff": 0.0,
+          "max_abs_loss_diff": 0.0
+        },
+        "256": {
+          "bitwise_equal_logits": true,
+          "bitwise_equal_loss": true,
+          "max_abs_logit_diff": 0.0,
+          "max_abs_loss_diff": 0.0
+        }
+      }
+    },
+    "bf16_autocast": {
+      "T1_prefix_w_eq_d_vs_stock": {
+        "bitwise_equal_logits": true,
+        "bitwise_equal_loss": true,
+        "max_abs_logit_diff": 0.0,
+        "max_abs_loss_diff": 0.0
+      },
+      "T2_sliced_vs_prefix_by_width": {
+        "128": {
+          "bitwise_equal_logits": true,
+          "bitwise_equal_loss": true,
+          "max_abs_logit_diff": 0.0,
+          "max_abs_loss_diff": 0.0
+        },
+        "192": {
+          "bitwise_equal_logits": true,
+          "bitwise_equal_loss": true,
+          "max_abs_logit_diff": 0.0,
+          "max_abs_loss_diff": 0.0
+        },
+        "256": {
+          "bitwise_equal_logits": true,
+          "bitwise_equal_loss": true,
+          "max_abs_logit_diff": 0.0,
+          "max_abs_loss_diff": 0.0
+        }
+      }
+    }
+  },
+  "all_gates_bitwise_equal": true,
+  "shared_train_results": {
+    "params": 6962688,
+    "train_tokens": 491520,
+    "wall_minutes": 0.08,
+    "peak_gpu_mem_mb": 829.5,
+    "config": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 4,
+      "mlp_hidden_sched": null,
+      "dropout": 0.0,
+      "norm_cap": 1.0,
+      "gate_bias_init": -2.0,
+      "dense": true,
+      "carry_gate": true,
+      "aux_mode": "renorm",
+      "mod_ratio": 0.0,
+      "fill_kv": true,
+      "proj_fill": false,
+      "readout_dims": null,
+      "readout_gated": false,
+      "readout_linear_resid": false,
+      "readout_perdepth": false,
+      "readout_wide_shared": 0,
+      "topology": "sequential",
+      "attn_sparse_k": 0,
+      "train_window": 0,
+      "train_anchors": 0,
+      "attn_linear": false,
+      "linear_chunk": 64,
+      "n_kv_heads": null,
+      "carry_rule": null,
+      "carry_chunk": 64,
+      "carry_state_dim": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "recon_window": 0
+    },
+    "gnorm_monitor_max": 10.5
+  },
+  "run_dir": "axes/3-width/3.1.1-uniform-narrowing/experiments/2642-uniform-narrowing-13m/runs/WD256-s99-0k",
+  "code_hash_run_py": "f23a66fc69eaed8571b4b3e1f7f7334372e687e0f28705961eb9eba665b6e6f3",
+  "model_pt_sha256": "88f065f2e5c7c6ca7db15f400face4bf9cd6a53720bf07ccf6f7097b63bd781d",
+  "no_engine_change": "pathlm/**、train_*.py 零改动：前缀前向与切片转换都实现在本实验目录内；等值性由 T1/T2 逐位钉住"
+}

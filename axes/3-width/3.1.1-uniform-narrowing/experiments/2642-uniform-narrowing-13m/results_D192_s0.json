@@ -1,0 +1,223 @@
+{
+  "arm": "D192",
+  "seed": 0,
+  "steps": 12000,
+  "kind": "uniform",
+  "width": 192,
+  "n_heads": 6,
+  "head_dim": 32,
+  "eval": {
+    "metric": "clean bpc（最终深度、无退出、序列级、越低越好）",
+    "n_batches": 20,
+    "batch_size": 16,
+    "eval_generator_seed": 2,
+    "bpc_by_depth": [
+      {
+        "depth": 0,
+        "bpc": 7.3858,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "bpc": 4.9181,
+        "acc": 0.1339
+      },
+      {
+        "depth": 2,
+        "bpc": 4.5758,
+        "acc": 0.1905
+      },
+      {
+        "depth": 3,
+        "bpc": 3.9957,
+        "acc": 0.2864
+      },
+      {
+        "depth": 4,
+        "bpc": 3.335,
+        "acc": 0.4018
+      },
+      {
+        "depth": 5,
+        "bpc": 2.6224,
+        "acc": 0.5161
+      },
+      {
+        "depth": 6,
+        "bpc": 2.2009,
+        "acc": 0.5769
+      },
+      {
+        "depth": 7,
+        "bpc": 1.7514,
+        "acc": 0.6538
+      },
+      {
+        "depth": 8,
+        "bpc": 1.5841,
+        "acc": 0.6775
+      }
+    ],
+    "clean_bpc": 1.5841,
+    "acc_by_depth": [
+      {
+        "depth": 0,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "acc": 0.1339
+      },
+      {
+        "depth": 2,
+        "acc": 0.1905
+      },
+      {
+        "depth": 3,
+        "acc": 0.2864
+      },
+      {
+        "depth": 4,
+        "acc": 0.4018
+      },
+      {
+        "depth": 5,
+        "acc": 0.5161
+      },
+      {
+        "depth": 6,
+        "acc": 0.5769
+      },
+      {
+        "depth": 7,
+        "acc": 0.6538
+      },
+      {
+        "depth": 8,
+        "acc": 0.6775
+      }
+    ]
+  },
+  "params": {
+    "params_total_measured": 3944064,
+    "params_ffn_measured": 2366976,
+    "params_embedding_measured": 88704,
+    "params_gates_dead_measured": 296448,
+    "analytic": {
+      "embedding": 39552,
+      "pos_embedding": 49152,
+      "embedding_total": 88704,
+      "ffn": 2366976,
+      "attention_and_ln": 1191936,
+      "gates_dead_in_dense": 296448,
+      "params_total": 3944064,
+      "params_live": 3647616,
+      "mlp_hidden": 768,
+      "note": "解析参数量（dense 形态、carry_gate=True 原生构造）。gates_dead_in_dense = 引擎照建但在 dense 前向中不用的门参数，与 2641 params_total 同口径"
+    },
+    "params_total_matches_analytic": true,
+    "params_ffn_matches_analytic": true,
+    "hidden_by_layer": [
+      768,
+      768,
+      768,
+      768,
+      768,
+      768,
+      768,
+      768
+    ],
+    "hidden_matches_width": true
+  },
+  "cost": {
+    "width": 192,
+    "mlp_mult": 4,
+    "seq_len": 256,
+    "n_layers": 8,
+    "vocab": 206,
+    "macs_per_token": {
+      "attention": 1966080,
+      "ffn": 2359296,
+      "readout_tied": 39552,
+      "total": 4364928
+    },
+    "note": "等效理论量：MACs/token（乘加）。attention 的 T·w 项随序列长度线性、FFN 的 w² 项与 T 无关；不用任何时间量。tokens-per-forward = 1。width = 该档活跃残差通道数（uniform 臂 = d_model）"
+  },
+  "liveness": {
+    "active_width": 192,
+    "hidden_by_layer": [
+      768,
+      768,
+      768,
+      768,
+      768,
+      768,
+      768,
+      768
+    ],
+    "block_out_over_in_by_layer": [
+      16.718344,
+      1.085755,
+      1.062208,
+      1.056682,
+      1.060026,
+      1.067736,
+      1.070765,
+      1.082464
+    ],
+    "min_ratio": 1.056682,
+    "note": "逐层 ‖block_out‖/‖in‖ 的逐位置均值（>0 ⇒ 该层真的参与前向）；hidden_by_layer 必须逐位等于 4×活跃宽度"
+  },
+  "causality": {
+    "max_abs_dlogit_past_positions": 0.0,
+    "max_abs_dlogit_last_position": 6.196450710296631,
+    "pass": true,
+    "note": "改末位 token：之前位置逐位不变（因果掩码真的在）、末位必须变（活性对照）"
+  },
+  "shared_train_results": {
+    "params": 3944064,
+    "train_tokens": 98304000,
+    "wall_minutes": 7.56,
+    "peak_gpu_mem_mb": 719.9,
+    "config": {
+      "d_model": 192,
+      "n_layers": 8,
+      "n_heads": 6,
+      "seq_len": 256,
+      "mlp_mult": 4,
+      "mlp_hidden_sched": null,
+      "dropout": 0.0,
+      "norm_cap": 1.0,
+      "gate_bias_init": -2.0,
+      "dense": true,
+      "carry_gate": true,
+      "aux_mode": "renorm",
+      "mod_ratio": 0.0,
+      "fill_kv": true,
+      "proj_fill": false,
+      "readout_dims": null,
+      "readout_gated": false,
+      "readout_linear_resid": false,
+      "readout_perdepth": false,
+      "readout_wide_shared": 0,
+      "topology": "sequential",
+      "attn_sparse_k": 0,
+      "train_window": 0,
+      "train_anchors": 0,
+      "attn_linear": false,
+      "linear_chunk": 64,
+      "n_kv_heads": null,
+      "carry_rule": null,
+      "carry_chunk": 64,
+      "carry_state_dim": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "recon_window": 0
+    },
+    "gnorm_monitor_max": 4.27
+  },
+  "run_dir": "axes/3-width/3.1.1-uniform-narrowing/experiments/2642-uniform-narrowing-13m/runs/D192-s0-12k",
+  "code_hash_run_py": "f23a66fc69eaed8571b4b3e1f7f7334372e687e0f28705961eb9eba665b6e6f3",
+  "model_pt_sha256": "445c717f0da6b65e6c9cd91c5852fd56f7e3352df230ff7841cc41ade19f351c",
+  "no_engine_change": "pathlm/**、train_*.py 零改动：本臂只改 shared_argv 的 --d/--heads（引擎原生配置）"
+}
