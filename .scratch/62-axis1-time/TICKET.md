@@ -479,3 +479,71 @@ round-2 复核者的 §4「请父级代跑」清单 (a)–(d) 全部执行，命
 | c4 | `git show c77cc0b:…results.json \| jq .cost` | `wall_minutes_total_eval: 0.5`（返工前旧值，与 REVIEW-5 引数一致）⇒ 与 round-1 引数自洽 |
 | d1 | `pytest …/test_2639_frontier.py -q` | `6 passed` |
 | d2 | `python3 tools/summary.py --check` / `python3 tools/check_tree.py` | 均 `OK：46 个 project.yaml 全部符合 docs/research-schema.md` |
+
+---
+
+## 10 Phase C（第三轮）：把本轴推到终局（`2026-10-14T20:5x+08:00`，actor：axis1-lead-3）
+
+> 触发：orchestrator 任务「轴 1 lead · 自主推进：把本轴推到终局」。目标 = 每个**非 Backlog** 研究项
+> 达到 `status ∈ {已完成, 被否证}` + `conclusion` + 落盘 `experiments` + fresh 独立复核判词。
+> 预算：本 run 硬上限 3h；并发子 Agent ≤2；GPU 按 `SCHEMA.md` §20 串行。
+
+### 10.1 枚举与「milestone 差距 + 下一步最高价值 WP」（12 项，按价值排序）
+
+| 序 | id | status | milestone 差距 | 下一步最高价值 WP | 类型/成本 |
+|---|---|---|---|---|---|
+| 1 | 1.1.4.1 | 进行中 | 质量轴 ✅（2639）；**召回轴未测**；量化点未叠图；归因不可分（F8，需引擎新开关）；n≥2 新臂未做 | **WP2：完备机制的召回轴**（复用 2639 checkpoint 纯推理） | GPU 推理 ~10 min |
+| 2 | 1.1.4.5 | 进行中 | 缺「同任务/同预算/同仪器」正面对撞；缺「前缀可丢」端到端协议 | **WP1：implicit(win16) vs explicit(carrypl16) 正面对撞**（与 #1 同一台仪器、同一批臂） | GPU 推理 ~10 min |
+| 3 | 1.1.1 | 进行中 | 主数字仍在 `.scratch`/旧 stub；**锚点臂无仓内自包含复算**；T 子线无 seed 复本 | **WP1：win16+anchors 臂自包含复算（2 seed）** + 复用 2634 needle 仪器复算「锚点通道召回」 | GPU 训练 ~20 min + 推理 |
+| 4 | 1.1.4.4 | 未开始 | 本仓零经验 | WP1：{stock, stock+检索} 最小判决（需新检索腿实现） | GPU 训练 + 新实现 |
+| 5 | 1.1.4.2 | 进行中 | 三类压缩无自有实验（摘要槽/低秩/pooling 六臂） | WP1：同预算压缩质量 | GPU 训练 |
+| 6 | 1.2.1 | 未开始 | 零经验；需 dilated 掩码 | WP1：三臂对齐可见键数 | GPU 训练 |
+| 7 | 1.2.4 | 未开始 | 零经验；需合并实现 | WP1：{stock, 金字塔 r=2/4/8} | GPU 训练 |
+| 8 | 1.2.3 | 进行中 | 长 T 是否回本未测；与「按位置最近 k」同预算对照未做 | WP1/WP2 | GPU 训练 |
+| 9 | 1.2.2 | 进行中 | 真块稀疏掩码未实装 | WP1 | GPU 训练 + 新实现 |
+| 10 | 1.1.2 | 进行中 | per-head slope + 长度外推未做 | WP1/WP2 | GPU 训练 |
+| 11 | 1.1.4.3 | 进行中 | 判据错配未修（固定 ρ 下重建质量） | WP1 | GPU 训练 |
+| 12 | 1.1.3 | 未开始 | 无自有实验（设计上只指针 1.1.1） | WP1 | 0 GPU（复用 1.1.1） |
+
+**本轮（Phase C）只执行 #1/#2（合一）与 #3**——理由是：①#1/#2 是本轴核心命题（explicit 是否值得）
+且**纯推理、成本最低、判决力最高**；②#3 是全体前沿的**价格上界**且**不需要新引擎能力**（只用已有
+`--train-anchors`）。其余项在 3h 预算内不足以完成「训练 + 复核」两轮，如实登记在 §10.5 的 blocker 表。
+
+### 10.2 WP 契约（预登记，写在任何执行之前）
+
+**WP-C1 · 2661**：`1.1.4.5` 目录下新实验 `2661-implicit-vs-explicit-recall-13m`（同时供 `1.1.4.1` 的召回轴）。
+
+- what：用**已有 checkpoint**、**同一台仪器**（2634 的毁源敏感度探针 + needle v3 短语针 + clean bpc），
+  在**同任务/同预算/同可见性**下正面比 {implicit = 纯窗口 16} vs {explicit = 完备机制逐层独立状态 + 内容写门}。
+- goal：回答本轴核心命题「窗口丢掉的，能不能靠显式状态搬回来」——此前只在**退化实现**（单共享槽）上测过。
+- means：fork `2634/run.py` + `realtext_probe.py` + `needle_stats.py` 到新目录，**只改臂集与签名**，
+  探针/判据/掩码口径一字不改；臂 = {win16_s0, win16_s1, carry16_s0, carry16_s1, carrypl16_s0, carrypl16d_s0}。
+- acceptance（判据，C1 带已声明）：①**该涨**：`carrypl16_s0` 的 beyond 桶 needle 召回相对**配对无针地板**
+  在硬同索引子集上 CI（配对 bootstrap / Wilson 95%）**不含 0**；②**该跌**：`win16_*` 的 beyond 召回
+  停在同掩码地板（负对照，须复现 2634 的读法）；③**该涨**：`carrypl16_s0` 的毁源敏感度
+  `Δbpc_far > 0` 且 CI 不含 0，而 `win16_*` 的 `max_abs_logit_diff_on_eval_rows == 0`（前提①硬断言）；
+  ④**必须不变**：只有后半段 token 改变时前半段 logits 逐位不变（因果性）；⑤质量轴与 2638/2639 记录值逐位复现。
+- evidence：`axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/`。
+- review：WP 停后派 **fresh** reviewer（非本 WP writer），独立复核至无问题，累计 ≤2 轮。
+
+**WP-C2 · 2662**：`1.1.1` 目录下新实验 `2662-hard-window-anchor-13m`。
+
+- what：`win16 + anchors`（锚点臂，2 seed）自包含复算 + 复用 2634 needle 仪器复算「锚点通道召回」。
+- goal：把「锚点通道是真产物（needle 76.8%→93.3%）」从 `.scratch` 摘要升级为仓内可复核证据；
+  同时给出 1.1.1 的**锚点价格**（同预算下 bpc 差）。
+- means：`train_depth_ar.py --train-window 16 --train-anchors <s>`（已有 CLI，**不需新引擎能力**），
+  其余 CLI 与 2634 逐字段相同（d256/12L/8H/mlp6/T256/12k 步/bs32/seed 0,1）；对照臂复用
+  `2634/train/rt_none_s{0,1}`（纯窗 16）与 `2610` trunk（全因果锚）。
+- acceptance：①锚点臂 relative to 同 seed 纯窗臂的 clean bpc 差可排序（越自测带 σ_cell=0.00166 才对上，
+  0.014 带并列报）；②锚点臂的 beyond-window needle 召回相对同掩码地板有可排序提升（CI 不含 0）；
+  ③必须不变：因果性 + 掩码非退化 + 复用臂 bpc 与 2634 逐位复现。
+- evidence：`axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/`。
+- review：同 WP-C1 的复核纪律。
+
+### 10.3 框架性取舍（本轮，按「轴建议默认处置」自行采用）
+
+| # | 取舍 | 处置 | 记录 |
+|---|---|---|---|
+| F9 | `milestone.acceptance` 的「同算力」措辞 | **改为「同预算点（每位置等效字节）」**（`1.1.4.1` 的 `milestone.acceptance` 与 `conclusion` 同事实处一并改） | 本文件 + `change_log` |
+| F10 | 2661 一个实验目录**同时**作为 `1.1.4.5`（正面对撞）与 `1.1.4.1`（召回轴）的证据 | 目录归 `1.1.4.5`（该项的 milestone 就是这场对撞），`1.1.4.1` 的 `experiments` 加**同一路径**作指针（先例：`1.1.1` 的 `experiments` 里已有 `.scratch/07-x1-x3/evidence` 这种跨目录指针） | 本文件 + 上报 |
+| F11 | C1 判据带声明缺口（`1.1.1`/`1.1.3`/`1.1.4.2`/`1.2.4`） | 按 `docs/research-schema.md` §12.1 机械补齐声明（bpc 类走 0.014 配对带；召回等率类走配对 bootstrap / Wilson 95% CI，不跨量纲借用 0.014） | 本文件 §10.4 |
