@@ -15,8 +15,9 @@ objective_criteria: "该不跌/可排序：clean bpc；必须报：参数增量 
 falsification: "若解绑相对 tied 的 clean bpc 不越噪声带 ⇒ 判绑定 / 解绑在本尺度质量中性（tied 省参数即占优）；若解绑只有在大词表下才有效、而本仓小词表下不可判 ⇒ 判本尺度不可判、不外推；若解绑提升但代价（vocab×d 不可 scale）使其不占前沿优势 ⇒ 判不采纳。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 failure_analysis: ""
 conclusion: ""
-conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 `status: 未开始`。判据与基线按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），把「参数量单列」「小/大词表两档」「prob0 语义不变」钉死。与 `3.2.1` 的边界写进 `gap`。独立复核未做。"
-experiments: []
+conclusion_review: "**本轮（Phase B）已落**：预登记契约 `experiments/2643-tied-untied-13m/README.md`、实现 `run.py`（独立 unembed `U`、部分绑定 `PR` 两种读出的实验目录内挂法，不改引擎 `pathlm/**`）、单测 `test_2643_tied_untied.py`（含「解绑开关关闭时前向 == 引擎 stock readout」等值门与变异门）、复用门（与 `2641` 的 `U4-s0` 锚逐位初始化对照 + 逐字段 config 对照）；**两个新增臂 `U`/`PR` 未跑出任何读数** ⇒ 本项**尚无本地判决**，`status: 进行中`、`conclusion` 留空。未跑的原因 = 单卡 GPU 互斥锁饥饿：`/tmp/pathlm_gpu.lock` 自 21:38 起被其它轴的长任务占用，本实验三次等锁均未排上（22:18 到 25 min 上限 `rc=9`、22:40 到硬时限放弃），全程未伪造读数、未杀他人进程（见 `2643/analysis.md` 与 `2643/results.json::arms_unrun_reason`）。独立复核未做（无可复核的读数）。"
+experiments:
+  - "axes/3-width/3.2.3-tied-untied/experiments/2643-tied-untied-13m"
 argument: "tied 与 untied 的本质差别不是「多一层」，而是**语义约束**：tied 把「概率」钉成「状态在 embedding 基的坐标」，解绑放弃该语义以换读出自由度。因此判据必须同时看质量（该不跌/可排序）与语义可用性（prob0 / 线性传输，该不变）与参数（该报 vocab×d），且必须分小词表 / 大词表两档——小词表（本仓 vocab=206）与大词表（100k+）的结论方向可能相反，不得外推。"
 gaps:
   - "本仓零经验：需先做最小判决（13M、{tied, untied, 部分绑定} 三臂，报 clean bpc + 参数量 + prob0 可用性，n≥2）"
@@ -42,13 +43,14 @@ work_packages:
     acceptance: "三臂预算对齐；解绑相对 tied 有/无越噪声带差异，二选一明确；参数量列与 prob0 可用性列齐备"
     evidence: "axes/3-width/3.2.3-tied-untied/experiments/"
     review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b）"
-    status: "未开始"
+    status: "进行中"
 
 roadmap:
   - "WP1：tied vs untied 最小判决"
   - "复核通过后写 conclusion，更新 status"
+  - "**本轮（Phase B）受阻**：GPU 互斥锁饥饿 ⇒ `U`/`PR` 两臂未跑、无读数；下一步最小实验 = `U:0` 一臂 12k（98.3M token 匹配步数）+ 同口径评测（`PR` 可后补），读数即可直接落 `results.json::P1_deltas` 并判「本尺度绑定/解绑是否质量中性」"
 
-status: "未开始"
+status: "进行中"
 started: "2026-10-13T10:57:34+08:00"
 ended: ""
 change_log:
@@ -58,3 +60,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-14T22:45:00+08:00"
+    actor: "axis3-lead"
+    change: "Phase B 登记：本项已落预登记契约 + 实验目录内实现 + 单测（含等值门/变异门）+ 与 2641 `U4-s0` 的复用门；两个新增臂（`U` 独立 unembed、`PR` 部分绑定）因 GPU 互斥锁饥饿未跑（rc=9 / 硬时限放弃），`status` 由 未开始 改 进行中、`experiments` 登记 2643；未跑项与下一步最小实验写入 gaps。"

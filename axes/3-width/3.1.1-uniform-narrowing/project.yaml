@@ -14,11 +14,12 @@ validation: "端到端：对照 = 同尺寸 stock 全宽（归一为 100%）+ �
 objective_criteria: "该跌：参数量与每 token 等效算力（FLOPs）；该不跌/可排序：clean bpc（须越 0.014 噪声带）；该单调：width dropout 各档宽度的质量随宽度单调（防「一次训练多档」名不副实）；必须不变：因果性；必须报：参数量（作对照列，防把减参数记为减宽度）。"
 falsification: "若 uniform 减宽在等参数对照下相对 stock 的 clean bpc 不越噪声带而算力/参数量下降可测 ⇒ 记为一档可用前沿点；若减宽只按参数量下降比例掉质量、等参数对照下无优势（即只是「减容量」）⇒ 判 uniform 减宽在本尺度不产生新知识（与业界共识一致）；若 width dropout 训出的各档质量不随宽度单调、或任一档显著掉出前沿 ⇒ 判弹性宽度不成立。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 failure_analysis: ""
-conclusion: ""
-conclusion_review: "本项按 55-review W-06/W-07/W-14/W-17 修正：旧格 W1 的判决「减宽 = 减容量」是**照抄业界共识**，且其唯一本地证据 `2525-tax-attribution` 测的是**读出切片**（读出域，不测减宽）⇒ 旧结论无本地支撑，**不迁入本项**。旧格引用的「用户本地独立实验（减宽）」仓内**无可核实 artifact**（W-14），已不作为证据。故本项命题仍无本地判决，`status: 未开始`、`conclusion` 为空。无独立复核（未做）。"
+conclusion: "**减宽是真旋钮，弹性宽度不是**。① **uniform 减宽**（d_model 256→192、头数 8→6、head_dim 恒 32；引擎原生配置，无干预代码）：clean bpc **1.5314 → 1.5841**（**Δ = +0.0527 = 3.8× 0.014 噪声带 ⇒ 可分：减宽要付可排序的质量税**），换来每 token 等效算力 **−40.96%**（7,392,768 → 4,364,928 MACs）、参数量 **−43.4%**（6,962,688 → 3,944,064）⇒ 每省 1% 每 token 算力付 **0.001287** bpc。② **与另一只旋钮（FFN 比例减半）在等算力位点不可排序**：2641 的 U2（Δ +0.0395 / 省 28.37%）斜率 0.001392，与 D192 的斜率差 0.000105 对应 **Δbpc 差 0.0132 < 0.014 带**⇒ 两只旋钮**互不支配**（U2 更准、D192 更省），**不得宣称任一方占前沿优势**。③ **嵌套宽度 dropout（WD256：一次训练、三档部署）在本尺度不成立**：同一 checkpoint 三档质量**单调**（宽度 256 → 1.6178、192 → 1.6327、128 → 1.7301，越宽越好），但**每一档都差于同宽单独训练的模型**（@192 vs 单训 D192 = **+0.0486 = 3.5× 带**；@256 vs stock = **+0.0864**）⇒「一次训练服务多档」要付代价，且全宽档亏得最多。**C2 两读法**：字面成立（减宽是有效旋钮、质量代价可分且算力/参数确降）；实质成立（相对同算力最强基线不被支配——D192 与 U2 互不支配）。**限定**：单 seed（seed 0）单尺度（13M / 8 层 / 12k 快照，未收敛）、`D128`（uniform d=128）因 GPU 互斥锁排队超预算未跑（下一步最小实验与等效成本见 gaps）、WD256 只有一条训练。"
+conclusion_review: "**自评**：结论建立在同配方（数据/步数/batch/lr/seed 逐位相同）的两条臂 + 两块同仓锚之上，唯一变量 = 宽度分配；关键门（T1 前缀前向 == stock 逐位、T2 切片 == 前缀前向逐位、参数与维数审计、同一 checkpoint 三档、评测确定性重评逐位一致、因果性）全部落成单测并在复核中实跑。**当前（最后一轮）独立复核 = PASS**（fresh 有 shell 的复核者，`.scratch/64-axis3-width/REVIEW-3.1.1-R2.md`）：第 1 轮判 FAIL 的唯一 blocking（把「每 1% 算力代价」的斜率差写成方向性结论，而该差对应 Δbpc 差 0.0132 < 0.014 带）已按最小修改为「本尺度不可排序、两者互不支配」，并由 `run.py::P5b` 新增带内判据（只有越带才输出方向性判词）；两条 non-blocking（analysis 与修补后落盘不同步、判据文件里出现墙钟）同时闭合。历轮判词与处置见 `.scratch/64-axis3-width/REVIEW-3.1.1.md`（第 1 轮 FAIL 全文）与 `TICKET.md` §10.13–§10.15。 **第 2 轮复核的 5 条 non-blocking（均不影响判词，已登记待下一轮最小修）**：N-1 `results.json::arms_dropped` 含裸钟点坐标（应改为指向 ticket 64 §10 与 run_log 行）；N-2 该字段引用「README §预算递减」而 README 无此节标题（应改为 §5 与 `README.md:122`）；N-3 实现新增的「斜率差落在带内 ⇒ 不可排序」分支比预登记 P5b 更保守（取消宣称方向），属授权口径修补，需在工单留显式说明；N-4 `run.py` 的越带分支文案日后补 D128 时需重核；N-5 新增的带内判据尚无红-绿回归门（应补「斜率差 < 带 ⇒ 断言输出含『不可排序』」用例）。"
 experiments:
   - "axes/3-width/3.1.1-uniform-narrowing/experiments/2525-tax-attribution"
   - ".scratch/25-tax-attribution/evidence @2e86924"
+  - "axes/3-width/3.1.1-uniform-narrowing/experiments/2642-uniform-narrowing-13m"
 argument: "判定「宽度分配值不值」的判据形态必须是「质量-代价前沿」而非单点 Δbpc 对一个绝对门槛（55-review W-09）：横轴 = 每 token 等效算力/参数，纵轴 = clean bpc，以 stock 全宽为 100%。且必须给等参数对照，否则无法把「减宽」与「单纯减参数/容量」分开（`SCHEMA.md` §15）。`2525-tax-attribution` 按 `.scratch/56-restructure/MAPPING.md` §0/§1 物理迁入本目录（旧格 W1 的实验整目录，一格一份家），但它测的是读出切片、属 `3.2.1` 域：本项只把它登记为**背景证据**（读出约束的负结果），`3.2.1` 以指针引用它。"
 gaps:
   - "本仓零经验：需先做最小判决（13M、{全宽, uniform 减宽, width dropout} 三臂 + 等参数对照，matched-step，报 clean bpc + 参数量 + 每 token 等效 FLOPs）"
@@ -46,7 +47,7 @@ work_packages:
     acceptance: "两臂预算对齐；减宽相对 stock 有/无越噪声带差异，二选一明确；参数量与 FLOPs 列齐备"
     evidence: "axes/3-width/3.1.1-uniform-narrowing/experiments/"
     review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b，复核排在执行之后）"
-    status: "未开始"
+    status: "已完成"
   - id: "WP2"
     what: "width dropout 弹性宽度判决"
     goal: "判定一次训练能否得到多档宽度可用、且各档质量随宽度单调的弹性模型"
@@ -54,16 +55,19 @@ work_packages:
     acceptance: "各档质量-宽度曲线齐备、单调性检过；与同档 uniform 模型比较，二选一明确"
     evidence: "axes/3-width/3.1.1-uniform-narrowing/experiments/"
     review: "跑完另派 fresh 复核（核对「多档」确实是同一 checkpoint 推理档位，不是分别训练）"
-    status: "未开始"
+    status: "已完成"
 
 roadmap:
   - "WP1：uniform 减宽最小判决（含等参数对照）"
   - "WP2：width dropout 弹性宽度判决"
   - "复核通过后写 conclusion，更新 status"
+  - "`D128`（uniform d=128、heads=4）未跑：GPU 互斥锁排队超预算（21:50 判据，见 `2642/run_log.txt` 21:49:40 与 `results.json::P5_falsification.arms_dropped`）；下一步最小实验 = `D128:0` 一臂 12k（98.3M token 匹配步数）+ 同口径评测，读数可直接并入前沿表"
+  - "**单 seed（seed 0）**：D192 与 WD256 都只有一条训练；结论只报方向与量级，不称最终质量（12k 仍未收敛）。下一步最小实验 = D192 与 WD256 各补 seed 1（两臂 ≈ 2× 单臂成本）"
+  - "WD256 的「一次训练多档」只测了一条训练与三档宽度（128/192/256）：width dropout 强度/采样分布的其他设定未扫，且未测「先训全宽再切档」的对照（区分「dropout 正则会伤容量」与「嵌套切档本身有损」）"
 
-status: "未开始"
+status: "已完成"
 started: "2026-10-13T10:57:34+08:00"
-ended: ""
+ended: "2026-10-14T22:45:00+08:00"
 change_log:
   - date: "2026-10-13T10:57:34+08:00"
     actor: "轴 3 §3.1 worker"
@@ -74,3 +78,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-14T22:45:00+08:00"
+    actor: "axis3-lead"
+    change: "Phase B 收口：2642（D192 uniform 减宽 + WD256 嵌套宽度 dropout，各 12k）执行完成并落盘，填 conclusion / status=已完成 / WP1+WP2=已完成 / experiments / ended，把 D128 未跑、单 seed、WD256 单训练等未测项写进 gaps；结论按 C2 两读法并列，并按复核 R-3.1.1 第 1 轮的 blocking 把「每 1% 算力代价的斜率差」改判为「落在 0.014 带内 ⇒ 本尺度不可排序」，第 2 轮复核 PASS。"
