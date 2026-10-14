@@ -1,0 +1,2020 @@
+{
+  "config": {
+    "contract": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/README.md",
+    "scope": "只做单轴单格实验，基底恒为 stock decoder-only 全因果；组合默认留白。本实验把**完整机制**（逐层独立状态 + 内容写门 ± 衰减 γ，E1 开关）放进『每位置等效 KV 字节 vs clean bpc』前沿，与 ① 单共享槽退化版（2634/2638）② 同预算纯窗口基线 对照。",
+    "device": "cuda",
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true,
+      "topology": "sequential",
+      "carry_chunk": 64
+    },
+    "data": {
+      "name": "enwik8_full",
+      "path": "data/enwik8_full.npz",
+      "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）",
+      "vocab_size": 206,
+      "n_real_tokens": 205,
+      "mask_token": 205
+    },
+    "eval": {
+      "n_batches": 96,
+      "batch_size": 16,
+      "window_seed": 2,
+      "note": "全部臂（含 full 锚）走同一份 96×16 窗口序（window_seed=2），bpc token 数 = 96×16×255 = 391,680；臂间可比。"
+    },
+    "cost_axis": {
+      "bytes_per_elem": 2,
+      "note": "每位置等效 KV 字节 = n_layers × 2(K,V) × d_model × bytes_per_elem × k；carry 状态 = （单共享槽）n_heads×hd² floats；（逐层）n_layers × n_heads×hd² floats —— run.py 从加载的模型上实际读（state_floats_actual）。横轴另报等效窗口位置数 k_eff = 总字节 / 12288。",
+      "kv_bytes_per_position_unit": 12288
+    },
+    "bands": {},
+    "arms": [
+      {
+        "name": "full",
+        "kind": "full",
+        "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+        "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+        "window": 256,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "100% 质量/代价锚（stock 全因果 13.54M，12k 步 × bs32 × T256，复用 2610 主干；配置等值性见 2615/2616）",
+        "size_bytes": 54193675,
+        "reused_from": "2610 trunk（全因果锚）"
+      },
+      {
+        "name": "win16_s0",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+        "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+        "window": 16,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "纯窗口 16（复用 2634 无通道臂）",
+        "size_bytes": 54193675,
+        "reused_from": "2634-carry-realtext-13m"
+      },
+      {
+        "name": "win16_s1",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+        "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+        "window": 16,
+        "anchors": 0,
+        "rule": null,
+        "seed": 1,
+        "role": "纯窗口 16（seed 1，作臂内噪声）",
+        "size_bytes": 54193675,
+        "reused_from": "2634-carry-realtext-13m"
+      },
+      {
+        "name": "win17_s0",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win17/model.pt",
+        "sha256": "70f0acb92067adba4f796612bab49ead7153c1b4b7e5bb3ea15a5219ab9cdc1c",
+        "window": 17,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "纯窗口 17（本实验训练；strict-dominance 测试点：内存 208,896 B < carry16 的 212,992 B）",
+        "size_bytes": 54193675,
+        "reused_from": "2638-carry-frontier-13m"
+      },
+      {
+        "name": "win18_s0",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win18/model.pt",
+        "sha256": "39316ac04f20e158a6833323888990d149bf22c8da76ca04c4aa642cdcfa5913",
+        "window": 18,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "纯窗口 18（本实验训练；近 16 的局部斜率点）",
+        "size_bytes": 54193675,
+        "reused_from": "2638-carry-frontier-13m"
+      },
+      {
+        "name": "win24_s0",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win24/model.pt",
+        "sha256": "ebd4ef84736355bc163479e702c34b1383708f90d39510756e38b2cf3fcf90d1",
+        "window": 24,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "纯窗口 24（本实验训练；近 16 的局部斜率点）",
+        "size_bytes": 54193675,
+        "reused_from": "2638-carry-frontier-13m"
+      },
+      {
+        "name": "win32_s0",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win32/model.pt",
+        "sha256": "dccc58c0065d70f0c202424b7f5f40e28929ffb238db3d3a3954d3095e43287b",
+        "window": 32,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "纯窗口 32（本实验训练）",
+        "size_bytes": 54193675,
+        "reused_from": "2638-carry-frontier-13m"
+      },
+      {
+        "name": "win128_s0",
+        "kind": "window",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win128/model.pt",
+        "sha256": "c17a1cf1747ca59e426eeb1378c90e50802e21401d7058e703a766e8cbe287f7",
+        "window": 128,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "role": "纯窗口 128（本实验训练；宽窗点）",
+        "size_bytes": 54193675,
+        "reused_from": "2638-carry-frontier-13m"
+      },
+      {
+        "name": "carry16_s0",
+        "kind": "carry",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s0/model.pt",
+        "sha256": "d92114822c09f2f7538ea6a59802eed21b1297409fe91f66c031dec9d6c305eb",
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "seed": 0,
+        "state_floats": 8192,
+        "role": "显式状态（delta 写，窗口 16，复用 2634 delta 臂）",
+        "size_bytes": 55255619,
+        "reused_from": "2634-carry-realtext-13m",
+        "carry_chunk": 64,
+        "carry_per_layer": false,
+        "carry_decay": 1.0
+      },
+      {
+        "name": "carry16_s1",
+        "kind": "carry",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s1/model.pt",
+        "sha256": "b3d3cdbc57266109b6b461d18c2188c7d1712170f6760b35a48ff9b6170d6843",
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "seed": 1,
+        "state_floats": 8192,
+        "role": "显式状态（seed 1，作臂内噪声）",
+        "size_bytes": 55255619,
+        "reused_from": "2634-carry-realtext-13m",
+        "carry_chunk": 64,
+        "carry_per_layer": false,
+        "carry_decay": 1.0
+      },
+      {
+        "name": "carrypl16_s0",
+        "kind": "carry",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16/model.pt",
+        "sha256": "382a74aa0e417b229910cc44f55dcc949c225b3211434df488ee6a72d3036ec3",
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "size_bytes": 55264963,
+        "role": "**完备机制**（E1）：逐层独立状态 + 内容写门（取自当前层 hidden），γ=1；与 win32_s0 **逐字节相等**（393,216 B）",
+        "reused_from": null,
+        "carry_chunk": 256,
+        "carry_per_layer": true,
+        "carry_decay": 1.0,
+        "seed": 0
+      },
+      {
+        "name": "c16c256_s0",
+        "kind": "carry",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/c16/model.pt",
+        "sha256": "3e935b33f1cc28ba31b59a7fe7fc82dbe88c3f7dba316a097e82fe3c5a368e5b",
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "size_bytes": 55255619,
+        "role": "单共享槽 delta，chunk=256：与完备臂 chunk 匹配的**退化机制**对照（也充当 chunk 敏感性探针）",
+        "reused_from": null,
+        "carry_chunk": 256,
+        "carry_per_layer": false,
+        "carry_decay": 1.0,
+        "seed": 0
+      },
+      {
+        "name": "carrypl16d_s0",
+        "kind": "carry",
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16d/model.pt",
+        "sha256": "cb1940ee2e97f2311998710870be0c86024ed7d65e2ce54c159fcffbca8fe386",
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "size_bytes": 55264963,
+        "role": "完备机制 + 衰减 γ=0.99（GLA 式遗忘，E1 可选开关）",
+        "reused_from": null,
+        "carry_chunk": 256,
+        "carry_per_layer": true,
+        "carry_decay": 0.99,
+        "seed": 0
+      }
+    ],
+    "missing_new_arms": []
+  },
+  "checkpoints": {
+    "full": {
+      "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+      "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "full",
+      "window": 256,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win16_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+      "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win16_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+      "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": null,
+      "seed": 1,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win17_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win17/model.pt",
+      "sha256": "70f0acb92067adba4f796612bab49ead7153c1b4b7e5bb3ea15a5219ab9cdc1c",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 17,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win18_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win18/model.pt",
+      "sha256": "39316ac04f20e158a6833323888990d149bf22c8da76ca04c4aa642cdcfa5913",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 18,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win24_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win24/model.pt",
+      "sha256": "ebd4ef84736355bc163479e702c34b1383708f90d39510756e38b2cf3fcf90d1",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 24,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win32_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win32/model.pt",
+      "sha256": "dccc58c0065d70f0c202424b7f5f40e28929ffb238db3d3a3954d3095e43287b",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 32,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win128_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win128/model.pt",
+      "sha256": "c17a1cf1747ca59e426eeb1378c90e50802e21401d7058e703a766e8cbe287f7",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 128,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "carry16_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s0/model.pt",
+      "sha256": "d92114822c09f2f7538ea6a59802eed21b1297409fe91f66c031dec9d6c305eb",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "seed": 0,
+      "carry_chunk": 64,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 8192,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "carry16_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s1/model.pt",
+      "sha256": "b3d3cdbc57266109b6b461d18c2188c7d1712170f6760b35a48ff9b6170d6843",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "seed": 1,
+      "carry_chunk": 64,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 8192,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "carrypl16_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16/model.pt",
+      "sha256": "382a74aa0e417b229910cc44f55dcc949c225b3211434df488ee6a72d3036ec3",
+      "size_bytes": 55264963,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "seed": 0,
+      "carry_chunk": 256,
+      "carry_per_layer": true,
+      "carry_decay": 1.0,
+      "state_floats_actual": 98304,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "c16c256_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/c16/model.pt",
+      "sha256": "3e935b33f1cc28ba31b59a7fe7fc82dbe88c3f7dba316a097e82fe3c5a368e5b",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "seed": 0,
+      "carry_chunk": 256,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 8192,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "carrypl16d_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16d/model.pt",
+      "sha256": "cb1940ee2e97f2311998710870be0c86024ed7d65e2ce54c159fcffbca8fe386",
+      "size_bytes": 55264963,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "seed": 0,
+      "carry_chunk": 256,
+      "carry_per_layer": true,
+      "carry_decay": 0.99,
+      "state_floats_actual": 98304,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    }
+  },
+  "selfchecks": {
+    "win16_s0": {
+      "visible_pairs": 3976,
+      "expected": 3976,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "win16_s1": {
+      "visible_pairs": 3976,
+      "expected": 3976,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "win17_s0": {
+      "visible_pairs": 4216,
+      "expected": 4216,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "win18_s0": {
+      "visible_pairs": 4455,
+      "expected": 4455,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "win24_s0": {
+      "visible_pairs": 5868,
+      "expected": 5868,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "win32_s0": {
+      "visible_pairs": 7696,
+      "expected": 7696,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "win128_s0": {
+      "visible_pairs": 24640,
+      "expected": 24640,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "carry16_s0": {
+      "visible_pairs": 3976,
+      "expected": 3976,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "carry16_s1": {
+      "visible_pairs": 3976,
+      "expected": 3976,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "carrypl16_s0": {
+      "visible_pairs": 3976,
+      "expected": 3976,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "c16c256_s0": {
+      "visible_pairs": 3976,
+      "expected": 3976,
+      "ok": true,
+      "nondegenerate": true
+    },
+    "carrypl16d_s0": {
+      "visible_pairs": 3976,
+      "expected": 3976,
+      "ok": true,
+      "nondegenerate": true
+    }
+  },
+  "liveness": {
+    "full": {
+      "kind": "full",
+      "window": 256,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_chunk": null,
+      "note": "全因果锚：无掩码开关，活性量不适用",
+      "train_wall_minutes": null,
+      "train_peak_gpu_mem_mb": null
+    },
+    "win16_s0": {
+      "kind": "window",
+      "window": 16,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_chunk": null,
+      "mask": {
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "alive": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 25.331936,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "dropped_frac": 0.879134,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 2.106155
+      },
+      "train_read_share": null,
+      "carry_liveness_training": {
+        "carry_rule": null,
+        "enabled": false,
+        "carry_chunk": 64,
+        "block_python_class": "Block",
+        "shared_slots": false,
+        "params_added": 0,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "read_scale_absmean": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "alive": false,
+        "w_fro": null,
+        "alive_note": "无通道（carry_rule=None，U0 基线）：读出量为 0"
+      },
+      "train_carry_read_mass": {
+        "enabled": false,
+        "read_share_per_layer": null,
+        "slot_score_mass_per_query": null,
+        "far_read_norm_frac": null
+      },
+      "train_wall_minutes": 11.94,
+      "train_peak_gpu_mem_mb": 2015.1
+    },
+    "win16_s1": {
+      "kind": "window",
+      "window": 16,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_chunk": null,
+      "mask": {
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "alive": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 25.646366,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "dropped_frac": 0.879134,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 1.441366
+      },
+      "train_read_share": null,
+      "carry_liveness_training": {
+        "carry_rule": null,
+        "enabled": false,
+        "carry_chunk": 64,
+        "block_python_class": "Block",
+        "shared_slots": false,
+        "params_added": 0,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "read_scale_absmean": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "alive": false,
+        "w_fro": null,
+        "alive_note": "无通道（carry_rule=None，U0 基线）：读出量为 0"
+      },
+      "train_carry_read_mass": {
+        "enabled": false,
+        "read_share_per_layer": null,
+        "slot_score_mass_per_query": null,
+        "far_read_norm_frac": null
+      },
+      "train_wall_minutes": 8.48,
+      "train_peak_gpu_mem_mb": 2015.1
+    },
+    "win17_s0": {
+      "kind": "window",
+      "window": 17,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_chunk": null,
+      "mask": {
+        "n_visible_pairs": 4216,
+        "causal_pairs": 32896,
+        "visible_frac": 0.128161,
+        "alive": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 25.474808,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 17,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 4216,
+        "causal_pairs": 32896,
+        "visible_frac": 0.128161,
+        "dropped_frac": 0.871839,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 2.009555
+      },
+      "train_read_share": null,
+      "carry_liveness_training": {
+        "carry_rule": null,
+        "enabled": false,
+        "carry_chunk": 64,
+        "block_python_class": "Block",
+        "shared_slots": false,
+        "params_added": 0,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "read_scale_absmean": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "alive": false,
+        "w_fro": null,
+        "alive_note": "无通道（carry_rule=None，U0 基线）：读出量为 0"
+      },
+      "train_carry_read_mass": {
+        "enabled": false,
+        "read_share_per_layer": null,
+        "slot_score_mass_per_query": null,
+        "far_read_norm_frac": null
+      },
+      "train_wall_minutes": 8.51,
+      "train_peak_gpu_mem_mb": 2015.1
+    },
+    "win18_s0": {
+      "kind": "window",
+      "window": 18,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_chunk": null,
+      "mask": {
+        "n_visible_pairs": 4455,
+        "causal_pairs": 32896,
+        "visible_frac": 0.135427,
+        "alive": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 25.765451,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 18,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 4455,
+        "causal_pairs": 32896,
+        "visible_frac": 0.135427,
+        "dropped_frac": 0.864573,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 1.986089
+      },
+      "train_read_share": null,
+      "carry_liveness_training": {
+        "carry_rule": null,
+        "enabled": false,
+        "carry_chunk": 64,
+        "block_python_class": "Block",
+        "shared_slots": false,
+        "params_added": 0,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "read_scale_absmean": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "alive": false,
+        "w_fro": null,
+        "alive_note": "无通道（carry_rule=None，U0 基线）：读出量为 0"
+      },
+      "train_carry_read_mass": {
+        "enabled": false,
+        "read_share_per_layer": null,
+        "slot_score_mass_per_query": null,
+        "far_read_norm_frac": null
+      },
+      "train_wall_minutes": 8.47,
+      "train_peak_gpu_mem_mb": 2015.1
+    },
+    "win24_s0": {
+      "kind": "window",
+      "window": 24,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_chunk": null,
+      "mask": {
+        "n_visible_pairs": 5868,
+        "causal_pairs": 32896,
+        "visible_frac": 0.17838,
+        "alive": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 24.093817,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 24,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 5868,
+        "causal_pairs": 32896,
+        "visible_frac": 0.17838,
+        "dropped_frac": 0.82162,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 1.831654
+      },
+      "train_read_share": null,
+      "carry_liveness_training": {
+        "carry_rule": null,
+        "enabled": false,
+        "carry_chunk": 64,
+        "block_python_class": "Block",
+        "shared_slots": false,
+        "params_added": 0,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "read_scale_absmean": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "alive": false,
+        "w_fro": null,
+        "alive_note": "无通道（carry_rule=None，U0 基线）：读出量为 0"
+      },
+      "train_carry_read_mass": {
+        "enabled": false,
+        "read_share_per_layer": null,
+        "slot_score_mass_per_query": null,
+        "far_read_norm_frac": null
+      },
+      "train_wall_minutes": 8.53,
+      "train_peak_gpu_mem_mb": 2015.1
+    },
+    "win32_s0": {
+      "kind": "window",
+      "window": 32,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_chunk": null,
+      "mask": {
+        "n_visible_pairs": 7696,
+        "causal_pairs": 32896,
+        "visible_frac": 0.233949,
+        "alive": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 24.540386,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 32,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 7696,
+        "causal_pairs": 32896,
+        "visible_frac": 0.233949,
+        "dropped_frac": 0.766051,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 1.77936
+      },
+      "train_read_share": null,
+      "carry_liveness_training": {
+        "carry_rule": null,
+        "enabled": false,
+        "carry_chunk": 64,
+        "block_python_class": "Block",
+        "shared_slots": false,
+        "params_added": 0,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "read_scale_absmean": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "alive": false,
+        "w_fro": null,
+        "alive_note": "无通道（carry_rule=None，U0 基线）：读出量为 0"
+      },
+      "train_carry_read_mass": {
+        "enabled": false,
+        "read_share_per_layer": null,
+        "slot_score_mass_per_query": null,
+        "far_read_norm_frac": null
+      },
+      "train_wall_minutes": 8.51,
+      "train_peak_gpu_mem_mb": 2015.1
+    },
+    "win128_s0": {
+      "kind": "window",
+      "window": 128,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_chunk": null,
+      "mask": {
+        "n_visible_pairs": 24640,
+        "causal_pairs": 32896,
+        "visible_frac": 0.749027,
+        "alive": true
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 22.593737,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 128,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 24640,
+        "causal_pairs": 32896,
+        "visible_frac": 0.749027,
+        "dropped_frac": 0.250973,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 0.546616
+      },
+      "train_read_share": null,
+      "carry_liveness_training": {
+        "carry_rule": null,
+        "enabled": false,
+        "carry_chunk": 64,
+        "block_python_class": "Block",
+        "shared_slots": false,
+        "params_added": 0,
+        "state_fro": null,
+        "beta_mean": null,
+        "write_rel": null,
+        "read_norm": null,
+        "read_scale_absmean": null,
+        "read_share": null,
+        "mem_write_to_resid_ratio": null,
+        "alive": false,
+        "w_fro": null,
+        "alive_note": "无通道（carry_rule=None，U0 基线）：读出量为 0"
+      },
+      "train_carry_read_mass": {
+        "enabled": false,
+        "read_share_per_layer": null,
+        "slot_score_mass_per_query": null,
+        "far_read_norm_frac": null
+      },
+      "train_wall_minutes": 8.4,
+      "train_peak_gpu_mem_mb": 2015.1
+    },
+    "carry16_s0": {
+      "kind": "carry",
+      "window": 16,
+      "rule": "delta",
+      "carry_per_layer": false,
+      "carry_chunk": 64,
+      "mask": {
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "alive": true
+      },
+      "perlayer_state_probe": {
+        "applicable": false,
+        "note": "该臂不是逐层模式（单共享槽 / 无通道）：逐层探针不适用"
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 23.175402,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "dropped_frac": 0.879134,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 2.106155
+      },
+      "train_read_share": {
+        "read_scale_absmean": 0.10894,
+        "read_share": 0.416451,
+        "mem_write_to_resid_ratio": 0.280406,
+        "state_fro": 5.628774,
+        "beta_mean": 0.43521,
+        "write_rel": 0.74698,
+        "read_norm": 7.684108,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 64
+      },
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 77.291214,
+        "state_fro": 4.218829,
+        "beta_mean": 0.575763,
+        "write_rel": 0.0,
+        "read_norm": 3.58686,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.108947,
+        "read_share": 0.41645,
+        "mem_write_to_resid_ratio": 0.280412,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.467817,
+        "rel_dev_vs_other_rule": 0.692098,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "train_carry_read_mass": {
+        "enabled": true,
+        "window": 16,
+        "read_share_per_layer": 0.275788,
+        "read_share_by_layer": [
+          0.673446,
+          0.340488,
+          0.350024,
+          0.231715,
+          0.218269,
+          0.177916,
+          0.17971,
+          0.191589,
+          0.14929,
+          0.256549,
+          0.216148,
+          0.324313
+        ],
+        "slot_score_mass_per_query": 8.223961,
+        "far_read_norm_frac": 0.911478,
+        "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）"
+      },
+      "train_wall_minutes": 16.93,
+      "train_peak_gpu_mem_mb": 2282.5
+    },
+    "carry16_s1": {
+      "kind": "carry",
+      "window": 16,
+      "rule": "delta",
+      "carry_per_layer": false,
+      "carry_chunk": 64,
+      "mask": {
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "alive": true
+      },
+      "perlayer_state_probe": {
+        "applicable": false,
+        "note": "该臂不是逐层模式（单共享槽 / 无通道）：逐层探针不适用"
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 24.001293,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "dropped_frac": 0.879134,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 1.441366
+      },
+      "train_read_share": {
+        "read_scale_absmean": 0.097681,
+        "read_share": 0.418284,
+        "mem_write_to_resid_ratio": 0.282898,
+        "state_fro": 5.663551,
+        "beta_mean": 0.435345,
+        "write_rel": 0.757782,
+        "read_norm": 8.440881,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 64
+      },
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 64,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "params_added": 264296,
+        "w_fro": 75.697095,
+        "state_fro": 3.861761,
+        "beta_mean": 0.568923,
+        "write_rel": 0.0,
+        "read_norm": 3.664171,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.097681,
+        "read_share": 0.418283,
+        "mem_write_to_resid_ratio": 0.28289,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.459198,
+        "rel_dev_vs_other_rule": 0.684534,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / 每次写入真的改动状态（write_rel>0）+ 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "train_carry_read_mass": {
+        "enabled": true,
+        "window": 16,
+        "read_share_per_layer": 0.268231,
+        "read_share_by_layer": [
+          0.672124,
+          0.314413,
+          0.304822,
+          0.179189,
+          0.162979,
+          0.201007,
+          0.148478,
+          0.17009,
+          0.263032,
+          0.17962,
+          0.290865,
+          0.33215
+        ],
+        "slot_score_mass_per_query": 7.474231,
+        "far_read_norm_frac": 0.926867,
+        "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）"
+      },
+      "train_wall_minutes": 15.11,
+      "train_peak_gpu_mem_mb": 2282.5
+    },
+    "carrypl16_s0": {
+      "kind": "carry",
+      "window": 16,
+      "rule": "delta",
+      "carry_per_layer": true,
+      "carry_chunk": 256,
+      "mask": {
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "alive": true
+      },
+      "perlayer_state_probe": {
+        "applicable": true,
+        "layer_idx_seen": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "n_layers_seen": 12,
+        "layer_idx_covers_all": true,
+        "n_mem_pairs": 66,
+        "n_pairs_bitwise_different": 66,
+        "all_pairs_different": true,
+        "max_abs_mem_diff": 690.453369,
+        "note": "结论：层号取满全部层 且 抓到的 mem 两两不同 ⇒ 逐层状态真的独立"
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 24.631809,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "dropped_frac": 0.879134,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 2.106155
+      },
+      "train_read_share": {
+        "read_scale_absmean": 0.010183,
+        "read_share": 0.386007,
+        "mem_write_to_resid_ratio": 0.091003,
+        "state_fro": 28.75518,
+        "beta_mean": 0.124989,
+        "write_rel": 0.0,
+        "read_norm": 114.603516,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 256
+      },
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 256,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": false,
+        "per_layer": true,
+        "carry_decay": 1.0,
+        "params_added": 264296,
+        "w_fro": 58.353621,
+        "state_fro": 24.922056,
+        "beta_mean": 0.156961,
+        "write_rel": 0.0,
+        "read_norm": 107.709862,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.010183,
+        "read_share": 0.386035,
+        "mem_write_to_resid_ratio": 0.091003,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.257826,
+        "rel_dev_vs_other_rule": 0.292065,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / write_rel 单块无定义（write_rel_chunks=0，不计入判定） + 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "train_carry_read_mass": {
+        "enabled": true,
+        "window": 16,
+        "per_layer": true,
+        "read_share_per_layer": 0.387806,
+        "read_share_by_layer": [
+          0.011381,
+          0.111763,
+          0.434967,
+          0.324211,
+          0.372059,
+          0.492203,
+          0.607789,
+          0.514153,
+          0.383332,
+          0.64722,
+          0.331451,
+          0.423143
+        ],
+        "slot_score_mass_per_query": null,
+        "far_read_norm_frac": null,
+        "notes": "逐层模式：写入来自各层当前 hidden（非 h₀）⇒ h₀ 派生的 slot_score_mass_per_query / far_read_norm_frac 不适用，显式置 None；read_share 仍来自真实前向的块遥测"
+      },
+      "train_wall_minutes": 28.56,
+      "train_peak_gpu_mem_mb": 9443.6
+    },
+    "c16c256_s0": {
+      "kind": "carry",
+      "window": 16,
+      "rule": "delta",
+      "carry_per_layer": false,
+      "carry_chunk": 256,
+      "mask": {
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "alive": true
+      },
+      "perlayer_state_probe": {
+        "applicable": false,
+        "note": "该臂不是逐层模式（单共享槽 / 无通道）：逐层探针不适用"
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 26.665846,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "dropped_frac": 0.879134,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 2.106155
+      },
+      "train_read_share": {
+        "read_scale_absmean": 0.09356,
+        "read_share": 0.416932,
+        "mem_write_to_resid_ratio": 0.279112,
+        "state_fro": 5.663622,
+        "beta_mean": 0.367871,
+        "write_rel": 0.0,
+        "read_norm": 12.114613,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 256
+      },
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 256,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": true,
+        "per_layer": false,
+        "carry_decay": 1.0,
+        "params_added": 264296,
+        "w_fro": 80.852578,
+        "state_fro": 4.039843,
+        "beta_mean": 0.558241,
+        "write_rel": 0.0,
+        "read_norm": 5.327677,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.093559,
+        "read_share": 0.416932,
+        "mem_write_to_resid_ratio": 0.279105,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.452154,
+        "rel_dev_vs_other_rule": 0.755678,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / write_rel 单块无定义（write_rel_chunks=0，不计入判定） + 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "train_carry_read_mass": {
+        "enabled": true,
+        "window": 16,
+        "per_layer": false,
+        "read_share_per_layer": 0.274951,
+        "read_share_by_layer": [
+          0.68432,
+          0.306911,
+          0.325251,
+          0.23401,
+          0.210774,
+          0.23469,
+          0.142327,
+          0.203384,
+          0.161306,
+          0.243922,
+          0.220218,
+          0.332299
+        ],
+        "slot_score_mass_per_query": 10.080488,
+        "far_read_norm_frac": 0.910229,
+        "notes": "read_share = ‖γ⊙mem‖/‖attn_out‖（每层均值，训练日志每 200 步落盘同一量）；slot_score_mass_per_query = Σ_j|β_j(k̂_j·q_t)| （对照 softmax 分支恒为 1）；far_read_norm_frac = 用 S_{t−window} 与 S_t 各读一次的范数比（精确，见函数文档）"
+      },
+      "train_wall_minutes": 10.77,
+      "train_peak_gpu_mem_mb": 2578.0
+    },
+    "carrypl16d_s0": {
+      "kind": "carry",
+      "window": 16,
+      "rule": "delta",
+      "carry_per_layer": true,
+      "carry_chunk": 256,
+      "mask": {
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "alive": true
+      },
+      "perlayer_state_probe": {
+        "applicable": true,
+        "layer_idx_seen": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "n_layers_seen": 12,
+        "layer_idx_covers_all": true,
+        "n_mem_pairs": 66,
+        "n_pairs_bitwise_different": 66,
+        "all_pairs_different": true,
+        "max_abs_mem_diff": 731.835266,
+        "note": "结论：层号取满全部层 且 抓到的 mem 两两不同 ⇒ 逐层状态真的独立"
+      },
+      "causality": {
+        "perturbed_from": 128,
+        "max_abs_logit_diff_prefix": 0.0,
+        "causal_no_future_leak": true,
+        "changed_suffix_max_abs_logit_diff": 21.640949,
+        "note": "只改后半段 token ⇒ 前半段 logits 逐位不变 ⇔ 严格因果（无未来泄露）；后半段必须真的变（否则探针没抓力）"
+      },
+      "train_window_mask": {
+        "train_window": 16,
+        "train_anchors": 0,
+        "params_added": 0,
+        "n_visible_pairs": 3976,
+        "causal_pairs": 32896,
+        "visible_frac": 0.120866,
+        "dropped_frac": 0.879134,
+        "alive": true,
+        "max_abs_logit_diff_masked_vs_open": 2.106155
+      },
+      "train_read_share": {
+        "read_scale_absmean": 0.013529,
+        "read_share": 0.637789,
+        "mem_write_to_resid_ratio": 0.226672,
+        "state_fro": 21.991028,
+        "beta_mean": 0.242459,
+        "write_rel": 0.0,
+        "read_norm": 169.703674,
+        "n_layer_samples": 144000,
+        "rule": "delta",
+        "carry_chunk": 256
+      },
+      "carry_liveness_training": {
+        "carry_rule": "delta",
+        "enabled": true,
+        "carry_chunk": 256,
+        "block_python_class": "CarryChannelBlock",
+        "shared_slots": false,
+        "per_layer": true,
+        "carry_decay": 0.99,
+        "params_added": 264296,
+        "w_fro": 56.792384,
+        "state_fro": 26.307892,
+        "beta_mean": 0.308386,
+        "write_rel": 0.0,
+        "read_norm": 116.203812,
+        "write_rel_chunks": 0,
+        "n_chunks": 1,
+        "read_scale_absmean": 0.013529,
+        "read_share": 0.63779,
+        "mem_write_to_resid_ratio": 0.226673,
+        "n_layers_sampled": 12,
+        "rel_dev_vs_channel_off": 0.51472,
+        "rel_dev_vs_other_rule": NaN,
+        "alive": true,
+        "alive_note": "状态非零 / 写门非零 / write_rel 单块无定义（write_rel_chunks=0，不计入判定） + 读出增益已逃离单边零（read_scale_absmean>0）+ 读出量非零（read_share>0）+ 同权重关掉通道后前向有偏差（rel_dev_vs_channel_off>0）⇒ 干预活着且**真的被读**"
+      },
+      "train_carry_read_mass": {
+        "enabled": true,
+        "window": 16,
+        "per_layer": true,
+        "read_share_per_layer": 0.612031,
+        "read_share_by_layer": [
+          0.024215,
+          0.905819,
+          0.849067,
+          0.758273,
+          0.698451,
+          0.600103,
+          0.623614,
+          0.758413,
+          0.486018,
+          0.499222,
+          0.649674,
+          0.491499
+        ],
+        "slot_score_mass_per_query": null,
+        "far_read_norm_frac": null,
+        "notes": "逐层模式：写入来自各层当前 hidden（非 h₀）⇒ h₀ 派生的 slot_score_mass_per_query / far_read_norm_frac 不适用，显式置 None；read_share 仍来自真实前向的块遥测"
+      },
+      "train_wall_minutes": 30.7,
+      "train_peak_gpu_mem_mb": 10281.2
+    },
+    "_mask_probe": {
+      "note": "评测期反事实：同一批输入在『掩码开 / 掩码关』两次前向的最后一层 logits 最大绝对差（>0 ⇔ 掩码真的改了前向）",
+      "window17_masked_vs_open": {
+        "arm": "win17_s0",
+        "max_abs_logit_diff_masked_vs_open": 13.88488,
+        "alive": true
+      }
+    }
+  },
+  "rows": [
+    {
+      "name": "full",
+      "kind": "full",
+      "seed": 0,
+      "window": 256,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "carry_chunk": null,
+      "bpc": 1.502689,
+      "kv_bytes": 3145728,
+      "state_bytes": 0,
+      "total_bytes": 3145728,
+      "k_eff": 256.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win16_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 16,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "carry_chunk": null,
+      "bpc": 1.62811,
+      "kv_bytes": 196608,
+      "state_bytes": 0,
+      "total_bytes": 196608,
+      "k_eff": 16.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win16_s1",
+      "kind": "window",
+      "seed": 1,
+      "window": 16,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "carry_chunk": null,
+      "bpc": 1.629093,
+      "kv_bytes": 196608,
+      "state_bytes": 0,
+      "total_bytes": 196608,
+      "k_eff": 16.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win17_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 17,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "carry_chunk": null,
+      "bpc": 1.624104,
+      "kv_bytes": 208896,
+      "state_bytes": 0,
+      "total_bytes": 208896,
+      "k_eff": 17.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win18_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 18,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "carry_chunk": null,
+      "bpc": 1.619953,
+      "kv_bytes": 221184,
+      "state_bytes": 0,
+      "total_bytes": 221184,
+      "k_eff": 18.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win24_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 24,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "carry_chunk": null,
+      "bpc": 1.599856,
+      "kv_bytes": 294912,
+      "state_bytes": 0,
+      "total_bytes": 294912,
+      "k_eff": 24.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win32_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 32,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "carry_chunk": null,
+      "bpc": 1.595823,
+      "kv_bytes": 393216,
+      "state_bytes": 0,
+      "total_bytes": 393216,
+      "k_eff": 32.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "win128_s0",
+      "kind": "window",
+      "seed": 0,
+      "window": 128,
+      "rule": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "carry_chunk": null,
+      "bpc": 1.513325,
+      "kv_bytes": 1572864,
+      "state_bytes": 0,
+      "total_bytes": 1572864,
+      "k_eff": 128.0,
+      "n_params": 13536768
+    },
+    {
+      "name": "carry16_s0",
+      "kind": "carry",
+      "seed": 0,
+      "window": 16,
+      "rule": "delta",
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "carry_chunk": 64,
+      "bpc": 1.624979,
+      "kv_bytes": 196608,
+      "state_bytes": 16384,
+      "total_bytes": 212992,
+      "k_eff": 17.3333,
+      "n_params": 13801064
+    },
+    {
+      "name": "carry16_s1",
+      "kind": "carry",
+      "seed": 1,
+      "window": 16,
+      "rule": "delta",
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "carry_chunk": 64,
+      "bpc": 1.62664,
+      "kv_bytes": 196608,
+      "state_bytes": 16384,
+      "total_bytes": 212992,
+      "k_eff": 17.3333,
+      "n_params": 13801064
+    },
+    {
+      "name": "carrypl16_s0",
+      "kind": "carry",
+      "seed": 0,
+      "window": 16,
+      "rule": "delta",
+      "carry_per_layer": true,
+      "carry_decay": 1.0,
+      "carry_chunk": 256,
+      "bpc": 1.527595,
+      "kv_bytes": 196608,
+      "state_bytes": 196608,
+      "total_bytes": 393216,
+      "k_eff": 32.0,
+      "n_params": 13801064
+    },
+    {
+      "name": "c16c256_s0",
+      "kind": "carry",
+      "seed": 0,
+      "window": 16,
+      "rule": "delta",
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "carry_chunk": 256,
+      "bpc": 1.62894,
+      "kv_bytes": 196608,
+      "state_bytes": 16384,
+      "total_bytes": 212992,
+      "k_eff": 17.3333,
+      "n_params": 13801064
+    },
+    {
+      "name": "carrypl16d_s0",
+      "kind": "carry",
+      "seed": 0,
+      "window": 16,
+      "rule": "delta",
+      "carry_per_layer": true,
+      "carry_decay": 0.99,
+      "carry_chunk": 256,
+      "bpc": 1.585531,
+      "kv_bytes": 196608,
+      "state_bytes": 196608,
+      "total_bytes": 393216,
+      "k_eff": 32.0,
+      "n_params": 13801064
+    }
+  ],
+  "frontier": {
+    "sorted_by_bytes": [
+      "win16_s0",
+      "win16_s1",
+      "win17_s0",
+      "carry16_s0",
+      "carry16_s1",
+      "c16c256_s0",
+      "win18_s0",
+      "win24_s0",
+      "win32_s0",
+      "carrypl16_s0",
+      "carrypl16d_s0",
+      "win128_s0",
+      "full"
+    ],
+    "dominated_by": {
+      "win16_s0": [],
+      "win16_s1": [
+        "win16_s0"
+      ],
+      "win17_s0": [],
+      "carry16_s0": [
+        "win17_s0"
+      ],
+      "carry16_s1": [
+        "win17_s0",
+        "carry16_s0"
+      ],
+      "c16c256_s0": [
+        "win16_s0",
+        "win17_s0",
+        "carry16_s0",
+        "carry16_s1"
+      ],
+      "win18_s0": [],
+      "win24_s0": [],
+      "win32_s0": [
+        "carrypl16_s0",
+        "carrypl16d_s0"
+      ],
+      "carrypl16_s0": [],
+      "carrypl16d_s0": [
+        "carrypl16_s0"
+      ],
+      "win128_s0": [],
+      "full": []
+    },
+    "lower_envelope": [
+      "win16_s0",
+      "win17_s0",
+      "win18_s0",
+      "win24_s0",
+      "win32_s0",
+      "carrypl16_s0",
+      "win128_s0",
+      "full"
+    ]
+  },
+  "location": {
+    "carry16_s0": {
+      "delta_bpc_vs_win16_s0": 0.003131,
+      "recovery_ratio_r": 0.025,
+      "window_curve_at_k_eff": {
+        "between": [
+          "win17_s0",
+          "win18_s0"
+        ],
+        "w": 0.3333,
+        "bpc_interp": 1.62272
+      },
+      "carry_minus_interp_window": -0.002259,
+      "same_bytes_window_arms": []
+    },
+    "carry16_s1": {
+      "delta_bpc_vs_win16_s0": 0.00147,
+      "recovery_ratio_r": 0.0117,
+      "window_curve_at_k_eff": {
+        "between": [
+          "win17_s0",
+          "win18_s0"
+        ],
+        "w": 0.3333,
+        "bpc_interp": 1.62272
+      },
+      "carry_minus_interp_window": -0.00392,
+      "same_bytes_window_arms": []
+    },
+    "carrypl16_s0": {
+      "delta_bpc_vs_win16_s0": 0.100515,
+      "recovery_ratio_r": 0.8014,
+      "window_curve_at_k_eff": {
+        "between": [
+          "win24_s0",
+          "win32_s0"
+        ],
+        "w": 1.0,
+        "bpc_interp": 1.595823
+      },
+      "carry_minus_interp_window": 0.068228,
+      "same_bytes_window_arms": [
+        "win32_s0"
+      ],
+      "carry_minus_win32_s0": 0.068228
+    },
+    "c16c256_s0": {
+      "delta_bpc_vs_win16_s0": -0.00083,
+      "recovery_ratio_r": -0.0066,
+      "window_curve_at_k_eff": {
+        "between": [
+          "win17_s0",
+          "win18_s0"
+        ],
+        "w": 0.3333,
+        "bpc_interp": 1.62272
+      },
+      "carry_minus_interp_window": -0.00622,
+      "same_bytes_window_arms": []
+    },
+    "carrypl16d_s0": {
+      "delta_bpc_vs_win16_s0": 0.042579,
+      "recovery_ratio_r": 0.3395,
+      "window_curve_at_k_eff": {
+        "between": [
+          "win24_s0",
+          "win32_s0"
+        ],
+        "w": 1.0,
+        "bpc_interp": 1.595823
+      },
+      "carry_minus_interp_window": 0.010292,
+      "same_bytes_window_arms": [
+        "win32_s0"
+      ],
+      "carry_minus_win32_s0": 0.010292
+    }
+  },
+  "key_readings": {
+    "pl_minus_win32": {
+      "bpc_win32_s0": 1.595823,
+      "bpc_carrypl16_s0": 1.527595,
+      "same_bytes": true,
+      "bytes": 393216,
+      "pl_minus_win32": 0.068228,
+      "verdict": "改善前沿（机制翻转）",
+      "band_note": "本格自测带 σ_cell=0.00166；跨格参考带 0.014；|Δ| 与两带比：|0.068228|",
+      "sigma_cell": 0.00166,
+      "cross_cell_band": 0.014
+    },
+    "pl_vs_carry16_s0": {
+      "bpc_other": 1.624979,
+      "bpc_carrypl16_s0": 1.527595,
+      "delta": 0.097384,
+      "note": "完备度（消掉退化实现）本身值多少 bpc：正 = 完备机制更好"
+    },
+    "pl_vs_shared_c256": {
+      "bpc_other": 1.62894,
+      "bpc_carrypl16_s0": 1.527595,
+      "delta": 0.101345,
+      "note": "完备度（消掉退化实现）本身值多少 bpc：正 = 完备机制更好"
+    },
+    "chunk_sensitivity_shared": {
+      "bpc_c16_c64": 1.624979,
+      "bpc_c16_c256": 1.62894,
+      "delta": -0.003961,
+      "note": "同配置（单共享槽 delta 窗口16 seed0）chunk 64 vs 256 的 clean bpc 差 ⇒ chunk 数值路径的量级（chunk 只改浮点累加顺序，见 README §2）"
+    }
+  },
+  "sensitivity": {
+    "carry16_s0": {
+      "k_eff_amortized": 16.0052,
+      "window_curve_at_k_eff_amortized": {
+        "between": [
+          "win16_s0",
+          "win17_s0"
+        ],
+        "w": 0.0052,
+        "bpc_interp": 1.628089
+      },
+      "carry_minus_interp_window_amortized": 0.00311,
+      "note": "状态是固定成本（与 T 无关）；本块把 T=256 的固定成本摊到每位置，是**另一口径**，只作敏感性报数，不当判据（判据用冻结口径 k_eff = 总字节/12288，见 README §4a）"
+    },
+    "carry16_s1": {
+      "k_eff_amortized": 16.0052,
+      "window_curve_at_k_eff_amortized": {
+        "between": [
+          "win16_s0",
+          "win17_s0"
+        ],
+        "w": 0.0052,
+        "bpc_interp": 1.628089
+      },
+      "carry_minus_interp_window_amortized": 0.001449,
+      "note": "状态是固定成本（与 T 无关）；本块把 T=256 的固定成本摊到每位置，是**另一口径**，只作敏感性报数，不当判据（判据用冻结口径 k_eff = 总字节/12288，见 README §4a）"
+    },
+    "carrypl16_s0": {
+      "k_eff_amortized": 16.0625,
+      "window_curve_at_k_eff_amortized": {
+        "between": [
+          "win16_s0",
+          "win17_s0"
+        ],
+        "w": 0.0625,
+        "bpc_interp": 1.62786
+      },
+      "carry_minus_interp_window_amortized": 0.100265,
+      "note": "状态是固定成本（与 T 无关）；本块把 T=256 的固定成本摊到每位置，是**另一口径**，只作敏感性报数，不当判据（判据用冻结口径 k_eff = 总字节/12288，见 README §4a）"
+    },
+    "c16c256_s0": {
+      "k_eff_amortized": 16.0052,
+      "window_curve_at_k_eff_amortized": {
+        "between": [
+          "win16_s0",
+          "win17_s0"
+        ],
+        "w": 0.0052,
+        "bpc_interp": 1.628089
+      },
+      "carry_minus_interp_window_amortized": -0.000851,
+      "note": "状态是固定成本（与 T 无关）；本块把 T=256 的固定成本摊到每位置，是**另一口径**，只作敏感性报数，不当判据（判据用冻结口径 k_eff = 总字节/12288，见 README §4a）"
+    },
+    "carrypl16d_s0": {
+      "k_eff_amortized": 16.0625,
+      "window_curve_at_k_eff_amortized": {
+        "between": [
+          "win16_s0",
+          "win17_s0"
+        ],
+        "w": 0.0625,
+        "bpc_interp": 1.62786
+      },
+      "carry_minus_interp_window_amortized": 0.042329,
+      "note": "状态是固定成本（与 T 无关）；本块把 T=256 的固定成本摊到每位置，是**另一口径**，只作敏感性报数，不当判据（判据用冻结口径 k_eff = 总字节/12288，见 README §4a）"
+    }
+  },
+  "robustness_alt_window_seed": {
+    "window_seed": 7,
+    "note": "与主评价（window_seed=2）同一 96×16 规模、只换窗口采样序",
+    "rows": {
+      "full": 1.496001,
+      "win16_s0": 1.625221,
+      "win32_s0": 1.594147,
+      "carrypl16_s0": 1.522235
+    },
+    "pl_minus_win32_alt_seed": 0.071912,
+    "same_sign_as_main": true
+  },
+  "gap_closing": {
+    "bpc_win16_s0": 1.62811,
+    "bpc_full": 1.502689,
+    "gap_win16_full": 0.125421,
+    "note": "gap = 窗口 16 相对全因果在 clean bpc 上的损失；recovery_ratio_r 见 location"
+  },
+  "sigma_within_config_2634": {
+    "win16": 0.000983,
+    "carry16": 0.001661,
+    "note": "同配置换种子的极差（2 样本 ⇒ 描述量，不是方差上界）；C1 裁决的主判带"
+  },
+  "bands": {
+    "sigma_cell": 0.00166,
+    "cross_cell_band": 0.014,
+    "note": "本格自测带为主判、跨格 0.014 带为参考，两带并列报出、不混用（C1）"
+  },
+  "reuse_equivalence": {
+    "note": "复用臂（eval-only）的 clean bpc 必须与来源实验落盘值逐位相同",
+    "full": {
+      "bpc": 1.502689,
+      "bpc_2638": 1.502689,
+      "equal": true,
+      "reused_from": "2610 trunk（全因果锚）"
+    },
+    "win16_s0": {
+      "bpc": 1.62811,
+      "bpc_2638": 1.62811,
+      "equal": true,
+      "reused_from": "2634-carry-realtext-13m"
+    },
+    "win16_s1": {
+      "bpc": 1.629093,
+      "bpc_2638": 1.629093,
+      "equal": true,
+      "reused_from": "2634-carry-realtext-13m"
+    },
+    "win17_s0": {
+      "bpc": 1.624104,
+      "bpc_2638": 1.624104,
+      "equal": true,
+      "reused_from": "2638-carry-frontier-13m"
+    },
+    "win18_s0": {
+      "bpc": 1.619953,
+      "bpc_2638": 1.619953,
+      "equal": true,
+      "reused_from": "2638-carry-frontier-13m"
+    },
+    "win24_s0": {
+      "bpc": 1.599856,
+      "bpc_2638": 1.599856,
+      "equal": true,
+      "reused_from": "2638-carry-frontier-13m"
+    },
+    "win32_s0": {
+      "bpc": 1.595823,
+      "bpc_2638": 1.595823,
+      "equal": true,
+      "reused_from": "2638-carry-frontier-13m"
+    },
+    "win128_s0": {
+      "bpc": 1.513325,
+      "bpc_2638": 1.513325,
+      "equal": true,
+      "reused_from": "2638-carry-frontier-13m"
+    },
+    "carry16_s0": {
+      "bpc": 1.624979,
+      "bpc_2638": 1.624979,
+      "equal": true,
+      "reused_from": "2634-carry-realtext-13m"
+    },
+    "carry16_s1": {
+      "bpc": 1.62664,
+      "bpc_2638": 1.62664,
+      "equal": true,
+      "reused_from": "2634-carry-realtext-13m"
+    }
+  },
+  "cost": {
+    "wall_minutes_total_eval": 0.5,
+    "eval_peak_gpu_mem_mb": 1019.1,
+    "n_eval_windows": 1536,
+    "tokens_scored": 391680
+  },
+  "code_hashes": {
+    "pathlm/depth_ar.py": "2f4b88877028f2acb7fd2b17ddbe145937a207232a2013141255fe98f513f893",
+    "train_depth_ar.py": "218b63179e623d6a938e7cabe85a71c5c4a36f1831c6930e9c65b2e0a6673022",
+    "tools/evalkit/retention.py": "9ef983b70d666460de5d63d5d81c23c685ce708a55dfe1af66fc23187fd12f9a",
+    "pathlm/data.py": "48e23520122a0b4591e71d0e3780dd1f34dc4a82744e14ca3414da8f43ba448a",
+    "run.py": "62690cc2f9e0849958aac437953be355a07462840d00e3ba92be1df4044b417b",
+    "config.json": "28ba94856d40c409868ef4033768fe1fad9743a63ffcc06e0700a89be86cbe14",
+    "train_pl.py": "c63d9386b4cf07d3a71b2ddb2670b4b2dbea27d1135b3772e1cbd2cf3ce54cd8",
+    "train_arms.sh": "dd393d9c4452fc874959bca50d8d1ea38049d69a245bf6fb780732b501216e25"
+  }
+}
