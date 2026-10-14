@@ -56,6 +56,10 @@
   `bash axes/2-depth/2.3.1-layer-capacity/experiments/2655-layer-capacity-13m/run_remaining.sh`
   （或 `python3 run.py --arms front-big,growing --seed 0 --steps 12000`），跑完 `results.json`
   的 P1/P2/P3 与 `P4…pass` 会自动补齐（`--aggregate`）。
+- **收口决定（22:24，lead 指令）**：GPU 锁被轴 6 的多臂驱动长期独占（释放后 1 秒内重取，
+  非 §20.1 的 ≥60 s 窗口），等锁不会在本轮窗口内解决 ⇒ **不再等锁**，本 WP 收口。
+  `run_remaining.sh`（最多 8 轮、每轮每臂最多等锁 10 min、已完成臂自动跳过）保持**可在有窗口时**
+  按臂续跑；它会自行终止，不需要人工清理。
 
 ## 4 复核
 

@@ -14,7 +14,7 @@ validation: "端到端：对照 = stock uniform 全深度（归一为 100%）；
 objective_criteria: "该跌：clean bpc（序列级，相对 stock uniform）；必须不变：总参数量（所有臂逐位相等）与因果性；必须报：每层容量分布（作对照列）。"
 falsification: "若非均匀容量在固定总参数下相对 uniform 的 clean bpc 不越噪声带（0.014）⇒ 判逐层容量变化在本尺度不是独立有增益的维度，并入 3.1.2 的宽度轴读数。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 failure_analysis: ""
-conclusion: ""
+conclusion: "实装 + 部分臂完成、判词未定：`uniform` 臂已训完（clean bpc 1.5291，等预算门/引擎等值门/活性门全过，等效成本 98.3M token）；`front-big` / `growing` 两臂未跑（GPU 锁被他人多臂驱动长期独占、等锁未取到；等效成本 2 × 98.3M token）⇒ 主判据（配对 Δbpc）无读数，本项尚无可下判词。独立复核未做。"
 conclusion_review: "本项无旧格、本仓零经验，status = 进行中（`uniform` 臂已训完并落盘，两个非均匀臂待跑）。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），把「总参数量逐位对齐」钉死以防把参数量优势误读为深度形状优势。**当前本地事实**：`experiments/2655-layer-capacity-13m/` 三臂均通过 CLI `--mlp-hidden-sched` 表达（引擎 E2，提交 4638882；共享代码未改）；等预算门实测通过——三臂 Σh = 8192、FFN 参数 4 204 544、总参数 6 962 688、每 token FFN MACs 4 194 304 **逐位相等**（解析值与实测值两条路径互核）；引擎等值门通过——显式 uniform schedule 与引擎缺省（`--mlp-mult 4`）的 state_dict 与前向**逐位一致**（单测钉住 + 必红探针）；活性通过——逐层隐藏维 == schedule、每层 FFN 相对幅度 > 0.47。`uniform` 臂 clean bpc = **1.5291**（同配方历史锚：2613 sequential-s0 1.5254、差 +0.0037；2641 U4-s0 1.5314、差 −0.0023，均 <0.005）。**主判据未测**：`front-big` / `growing` 相对 `uniform` 的配对 Δbpc 未跑成（共享 4090 被外部任务持续占用、等锁未取到；等效成本 2 × 98.3M token 已登记），故本项尚无可下判词。独立复核未做。"
 experiments:
   - "axes/2-depth/2.3.1-layer-capacity/experiments/2655-layer-capacity-13m"

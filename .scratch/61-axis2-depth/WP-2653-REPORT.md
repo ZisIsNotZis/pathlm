@@ -64,6 +64,9 @@
 - **剩余步骤（一条命令，可续跑）**：
   `bash axes/2-depth/2.2.2-attention-residual/experiments/2653-interlayer-attn-13m/run_remaining.sh`
   （或 `python3 run.py --arms attn-scalar,attn-qkv --seed 0 --steps 12000`），跑完再 `--aggregate`。
+- **收口决定（22:24，lead 指令）**：GPU 锁被轴 6 的多臂驱动长期独占，等锁不会在本轮窗口内解决
+  ⇒ **不再等锁**，本 WP 收口（两臂未训如实登记）。`run_remaining.sh` **未启动**（避免与 2655 的
+  launcher 自相争抢），保持可在有窗口时按臂续跑。
 
 ## 5 复核
 
