@@ -417,3 +417,29 @@
 - **处置**：派 **W-A1b**（fresh worker，`timeoutMs` 70 min，run `84284b58-8e14-478d-8197-044103e054c4`）接手：
   修 hook（tensor/tuple 兼容）+ 补能变红的单测 + 双冒烟 rc=0 + 3 臂 12k + WD256 三档切片评测 + `analysis.md` + 提交；
   硬停 `22:55+08:00`。
+
+## 10.11 `3.1.4` 复核门闭合（2026-10-14T21:35+08:00，actor=axis3-lead）
+
+- 派单：第 2B 轮 = **有 shell 的 fresh 复核者**（builtin `worker` agent 承担复核角色，只读被审产物 + 只写 `.scratch/64-axis3-width/REVIEW-2B.md`），
+  run `3269e36c-838b-4789-9019-e9a016168789`。
+- **判词 = PASS**（无阻塞、无实质 blocker）。实跑证据（引自 `REVIEW-2B.md`）：
+  ① `pytest test_2641_ffn_ratio.py -q` → `13 passed in 12.12s`；
+  ② 从 7 个 `results_<arm>_s<seed>.json` 自算 Δ_up/Δ_down 与 `results.json::P1_P2_deltas_by_seed` / `P1_verdict_by_seed` / `equal_ffn_budget_check` **逐位一致**；
+  ③ 第 1 轮 3 处 blocker 核为已改（B1 伪命题删除并改述「H0 是阈值规则判词、≠ 效应已被排除」；B2 APYR-s1 第 6 层 = 落盘 2.4684；B3 余项 4,096 且 2,097,152+4,096+2,048 = 2,103,296 = 落盘 `params_ffn`）；
+  ④ T5 初始化控制实跑：seed 0/1 × U2/PYR/APYR 共 6 组逐层全 True（trunk 与 U4 逐位相同、FFN 为前缀切片）；
+  ⑤ T6 三份契约与 `49f697f` 的 sha256 逐位相同、mtime（17:58:24 / 17:59:41 / 18:00:10）早于起跑 18:00:37；
+  ⑥ T9 本轴越界扫描 = 0、`python3 tools/summary.py --check` = OK（46 份）。
+- 残留不确定（复核者自述）：被审 revision 的定位受并发其它轴写入影响（`49f697f..HEAD` 不再只含本轴）；契约冻结由 sha256 + mtime 一对证据支撑。
+- 处置：`3.1.4::conclusion_review` 按 §11.1 改写为**当前判词 PASS**（第 1 轮判词移入本工单 §9 与 `REVIEW-1.md`/`REVIEW-2.md`），`change_log` 追加一条（提交 `f835633`）。
+  ⇒ **本轴 Phase A 遗留的复核门闭合**；`3.1.4` 的终局状态 = `已完成`（判词 = PASS）。
+
+## 10.12 C1 带声明枚举（脚本化，2026-10-14T21:37+08:00，actor=axis3-lead）
+
+- 脚本：`.scratch/64-axis3-width/c1_band_audit.py`（枚举本轴 8 份 `project.yaml` 的
+  `validation` / `objective_criteria` / `falsification` / `conclusion` 四字段，各判 `mentions_band`（引用 0.014/噪声带/
+  bootstrap/Wilson）与 `declares_band`（显式写「用哪个带」/「判据带（C1 裁决）」）；缺声明即**非零退出**并打印清单）。
+- 结论：`python3 .scratch/64-axis3-width/c1_band_audit.py` ⇒ **exit 0**，「本轴全部 `falsification` 均已声明用哪个带」。
+  - 8/8 项的 `validation` 与 `falsification` 都既有引用又有声明；`objective_criteria` 有 4 项（3.1.1/3.1.2/3.1.3/3.1.5）
+    提到 0.014 但未写「用哪个带」——按 `docs/research-schema.md` §12.1 声明义务**落在 `falsification`**，故不构成缺口（如实登记，不改）。
+  - 唯一本轮实修 = `3.1.5::falsification`（ticket 57 的 c1-backfill-writer 只回填到它的 `validation`），已补（提交 `43e88ad`）。
+  - `3.2.1`（已完成项、判词以「差 < 0.014」为否证线）的 `falsification` 与 `conclusion` 都**已带声明** ⇒ 无需回填。
