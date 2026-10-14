@@ -1,0 +1,11 @@
+L0 / L0b 硬门（S2 最终 revision 上重跑；交付结构 + 交付 mask 语义）
+source_sha256 padfill.py = 67be5cc63536ffdfc87e35ab6276f5de844810efdf218cbb4b00fda85e7f2982
+source_sha256 run.py     = 28e4efd5492d3a7a75a09092ae9f0f690b7656b22e628595e6d49d33f000a752
+
+L0-a  (bidir mask,   perturb true@M)   max|Δ| = 0.0   [绿 ⇒ 期望 0.0]
+L0-b  (causal,       perturb right)    max|Δ| = 0.0   [绿 ⇒ 期望 0.0]
+probe-1 (leak mask,  perturb true@M)   max|Δ| = 1.9860783815383911   [红 ⇒ 期望 > 0]
+probe-2 (full attn,  perturb right)    max|Δ| = 0.554871678352356   [红 ⇒ 期望 > 0]
+  gate probe probe-1: `assert max|Δ| == 0` 抛 AssertionError ⇒ 检查可失败 ✓
+  gate probe probe-2: `assert max|Δ| == 0` 抛 AssertionError ⇒ 检查可失败 ✓
+ALL GREEN/PLACED: L0 两条绿、gate probe 两条红。
