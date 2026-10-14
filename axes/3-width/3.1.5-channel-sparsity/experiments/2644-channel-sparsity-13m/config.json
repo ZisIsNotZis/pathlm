@@ -1,0 +1,99 @@
+{
+  "experiment": "2644-channel-sparsity-13m",
+  "base": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "hidden": 1024,
+    "dense": true,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "topology": "sequential",
+    "exit_mode": "uniform",
+    "fill_kv": true
+  },
+  "training": {
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0,
+    "train_tokens": 98304000,
+    "data": "data/enwik8_full.npz（前 90M train / 末 10M eval，词表 206）"
+  },
+  "intervention": {
+    "what": "每 token 参与前向的 FFN 隐藏通道子集（实验目录内把 blk.mlp 包成 SparseFFN，前向 = lin2(gelu(lin1(x))*mask)）",
+    "arms": {
+      "K50": {
+        "selector": "逐 token |pre-activation| top-k，k=512（无参数）",
+        "k_active": 512
+      },
+      "K25": {
+        "selector": "逐 token |pre-activation| top-k，k=256（无参数）",
+        "k_active": 256
+      },
+      "F50": {
+        "selector": "固定前缀 512 通道常开（无条件性）",
+        "k_active": 512
+      }
+    },
+    "single_variable_rule": "所有臂保留完整 FFN 权重（mlp_mult=4），总参数逐臂逐位相同；只改前向里哪些通道参与",
+    "equality_gate": "mask 全 1（keep_frac=1.0）时前向与 stock 逐位相同（单测 T1；变异 T2 必须变红）",
+    "analytic_cost": {
+      "D": {
+        "params_total": 6962688,
+        "ffn_macs_impl": 4194304,
+        "ffn_macs_contract": 4194304,
+        "macs_total": 7392768,
+        "macs_total_rel_to_D": 1.0
+      },
+      "K50": {
+        "params_total": 6962688,
+        "ffn_macs_impl": 3145728,
+        "ffn_macs_contract": 2097152,
+        "macs_total": 6344192,
+        "macs_total_rel_to_D": 0.858162
+      },
+      "K25": {
+        "params_total": 6962688,
+        "ffn_macs_impl": 2621440,
+        "ffn_macs_contract": 1048576,
+        "macs_total": 5819904,
+        "macs_total_rel_to_D": 0.787243
+      },
+      "F50": {
+        "params_total": 6962688,
+        "ffn_macs_impl": 2097152,
+        "ffn_macs_contract": 2097152,
+        "macs_total": 5295616,
+        "macs_total_rel_to_D": 0.716324
+      },
+      "U2_s0": {
+        "params_total": 4861440,
+        "ffn_macs_impl": 2097152,
+        "macs_total": 5295616
+      }
+    },
+    "cost_note": "实现口径（primary）：按内容选通道须先算全部 pre-activation ⇒ lin1 省不掉，K50 真实省 FFN 25%；F50 固定前缀可同时切两个矩阵 ⇒ 省 50%"
+  },
+  "eval": {
+    "metric": "clean bpc（depth_curve 最终深度，n_batches=20, bs=16, eval generator seed=2）",
+    "variance_bound": 0.014,
+    "rate_metrics": "激活频率/使用熵/mode_set_share 走 batch 聚类 bootstrap / Wilson 95% CI，不跨量纲借用 0.014"
+  },
+  "reuse_anchors": {
+    "D": {
+      "arm": "2641 U4-s0",
+      "clean_bpc": 1.5314,
+      "macs_total": 7392768
+    },
+    "U2_s0": {
+      "arm": "2641 U2-s0",
+      "clean_bpc": 1.5709,
+      "macs_total": 5295616,
+      "params_total": 4861440
+    }
+  },
+  "gpu_lock": "SCHEMA.md §20：按臂取/放 /tmp/pathlm_gpu.lock，臂间 ≥61 s；锁取放时间戳与 free 读数见 run_log.txt"
+}
