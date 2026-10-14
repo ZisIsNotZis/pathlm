@@ -8,15 +8,17 @@
 
 ## 0. 人话摘要
 
-- **按 committed HEAD 版本的变异脚本**：1 条锚点失配。
+- **按 E2/E3 判定时（HEAD `8e80b7c`）的变异脚本**：1 条锚点失配。
 - **按当前工作树版本**：0 条锚点失配。
-- 已知的 `2614-content-topk` 锚点失配**已被轴 1 在工作树里修好**（未提交）——
-  该修复把 `TopKBlock(...)` 接线行同步到 E2 之后的 `_mh(i)` / `for i in range`。
-- 未发现轴 1 修复之外的其它失配。
+- 已知的 `2614-content-topk` 锚点失配**已由轴 1 修复**（commit `676c858`，已提交）——
+  该修复把 `TopKBlock(...)` 接线行同步到 E2 之后的 `_mh(i)` / `for i in range`；
+  轴 1 同一次提交另修了一处**与 E2/E3 无关**的早前失配（`tools/evalkit/retention.py`，
+  不在本扫描的引擎文件范围）。
+- 未发现其它 E2/E3 引起的失配。
 
-### 1. 提交态（HEAD 的 mutate.py 对当前引擎）
+### 1. E2/E3 判定态的 mutate.py（HEAD `8e80b7c`）对当前引擎
 
-这些锚点在 **committed HEAD** 状态下会 unmatched。
+这些锚点在 **E2/E3 判定时**会 unmatched。
 
 - **[k-ignored]** `axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/mutate.py:58` → 引擎文件 `pathlm/depth_ar.py`
   - `old=` 字面片段：
@@ -29,15 +31,15 @@
     - `pathlm/depth_ar.py:2201`  `self.blocks = nn.ModuleList(TopKBlock(mcfg, cfg.attn_sparse_k, _mh(i))`
     - `pathlm/depth_ar.py:2202`  `for i in range(cfg.n_layers))`
 
-### 2. 工作树态（当前 mutate.py 对当前引擎）
+### 2. 当前工作树的 mutate.py 对当前引擎
 
 这些锚点在**当前工作树**下会 unmatched。
 
 - （无）
 
-### 3. 提交态失配、工作树已修（并发轴 1 修复，未提交）
+### 3. E2/E3 判定态失配、现已修复
 
-- `axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/mutate.py`（id `k-ignored`，行 58）
+- `axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/mutate.py`（id `k-ignored`，行 58）→ 已由轴 1 commit `676c858` 修复（锚点更新为现盘 `_mh(i)` 文本）
 
 ### 4. 内联 E2/E3 触碰行的锚点（不论当前是否仍匹配）
 

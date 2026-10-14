@@ -22,6 +22,7 @@ ROOT = "/home/z/vibe/pathlm"
 ENGINE_FILES = ["pathlm/depth_ar.py", "pathlm/model.py",
                 "pathlm/decode.py", "pathlm/config.py"]
 PARENT = "46ba4cf"          # E2 父提交（引擎改动窗口的起点）
+STATE_REV = "8e80b7c"       # E2/E3 复核判定时的 HEAD（最后一次引擎提交之后）
 
 
 def _run(args):
@@ -210,10 +211,10 @@ def main():
     engine_set = set(ENGINE_FILES)
     scripts = _mutate_scripts()
 
-    # 提交态：HEAD 版本的 mutate.py（untracked 的用工作树内容代替）
+    # 判定态：E2/E3 复核时的 HEAD（`STATE_REV`）版本的 mutate.py
     head_state = {}
     for path in scripts:
-        src = _git_show("HEAD", path)
+        src = _git_show(STATE_REV, path)
         if src is not None:
             lits = _old_literals(src, path)
             if lits:
@@ -244,19 +245,22 @@ def main():
            "> E2 = `4638882`，E3 = `fa6a1ad`；引擎文件改动窗口内只有这两个提交（`git log "
            f"{PARENT}..HEAD -- <引擎文件>`）。", "",
            "## 0. 人话摘要", "",
-           f"- **按 committed HEAD 版本的变异脚本**：{len(recs_head)} 条锚点失配。",
+           f"- **按 E2/E3 判定时（HEAD `{STATE_REV}`）的变异脚本**：{len(recs_head)} 条锚点失配。",
            f"- **按当前工作树版本**：{len(recs_wt)} 条锚点失配。",
-           "- 已知的 `2614-content-topk` 锚点失配**已被轴 1 在工作树里修好**（未提交）——",
-           "  该修复把 `TopKBlock(...)` 接线行同步到 E2 之后的 `_mh(i)` / `for i in range`。",
-           "- 未发现轴 1 修复之外的其它失配。", ""]
-    out += _render(recs_head, "1. 提交态（HEAD 的 mutate.py 对当前引擎）",
-                   "这些锚点在 **committed HEAD** 状态下会 unmatched。")
-    out += _render(recs_wt, "2. 工作树态（当前 mutate.py 对当前引擎）",
+           "- 已知的 `2614-content-topk` 锚点失配**已由轴 1 修复**（commit `676c858`，已提交）——",
+           "  该修复把 `TopKBlock(...)` 接线行同步到 E2 之后的 `_mh(i)` / `for i in range`；",
+           "  轴 1 同一次提交另修了一处**与 E2/E3 无关**的早前失配（`tools/evalkit/retention.py`，",
+           "  不在本扫描的引擎文件范围）。",
+           "- 未发现其它 E2/E3 引起的失配。", ""]
+    out += _render(recs_head, f"1. E2/E3 判定态的 mutate.py（HEAD `{STATE_REV}`）对当前引擎",
+                   "这些锚点在 **E2/E3 判定时**会 unmatched。")
+    out += _render(recs_wt, "2. 当前工作树的 mutate.py 对当前引擎",
                    "这些锚点在**当前工作树**下会 unmatched。")
     if wt_fixed:
-        out += ["### 3. 提交态失配、工作树已修（并发轴 1 修复，未提交）", ""]
+        out += ["### 3. E2/E3 判定态失配、现已修复", ""]
         for r in wt_fixed:
-            out.append(f"- `{r['script']}`（id `{r['id']}`，行 {r['lineno']}）")
+            out.append(f"- `{r['script']}`（id `{r['id']}`，行 {r['lineno']}）"
+                       "→ 已由轴 1 commit `676c858` 修复（锚点更新为现盘 `_mh(i)` 文本）")
         out.append("")
 
     changed = _changed_engine_lines(["4638882", "fa6a1ad"], ENGINE_FILES)
