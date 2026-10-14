@@ -22,9 +22,17 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 
 from pathlm.depth_ar import DepthARConfig, DepthARModel      # noqa: E402
-from run import (ANCHOR_2641_RUN, ARMS, D_MODEL, MLP_MULT, N_HEADS,  # noqa: E402
-                 N_LAYERS, PR_RANK, SEQ_LEN, VOCAB, analytic_cost,
-                 build_model, intervention_liveness, param_audit)
+
+# 同目录 `run.py` 用**唯一模块名**载入：实验目录各自有一个 `run.py`，
+# 若用 `import run`，同一 pytest 进程同时收集两个实验的测试时会互相串味。
+import importlib.util as _ilu                                    # noqa: E402
+_spec = _ilu.spec_from_file_location("run_2643", os.path.join(HERE, "run.py"))
+_run = _ilu.module_from_spec(_spec)
+sys.modules["run_2643"] = _run
+_spec.loader.exec_module(_run)
+from run_2643 import (ANCHOR_2641_RUN, ARMS, D_MODEL, MLP_MULT, N_HEADS,  # noqa: E402
+                      N_LAYERS, PR_RANK, SEQ_LEN, VOCAB, analytic_cost,
+                      build_model, intervention_liveness, param_audit)
 
 ANCHOR_CKPT = os.path.join(ANCHOR_2641_RUN, "model.pt")
 

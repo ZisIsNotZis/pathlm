@@ -21,9 +21,17 @@ sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 
 from pathlm.depth_ar import DepthARConfig, DepthARModel        # noqa: E402
-from run import (ARMS, D_ANCHOR_BPC, D_MODEL, HIDDEN, MLP_MULT, N_HEADS,  # noqa: E402
-                 N_LAYERS, SEQ_LEN, U2_ANCHOR_BPC, VOCAB, analytic_cost,
-                 build_model, patch_ffn, sparse_ffns)
+
+# 同目录 `run.py` 用**唯一模块名**载入：实验目录各自有一个 `run.py`，
+# 若用 `import run`，同一 pytest 进程同时收集两个实验的测试时会互相串味。
+import importlib.util as _ilu                                  # noqa: E402
+_spec = _ilu.spec_from_file_location("run_2644", os.path.join(HERE, "run.py"))
+_run = _ilu.module_from_spec(_spec)
+sys.modules["run_2644"] = _run
+_spec.loader.exec_module(_run)
+from run_2644 import (ARMS, D_ANCHOR_BPC, D_MODEL, HIDDEN, MLP_MULT, N_HEADS,  # noqa: E402
+                      N_LAYERS, SEQ_LEN, U2_ANCHOR_BPC, VOCAB, analytic_cost,
+                      build_model, patch_ffn, sparse_ffns)
 
 
 def _cfg():
