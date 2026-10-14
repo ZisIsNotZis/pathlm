@@ -84,6 +84,8 @@ status: preregistered
 - resolved config：本目录 `config.json` + 每臂训练产物内 `results.json.config`。
 - 落盘：`results_<arm>_s0.json`（逐臂）、`results.json`（汇总）、`run_log.txt`、
   `analysis.md`、`MODEL.md`、`runs/<arm>-12k-s0/`（`model.pt`、`train_log.jsonl`、`results.json`）。
+  本目录根下不再保留 `uniform-s0-*.jsonl/json` 逐臂训练副本（它们与 `runs/uniform-s0-12k/` 下
+  同名文件逐字节相同，不属本清单；已按复核 finding 2.3.1-N2 从树中移除，内容仍在 `runs/`）。
 
 ## 8 失败决策树（按序排除）
 

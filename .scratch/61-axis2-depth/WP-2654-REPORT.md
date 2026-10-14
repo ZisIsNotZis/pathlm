@@ -6,14 +6,21 @@
 
 ## 0. 人话摘要（结论先行）
 
-**本轮没跑成实验，原因只有一个：没拿到 GPU 卡。** 从 22:03 到 22:35，`/tmp/pathlm_gpu.lock`
-一直被别的 agent 的任务轮转持有（`wp6.3.2-*`、接着 `wp2655-layer-capacity`、以及本仓 2651/2652
-的在途臂），我这边的有界 launcher 按规矩排队等锁，第 1 轮等满 10 分钟超时、继续重试，到本轮
-工时耗尽**一次也没轮上**。所以四个臂（全深度对照 / 固定跳中间两层 / 同预算 6 层 dense /
-逐 token 跳层）**一个都没训**，`results.json` 里没有一行数字，判据线 P0–P5 **一条也没读到**。
+**本轮冒烟跑过一次并抓红：三轮没拿到锁之后，第 4 轮（`[2026-10-14T22:37:39]`）取到了锁、
+跑了 20 步冒烟，`layerdrop-pt` 臂的活性门抓红，launcher 当场 `exit 1`。** 22:03 起
+`/tmp/pathlm_gpu.lock` 一直被别的 agent 的任务轮转持有（`wp6.3.2-*`、接着 `wp2655-layer-capacity`、
+以及本仓 2651/2652 的在途臂），有界 launcher 按规矩排队等锁，前 3 轮各等满 10 分钟超时。第 4 轮
+取到锁后的真实结果（`run_log.txt`）：`stock` / `skip-mid` / `layers6` 三臂活性门过（实测
+layer-passes 8.0 / 6.0 / 6.0，`:576` / `:1144` / `:1618`），`layerdrop-pt` 实测 layer-passes
+**8.0** 与设计 **7.2** 不符（断言抛自 `run.py:451`，`:2194`），`[2026-10-14T22:38:50] SMOKE FAILED`
+（`:2195`）⇒ launcher 按 `run_remaining.sh:53` 的 `|| { …; exit 1; }` 退出。所以四个臂
+（全深度对照 / 固定跳中间两层 / 同预算 6 层 dense / 逐 token 跳层）**一个都没训**，
+`results.json` 不存在（冒烟产物只落在 `smoke/`），判据线 P0–P5 **一条也没读到**。
 
-**这不是「跳层没价值」的结论，也不是「实验失败」，只是「资源没拿到」。** 判据线预登记在
-`README.md` §4，**逐字未改**；够不够算力时禁止事后调判据，本轮也没调。
+**这不是「跳层没价值」的结论，也不是「实验失败」**：它是两件事——**「实现未过活性门」**
+（`layerdrop-pt` 按 `README.md` §4-P1「实测与设计不符 ⇒ 该臂作废」判作废，须先修接线/记账）
+与**「资源没拿到」**。判据线预登记在 `README.md` §4，**逐字未改**；够不够算力时禁止事后
+调判据，本轮也没调。
 
 **已经落地的东西**（可续跑，不浪费）：
 
@@ -35,14 +42,14 @@
 | `.../config.json` | resolved config（四臂定义 / 数据 / 训练 / 判据 / 预算） |
 | `.../run_remaining.sh` | 有界后台 launcher（逐臂取锁） |
 | `.../gpu_lock.py` | §20 锁协议（mkdir + holder_pid + heartbeat + 自愈） |
-| `.../analysis.md` | 判读（本轮：无实测数字，如实标注 GPU 阻塞） |
-| `.../MODEL.md` | 权重清单（尚无权重） |
-| `.../run_log.txt` | launcher 真实 stdout（含 10 min 等锁超时记录） |
+| `.../analysis.md` | 判读（本轮：四臂 12k 无实测数字；已登记 20 步冒烟的 `layerdrop-pt` 红门 + GPU 阻塞） |
+| `.../MODEL.md` | 权重清单（整仓 12k 训练未跑，尚无 12k 权重；冒烟产物在 `smoke/`） |
+| `.../run_log.txt` | launcher 真实 stdout（3 轮等锁超时 + 第 4 轮冒烟红门，共 2195 行） |
 | `.scratch/61-axis2-depth/WP-2654-REPORT.md` | 本报告 |
 
 ## 2. 数字表
 
-**无实测数字**（四臂未训练）。表位保留：
+**无实测数字**（四臂 12k 未训练）。表位保留（冒烟 20 步的读数见 §3.3，未收敛、不作判据）：
 
 | 臂 | 跳层策略 | layer-passes/token（设计） | clean bpc（实测） |
 |---|---|---|---|
@@ -74,14 +81,24 @@ $ nvidia-smi --query-gpu=memory.used,memory.free,utilization.gpu --format=csv,no
 7122 MiB, 16986 MiB, 100 %
 ```
 
-### 3.3 launcher 的真实 stdout（`run_log.txt`）
+### 3.3 launcher 的真实 stdout（`run_log.txt`，共 2195 行）
 
 ```
 [2026-10-14T22:03:08] launcher start (pid 2445457)
 [2026-10-14T22:13:24] lock timeout for smoke (round 1)
+[2026-10-14T22:24:09] lock timeout for smoke (round 2)
+[2026-10-14T22:34:54] lock timeout for smoke (round 3)
+[2026-10-14T22:37:39] === smoke (round 4) ===
+[smoke] stock: lp=8.0 ok, train 3.6s, bpc=5.157922        # run_log.txt:576
+[smoke] skip-mid: lp=6.0 ok, train 0.8s, bpc=5.310313     # run_log.txt:1144
+[smoke] layers6: lp=6.0 ok, train 0.6s, bpc=5.290606      # run_log.txt:1618
+AssertionError: layerdrop-pt: layer-passes 实测 8.0 与设计 7.2 不符   # :2194（抛自 run.py:451）
+[2026-10-14T22:38:50] SMOKE FAILED                        # run_log.txt:2195
 ```
 
-（第 1 轮 acquire 等满 40×15s = 10 min 超时；随后 sleep 30 进入第 2 轮，到本轮工时耗尽仍未取到锁。）
+（前 3 轮 acquire 各等满 40×15s = 10 min 超时；第 4 轮取到锁、冒烟跑到 `layerdrop-pt` 的活性
+断言处中止；`SMOKE FAILED` 之后 `run_remaining.sh:53` 的 `|| { …; exit 1; }` 让 launcher 直接
+退出，四臂训练一段都没启动。）
 
 ### 3.4 已做（CPU，不取锁）
 
@@ -101,11 +118,17 @@ $ nvidia-smi --query-gpu=memory.used,memory.free,utilization.gpu --format=csv,no
 
 ## 5. 残余缺口 / 下一步最小动作
 
-1. **取锁续跑**（预计 30–45 min GPU；含 20 步冒烟）：
+1. **先修实装（纯 CPU，不取 GPU 锁）**：按 `README.md` §8 决策树第 2 条查
+   `SkipBlock._sample_skip`（`drop` 是否逐 token 独立、`torch.where` 是否用层输入做旁路、
+   layer-passes 记账是否统计该 token 实际非跳层数），修到 `python3 run.py --smoke --steps 20`
+   **四臂全绿**（`stock` / `skip-mid` / `layers6` 已绿，只差 `layerdrop-pt` 的 lp ≈ 7.2）。
+2. **冒烟全绿后才取锁续跑四臂**（预计 30–45 min GPU）：
    `cd axes/2-depth/2.1.2-skipping/experiments/2654-skipping-seqlevel-13m && bash run_remaining.sh`
-   或 `python3 run.py --arms stock,skip-mid,layers6,layerdrop-pt`。launcher 已在跑（bounded），
-   持续重试直至取到锁。
-2. 臂齐后：填 `analysis.md` §3 表 → `run.py --aggregate` 出 P0–P5 → 写 P2 判决线判词 →
+   或 `python3 run.py --arms stock,skip-mid,layers6,layerdrop-pt`；等效算力账 = 每臂 12k × 32 × 256
+   = 98.3M token，四臂合计 393.2M token。
+3. 臂齐后：填 `analysis.md` §3 表 → `run.py --aggregate` 出 P0–P5 → 写 P2 判决线判词 →
    更新 `project.yaml`（`status` / `conclusion` / `failure_analysis` / `conclusion_review`）。
-3. **独立复核**：writer 停止后另派 fresh 复核者（`SCHEMA.md` §14/§14b）。本轮**独立复核未做**。
-4. 未做：GPU 端 `--smoke`（layer-passes 活性断言）；`layerdrop-pt` 训练/评测分布一致性列。
+4. **独立复核**：本轮已过第 1 轮 fresh 复核——判决 **1 blocking**（B1：冒烟结果与文档不符，
+   由本报告所在轮次处置）；修完红门、并跑完四臂后再派**新的** fresh 复核（`SCHEMA.md` §14/§14b）。
+5. 已跑并失败：GPU 端 `--smoke`（layer-passes 活性断言，见 §3.3），修复后必须重跑；
+   `layerdrop-pt` 的训练/评测分布一致性列在修复前不做。

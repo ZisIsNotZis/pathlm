@@ -68,7 +68,9 @@ stock 单残差（`sequential`，1.5254）。判据线（预登记、未改）�
 - **层索引因果**：聚合只取 `states[0..k−1]`（`j ≤ k−1`），看不到当前层之后的信息。
 - 初始化：`τ = 1`、`W_q = W_k = W_v = I`。注意一个**如实观测**：由于 `q = h_{k-1}` 而 key 里
   恰好也有 `h_{k-1}`（自相似），训练起点处层维权重**已经**偏离「只取上一层」
-  （k ≥ 2 的层熵 ≈ 1.6–2.1、`w_immediate_prev` ≈ 0.15–0.24，且最大权重落在紧邻上一层上）。
+  （k ≥ 5 的层熵 ≈ 1.6–2.1、`w_immediate_prev` ≈ 0.15–0.24；层 2–4 更低，熵 0.69–1.38；
+  全 k ≥ 2 区间为熵 0.688–2.075、`w_immediate_prev` 0.152–0.551，与 `smoke_report.json`
+  的 `B_liveness_gate.per_layer` 一致；最大权重落在紧邻上一层上）。
   也就是说两臂的起点并不等于 stock 起点（不等值起步），这是该参数化固有的、已落盘的性质；
   结论只能来自训练后的 B 表。
 
@@ -84,7 +86,12 @@ stock 单残差（`sequential`，1.5254）。判据线（预登记、未改）�
 
 ## 独立复核
 
-**独立复核未做**（fresh 复核者排在 writer 停止之后，`SCHEMA.md` §14/§14b；本轮窗口内未启动）。
+**第 1 轮独立复核（fresh 上下文）判 PASS**（判词由 lead 落盘于 `.scratch/61-axis2-depth/**`
+与 `TICKET.md`；`SCHEMA.md` §14/§14b，`docs/research-schema.md` §11.3 累计 ≤2 轮）。
+其 non-blocking 编号清单 N1–N3 本轮已处置：N1（参数倍率 2.7 万 → **2.5 万倍**，`project.yaml::argument`）、
+N2（活性区间限定词 → 「k ≥ 5（层 2–4 更低，熵 0.69–1.38）」，本文件与 `project.yaml` 同步）、
+N3（`README.md §7/§9` 落盘清单删去并不存在的 `run_log.txt`；两臂未训的阻塞证据只在
+`.scratch/61-axis2-depth/TICKET.md` §9.11）。两臂训完后再派新一轮。
 
 ## 回归与可复算的校验命令
 

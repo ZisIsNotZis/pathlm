@@ -89,8 +89,9 @@ Block、tied 读出；`--dense`）。
 - 入口：`run.py`（`--arms` / `--no-train` / `--aggregate`）；聚合实现：`interlayer_attn.py`。
 - 等值门/冒烟：`smoke.py`；单测：`test_2653_interlayer_attn.py`。
 - resolved config：本目录 `config.json` + 每臂训练产物内 `results.json.config`。
-- 落盘：`results_<arm>_s0.json`、`results.json`、`run_log.txt`、`smoke_report.json`、
-  `analysis.md`、`MODEL.md`、`runs/<arm>-12k-s0/`。
+- 落盘：`results_<arm>_s0.json`、`results.json`、`smoke_report.json`、`analysis.md`、
+  `MODEL.md`、`runs/<arm>-12k-s0/`。本目录**无 `run_log.txt`**（两臂未训的原因是等锁未取到，
+  阻塞证据只在 `.scratch/61-axis2-depth/TICKET.md` §9.11；见 `analysis.md` 独立复核节）。
 
 ## 8 失败决策树（按序排除）
 
@@ -102,7 +103,8 @@ Block、tied 读出；`--dense`）。
 
 ## 9 产出
 
-`results.json` / `results_<arm>_s0.json` / `run_log.txt` / `smoke_report.json` / `analysis.md` /
+`results.json` / `results_<arm>_s0.json` / `smoke_report.json` / `analysis.md` /
 `MODEL.md`；`project.yaml`（`status`/`conclusion`/`failure_analysis`/`conclusion_review`/`argument`/
 `gaps`/`experiments`/WP `status`/`change_log`）更新；`.scratch/61-axis2-depth/WP-2653-REPORT.md`。
-独立复核（fresh 上下文，`SCHEMA.md` §14/§14b）**排在 writer 停止之后**；本轮只写「独立复核未做」。
+独立复核（fresh 上下文，`SCHEMA.md` §14/§14b）排在 writer 停止之后：**第 1 轮判 PASS**（判词由
+lead 落盘于 `.scratch/61-axis2-depth/**`）；两臂训完后再派新一轮。

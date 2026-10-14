@@ -15,7 +15,7 @@ objective_criteria: "该跌：每 token 每层平均处理的 token 数与 atten
 falsification: "若分辨率 schedule 在等效算力口径下相对 stock 全长等分辨率既能省 attention FLOPs、又不让 clean bpc 与长程召回越噪声带退化 ⇒ 本手段成立（可采纳）；若降采样导致长程召回显著退化且质量代价吃掉全部算力收益 ⇒ 判逐层分辨率在本尺度不划算。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）为主判；长程召回等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014。"
 failure_analysis: ""
 conclusion: ""
-conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），并把「长程召回」列为必须报的损伤对照列，以防只报 bpc 掩盖降采样丢信息。与 1.2.4 的边界已写进 gap。**本轮（轴 2 lead，2026-10-14）登记 blocker：引擎无逐层分辨率能力，三臂最小判决（对齐总 attention FLOPs）的等效算力成本 ≈ 20–25 min GPU + 60–90 min 实现工时，超出本轮 3h 硬预算 ⇒ 未执行、不谎报 PASS**；下一步见 gaps 首条。独立复核未做。"
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），并把「长程召回」列为必须报的损伤对照列，以防只报 bpc 掩盖降采样丢信息。与 1.2.4 的边界已写进 gap。**本轮（轴 2 lead，2026-10-14）登记 blocker：引擎无逐层分辨率能力，三臂最小判决（对齐总 attention FLOPs）的等效算力成本 ≈ 20–25 min GPU + 60–90 min 实现工时，超出本轮 3h 硬预算 ⇒ 未执行、不谎报 PASS**；下一步见 gaps 首条。第 1 轮独立复核（fresh 上下文，判词见 `.scratch/61-axis2-depth/TICKET.md` §9.x 与 lead 落盘的复核记录）判 **PASS**；其 non-blocking N1（milestone/WP1 的臂表与 gaps 未对平）本轮已处置：`milestone.output`/`acceptance` 与 `WP1.means`/`acceptance` 均写明「本轮先三臂，金字塔补臂 +6–8 min GPU」，与 gaps 末条一致。"
 experiments: []
 argument: "分辨率是深度方向上「每层看多少个位置」的 schedule：它不改层数（layer-passes 不变），只改每层的注意力规模，因此收益落在 attention FLOPs（随 token 数平方缩放）而非 layer-passes 上。判据必须同时看质量（bpc）与长程召回，否则会把「浅层池化带来的局部平滑」误当成无损。"
 gaps:
@@ -34,15 +34,15 @@ role_map:
   integrator: "研究树 integrator（M3 集成；本轴合并与跨轴一致性核对由轴 2 lead 代行）"
 
 milestone:
-  output: "一份「逐层分辨率」判决包：{stock 全长, 先粗后细, 层级式, 金字塔} 在 13M matched-step 下的 clean bpc + 长程召回 + 每层 token 数，对照 stock 全长全深度，含 n≥2 与总 FLOPs 对齐。"
-  acceptance: "各臂总 FLOPs 对齐列齐备；clean bpc 与长程召回可分（越噪声带）或明确「无差别」；省下的 attention FLOPs 与质量代价同框；结论不越尺度外推。"
+  output: "一份「逐层分辨率」判决包：{stock 全长, 先粗后细, 层级式, 金字塔} 在 13M matched-step 下的 clean bpc + 长程召回 + 每层 token 数，对照 stock 全长全深度，含 n≥2 与总 FLOPs 对齐。**本轮先三臂** {全长, 先粗后细, 层级式}（金字塔补臂成本 +6–8 min GPU，见 gaps）——臂表以此口径与 gaps 对平。"
+  acceptance: "各臂总 FLOPs 对齐列齐备（本轮按三臂 {全长, 先粗后细, 层级式} 验收；金字塔补臂后再报四臂）；clean bpc 与长程召回可分（越噪声带）或明确「无差别」；省下的 attention FLOPs 与质量代价同框；结论不越尺度外推。"
 
 work_packages:
   - id: "WP1"
     what: "逐层分辨率最小判决（对齐总 FLOPs + 长程召回）"
     goal: "判定沿深度的分辨率 schedule 是否在省 attention FLOPs 的同时不损序列级质量"
-    means: "13M、{全长, 先粗后细, 层级式, 金字塔} 四臂，对齐总 FLOPs，报 clean bpc + 长程召回 + 每层 token 数"
-    acceptance: "四臂总 FLOPs 对齐；分辨率 schedule 相对全长有/无可排序差异，二选一明确；长程召回列齐备"
+    means: "13M、{全长, 先粗后细, 层级式, 金字塔} 四臂（本轮先保三臂 {全长, 先粗后细, 层级式}；金字塔补臂成本 = +1 臂 ≈ 6–8 min GPU，见 gaps），对齐总 FLOPs，报 clean bpc + 长程召回 + 每层 token 数"
+    acceptance: "本轮三臂 {全长, 先粗后细, 层级式} 总 FLOPs 对齐（金字塔补臂后再报四臂）；分辨率 schedule 相对全长有/无可排序差异，二选一明确；长程召回列齐备"
     evidence: "axes/2-depth/2.3.2-layer-resolution/experiments/"
     review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
     status: "未开始"
@@ -64,3 +64,6 @@ change_log:
   - date: "2026-10-14T21:30:00+08:00"
     actor: "轴 2 深度轴 lead（ticket 61）"
     change: "本轮终局推进登记 blocker（不改判据线、不改数字）：本项最小判决需要引擎不具备的逐层分辨率算子（池化/上采样/层级合并），等效算力成本 ≈ 20–25 min GPU + 60–90 min 实现工时，超出本轮 3h 预算 ⇒ 未执行；gaps 补「下一步最小实验 + 等效算力成本」与「金字塔第四臂未纳入」两条，conclusion_review 记当前状态。"
+  - date: "2026-10-14T23:10:00+08:00"
+    actor: "轴 2 深度轴 lead（ticket 61 · 复核 B 处置 writer）"
+    change: "按复核 B 的 non-blocking 2.3.2-N1 对平臂数（不改判据、不改数字、不改状态）：`milestone.output`/`acceptance` 与 `WP1.means`/`acceptance` 補写「本轮先三臂 {全长, 先粗后细, 层级式}，金字塔补臂成本 +6–8 min GPU」，与 `gaps` 末条（金字塔未纳入最小判决）一致；conclusion_review 回填第 1 轮独立复核 = PASS。"
