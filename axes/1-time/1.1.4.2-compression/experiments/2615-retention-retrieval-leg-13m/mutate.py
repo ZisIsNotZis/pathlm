@@ -38,10 +38,13 @@ MUTATIONS = [
     {
         "id": "M2",
         "what": "needle_fate 半删当成没删（any 代替 all）",
-        "old": "        visible = (keep is None\n"
-               "                   or all(bool(keep[q, p + j]) for j in range(phrase_len + 1)))",
-        "new": "        visible = (keep is None\n"
-               "                   or any(bool(keep[q, p + j]) for j in range(phrase_len + 1)))\n"
+        # 锚点随 `tools/evalkit/retention.py::needle_fate` 的改名（`keep` → `ks`，多一行
+        # `ks = keep if (keep is None or keep.dim() == 2) else keep[row]`）更新；
+        # 变异语义未变（仍是 `all` → `any`：半删的针被当成「可见」）。
+        "old": "        visible = (ks is None\n"
+               "                   or all(bool(ks[q, p + j]) for j in range(phrase_len + 1)))",
+        "new": "        visible = (ks is None\n"
+               "                   or any(bool(ks[q, p + j]) for j in range(phrase_len + 1)))\n"
                "        # 变异：半删也算可见",
         "tests": ["test_half_deleted_needle_counts_as_deleted_not_kept"],
     },

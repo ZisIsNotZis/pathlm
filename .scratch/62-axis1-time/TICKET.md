@@ -715,3 +715,48 @@ _(本节由 axis1-lead-3 于 2026-10-14T21:03:51+08:00 写入；数字与路径�
 - 扫描口径：`axes/1-time/*/project.yaml` 的全部 `change_log[].date` + `started` + `ended`，与本文件 §10 的显式时间戳，
   逐个与「当前时刻上界」（本行 `date -Iseconds`）比较；任何 > 当前时刻者判缺陷。
 - 结果：**0 处未来时刻**（本文件此前两处通配符 `20:5x` 已按 §10.13 P2-⑤ 改为 `20:51:51`；§10.7 的两处更正已在提交里）。
+
+### 10.16 GPU 队列观测与「未到终局」的等效算力成本（2026-10-14T22:08:44+08:00）
+
+- **锁占用观测（同一把 `/tmp/pathlm_gpu.lock`，非本轴作业）**：`2283632`（轴 2 2651 训练）→ `wp2652-2.2.1-residual-form`
+  （轴 2）→ `2642-uniform-narrowing`（轴 3，重试循环 5 s）与 `2643-tied-untied`（轴 3）→ `wp6.3.2-fill_bidir_r*`（轴 6）。
+  本轴的两个作业**始终排在队尾**，两次 20 min 等锁上限都自行退让（`21:31:28` 2661、`21:51:57` 2662 第二臂）。
+- **本轴为拿到读数还做了什么（均未违反 §20）**：① 不启用会误回收他线锁的 stale 回收；② 按 `SCHEMA.md` §20.1
+  逐臂取/放锁；③ 依 Main 裁决**只缩批数不缩臂**（`2661`：bpc/probe 96→48、needle 64→32、retention 24→12；
+  臂集仍为预登记 6 臂），并把缩批事实写进 driver 日志与 `analysis.md` 待办；④ 不杀任何进程（含他线训练与 `llama-server`）。
+- **2662 的一个真缺陷（本轮新发现，已记录）**：`make_config.py --require-new` 在缺 `win16a_s1` 时**不把已训好的
+  `win16a_s0` 写进 `config.json`**（其 `arms` 现只剩 `win16_s0/win16_s1/full`）⇒ 即便评测跑起来也**测不到锚点臂**。
+  下一步必须先重生成 config（含 `win16a_s0`、把 `win16a_s1` 标为未训练）再跑 `run.py`。
+- **未到终局的等效算力成本（给下一次派发用）**：
+  - `2661`（1.1.4.5 正面对撞 + 1.1.4.1 召回轴）：**0 训练 token**；评测 = 6 臂 ×（bpc 96×16×T256 + 探针 2×96×16×T256
+    + needle 64×16×行）≈ 6 × 3.9e5 token ≈ **2.3e6 token 的前向**（纯推理，约 4–8 min 独占 GPU）。
+  - `2662`（1.1.1 锚点臂）：训练 = 2 臂 × 98.3M token（`win16a_s0` 已完成，剩 `win16a_s1` 1 臂 × 98.3M token）；
+    评测 = 5 臂纯推理（同上一行量级）。
+
+### 10.17 Main 指派的收口任务：轴 1 变异锚点更新与自检重跑（2026-10-14T22:15:50+08:00）
+
+> 事由：Main 情报——E2/E3 已落地（`REVIEW-E2E3.md` PASS/0 blocker），E2 改了 `pathlm/depth_ar.py` 的接线行，
+> 使本轴 `2614…/mutate.py` 的变异锚点 `old=` 失配；要求更新锚点、重跑自检确认仍会红，并顺带扫其它内联了
+> E2/E3 引擎行的本轴脚本。**只写 `axes/1-time/**` 与 `.scratch/62-axis1-time/**`。**
+
+1. **全量扫描（机械，32 个 `mutate*.py`）**：以每个模块**自己声明的文件目标**（`TARGET`/`TESTS`/
+   `TFILE`/`TR` 等）为口径，逐个变异的 `old` 做「是否仍存在于目标文件」判定。结果：
+   - **失配 1 处（E2 造成）**：`1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/mutate.py` 的
+     `k-ignored`（`DepthARModel.__init__` 的 `TopKBlock(...)` 接线行）。
+   - **失配 1 处（非 E2/E3 造成，早前 `tools/evalkit/retention.py::needle_fate` 改名造成）**：
+     `1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/mutate.py` 的 `M2`（`keep` → `ks`）。
+     按同一纪律一并修（记录在案：**这一处不是本轮 E2/E3 引起的**）。
+   - 其余 30 个脚本**零失配**。
+2. **锚点更新（只改锚点文本，不改变异语义）**：
+   - 2614 `k-ignored`：`old` → `TopKBlock(mcfg, cfg.attn_sparse_k, _mh(i)) … for i in range(cfg.n_layers))`；
+     `new` → `TopKBlock(mcfg, mcfg.seq_len, _mh(i)) …`。
+   - 2615 `M2`：`old`/`new` 的 `keep` → `ks`（仍是 `all` → `any`）。
+3. **自检重跑（隔离运行，避免污染他线）**：变异是**改写共享引擎/工具文件**的破坏性操作，而共享卡上还有
+   别的轴在起训练/评测子进程 ⇒ 本轮在**隔离副本** `/tmp/axis1mut/`（`pathlm/`/`tests/`/`tools/`/
+   `train_depth_ar.py`/`configs/` 为拷贝、`data/` 为符号链接）里跑：
+   - `2614/mutate.py` ⇒ **5/5 变异全部抓红**（rc=1 / `test_failure`）、还原**逐字节一致**、还原后基线 **6 passed**；
+   - `2615…/mutate.py` ⇒ **M1–M4 全部抓红**（`returncode=1`）、`restored_sha256_equal=true`、还原后基线绿。
+   - 副本与仓库的对应文件 **sha256 逐位相同**，且**跑前跑后仓库文件 sha 不变**（证明隔离有效）：
+     `pathlm/depth_ar.py = 45b7d406…`、`tools/evalkit/retention.py = 9ef983b7…`。
+4. **落盘**：两份 `mutation_report.json` 按重跑结果更新（旧版在 git 历史里），并在各自实验目录写
+   `MUTATION-RERUN-NOTE.md`（说明事由、锚点改动、隔离运行与 sha 证据）。

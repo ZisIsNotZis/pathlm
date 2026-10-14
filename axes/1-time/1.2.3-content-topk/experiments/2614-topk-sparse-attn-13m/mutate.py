@@ -56,10 +56,13 @@ MUTATIONS = [
      "breaks": "softmax 不掩掉未选键 ⇒ 稀疏注意力退化为稠密",
      "targets": [f"{T}::test_topk_block_formula_matches_manual_sparse_attention"]},
     {"id": "k-ignored",
-     "old": "            self.blocks = nn.ModuleList(TopKBlock(mcfg, cfg.attn_sparse_k)\n"
-            "                                        for _ in range(cfg.n_layers))",
-     "new": "            self.blocks = nn.ModuleList(TopKBlock(mcfg, mcfg.seq_len)\n"
-            "                                        for _ in range(cfg.n_layers))",
+     # 锚点随 E2（ticket 67，commit 4638882）更新：`DepthARModel.__init__` 的
+     # `TopKBlock(...)` 接线改成带 `_mh(i)`（逐层 FFN 隐藏宽）与 `for i in range(...)`。
+     # 变异语义未变（仍忽略 `attn_sparse_k`、把 k 设成 seq_len ⇒ k 不生效）。
+     "old": "            self.blocks = nn.ModuleList(TopKBlock(mcfg, cfg.attn_sparse_k, _mh(i))\n"
+            "                                        for i in range(cfg.n_layers))",
+     "new": "            self.blocks = nn.ModuleList(TopKBlock(mcfg, mcfg.seq_len, _mh(i))\n"
+            "                                        for i in range(cfg.n_layers))",
      "breaks": "建模时忽略 attn_sparse_k（k 被设成 seq_len）⇒ k 不生效",
      "targets": [f"{T}::test_topk_switch_changes_computation_and_k_is_effective",
                  f"{T}::test_topk_probe_and_liveness_contract_on_real_batches"]},
