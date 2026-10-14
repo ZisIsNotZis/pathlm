@@ -7,3 +7,4 @@
 | 实验 | 来源 | 说明 |
 |---|---|---|
 | [`2660-latentreg-vs-disc-13m`](2660-latentreg-vs-disc-13m/README.md) | 目录内 README | WP1 最小判决：冻结 13M 主干上「latent（隐状态）匹配监督」vs 同参数量离散跳头；路径 (i) 直接发（teacher-forced 命中率）与路径 (ii) 当草稿再验证（α₁ / τ）各作一臂（63-F4 裁决） |
+| [`2670-freerun-bpc-13m`](2670-freerun-bpc-13m/README.md) | 目录内 README | WP2：路径 (i) 的 **free-run 序列级 bpc**（复用 2660 的头、不重训），对照同主干 `ar` 逐 token 贪心 |
