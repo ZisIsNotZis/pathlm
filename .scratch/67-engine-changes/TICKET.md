@@ -92,4 +92,4 @@
   - **N3（只读扫描，未越界改 axes）**：新增 `.scratch/67-engine-changes/STALE-MUTATION-ANCHORS.md`（脚本 `scan_stale_anchors.py`）。扫描全部 46 个 `axes/**/mutate.py`（66 条 `old=` 锚点）对 E2/E3 触碰的 4 个引擎文件（`depth_ar.py`/`model.py`/`decode.py`/`config.py`）：**提交态 1 条失配** = `axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/mutate.py` 的 `k-ignored`（对应引擎行 `pathlm/depth_ar.py:2201-2202` 的 `_mh(i)`/`for i in range`）；**当前工作树态 0 条失配**——该锚点已被轴 1 在工作树并发修好（未提交）。**未改任何 `axes/**`**。
   - **本次全量 `pytest tests/ -q`（当前工作树）**：`1 failed, 865 passed`（失败 = `test_all_repo_mutate_scripts_use_the_harness`，当前工作树列出 3 个未接 harness 脚本 `{2660,2670,2671}`，其中 `2660` 为既有跟踪文件、`2670`/`2671` 为并发轴 6 未跟踪脚本，均与本引擎 diff 无关）；`git diff --check` 无空白告警。
   - **复核状态**：E2/E3 本体已独立复核 PASS。本次收尾只改测试格式/删死代码 + `.scratch/**` 记录，**未触碰引擎行为** ⇒ 引擎面复核不因本收尾失效；**是否再派 fresh 复核由 Main 定**（本收尾无可执行引擎改动，属非代码改动）。
-  - **收尾提交**：`<fill-after-commit>`。
+  - **收尾提交**：`b7f1a34`（5 文件；记录哈希的补记见紧随其后的提交）。
