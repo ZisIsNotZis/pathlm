@@ -390,3 +390,30 @@
 - `2026-10-14T21:0x+08:00` · axis3-lead · 派 **W-A1**（`3.1.1` WP1+WP2，fresh worker，run `71318038-19d5-4aac-b15c-7fa15cd8dade`），
   实验目录 `axes/3-width/3.1.1-uniform-narrowing/experiments/2642-uniform-narrowing-13m/`（新建），过程文件
   `.scratch/64-axis3-width/2642-uniform-narrowing-process.md` 已落盘（worker 自述见该文件）。
+
+## 10.9 引擎 E2 已落树（2026-10-14T21:24+08:00 发现，actor=axis3-lead）
+
+- `git log --oneline -3` 出现 `4638882`「E2（与 E4 统一）：逐层 FFN 隐藏宽 schedule（引擎 + CLI + 单测 + 能力面）」（engine-writer，同 ticket 67）。
+  落点：`DepthARConfig.mlp_hidden_sched: list[int] | None`（逐层 FFN 隐藏宽，任意正整数；缺省 None 逐位回落 `mlp_mult·d`）+ CLI `--mlp-hidden-sched`；
+  `Block` 基类与 4 变体 + `TopKBlock`/`CarryChannelBlock` 全部接线；E4（轴 5 的等参数宽度）由同一实现承接。
+- 对本轴的影响：① `3.1.4` 的逐层 FFN 宽**今后不必再自造切片**（2641 用切片做的结论不受影响，其等值门 T1/T2 已验证同前向）；
+  ② **`3.1.2`（逐层 d_model）仍未被覆盖**——E2 只动 FFN 隐藏宽，`Block` 的 `d_model` 仍由 `cfg.d_model` 全局给定 ⇒ 本项「实现前置」照旧未满足，
+  替代路径 = 实验目录内「前缀子空间切片」（见 `DISPATCH-B.md` §W-D）；③ 后续新增实验若需要逐层 FFN 宽，优先用 `--mlp-hidden-sched`，不再自造切片。
+- 该事实按纪律回填到 `3.1.2` 的 `gaps`（措辞见下一轮 SSOT 更新）。
+
+## 10.10 执行事故与处置（2026-10-14T21:27+08:00，actor=axis3-lead）
+
+- **事故 1（子 Agent 时间上限）**：W-A1 的 fresh worker 在 **30 min 处被框架杀掉**（`Subagent timed out after 1800000ms`）。
+  它的产物（`README.md` 契约 / `run.py` / 单测 / `smoke.sh` / `train_arms.sh`）已落盘，但 `run_batch.sh`（后台驱动）
+  变成**孤儿进程**继续排队等 GPU 锁。⇒ 后续派单一律显式给 `timeoutMs`（W-A1b 给 70 min），并在契约里写死「硬停时刻」。
+- **事故 2（冒烟失败 + 孤儿占队）**：孤儿驱动排到锁后会跑一个**已知失败**的冒烟（`smoke_D192_s99.log`：
+  `run.py:408 AttributeError: 'tuple' object has no attribute 'detach'`，活性 forward hook 假设输出是 tensor；
+  训练本体 60 步已跑完，失败在训练后的活性测量）。⇒ 我已杀掉**自己的**孤儿驱动（`kill`/`pkill -f 2642-…`；
+  只杀本轴进程，未碰他人）。**踩坑记录**：`pkill -f "2642-uniform-narrowing-13m"` 同时匹配了我自己那条命令行 ⇒
+  把自己的 shell 一起杀了（`AGENTS.md` §20 早就警告过的 `pgrep` 自匹配坑，这次以 `pkill` 形式复发）；之后改用
+  `grep -F` 前缀截断写法核验。
+- **事故 3（GPU 竞争）**：运行期间 `/tmp/pathlm_gpu.lock` 由**轴 1**的 12 层训练持有（21:17 起，pid 2319397），
+  轴 2 / 轴 5 的臂也在排队。⇒ 本轴的臂按 §20 逐臂排队；契约里写死「单次等锁 ≤25 min、超时先落 CPU 部分」。
+- **处置**：派 **W-A1b**（fresh worker，`timeoutMs` 70 min，run `84284b58-8e14-478d-8197-044103e054c4`）接手：
+  修 hook（tensor/tuple 兼容）+ 补能变红的单测 + 双冒烟 rc=0 + 3 臂 12k + WD256 三档切片评测 + `analysis.md` + 提交；
+  硬停 `22:55+08:00`。
