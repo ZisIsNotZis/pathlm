@@ -4,7 +4,7 @@
 > `.scratch/67-engine-changes/TICKET.md` §2 E2/E3/E4）。本文件与 TICKET.md 变更记录同源。
 > 执行者：engine-writer（worker，`pathlm/**` 单一写入者，持 `/tmp/pathlm_code.lock`；纯 CPU，
 > 未取 GPU 锁）。**独立复核未在本 worker 内执行**（见 §5）。
-> 提交：E2 = `4638882`；E3 = 见 §4（本报告随后一并提交）。
+> 提交：E2 = `4638882`（7 文件）；E3 = `fa6a1ad`（11 文件）。
 
 ## 0. 人话摘要（先读这段）
 
@@ -103,6 +103,7 @@ E2 = `DepthARConfig.mlp_mult`（L50）、各块 `__init__` 的 `self.mlp = nn.Se
 - E3 定向：`python3 -m pytest tests/test_m1.py tests/test_engine_capability.py tests/test_depth_ar.py -q` ⇒ **227 passed**。
 - E3 全量：`python3 -m pytest tests/ -q` ⇒ **865 passed, 1 failed**（同一既有失败）。
 - `git diff --check` ⇒ 无空白告警。
+- **提交哈希**：E2 = `4638882`；E3 = `fa6a1ad`。
 
 **既有失败（与本 patch 无关，须复核者独立确认）**：
 `tests/test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness` —— 报
