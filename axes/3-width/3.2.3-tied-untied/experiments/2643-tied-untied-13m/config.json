@@ -1,0 +1,51 @@
+{
+  "experiment": "2643-tied-untied-13m",
+  "base": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dense": true,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "topology": "sequential",
+    "exit_mode": "uniform",
+    "fill_kv": true
+  },
+  "training": {
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0,
+    "train_tokens": 98304000,
+    "data": "data/enwik8_full.npz（前 90M train / 末 10M eval，词表 206）"
+  },
+  "intervention": {
+    "what": "输出读出头与输入 embedding 表是否共享（覆写 DepthARModel.readout，实验目录内子类）",
+    "arms": {
+      "T": {"readout": "logits = h·Eᵀ（tied；= stock 表达式）", "params_added": 0},
+      "U": {"readout": "logits = h·Uᵀ，U [206,256] 独立 N(0,d^-0.5) 初始化", "params_added": 52736},
+      "PR": {"readout": "logits = h·Eᵀ + (h·A)·B；A[256,32]=0、B[32,206]~N(0,0.02)", "params_added": 14784}
+    },
+    "single_variable_rule": "三臂主干来自同一次随机抽样（同 seed；读出头在 super().__init__ 之后初始化）⇒ 唯一变量 = 读出头",
+    "analytic_cost": {
+      "T": {"params_total": 6962688, "macs_per_token": {"attention": 3145728, "ffn": 4194304, "readout_online": 52736, "total": 7392768}},
+      "U": {"params_total": 7015424, "macs_per_token": {"attention": 3145728, "ffn": 4194304, "readout_online": 52736, "total": 7392768}},
+      "PR": {"params_total": 6977472, "macs_per_token": {"attention": 3145728, "ffn": 4194304, "readout_online": 67520, "total": 7417552}}
+    }
+  },
+  "eval": {
+    "metric": "clean bpc（depth_curve 最终深度，n_batches=20, bs=16, eval generator seed=2）",
+    "variance_bound": 0.014,
+    "rate_metrics": "prob0 一致性走 batch 聚类 bootstrap / Wilson 95% CI，不跨量纲借用 0.014"
+  },
+  "reuse_anchor": {
+    "arm": "T",
+    "source": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/runs/U4-s0-12k/model.pt",
+    "recorded_clean_bpc": 1.5314,
+    "gates": ["实现层 equality（单测 T1/T2 逐位）", "配置层 equality（逐字段对照）", "口径标注（n_batches=20, bs=16, seed 2, steps 12000, seed 0）"]
+  },
+  "big_vocab_undecidable": true,
+  "gpu_lock": "SCHEMA.md §20：按臂取/放 /tmp/pathlm_gpu.lock，臂间 ≥61 s；锁取放时间戳与 free 读数见 run_log.txt"
+}

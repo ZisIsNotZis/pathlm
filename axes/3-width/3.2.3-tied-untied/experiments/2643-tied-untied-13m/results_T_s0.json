@@ -1,0 +1,187 @@
+{
+  "arm": "T",
+  "seed": 0,
+  "steps": 12000,
+  "eval": {
+    "metric": "clean bpc（最终深度、无退出、序列级、越低越好）",
+    "n_batches": 20,
+    "batch_size": 16,
+    "eval_generator_seed": 2,
+    "bpc_by_depth": [
+      {
+        "depth": 0,
+        "bpc": 7.4044,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "bpc": 4.8523,
+        "acc": 0.1458
+      },
+      {
+        "depth": 2,
+        "bpc": 4.3626,
+        "acc": 0.1938
+      },
+      {
+        "depth": 3,
+        "bpc": 3.8279,
+        "acc": 0.2808
+      },
+      {
+        "depth": 4,
+        "bpc": 3.1984,
+        "acc": 0.3872
+      },
+      {
+        "depth": 5,
+        "bpc": 2.6146,
+        "acc": 0.4981
+      },
+      {
+        "depth": 6,
+        "bpc": 2.1943,
+        "acc": 0.5682
+      },
+      {
+        "depth": 7,
+        "bpc": 1.7257,
+        "acc": 0.6587
+      },
+      {
+        "depth": 8,
+        "bpc": 1.5314,
+        "acc": 0.6879
+      }
+    ],
+    "clean_bpc": 1.5314,
+    "acc_by_depth": [
+      {
+        "depth": 0,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "acc": 0.1458
+      },
+      {
+        "depth": 2,
+        "acc": 0.1938
+      },
+      {
+        "depth": 3,
+        "acc": 0.2808
+      },
+      {
+        "depth": 4,
+        "acc": 0.3872
+      },
+      {
+        "depth": 5,
+        "acc": 0.4981
+      },
+      {
+        "depth": 6,
+        "acc": 0.5682
+      },
+      {
+        "depth": 7,
+        "acc": 0.6587
+      },
+      {
+        "depth": 8,
+        "acc": 0.6879
+      }
+    ]
+  },
+  "params": {
+    "params_total": 6962688,
+    "params_added_readout": 0,
+    "params_added_expected": 0,
+    "readout_params_matches_analytic": true
+  },
+  "cost": {
+    "d_model": 256,
+    "seq_len": 256,
+    "n_layers": 8,
+    "vocab": 206,
+    "macs_per_token": {
+      "attention": 3145728,
+      "ffn": 4194304,
+      "readout_online": 52736,
+      "total": 7392768
+    },
+    "readout_macs_merged": 52736,
+    "readout_params_added": 0,
+    "params_total_analytic": 6962688,
+    "note": "等效理论量：MACs/token（乘加），不含时间量。attention/FFN 三臂逐位相同，唯一变量是读出头的结构与参数。在线读出：T/U = d·V；PR = d·V + d·r + r·V；离线合并 E+A·B 后 PR 也是 d·V。"
+  },
+  "liveness": {
+    "arm": "T",
+    "params_added": 0
+  },
+  "prob0_consistency": {
+    "metric": "prob0 一致性 = argmax(Eh)==argmax(U_eff h) 的位置占比",
+    "n_positions": 81600,
+    "agree": 81600,
+    "rate": 1.0,
+    "wilson_95ci": [
+      0.999953,
+      1.0
+    ],
+    "cluster_bootstrap_95ci": [
+      1.0,
+      1.0
+    ],
+    "per_batch_rates": [
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0,
+      1.0
+    ],
+    "semantic_cost_1_minus_rate": 0.0,
+    "note": "T 臂该值构造性 = 1.0（U_eff = E）；越小 = 解绑后「概率 = 状态在 embedding 基的坐标」这一语义丢得越多。"
+  },
+  "causal": {
+    "max_abs_diff_before_j": 0.0,
+    "bitwise_equal_before_j": true
+  },
+  "reeval_bitwise_identical": true,
+  "checkpoint": {
+    "path": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/runs/U4-s0-12k/model.pt",
+    "sha256": "d4e6e33ef55d08f0cb71aadcc0c2c810d7c670cf6776c477c3fbcd90f966c1c2",
+    "missing_keys": [],
+    "unexpected_keys": []
+  },
+  "run_dir": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/runs/U4-s0-12k",
+  "code_hash_run_py": "b5b0eab4085f77a30efc57bed37fe2f2da287337efbe0a671dfecb1ad19b5c79",
+  "reuse": {
+    "anchor": "2641-ffn-ratio-frontier-13m / U4-s0-12k",
+    "reused_clean_bpc_recorded": 1.5314,
+    "reevaluated_clean_bpc": 1.5314,
+    "reproduces_recorded": true,
+    "anchor_results_json": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/results_U4_s0.json",
+    "anchor_config_json": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/config.json",
+    "gates": {
+      "implementation_bitwise": "单测 T1/T2（pytest）",
+      "config_field_compare": "analysis.md §2 逐字段表",
+      "ruler": "n_batches=20, bs=16, gen seed 2, steps 12000, seed 0"
+    }
+  }
+}
