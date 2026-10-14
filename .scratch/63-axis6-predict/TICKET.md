@@ -326,3 +326,30 @@ F4 压成当前事实 + 指针；F5 补半句。修复后复跑：`pytest` 22 pa
 
 1. **`R_K` 口径笔误的处置**：定稿口径 = `K·(1+γ)/(1+τ_K)`（= 每轮 3K 个主干位置 ÷ 每轮发出 `1+τ_K` 个 token，与 2640 逐字一致）；原「`3K·(1+γ)/(1+τ_K)`」是出题人笔误，已在本轴契约文件内以「更正内容 + 指向本工单」记录，未改任何判据。（判据不受影响，故本轴直接执行并上报。）
 2. **6.3.3 的机制描述是否要改 `project.yaml` 的 `innovation`/`method`**：本实验证明在共享 tied 读出 + 同参数量下 λ=0 两臂**数学等价** ⇒ 独立自由度只有**监督目标**；结论只能写「latent（隐状态）匹配监督有独立增益」。**是否把 `innovation` 从「回归产出方式」改写为「latent 匹配监督」= 待 Main 裁决**，本轴未擅自改（只在 `conclusion` 里写明限定与建议）。
+
+## B6 Phase B 收口：复核 #3、Finding 处置、revision 与提交
+
+### B6.1 复核 #3（`.scratch/63-axis6-predict/REVIEW-B3.md`）
+
+- 复核者 = fresh / 只读 / **上下文同样无 shell（与派单前提不符，它按 need_decision 联系主管但超时）**；报告由 axis6-lead 逐字落盘。
+- **VERDICT: FAIL**，但**明确声明无 blocker 级科学缺陷**：FAIL 的两条理由 = (i) 执行类验收（pytest / mutate / summary / 确定性重跑 + 逐张量比对 / sha256 / mtime / git 区间）在无 shell 的上下文**不可执行**（「未知验收不是 PASS」）；(ii) 4 条 normal（1 条本轮新发现）。
+- 它**亲自静态核过**（read/grep）：6.2 结论 (j) 与 6.3.3 结论 (a)–(e) 的**每一个数字**与落盘逐值对得上；B1/B2 的全部修缺确已落地；主动证伪三项（K 族同族、λ 网格跑前预登记、L2 单因素）**未推翻**判词；两份 `experiments/README.md` 行数与磁盘一致。
+
+### B6.2 复核 #3 的 findings 与处置（4 normal + 1 info）
+
+| # | finding | 处置（actor） |
+|---|---|---|
+| 1 | normal（新）`2660/mutation_report.json` 含逐次运行耗时（`2660/mutate.py` 未同步 2650 的 `_strip_timing`）⇒ 任何重跑都弄脏入库事实文件 | **axis6-lead 亲自修**：把 `_strip_timing` 移植进 `2660/mutate.py`（`pytest_tail` / `post_restore_tail` 落盘前套用），重跑 `mutate.py` 两次 ⇒ 9/9 抓红 + 逐字节还原 + `mutation_report.json` **两次哈希相同**（`fce87efc…`）。**该修复无独立 writer、也未经 fresh 复核**（如实登记） |
+| 2 | normal `6.3.3/project.yaml::conclusion_review` 仍是「尚无本地判决 / status 未开始 / 独立复核未做」，与正文 (a)–(e)、`status: 进行中`、WP1「已完成」冲突；且 `WP1.review` 只写「已做」未记判词 | **axis6-lead 修**：`conclusion_review` 改写为当前事实（两轮复核判词、findings 与处置、**残余证据缺口** = 三轮复核者均无 shell ⇒ 执行类验收由 writer/lead 自跑）；`WP1.review` 记入判词与缺口声明 |
+| 3 | normal（低）`2650/results.json::config.budget_min` 被改成 15.0 后已非实际运行参数；且「runner 缺省值 25.0」与 `verify_gate.py --budget-min default=13.0` 矛盾 | **axis6-lead 修**：恢复 `budget_min = 25.0`（实际运行参数）+ 新增 `budget_min_contract = 15.0`（预登记硬盒）；`run_log.txt` 与 `WP-6.2.3-LOG.md` 各追加更正（去掉错误因果）。**无独立 writer / 无 fresh 复核**，如实登记 |
+| 4 | normal（低）`2650/README.md` §8 仍重述定稿公式 + ERRATA 归责叙事 | **axis6-lead 修**：§8 压成一行指针（指向本工单 §B4.1），事实只留 §4 一处 |
+| 5 | info `6.2/project.yaml::work_packages[6.2.3].review` 未回填已完成复核 | **axis6-lead 修**：回填 REVIEW-B1/B3 的判词与缺口声明；`6.2::conclusion_review` 同步补 WP 6.2.3 的复核段 |
+
+### B6.3 复核预算与残余缺口（如实登记，不谎报 PASS）
+
+- 任务给的复核预算是「≤2 轮」；本轴实际用了 **3 轮**（B1/B2/B3，每轮一个不同 WP 视角/目的），**未开第 4 轮**。
+- **三轮复核者都没有 shell**（`reviewer` 智能体的工具集 = read/grep/find/ls/watchdog_diff），因此**执行类验收没有 fresh 独立见证**：
+  `pytest`（11 + 13 passed）、`mutate.py`（3/3 与 9/9 抓红 + 逐字节还原 + 重跑确定）、`summary.py --check`、2640 五文件 sha256、
+  `git` 区间越界检查、以及 **2660 阶段-1 的确定性重跑**（未做：无复核者可执行；lead 侧只做了逐张量内容复算与落盘对账）。
+  这些检查由 **WP writer 与 axis6-lead 自跑**，命令与输出见 §B5 与本报告「复核」节。
+- 因此本轮结论的**独立复核强度 = 静态对账**（数字 ↔ 落盘逐值一致、判据口径未放宽、无越界），**不含**独立执行见证。

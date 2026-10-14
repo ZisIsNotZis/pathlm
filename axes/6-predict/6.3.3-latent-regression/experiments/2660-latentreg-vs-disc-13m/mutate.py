@@ -14,6 +14,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 
@@ -68,6 +69,12 @@ def sha(path: str) -> str:
     return hashlib.sha256(open(path, "rb").read()).hexdigest()
 
 
+def _strip_timing(summary: str) -> str:
+    """去掉 pytest 摘要尾部的耗时（如 `in 2.19s`）：逐次运行的计时会抖动，
+    写进入库事实文件会让任何人重跑 `mutate.py` 都把工作树弄脏（与 2650/mutate.py 同口径）。"""
+    return re.sub(r"\s+in\s+[0-9.]+s\s*$", "", summary.strip())
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("-k", default=None)
@@ -92,7 +99,8 @@ def main() -> int:
         report["results"].append({
             "name": name, "file": fname, "test_selector": sel,
             "caught_red": bool(caught), "restored_byte_exact": bool(restored),
-            "pytest_tail": (r.stdout or "")[-400:].strip().splitlines()[-1:] if r.stdout else [],
+            "pytest_tail": [_strip_timing(l) for l in
+                            ((r.stdout or "")[-400:].strip().splitlines()[-1:] if r.stdout else [])],
         })
         report["all_caught"] &= bool(caught)
         report["all_restored"] &= bool(restored)
@@ -102,7 +110,7 @@ def main() -> int:
     r = subprocess.run([sys.executable, "-m", "pytest", TEST, "-q"],
                        capture_output=True, text=True, cwd=HERE)
     report["post_restore_all_green"] = r.returncode == 0
-    report["post_restore_tail"] = (r.stdout or "").strip().splitlines()[-1:]
+    report["post_restore_tail"] = [_strip_timing(l) for l in (r.stdout or "").strip().splitlines()[-1:]]
     with open(os.path.join(HERE, "mutation_report.json"), "w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
     print(json.dumps({k: report[k] for k in ("n_mutations", "all_caught", "all_restored",

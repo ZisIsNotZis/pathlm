@@ -30,3 +30,13 @@
   I2：`analysis.md`「口径与边界」注明 `criteria.V5_cost_ledger` 是**离线派生字段**（非 run 直接产出），指向 `results.json::v5_recomputed_note`。
   修后：`python3 -m pytest test_verify_gate.py -q` → **11 passed**；`python3 mutate.py` → **M1/M2/M3 全抓红 + 逐字节还原**；
   `python3 tools/summary.py --check` → 全绿。**未改** `2650/README.md`（axis6-lead 拥有）。`git add` 未执行。
+
+## 2026-10-14T10:50:06+08:00 · axis6-lead（复核 #3 Finding 3 的处置，只增不改）
+
+- 复核 #3 指出修缺记录里的因果与源码不符：`results.json::config.budget_min` 被改成契约值 15.0，
+  而**实际运行参数是启动时显式传入的 25.0**（`verify_gate.py --budget-min` 的 `default` 是 **13.0**，
+  不是 25.0）⇒ 上一段「runner 缺省值 25.0」的措辞有误。
+- 处置（axis6-lead 亲自执行，不改任何测量值）：`results.json::config.budget_min` **恢复为实际运行值 25.0**，
+  另加 `config.budget_min_contract = 15.0`（预登记硬盒）；`run_log.txt` 末尾追加更正说明。
+- 该缺陷与处置**未经 fresh 复核者复核**（第 3 轮复核者已停止、时间盒内不再开第 4 轮）；已如实登记在
+  `TICKET.md` §B6 与本报告「复核」节。
