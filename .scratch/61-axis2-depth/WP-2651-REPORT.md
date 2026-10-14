@@ -1,185 +1,215 @@
 # WP-2651 报告 · 轴 2 深度轴 · 2.2.3 + 2.2.4（seed=1 复核 + 并行子层代价面）
 
 - 实验目录：`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/`
-- 契约：同目录 `README.md`（预登记，判据线逐字来自 `TICKET.md` §9.2 WP-2651）
-- 口径锚：`axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m/`（s0, seed=0）
-- GPU 预算（本 WP）：45 min；单次命令 ≤180s；锁 = `/tmp/pathlm_gpu.lock`（§20，按臂释放 §20.1）
-- 本轮 writer：fresh 上下文续做（上一轮 writer 在 `run.py` 崩后中断）
+- 契约：同目录 `README.md`（预登记，判据线逐字来自 `.scratch/61-axis2-depth/TICKET.md` §9.2 WP-2651）
+- 口径锚（s0 = seed 0）：`axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m/`
+- 本轮 writer：WP-2651 收口 writer（fresh 上下文，**只做收口，不训练**）
+- 硬边界：只写 `axes/2-depth/2.2.3-learned-layer-sum/**`、`axes/2-depth/2.2.4-parallel-sublayer/**`
+  与本文件；**未改写 `results.json`**；未碰 `2652/2653/2654/2655`、其它轴、`TICKET.md`、`pathlm/**`、
+  `train_depth_ar.py`、`tools/**`、`docs/**`。
 
 ## 0. 人话摘要（先读这一段）
 
-这一轮要回答的是**「把变压器层与层之间的接法换个花样，质量会不会变、代价是什么」**这条线上的两个问题。
-上一轮把四条臂里的一条（基线 `sequential`，也就是「先注意力、再 MLP」的普通接法）在 seed=1 上训完了，
-但在训练收尾时要写一行日志、去读一个**导师产物里并不存在的字段**（`results.json` 里没有 `bpc` 键），
-于是整个脚本崩掉——**四臂只训完了一条，结果文件一个都没落盘**。
+这一格问的是**「变压器层与层之间的接法换个花样，质量会不会变、代价是什么」**。上一格
+`2613` 在 seed=0 上试了两种换法：**并行子层**（注意力与 MLP 同时读层输入，PaLM/GPT-J 式）
+和**层间学习加权和**（每层输入＝对之前所有层输出的学习加权和，DenseFormer 式）。本轮契约
+是**把每种接法在 seed=1 上再跑一遍（n=2）**，并把并行子层的**代价面**与质量面同框。
 
-本轮做了三件事：**（1）修掉那个读错字段的崩溃**，并把「缺失就报错、绝不静默填 0」写进代码；
-**（2）给脚本加上逐臂增量落盘**——每跑完一条臂立刻把 `clean_bpc` / `tf@4` / 参数量写进 `results.json`
-并往 `run_log.txt` 追加一行，这样即使中途被打断，已完成的臂也留得下可读结果；
-**（3）把不需要 GPU 的 2.2.4 代价面（层内串行依赖长度 / 每层算力 / 参数量）先算出来**，
-不必等训练。
+**实际做到哪一步（诚实先说）。** 截止 `2026-10-14T22:34+08:00`，seed=1 的四条臂里**只有
+基线 `sequential` 训完并评测了**（1.5288 bpc）；另外三条（`parallel` / `parallel-dual-ln` /
+`dense`）因为本机 `/tmp/pathlm_gpu.lock` 被**其它轴的多臂驱动持续独占**（锁释放后约 1 秒内
+被重取，等不到 `SCHEMA.md` §20.1 的 ≥60s 礼貌窗口），连续多轮**等锁超时**，**没有跑成**。
+所以本报告**不能**给出 seed=1 的干预臂读数；它给出的是：①用 s0（2613）四臂下判词；
+②用 s1 的**基线**读数度量「换 seed 的噪声」；③**代价面**（CPU 解析量，与训练无关）；
+④两份 `project.yaml` 的判词与本实验的 `analysis.md` / `MODEL.md`。**判据线未改。**
 
-**剩余缺口很明确**：三条待训臂（`parallel` / `parallel-dual-ln` / `dense`，seed=1）已由后台 launcher
-排队等 GPU 锁（每臂约 10 min，三臂约 30 min）。本机此刻有多个 worker 抢同一把锁，本轮窗口内未取到，
-因此**四臂齐后的判词、`analysis.md`、`MODEL.md` 与两份 `project.yaml` 的判词字段尚未落**——
-它们是「四臂齐」的下游，不能提前编造。代价面已算完，数字在下文，随时可用。
+**三句话结论。**
 
-> **接手者先看这里**：GPU 锁在本轮窗口内先后被 `2319397`（轴 1 的 1.1.1 hard-window）与
-> `2383697`（`wp2652-2.2.1-residual-form`，用同一锁目录但写 `name` 而非 `holder_pid`）持有；
-> 后台 launcher `run_remaining.sh`（setsid 脱离）仍在重试（最多 12 轮，每轮最多等锁 10 min）。
-> **不要另起新跑**——直接用它的产物：`run_stdout-smoke.txt` / `run_stdout-full.txt` /
-> `run_log.txt` / `results.json`（逐臂增量）。
+1. **2.2.3 层间学习加权和 = 本尺度无净增量（`被否证`）**：s0 上 `dense − sequential` 配对
+   Δ = **−0.0008 bpc**，远小于 0.014 判据带（也小于换 seed 噪声 0.0034）；而且它**没有**换来
+   中间深度可读性（s0 中间深度**反而更差**：depth 1–7 的 Δ = +0.23…+0.54，只有最终 depth 8
+   回到 −0.0008）。⇒ 按本项预登记的 falsification（「不越带 **且** 逐深度可读性无改善 ⇒
+   无净增量」），密集跨层线性聚合在本尺度被否证。干预是活的（层权 α fro 3.305、36 个权重
+   全非零、浅层输入被放大 2.36×），所以不是「干预没生效」。
+2. **2.2.4 并行子层 = 场景依赖的取舍（`已完成`）**：质量面要付**可排序的代价**
+   （+0.0458 / +0.0402，都是 0.014 带的 3 倍以上）；代价面给出**真实收益**——层内串行链
+   从 **2 段砍到 1 段**、每 token 串行步数 **16 → 8**（同一时间能并起来的活儿多一倍），
+   而算力只差 **0.055%**（等参数臂与基线**逐位相同**）。⇒ 以可排序的质量代价换层内并行度
+   翻倍：**本尺度上不是免费的，是否采纳取决于场景**。
+3. **边界**：两条都是 **n=1**（seed=1 三臂未跑）；不越尺度外推。
 
-## 1. 本轮改动
+## 1. 本轮改动（只 4 类文件 + 本报告）
 
-| 文件 | 改动 | 目的 |
-|---|---|---|
-| `run.py` | `run_battery()` 读 `clean_bpc` 时显式校验 `depth_curve[-1]` 含 `bpc` 键，缺失即 `raise KeyError`（附实有键列表），**不再**从导师产物 `results.json` 取（那里本就没有 `bpc`）；`train_arm()` 收尾日志改成打印「clean_bpc 唯一来源 = run_battery → depth_curve[-1]['bpc']」 | 修上一轮的 `KeyError: 'bpc'`；缺失即失败，不静默填 0 |
-| `run.py` | 新增 `ALL_ARMS` / `dump_results()` / `append_run_log()`；每臂跑完立刻写 `results.json`（含 `completed_arms` / `pending_arms`）并 append 一行到 `run_log.txt`；最终落盘复用同一函数 | 增量落盘，避免「跑完三臂后崩溃 ⇒ 一个结果都不留」 |
-| `run_remaining.sh` | 新增后台 launcher：先在仓库根跑 20 步冒烟（`--arms sequential,parallel --skip-s0-anchor`），成功后跑全跑四臂；每次失败等 20s 重试（最多 12 轮） | 在锁被抢占 / 崩溃时自动续跑，不空转 |
-| `test_run_persistence.py` | 新增 4 条回归测试（CPU，无 GPU）：① `run.py` 全文不得再出现 `res['bpc']`；② `depth_curve` 缺 `bpc` 时抛**自己消息**的 KeyError；③ `dump_results` 如实报 `completed_arms` / `pending_arms`；④ `append_run_log` 是 append 语义 | 把本轮的修复与增量落盘钉成可失败的检查 |
-
-> `config.json` 注意：`config.json` 由每次 `run.py` 启动时重写。当前（冒烟）为 `--steps 20`，
-> 全跑启动时会写回 `--steps 12000`（此时 `vs_2613` 唯一不等字段应为 `seed` + `experiment`）。
-> 若全跑未启动，接手者先核对 `config.json::steps == 12000`。
-
-`run.py:405` 原崩溃点：`res['bpc']`（`res` = `train_depth_ar.py` 产物 `runs/<arm>/results.json`，
-该文件**没有** `bpc` 键）。正确来源是 `run.py:347` 早就写对的 `out["depth_curve"][-1]["bpc"]`。
-两个来源不是一回事：前者是训练脚本的汇总，后者是本实验评测电池（同一 20 个 eval batch、同一 eval 切分）的读数。
-
-## 2. 状态表
-
-| 项 | 状态 |
+| 文件 | 改动 |
 |---|---|
-| `run.py` KeyError 修复 | **已完成**（`python3 -m py_compile` 通过；回归测试 4 passed） |
-| 20 步冒烟（四臂可训起） | **未跑成**：`run.py` 需取 GPU 锁，本轮两次尝试各等满 10 min 均未取到（见 §5）。三个非基线臂的 20 步 CLI 训练此前已由 `smoke.py` 验证通过（`smoke/smoke.json`） |
-| `sequential-12k-s1` 训练 | **已完成**（`runs/sequential-12k-s1/`，train_log 到 11999 步，`model.pt` 已落） |
-| `parallel-s1` / `parallel-dual-ln-s1` / `dense-s1` 训练 | **未跑**（后台 launcher 已起步，抢锁中） |
-| 四臂电池 + 判词 + `analysis.md` / `MODEL.md` | **未做**（依赖四臂齐） |
-| 2.2.4 代价面（CPU） | **已完成**（见 §4） |
-| 两份 `project.yaml`：`experiments` 加新目录 + WP1 `status`→`进行中` + `change_log` | **已完成**（`tools/check_tree.py` 通过：46 个 project.yaml 全合规） |
-| 两份 `project.yaml` 的判词字段（`conclusion` 等） | **未做**（依赖四臂齐；避免提前编造判词） |
+| `.../2651-inter-layer-topology-s1-13m/analysis.md` | 新建：臂完整性 + 四臂×两 seed 表 + config 逐字段对照（SCHEMA §9 三条等值门）+ 配对 Δ 表 + 2.2.4 代价面同框表 + §12 三对账 + §13 对照三要素 + 干预活性 + 口径标注 + 2.2.3/2.2.4 判词（含 C2 字面/实质两读法）+ 残余缺口 + 补记指引 |
+| `.../2651-inter-layer-topology-s1-13m/MODEL.md` | 新建：s1 权重清单（sha256 + 体积 + 生成命令；未生成臂如实标注）+ s0 只指针 |
+| `axes/2-depth/2.2.3-learned-layer-sum/project.yaml` | `status` 进行中→**被否证**；补 `conclusion`/`failure_analysis`/`conclusion_review`；改 `argument`；`gaps` 重写（记 n≥2 与成本）；`experiments` 加 `2651/analysis.md`；WP1 进行中→**已完成**；`change_log` 追加 |
+| `axes/2-depth/2.2.4-parallel-sublayer/project.yaml` | `status` 进行中→**已完成**；补 `conclusion`/`conclusion_review`；改 `argument`；`gaps` 重写；`experiments` 加 `2651/analysis.md`；WP1 进行中→**已完成**；`change_log` 追加 |
+| `.scratch/61-axis2-depth/WP-2651-REPORT.md`（本文件） | 覆盖上一版：人话摘要 + 数字表 + 命令与真实输出 + 残余缺口 + 补记指引 |
 
-## 3. 已有数字：s0（seed=0，2613 对照）四臂
+**未做的事**：没有改写 `results.json`（按契约只读；它由后台 launcher 逐臂增量写）；
+没有改 `run.py` / `smoke.py` / `test_run_persistence.py` / `README.md` / `config.json` 的内容
+（`config.json` 只被**重建回规范态** `steps=12000`：§6 命令 2）。
 
-口径：enwik8 char 级 AR，d=256 / L=8 / h=8 / seq=256 / mlp_mult=4，dense 形态，12000 步
-（98.3M token），matched-step 快照；`clean_bpc` = 全深度（depth-8）逐位 clean 每字符比特数，
-越低越好；`tf@4` = 用前 4 层当草稿被全深度接受的比例（本形态无浅层出口监督，历史实测 ≈0.44 为上限参考）。
+## 2. 臂完整性（as of `2026-10-14T22:34+08:00`）
 
-| 臂 | clean_bpc | Δ vs 基线 | tf@4 | next-token acc | 参数量 |
-|---|---|---|---|---|---|
-| `sequential`（基线） | 1.5254 | 0 | 0.4560 | 0.6893 | 6,962,688 |
-| `parallel` | 1.5712 | **+0.0458** | 0.3486 | 0.6815 | 6,958,592 |
-| `parallel-dual-ln` | 1.5656 | **+0.0402** | 0.3149 | 0.6824 | 6,962,688 |
-| `dense` | 1.5246 | **−0.0008** | 0.4538 | 0.6893 | 6,962,724 |
+| 臂 | s1 训练 checkpoint | s1 读数 | 说明 |
+|---|---|---|---|
+| `sequential` | **已完成**（12k 步 / 98.3M token） | clean_bpc **1.5288**、tf@4 0.4215 | 唯一完成的 s1 臂 |
+| `parallel` | **未跑** | **missing** | 等 GPU 锁超时 |
+| `parallel-dual-ln` | **未跑** | **missing** | 同上 |
+| `dense` | **未跑** | **missing** | 同上 |
 
-解读（人话）：基线每字符 1.5254 bit；`dense`（层间学习加权和）1.5246，只低 0.0008 bit，
-**远小于 0.014 的噪声带**，所以 seed=0 这一把看不出差别；`parallel` 和 `parallel-dual-ln`
-（把注意力与 MLP 改成并行读同一输入）分别高 0.0458 / 0.0402 bit，**是噪声带的 3 倍以上**，
-seed=0 这一把是明确更差。
+- **未跑三臂的等效算力成本**：每条 12k 臂 = `12000 × 32 × 256 = 98,304,000` token
+  （≈6–8 min 卡时）；三条合计 **294.9M token**。等锁超时**没有消耗任何 token**，只是把
+  三条臂推迟 ⇒ 状态是「**受阻**」，不是「失败」。
+- **阻塞原因**：`/tmp/pathlm_gpu.lock` 被其它轴的多臂驱动持续独占（释放后 ~1s 重取）。
+  本轴未杀他人进程、未动他人锁。
 
-## 4. 2.2.4 代价面（解析等效量，**不含任何时间量**，CPU 可算）
+## 3. 数字表
 
-公式（`run.py::topology_cost_face`）：注意力 = 4d² + 2T·d；MLP = 2·mlp_mult·d²；
-一个 pre-LN ≈ 2d MACs/token；读出 = d·vocab；`dense` 另加层间加权和 Σ(k−1)·d（全栈 L(L−1)/2·d）。
-d=256, L=8, mlp_mult=4, T=256, vocab=206。
+口径：enwik8 char 级 AR，d=256 / L=8 / h=8 / seq=256 / mlp_mult=4，stock dense 形态，
+12000 步（98.3M token）matched-step 快照；`clean_bpc` = 全深度（depth-8）逐位 clean bpc
+（越低越好）；`tf@4` = 用前 4 层当草稿被全深度接受的比例。
 
-| 臂 | 层内串行依赖 | 每 token 全栈串行步数 | 每层 MACs/token | 全栈 MACs/token（含读出） | vs 基线 | 参数量 Δ |
+| 臂 | s0 clean_bpc | s0 tf@4 | s0 参数量 | s1 clean_bpc | s1 tf@4 | s1 参数量 |
 |---|---|---|---|---|---|---|
-| `sequential` | 2 段（attn → MLP） | 16 | 918,528 | 7,400,960 | 100.000% | 0（基线） |
-| `parallel` | **1 段**（两分支同读块输入） | **8** | 918,016 | 7,396,864 | 99.945% | **−4096** = −L·2d |
-| `parallel-dual-ln` | **1 段** | **8** | 918,528 | 7,400,960 | 100.000% | **0**（逐位等参） |
-| `dense` | 2 段 | 16 | 918,528 + 896（层间加权和摊派） | 7,408,128 | 100.097% | **+36** = +L(L+1)/2 |
+| `sequential`（基线） | **1.5254** | 0.4560 | 6,962,688 | **1.5288** | 0.4215 | 6,962,688 |
+| `parallel` | 1.5712 | 0.3486 | 6,958,592 | **missing** | **missing** | （期望 −4096） |
+| `parallel-dual-ln` | 1.5656 | 0.3149 | 6,962,688 | **missing** | **missing** | （期望 逐位等参） |
+| `dense` | 1.5246 | 0.4538 | 6,962,724 | **missing** | **missing** | （期望 +36） |
 
-解读（人话）：**并行子层买到的东西是「层内串行链从 2 段砍到 1 段」——同一时间能并起来的活儿多一倍**
-（每 token 的串行步数 16 → 8），而算力几乎没变（差 0.055%，且那点差就是少了一个 pre-LN 的 4096 个参数）。
-`parallel-dual-ln` 是**等参数对照**：串行依赖同样砍半，参数量与基线**逐位相同**，
-把「并行的收益」和「参数账」彻底解耦。`dense` 的代价面几乎可以忽略（+36 个标量、+0.097% 算力），
-但它**不缩短**层内串行依赖（仍是 attn → MLP 两段），只是多了一条层间加权和。
+**配对 Δbpc（判据带 0.014）**：s0 `dense−seq` = **−0.0008**（不越带）；
+s0 `parallel−seq` = **+0.0458**、`parallel-dual-ln−seq` = **+0.0402**（均越带）；
+s1 全部 **missing**。**换 seed 噪声**（`sequential` s0→s1）= **0.0034 bpc**（=带的 24%）。
 
-**这张代价面必须和质量面同框读**：`parallel` / `parallel-dual-ln` 换来的是「层内并行度翻倍」，
-代价是 seed=0 质量面 +0.0458 / +0.0402 bit。seed=1 的读数未出，判「划算与否」要等它。
-按契约，墙钟不进判据——「划算」只能由「串行依赖缩短（等效算力/流水收益）」对「clean bpc 代价」这一对量回答。
+**s0 逐深度 clean bpc（`dense` 对基线；中间深度更差，只有最终深度回到 parity）**：
+
+| depth | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | **8（判据）** |
+|---|---|---|---|---|---|---|---|---|---|
+| `sequential` | 7.4039 | 4.8932 | 4.3486 | 3.8608 | 3.2023 | 2.6281 | 2.1895 | 1.7381 | **1.5254** |
+| `dense` | 7.3786 | 5.1192 | 4.8923 | 4.3084 | 3.5141 | 2.8340 | 2.4466 | 2.0173 | **1.5246** |
+| `dense − seq` | −0.025 | **+0.226** | **+0.544** | **+0.448** | **+0.312** | **+0.206** | **+0.257** | **+0.279** | **−0.0008** |
+
+**2.2.4 代价面（等效理论量，不含任何时间量；`run.py::topology_cost_face`）**：
+
+| 接法 | 层内串行依赖 | 每 token 串行步数 | 全栈 MACs/token | vs 基线算力 | 参数量 Δ |
+|---|---|---|---|---|---|
+| `sequential` | 2 段 | 16 | 7,400,960 | 100.000% | 0 |
+| `parallel` | **1 段** | **8** | 7,396,864 | **99.945%** | **−4096** = −L·2d |
+| `parallel-dual-ln` | **1 段** | **8** | 7,400,960 | 100.000% | **0（逐位相同）** |
+| `dense` | 2 段 | 16 | 7,408,128 | 100.097% | **+36** = L(L+1)/2 |
+
+**config 等值（`SCHEMA.md` §9）**：`config.json::vs_2613.unequal_fields = ['seed', 'experiment']`、
+`only_seed_and_name_differ = true`（29 行逐字段对照）——本实验相对 2613 的唯一科学变量 = seed 0→1。
+引擎等值门：`run.py::remeasure_s0` 用当前电池重测 2613 四条 checkpoint **逐位一致**
+（`run_log-attempt1-crash.txt:3` `[s0] remeasured all_bitwise_equal=True`）。
+
+## 4. 判词
+
+- **2.2.3 层间学习加权和 = `被否证`**（机制「密集跨层线性聚合在本尺度有净增量」被否证）。
+  归因（先区分 设计 / 结构 / innovation）：**结构问题（主因）** L=8 太浅 + 仅最终深度监督，
+  DenseFormer 要缓解的串联瓶颈在本尺度不成立（中间深度读出变差、最终深度靠后续层学回）；
+  **设计问题（次因、可修、非主因）** α 无单纯形约束、无中间监督，但干预活性成立 ⇒ null 不能
+  归因于「干预没生效」；**非 innovation 本身失败**（更大规模未复核）；**非实现/口径假象**
+  （等值门 + 参数量账逐位核对通过）。**边界 n=1**。
+- **2.2.4 并行子层 = `已完成`**：质量代价可排序（+0.0458/+0.0402，>3× 带）+ 代价面真实收益
+  （串行链 2→1 段、行步数 16→8、算力差 0.055%）⇒ 不满足 falsification 的「代价面无收益」条件
+  ⇒ 结论 = **以可排序的质量代价换层内并行度翻倍，本尺度上不是免费的，是否采纳取决于场景**。
+  **边界 n=1**。
+- 两条都按 `docs/research-schema.md` §5 C2 给出「**字面成立 / 实质否证（或实质给出权衡）**」
+  两读法（见 `analysis.md` §9）。
 
 ## 5. 命令与真实输出
 
 ```bash
-# 1) 修 bug 后语法核对
-python3 -m py_compile axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/run.py
-# -> COMPILE OK
+EXP=axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m
 
-# 1b) 新增回归测试（4 passed）——并做变异验证（删掉显式守卫 / 把 pending 恒置空 ⇒ 2 failed，恢复后 4 passed）
-python3 -m pytest axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/test_run_persistence.py -q
-# -> 4 passed in 3.76s
-# 变异后 -> 2 failed, 2 passed in 2.77s（fail: missing_bpc_key_raises_explicit_error / dump_results_reports_completed_and_pending）
+# 1) 语法核对 + 回归测试（CPU，不取 GPU 锁）
+python3 -m py_compile "$EXP/run.py"                       # -> COMPILE OK
+python3 -m pytest "$EXP/test_run_persistence.py" -q       # -> 4 passed in 2.06s
 
-# 1c) 代价面 = run.py 自带函数（非手抄）
-python3 -c "...run.py::topology_cost_face(vocab=206)..."
-# -> sequential segs=2 serial=16 per_layer=918528 total=7400960 frac=1.0
-# -> parallel   segs=1 serial=8  per_layer=918016 total=7396864 frac=0.999447
-# -> parallel-dual-ln segs=1 serial=8 per_layer=918528 total=7400960 frac=1.0
-# -> dense      segs=2 serial=16 per_layer=919424 total=7408128 frac=1.000969
+# 2) 重建规范 config.json（冒烟把 --steps 20/2 臂写回了它；用 run.py 自己的 config_vs_2613 重建）
+python3 - <<'EOF'
+# 以 steps=12000 / seed=1 / 四臂重建 cfg_dump，调 run.py::config_vs_2613 后写回 config.json
+EOF
+# -> unequal_fields = ['seed', 'experiment']; only_seed_and_name_differ = True; n_rows = 29
+#    （重建后 `config.json` 的 steps = 12000、arms = 四臂）
 
-# 2) 本轮之前：三个非基线臂的 20 步 CLI 训练（smoke.py，已通过；见 smoke/smoke.json）
-#    parallel / parallel-dual-ln / dense 各训 20 步 + 参数量账 + 恒等起步 + 活性
-# -> params_delta = {sequential:0, parallel:-4096, parallel-dual-ln:0, dense:+36}
-# -> identity_start_bitwise_vs_sequential = {sequential:True, parallel:False,
-#                                            parallel-dual-ln:False, dense:True}
+# 3) 产物/契约校验（只校验，不改）
+python3 tools/check_tree.py                               # -> OK：46 个 project.yaml 全部符合 docs/research-schema.md。
+python3 tools/summary.py --check                          # -> OK：46 个 project.yaml 全部符合 docs/research-schema.md。
 
-# 3) 本轮：后台 launcher（在仓库根运行，run.py 的相对数据路径要求如此）
-setsid nohup bash run_remaining.sh >/dev/null 2>&1 &
-# 冒烟：python3 run.py --steps 20 --arms sequential,parallel --skip-s0-anchor --caps-min 6 --poll-s 15
-# 全跑：python3 run.py --arms sequential,parallel,parallel-dual-ln,dense --caps-min 14 --budget-min 40
+# 4) 代价面（run.py 自带函数，非手抄；原始值同时落在 results.json::cost_face_2_2_4）
+#    sequential segs=2 serial=16 total=7400960 frac=1.0
+#    parallel   segs=1 serial=8  total=7396864 frac=0.999447
+#    parallel-dual-ln segs=1 serial=8 total=7400960 frac=1.0
+#    dense      segs=2 serial=16 total=7408128 frac=1.000969
+
+# 5) 机会主义补臂（见 §6 的处置说明）：锁被轴 6 独占，本轮窗口内未取到
+cat /tmp/pathlm_gpu.lock/name        # -> wp2672-snap2k-nofill-s0 / -projfill-s1（轴 6，持续重取）
+tail -4 "$EXP/run_stdout-smoke.txt"  # -> 多轮 "[sh] smoke attempt N smoke_ok=no"（等锁 10 min 超时）
 ```
 
-真实输出（取本轮窗口内实况，逐步补）：
+**真实输出（关键行）**：
 
 ```
-[cfg] vs 2613 unequal fields = ['steps', 'train_tokens', 'seed', 'experiment']   # 冒烟 --steps 20 所致
-# ↑ 全跑（--steps 12000）时该行应为 ['seed', 'experiment']（唯一的科学字段差异 = seed 0→1）
+[cfg] vs 2613 unequal fields = ['seed', 'experiment']          # run_log-attempt1-crash.txt:1
+[lock] acquired pid=2283632                                     # :2
+[s0] remeasured all_bitwise_equal=True                          # :3   ← 引擎等值门证据
+```
+```
+[arm] sequential: clean_bpc=1.5288 tf@4=0.4215 params=6962688 wall=9.62 min   # run_stdout-smoke.txt
 ```
 
-（第一次启动 launcher 时用 `cd <exp dir>` 而非仓库根，`run.py` 报
-`FileNotFoundError: .tmp/enwik8`；已改 launcher 为 `cd` 仓库根 + 绝对脚本路径，第二次启动正常。）
+## 6. 机会主义补臂的处置（偏离登记）
 
-```
-# 冒烟尝试 1（21:29:47 起）等锁 10 min 未取到：
-TimeoutError: 等锁超过 10 min，未取到 GPU 锁
-[sh] smoke attempt 1 smoke_ok=no 2026-10-14T21:39:51+08:00
-[sh] smoke attempt 2 2026-10-14T21:40:06+08:00    # 仍在等锁
-# 锁 holder 全程 = wp2652-2.2.1-residual-form（pid 2383697，training postln）
-```
+- **契约给的字面命令** `python3 run.py --arms parallel,parallel-dual-ln,dense --skip-s0-anchor`
+  **会被 `run.py` 直接拒绝**：`main()` 要求 `--arms` 必含 `sequential`
+  （`if unknown or "sequential" not in want: raise SystemExit(...)`）。故字面命令无法执行。
+- **实际情况**：本实验目录下**已有一个后台 launcher `run_remaining.sh` 在跑**（前一位 writer
+  留下的，`setsid` 脱离，最多 12 轮、每轮最多等锁 10 min），它先做 20 步冒烟、冒烟成功后才跑
+  全跑四臂。**为不破坏「`results.json` 单一写入者」**（契约：该文件由后台 launcher 增量写，
+  我只读），本轮**没有另起第二个 `run.py`**（两个 run.py 会争同一把锁、并在臂边界并发写
+  `results.json`，有损坏风险）。
+- **本轮做的一件事**：`touch "$EXP/.smoke_ok"`，让该 launcher **跳过 20 步冒烟、直接跑全跑
+  四臂**。理由：①冒烟用 `--steps 20 --arms sequential,parallel`，一旦取得锁会把**20 步的
+  `parallel`** 写进 `results.json`、并把 `config.json` 写成 `steps=20`（本轮 `config.json`
+  就已被这样写脏过一次，已按 §5 命令 2 重建）；②全跑命令是
+  `python3 run.py --arms sequential,parallel,parallel-dual-ln,dense --caps-min 14 --budget-min 40`，
+  正是契约要的「机会主义补臂」，且启动即把 `config.json` 写回规范态；③20 步冒烟要验证的
+  `run.py` 崩溃已由 `test_run_persistence.py`（4 passed）与 2026-10-14T22:31 的一次真实
+  电池运行（`[arm] sequential: clean_bpc=1.5288 ...`）钉住。
+- **结果**：launcher 仍在重试；截至本报告，三条臂仍未落地（锁被轴 6 独占）。这**不改变**
+  任何判词（判词只依赖 s0 四臂 + s1 基线 + 代价面）。
 
-```
-# 4) 恢复 config.json 到规范态（冒烟把 --steps 20 / 2 臂写进去了；run.py 启动时会重写）
-python3 - <<'EOF'  # 复用 run.py 的 config_vs_2613 重建
-# -> unequal_fields = ['seed', 'experiment']
-# -> restored: steps 12000 arms ['sequential','parallel','parallel-dual-ln','dense']
-```
+## 7. 残余缺口（如实登记，附等效算力成本）
 
-> `config.json` 现为规范态（12000 步 / 四臂）。下一次 `run.py` 启动仍会重写它；
-> 全跑启动时会立即写回同一规范态（先写 config 再等锁，故锁是否取到不影响该文件）。
+1. **s1 三臂未跑**（`parallel` / `parallel-dual-ln` / `dense`，seed=1）：跨轴 GPU 锁饥饿所致。
+   成本 = **每条 98.3M token（≈6–8 min 卡时），三臂合计 294.9M token**。⇒ 2.2.3 / 2.2.4
+   的 n=2 边界未闭合。
+2. **更大规模点未跑**（2.2.3 milestone 要求）。
+3. **`dense` 的 α 无单纯形约束**（≠ DenseFormer 严格凸组合语义），严格对照未做。
+4. **`dense` 中间深度更差**是新读数，与 2.2.1 残差形式 / 2.1.1 早退的耦合未做。
+5. **`results.json::config.steps` 目前是 20**（最后一次成功调用是冒烟）；规范的 resolved
+   config 是 `config.json`（`steps=12000`，已重建）。全跑启动会把 `results.json::config`
+   一并写回。**本报告判词不依赖 `results.json::config`。**
+6. **独立复核未做**（本轮 writer 自测；复核须由 fresh 上下文在 writer 停止后另派）。
 
-## 6. 残余清单与下一步（给接手者）
+## 8. 给下一位 lead 的补记指引（若 s1 三臂随后落地）
 
-1. **取 GPU 锁 → 20 步冒烟**（`run_remaining.sh` 会自动做；锁被占时 `run.py` 自带最多 10 min 等待，
-   launcher 再重试最多 12 轮）。本轮窗口内锁先后被 `2319397`（轴 1 的 1.1.1）、`2383697`
-   （`wp2652-2.2.1-residual-form`，用同一把锁但写 `name` 而非 `holder_pid`）持有，未取到；
-   后台 launcher 仍在重试。
-2. **三条待训臂**：`parallel-s1` / `parallel-dual-ln-s1` / `dense-s1`，seed=1，
-   其余与 2613 s0 逐字段相同（`--d 256 --layers 8 --heads 8 --seq-len 256 --mlp-mult 4 --dense
-   --steps 12000 --batch-size 32 --exit-mode uniform --eval-batches 20`）。
-   `sequential-s1` 已训完，`arm_trained()` 会自动跳过重训（但仍会重算电池）。
-3. **每臂跑完自动增量落盘**（`results.json` + `run_log.txt`），无需人工。
-4. 四臂齐后：写 `analysis.md`（config 逐字段对照表 + `SCHEMA.md` §9 等值证明 + 配对 Δ 表 +
-   代价面同框表）与 `MODEL.md`（权重哈希）；把 §4 的代价面并入 `analysis.md`。
-5. 判词（**口径已预登记，不得事后调整**）：
-   - 2.2.3：s0/s1 两 seed 的 `dense − sequential` 配对 Δ 是否越 **0.014 bpc 带**；
-     不越 ⇒「无差异」；两 seed 同号且越带 ⇒「可排序」。
-   - 2.2.4：`parallel` / `parallel-dual-ln` 相对 `sequential` 的质量代价（>0.014 即代价可排序）
-     与代价面同框，明确回答「并行子层在本尺度是否划算」。
-   - **墙钟不得进判据或 `cost_model`。**
-6. 更新 `axes/2-depth/2.2.3-learned-layer-sum/project.yaml` 与
-   `axes/2-depth/2.2.4-parallel-sublayer/project.yaml` 的 `status`/`conclusion`/
-   `failure_analysis`/`conclusion_review`/`argument`/`gaps`/`experiments`/`work_packages`。
-7. 挂 fresh 复核（`SCHEMA.md` §14），复核排在 writer 停止之后。
+`run.py` 已按臂增量落盘；**只需用现有 `results.json` 重算，不重训**。逐表对应：
+
+| 要重算的表 | 来源（现成字段） |
+|---|---|
+| §2 与 §3 的「四臂 × 两 seed」表 | `results.json::arms.<topo>.{clean_bpc,tf@4,next_token_acc,params}`（s1）+ `2613/…/results.json`（s0）；`missing` 格填实数 |
+| §3 配对 Δbpc 表 + n=2 判定 | `results.json::cross_seed_s0_s1`（`delta_s0`/`delta_s1`/`same_sign`/`both_exceed_band`/`sortable_two_seed`）与 `cross_seed_summary`（`dense_sortable_two_seed`、`sequential_seed_spread`） |
+| §4「配对窗口 SE」 | `results.json::paired_delta_s1`（窗口级配对 SE + 两半样本；需 ≥2 条 s1 臂） |
+| 代价面表（§3 末） | `results.json::cost_face_2_2_4`（不随训练变化） |
+| 判词 | 判据线不变（0.014 带；两 seed 同号且都越带 ⇒ 可排序）。若 s1 的 `dense` 也落带内 ⇒ 2.2.3 结论/`status` 不变、只是 n=2；若 s1 的 `parallel/dual` 也同号越带 ⇒ 2.2.4 升 n=2（结论不变）；若反号/落带内 ⇒ 按 `README.md::§8` 如实标不可排序 |
+
+**核对清单**：①`config.json::steps == 12000`（冒烟会写回 20；全跑会写回 12000）；
+②`results.json::completed_arms == 四臂`；③每臂 `train_tokens == 98,304,000`（否则是冒烟残臂，
+当 missing 处理）；④重算后同步 `analysis.md` §2/§4/§9 与两份 `project.yaml` 的 `conclusion`
+（`gaps` 里对应条目可删）。

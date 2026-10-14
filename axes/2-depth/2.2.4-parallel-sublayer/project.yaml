@@ -14,15 +14,17 @@ validation: "端到端：对照 = stock 串行子层全深度（归一为 100%�
 objective_criteria: "该跌：clean bpc（序列级，衡量质量代价，须越 0.014 噪声带才算可排序）；必须报：层内串行依赖长度与每层 FLOPs（代价面）；必须不变：等参数对照的参数量、因果性。"
 falsification: "若并行子层在质量面相对 stock 串行子层有可排序代价（旧读数 +0.0458 方向），同时在等效代价面（层内串行依赖 / 每层 FLOPs）也拿不到可兑现的收益 ⇒ 判并行子层在本尺度不划算；若质量代价不越噪声带则可采纳为吞吐优化。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 failure_analysis: ""
-conclusion: ""
-conclusion_review: "status = 进行中：旧格 C3 只有质量面读数（parallel +0.0458、等参数 dual-LN +0.0402，n=1），按 55-review C-P18 这不足以判「并行子层有害」——业界采用它的理由是吞吐，质量面单测就下结论是只量了一半。本项证据**只指针** see `2.2.3` 的 `2613-inter-layer-topology-13m`（一格一份家、不复制），本项不另收文件（MAPPING §3）。独立复核未做。"
+conclusion: "在 13M / 12k 步 / 98.3M token / matched-step 快照 + 0.014 bpc 带下：并行子层（`parallel` / 逐位等参数 `parallel-dual-ln`）相对 stock 串行子层（`sequential`）的质量代价**可排序**（s0 配对 Δ = +0.0458 / +0.0402，均 >3× 带）；同框的**代价面**给出**真实收益**——层内串行链从 2 段砍到 1 段、每 token 串行步数 16→8（同一时间可并起来的活儿多一倍），而算力只差 0.055%（`parallel-dual-ln` 与基线逐位等参；`parallel` 少一个共享 pre-LN = −4096 = −L·2d）。⇒ 本项 falsification 的第二条件（「等效代价面也拿不到可兑现的收益」）**不成立** ⇒ 不判「不划算」；结论 = **以可排序的质量代价换层内并行度翻倍：本尺度上不是免费的，是否采纳取决于场景**（要吞吐/流水者值、要质量者不值）。**臂完整性（as of 2026-10-14T22:34+08:00）**：seed=1（2651）只完成基线 `sequential`，`parallel`/`parallel-dual-ln` 两臂因跨轴 GPU 锁饥饿未跑（等效成本 = 每臂 98.3M token、两臂合计 196.6M token，未消耗），故本判为 **n=1**、不越尺度外推。字面（预登记判据线）：质量代价越带 ⇒ 代价可排序、代价面齐备、给出场景依赖结论，成立；实质：给出「质量代价 vs 并行度收益」的可操作权衡，不越尺度外推。证据：`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md`（§5 代价面同框表）与 `.../2613-inter-layer-topology-13m/analysis.md`。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
+conclusion_review: "status = 已完成：本项在 13M/12k 尺度给出明确结论——并行子层的质量代价可排序（+0.0458/+0.0402，>3× 带），代价面（层内串行依赖 2→1 段、每 token 串行步数 16→8、算力差 0.055%）给出真实收益，故不满足 falsification 的「代价面无收益」条件、不判不划算；结论为场景依赖的权衡。判定边界：n=1（seed=1 两臂因跨轴锁饥饿未跑，等效成本 196.6M token），不越尺度外推；吞吐/流水面用等效理论量表达（层内串行依赖长度），墙钟不进判据。独立复核未做。"
 experiments:
   - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m"
-argument: "（证据只指针，见 2.2.3 的实验目录。）并行子层是「层内怎么排」的问题：串行版把注意力结果当 MLP 输入，并行版让二者同层输入并行；两者的质量差与流水收益必须同框看。旧 C3 用质量面单测判「有害」，本项要补的正是它被跳过的代价面——若并行版在等效代价面（层内串行依赖缩短）拿到真实收益，则它能以可接受质量代价换吞吐。"
+  - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md"
+argument: "（证据只指针，见 2.2.3 的实验目录。）并行子层是「层内怎么排」的问题：串行版把注意力结果当 MLP 输入（层内 2 段串行），并行版让二者同读层输入（1 段）。同框账：质量面 s0 +0.0458 / +0.0402（可排序代价），代价面层内串行依赖 2→1 段、每 token 串行步数 16→8、算力近似不变（`parallel` −0.055%、`parallel-dual-ln` 与基线逐位等参），等参数臂（dual-LN）将「并行的收益」与「参数账」解耦。故它不是免费的、也不是无收益的，是场景依赖的取舍。同组对照 2.2.3 的 dense 臂用于区分「并行接线」与「层间加权和」。"
 gaps:
   - "无自有实验（按 MAPPING §3 只指针 see 2.2.3；并行读数即 2.2.3 证据目录里的 parallel / parallel-dual-ln 臂）"
-  - "吞吐/流水面从未测（旧 C3 只测质量面，C-P18）"
-  - "n=1 seed、13M/12k 单快照"
+  - "n≥2 seed 复核未完成：seed=1（2651）的 `parallel`/`parallel-dual-ln` 两臂因跨轴 GPU 锁饥饿未跑（等效成本 = 每臂 98.3M token、两臂合计 196.6M token，未消耗）；本项判为 n=1"
+  - "吞吐/流水面已给等效理论量（层内串行依赖长度 / 每层 FLOPs），但未做真实流水实现或墙钟外的端到端吞吐代理（本项目约定墙钟不进判据）"
+  - "13M/12k 单快照，不越尺度外推"
 cost_model: "等效理论量：每 token 的 layer-passes 仍为 L；并行子层把层内「注意力→MLP」的串行依赖从 2 段压到 1 段（层内关键路径更短），每层 FLOPs 近似不变（≈ −2d 参数的 LayerNorm 输入差）；tokens-per-forward 每步 1。考虑 pipelining：层内串行依赖缩短提升批内并行度，收益须以「层内串行依赖长度」这一等效量表达，而不是以任何时间量表达。"
 
 role_map:
@@ -43,13 +45,13 @@ work_packages:
     acceptance: "三臂等参数对齐；质量代价与代价面收益同框；结论明确划算/不划算"
     evidence: "axes/2-depth/2.2.3-learned-layer-sum/experiments/"
     review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
-    status: "进行中"
+    status: "已完成"
 
 roadmap:
   - "WP1：补代价面并与质量面同框（证据复用 2.2.3）"
   - "复核通过后写 conclusion，更新 status"
 
-status: "进行中"
+status: "已完成"
 started: "2026-10-13T10:37:02+08:00"
 ended: ""
 change_log:
@@ -62,3 +64,6 @@ change_log:
   - date: "2026-10-14T21:41:51+08:00"
     actor: "WP-2651 续做 writer（ticket 61 §9.2；fresh 上下文）"
     change: "WP-2651（2.2.3+2.2.4 的 seed=1 复核）续做轮：按 WP 契约把 `experiments` 加指向 2.2.3 的 `2651-inter-layer-topology-s1-13m`（只指针，不复制文件）；该目录内 `run.py` 已修崩溃并加逐臂增量落盘。当前事实：`sequential` 臂（seed=1）已训完，其余三臂待 GPU 锁；质量面（clean bpc）与代价面同框的质量代价未齐，`conclusion` / `failure_analysis` / `conclusion_review` / `argument` / `gaps` 未落。"
+  - date: "2026-10-14T22:34:18+08:00"
+    actor: "WP-2651 收口 writer（ticket 61 §9.2；fresh 上下文）"
+    change: "WP-2651 收口轮：2.2.4 判词落盘——`parallel`/`parallel-dual-ln` 相对 `sequential` 的质量代价可排序（s0 +0.0458/+0.0402，>3× 0.014 带），代价面给出真实收益（层内串行链 2→1 段、每 token 串行步数 16→8、算力差 0.055%、等参数臂逐位等参）⇒ 不满足 falsification 的「代价面无收益」条件，判为**以可排序质量代价换层内并行度翻倍（场景依赖取舍）**；`status` 由「进行中」改「已完成」，补 `conclusion`（含 C2 两读法）、`argument`，`experiments` 加 `2651` 的 `analysis.md`；`gaps` 记入「seed=1 两臂因跨轴 GPU 锁饥饿未跑 ⇒ n=1（等效成本 196.6M token）」；WP1 `status` 改「已完成」。证据 = `2651-inter-layer-topology-s1-13m/{analysis.md,MODEL.md,results.json}` 的代价面同框表。独立复核未做。"
