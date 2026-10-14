@@ -1,0 +1,60 @@
+{
+  "experiment": "2643-tied-untied-13m",
+  "status": "blocked: 新增臂未跑（GPU 互斥锁等待超时 rc=9）；本文件不含任何 U/PR 读数",
+  "criterion": "P1 Δbpc(U−T)/Δbpc(PR−T) 按 0.014 带判可排序；P2 参数账 + prob0 一致性（率类走配对 bootstrap/Wilson CI）；P3 因果 + 重评确定性 + 活性；P4 否证线。",
+  "variance_bound": 0.014,
+  "band_declaration": "0.014 仅限 bpc 口径、配对 Δ、≥5 窗口；prob0 一致性等率类指标单独定门（batch 聚类 bootstrap / Wilson 95% CI），不跨量纲借用。",
+  "n_seeds": 0,
+  "arms_run": [],
+  "arms_unrun": [
+    "U-s0",
+    "PR-s0"
+  ],
+  "arms_unrun_reason": "/tmp/pathlm_gpu.lock 自 21:38 起持续被其它轴的 12k/长任务占用（含 wp6.3.2 supervisor 循环单次持锁 30+ min）；本实验三次等锁均未排上（21:53–22:18 上限 25 min 超时 rc=9；22:25–22:40 到硬时限放弃），按契约 §9 不伪造读数",
+  "arms": {},
+  "P1_deltas": {},
+  "P1_verdict": {},
+  "P2_params_analytic": {
+    "T": {
+      "params_added_readout": 0,
+      "params_total": 6962688
+    },
+    "U": {
+      "params_added_readout": 52736,
+      "params_total": 7015424
+    },
+    "PR": {
+      "params_added_readout": 14784,
+      "params_total": 6977472
+    }
+  },
+  "P2_prob0": {},
+  "P3": {},
+  "P4_falsification": null,
+  "big_vocab_undecidable": true,
+  "big_vocab_note": "本仓 vocab=206，读出参数 V·d=52,736 = 总参数 0.76% ⇒ 参数账在本尺度几乎不可测；解绑的真实参数账只在 V≈1e5 及以上的大词表档显著，本轮结论不得外推到该档。",
+  "reuse_gates": {
+    "gate1_implementation_bitwise": "test_2643_tied_untied.py::T1/T2 通过（8 passed）",
+    "gate2_config_field_compare": "compare_anchor_config.py：17 字段全等，不等 0（anchor_config_gate.txt）",
+    "gate3_ruler": "results_T_s0.json：clean bpc 1.5314 逐位复现 2641 记录；n_batches=20, bs=16, gen seed 2, steps 12000, seed 0"
+  },
+  "reuse_reeval_T_s0": {
+    "measured": true,
+    "clean_bpc": 1.5314,
+    "params_total": 6962688,
+    "prob0_consistency": 1.0,
+    "reeval_bitwise_identical": true,
+    "causal_bitwise_equal_before_j": true,
+    "checkpoint_sha256": "d4e6e33ef55d08f0cb71aadcc0c2c810d7c670cf6776c477c3fbcd90f966c1c2",
+    "checkpoint_missing_keys": [],
+    "checkpoint_unexpected_keys": [],
+    "note": "T 是复用锚（不训练）：这是纯评测读数，不是新臂读数"
+  },
+  "next_minimal_experiment": {
+    "command": "STEPS=12000 ARMS=\"U:0 PR:0\" bash train_arms.sh && python3 run.py --aggregate",
+    "gpu_cost": "U:0 ≈ 8 min + PR:0 ≈ 8 min（2641 同配置实测 wall 7.76 min/臂、峰值 935 MB），评测 ≈20 s/臂",
+    "no_contract_change_needed": true
+  },
+  "code_hash_run_py": "b5b0eab4085f77a30efc57bed37fe2f2da287337efbe0a671dfecb1ad19b5c79",
+  "generated_at": "2026-10-14T22:25:55+0800"
+}
