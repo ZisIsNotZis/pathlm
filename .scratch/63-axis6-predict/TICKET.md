@@ -353,3 +353,17 @@ F4 压成当前事实 + 指针；F5 补半句。修复后复跑：`pytest` 22 pa
   `git` 区间越界检查、以及 **2660 阶段-1 的确定性重跑**（未做：无复核者可执行；lead 侧只做了逐张量内容复算与落盘对账）。
   这些检查由 **WP writer 与 axis6-lead 自跑**，命令与输出见 §B5 与本报告「复核」节。
 - 因此本轮结论的**独立复核强度 = 静态对账**（数字 ↔ 落盘逐值一致、判据口径未放宽、无越界），**不含**独立执行见证。
+
+## B7 独立执行验证（`.scratch/63-axis6-predict/REVIEW-B4-EXEC.md`）
+
+- `2026-10-14T10:50:49→10:55:36+08:00` · **fresh 独立执行验证者（带 shell，未参与任何写作，只读、只新增自己的报告）** · 被验 revision = HEAD `167f199`（前一次 `0c4dc01`）。
+- **VERDICT: PASS，§1–§6 全部亲自执行、§8 无 not-run**。逐条实测：
+  - pytest：2650 **11 passed** / 2660 **13 passed**（变异还原后复跑仍全绿）；
+  - mutate：2650 3/3、2660 9/9 **全部 `test_failure` 级抓红 + 逐字节还原**；两目录 `mutation_report.json` **连跑两次哈希相同**（`f4bc5c5c…` / `fce87efc…`）且 `grep -c "in [0-9.]*s"` = **0** ⇒ 入库事实文件不再含逐次运行时耗；两次跑后 `git status --porcelain` 干净；
+  - `python3 tools/summary.py --check` → `OK：46 个 project.yaml`；
+  - **确定性重跑**（GPU 锁空闲、`--out /tmp/rev4-2660`、97.3 s）：2660 的 `arms.*.*.{hit_t2,hit_t3,ce_t2}` 与现盘**逐值相同**，8 个头文件 × 8 张量 `torch.equal` **全为真** ⇒ 确定性成立；
+  - 2640 五文件 sha256 与 `imported_2640_sha256` / `run1-snapshot/README.md` **五处全等** ⇒ Phase A 证据未被污染；
+  - 范围：Phase B 的**真父提交是 `3e6248f`**，`git diff --stat 3e6248f..HEAD -- pathlm docs tools` 与 `… -- .../2640-tree-conf-13m` **均为空** ⇒ 未越界；
+  - 事实数字抽查：6.2 结论 (j) 与 6.3.3 结论 (b)/(c) 的 12 个量**逐值对账通过**。
+- **它的 1 条 info（我采纳并更正配方）**：我在派单里给的「Phase B 基线 = `21f390d`」是**错的**——那是 Phase A 的提交，`21f390d..HEAD` 之间夹着别的 ticket 的提交（`e894f20` 改 `pathlm/depth_ar.py`、`e98a26c`/`1c755f3` 改 docs、`cfee001` 改 2640），所以那两条范围命令非空并不代表本轴越界。**Phase B 的正确基线 = `3e6248f`（= `0c4dc01^`）**，用该基线两条命令均空。此更正已记入本工单，后续复核配方一律用 `3e6248f`。
+- 至此本轮的**执行类验收已有独立见证**（B4 之前三轮复核者均无 shell，该缺口由 B4 关闭；B4 自身是 fresh、未参与写作、只读）。
