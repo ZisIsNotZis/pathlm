@@ -457,3 +457,23 @@
   新增 `arms_run` / `arms_dropped`（含放弃理由与下一步最小实验与 GPU 等效成本），把判据串改成按**已跑臂**`run_narrow` 计算，
   并重跑 `python3 run.py --aggregate --arms D192,D128,WD256 --seeds 0` 从落盘 JSON 重新生成（未手工录数字）。修后该字段 =
   「a_noise_band 不成立（D192 越带）」「b_frontier_advantage 至少一臂优于 FFN 旋钮」「c_wd256_elasticity 不成立」。
+
+## 10.14 R-3.1.1 第 1 轮复核 = FAIL（1 条 blocking）与其处置（2026-10-14T22:52+08:00，actor=axis3-lead）
+
+- 复核者（fresh 有 shell 的 `worker`，run `61fdae55…`）判词 = **FAIL**，报告全文 `.scratch/64-axis3-width/REVIEW-3.1.1.md`。
+  执行层全过（pytest `24 passed` 含 T3a–e 变异门与 tuple-hook 回归门；自算 Δ/MACs/斜率/三档 bpc/参数解析与落盘**逐位一致**；
+  契约 `README.md` 未被事后编辑（sha256 `c5e97de4…`、mtime 20:55:45 早于起跑）；`1a77ddf` 的 P5 修补未移动判据线；
+  「同一 checkpoint 三档」由它**独立 CPU 复跑**证实（w=192 → 1.6327、w=128 → 1.7301 与落盘同）；越界 0；`summary.py --check` OK）。
+- **blocking B1（结论越证据）**：`analysis.md`/`results.json` 把「每 1% 算力代价」的斜率差（D192 0.001287 vs U2 0.001392）
+  写成方向性结论（「略优于 / 略便宜 / 占前沿优势」），而**该斜率差对应的 Δbpc 差 = 0.0527 − 0.0395 = 0.0132 < 0.014 带**
+  ⇒ 把带内差异说成已分胜负；且 `results.json` 的强度高于 `analysis.md` 自身（两处自相矛盾）。
+- **non-blocking**：N1 `analysis.md:139-140` 仍写「脚本按设计输出『D192/D128 结果缺失』」，与 `1a77ddf` 修补后的落盘冲突；
+  N2 `results.json` 的 `arms_dropped` 里出现墙钟（「≈8 min GPU」）——判据文件里不该有时间量。
+- **处置（由 axis3-lead 执行，理由：本轮 WP writer 已 complete 无法 steer；修补内容 = 纯口径/事实，且修补后**由新的 fresh 复核者**独立验收）**：
+  ① `analysis.md` 的四处处（§0 条 2、§4 斜率段、§5-P2、§5-P5）改为「斜率差落在带内 ⇒ 本尺度不可排序；能确定的只有两者互不支配」；
+  ② `run.py` 的 P5b 段新增「带内判据」：`|Δ_D192 − Δ_U2| < 0.014 ⇒ 不可排序（本尺度）`，只有越带才输出方向性判词；
+  ③ `arms_dropped` 去掉墙钟，改成等效口径（「一臂 12k = 98.3M token 匹配步数 + 同口径评测」），排程代价指向本工单；
+  ④ 重跑 `run.py --aggregate` 从落盘 per-arm JSON 重新生成 `results.json`（未手工录数字）。
+- 处置后 `P5_falsification.b_frontier_advantage` = 「不可排序（本尺度）：… 0.0132 < 0.014 噪声带 ⇒ d_model 减宽与 FFN 比例不可排序；能确定的只是两者互不支配」。
+- **第 2 轮复核已派**（新的 fresh 有 shell 复核者，硬停 23:20），只核四件事：B1 是否真改且未越带、N1/N2 是否闭合、
+  `README.md` 契约仍冻结、判据线未被移动。累计 ≤2 轮。

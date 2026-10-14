@@ -977,8 +977,8 @@ def aggregate(steps: int, out_root: str, arms: list[str], seeds: list[int],
         "arms_dropped": {
             "D128": ("GPU 锁排队超预算：按 21:50 判据（见 run_log.txt 21:49:40 那条与 README §预算递减）"
                       "正式臂缩为 D192:0 → WD256:0 ⇒ 本项无 D128 读数；"
-                      "下一步最小实验 = D128:0 一臂 12k（≈8 min GPU）+ 评测（≈3 min），"
-                      "读数可直接并入本表 P1/P2")},
+                      "下一步最小实验 = D128:0 一臂 12k（98.3M token 匹配步数）+ 同口径评测，"
+                      "读数可直接并入本表 P1/P2（排程代价见 ticket 64 §10）")},
     }
     run_narrow = [a for a in ("D192", "D128") if a in p1]
     if run_narrow:
@@ -993,12 +993,24 @@ def aggregate(steps: int, out_root: str, arms: list[str], seeds: list[int],
         if not in_band and s_ffn is not None:
             worse = all(v is not None and v >= s_ffn for v in slopes.values())
             detail = " / ".join(f"{a}={v}" for a, v in slopes.items())
-            p5["b_frontier_advantage"] = (
-                f"d_model 减宽不占前沿优势：每 1% 算力节省的质量代价 "
-                f"{detail} 均 ≥ U2(FFN 旋钮)={s_ffn}"
-                if worse else
-                f"至少一臂优于 FFN 旋钮：{detail} vs U2={s_ffn} ⇒ "
-                f"d_model 减宽在该档占前沿优势")
+            # 判据口径（复核 B1）：斜率差本身要乘上「算力节省 %」才能与 0.014 bpc 带比较，
+            # 落在带内 ⇒ 两只旋钮在本尺度不可排序，不得写成任一方占优势。
+            delta_bpc_gap = max(abs(p1[a]["delta_bpc_vs_U4"]
+                                    - (savings.get("U2") or {}).get("delta_bpc"))
+                                for a in run_narrow) \
+                if (savings.get("U2") or {}).get("delta_bpc") is not None else None
+            if delta_bpc_gap is not None and delta_bpc_gap < VARIANCE_BOUND:
+                p5["b_frontier_advantage"] = (
+                    f"不可排序（本尺度）：每 1% 算力节省的质量代价 {detail} vs "
+                    f"U2(FFN 旋钮)={s_ffn} 的差，对应 Δbpc 差 {round(delta_bpc_gap, 4)} "
+                    f"< {VARIANCE_BOUND} 噪声带 ⇒ d_model 减宽与 FFN 比例不可排序；"
+                    f"能确定的只是两者互不支配")
+            else:
+                p5["b_frontier_advantage"] = (
+                    f"d_model 减宽不占前沿优势：每 1% 算力节省的质量代价 "
+                    f"{detail} 均 ≥ U2(FFN 旋钮)={s_ffn}"
+                    if worse else
+                    f"至少一臂优于 FFN 旋钮：{detail} vs U2={s_ffn}（Δbpc 差越带）")
         else:
             p5["b_frontier_advantage"] = ("未触发（P5a 已成立 / U2 斜率缺失）"
                                           if in_band else "U2 斜率缺失，无法比较")
