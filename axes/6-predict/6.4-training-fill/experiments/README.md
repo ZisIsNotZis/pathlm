@@ -7,6 +7,7 @@
 | 实验 | 来源 | 说明 |
 |---|---|---|
 | [`2523e-fill-variants`](2523e-fill-variants/README.md) | 目录内 README | 旧格 H2 迁入 → 填充策略对决：fill / ragged nofill / proj-fill（深度 AR，12k matched） |
+| [`2672-fill-n2-13m`](2672-fill-n2-13m/README.md) | 目录内 README | WP1b + WP2：缩步数快照（2k 步）下的 **n≥2 复本**（fill / nofill / proj-fill × seed{0,1}，臂间同刻度、显式声明与 12k 档不可比）+ **等参数软/硬提交剥离**（同一 checkpoint 只改提交规则）|
 
 > 旧格 `H2-training-fill` 按 `.scratch/56-restructure/MAPPING.md` §1 并入本项：其 `experiments/**`
 > 整目录迁入本目录。旧格目录与其 README 已迁出 `axes/`、只读保留于
