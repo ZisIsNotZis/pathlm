@@ -1,0 +1,130 @@
+{
+ "experiment": "2653-fp8-vs-int8-13m",
+ "line": "ticket 66 · 轴 5 研究项 5.5（fp8 / 大 head_dim）WP1 + WP2",
+ "contract": ".scratch/66-axis5-quant/DISPATCH-5.5.md",
+ "contract_copy": "README.md（同目录，判据线**运行前**写入；本文件 mtime 必须早于 results.json）",
+ "scope": "单轴单格、单因素：固定模型/数据/评测窗口，只改 KV cache 的 **8 位存放格式**（fp8 E4M3 / E5M2 vs int8+块标尺）与 **块标尺的组大小 G**（head_dim 不变时扫 G）。纯推理，不训练、不改权重、不新增参数（params_added = 0）。不做组合实验（组合留白是显式声明）。5.1 的 fp8 解析（6144 B/位置、质量未测）在本实验补质量点。",
+ "axis_definition": {
+  "quantity": "deployment_bytes_per_position",
+  "formula": "2(K,V) * n_layers * n_kv_heads_eff * head_dim * (value_bytes + scale_bytes_per_value) * (positions_kept / T)",
+  "unit": "字节 / 上下文位置",
+  "seq_len_T": 256,
+  "per_position_bytes_fp16_full": 12288,
+  "factors": "values_per_position = 2 * L * n_kv_heads * head_dim * (kept/T) = 2*12*8*32*1 = 6144（与 G / head_dim 无关，只要 n_kv_heads*head_dim = d_model）",
+  "to_fp16_multiple": "deployment_bytes_per_position / 12288",
+  "caveats": [
+   "块标尺沿 head_dim（非 token 轴）⇒ 标尺只由当前 token 自己的值决定 ⇒ 严格前缀确定（本实验的硬门禁）。",
+   "head_dim = 32 ⇒ 沿 head_dim 的块只能整除到 G ∈ {8,16,32}；G = 64 无法在不跨 token 的前提下做到 ⇒ head_dim=32 的省幅在 G=32 处封顶 = 46.875%。",
+   "fp8（E4M3/E5M2）是浮点格式，**默认无需显式标尺** ⇒ 1.0 B/值；本实验实测该前提是否成立（有饱和诊断与带标尺的对照臂）。",
+   "本列是解析（部署口径）KV 占用；评测实现把 K/V 立刻反量化 ⇒ 实测峰值不随档下降，两者分列。"
+  ]
+ },
+ "device": {
+  "eval_endpoint": "cpu",
+  "reason": "单卡 4090 被多轴共享，`/tmp/pathlm_gpu.lock` 长期被其它轴占用（实测同一 holder >13 min、attempt 等锁 600 s 超时）。WP1 为纯 CPU 推理，按 SCHEMA §20 不适用 GPU 锁，故**整程不取锁**。",
+  "all_arms_same_device": true,
+  "cross_device_rule": "跨设备不构成判据：本 run 不宣称与 GPU 历史锚 1.483569（2614/2610 口径）逐位相等，只并列报告并声明设备口径差异；判据用**同设备（CPU）、同窗口序**的配对 Δ。",
+  "pathlm_data_stream": "pathlm.data.batch 的窗口序与设备无关 ⇒ 配对 Δ 的有效性不受设备影响。"
+ },
+ "checkpoints": {
+  "trunk": {
+   "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+   "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+   "size_bytes": 54193675,
+   "role": "被测模型：13.5M dense decoder-only，12k 步；GPU clean bpc 历史锚 1.483569（window_seed=2, 24×16, T=256）",
+   "train_ref": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/MODEL.md"
+  }
+ },
+ "model": {
+  "d_model": 256,
+  "n_layers": 12,
+  "n_heads": 8,
+  "seq_len": 256,
+  "mlp_mult": 6,
+  "dense": true,
+  "head_dim": 32
+ },
+ "parent": {
+  "experiment": "2621-kv-budget-rest",
+  "config": "axes/5-quant/5.1-kv-quant/experiments/2621-kv-budget-rest/config.json",
+  "results": "axes/5-quant/5.1-kv-quant/experiments/2621-kv-budget-rest/results.json",
+  "role": "harness（b21 = 2621/run.py → 内含 2619/run.py 的评测管线）与 arm 定义/checkpoint/数据流的只读来源。"
+ },
+ "compare_against": {
+  "kv_block_scale": {
+   "results": "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/results.json",
+   "facts": "int8 块标尺 G=32 = 1.0625 B/值 = 6528 B/位置 = ×0.53（Δbpc vs fp16 = +0.000101）；fp16 基线 12288 B/位置；fp8 解析 6144 B/位置、质量未测",
+   "use": "字节账逐项对账（6528 / 12288）+ 同轴质量对照；**不复用**其 bpc 数字当本 run 判据（设备不同）。"
+  }
+ },
+ "arms": {
+  "fp16": {"family": "trunk", "kind": "quant", "mode": "fp16", "value_bytes": 2.0, "role": "基线（KV 存 fp16，工业默认）；与历史锚并列但**不宣称逐位相等**（设备不同）"},
+  "int8_block_g32": {"family": "trunk", "kind": "quant", "mode": "int8", "scheme": "block", "group": 32, "value_bytes": 1.0, "role": "对照臂 = 5.1 的块标尺口径（1 + 2/G = 1.0625 B/值 ⇒ 6528 B/位置）"},
+  "fp8_e4m3": {"family": "trunk", "kind": "quant", "mode": "fp8_e4m3", "value_bytes": 1.0, "scale_mode": "none", "role": "主臂：E4M3 原样存放（免标尺假设）——动态范围 ±448"},
+  "fp8_e5m2": {"family": "trunk", "kind": "quant", "mode": "fp8_e5m2", "value_bytes": 1.0, "scale_mode": "none", "role": "主臂：E5M2 原样存放（免标尺假设）——动态范围 ±57344，尾数更短"}
+ },
+ "side_arms": {
+  "fp8_e4m3_tokscale": {"family": "trunk", "kind": "quant", "mode": "fp8_e4m3", "value_bytes": 1.0, "scale_mode": "tokenscale", "role": "诊断臂：若原样 E4M3 饱和，则加一把**严格前缀确定**的 per-token fp16 标尺（每 (batch,head,token) 沿 head_dim 取 amax）⇒ 1 + 2/head_dim = 1.0625 B/值 = 6528 B/位置（与 int8 块标尺同字节）。回答『fp8 是否真免标尺』"},
+  "int8_block_g8": {"family": "trunk", "kind": "quant", "mode": "int8", "scheme": "block", "group": 8, "value_bytes": 1.0, "role": "WP2 实测扫描：G=8 ⇒ 1 + 2/8 = 1.25 B/值 = 7680 B/位置"},
+  "int8_block_g16": {"family": "trunk", "kind": "quant", "mode": "int8", "scheme": "block", "group": 16, "value_bytes": 1.0, "role": "WP2 实测扫描：G=16 ⇒ 1 + 2/16 = 1.125 B/值 = 6912 B/位置"}
+ },
+ "wp2": {
+  "analytic_table": "head_dim ∈ {32,64} × G ∈ {8,16,32,64} 的每值字节 1 + 2/G 与每位置字节；G 必须整除 head_dim。",
+  "head_dim_32_cap": "head_dim=32 ⇒ G ≤ 32 ⇒ 每值 1.0625 B、每位置 6528 B、省幅 46.875%（封顶）。",
+  "head_dim_64_expected": "head_dim=64 ⇒ G ≤ 64 ⇒ G=64 时每值 1.03125 B、每位置 6336 B、省幅 48.4375%（更接近 50%）。",
+  "empirical_leg": "head_dim=32 上 G ∈ {8,16,32} 的实测扫描（CPU）：实测 n_scales 与每位置字节对账解析式。",
+  "head_dim_64_empirical": "需另训 1 个 --heads 4（d=256 ⇒ head_dim=64）的 13M 模型；走 detach 训练作业（等锁 ≤25 min），拿不到锁/未交付则按契约 §4「WP2 降级路径」登记「实测腿未完成」，**不外推**。",
+  "extrapolation_rule": "head_dim=64 的实测数字缺位时，本项对『大 head_dim 省幅与解析一致』只声明解析 + head_dim=32 实测支撑，不外推 head_dim=64。"
+ },
+ "eval": {
+  "bpc_method": "run.py→b21.b19.bpc_of（与 2619/2621/2632 同一路径：因果移位 CE 的 token 平均，逐臂同一 logits_fn 接口）",
+  "bpc_cross_path_check": "tools.evalkit.retention.masked_bpc（独立第二路径；fp32 恒等臂须与 bpc_of **逐位相等**）",
+  "n_batches": 24,
+  "batch_size": 16,
+  "window_seed": 2,
+  "pairing_seeds": [2, 3, 4, 5, 6],
+  "pairing_n_batches": 2,
+  "scan_n_batches": 6,
+  "device": "cpu",
+  "side_arm_note": "辅助臂 fp8_e4m3_tokscale 的 bpc 用主表口径（seed=2, 24×16）；int8 G=8/16 的扫描用 6×16（scan 口径），与主表 24×16 口径不同，只用于 G 阶梯内部的解析对账，不与其他臂混比。",
+  "note": "主表 = window_seed=2 + 24×16（与 2610/2614/2619/2620/2621/2632 同一窗口序，但**设备不同**）。配对腿 = **均匀口径**：5 个窗口 seed {2,3,4,5,6} 各用 n_batches=2、同 batch_size、同设备（CPU）⇒ 满足『配对 Δ、≥5 窗口』；seed=2 的配对读数与主表 24 批读数分开列（口径不同，不混比）。"
+ },
+ "tasks": {
+  "copy": {"copy_len": 32, "src_positions": [0, 96, 191], "batch_size": 16, "n_batches": 1,
+           "role": "合成长程召回主腿（与 2619/2621/2632 同任务同 seed）；本 run 缩到 n_batches=1 ⇒ 每臂 n = 3 位置 × 1 批 × 16 请求 × 32 答案 = 1536 个答案（最小可判样本；地板 = chance + 2σ_wilson，chance = 1/64 = 0.0156）"},
+  "induction": {"prefix_len": 192, "copy_len": 32, "src_starts": [0], "batch_size": 16, "n_batches": 1,
+                "role": "副腿：末尾重复段之后的那一项（induction）"},
+  "var_recall": {"distances": [64], "batch_size": 16, "n_batches": 1,
+                 "role": "副腿：单 (key,value) 变距离回忆；同时提供前缀不变性的探针 token（本主干该腿预期落在地板）"}
+ },
+ "tokens": {"sym_vocab": 64, "filler_token": 64, "cue_token": 205, "local_k": 8},
+ "criterion": {
+  "verbatim_contract": [
+   "该跌：每位置部署字节（fp8 免标尺时 1 B/值；大 head_dim 下标尺摊薄 2/G B/值）；该不跌/可排序：clean bpc（fp8 vs int8+块标尺，须越 0.014 噪声带）；必须不变：严格前缀不变性两条、非量化臂逐位不变；必须报：fp8 是否需分组标尺、大 head_dim 下的 G 与省幅。",
+   "若 fp8 的 clean bpc 代价越噪声带且其免标尺的字节优势被质量否定（同字节下不占优）⇒ 判 fp8 在本尺度不值得；若 fp8 同样需要分组标尺（免不掉标尺）⇒ 判其『免标尺』前提失败；若大 head_dim 下标尺摊薄不改变每位置字节（与解析不符）⇒ 判实测与解析口径不一致、须查明。",
+   "本格自测在力带 = 单臂跨窗口 bpc 极差（给数值）；跨格 0.014 bpc 带（限配对 Δ、≥5 窗口）为主判，两带不混用。"
+  ],
+  "sign_convention": "SCHEMA §17.3：Δ = bpc_实验臂 − bpc_对照臂（正 = 实验臂更差）；本实验对照 = 同族基线 fp16 臂（同设备同窗口序）。",
+  "band_primary_bpc": 0.014,
+  "band_primary_caliber": "跨格 0.014 bpc 带，**限配对 Δ、≥5 窗口**（本 run 满足：5 个窗口 seed {2,3,4,5,6}）",
+  "band_secondary": "本格自测在力带 = 单臂跨窗口 bpc 极差（本 run 预算只支持 5 个窗口的小批；如实给数值），只作辅助描述",
+  "bands_not_mixed": "两带不混用：主判用 0.014（配对 Δ），自测带只作辅助描述。",
+  "band_aggregation": "越带判定用哪种聚合：逐窗配对 Δ 的 max|Δ| > 带（run.py::paired_deltas 的实现即此，最保守取法），非 5 窗均值。与 docs/research-schema.md §12.1『限配对 Δ、≥5 窗口』一致（取区间最极端 ⇒ 任一窗越界即判越带），与 5.1/2632 的『取配对 Δ 的区间』口径一致。披露：fp8_e5m2 的 5 窗均值 = +0.011375 落在带内，仅 seed 6 = +0.014880 越界 ⇒『E5M2 越带』依赖 max 聚合。（第 1 轮复核 N3 处置补声明，未改任何读数与判决）",
+  "recall_ci": "Wilson 95%",
+  "recall_at_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（读作『在该任务上不可分辨』，不得写成『机制无效』，SCHEMA §19）",
+  "gate": "① 前缀不变性两条（改未来 token / 改同批邻居）任一为 False ⇒ 该臂不得出数，本次实验作废；② 非量化/恒等臂与独立第二路径不逐位相等 ⇒ 仪器红、须先修。",
+  "no_single_point_extrapolation": "SCHEMA §17.11：单点只描述；head_dim=64 的实测缺位时不对该点下结论（只声明解析）。",
+  "fp8_scale_claim_rule": "『fp8 免标尺』只在 fp8_e4m3 / fp8_e5m2 两臂质量不越带时成立；任一臂越带 ⇒ 如实报 1 + 2/G（或 per-token 标尺 1 + 2/head_dim）并宣布该前提失败。"
+ },
+ "cost": {
+  "device": "cpu",
+  "measured_batch_seconds": 3.4,
+  "measured_batch_source": ".scratch/66-axis5-quant/evidence/cpu_eval_timing.py（16×256 一批）",
+  "budget_per_arm_seconds": 120,
+  "budget_total_minutes": 12,
+  "budget_cut_rule": "预算不够时先砍 side_arms（保 fp8_e4m3_tokscale，砍 int8 G 扫描），再砍配对腿的 n_batches（2→1），保主表 4 臂与判据线；不砍判据线（SCHEMA §8/§17.7）。",
+  "gpu_lock": "不取（纯 CPU；SCHEMA §20 不适用）",
+  "smoke": "python3 run.py --smoke（n_batches=1、只跑 fp16+fp8_e4m3 两臂，实测步时，不外推时间）"
+ },
+ "seed": 7
+}

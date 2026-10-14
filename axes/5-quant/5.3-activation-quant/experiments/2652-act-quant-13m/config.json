@@ -1,0 +1,211 @@
+{
+ "experiment": "2652-act-quant-13m",
+ "line": "轴 5 · 5.3 激活量化 WP1（纯推理，不训练；ticket 66 Phase B §11 第 2 项）",
+ "contract": "axes/5-quant/5.3-activation-quant/project.yaml（本项 SSOT，逐字照做；method / validation / objective_criteria / falsification）",
+ "contract_copy": "README.md（同目录，§1–§10；判据线落盘自 config.json::criterion，**运行前**写入）",
+ "scope": "单轴单格实验（5.3 激活量化），基底恒为 stock decoder-only trunk。只改**前向的中间激活**的存储精度（+ W8A8 臂的权重 per-channel int8）；KV 精度与顺序语义不动、不训练、不新增参数、不改结构。组合臂（W8A8）是 project.yaml 预登记的部署组合点，**显式标注为组合**，权重字节与激活字节分列。",
+ "axis_definition": {
+  "quantity": "bytes_per_token_activation",
+  "formula": "sum_over_tensors( in_features(tensor) * bits/8 ) * n_layers + scale_bytes_per_token ; scale_bytes_per_token = (act_mode != fp16) ? 2 * n_tensors_per_layer * n_layers : 0",
+  "unit": "字节 / token（中间激活，含每 token 动态标尺；**不含**权重字节与 KV 字节）",
+  "tensor_set": "每层 4 个 nn.Linear 的**输入激活**：qkv 输入(=ln1 输出, d)、attn 输出投影输入(proj 的输入 = 注意力输出 a, d)、FFN 第一个 matmul 输入(=ln2 输出, d)、FFN 第二个 matmul 输入(=GELU 中间态, mlp_mult*d)",
+  "elements_per_token_per_layer": 2304,
+  "fp16_bytes_per_token": 55296,
+  "caveats": [
+   "本轴是**激活**账，与 5.1 的 KV 每位置字节（fp16 12288 B/位置）**不同量纲**，两者分列、不混排。",
+   "标尺口径 = **per-token 动态**（每个 (batch, token) 一行共享一把 fp16 标尺 = 该行 |激活| 的 amax / qmax），与 KV 轴 5.1 的块标尺口径**不得混用**。",
+   "权重字节只对 W8A8 臂单列，且只算 4 个被量化 Linear 的权重（占全模型参数 93.4%）；embedding / pos_embed / 未在 dense 前向执行的 gates 不计入，README 明列。",
+   "禁把「整型 matmul 内核理论峰值」混进主 FLOPs：本实验主 FLOPs 不变（project.yaml::cost_model）。",
+   "评测实现把激活立刻反量化 ⇒ 实测显存峰值不随档下降，本实验只报解析激活字节列（与 KV 轴同一纪律）。"
+  ]
+ },
+ "checkpoints": {
+  "trunk": {
+   "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+   "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+   "size_bytes": 54193675,
+   "role": "被测模型：13.5M dense decoder-only（12 层 × d256 × 8 头 × mlp6 × seq256，tied 读出、仅最终深度 CE），12k 步，clean bpc 1.483569",
+   "train_ref": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/MODEL.md"
+  }
+ },
+ "model": {
+  "d_model": 256,
+  "n_layers": 12,
+  "n_heads": 8,
+  "seq_len": 256,
+  "mlp_mult": 6,
+  "dense": true
+ },
+ "data": {
+  "name": "enwik8_full",
+  "path": "data/enwik8_full.npz",
+  "split": "前 90M 训练 / 末 10M 评测（本实验只用评测尾段跑 bpc）",
+  "vocab_size": 206,
+  "n_real_tokens": 205,
+  "mask_token": 205,
+  "bpc_only": true,
+  "note": "合成召回任务不使用 enwik8 文本，只用词表大小（206）；SCHEMA §19 不用 enwik8 当长程主任务。"
+ },
+ "tokens": {
+  "sym_vocab": 64,
+  "filler_token": 64,
+  "cue_token": 205,
+  "local_k": 8
+ },
+ "tasks": {
+  "copy": {
+   "copy_len": 32,
+   "src_positions": [
+    0,
+    96,
+    191
+   ],
+   "batch_size": 16,
+   "n_batches": 1,
+   "role": "合成长程召回主腿（与 2619/2621 同任务同 seed，逐臂同批）：远处随机片段原样复制。src_pos=0 落在锚区"
+  },
+  "induction": {
+   "prefix_len": 192,
+   "copy_len": 32,
+   "src_starts": [
+    0,
+    159
+   ],
+   "batch_size": 16,
+   "n_batches": 1,
+   "role": "副腿：末尾重复段之后的那一项（induction）"
+  },
+  "var_recall": {
+   "distances": [
+    64,
+    192
+   ],
+   "batch_size": 16,
+   "n_batches": 1,
+   "role": "副腿：单 (key,value) 变距离回忆（本主干预期落在地板，用于如实记录不可分辨）"
+  }
+ },
+ "controls": {
+  "chance": "uniform_answer_set = 1/sym_vocab = 1/64 = 0.0156",
+  "local_prior": "longrange_tasks.local_prior_accuracy(k=8)",
+  "corrupt_source": "copy 任务源片段整段换随机符号（逐臂，源区间 = [src_pos, src_pos+copy_len)）",
+  "baseline_anchor_bpc": 1.483569,
+  "baseline_anchor_source": "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/results.json::instrument.bpc_full_release_path（同 5.1 锚，运行时逐位对照）"
+ },
+ "eval": {
+  "bpc_method": "run.py 复用 2621/2619 的统一路径 b21.b19.bpc_of（因果移位 CE token 平均；逐臂同一 logits_fn 接口）",
+  "bpc_cross_path_check": "retention.masked_bpc（独立路径，逐位对照）",
+  "n_batches": 3,
+  "batch_size": 16,
+  "window_seed": 2,
+  "extra_window_seeds": [
+   3,
+   4,
+   5,
+   6
+  ],
+  "extra_seed_n_batches": 2,
+  "device": "cuda",
+  "note": "**实跑口径（CPU 预算裁剪后，与预登记不同）**：主窗 `window_seed=2` 用 **3×16**，附加 seed 3/4/5/6 用 **2×16**（`run_log.txt` 的「缩批量：main3/extra2/copy1/ind1/var1」行）。这与 5.1 的 **24×16**@seed2 历史锚 1.483569 **不同批数口径、不可直接比**（3×16 与锚的 |Δ| = 8.95e-03）；判据只用**同缩口径、同窗口序、同批数**的配对 Δ（`criterion.primary_band_caliber`）。5 个窗口**批数不等**（主窗 3、附加 2）⇒ 不得称「同口径、无批量混杂」。历史锚口径的 fp16 单点（24×16@seed2）单列为 `results.json::anchor_single_point`，只作口径对照、不进主表。原预登记为 24×16；本轮裁剪**超出** README §7 的预登记裁剪条款范围（该条款只授权额外 seed 的 n_batches 24→8 与砍副腿），实情与影响见 `analysis.md` §5.3。"
+ },
+ "arms": {
+  "fp16": {
+   "activation_mode": "fp16",
+   "weight_mode": "fp16",
+   "role": "基线：不引入任何激活往返（评测实现里激活本就在模型原生 fp32 中流动；『fp16』是部署口径的 2 B/元素标签）。**必须与历史锚 1.483569 逐位一致**（硬护栏 ②）"
+  },
+  "A8": {
+   "activation_mode": "int8",
+   "weight_mode": "fp16",
+   "role": "**主因子臂**：只有激活 int8（对称 per-token 动态标尺），权重保持 fp16、KV 保持不动 ⇒ 隔离纯激活因子（缺了它结论就被权重因子混杂）"
+  },
+  "A4": {
+   "activation_mode": "int4",
+   "weight_mode": "fp16",
+   "role": "只有激活 4 位（同标尺口径）；与 A8 的差 = 激活位宽的单因素效应"
+  },
+  "W8A8": {
+   "activation_mode": "int8",
+   "weight_mode": "int8",
+   "role": "**组合臂（显式标注为组合）**：权重 int8 per-output-channel + 激活 int8 per-token；把组合作为部署点并列，字节账把权重字节与激活字节**分列**。它与 A8 的差 = 权重因子（不是激活因子）"
+  }
+ },
+ "quantizer": {
+  "kind": "symmetric fake-quant round trip (round-then-clamp)",
+  "activation_scale": "per_token（每个 (batch, token) 一行共享一把 fp16 标尺 = 该行 |x| 的 amax / qmax，clamp_min 1e-12）",
+  "weight_scale": "per_output_channel（每个输出通道一行共享一把 fp16 标尺 = 该行 |w| 的 amax / qmax）",
+  "activation_scale_bytes": 2.0,
+  "weight_scale_bytes": 2.0,
+  "zero_point": "0（对称）",
+  "qmax": {
+   "int8": 127,
+   "int4": 7
+  },
+  "dequantized_forward": "假量化往返：xq = clamp(round(x/scale), -qmax, qmax) * scale；前向用 xq（不换整型内核、不改主 FLOPs）"
+ },
+ "criterion": {
+  "verbatim_contract": [
+   "单因素：固定被测量模型/checkpoint/数据流/评测窗口，只改中间激活精度。臂 = {fp16 激活（基线）, int8 激活（W8A8）, 4 位激活（W4A8）}；不训练权重、不改 KV 精度、不新增参数。基底恒为 stock decoder-only。",
+   "该跌：中间激活字节/访存（含每 token/通道标尺）；该不跌/可排序：clean bpc（须越 0.014 噪声带）；该稳定：逐层激活标尺与离群通道分布（活性对照列）；必须不变：因果性与非量化臂逐位不变；必须报：标尺粒度与开销。",
+   "若激活量化的 clean bpc 代价越噪声带且吃掉全部字节收益（相近字节点位上不占优）⇒ 判该档在本尺度不成立；若离群通道迫使部分层回退到高精度、使省幅远小于标称 ⇒ 判该实现在该粒度下不可用；若非量化臂不能逐位还原 ⇒ 判实现有误（对照失效）。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
+  ],
+  "primary_band_bpc": 0.014,
+  "primary_band_caliber": "配对 Δ（同一臂对同一 window_seed 的 bpc 之差）跨窗口的 max|配对 Δ|；标准口径要求 ≥5 个评测窗口",
+  "primary_band_met_by": "本实验跑 5 个窗口 seed = [2, 3, 4, 5, 6] ⇒ **满足 ≥5**，故主判带就用预登记的 0.014 bpc（不需要退用本格自测在力带）",
+  "why_not_self_measured_band": "0.014 是不依赖本批数据的预登记常数 ⇒ 用它判 max|配对 Δ| 不构成循环论证（对比 2632 的「用本批 3 点 max 当带」之弊，那里 ≤3 窗口不满足标准）。本实验另报「单臂跨窗口极差」作**描述性**对照，它**不是**判据带。",
+  "recall_ci": "Wilson 95%（率类指标不借用 0.014 带，见 C1 裁决）",
+  "recall_at_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（读作『在该任务上不可分辨』，不得写成『机制无效』，SCHEMA §19）",
+  "sign_convention": "damage_bpc = bpc_臂 − bpc_fp16（正 = 更差）；激活字节节省 = 1 − bytes_臂 / bytes_fp16",
+  "no_single_point_extrapolation": "SCHEMA §17.11：单点只描述；A8/A4/W8A8 各点单独测，跨尺度（13M → 更大）不外推。",
+  "wall_clock_excluded": "墙钟 / 吞吐 / 日期**不进**判据，也不进 cost_model（project.yaml::cost_model 用等效理论量）",
+  "must_hold": {
+   "gate_1_intervention_live": "量化臂 changed_frac > 0（激活真被改），否则干预是死的",
+   "gate_2_bitwise_anchor": "fp16 臂 == 历史锚 1.483569（window_seed=2, 24×16）且 == retention.masked_bpc 独立路径（逐位）",
+   "gate_3_mutation": "selftest_aq.py 的变异测试须全部抓红（破坏量化 / 标尺 / 位数 ⇒ 断言报红）",
+   "gate_4_causality": "激活量化是逐 token 的局部标定与反量化，不改任何位置关系 ⇒ 前缀因果性不变（前向仍 is_causal=True，KV 顺序语义不动）"
+  }
+ },
+ "prior_art": {
+  "SmoothQuant": {
+   "cite": "Xiao et al. 2023, arXiv:2211.10438",
+   "role": "设计方向（把激活离群难度迁移到权重上以做到 W8A8）。**本项不重造该迁移算法**；本实验用对称 per-token 动态假量化，不实现尺度迁移"
+  },
+  "LLM.int8": {
+   "cite": "Dettmers et al. 2022, arXiv:2208.07339",
+   "role": "设计方向（离群通道走 fp16 混合精度）。本实验**不实现回退**，而是把『离群通道会不会迫使回退』做成可判定的活性读数（6×median 阈值下的回退通道比例 + 位损失）"
+  },
+  "Atom": {
+   "cite": "Zhao et al. 2023, arXiv:2310.19102",
+   "role": "设计方向（低比特服务系统）。只作背景，不作判据"
+  },
+  "note": "以上出处由 ticket 66 §4 本轮联网核实标题；论文内数字一律不引用、不作判据。"
+ },
+ "cost": {
+  "gpu_wall_budget_min": 30,
+  "gpu_wall_budget_source": "任务书 §5「GPU 墙钟预算 ≤30 min（只作过程预算）」",
+  "hold_lock_whole_run_below_min": 10,
+  "peak_mem_budget_gib": 5,
+  "budget_cut_rule": "预算不够时先砍额外窗口 seed 的 n_batches（24 → 8），再砍副腿（induction / var_recall），保 fp16/A8/A4/W8A8 四臂、clean bpc 主腿与全部判据线；不砍判据线（SCHEMA §8/§17.7）",
+  "smoke": "python3 run.py --smoke（缩小批量/档数，实测步时与显存，不外推时间）"
+ },
+ "seed": 7,
+ "reuse": {
+  "policy": "SCHEMA §9：只读复用历史 harness（2621/2619 的评估管线），不改任何共享文件",
+  "bpc_recompute": "全部 4 臂在本实验内**同进程重测**（不做跨 run 取数）",
+  "checkpoint_sha256_asserted": true,
+  "new_module": "aq_arms.py（激活假量化语义层的**唯一**新文件；§22 第 7 条新逻辑进新模块，既有 tools/evalkit/* 不改）",
+  "code_anchors": [
+   "axes/5-quant/5.3-activation-quant/experiments/2652-act-quant-13m/run.py",
+   "axes/5-quant/5.3-activation-quant/experiments/2652-act-quant-13m/aq_arms.py",
+   "axes/5-quant/5.1-kv-quant/experiments/2621-kv-budget-rest/run.py",
+   "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/run.py",
+   "tools/evalkit/longrange_tasks.py",
+   "tools/evalkit/retention.py"
+  ]
+ },
+ "reproducibility": {
+  "rerun": true,
+  "max_abs_delta_bpc_threshold": 1e-09,
+  "nondeterminism_note": "纯推理、无随机采样；同 seed 重跑应逐位相同"
+ }
+}

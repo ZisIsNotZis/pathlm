@@ -1,0 +1,73 @@
+{
+  "targets": {
+    "axes/5-quant/5.2-weight-quant/experiments/2651-weight-quant-13m/selftest_wq.py": {
+      "note": "进程内猴子补丁，磁盘字节未改（无需 sha256 对照）"
+    }
+  },
+  "mutations": [
+    {
+      "id": "M1",
+      "what": "反量化不取整（量化退化成恒等 / 死干预）",
+      "status": "test_failure",
+      "caught_red": true,
+      "detail": "量化没有改任何权重 ⇒ 死干预"
+    },
+    {
+      "id": "M2",
+      "what": "per_channel 标尺个数写成 1（字节账与实现脱钩）",
+      "status": "test_failure",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "M3",
+      "what": "把标尺当免费（历史 5.1 的口径错误复现）",
+      "status": "test_failure",
+      "caught_red": true,
+      "detail": "('int8_per_channel', 'blocks.0.mlp.0')"
+    },
+    {
+      "id": "M4",
+      "what": "int4 用 int8 的上界（位数不再起作用）",
+      "status": "test_failure",
+      "caught_red": true,
+      "detail": "int4 的相对误差应大于 int8：0.0056249274 vs 0.0056249274"
+    },
+    {
+      "id": "M5",
+      "what": "施加器变成空操作（臂没装上）",
+      "status": "test_failure",
+      "caught_red": true,
+      "detail": "补丁没生效"
+    },
+    {
+      "id": "M6",
+      "what": "还原不拆补丁（逐位还原证据恒真）",
+      "status": "test_failure",
+      "caught_red": true,
+      "detail": "补丁没拆掉"
+    },
+    {
+      "id": "M7",
+      "what": "去掉 G | n_in 的整除校验（不整齐的块也算得出字节）",
+      "status": "test_failure",
+      "caught_red": true,
+      "detail": "group=32 不整除 in_features=100 时必须报错"
+    },
+    {
+      "id": "M8",
+      "what": "死权重过滤失效（把 gates 当活权重报质量证据）",
+      "status": "test_failure",
+      "caught_red": true,
+      "detail": ""
+    },
+    {
+      "id": "M9",
+      "what": "fp16 臂被装上量化（基线不再逐位等于 stock）",
+      "status": "test_failure",
+      "caught_red": true,
+      "detail": "fp16 臂不该装任何补丁"
+    }
+  ],
+  "all_caught": true
+}

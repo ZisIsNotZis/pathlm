@@ -1,0 +1,14 @@
+[cfg] 2651-weight-quant-13m；臂 = ['fp16', 'int8_per_channel', 'int8_group32', 'int4_group32']；窗口 = 24×16 @ seed 2；配对窗口 = [2, 3, 4, 5, 6]
+[锁] holder_pid=2287747 wait=540.028s free_before=17534 MiB
+[ckpt] axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt sha256=86953dcb7c908920… size=54193675
+[自检] bpc_of=1.470954 vs masked_bpc=1.470954（逐位=True）；锚=1.483569 差=1.26e-02；release_logits 逐位=True；gates 死权重=True
+[还原] {'fp16': {'logits_changed_when_patched': False, 'logits_restored_bitwise': True, 'no_forward_attr_left': True}, 'int8_per_channel': {'logits_changed_when_patched': True, 'logits_restored_bitwise': True, 'no_forward_attr_left': True}, 'int8_group32': {'logits_changed_when_patched': True, 'logits_restored_bitwise': True, 'no_forward_attr_left': True}, 'int4_group32': {'logits_changed_when_patched': True, 'logits_restored_bitwise': True, 'no_forward_attr_left': True}}
+[对照] chance=0.0156 局部先验(copy)=0.0143
+[1/4] fp16               bytes/param=2.000000 (×1.0000) bpc=1.470954 copy=0.1413 inv=True/True (0.5s)
+[2/4] int8_per_channel   bytes/param=1.005515 (×0.5028) bpc=1.470704 copy=0.1439 inv=True/True (0.5s)
+[3/4] int8_group32       bytes/param=1.062500 (×0.5312) bpc=1.470948 copy=0.1432 inv=True/True (0.5s)
+[4/4] int4_group32       bytes/param=0.562500 (×0.2812) bpc=1.485135 copy=0.1504 inv=True/True (0.5s)
+[门禁] G1={'int8_per_channel': True, 'int8_group32': True, 'int4_group32': True} G2=True(Δ锚=1.26e-02) G3+G4={'int8_per_channel': True, 'int8_group32': True, 'int4_group32': True}
+[配对] 带=0.014 窗口=[2, 3] → int8_per_channel: max|Δ|=0.000250 (不越带)；int8_group32: max|Δ|=0.000441 (不越带)；int4_group32: max|Δ|=0.015235 (越带)
+[前沿] int4_group32: 0.562500 B/param Δbpc=+0.014181 越带；int8_per_channel: 1.005515 B/param Δbpc=-0.000250 不越带；int8_group32: 1.062500 B/param Δbpc=-0.000006 不越带；fp16: 2.000000 B/param Δbpc=+0.000000 基线
+[完成] 0.068 min，峰值 432.3 MiB，4 臂 → /home/z/vibe/pathlm/axes/5-quant/5.2-weight-quant/experiments/2651-weight-quant-13m/smoke

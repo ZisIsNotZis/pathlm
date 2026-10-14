@@ -1,0 +1,40 @@
+[cfg] 2651-weight-quant-13m；臂 = ['fp16', 'int8_per_channel', 'int8_group32', 'int4_group32']；窗口 = 24×16 @ seed 2；配对窗口 = [2, 3, 4, 5, 6]
+=== attempt 1 2026-10-14T21:28:48+08:00 ===
+[cfg] 2651-weight-quant-13m；臂 = ['fp16', 'int8_per_channel', 'int8_group32', 'int4_group32']；窗口 = 24×16 @ seed 2；配对窗口 = [2, 3, 4, 5, 6]
+[cfg] 2651-weight-quant-13m；臂 = ['fp16', 'int8_per_channel', 'int8_group32', 'int4_group32']；窗口 = 24×16 @ seed 2；配对窗口 = [2, 3, 4, 5, 6]
+=== attempt 1 2026-10-14T21:33:41+08:00 device=cpu caliber ===
+[cfg] 2651-weight-quant-13m；臂 = ['fp16', 'int8_per_channel', 'int8_group32', 'int4_group32']；窗口 = 24×16 @ seed 2；配对窗口 = [2, 3, 4, 5, 6]
+[cfg] 2651-weight-quant-13m；臂 = ['fp16', 'int8_per_channel', 'int8_group32', 'int4_group32']；窗口 = 24×16 @ seed 2；配对窗口 = [2, 3, 4, 5, 6]
+[口径] device=cpu，纯 CPU 运行 ⇒ 不取 GPU 锁（SCHEMA §20 不适用）；全部臂同一设备；判据 = 同设备同窗口序的配对 Δ
+[口径] device=cpu，纯 CPU 运行 ⇒ 不取 GPU 锁（SCHEMA §20 不适用）；全部臂同一设备；判据 = 同设备同窗口序的配对 Δ
+[ckpt] axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt sha256=86953dcb7c908920… size=54193675
+[ckpt] axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt sha256=86953dcb7c908920… size=54193675
+[自检] bpc_of=1.483569 vs masked_bpc=1.483569（逐位=True）；锚=1.483569 差=2.70e-07；release_logits 逐位=True；gates 死权重=True
+[自检] bpc_of=1.483569 vs masked_bpc=1.483569（逐位=True）；锚=1.483569 差=2.70e-07；release_logits 逐位=True；gates 死权重=True
+[还原] {'fp16': {'logits_changed_when_patched': False, 'logits_restored_bitwise': True, 'no_forward_attr_left': True}, 'int8_per_channel': {'logits_changed_when_patched': True, 'logits_restored_bitwise': True, 'no_forward_attr_left': True}, 'int8_group32': {'logits_changed_when_patched': True, 'logits_restored_bitwise': True, 'no_forward_attr_left': True}, 'int4_group32': {'logits_changed_when_patched': True, 'logits_restored_bitwise': True, 'no_forward_attr_left': True}}
+[还原] {'fp16': {'logits_changed_when_patched': False, 'logits_restored_bitwise': True, 'no_forward_attr_left': True}, 'int8_per_channel': {'logits_changed_when_patched': True, 'logits_restored_bitwise': True, 'no_forward_attr_left': True}, 'int8_group32': {'logits_changed_when_patched': True, 'logits_restored_bitwise': True, 'no_forward_attr_left': True}, 'int4_group32': {'logits_changed_when_patched': True, 'logits_restored_bitwise': True, 'no_forward_attr_left': True}}
+[对照] chance=0.0156 局部先验(copy)=0.0146
+[对照] chance=0.0156 局部先验(copy)=0.0146
+[1/4] fp16               bytes/param=2.000000 (×1.0000) bpc=1.483569 copy=0.1413 inv=True/True (502.9s)
+[1/4] fp16               bytes/param=2.000000 (×1.0000) bpc=1.483569 copy=0.1413 inv=True/True (502.9s)
+[2/4] int8_per_channel   bytes/param=1.005515 (×0.5028) bpc=1.483646 copy=0.1423 inv=True/True (425.5s)
+[2/4] int8_per_channel   bytes/param=1.005515 (×0.5028) bpc=1.483646 copy=0.1423 inv=True/True (425.5s)
+[3/4] int8_group32       bytes/param=1.062500 (×0.5312) bpc=1.483577 copy=0.1419 inv=True/True (306.1s)
+[3/4] int8_group32       bytes/param=1.062500 (×0.5312) bpc=1.483577 copy=0.1419 inv=True/True (306.1s)
+[4/4] int4_group32       bytes/param=0.562500 (×0.2812) bpc=1.497755 copy=0.1478 inv=True/True (255.1s)
+[4/4] int4_group32       bytes/param=0.562500 (×0.2812) bpc=1.497755 copy=0.1478 inv=True/True (255.1s)
+[门禁] G1={'int8_per_channel': True, 'int8_group32': True, 'int4_group32': True} G2=True(Δ锚(6位，参5.2 REVIEW I1)=0.00e+00) G3+G4={'int8_per_channel': True, 'int8_group32': True, 'int4_group32': True}
+[门禁] G1={'int8_per_channel': True, 'int8_group32': True, 'int4_group32': True} G2=True(Δ锚(6位，参5.2 REVIEW I1)=0.00e+00) G3+G4={'int8_per_channel': True, 'int8_group32': True, 'int4_group32': True}
+[配对] 带=0.014 窗口=[2, 3, 4, 5, 6] → int8_per_channel: max|Δ|=0.000305 (不越带)；int8_group32: max|Δ|=0.000117 (不越带)；int4_group32: max|Δ|=0.014904 (越带)
+[配对] 带=0.014 窗口=[2, 3, 4, 5, 6] → int8_per_channel: max|Δ|=0.000305 (不越带)；int8_group32: max|Δ|=0.000117 (不越带)；int4_group32: max|Δ|=0.014904 (越带)
+[前沿] int4_group32: 0.562500 B/param Δbpc=+0.014186 越带；int8_per_channel: 1.005515 B/param Δbpc=+0.000077 不越带；int8_group32: 1.062500 B/param Δbpc=+0.000008 不越带；fp16: 2.000000 B/param Δbpc=+0.000000 基线
+[前沿] int4_group32: 0.562500 B/param Δbpc=+0.014186 越带；int8_per_channel: 1.005515 B/param Δbpc=+0.000077 不越带；int8_group32: 1.062500 B/param Δbpc=+0.000008 不越带；fp16: 2.000000 B/param Δbpc=+0.000000 基线
+[落盘] /home/z/vibe/pathlm/axes/5-quant/5.2-weight-quant/experiments/2651-weight-quant-13m/results.json
+[落盘] /home/z/vibe/pathlm/axes/5-quant/5.2-weight-quant/experiments/2651-weight-quant-13m/results.json
+[完成] 27.84 min，峰值 None MiB，4 臂 → /home/z/vibe/pathlm/axes/5-quant/5.2-weight-quant/experiments/2651-weight-quant-13m
+[完成] 27.84 min，峰值 None MiB，4 臂 → /home/z/vibe/pathlm/axes/5-quant/5.2-weight-quant/experiments/2651-weight-quant-13m
+=== OK attempt 1 2026-10-14T22:01:36+08:00 ===
+[cfg] 2651-weight-quant-13m；臂 = ['fp16', 'int8_per_channel', 'int8_group32', 'int4_group32']；窗口 = 24×16 @ seed 2；配对窗口 = [2, 3, 4, 5, 6]
+[charts-only] 重画完成（纯 CPU）→ /home/z/vibe/pathlm/axes/5-quant/5.2-weight-quant/experiments/2651-weight-quant-13m
+[cfg] 2651-weight-quant-13m；臂 = ['fp16', 'int8_per_channel', 'int8_group32', 'int4_group32']；窗口 = 24×16 @ seed 2；配对窗口 = [2, 3, 4, 5, 6]
+[charts-only] 重画完成（纯 CPU）→ /home/z/vibe/pathlm/axes/5-quant/5.2-weight-quant/experiments/2651-weight-quant-13m

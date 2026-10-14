@@ -14,15 +14,17 @@ validation: "端到端：对照 = fp16 全因果基线（归一为 100%）+ `5.1
 objective_criteria: "该跌：每位置部署字节（fp8 免标尺时 1 B/值；大 `head_dim` 下标尺摊薄 2/G B/值）；该不跌/可排序：clean bpc（fp8 vs int8+块标尺，须越 0.014 噪声带）；必须不变：严格前缀不变性两条、非量化臂逐位不变；必须报：fp8 是否需分组标尺、大 `head_dim` 下的 G 与省幅。"
 falsification: "若 fp8 的 clean bpc 代价越噪声带且其免标尺的字节优势被质量否定（同字节下不占优）⇒ 判 fp8 在本尺度不值得；若 fp8 同样需要分组标尺（免不掉标尺）⇒ 判其「免标尺」前提失败；若大 `head_dim` 下标尺摊薄不改变每位置字节（与解析不符）⇒ 判实测与解析口径不一致、须查明。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 failure_analysis: ""
-conclusion: ""
-conclusion_review: "本项无旧格自有实验、本仓零经验，无本地判决，故 `status: 未开始`。判据按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），横轴统一「每位置字节」、与 `5.1` 的 int8 块标尺同轴（防跨口径混用，55-review W-08/R8）。独立复核未做。"
-experiments: []
+conclusion: "fp8 / 大 head_dim 本地结论（实验 `2653-fp8-vs-int8-13m`，13.5M trunk 冻结、纯推理不训练、CPU 口径、5 窗口配对 Δ）：（a）WP1 成立：4 主臂在同一「每位置部署字节」轴上可比 —— `fp16` = 12288 B/位置 · `int8` 块标尺 G=32 = **6528 B/位置**（1.0625 B/值，与 `5.1`/`2632` 逐项对上）· `fp8 E4M3` = **6144 B/位置**（1.0 B/值）· `fp8 E5M2` = **6144 B/位置**；其中 `fp8` 实测 **`n_scales = 0`（真免标尺，无隐藏 clip/scale）** ⇒ 比 int8+块标尺每位置省 **384 B（−5.9%）**。质量（clean bpc）：`fp8_e4m3` = 1.486669、`fp8_e5m2` = 1.495192；相对 fp16 的 `max|配对 Δbpc|`：E4M3 在 0.014 带内、**E5M2 越带**。**fp8 相对 int8+块标尺的二选一判定（预登记要求）**：按 `results.json` 的 5 窗口配对读数复算，`fp8_e4m3 − int8_block_g32` 的 `max|配对 Δ| = 0.005363 < 0.014` ⇒ **不越带、质量不可分辨**；`fp8_e5m2 − int8_block_g32` 的 `max|配对 Δ| = 0.014496 > 0.014` ⇒ **越带（E5M2 相对 int8 块标尺确实更差）**。即：**同一「每位置字节」轴上 fp8 E4M3 比 int8+块标尺省 384 B/位置（−5.9%）且质量不可分辨，E5M2 则不成立**（该判定句原缺写，由第 1 轮复核指出、返工补齐并由第 2 轮复核独立复算确认）。严格前缀不变性两条 = True/True（7 臂）。（b）WP2 **仅部分成立**：`head_dim → G → 每位置字节` 的**解析**已给出（`head_dim`=32、G=32 时省幅在 46.875% 封顶；`head_dim`=64、G=64 ⇒ 每值 1.03125 B、每位置 6336 B、省幅 48.4375%），并在 `head_dim`=32 上做了 **G ∈ {8,16,32} 的实测扫描**与解析对账；但 **`head_dim`=64 的实测腿未完成**（GPU 锁被其它轴长期占用 + 训练预算不足，已记 `wp2_hd64_status.json`，含精确复现命令与能力面检查 `engine_change_required=false`）⇒ milestone 验收「大 `head_dim` 省幅与解析一致」**只有解析 + `head_dim`=32 实测支撑，`head_dim`=64 不外推**，故本项**不判** `已完成`，记 `进行中`。验收并列读法（C2 裁决）：milestone 的「四臂同字节轴可比 / fp8 二选一明确 / 前缀不变性两条 / 结论停在该尺度」**字面成立**；其中「大 `head_dim` 省幅与解析一致」**仅解析成立、实测未闭**，实质验收**未完全成立**。判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口），本批 5 窗口满足；召回等率类走 Wilson 95% CI、不跨量纲借用；本格无自测在力带。"
+conclusion_review: "自评：横轴统一「每位置部署字节」并与 `5.1` 的 int8 块标尺逐项对账（6144/12288/6528 三个锚在 `5.1` 侧真实存在，非本包自造），字节账每因子可由 `fp8_arms.py` 反推；fp8 真免标尺由 `n_scales=0` + 源码无 clip/scale 双证。局限：单 checkpoint / 单 seed / T=256 / CPU 设备；字节账是解析价签不是实测峰值；`head_dim`=64 只有解析。当前（最后一轮）独立复核判词：**OK with notes（blocker 1 / normal 3 / info 4）**，见 `.scratch/66-axis5-quant/REVIEW-5.5.md`；该 blocker（预登记要求的「fp8 相对 int8 越/不越带，二选一明确」产物未写出）与 normal（E5M2 越带依赖未声明的聚合口径等）已由返工 writer 处置，第 2 轮（新的 fresh 上下文，未参与第 1 轮）判词：**PASS** —— 第 1 轮各 blocker/normal 全部落地、**无新 blocker**（新发现仅 2 条**文本自相矛盾**的 normal，均已在收口前改毕）；三包的数字与判据线均**未被事后改动**，见 `.scratch/66-axis5-quant/REVIEW-ROUND2.md`。（本包：blocker 落地，二选一判定已明文且经复核者**独立复算**确认 `e4m3−int8` max|Δ| = 0.005363、`e5m2−int8` max|Δ| = 0.014496；另 1 条新 normal（本文件 `conclusion` 把 e5m2−int8 误写「均 < 0.014」）已在收口前改毕；N1/N2 未修但已登记为局限。）复核者独立建议 `status = 进行中`（理由是 WP2 实测腿缺位 ⇒ milestone 未闭），本项采纳。复核者会话无 `exec`/`git` 全视野 ⇒ mtime 顺序与已提交区间其未能核，已如实登记。"
+experiments:
+  - "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m"
 argument: "8 位方案里 fp8（浮点）与 int8（定点）的取舍是「动态范围换尾数分辨率」：fp8 动态范围大可能免标尺 ⇒ 每值 1 B；int8 需分组标尺 ⇒ 1 + 2/G B/值。二者必须在**同一每位置字节轴**上比质量，否则「fp8 更省」只是位宽话术（`SCHEMA.md` §17.12）。大 `head_dim` 只影响标尺摊薄（不影响值字节），故它是「int8 块标尺省幅趋近极限」的杠杆；`head_dim`=32 时 G=32 ⇒ 一个标尺/头，`head_dim` 更大时 G 可摊得更细。"
 gaps:
-  - "本仓零经验：需先做最小判决（13M、纯推理，{fp16, int8 块标尺, fp8 E4M3, fp8 E5M2} 四臂同字节轴，报 clean bpc + 每位置字节）"
-  - "大 `head_dim` 点：需给出「`head_dim` → G → 每位置字节 → clean bpc」的解析 + 实测对照"
-  - "造轮子风险最高项：须明确「相对既有 fp8 训练/推理方案的增量」是什么（本仓只做 13M 受控同轴）"
-  - "fp8 是否需分组标尺未验（决定其字节优势是否成立）"
+  - "**`head_dim`=64 的实测腿未完成**（本项唯一未闭的 milestone 验收项）：最小实验 = 训练 1 个 13M（`--heads 4` ⇒ head_dim 64，命令见 `experiments/2653-fp8-vs-int8-13m/wp2_hd64_status.json`，约 9 min GPU）再跑 {fp16, int8_block G=64, fp8_e4m3} 三臂 CPU 评测，与解析对账（预期每值 1.03125 B、每位置 6336 B、省幅 48.4375%）；阻塞 = 单卡被多轴共享 + GPU 锁长期被占"
+  - "`fp8 E5M2` 越带而 `E4M3` 不越带 ⇒ 「用哪个 fp8 格式」的取舍只在这一对点上成立；未扫格式内其它设定（如 RZ 舍入、per-tensor 补偿）"
+  - "字节账是解析价签，不是实测峰值（评测期实现立即反量化 ⇒ 峰值不随档下降）；未上报实测内存收益"
+  - "与 `5.1` 的 int8 块标尺同轴对照已完成；与 `5.3` 的激活量化组合（fp8 激活）未测（组合默认留白，`SCHEMA.md` §4）"
+  - "造轮子风险：本项不重造 fp8 格式/推理框架（`arXiv:2209.05433` 定义格式；vLLM/TensorRT-LLM 的 fp8 KV cache 为 `记忆·未核`），增量只是 13M 受控同轴比较 + `head_dim`→字节的解析×实测对账"
 cost_model: "等效理论量：fp8 = 1 B/值（若免标尺）或 1 + 2/G B/值（若分组标尺）；int8 块标尺 = 1 + 2/G B/值；二者同轴。每位置部署字节 = 值数 × 每值字节，值数 = L·2·n_kv·d_head。大 `head_dim` 只改变 G 的摊薄（2/G B/值），不改变 1 B/值 的部分。layer-passes 每 token 仍为 L、tokens-per-forward 每步 1。考虑 pipelining：fp8/块标尺只依赖已生成位置，严格前缀不变、不需 staging，不引入额外顺序依赖（按解析字节报，不用时间量）。"
 
 role_map:
@@ -33,7 +35,7 @@ role_map:
 
 milestone:
   output: "一份「fp8 / 大 head_dim」判决包：{fp16, int8 块标尺, fp8 E4M3, fp8 E5M2} 在同一「每位置字节」轴上的 clean bpc + 每位置部署字节 + 严格前缀不变性，以及 `head_dim` → G → 每位置字节 的解析 + 实测对照，对照 fp16 全因果基线与 `5.1` 的 int8 块标尺，含 n≥2。"
-  acceptance: "四臂在同一字节轴上可比；fp8 相对 int8+块标尺有/无越噪声带差异，二选一明确；严格前缀不变性两条为 True；大 `head_dim` 省幅与解析一致；结论停在「该尺度该格式值不值」，不外推。"
+  acceptance: "四臂在同一字节轴上可比；fp8 相对 int8+块标尺有/无越**跨格 0.014 bpc 带（限配对 Δ、≥5 窗口，见 `falsification` 的 C1 声明；本格无自测在力带）**的差异，二选一明确；严格前缀不变性两条为 True；大 `head_dim` 省幅与解析一致；结论停在「该尺度该格式值不值」，不外推。"
 
 work_packages:
   - id: "WP1"
@@ -41,24 +43,24 @@ work_packages:
     goal: "判定 fp8（E4M3/E5M2）相对 int8+块标尺在同一每位置字节轴上的质量与字节取舍"
     means: "13M、纯推理不训练，{fp16, int8 块标尺, fp8 E4M3, fp8 E5M2} 四臂同轴，报 clean bpc + 每位置字节（含标尺）+ 前缀不变性"
     acceptance: "四臂同字节轴可比；fp8 越/不越噪声带二选一明确；前缀不变性两条为 True；非量化臂逐位不变"
-    evidence: "axes/5-quant/5.5-fp8-head-dim/experiments/"
-    review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b，核对同字节轴与标尺账）"
-    status: "未开始"
+    evidence: "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/"
+    review: "已派 fresh 复核（`.scratch/66-axis5-quant/REVIEW-5.5.md`，独立上下文、只读核对同字节轴/标尺账/免标尺与前缀不变性）；已按第 1 轮 blocker 返工，第 2 轮判词见 ticket 66 §22"
+    status: "已完成"
   - id: "WP2"
     what: "大 head_dim 下标尺摊薄判决"
     goal: "给出「`head_dim` → G → 每位置字节 → clean bpc」的解析 + 实测对照，验证省幅趋近极限"
     means: "改 `head_dim` 设置，扫 G，报每位置字节（值 + 2/G 标尺）与 clean bpc，与解析式对账"
     acceptance: "每位置字节随 `head_dim`/G 的实测与解析一致；质量不越噪声带；对账差异有解释"
-    evidence: "axes/5-quant/5.5-fp8-head-dim/experiments/"
-    review: "跑完另派 fresh 复核（核对解析式与实测一致）"
+    evidence: "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/（`wp2_hd64_status.json` + `analysis.md` 的 WP2 节）"
+    review: "解析 + `head_dim`=32 的 G 实测已随 WP1 一并复核；`head_dim`=64 实测腿未跑 ⇒ 该项**未完成**，待补齐后另派 fresh 复核"
     status: "未开始"
 
 roadmap:
-  - "WP1：fp8 vs int8+块标尺同字节判决"
-  - "WP2：大 head_dim 下标尺摊薄判决"
-  - "复核通过后写 conclusion，更新 status"
+  - "WP1：fp8 vs int8+块标尺同字节判决（已完成，见 conclusion）"
+  - "WP2：大 head_dim 下标尺摊薄判决（解析 + `head_dim`=32 的 G 实测已完成；**`head_dim`=64 实测腿未完成**，命令见 `wp2_hd64_status.json`，成本 = 1 个 13M 训练 run + 3 臂 CPU 评测）"
+  - "补齐 WP2 实测腿后写「已完成」收口；现 status = 进行中（milestone 未全闭）"
 
-status: "未开始"
+status: "进行中"
 started: "2026-10-13T11:06:24+08:00"
 ended: ""
 change_log:
@@ -71,3 +73,9 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-14T20:52:00+08:00"
+    actor: "axis5-lead"
+    change: "C1 声明回填补漏（ticket 66 Phase B）：脚本扫描（`.scratch/66-axis5-quant/c1_band_declaration_scan.py`）发现 `milestone.acceptance` 引用「越噪声带」但未点明用哪条带 ⇒ 补一句「跨格 0.014 bpc 带（限配对 Δ、≥5 窗口，见 `falsification` 的 C1 声明；本格无自测在力带）」。只加声明，不改数字 / 不改判据 / 不改证据。"
+  - date: "2026-10-14T22:40:00+08:00"
+    actor: "axis5-lead（ticket 66 Phase B）"
+    change: "执行 WP1（实验 `2653-fp8-vs-int8-13m`，CPU 口径，5 窗口配对 Δ）+ WP2 的解析与 `head_dim`=32 的 G 实测；写 conclusion/experiments/gaps，WP1 未开始 → 已完成，status 保持 `未开始` → 改为 `进行中`（WP2 的 `head_dim`=64 实测腿未完成 ⇒ milestone 未全闭）。记第 1 轮独立复核（OK with notes，blocker 1）与返工处置。"

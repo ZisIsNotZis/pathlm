@@ -1,0 +1,16 @@
+{
+ "wp2_head_dim_64_empirical_leg": {
+  "status": "not_completed",
+  "decision": "按 DISPATCH-5.5.md §4「WP2 降级路径」执行：解析表 + head_dim=32 上 G 的实测扫描 + 显式登记 head_dim=64 实测腿未完成。**未**启动 detach 训练作业。",
+  "reason": "GPU 互斥锁 `/tmp/pathlm_gpu.lock` 在检查时刻（2026-10-14T22:08:30+08:00）由存活进程持有：`holder_pid = 2420657`（进程存活，`nvidia-smi --query-compute-apps` 显示该 pid 占 4944 MiB；全卡已用 7643 MiB / 空闲 16466 MiB），锁目录 mtime 22:06。契约 §5 明写「等不到锁就按 WP2 降级处理，不得空转等锁、不得杀他人进程」；本 run 的 CPU 评测预算也不足以再等 9 min 训练 + 评测。故**不排队**（排队只会占用预算且很可能超时），改为如实登记。",
+  "capability_check": {
+   "command": "grep -n \"add_argument\" train_depth_ar.py",
+   "result": "引擎现成 flag 支持 `--d 256 --heads 4 --dense --mlp-mult 6 --steps --batch-size --seed --lr --eval-batches --out-root`；`d//heads = 64` ⇒ head_dim=64 无需改引擎。",
+   "engine_change_required": false
+  },
+  "exact_command_if_resumed": "python3 train_depth_ar.py fp8-hd64-s0 --d 256 --layers 12 --heads 4 --mlp-mult 6 --dense --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --eval-batches 24 --out-root <expdir>/runs",
+  "then_arms": "在该 checkpoint 上跑 {fp16, int8_block G=64, fp8_e4m3} 三臂（同一 CPU 口径），与解析对账：head_dim=64 时 G=64 合法 ⇒ 每值 1.03125 B、每位置 6336 B、省幅 48.4375%。",
+  "affected_acceptance": "milestone 里「大 head_dim 省幅与解析一致」只有 **解析 + head_dim=32 的实测** 支撑；head_dim=64 的省幅**不外推**。",
+  "next_minimal_step": "等 GPU 锁释放后按上面命令训练 1 个 13M（≈9 min GPU）再跑 3 臂 CPU 评测（≈4 min），即可补齐该点。"
+ }
+}

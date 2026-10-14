@@ -1,0 +1,113 @@
+{
+ "target": "axes/5-quant/5.3-activation-quant/experiments/2652-act-quant-13m/aq_arms.py",
+ "sha256_before": "977cc0daf72bd35ebb657bd16becb964148c969d603a0cde0c15b1d8ee561d36",
+ "mutations": [
+  {
+   "id": "M1",
+   "what": "位数定义被改（int8 当成 16 位）",
+   "tests": {
+    "test_qmax_values_are_the_bit_width_definition": {
+     "returncode": 1,
+     "verdict": "FAILED（抓红）",
+     "tail": "1 failed in 5.08s"
+    },
+    "test_activation_bytes_per_token_matches_formula": {
+     "returncode": 1,
+     "verdict": "FAILED（抓红）",
+     "tail": "1 failed in 3.49s"
+    }
+   },
+   "all_expected_tests_caught": true
+  },
+  {
+   "id": "M2",
+   "what": "per-token 标尺退化成 per-tensor（整批一把标尺）",
+   "tests": {
+    "test_per_token_scale_is_one_per_row": {
+     "returncode": 1,
+     "verdict": "FAILED（抓红）",
+     "tail": "1 failed in 3.57s"
+    },
+    "test_scale_equals_row_amax_over_qmax": {
+     "returncode": 1,
+     "verdict": "FAILED（抓红）",
+     "tail": "1 failed in 3.84s"
+    }
+   },
+   "all_expected_tests_caught": true
+  },
+  {
+   "id": "M3",
+   "what": "标尺忘了除 qmax（量化台阶错）",
+   "tests": {
+    "test_scale_equals_row_amax_over_qmax": {
+     "returncode": 1,
+     "verdict": "FAILED（抓红）",
+     "tail": "1 failed in 3.73s"
+    },
+    "test_int4_uses_seven_levels_and_coarser_quantum": {
+     "returncode": 1,
+     "verdict": "FAILED（抓红）",
+     "tail": "1 failed in 4.52s"
+    }
+   },
+   "all_expected_tests_caught": true
+  },
+  {
+   "id": "M4",
+   "what": "标尺当免费（激活字节账不含标尺）",
+   "tests": {
+    "test_scale_overhead_is_two_bytes_per_tensor_per_token": {
+     "returncode": 1,
+     "verdict": "FAILED（抓红）",
+     "tail": "1 failed in 4.30s"
+    }
+   },
+   "all_expected_tests_caught": true
+  },
+  {
+   "id": "M5",
+   "what": "整型档根本不量化（干预是死的）",
+   "tests": {
+    "test_aq_forward_int8_changes_logits": {
+     "returncode": 1,
+     "verdict": "FAILED（抓红）",
+     "tail": "1 failed in 3.94s"
+    }
+   },
+   "all_expected_tests_caught": true
+  },
+  {
+   "id": "M6",
+   "what": "权重标尺退化成 per-tensor（per-output-channel 语义丢失）",
+   "tests": {
+    "test_weight_bytes_split_and_per_channel_scale": {
+     "returncode": 1,
+     "verdict": "FAILED（抓红）",
+     "tail": "1 failed in 3.70s"
+    }
+   },
+   "all_expected_tests_caught": true
+  },
+  {
+   "id": "M7",
+   "what": "fp16 档偷偷走一次 fp16 往返（恒等性被破坏）",
+   "tests": {
+    "test_fp16_mode_is_bitwise_identity": {
+     "returncode": 1,
+     "verdict": "FAILED（抓红）",
+     "tail": "1 failed in 3.73s"
+    },
+    "test_aq_forward_fp16_matches_masked_logits_bitwise": {
+     "returncode": 1,
+     "verdict": "FAILED（抓红）",
+     "tail": "1 failed in 3.54s"
+    }
+   },
+   "all_expected_tests_caught": true
+  }
+ ],
+ "sha256_after": "977cc0daf72bd35ebb657bd16becb964148c969d603a0cde0c15b1d8ee561d36",
+ "restored_sha256_equal": true,
+ "all_caught": true
+}
