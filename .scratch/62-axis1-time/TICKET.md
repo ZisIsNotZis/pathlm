@@ -419,7 +419,7 @@ writer（axis1-lead-2）停止写入 ⇒ 派 **fresh、独立上下文** 复核�
 | **B1** | `experiments:` 补两行 `2639-carry-perlayer-frontier-13m/analysis.md @ccdc91a`、`…/results.json @ccdc91a`（现 29 条） | `project.yaml` |
 | P2-1 | `pl16d` 墙钟 `30.0 → 30.7` min（= 臂内 `wall_minutes`）；评测墙钟按最新落盘值 0.49 min；合计 ≈75.5 min | `analysis.md` §8、本文件 §9.6 |
 | P2-2 | `run.py` 落盘边界加 `_strict()`（非有限浮点 → `null`）+ `allow_nan=False`；重跑评测 ⇒ `results.json` 现为**严格 JSON**（`pl16d` 的 `rel_dev_vs_other_rule = null`）；**共享代码未改**（源头 `train/pl16d/results.json` 的 `NaN` 是共享 runner 在 γ≠1 时的遥测产物，已在 `analysis.md` §8 记账） | `run.py`、`results.json`、`MODEL.md`（run.py 指纹 `62690cc2… → f04d59da…`）、`analysis.md` §8 |
-| P2-3 | **不自行改**：该措辞来自跨轴裁决 C2 的落地文本（`project.yaml` 的 `milestone.acceptance`/`objective_criteria`），本轴不改裁决用词；登记在 §9.8 的框架项中待 Main 裁 | 本 § |
+ P2-3 | **不自行改**：该措辞来自跨轴裁决 C2 的落地文本（`project.yaml` 的 `milestone.acceptance`），本轴不改裁决用词；登记为框架项 **F9**（见 §9.14）待 Main 裁 | §9.14 |
 
 ### 9.12 round-1 复核者请求的代跑检查（axis1-lead-2 代跑，`2026-10-14T09:08–09:10`）
 
@@ -436,3 +436,46 @@ writer（axis1-lead-2）停止写入 ⇒ 派 **fresh、独立上下文** 复核�
 ### 9.13 round 2（派发与判词）
 
 见本节之后的追加记录。
+
+### 9.13 round 2（派发 ≈`2026-10-14T09:10:30`；报告返回 ≤`2026-10-14T09:12`）
+
+- 复核者：**新的** fresh 上下文（非 round-1 复核者、非本项 writer）；复核件 = `.scratch/62-axis1-time/REVIEW-6.md`
+  （复核者无写文件工具 ⇒ 报告以最终回复交付，由 axis1-lead-2 **原样**（逐字节）复制入仓；sha256 =
+  `adbb088ed9caa74895fdd6918c46d05bb49f9bbe6066bcf9cfea7339aa9e7009`）。
+- **判词：PASS（带 notes），blocking = 0**。复核者独立核到：B1 真修（`experiments` 29 条，**逐条**路径存在性全过）、
+  P2-1/P2-2 真修（`results.json` 无 `NaN`/`Infinity` 字面量、`rel_dev_vs_other_rule = null`）、
+  **返工零数值回归**（把现盘值与 round-1 在 `c77cc0b` 时读到的值逐位对拍）、主判据独立复算复现
+  （`0.068228`、同字节、`state_floats=98304`、`r=0.801429`），并**枚举全部 13 臂**回答关键点：
+  「**不存在任何 `total_bytes ≤ 393,216` 且 bpc < 1.527595 的臂**」⇒ 主结论未被支配。
+- 能力限制（复核者自述）：**无 shell** ⇒ sha256/pytest/summary/严格解析/git 区间 diff/GPU 重跑未跑；
+  §9.12 的代跑表它只读自洽性、**未据其放行**（正确态度）。
+- **non-blocking（round 2，4 条）与处置**：
+
+| # | 内容 | 处置 |
+|---|---|---|
+| P2-A | `analysis.md` §8 把峰值显存写成「9.44 GB（`pl16`/`pl16d`）」，实际 `pl16d = 10.28 GB` | **已修**：改「9.44 GB（`pl16`）、10.28 GB（`pl16d`）」（证据：`results.json.liveness.*.train_peak_gpu_mem_mb`） |
+| P2-B | 本文件 §9.11 的 P2-3 行写「登记在 §9.8 的框架项中待裁」，而 §9.8 只有 F6/F7/F8（**声称 > 实际**，同形态第 6 次） | **已修**：§9.8 新增 **F9**（见下），并把 P2-3 行的落点改指 F9 |
+| P2-C | 两处「**可能**在返工中被静默改写」：① `change_log` 末条日期 `09:10:00` → `09:00:00`；② `objective_criteria` 的「同算力」措辞 | ① **属实且我未在提交信息里披露** ⇒ 此处显式披露：我在写 `change_log` 时**先写了 09:10 再看时钟**（实际编辑发生在 `≤09:01`，由 `c77cc0b` 的提交时刻 `09:01:24` 与两次 `date -Iseconds` 佐证）⇒ 返工时把它**更正为 `09:00:00`**（时间戳属溯源元数据，写未来时刻是错的）；这是我的过程失误（应先取时钟再记），记录在此。② **round-1 复核的引用有误**（不是事实文档被改）：`git show c77cc0b:…/project.yaml` 与 `git show d3d33eb:…/project.yaml` 的 `objective_criteria`（`:14`）**都不含**「同算力」；该措辞只在 `milestone.acceptance`（现盘 `:75`，C2 裁决落地文本）。证据：`git show c77cc0b:axes/1-time/1.1.4.1-explicit-memory/project.yaml \| grep -n objective_criteria` ⇒ 「…在同一每位置等效字节上不被同预算纯窗口支配」（ticket 62 引入时即为此措辞） |
+| P2-D | 源头 `train/pl16d/results.json` 仍是裸 `NaN`（共享 runner 在 γ≠1 时的遥测），严格 JSON 工具解析失败 | **不改**（跨轴共享代码，需授权）；已在 `analysis.md` §8 与本文件记账；若要收口 = 共享 runner 对该字段返回 `None`（另立小修项） |
+
+### 9.14 F9（框架项，新增）：`milestone.acceptance` 的「同算力」措辞
+
+| # | 取舍 | 我的处置 | 状态 |
+|---|---|---|---|
+| F9 | `project.yaml` 的 `milestone.acceptance` 写着「不被**同算力**最强基线支配（相对**同算力**纯窗口前沿超出量 ≤ 0）」，而判据体（`method` / `objective_criteria` / `README.md` §4③）一律是**每位置等效 KV 字节**（62-F2 裁决）。纯窗口与线性状态的每 token FLOPs 本来就不同 ⇒ 「同算力」是口径模糊的简写 | **不自行改**（该措辞来自跨轴裁决 C2 的落地文本，与本轴边界纪律一致）；只登记待 Main 裁：建议改为「同预算点（每位置等效字节）」 | 待裁（report-only） |
+
+### 9.15 round-2 复核者请求的代跑检查（axis1-lead-2 代跑，`2026-10-14T09:12–09:15`）
+
+round-2 复核者的 §4「请父级代跑」清单 (a)–(d) 全部执行，命令与结果见下表。
+
+| # | 命令（原文） | 结果 |
+|---|---|---|
+| a1 | `python3 -c 'json.load(results.json); print(key_readings.pl_minus_win32, liveness.carrypl16d_s0…rel_dev_vs_other_rule)'` | 严格解析 OK：`0.068228` / `None` |
+| a2 | `jq -e . $EXP/results.json` | `jq-OK`（无裸 `NaN`，严格 JSON） |
+| b | `sha256sum $EXP/run.py $EXP/config.json $EXP/train/{pl16,c16,pl16d}/model.pt` | `run.py f04d59da…` = `results.json.code_hashes.run.py` = `MODEL.md`；`config.json 28ba9485…` 同；3 个 checkpoint = `382a74aa…`/`3e935b33…`/`cb1940ee…`，全部与 `config.json`/`MODEL.md` 逐位一致 |
+| c1 | `git diff --stat d3d33eb..HEAD` | 代跑时点 39 文件（= 36 实验 + 2 判决/返工 + `REVIEW-5.md`）；**越界文件数 = 0**（过滤脚本口径同 §9.12，另把 `.scratch/62-axis1-time/REVIEW-5.md`/`REVIEW-6.md` 计入允许集） |
+| c2 | `git diff c77cc0b..HEAD -- project.yaml` | 只有两处：`experiments:` 补 2639 两锚点、`gaps` 里「同参数量对照」那一条澄清 —— **外加 P2-C① 的 `change_log` 日期更正**（当时未在提交信息披露，已在 §9.13 显式披露） |
+| c3 | `git show c77cc0b:…project.yaml \| grep -n '同算力\|09:1\|09:0'` | 只命中 `change_log` 的 `09:10:00`（`:128`）——**`objective_criteria`/`milestone.acceptance` 在该版本均不含「同算力」**（现盘的「同算力」在 `milestone.acceptance`，C2 落地文本）⇒ round-1 的 P2-C② 引用有误 |
+| c4 | `git show c77cc0b:…results.json \| jq .cost` | `wall_minutes_total_eval: 0.5`（返工前旧值，与 REVIEW-5 引数一致）⇒ 与 round-1 引数自洽 |
+| d1 | `pytest …/test_2639_frontier.py -q` | `6 passed` |
+| d2 | `python3 tools/summary.py --check` / `python3 tools/check_tree.py` | 均 `OK：46 个 project.yaml 全部符合 docs/research-schema.md` |
