@@ -15,13 +15,16 @@ objective_criteria: "该跌：每 token 每层平均处理的 token 数与 atten
 falsification: "若分辨率 schedule 在等效算力口径下相对 stock 全长等分辨率既能省 attention FLOPs、又不让 clean bpc 与长程召回越噪声带退化 ⇒ 本手段成立（可采纳）；若降采样导致长程召回显著退化且质量代价吃掉全部算力收益 ⇒ 判逐层分辨率在本尺度不划算。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）为主判；长程召回等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014。"
 failure_analysis: ""
 conclusion: ""
-conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），并把「长程召回」列为必须报的损伤对照列，以防只报 bpc 掩盖降采样丢信息。与 1.2.4 的边界已写进 gap。独立复核未做。"
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），并把「长程召回」列为必须报的损伤对照列，以防只报 bpc 掩盖降采样丢信息。与 1.2.4 的边界已写进 gap。**本轮（轴 2 lead，2026-10-14）登记 blocker：引擎无逐层分辨率能力，三臂最小判决（对齐总 attention FLOPs）的等效算力成本 ≈ 20–25 min GPU + 60–90 min 实现工时，超出本轮 3h 硬预算 ⇒ 未执行、不谎报 PASS**；下一步见 gaps 首条。独立复核未做。"
 experiments: []
 argument: "分辨率是深度方向上「每层看多少个位置」的 schedule：它不改层数（layer-passes 不变），只改每层的注意力规模，因此收益落在 attention FLOPs（随 token 数平方缩放）而非 layer-passes 上。判据必须同时看质量（bpc）与长程召回，否则会把「浅层池化带来的局部平滑」误当成无损。"
 gaps:
   - "本仓零经验：需先做最小判决（13M、{全长, 先粗后细, 层级式} 三臂，对齐总 FLOPs，报 bpc + 长程召回 + 每层 token 数）"
+  - "引擎无逐层分辨率能力（`pathlm/depth_ar.py` 无池化/上采样/层级合并算子）⇒ 本项最小判决被登记为 blocker：需先实现本地前向或走 `.scratch/67-engine-changes/TICKET.md` 受控通道"
+  - "下一步最小实验 + 等效算力成本：三臂 {全长等分辨率, 先粗后细（浅层 2× 池化 → 深层还原）, 层级式合并}，13M/12k，对齐总 attention FLOPs（Σ_l O(n_l²·d)）；每臂 12k 步 ≈ 等效 98.3M token/臂 ≈ 6–8 min GPU，三臂合计 ≈ 20–25 min GPU，另加 60–90 min 本地前向实现工时"
   - "与 1.2.4 动态合并的边界未整合（两研究项机制重叠）"
   - "上采样/合并的信息损失与恢复能力未测"
+  - "「金字塔」第四臂（milestone 与 WP1 原文列出）未纳入最小判决的臂表：本轮预算内先保三臂；补臂成本 = +1 臂 ≈ 6–8 min GPU"
 cost_model: "等效理论量：每 token 的 layer-passes 仍为 L（层数不变）；若第 l 层处理 n_l 个 token，则该层 attention 的 QKᵀ 与加权项按 (n_l/T)² 相对全长缩放下降，总 attention FLOPs = Σ_l O(n_l²·d)；tokens-per-forward 每步 1。考虑 pipelining：分辨率随深度变化使各层计算量不同，层间流水的最慢层决定节拍，须以每层处理 token 数（而非任何时间量）评估。"
 
 role_map:
@@ -58,3 +61,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-14T21:30:00+08:00"
+    actor: "轴 2 深度轴 lead（ticket 61）"
+    change: "本轮终局推进登记 blocker（不改判据线、不改数字）：本项最小判决需要引擎不具备的逐层分辨率算子（池化/上采样/层级合并），等效算力成本 ≈ 20–25 min GPU + 60–90 min 实现工时，超出本轮 3h 预算 ⇒ 未执行；gaps 补「下一步最小实验 + 等效算力成本」与「金字塔第四臂未纳入」两条，conclusion_review 记当前状态。"

@@ -313,3 +313,141 @@
   仍未在 GPU 上验证 `_missing_mask` 的 head 维广播（§7.4 N5 / `analysis.md` §8 U7）；
   ②`TICKET §2.1` 表里对 `2.1.3`/`2.2.5` 的边界处置已落盘（见上）；③轴 2 其余 7 项、以及 `2.1.1` 的
   WP2/WP3/WP4/WP5/WP6 未执行；④GPU 训练类 WP 顺延（本 Phase 未做任何 GPU 工作、未取锁）。
+
+## 9 Phase B · 终局推进（2026-10-14T20:49+08:00 起，actor：轴 2 深度轴 lead）
+
+### 9.0 枚举：非 Backlog 项与 milestone 差距
+
+| 项 | status（起） | milestone 差距（一句话） | 最高价值未完成 WP |
+|---|---|---|---|
+| 2.1.1 early exit | 被否证（终局） | — | WP2–WP6 = **milestone 之后的扩展项**（milestone 已判：逐 token 早退被同算力固定截断支配），不在本轮终局范围内；WP5/WP6 已入 `gaps` |
+| 2.1.2 skipping | 进行中 | 无 depth-ar 引擎的序列级重测；旧税数字来自旧 M2 引擎且 p_skip 逐序列 | **WP1**：在 depth-ar 引擎重测跳层（逐 token layer dropout + 固定跳 + 同预算固定深度对手） |
+| 2.2.1 残差的形式 | 未开始 | 本仓零经验；五形式未测（无实验、无 conclusion） | **WP1**：残差形式最小判决（等参数 + 逐深度 bpc） |
+| 2.2.2 层间 causal attention | 未开始 | 出资人 C3 设计从未实装（旧 C3 自认未测却判 judged） | **WP1**：层间 causal attention 最小判决（三方对照） |
+| 2.2.3 层间学习加权和 | 进行中 | n=1 seed 中性读数（−0.0008），milestone 要 n≥2 | **WP1**：扩 seed 复核（s1） |
+| 2.2.4 并行子层 | 进行中 | 只测质量面即判有害；代价面从未测；n=1 | **WP1**：补代价面（层内串行依赖）+ 质量面同框 + n≥2 |
+| 2.3.1 逐层容量变化 | 未开始 | 本仓零经验；四 schedule 未测 | **WP1**：固定总参数下的容量 schedule 最小判决 |
+| 2.3.2 逐层分辨率 | 未开始 | 本仓零经验；schedule 未测（无引擎支持） | **WP1**：分辨率 schedule 最小判决（对齐注意力 FLOPs + 长程召回） |
+
+**排序（价值 × 可行性 × 本轮 3h 硬预算）**：2651（2.2.3+2.2.4，一实验收两项）→ 2652（2.2.1）→ 2654（2.1.2）→ 2653（2.2.2）→ 2655（2.3.1）→ 2.3.2（写入契约、本轮不执行，登记 blocker）。
+
+### 9.1 本轮共同契约（所有 WP 适用）
+
+- **口径**：判据只用**等效理论算力**（layer-passes/token、FLOPs、tokens-per-forward，考虑 pipelining）；**墙钟/吞吐不得进判据或 `cost_model`**（可作过程量留在实验产物里）。
+- **判据带（C1）**：bpc 类用 **0.014 bpc 带**（限配对 Δ、≥5 窗口）；率/概率类**不借用** 0.014，走配对 bootstrap / Wilson 95% CI。
+- **对照**：每个实验自带 stock 对照臂（`--dense --topology sequential`，13M/12k/s0 标准配方）；复用历史臂（2613 s0）必须过 `SCHEMA.md` §9 三条（实现等值单测 + resolved config 逐字段对照 + `analysis.md` 口径标注）。
+- **落盘**：实验目录必须齐 `README.md`（预登记契约，含 SCHEMA §6 九节）/ `config.json` / `run.py` / `results.json` / `run_log.txt` / `analysis.md` / `MODEL.md`（权重哈希，不入库）。
+- **活性**（SCHEMA §10）：每个干预臂必须有非零活性量并落盘（干预确实生效），否则臂作废。
+- **原子性**：`run.py` 必须能一条命令复现全臂（`python3 run.py`）；随机性固定 seed；数据固定 `data/enwik8_full.npz` 切分。
+- **GPU**：按 `SCHEMA.md` §20 取锁 `/tmp/pathlm_gpu.lock`（最多等 10 min，等不到则先做 CPU 工作、稍后重试）；多臂驱动**按臂释放**（§20.1）；峰值显存 ≤5GB net；**不杀他人进程**、不动他人锁。
+- **边界**：只写 `axes/2-depth/**` 与本 WP 的报告文件；**不得**改 `pathlm/**`、`train_depth_ar.py`、`tools/**`、`docs/**`、其它轴、`TICKET.md`；需要引擎改动 ⇒ 只登记到 `.scratch/67-engine-changes/TICKET.md` 并回报。
+  **允许的干预实现方式**：实验目录内「工厂替换」——monkey-patch `train_depth_ar.DepthARModel`（沿用 `axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/run.py` 的既有模式：把本实验的模型类工厂塞进模块全局名后再调 `train_depth_ar.main()`），这样「训练整段走共享代码」，只有模型结构是实验本地的。
+- **禁止事后调判据**：判据线预登记在 `README.md`；不够算力时**砍臂/砍指标，不砍判据线**。
+
+### 9.2 WP 契约
+
+#### WP-2651 · 2.2.3 + 2.2.4 · 层间拓扑 n≥2 + 并行子层代价面
+
+- **落点**：`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/`（2.2.4 的证据指针指向同一目录，沿用 MAPPING §3 的既有约定）。
+- **what**：把 2613 的四个层间拓扑臂在 **seed=1** 上重跑（其余逐字段相同），并在同一目录内给出**并行子层的代价面**（层内串行依赖长度、每层 FLOPs、参数量）与质量面同框。
+- **means**：`train_depth_ar.py --d 256 --layers 8 --heads 8 --seq-len 256 --mlp-mult 4 --dense --topology {sequential,parallel,parallel-dual-ln,dense} --steps 12000 --batch-size 32 --seed 1 --exit-mode uniform --eval-batches 20`；配置必须与 2613 s0 逐字段相同（只 seed 不同）。
+- **acceptance（预登记）**：①四臂齐备，`clean_bpc` + `tf@4` + 参数量落 `results.json`；②每臂活性（dense 的层权 norm 偏离恒等起步 >0；parallel 臂与 sequential 逐位不同的前向已由单测钉住）；③2.2.3 判词：s0/s1 两 seed 的 **dense−sequential** 配对 Δ 是否越 0.014（不越 ⇒ 「无差异」可下；两 seed 同号且越带 ⇒ 「可排序」）；④2.2.4 判词：parallel / parallel-dual-ln 相对 sequential 的质量代价（>0.014 即代价可排序）**与**代价面同框（层内串行依赖 2 段→1 段；参数量 −2d 与逐位等参对照两臂并列）；⑤报「质量代价是否换到可兑现的等效收益」，等价于回答「并行子层在本尺度是否划算」。
+- **evidence**：上述实验目录（`results.json` / `analysis.md` / `MODEL.md` / `run_log.txt`）+ 2613 目录（s0 对照）。
+- **review**：fresh 复核者（不得为本 WP writer）在 writer 停止后复核；覆盖 2.2.3 / 2.2.4 两项。
+- **gpu_wall_budget**：45 min（含冒烟 + 4 臂 × 12k 步 + 评测）。
+- **砍什么（预算不够时）**：先砍 dense-s1（用 2613 s0 dense 作 n=1 记录并如实降级结论），**不砍判据线**。
+
+#### WP-2652 · 2.2.1 残差形式最小判决
+
+- **落点**：`axes/2-depth/2.2.1-residual-form/experiments/2652-residual-form-13m/`。
+- **what**：四种残差形式在 13M/12k、同数据同配方下的 clean bpc + 逐深度 bpc + 训练稳定性，对照 stock pre-LN 单残差。
+- **means**：实验内工厂替换（本地块类，不改 `pathlm/**`）。四臂：①`base` = engine stock sequential Block（pre-LN 单残差，`--dense`）；②`postln` = 每个子层残差相加**之后**再归一化（归一化位置后置）；③`scaled` = 子层输出乘**固定**深度缩放 α_l = 1/√(l+1)（缩放残差）；④`gated` = 子层输出乘**可学习**逐层标量门 α_l（init = 1.0，须与 base 在 init 处**逐位等价**并落活性量）。
+  单因素：只改残差形式，其余（d/layers/heads/seq/data/steps/batch/lr/seed/exit-mode）逐字段相同。
+- **acceptance**：①存在性检查：`gated` 在 init 时前向与 `base` 逐位一致（单测钉住）；②参数量审计：各臂参数量差（post-LN / scaled / gated 的额外参数）逐臂落盘，**gated 的额外参数必须被剥离/报告**（等参数对照用「参数量差 ≤0.1%」的臂与 base 直接比，或另加等参数对照臂，由执行方在契约里写明选哪条并保持一致）；③活性：`gated` 的 α_l 终值偏离 1.0（逐层落盘）、`scaled` 的 α_l 逐层落盘；④判据：各形式相对 base 的 clean bpc（配对 Δ，0.014 带）与**逐深度 bpc 曲线**（中间深度可读性，用 engine `depth_curve`，逐深度落盘）；⑤稳定性：末窗 loss 斜率 + gnorm 落盘，出现发散/崩点如实报。
+- **evidence**：实验目录全套 + 逐深度曲线表。
+- **review**：fresh 复核者（writer 停止后）。
+- **gpu_wall_budget**：45 min（4 臂 × 12k 步 + 评测 + 冒烟）。
+- **砍什么**：先砍 `scaled` 臂（用 `gated` + `postln` 收口，并把「缩放残差未测」写进 `gaps`），**不砍判据线**。
+
+#### WP-2654 · 2.1.2 跳层的序列级重测
+
+- **落点**：`axes/2-depth/2.1.2-skipping/experiments/2654-skipping-seqlevel-13m/`。
+- **what**：在 depth-ar 引擎按序列级 bpc + layer-passes/token 重测跳层，并把「跳层」与「同预算固定深度」正面对撞。
+- **means**：实验内工厂替换（不改 `pathlm/**`）。四臂（同 13M/12k/seed0 配方）：①`stock`（8 层全活，layer-passes 8）；②`skip-mid`（**训练与评测同一分布**：层 {3,4} 对全部 token 走恒等旁路，layer-passes 6）；③`layers6`（`--layers 6` 直接训一个更浅的 dense 模型：同预算 6 层算力，但参数更少 ⇒ 这是 milestone 要的「同预算最优固定深度」对手）；④`layerdrop-pt`（**逐 token** 独立跳层：训练期每 token 每层以 p=0.1 独立旁路，评测期用同一分布采样或按其期望深度确定；**训练/评测分布一致性必须落盘证明**）。
+  跳层语义 = 被跳层对**该 token** 的输出 = 输入（恒等旁路，因果性不破）；逐 token 掩码实现，落盘每 token 实际 layer-passes。
+- **acceptance（预登记）**：①`stock` 臂必须复现 13M/12k 标准配方 bpc 量级（与 2613 s0 差 <0.005 的引擎等值门）；②活性：`skip-mid` / `layerdrop-pt` 的 layer-passes/token 实测与设计一致（6.000 / 7.2±SE），逐 token 跳过掩码与训练日志一致；③判据：`skip-mid` vs `stock` 的配对 Δbpc（0.014 带）与 **`skip-mid` vs `layers6` 的同预算比较**（这是「跳层是否有独立增量」的判决线）；`layerdrop-pt` vs `skip-mid` 的配对 Δbpc；④训练/评测跳层分布一致性列齐备；⑤报「哪些层可跳、跳多少」的可操作结论（按层索引），不越尺度外推。
+- **evidence**：实验目录全套 + 逐臂 layer-passes 账。
+- **review**：fresh 复核者（writer 停止后）。
+- **gpu_wall_budget**：45 min（4 臂 × 12k 步 + 评测 + 冒烟）。
+- **砍什么**：先砍 `layerdrop-pt`（把「逐 token 独立跳」写进 `gaps` 作下一步最小实验），**不砍判据线**。
+
+#### WP-2653 · 2.2.2 层间 causal attention 最小判决
+
+- **落点**：`axes/2-depth/2.2.2-attention-residual/experiments/2653-interlayer-attn-13m/`。
+- **what**：把「每层对之前所有层输出做一次 causal attention 聚合」实装并测，与 stock 单残差、2.2.3 的线性学习加权和（`dense` 臂）正面对撞。
+- **means**：实验内工厂替换（不改 `pathlm/**`）。两臂 + 复用基线：
+  - `attn-scalar`：层间 causal attention，**q/k 为恒等（无学习投影）**、仅每层一个可学习标量温度（额外参数 ≈ L 个标量，与 `dense` 的 +36 同量级）⇒ 这是「与 2.2.3 同参数量」的对照；
+  - `attn-qkv`：同一聚合换**可学习共享** W_q/W_k/W_v（额外参数 ≈ 3d²，逐臂报告），用于判「内容相关权重是否值那份额外参数」；
+  - 基线复用：2613 s0 的 `sequential` 与 `dense` 臂（须过 `SCHEMA.md` §9 三条等值证明）。
+  因果性：层 l 的聚合只允许看 h_0..h_l（层索引因果）；不得看到当前层之后的信息。
+- **acceptance**：①等值门：把 `attn-scalar` 的输出权重强制成「只取紧邻上一层」时，前向与 stock 单残差**逐位一致**（单测钉住）；②活性：注意力权重在层维上的分布非退化（熵/最大权重落盘，且必须偏离「只取上一层」）；③判据：`attn-scalar` / `attn-qkv` 相对 `sequential`（stock）与相对 `dense`（2.2.3 线性聚合）的配对 Δbpc（0.014 带）；④代价列：额外参数与每 token 额外 FLOPs（相对单残差）逐臂落盘；⑤判词：attention 聚合是否值那份额外算力（不值 ⇒ 退化为 2.2.3 的线性聚合）。
+- **evidence**：实验目录全套 + 2613 s0 对照（口径标注）。
+- **review**：fresh 复核者（writer 停止后）。
+- **gpu_wall_budget**：30 min（2 臂 × 12k 步 + 评测 + 冒烟）。
+- **砍什么**：先砍 `attn-qkv`（只报 `attn-scalar` 与两基线的对照，并把「内容相关权重」写进 `gaps`），**不砍判据线**。
+
+#### WP-2655 · 2.3.1 逐层容量 schedule 最小判决（本轮尽力而为）
+
+- **落点**：`axes/2-depth/2.3.1-layer-capacity/experiments/2655-layer-capacity-13m/`。
+- **what**：固定**总参数/总 FFN 预算**下，把每层 MLP 隐藏宽按深度重分配（前大后小 / 逐渐放大）相对 uniform 的 clean bpc。
+- **means**：实验内工厂替换（沿用 2641 的等 FFN 预算口径：`Σ_l r_l` 逐位相等 ⇒ FFN 参数与每 token FFN 等效算力逐位相等）。三臂：`uniform`（r=[2]*8）、`front-big`（r=[4,4,2,1,1,1,1,2] 之类，执行方在契约里预登记确切 schedule）、`growing`（其反序）。**每臂参数量逐位相等必须实测审计**。
+- **acceptance**：①逐臂参数量审计（`Σ r_l` 与总参数逐位相等）；②活性（隐藏维与 schedule 逐层匹配）；③判据：`front-big`/`growing` 相对 `uniform` 的配对 Δbpc（0.014 带）；④「该跌/该不变」：clean bpc 该跌、总参数量必须不变；⑤不越尺度外推。
+- **evidence**：实验目录全套。
+- **review**：fresh 复核者（writer 停止后）。
+- **gpu_wall_budget**：35 min（3 臂）。
+- **砍什么**：先砍 `growing`（只留 `uniform` 对 `front-big`），**不砍判据线**。
+
+#### 2.3.2 逐层分辨率（本轮**不执行**，登记 blocker）
+
+- 需要沿深度改变「每层处理多少个 token」的 schedule（池化/上采样/层级合并）——引擎无此能力，实验内工厂替换需要重写含退出/填充/KV 的整条前向，风险与工时超出本轮 3h 预算。
+- **下一步最小实验 + 成本**（写进 `gaps`）：三臂 {全长, 先粗后细, 层级式}，对齐总注意力 FLOPs，报 clean bpc + 长程召回（`assoc_recall_multi_batch`）+ 每层 token 数；13M/12k × 3 臂 ≈ 25 min GPU + ~1.5h 实现（本地前向或登记 `.scratch/67-engine-changes`）。
+
+### 9.3 复核排程（`SCHEMA.md` §14/§14b）
+
+- 每个 WP：writer 停止 → fresh 复核者（独立上下文，不得为本 WP writer）→ 有缺陷 ⇒ 派 writer 修 ⇒ **新的** fresh 复核；**累计 ≤2 轮**，2 轮未过如实登记 blocker 返回。
+- 一个复核者可覆盖多个 WP，但必须逐 WP 给判词（§14 七条清单 + §12 三对账 + §13 对照三要素）。
+- 复核对象 = 实验目录全套 + `project.yaml` 改动 + `summary.py --check`。
+
+### 9.4 C1 回填（本轮已做，`docs/research-schema.md` §12.1）
+
+脚本枚举全仓 `axes/*/*/project.yaml`：**引用噪声带/0.014 但 `falsification` 未声明「用哪个带」**者共 9 项，其中本轴 3 项
+（`2.1.2`、`2.1.3`、`2.2.5`），已逐项在 `falsification` 补声明 + `change_log` 记账；本轴其余 7 项此前已声明（复扫 10/10 通过）。
+`python3 tools/summary.py --check` ⇒ OK（46 份）。
+
+### 9.5 派发与执行记录（本轮）
+
+- `2026-10-14T20:49–21:05+08:00` 读权威输入（一次）：本 ticket、`docs/structure.md` §12/§13、`docs/research-schema.md` 全文、`SCHEMA.md` §3/§6/§8/§9/§10/§12–§17/§20/§22/§23、本轴 10 份 `project.yaml`。
+- `2026-10-14T21:00+08:00` C1 回填完成（§9.4），`python3 tools/summary.py --check` ⇒ OK（46 份）；`git diff --check` 干净。
+- `2026-10-14T21:02+08:00` `nvidia-smi` ⇒ 4090, 972 MiB used / 5% util，无 compute app；`/tmp/pathlm_gpu.lock` 不存在 ⇒ 锁可用（`/tmp/llama_gpu.lock` 是他人锁，不动）。
+- `2026-10-14T21:06+08:00` 派发 **wave 1**（并发 2，符合上限）：WP-2651（worker `90d1d20e`）、WP-2652（worker `d23bab6f`）。
+- wave 2（等 wave 1 停后派）：WP-2654（2.1.2）、WP-2653（2.2.2）；wave 3 尽力而为：WP-2655（2.3.1）。
+- 复核：每个 WP 的 writer 停止后派 fresh 复核者（不与 wave 的 writer 复用上下文），一个复核者可覆盖多 WP 但逐 WP 给判词。
+
+### 9.6 wave 1 收齐与续做（2026-10-14T21:24+08:00，actor：轴 2 深度轴 lead）
+
+**wave 1 两个 worker 均「exit 0 但中途结束」**（每轮子 Agent run 的有效工时约 20–25 min，不足以一次跑完 4 臂）：
+- WP-2651：`README.md`/`config.json`/`run.py`（已支持 `--arms`/`--skip-train`）/`smoke.py` 已落盘；`sequential-12k-s1` **已训完**；
+  随后崩于 `run.py:405 KeyError: 'bpc'`（读导师产物键名错误，`run.py:347` 已有正确取法）。四臂中 1 臂完成。
+- WP-2652：`README.md`/`config.json`/`common.py`/`residual_block.py`/`gpu_lock.py`/`mutation_check.py`/`smoke.py`/`run.py` 已落盘；
+  **四臂冒烟全过**；`base-s0` **已训完并评测**（`results_base_s0.json`，clean_bpc=1.531）；`postln-s0` 刚起。四臂中 1 臂完成。
+- 结论：**进度未丢失**，但 4 臂实验在单轮 25 min 内跑不完 ⇒ 改为「**按臂增量落盘 + 续做**」的执行模式（已在续做派发里写死）。
+
+`2026-10-14T21:26+08:00` 派发**续做 wave**（并发 2）：WP-2651 续做 `17ff9fc8`（修 KeyError → 跑 parallel/parallel-dual-ln/dense 三臂 → 2.2.4 代价面）；WP-2652 续做 `3fa16d7e`（跑 postln/scaled/gated 三臂）。
+`2026-10-14T21:13+08:00`（他人提交，登记备查）`4638882` E2 落地：`--mlp-hidden-sched` 逐层 FFN 隐藏宽 进引擎 ⇒ **WP-2655（2.3.1 逐层容量）从「需本地工厂替换」降为「纯 CLI 三臂」**，成本下调。
+
+### 9.7 2.3.2 逐层分辨率的 blocker 登记（等效算力成本）
+
+- **阻塞原因**：沿深度改变「每层处理多少个 token」需要池化/上采样/层级合并算子，引擎（`pathlm/depth_ar.py`）无此能力；实验内工厂替换需重写含退出/填充/KV 的整条前向（`DepthARModel.forward`），风险与工时超出本轮 3h 预算。
+- **下一步最小实验（等效算力成本，墙钟口径不进判据）**：三臂 {全长等分辨率, 先粗后细（浅层 2× 池化 → 深层还原）, 层级式合并}，13M/12k，**对齐总注意力 FLOPs**（`Σ_l O(n_l²·d)`）与总 layer-passes（= L 不变）；每臂 12k 步 ≈ 6–8 min GPU（等效 12k×32×256 = 98.3M token/臂），三臂 ≈ 20–25 min GPU + 本地前向实现（或登记 `.scratch/67-engine-changes`）≈ 60–90 min 工时。
+- **判据**（已预登记在本项 `project.yaml`，不改）：clean bpc 该不跌/可排序（0.014 bpc 带，限配对 Δ、≥5 窗口）+ 每层平均处理 token 数与 attention FLOPs 该跌 + 长程召回（`tools/evalkit/longrange_tasks.assoc_recall_multi_batch`）该不变，率类指标走配对 bootstrap / Wilson CI。
+- **本轮处置**：如实登记为 blocker，不谎报 PASS；`status` 维持 `未开始`（本项无本地工作）。
