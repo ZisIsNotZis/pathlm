@@ -1,0 +1,142 @@
+{
+  "target": "axes/1-time/1.1.4.3-compression-trigger/experiments/2615-priority-shootout-13m/results.json",
+  "caliber": "同索引硬子集（hard_needle_subset，n=2322，control_recall_hard=0.0000）上的两比例差；CI = Newcombe 95%（两臂各用 Wilson 区间合成）——**非配对**近似",
+  "paired_bootstrap_recomputable": false,
+  "why_not": "落盘只有聚合计数（无逐针命中向量；needle_batch 进度日志只含 full/lru 两列与 n_so_far 累计）⇒ 配对二值差方差 (n10+n01)/n² − d²/n 中的 n10+n01 不可得，只被 >|d|n 约束 ⇒ 配对 SE 可在 ≈0 与非配对 SE 之间任取 ⇒ 配对 CI 宽度不可定 ⇒ 预登记的配对判据**不可判**",
+  "hard_subset_rows": [
+    {
+      "N": 8,
+      "rule": "lru:k=64",
+      "n_hard": 2322,
+      "recall_hard_rule": 0.459518,
+      "recall_hard_distance": 0.431955,
+      "diff_pp": 2.7563,
+      "newcombe95_pp": [
+        -0.1026,
+        5.6088
+      ],
+      "ci_contains_0": true,
+      "rule_wilson95": [
+        43.9331,
+        47.9838
+      ],
+      "distance_wilson95": [
+        41.1936,
+        45.2199
+      ]
+    },
+    {
+      "N": 8,
+      "rule": "content",
+      "n_hard": 2322,
+      "recall_hard_rule": 0.433247,
+      "recall_hard_distance": 0.431955,
+      "diff_pp": 0.1292,
+      "newcombe95_pp": [
+        -2.7185,
+        2.9766
+      ],
+      "ci_contains_0": true,
+      "rule_wilson95": [
+        41.3219,
+        45.3496
+      ],
+      "distance_wilson95": [
+        41.1936,
+        45.2199
+      ]
+    },
+    {
+      "N": 32,
+      "rule": "lru:k=64",
+      "n_hard": 2322,
+      "recall_hard_rule": 0.411714,
+      "recall_hard_distance": 0.387166,
+      "diff_pp": 2.4548,
+      "newcombe95_pp": [
+        -0.3623,
+        5.2664
+      ],
+      "ci_contains_0": true,
+      "rule_wilson95": [
+        39.1858,
+        43.1861
+      ],
+      "distance_wilson95": [
+        36.7555,
+        40.7149
+      ]
+    },
+    {
+      "N": 32,
+      "rule": "content",
+      "n_hard": 2322,
+      "recall_hard_rule": 0.36391,
+      "recall_hard_distance": 0.387166,
+      "diff_pp": -2.3256,
+      "newcombe95_pp": [
+        -5.1058,
+        0.4597
+      ],
+      "ci_contains_0": true,
+      "rule_wilson95": [
+        34.458,
+        38.3689
+      ],
+      "distance_wilson95": [
+        36.7555,
+        40.7149
+      ]
+    },
+    {
+      "N": 64,
+      "rule": "lru:k=64",
+      "n_hard": 2322,
+      "recall_hard_rule": 0.326012,
+      "recall_hard_distance": 0.344531,
+      "diff_pp": -1.8519,
+      "newcombe95_pp": [
+        -4.5633,
+        0.8633
+      ],
+      "ci_contains_0": true,
+      "rule_wilson95": [
+        30.7247,
+        34.5352
+      ],
+      "distance_wilson95": [
+        32.5473,
+        36.4102
+      ]
+    },
+    {
+      "N": 64,
+      "rule": "content",
+      "n_hard": 2322,
+      "recall_hard_rule": 0.321275,
+      "recall_hard_distance": 0.344531,
+      "diff_pp": -2.3256,
+      "newcombe95_pp": [
+        -5.0314,
+        0.385
+      ],
+      "ci_contains_0": true,
+      "rule_wilson95": [
+        30.259,
+        34.055
+      ],
+      "distance_wilson95": [
+        32.5473,
+        36.4102
+      ]
+    }
+  ],
+  "contract_caliber": {
+    "recall_threshold_pp": 0.1,
+    "damage_threshold_bpc": 0.014,
+    "verdict": "priority_rules_informative",
+    "baseline_recall_full": 0.686768
+  },
+  "reading": "补充读法（非预登记口径）：硬子集上三规则相对 distance 的差普遍很小且**多数落在含 0 的区间里**；唯一正向偏大者是 N=8 的 lru:k=64，但其非配对 95% CI 也**含 0**（见 rows）。因为这是**非配对**近似（一般比配对区间更宽），本报告**不**据此下「无差异」的否定结论；它只说明：**用现盘证据无法完成**本项预登记所需的配对判据。",
+  "next_minimal_experiment": "重跑 2615 的**评测腿一次**（纯推理、0 训练 token：24×16 窗口 × 3 规则 × N∈{8,32,64} + 4096 针），并把**逐针命中记录**落盘（`needle_raw.json`）⇒ 之后按 §12.1 做配对 bootstrap，本项的召回腿才可判"
+}
