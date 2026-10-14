@@ -13,13 +13,17 @@ method: "单因素：固定主干尺寸 / 数据 / token 预算，只改目标�
 validation: "端到端：对照 = 同尺寸 stock 全因果 AR（归一为 100%）；客观判据 = 序列级 bpc / perplexity（质量，该不跌 / 该跌）+ tokens-per-forward（一次前向刷新的位置数，该涨）+ 每 token 顺序前向次数（该跌）+ 每 token 等效 FLOPs（代价轴，如实报）；口径 = matched-step / 同 token 预算，禁墙钟；必须不变 = 评测集与 clean bpc 口径与 AR 同框、给定种子可复现。"
 objective_criteria: "该涨：tokens-per-forward（一次前向刷新的位置数）；该跌：每 token 顺序前向次数；该不跌：序列级 bpc / 一致率（相对全因果 AR，须越 0.014 噪声带才算可排序）；必须报：每 token 等效 FLOPs（K 步双向）；必须不变：评测口径与 AR 同框、种子可复现。 用哪个带（C1 裁决）：bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口）；tokens-per-forward / 一致率等率类指标走配对 bootstrap / Wilson 95% CI、**不跨量纲借用** 0.014。"
 falsification: "若在 matched-step、同 token 预算下，掩码 / 离散扩散的序列级 bpc 相对全因果 AR 越噪声带恶化，且提高 K（去噪步）不能把它拉回带内 ⇒ 判扩散并行生成在本尺度 / 本任务上不成立。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
-failure_analysis: ""
-conclusion: ""
-conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），并把 tokens-per-forward（该涨）与每 token 等效 FLOPs（代价轴）分开写死，以防把「顺序前向变少」误读成「算力变少」。外部基线条目均为 `记忆·未核`，不得当判据。独立复核未做。"
-experiments: []
+failure_analysis: "假设被本地证据否证 ⇒ 归因（按顺序给证据）：**结构问题为主**——「双向 + 被去噪位置彼此不能条件」把条件依赖整体删掉，证据 = Δ 与 K 几乎无关（K=1→16 只从 +2.6815 变到 +2.6873），说明瓶颈不在「迭代次数/采样器」而在该出口本身；**并含设计/regime 问题**——同一 K=1 出口下 `r ~ U(0,1)` 的变密度训练比 6.3.2 的固定 r=0.25 差 1.61 bpc，说明噪声调度（本实验按契约定的默认）在本步数下未被调好；**不是** baseline 不公平（同 harness、同 token 预算、同评测口径、只读复用同一 AR 参照）也**不是**测量错误（L0 位置集对齐通过、禁墙钟 0 命中）。"
+conclusion: "本地判决（WP1 = `experiments/2674-mdiffusion-13m`，**S = 1500 快照口径**（与 2671 同刻度）、只读臂间增量与排序；复用 6.3.2 的同 harness 并只读其全因果 AR 参照；n≥2 = 模型种子 {0,1}）：**(a) 掩码扩散在本尺度/本任务上不成立**——吸收态掩码扩散臂（训练时 `r ~ U(0,1)`、每位置独立替换为 `[mask]`、只在被 mask 位置算 CE）+ K 步置信度解掩码采样，在**同一批位置 `M`** 上相对全因果 AR 的 teacher-forced bpc 差为 K=1 **+2.6815** [+2.57617, +2.79239]、K=4 **+2.6851** [+2.57898, +2.79591]、K=8 **+2.6866** [+2.58035, +2.79774]、K=16 **+2.6873** [+2.58136, +2.79883]（NELBO 逐步均值 5.0133/5.0275/5.0423）——block 聚类配对 bootstrap 95% CI **全部不含 0 且远越 0.014 bpc 参考带**；参照 = AR 全位置 teacher-forced bpc 2.2704。(b) **提高 K 不能把质量拉回带内**（Δ 随 K 单调变差：+2.6815 → +2.6873）⇒ 契约 §4 的否证条件**整体触发**（「任一 K 越带且提高 K 拉不回」两个子条件都成立）。(c) **K=1 连接点（与 6.3.2）**：本项 K=1 的 Δ **+2.6815** 明显大于 6.3.2 固定 r=0.25 训练的 `fill_bidir_r25` 同 M 口径 Δ **+1.0726** ⇒ 在**同一 K=1 出口**上，「r ~ U(0,1) 的变密度掩码训练」比「固定 r=0.25」差约 1.61 bpc（本刻度的 regime 差，如实报、不外推）。(d) 代价面（如实报、不作判据）：一次去噪前向 = 全段一次双向前向（layer-passes = L×T），K 步 ⇒ 每 token 等效 FLOPs = K×L（AR 每 token = L）；tokens-per-forward = |M|/K；每 block 顺序前向次数 = K（AR 为 T−1）——**顺序前向确实由 T 降到 K，但质量代价远超可接受范围**。(e) 未测：离散扩散的**均匀核**臂、噪声调度/采样器扫描、与 6.3.3 同框、更大规模；`L5` 的确定性未获独立验证（见 `gaps`）。"
+conclusion_review: "自评：本项从零读数推到明确否证——掩码扩散（K 步双向去噪）在本快照刻度上相对全因果 AR 的质量差为 +2.68…+2.69 bpc（CI 不含 0、远越 0.014 带），且提高 K 不能拉回（Δ 随 K 单调变差）；K=1 连接点显示「变密度掩码训练」比 6.3.2 的固定 r=0.25 差 1.61 bpc，故归因以结构为主并含 regime 成分。判词只在本设定内成立（S=1500 快照 / char enwik8 / 同一共享 harness / 双 seed），不外推。**当前（最后一轮）独立复核判词**：见 `.scratch/63-axis6-predict/REVIEW-C1-631.md`（本轴派发的 fresh 复核；结果与处置见该报告与 `.scratch/63-axis6-predict/TICKET.md`）。**残余缺口（如实登记）**：本 WP 的 writer agent 在 30 min 运行时上限超时退出（实验已由 detached supervisor 跑完、产物已落盘），复核者发现的未收尾项见其报告；`L5` 确定性未独立验证；均匀核臂与调度扫描未做——见 `gaps`。"
+experiments:
+  - "axes/6-predict/6.3.1-diffusion/experiments/2674-mdiffusion-13m"
 argument: "扩散与 AR 的差别是「全段并行刷新 K 次」对「逐位置刷新 T 次」：两者都在花算力换顺序依赖，因此判据必须同时给顺序前向次数（该跌）、一次前向产出位置数（该涨）与质量（该不跌）；只报单点 bpc 或只报一次前向能出多少位置，都会得出方向相反的结论。本项与 6.3.2 共用一个连接点（K=1 即一次填空）。"
 gaps:
-  - "本仓零经验：需先做最小判决（13M、{AR, 掩码扩散 K=1/4/8/16} 两族，matched-step + 同 token 预算）"
+  - "本次只做了 1 个扩散臂 × seed{0,1}；**均匀核离散扩散臂未做**（下一步最小实验 = 同 harness 把腐蚀核换成均匀随机 token，成本 ≈2.5 min/seed GPU）"
+  - "噪声调度只用了契约默认 `r ~ U(0,1)`；未扫调度（K=1 连接点提示变密度训练差 1.61 bpc ⇒ 调度是首要可疑项）"
+  - "`L5` 确定性未获独立验证；writer agent 因 30 min 运行时上限超时退出，未收尾项见 REVIEW-C1-631"
+  - "只有 S=1500 快照一种刻度（与 6000 步档不可比）；更大规模未测"
   - "采样器与噪声调度未定（掩码 vs 离散核、吸收 vs 均匀），需在最小判决里定一个默认再扫"
   - "与 6.3.2 / 6.3.3 的边界（一次填空、latent 回归）未在同一实验里排开"
 cost_model: "等效理论量：一次去噪前向 = 全段一次双向前向（layer-passes = L × T），K 步 ⇒ 每 token 等效 FLOPs = K × L（以 AR 每 token 的 L 为单位）；tokens-per-forward ≈ T/K；每 token 顺序前向次数由 1 降到 K/T。考虑 pipelining：段内位置全并行、去噪步间是 K 段顺序依赖。"
@@ -31,7 +35,7 @@ role_map:
   integrator: "tree-integrator（研究树 integrator；本轴合并与跨轴一致性核对由 axis6-lead 代行）"
 
 milestone:
-  output: "一份「扩散并行生成」判决包：{stock 因果 AR, 掩码扩散 K∈{1,4,8,16}, 离散扩散} 在 13M matched-step / 同 token 预算下的序列级 bpc + tokens-per-forward + 每 token 等效 FLOPs，对照全因果 AR，含 n≥2。"
+  output: "一份「扩散并行生成」判决包：{stock 因果 AR, 掩码扩散 K∈{1,4,8,16}, 离散扩散} 在 12.8M（同 harness、实测参数量见 2674 落盘）matched-step / 同 token 预算下的序列级 bpc + tokens-per-forward + 每 token 等效 FLOPs，对照全因果 AR，含 n≥2。"
   acceptance: "各臂的 tokens-per-forward 确实随 K 上升、每 token 等效 FLOPs 与质量同框可比；扩散臂相对全因果 AR 的质量差可分（越 0.014 噪声带：bpc 口径专用、限配对 Δ、≥5 窗口；率类走配对 bootstrap / Wilson 95% CI、不跨量纲借用——C1 裁决）或明确「不越带」；结论停在「该尺度 / 该任务值不值」，不外推。"
 
 work_packages:
@@ -42,13 +46,13 @@ work_packages:
     acceptance: "各臂齐备且预算对齐；质量差与代价轴同框；结论明确「在本尺度可判 / 不可判」并给否证条件触发情况"
     evidence: "axes/6-predict/6.3.1-diffusion/experiments/"
     review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b，复核排在执行之后）"
-    status: "未开始"
+    status: "被否证"
 
 roadmap:
   - "WP1：扩散最小判决（AR vs 掩码扩散 K 扫描，K=1 作 6.3.2 连接点）"
   - "复核通过后写 conclusion，更新 status"
 
-status: "未开始"
+status: "进行中"
 started: "2026-10-13T10:47:00+08:00"
 ended: ""
 change_log:
@@ -61,3 +65,7 @@ change_log:
   - date: "2026-10-14T20:52:40+08:00"
     actor: "axis6-lead（ticket 63 续 · C1 声明回填第二轮）"
     change: "C1 声明回填第二轮（不改数字 / 不改结论 / 不改证据）：按 docs/research-schema.md §12.1，本项 milestone.acceptance 与 objective_criteria 引用 0.014 噪声带但未在同字段声明用哪个带，现补声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），tokens-per-forward / 一致率等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用。"
+
+  - date: "2026-10-14T23:20:00+08:00"
+    actor: "axis6-lead"
+    change: "Phase C（WP1 = `experiments/2674-mdiffusion-13m`，复用 6.3.2 harness）：conclusion 首次填入（K=1/4/8/16 的 Δ = +2.6815…+2.6873，CI 不含 0 且远越 0.014 带；提高 K 拉不回 ⇒ 契约 §4 否证条件整体触发；K=1 连接点显示变密度掩码训练比固定 r=0.25 差 1.61 bpc）；failure_analysis 填入（结构为主 + regime 成分）；milestone 规模标签按实测更正；gaps 换成剩余项（均匀核臂、调度扫描、L5 确定性、快照口径）；status 未开始→进行中（复核 mode=PENDING）。"
