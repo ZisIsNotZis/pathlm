@@ -18,3 +18,5 @@ WP632_LOCK_MAX_WAIT=300 python3 -u run.py --stage all --out . --seeds 0 1 --step
 - 该命令在 **GPU 锁空闲**时重算 L5 确定性并重写 `analysis.md` 与 `results.json`；不重训任何 run（gate + finalize 秒级，L5 需一次短 GPU 取锁）。
 - `--resume` 跳过 `results.json` 中 `done=true` 的 run；某 seed 的填空臂全部完成时**不重训 AR**（配对读数已在 `results.json`）。
 - GPU 按臂取放锁（`gpu_lock.py`）；锁被占则不杀他人进程，L5 子项如实记为未取得。
+
+> **§20.1 让出窗口（Phase D 补记，axis6-lead）**：本实验的 driver 在臂间只间隔约 1s 重取 GPU 锁，**未**留 §20.1 要求的 ≥60s 让出窗口（Main 由其它轴的饥饿观测到）。该偏离只影响其它轴的等待时间，**不影响本目录任何判据**（本轴所有判据都是等效理论量、禁墙钟）。**若重跑本 driver：须在臂间插入 `sleep 60` 再取锁**；本目录已落盘的数字与 `MODEL.md` 的 sha256 绑定不回改。

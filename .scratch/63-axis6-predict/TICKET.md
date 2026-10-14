@@ -494,3 +494,12 @@ batch>1 与完整二级树需另立 WP / 重训头）。**下一步最小动作*
 - **D2.2 WP 6.2.4「温度>0 无损投机采样 + 53.9M 对抗臂」**（`experiments/2673-robustness-13m/`，契约先写死）：writer run `080e3d27`，GPU ≤15 min；`L0 gate probe`（错误接受规则必须让无损性检验变红）是 P1 判据成立的前提。
 - **D2.3 batch>1 ⇒ E5 登记（不擅改引擎）**：`.scratch/67-engine-changes/TICKET.md` 新增 `### E5 · 轴 6 · 批量验证（B>1）`（需要什么 / 为什么 / 最小 patch 描述 / 预计 3 条单测：B=2 逐序列等价、批内独立性 gate probe、B=1 逐位还原 / 风险与显存记账），授权状态 = **未授权**，待 Main 派唯一 engine-writer。登记动作 = `.scratch/63-axis6-predict/register_e5.py`（插入 + 变更记录各一处，命中计数断言）。
 - **D2.4 GPU 纪律**：两个 WP 均按 §20 逐 run 取放锁 + detached supervisor-retry（后台 `nohup` + 短轮询），不前台阻塞等锁；抢不到按 blocker 如实记。
+
+## D3 §20.1 让出窗口违规（Main 观测，本轴自查确认并如实登记）
+
+- **事实**：上一轮（Phase C）本轴的 GPU driver（`2671-padfill-13m/run.py` 的逐臂循环）出现 `lock_released` → **约 1 s** → `lock_acquired`，未留 `SCHEMA.md` §20.1 要求的 **≥60 s 让出窗口**（Main 由轴 2 的饥饿观测到）。`2670` / `2672` / `2674` 的臂间间隔同样未显式保证 ≥60 s。
+- **影响归因**：受影响的只是**公平性/其它轴的等待时间**；本轴任何判据都不含墙钟（`cost_model` 与所有 L 判据都是等效理论量），故**已落盘的科学读数不受影响**（不触发任何数字作废）。
+- **处置**：
+  1. **运行中的 driver（Phase D 的两个 WP）**：已 steer 要求「臂间 / 训练-评测之间 `sleep 60` 再取锁；只有整程 <10 min 才可整程持锁」，并在 `run_log.txt` 留让出窗口行。
+  2. **已完成的实验（2660/2670/2671/2672/2674）**：其 driver 已被 `MODEL.md` 的 sha256 **钉死为判读绑定 revision**，**不回改**（改了就破坏证据绑定）；改为在本工单登记该偏离，并在各自 `RESUME.md` 记一句「若重跑本 driver，须在臂间插 ≥60 s 让出窗口（§20.1）」。**证据不删、数字不动**。
+  3. **本轴 standing rule**（此后所有新 driver）：臂间 `sleep 60`；纯推理 <2 min/≤1 GB 的臂按 §20.1.2 并发插入并在报告登记为例外。

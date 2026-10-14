@@ -42,3 +42,5 @@ python3 "$D"/write_docs.py
 
 只写 `axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/**`；`README.md`（预登记契约）、`pathlm/**`、`train_*.py`、`tools/**`、`docs/**`、`.scratch/23-depth-ar/evidence/**`（只读复用）、其它轴/实验、任何 `project.yaml` 均未改。
 
+
+> **§20.1 让出窗口（Phase D 补记，axis6-lead）**：本实验的 driver 在臂间只间隔约 1s 重取 GPU 锁，**未**留 §20.1 要求的 ≥60s 让出窗口（Main 由其它轴的饥饿观测到）。该偏离只影响其它轴的等待时间，**不影响本目录任何判据**（本轴所有判据都是等效理论量、禁墙钟）。**若重跑本 driver：须在臂间插入 `sleep 60` 再取锁**；本目录已落盘的数字与 `MODEL.md` 的 sha256 绑定不回改。

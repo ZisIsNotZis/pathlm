@@ -43,3 +43,5 @@
 python3 -m pytest test_mdiff.py -q     # 9 passed
 python3 mutate.py                      # 4 变异全抓红 + 逐字节还原
 ```
+
+> **§20.1 让出窗口（Phase D 补记，axis6-lead）**：本实验的 driver 在臂间只间隔约 1s 重取 GPU 锁，**未**留 §20.1 要求的 ≥60s 让出窗口（Main 由其它轴的饥饿观测到）。该偏离只影响其它轴的等待时间，**不影响本目录任何判据**（本轴所有判据都是等效理论量、禁墙钟）。**若重跑本 driver：须在臂间插入 `sleep 60` 再取锁**；本目录已落盘的数字与 `MODEL.md` 的 sha256 绑定不回改。
