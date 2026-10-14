@@ -22,7 +22,7 @@ gaps:
   - "本仓零经验：需先做最小判决（13M、同总参数、{等宽, 金字塔, 沙漏, 倒金字塔} 四臂，clean bpc）"
   - "与 `2.3.1` 逐层容量变化的边界已由 integrator 核对为不矛盾（两研究项实现重叠，但按轴分工各记一面）"
   - "逐层宽度 schedule 与 `2.1.1` 早退的联合（浅层宽度是否影响可截断性）未测"
-  - "**实现前置**：引擎 `pathlm/depth_ar.py` 的 `mlp_mult` 是全局标量、`Block` 的 `d_model` 逐层不可配 ⇒ 本项的逐层 d_model schedule 需要引擎支持（最小 patch 描述见 `.scratch/64-axis3-width/TICKET.md` §引擎改动申请）；在引擎收编前本项不跑"
+  - "**实现前置**：引擎 `pathlm/depth_ar.py` 的 `Block` 的 `d_model` 由 `cfg.d_model` 全局给定、逐层不可配 ⇒ 本项的逐层 d_model schedule 需要引擎支持；`mlp_mult` 已由 E2 扩展为逐层 FFN 隐藏宽（`DepthARConfig.mlp_hidden_sched`，任意正整数；见 `.scratch/67-engine-changes/TICKET.md`），但那只覆盖 FFN 隐藏宽、**不覆盖逐层 d_model**（归 `3.1.4` 的读数，不得两格各记一遍）⇒ 实现前置仍未满足。替代做法 = 实验目录内用「前缀子空间切片」（第 l 层只在残差流前 w_l 维上运算，Σ_l w_l² 与等宽臂逐位对齐）自造，并须给「全层 w_l = d 时与 stock 逐位同前向」的等值门；该替代做法尚未实施，未测项成本见 `.scratch/64-axis3-width/DISPATCH-B.md` §W-D"
 cost_model: "等效理论量：各臂总参数量固定，每 token 的 layer-passes 仍为 L；若第 l 层宽 d_l，则该层 attention 与线性层 FLOPs 按 d_l² 缩放，Σ_l d_l² 与等宽臂对齐；tokens-per-forward 每步 1。考虑 pipelining：层宽不等使各层计算量不同，层间流水的最慢层决定节拍，须以每层 FLOPs 分布（而非任何时间量）评估。"
 
 role_map:
