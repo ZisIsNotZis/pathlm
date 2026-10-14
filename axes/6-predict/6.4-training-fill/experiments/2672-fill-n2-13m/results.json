@@ -1,0 +1,4933 @@
+{
+  "experiment": "2672-fill-n2-13m",
+  "arms": [
+    "fill",
+    "nofill",
+    "projfill"
+  ],
+  "scale": {
+    "steps": 2000,
+    "batch_size": 32,
+    "seq_len": 256,
+    "lr": 0.001,
+    "train_tokens_per_run": 16384000,
+    "scale_note": "2k 快照口径：与既有 12k 档不可比，只读臂间增量与排序",
+    "why_this_step_count": "锁饥饿：本段时间盒内 GPU 锁被其它 worker（2671-padfill-13m）连续占用，按 23e 实测（12000 步 ≈ 9.9 min）可用 GPU 预算 ≈10 min ⇒ 取 6 run 总量 ≤10 min 的最大 500 倍数 = 2000（≥1500 下限、臂间同刻度，契约 §2 预登记允许缩步数）"
+  },
+  "l5_note": "判据区不含墙钟字段；墙钟只进 run_log.txt / 各 run 的 train.log",
+  "point_values": {
+    "seed0": {
+      "fill": {
+        "steps": 2000,
+        "params": 6962688,
+        "train_tokens": 16384000,
+        "train_seed": 0,
+        "fill_kv": true,
+        "proj_fill": false,
+        "depth8_bpc": 2.7995,
+        "depth4_bpc": 2.8016,
+        "depth8_acc": 0.4505,
+        "depth4_acc": 0.45,
+        "tf4_accept": 0.973,
+        "tf_acceptance": [
+          {
+            "depth": 0,
+            "accept": 0.0559
+          },
+          {
+            "depth": 1,
+            "accept": 0.8307
+          },
+          {
+            "depth": 2,
+            "accept": 0.9204
+          },
+          {
+            "depth": 3,
+            "accept": 0.9544
+          },
+          {
+            "depth": 4,
+            "accept": 0.973
+          },
+          {
+            "depth": 5,
+            "accept": 0.9846
+          },
+          {
+            "depth": 6,
+            "accept": 0.9903
+          },
+          {
+            "depth": 7,
+            "accept": 0.9948
+          }
+        ],
+        "depth_curve": [
+          {
+            "depth": 0,
+            "bpc": 6.711,
+            "acc": 0.0536
+          },
+          {
+            "depth": 1,
+            "bpc": 2.9335,
+            "acc": 0.4331
+          },
+          {
+            "depth": 2,
+            "bpc": 2.8308,
+            "acc": 0.4462
+          },
+          {
+            "depth": 3,
+            "bpc": 2.8057,
+            "acc": 0.4493
+          },
+          {
+            "depth": 4,
+            "bpc": 2.8016,
+            "acc": 0.45
+          },
+          {
+            "depth": 5,
+            "bpc": 2.8,
+            "acc": 0.4503
+          },
+          {
+            "depth": 6,
+            "bpc": 2.7994,
+            "acc": 0.4503
+          },
+          {
+            "depth": 7,
+            "bpc": 2.7993,
+            "acc": 0.4506
+          },
+          {
+            "depth": 8,
+            "bpc": 2.7995,
+            "acc": 0.4505
+          }
+        ],
+        "avg_train_gate_mean": [
+          0.1355,
+          0.1448,
+          0.0933,
+          0.0628,
+          0.0633,
+          0.0559,
+          0.0509,
+          0.0466
+        ],
+        "avg_train_depth_ce": [
+          4.8543,
+          2.3734,
+          2.3296,
+          2.3163,
+          2.3127,
+          2.3107,
+          2.3099,
+          2.3096,
+          2.3111
+        ]
+      },
+      "nofill": {
+        "steps": 2000,
+        "params": 6962688,
+        "train_tokens": 16384000,
+        "train_seed": 0,
+        "fill_kv": false,
+        "proj_fill": false,
+        "depth8_bpc": 2.877,
+        "depth4_bpc": 2.8794,
+        "depth8_acc": 0.4358,
+        "depth4_acc": 0.4344,
+        "tf4_accept": 0.9758,
+        "tf_acceptance": [
+          {
+            "depth": 0,
+            "accept": 0.0586
+          },
+          {
+            "depth": 1,
+            "accept": 0.8512
+          },
+          {
+            "depth": 2,
+            "accept": 0.9221
+          },
+          {
+            "depth": 3,
+            "accept": 0.9551
+          },
+          {
+            "depth": 4,
+            "accept": 0.9758
+          },
+          {
+            "depth": 5,
+            "accept": 0.9866
+          },
+          {
+            "depth": 6,
+            "accept": 0.9915
+          },
+          {
+            "depth": 7,
+            "accept": 0.9946
+          }
+        ],
+        "depth_curve": [
+          {
+            "depth": 0,
+            "bpc": 6.5886,
+            "acc": 0.0536
+          },
+          {
+            "depth": 1,
+            "bpc": 2.997,
+            "acc": 0.4205
+          },
+          {
+            "depth": 2,
+            "bpc": 2.9073,
+            "acc": 0.4312
+          },
+          {
+            "depth": 3,
+            "bpc": 2.8859,
+            "acc": 0.434
+          },
+          {
+            "depth": 4,
+            "bpc": 2.8794,
+            "acc": 0.4344
+          },
+          {
+            "depth": 5,
+            "bpc": 2.8777,
+            "acc": 0.4354
+          },
+          {
+            "depth": 6,
+            "bpc": 2.8773,
+            "acc": 0.4356
+          },
+          {
+            "depth": 7,
+            "bpc": 2.877,
+            "acc": 0.4357
+          },
+          {
+            "depth": 8,
+            "bpc": 2.877,
+            "acc": 0.4358
+          }
+        ],
+        "avg_train_gate_mean": [
+          0.1351,
+          0.1347,
+          0.0764,
+          0.0621,
+          0.0527,
+          0.0502,
+          0.0461,
+          0.0435
+        ],
+        "avg_train_depth_ce": [
+          4.8052,
+          2.437,
+          2.3992,
+          2.3908,
+          2.3871,
+          2.3853,
+          2.3847,
+          2.3847,
+          2.3856
+        ]
+      },
+      "projfill": {
+        "steps": 2000,
+        "params": 7489024,
+        "train_tokens": 16384000,
+        "train_seed": 0,
+        "fill_kv": true,
+        "proj_fill": true,
+        "depth8_bpc": 2.8292,
+        "depth4_bpc": 2.8309,
+        "depth8_acc": 0.4464,
+        "depth4_acc": 0.4459,
+        "tf4_accept": 0.9739,
+        "tf_acceptance": [
+          {
+            "depth": 0,
+            "accept": 0.0567
+          },
+          {
+            "depth": 1,
+            "accept": 0.827
+          },
+          {
+            "depth": 2,
+            "accept": 0.9267
+          },
+          {
+            "depth": 3,
+            "accept": 0.9586
+          },
+          {
+            "depth": 4,
+            "accept": 0.9739
+          },
+          {
+            "depth": 5,
+            "accept": 0.9827
+          },
+          {
+            "depth": 6,
+            "accept": 0.9893
+          },
+          {
+            "depth": 7,
+            "accept": 0.9949
+          }
+        ],
+        "depth_curve": [
+          {
+            "depth": 0,
+            "bpc": 6.7029,
+            "acc": 0.0536
+          },
+          {
+            "depth": 1,
+            "bpc": 2.958,
+            "acc": 0.4291
+          },
+          {
+            "depth": 2,
+            "bpc": 2.8543,
+            "acc": 0.4423
+          },
+          {
+            "depth": 3,
+            "bpc": 2.8337,
+            "acc": 0.4459
+          },
+          {
+            "depth": 4,
+            "bpc": 2.8309,
+            "acc": 0.4459
+          },
+          {
+            "depth": 5,
+            "bpc": 2.8297,
+            "acc": 0.4461
+          },
+          {
+            "depth": 6,
+            "bpc": 2.8291,
+            "acc": 0.4462
+          },
+          {
+            "depth": 7,
+            "bpc": 2.8291,
+            "acc": 0.4464
+          },
+          {
+            "depth": 8,
+            "bpc": 2.8292,
+            "acc": 0.4464
+          }
+        ],
+        "avg_train_gate_mean": [
+          0.1348,
+          0.1477,
+          0.0909,
+          0.0582,
+          0.0574,
+          0.0537,
+          0.0494,
+          0.045
+        ],
+        "avg_train_depth_ce": [
+          4.8498,
+          2.3863,
+          2.3409,
+          2.3292,
+          2.3255,
+          2.3237,
+          2.3228,
+          2.3224,
+          2.3237
+        ]
+      }
+    },
+    "seed1": {
+      "fill": {
+        "steps": 2000,
+        "params": 6962688,
+        "train_tokens": 16384000,
+        "train_seed": 1,
+        "fill_kv": true,
+        "proj_fill": false,
+        "depth8_bpc": 2.758,
+        "depth4_bpc": 2.7608,
+        "depth8_acc": 0.4594,
+        "depth4_acc": 0.4582,
+        "tf4_accept": 0.9751,
+        "tf_acceptance": [
+          {
+            "depth": 0,
+            "accept": 0.0575
+          },
+          {
+            "depth": 1,
+            "accept": 0.833
+          },
+          {
+            "depth": 2,
+            "accept": 0.9209
+          },
+          {
+            "depth": 3,
+            "accept": 0.9527
+          },
+          {
+            "depth": 4,
+            "accept": 0.9751
+          },
+          {
+            "depth": 5,
+            "accept": 0.9835
+          },
+          {
+            "depth": 6,
+            "accept": 0.9901
+          },
+          {
+            "depth": 7,
+            "accept": 0.9944
+          }
+        ],
+        "depth_curve": [
+          {
+            "depth": 0,
+            "bpc": 6.6823,
+            "acc": 0.0536
+          },
+          {
+            "depth": 1,
+            "bpc": 2.8983,
+            "acc": 0.4425
+          },
+          {
+            "depth": 2,
+            "bpc": 2.7847,
+            "acc": 0.4552
+          },
+          {
+            "depth": 3,
+            "bpc": 2.767,
+            "acc": 0.4581
+          },
+          {
+            "depth": 4,
+            "bpc": 2.7608,
+            "acc": 0.4582
+          },
+          {
+            "depth": 5,
+            "bpc": 2.7593,
+            "acc": 0.4591
+          },
+          {
+            "depth": 6,
+            "bpc": 2.7582,
+            "acc": 0.459
+          },
+          {
+            "depth": 7,
+            "bpc": 2.758,
+            "acc": 0.4591
+          },
+          {
+            "depth": 8,
+            "bpc": 2.758,
+            "acc": 0.4594
+          }
+        ],
+        "avg_train_gate_mean": [
+          0.1394,
+          0.1516,
+          0.0884,
+          0.0791,
+          0.0588,
+          0.0562,
+          0.0517,
+          0.0484
+        ],
+        "avg_train_depth_ce": [
+          4.8392,
+          2.3439,
+          2.2966,
+          2.2866,
+          2.282,
+          2.2803,
+          2.279,
+          2.2786,
+          2.2791
+        ]
+      },
+      "nofill": {
+        "steps": 2000,
+        "params": 6962688,
+        "train_tokens": 16384000,
+        "train_seed": 1,
+        "fill_kv": false,
+        "proj_fill": false,
+        "depth8_bpc": 2.8221,
+        "depth4_bpc": 2.8252,
+        "depth8_acc": 0.4457,
+        "depth4_acc": 0.4455,
+        "tf4_accept": 0.9776,
+        "tf_acceptance": [
+          {
+            "depth": 0,
+            "accept": 0.058
+          },
+          {
+            "depth": 1,
+            "accept": 0.8518
+          },
+          {
+            "depth": 2,
+            "accept": 0.9257
+          },
+          {
+            "depth": 3,
+            "accept": 0.9613
+          },
+          {
+            "depth": 4,
+            "accept": 0.9776
+          },
+          {
+            "depth": 5,
+            "accept": 0.9865
+          },
+          {
+            "depth": 6,
+            "accept": 0.9919
+          },
+          {
+            "depth": 7,
+            "accept": 0.9951
+          }
+        ],
+        "depth_curve": [
+          {
+            "depth": 0,
+            "bpc": 6.5605,
+            "acc": 0.0536
+          },
+          {
+            "depth": 1,
+            "bpc": 2.95,
+            "acc": 0.4291
+          },
+          {
+            "depth": 2,
+            "bpc": 2.8501,
+            "acc": 0.4413
+          },
+          {
+            "depth": 3,
+            "bpc": 2.8308,
+            "acc": 0.4451
+          },
+          {
+            "depth": 4,
+            "bpc": 2.8252,
+            "acc": 0.4455
+          },
+          {
+            "depth": 5,
+            "bpc": 2.8234,
+            "acc": 0.4458
+          },
+          {
+            "depth": 6,
+            "bpc": 2.8222,
+            "acc": 0.4458
+          },
+          {
+            "depth": 7,
+            "bpc": 2.822,
+            "acc": 0.4457
+          },
+          {
+            "depth": 8,
+            "bpc": 2.8221,
+            "acc": 0.4457
+          }
+        ],
+        "avg_train_gate_mean": [
+          0.139,
+          0.1411,
+          0.0839,
+          0.0659,
+          0.0538,
+          0.0515,
+          0.0471,
+          0.0447
+        ],
+        "avg_train_depth_ce": [
+          4.7894,
+          2.4106,
+          2.3709,
+          2.3623,
+          2.3594,
+          2.3578,
+          2.3569,
+          2.3564,
+          2.3567
+        ]
+      },
+      "projfill": {
+        "steps": 2000,
+        "params": 7489024,
+        "train_tokens": 16384000,
+        "train_seed": 1,
+        "fill_kv": true,
+        "proj_fill": true,
+        "depth8_bpc": 2.7798,
+        "depth4_bpc": 2.7821,
+        "depth8_acc": 0.4554,
+        "depth4_acc": 0.4546,
+        "tf4_accept": 0.9669,
+        "tf_acceptance": [
+          {
+            "depth": 0,
+            "accept": 0.0573
+          },
+          {
+            "depth": 1,
+            "accept": 0.8399
+          },
+          {
+            "depth": 2,
+            "accept": 0.9239
+          },
+          {
+            "depth": 3,
+            "accept": 0.9528
+          },
+          {
+            "depth": 4,
+            "accept": 0.9669
+          },
+          {
+            "depth": 5,
+            "accept": 0.9835
+          },
+          {
+            "depth": 6,
+            "accept": 0.9881
+          },
+          {
+            "depth": 7,
+            "accept": 0.9946
+          }
+        ],
+        "depth_curve": [
+          {
+            "depth": 0,
+            "bpc": 6.65,
+            "acc": 0.0536
+          },
+          {
+            "depth": 1,
+            "bpc": 2.9012,
+            "acc": 0.4407
+          },
+          {
+            "depth": 2,
+            "bpc": 2.8044,
+            "acc": 0.4515
+          },
+          {
+            "depth": 3,
+            "bpc": 2.7861,
+            "acc": 0.4547
+          },
+          {
+            "depth": 4,
+            "bpc": 2.7821,
+            "acc": 0.4546
+          },
+          {
+            "depth": 5,
+            "bpc": 2.78,
+            "acc": 0.4551
+          },
+          {
+            "depth": 6,
+            "bpc": 2.7796,
+            "acc": 0.4553
+          },
+          {
+            "depth": 7,
+            "bpc": 2.7797,
+            "acc": 0.4553
+          },
+          {
+            "depth": 8,
+            "bpc": 2.7798,
+            "acc": 0.4554
+          }
+        ],
+        "avg_train_gate_mean": [
+          0.1393,
+          0.1468,
+          0.0874,
+          0.0726,
+          0.0578,
+          0.053,
+          0.0504,
+          0.0469
+        ],
+        "avg_train_depth_ce": [
+          4.8238,
+          2.3516,
+          2.3085,
+          2.2982,
+          2.2938,
+          2.292,
+          2.2907,
+          2.2902,
+          2.2905
+        ]
+      }
+    }
+  },
+  "reference_12k": {
+    "note": "既有 12k 档读数（seed 0，三个臂）——**与上面的快照刻度不可比**，仅作方向参照",
+    "seed0": {
+      "fill": {
+        "steps": 12000,
+        "params": 6962688,
+        "train_tokens": 98304000,
+        "train_seed": 0,
+        "fill_kv": true,
+        "proj_fill": false,
+        "depth8_bpc": 1.8582,
+        "depth4_bpc": 1.8628,
+        "depth8_acc": 0.6271,
+        "depth4_acc": 0.6266,
+        "tf4_accept": 0.9694,
+        "tf_acceptance": [
+          {
+            "depth": 0,
+            "accept": 0.057
+          },
+          {
+            "depth": 1,
+            "accept": 0.7187
+          },
+          {
+            "depth": 2,
+            "accept": 0.8597
+          },
+          {
+            "depth": 3,
+            "accept": 0.9348
+          },
+          {
+            "depth": 4,
+            "accept": 0.9694
+          },
+          {
+            "depth": 5,
+            "accept": 0.9871
+          },
+          {
+            "depth": 6,
+            "accept": 0.9938
+          },
+          {
+            "depth": 7,
+            "accept": 0.998
+          }
+        ],
+        "depth_curve": [
+          {
+            "depth": 0,
+            "bpc": 5.4191,
+            "acc": 0.0535
+          },
+          {
+            "depth": 1,
+            "bpc": 2.3819,
+            "acc": 0.54
+          },
+          {
+            "depth": 2,
+            "bpc": 1.9988,
+            "acc": 0.6036
+          },
+          {
+            "depth": 3,
+            "bpc": 1.8863,
+            "acc": 0.623
+          },
+          {
+            "depth": 4,
+            "bpc": 1.8628,
+            "acc": 0.6266
+          },
+          {
+            "depth": 5,
+            "bpc": 1.8593,
+            "acc": 0.627
+          },
+          {
+            "depth": 6,
+            "bpc": 1.8585,
+            "acc": 0.6272
+          },
+          {
+            "depth": 7,
+            "bpc": 1.8584,
+            "acc": 0.6271
+          },
+          {
+            "depth": 8,
+            "bpc": 1.8582,
+            "acc": 0.6271
+          }
+        ],
+        "avg_train_gate_mean": [
+          0.2013,
+          0.2292,
+          0.1496,
+          0.0706,
+          0.0408,
+          0.028,
+          0.0239,
+          0.0213
+        ],
+        "avg_train_depth_ce": [
+          4.0357,
+          1.8449,
+          1.6798,
+          1.6356,
+          1.6285,
+          1.6268,
+          1.6266,
+          1.6261,
+          1.6263
+        ]
+      },
+      "nofill": {
+        "steps": 12000,
+        "params": 6962688,
+        "train_tokens": 98304000,
+        "train_seed": 0,
+        "fill_kv": false,
+        "proj_fill": false,
+        "depth8_bpc": 1.9438,
+        "depth4_bpc": 1.9478,
+        "depth8_acc": 0.61,
+        "depth4_acc": 0.609,
+        "tf4_accept": 0.9798,
+        "tf_acceptance": [
+          {
+            "depth": 0,
+            "accept": 0.0569
+          },
+          {
+            "depth": 1,
+            "accept": 0.7336
+          },
+          {
+            "depth": 2,
+            "accept": 0.8726
+          },
+          {
+            "depth": 3,
+            "accept": 0.9409
+          },
+          {
+            "depth": 4,
+            "accept": 0.9798
+          },
+          {
+            "depth": 5,
+            "accept": 0.99
+          },
+          {
+            "depth": 6,
+            "accept": 0.9965
+          },
+          {
+            "depth": 7,
+            "accept": 0.9985
+          }
+        ],
+        "depth_curve": [
+          {
+            "depth": 0,
+            "bpc": 5.3054,
+            "acc": 0.0535
+          },
+          {
+            "depth": 1,
+            "bpc": 2.4307,
+            "acc": 0.5294
+          },
+          {
+            "depth": 2,
+            "bpc": 2.076,
+            "acc": 0.5902
+          },
+          {
+            "depth": 3,
+            "bpc": 1.9789,
+            "acc": 0.6047
+          },
+          {
+            "depth": 4,
+            "bpc": 1.9478,
+            "acc": 0.609
+          },
+          {
+            "depth": 5,
+            "bpc": 1.9447,
+            "acc": 0.6097
+          },
+          {
+            "depth": 6,
+            "bpc": 1.944,
+            "acc": 0.6099
+          },
+          {
+            "depth": 7,
+            "bpc": 1.9438,
+            "acc": 0.61
+          },
+          {
+            "depth": 8,
+            "bpc": 1.9438,
+            "acc": 0.61
+          }
+        ],
+        "avg_train_gate_mean": [
+          0.1865,
+          0.1997,
+          0.1215,
+          0.0624,
+          0.0291,
+          0.0241,
+          0.0206,
+          0.0188
+        ],
+        "avg_train_depth_ce": [
+          3.9446,
+          1.9741,
+          1.8397,
+          1.8077,
+          1.8,
+          1.799,
+          1.7988,
+          1.7984,
+          1.7983
+        ]
+      },
+      "projfill": {
+        "steps": 12000,
+        "params": 7489024,
+        "train_tokens": 98304000,
+        "train_seed": 0,
+        "fill_kv": true,
+        "proj_fill": true,
+        "depth8_bpc": 1.8356,
+        "depth4_bpc": 1.8398,
+        "depth8_acc": 0.6334,
+        "depth4_acc": 0.6326,
+        "tf4_accept": 0.9788,
+        "tf_acceptance": [
+          {
+            "depth": 0,
+            "accept": 0.0586
+          },
+          {
+            "depth": 1,
+            "accept": 0.7102
+          },
+          {
+            "depth": 2,
+            "accept": 0.8781
+          },
+          {
+            "depth": 3,
+            "accept": 0.9442
+          },
+          {
+            "depth": 4,
+            "accept": 0.9788
+          },
+          {
+            "depth": 5,
+            "accept": 0.9908
+          },
+          {
+            "depth": 6,
+            "accept": 0.9963
+          },
+          {
+            "depth": 7,
+            "accept": 0.9984
+          }
+        ],
+        "depth_curve": [
+          {
+            "depth": 0,
+            "bpc": 5.214,
+            "acc": 0.0535
+          },
+          {
+            "depth": 1,
+            "bpc": 2.3695,
+            "acc": 0.5407
+          },
+          {
+            "depth": 2,
+            "bpc": 1.9474,
+            "acc": 0.615
+          },
+          {
+            "depth": 3,
+            "bpc": 1.8579,
+            "acc": 0.6295
+          },
+          {
+            "depth": 4,
+            "bpc": 1.8398,
+            "acc": 0.6326
+          },
+          {
+            "depth": 5,
+            "bpc": 1.8362,
+            "acc": 0.6334
+          },
+          {
+            "depth": 6,
+            "bpc": 1.8357,
+            "acc": 0.6334
+          },
+          {
+            "depth": 7,
+            "bpc": 1.8357,
+            "acc": 0.6334
+          },
+          {
+            "depth": 8,
+            "bpc": 1.8356,
+            "acc": 0.6334
+          }
+        ],
+        "avg_train_gate_mean": [
+          0.192,
+          0.2213,
+          0.1442,
+          0.0591,
+          0.0303,
+          0.0233,
+          0.0208,
+          0.0192
+        ],
+        "avg_train_depth_ce": [
+          3.9421,
+          1.8375,
+          1.6521,
+          1.615,
+          1.609,
+          1.608,
+          1.6078,
+          1.6075,
+          1.6074
+        ]
+      }
+    }
+  },
+  "deltas": {
+    "seed0": {
+      "fill_minus_nofill_depth8": -0.0775,
+      "fill_minus_nofill_depth4": -0.0778,
+      "projfill_minus_fill_depth8": 0.0297,
+      "projfill_minus_fill_depth4": 0.0293
+    },
+    "seed1": {
+      "fill_minus_nofill_depth8": -0.0641,
+      "fill_minus_nofill_depth4": -0.0644,
+      "projfill_minus_fill_depth8": 0.0218,
+      "projfill_minus_fill_depth4": 0.0213
+    }
+  },
+  "reproducibility": {
+    "Delta(fill - nofill) depth8": {
+      "seed0": -0.0775,
+      "seed1": -0.0641,
+      "n_seeds": 2,
+      "status": "reproducible",
+      "sign_consistent": true,
+      "range": 0.0134,
+      "values": [
+        -0.0775,
+        -0.0641
+      ],
+      "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"
+    },
+    "Delta(fill - nofill) depth4": {
+      "seed0": -0.0778,
+      "seed1": -0.0644,
+      "n_seeds": 2,
+      "status": "reproducible",
+      "sign_consistent": true,
+      "range": 0.0134,
+      "values": [
+        -0.0778,
+        -0.0644
+      ],
+      "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"
+    },
+    "Delta(projfill - fill) depth8": {
+      "seed0": 0.0297,
+      "seed1": 0.0218,
+      "n_seeds": 2,
+      "status": "reproducible",
+      "sign_consistent": true,
+      "range": 0.0079,
+      "values": [
+        0.0297,
+        0.0218
+      ],
+      "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"
+    },
+    "Delta(projfill - fill) depth4": {
+      "seed0": 0.0293,
+      "seed1": 0.0213,
+      "n_seeds": 2,
+      "status": "reproducible",
+      "sign_consistent": true,
+      "range": 0.008,
+      "values": [
+        0.0293,
+        0.0213
+      ],
+      "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"
+    }
+  },
+  "activity": {
+    "fill-s0": {
+      "avg_train_gate_mean": [
+        0.1355,
+        0.1448,
+        0.0933,
+        0.0628,
+        0.0633,
+        0.0559,
+        0.0509,
+        0.0466
+      ],
+      "avg_train_depth_ce": [
+        4.8543,
+        2.3734,
+        2.3296,
+        2.3163,
+        2.3127,
+        2.3107,
+        2.3099,
+        2.3096,
+        2.3111
+      ],
+      "exit_mode": "uniform",
+      "fill_fraction": {
+        "per_layer": [
+          0.0,
+          0.1111,
+          0.2222,
+          0.3333,
+          0.4444,
+          0.5556,
+          0.6667,
+          0.7778
+        ],
+        "mean": 0.3889,
+        "provenance": "derived from exit_mode=uniform sampling law (not a logged field)"
+      }
+    },
+    "nofill-s0": {
+      "avg_train_gate_mean": [
+        0.1351,
+        0.1347,
+        0.0764,
+        0.0621,
+        0.0527,
+        0.0502,
+        0.0461,
+        0.0435
+      ],
+      "avg_train_depth_ce": [
+        4.8052,
+        2.437,
+        2.3992,
+        2.3908,
+        2.3871,
+        2.3853,
+        2.3847,
+        2.3847,
+        2.3856
+      ],
+      "exit_mode": "uniform",
+      "fill_fraction": {
+        "per_layer": [
+          0.0,
+          0.1111,
+          0.2222,
+          0.3333,
+          0.4444,
+          0.5556,
+          0.6667,
+          0.7778
+        ],
+        "mean": 0.3889,
+        "provenance": "derived from exit_mode=uniform sampling law (not a logged field)"
+      }
+    },
+    "projfill-s0": {
+      "avg_train_gate_mean": [
+        0.1348,
+        0.1477,
+        0.0909,
+        0.0582,
+        0.0574,
+        0.0537,
+        0.0494,
+        0.045
+      ],
+      "avg_train_depth_ce": [
+        4.8498,
+        2.3863,
+        2.3409,
+        2.3292,
+        2.3255,
+        2.3237,
+        2.3228,
+        2.3224,
+        2.3237
+      ],
+      "exit_mode": "uniform",
+      "fill_fraction": {
+        "per_layer": [
+          0.0,
+          0.1111,
+          0.2222,
+          0.3333,
+          0.4444,
+          0.5556,
+          0.6667,
+          0.7778
+        ],
+        "mean": 0.3889,
+        "provenance": "derived from exit_mode=uniform sampling law (not a logged field)"
+      }
+    },
+    "fill-s1": {
+      "avg_train_gate_mean": [
+        0.1394,
+        0.1516,
+        0.0884,
+        0.0791,
+        0.0588,
+        0.0562,
+        0.0517,
+        0.0484
+      ],
+      "avg_train_depth_ce": [
+        4.8392,
+        2.3439,
+        2.2966,
+        2.2866,
+        2.282,
+        2.2803,
+        2.279,
+        2.2786,
+        2.2791
+      ],
+      "exit_mode": "uniform",
+      "fill_fraction": {
+        "per_layer": [
+          0.0,
+          0.1111,
+          0.2222,
+          0.3333,
+          0.4444,
+          0.5556,
+          0.6667,
+          0.7778
+        ],
+        "mean": 0.3889,
+        "provenance": "derived from exit_mode=uniform sampling law (not a logged field)"
+      }
+    },
+    "nofill-s1": {
+      "avg_train_gate_mean": [
+        0.139,
+        0.1411,
+        0.0839,
+        0.0659,
+        0.0538,
+        0.0515,
+        0.0471,
+        0.0447
+      ],
+      "avg_train_depth_ce": [
+        4.7894,
+        2.4106,
+        2.3709,
+        2.3623,
+        2.3594,
+        2.3578,
+        2.3569,
+        2.3564,
+        2.3567
+      ],
+      "exit_mode": "uniform",
+      "fill_fraction": {
+        "per_layer": [
+          0.0,
+          0.1111,
+          0.2222,
+          0.3333,
+          0.4444,
+          0.5556,
+          0.6667,
+          0.7778
+        ],
+        "mean": 0.3889,
+        "provenance": "derived from exit_mode=uniform sampling law (not a logged field)"
+      }
+    },
+    "projfill-s1": {
+      "avg_train_gate_mean": [
+        0.1393,
+        0.1468,
+        0.0874,
+        0.0726,
+        0.0578,
+        0.053,
+        0.0504,
+        0.0469
+      ],
+      "avg_train_depth_ce": [
+        4.8238,
+        2.3516,
+        2.3085,
+        2.2982,
+        2.2938,
+        2.292,
+        2.2907,
+        2.2902,
+        2.2905
+      ],
+      "exit_mode": "uniform",
+      "fill_fraction": {
+        "per_layer": [
+          0.0,
+          0.1111,
+          0.2222,
+          0.3333,
+          0.4444,
+          0.5556,
+          0.6667,
+          0.7778
+        ],
+        "mean": 0.3889,
+        "provenance": "derived from exit_mode=uniform sampling law (not a logged field)"
+      }
+    }
+  },
+  "readability": {
+    "fill-s0": {
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.0559
+        },
+        {
+          "depth": 1,
+          "accept": 0.8307
+        },
+        {
+          "depth": 2,
+          "accept": 0.9204
+        },
+        {
+          "depth": 3,
+          "accept": 0.9544
+        },
+        {
+          "depth": 4,
+          "accept": 0.973
+        },
+        {
+          "depth": 5,
+          "accept": 0.9846
+        },
+        {
+          "depth": 6,
+          "accept": 0.9903
+        },
+        {
+          "depth": 7,
+          "accept": 0.9948
+        }
+      ],
+      "depth_curve_acc": [
+        {
+          "depth": 0,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "acc": 0.4331
+        },
+        {
+          "depth": 2,
+          "acc": 0.4462
+        },
+        {
+          "depth": 3,
+          "acc": 0.4493
+        },
+        {
+          "depth": 4,
+          "acc": 0.45
+        },
+        {
+          "depth": 5,
+          "acc": 0.4503
+        },
+        {
+          "depth": 6,
+          "acc": 0.4503
+        },
+        {
+          "depth": 7,
+          "acc": 0.4506
+        },
+        {
+          "depth": 8,
+          "acc": 0.4505
+        }
+      ]
+    },
+    "nofill-s0": {
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.0586
+        },
+        {
+          "depth": 1,
+          "accept": 0.8512
+        },
+        {
+          "depth": 2,
+          "accept": 0.9221
+        },
+        {
+          "depth": 3,
+          "accept": 0.9551
+        },
+        {
+          "depth": 4,
+          "accept": 0.9758
+        },
+        {
+          "depth": 5,
+          "accept": 0.9866
+        },
+        {
+          "depth": 6,
+          "accept": 0.9915
+        },
+        {
+          "depth": 7,
+          "accept": 0.9946
+        }
+      ],
+      "depth_curve_acc": [
+        {
+          "depth": 0,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "acc": 0.4205
+        },
+        {
+          "depth": 2,
+          "acc": 0.4312
+        },
+        {
+          "depth": 3,
+          "acc": 0.434
+        },
+        {
+          "depth": 4,
+          "acc": 0.4344
+        },
+        {
+          "depth": 5,
+          "acc": 0.4354
+        },
+        {
+          "depth": 6,
+          "acc": 0.4356
+        },
+        {
+          "depth": 7,
+          "acc": 0.4357
+        },
+        {
+          "depth": 8,
+          "acc": 0.4358
+        }
+      ]
+    },
+    "projfill-s0": {
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.0567
+        },
+        {
+          "depth": 1,
+          "accept": 0.827
+        },
+        {
+          "depth": 2,
+          "accept": 0.9267
+        },
+        {
+          "depth": 3,
+          "accept": 0.9586
+        },
+        {
+          "depth": 4,
+          "accept": 0.9739
+        },
+        {
+          "depth": 5,
+          "accept": 0.9827
+        },
+        {
+          "depth": 6,
+          "accept": 0.9893
+        },
+        {
+          "depth": 7,
+          "accept": 0.9949
+        }
+      ],
+      "depth_curve_acc": [
+        {
+          "depth": 0,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "acc": 0.4291
+        },
+        {
+          "depth": 2,
+          "acc": 0.4423
+        },
+        {
+          "depth": 3,
+          "acc": 0.4459
+        },
+        {
+          "depth": 4,
+          "acc": 0.4459
+        },
+        {
+          "depth": 5,
+          "acc": 0.4461
+        },
+        {
+          "depth": 6,
+          "acc": 0.4462
+        },
+        {
+          "depth": 7,
+          "acc": 0.4464
+        },
+        {
+          "depth": 8,
+          "acc": 0.4464
+        }
+      ]
+    },
+    "fill-s1": {
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.0575
+        },
+        {
+          "depth": 1,
+          "accept": 0.833
+        },
+        {
+          "depth": 2,
+          "accept": 0.9209
+        },
+        {
+          "depth": 3,
+          "accept": 0.9527
+        },
+        {
+          "depth": 4,
+          "accept": 0.9751
+        },
+        {
+          "depth": 5,
+          "accept": 0.9835
+        },
+        {
+          "depth": 6,
+          "accept": 0.9901
+        },
+        {
+          "depth": 7,
+          "accept": 0.9944
+        }
+      ],
+      "depth_curve_acc": [
+        {
+          "depth": 0,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "acc": 0.4425
+        },
+        {
+          "depth": 2,
+          "acc": 0.4552
+        },
+        {
+          "depth": 3,
+          "acc": 0.4581
+        },
+        {
+          "depth": 4,
+          "acc": 0.4582
+        },
+        {
+          "depth": 5,
+          "acc": 0.4591
+        },
+        {
+          "depth": 6,
+          "acc": 0.459
+        },
+        {
+          "depth": 7,
+          "acc": 0.4591
+        },
+        {
+          "depth": 8,
+          "acc": 0.4594
+        }
+      ]
+    },
+    "nofill-s1": {
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.058
+        },
+        {
+          "depth": 1,
+          "accept": 0.8518
+        },
+        {
+          "depth": 2,
+          "accept": 0.9257
+        },
+        {
+          "depth": 3,
+          "accept": 0.9613
+        },
+        {
+          "depth": 4,
+          "accept": 0.9776
+        },
+        {
+          "depth": 5,
+          "accept": 0.9865
+        },
+        {
+          "depth": 6,
+          "accept": 0.9919
+        },
+        {
+          "depth": 7,
+          "accept": 0.9951
+        }
+      ],
+      "depth_curve_acc": [
+        {
+          "depth": 0,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "acc": 0.4291
+        },
+        {
+          "depth": 2,
+          "acc": 0.4413
+        },
+        {
+          "depth": 3,
+          "acc": 0.4451
+        },
+        {
+          "depth": 4,
+          "acc": 0.4455
+        },
+        {
+          "depth": 5,
+          "acc": 0.4458
+        },
+        {
+          "depth": 6,
+          "acc": 0.4458
+        },
+        {
+          "depth": 7,
+          "acc": 0.4457
+        },
+        {
+          "depth": 8,
+          "acc": 0.4457
+        }
+      ]
+    },
+    "projfill-s1": {
+      "tf_acceptance": [
+        {
+          "depth": 0,
+          "accept": 0.0573
+        },
+        {
+          "depth": 1,
+          "accept": 0.8399
+        },
+        {
+          "depth": 2,
+          "accept": 0.9239
+        },
+        {
+          "depth": 3,
+          "accept": 0.9528
+        },
+        {
+          "depth": 4,
+          "accept": 0.9669
+        },
+        {
+          "depth": 5,
+          "accept": 0.9835
+        },
+        {
+          "depth": 6,
+          "accept": 0.9881
+        },
+        {
+          "depth": 7,
+          "accept": 0.9946
+        }
+      ],
+      "depth_curve_acc": [
+        {
+          "depth": 0,
+          "acc": 0.0536
+        },
+        {
+          "depth": 1,
+          "acc": 0.4407
+        },
+        {
+          "depth": 2,
+          "acc": 0.4515
+        },
+        {
+          "depth": 3,
+          "acc": 0.4547
+        },
+        {
+          "depth": 4,
+          "acc": 0.4546
+        },
+        {
+          "depth": 5,
+          "acc": 0.4551
+        },
+        {
+          "depth": 6,
+          "acc": 0.4553
+        },
+        {
+          "depth": 7,
+          "acc": 0.4553
+        },
+        {
+          "depth": 8,
+          "acc": 0.4554
+        }
+      ]
+    }
+  },
+  "rescore": {
+    "declaration": "同一 checkpoint ⇒ 参数逐位相同，容量因素被剥离",
+    "ci_unit_note": "rescore 峰值/量属率类口径 ⇒ 配对 bootstrap 为主判，不跨量纲借用 0.014 bpc 带",
+    "checkpoints": {
+      "snap2k-fill-s0": {
+        "kind": "snap",
+        "scale_steps": 2000,
+        "seed": 0,
+        "arm_class": "fill",
+        "depths": [
+          0,
+          4,
+          8
+        ],
+        "commits": [
+          "soft",
+          "hard",
+          "latent"
+        ],
+        "stored_match": true,
+        "rescore_bpc": {
+          "0": {
+            "soft": 9.1921,
+            "hard": 5.3596,
+            "latent": 0.9842
+          },
+          "4": {
+            "soft": 2.5948,
+            "hard": 1.3552,
+            "latent": 7.5405
+          },
+          "8": {
+            "soft": 3.0834,
+            "hard": 1.5148,
+            "latent": 7.5405
+          }
+        },
+        "delta_soft_minus_hard": {
+          "0": 3.8325,
+          "4": 1.2396,
+          "8": 1.5686
+        },
+        "delta_latent_minus_hard": {
+          "0": -4.3754,
+          "4": 6.1853,
+          "8": 6.0257
+        },
+        "legal": {
+          "0": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "4": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "8": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          }
+        },
+        "distinct2": {
+          "0": {
+            "soft": 0.0157,
+            "hard": 0.0079,
+            "latent": 0.0236
+          },
+          "4": {
+            "soft": 0.126,
+            "hard": 0.4016,
+            "latent": 0.0236
+          },
+          "8": {
+            "soft": 0.1575,
+            "hard": 0.4646,
+            "latent": 0.0236
+          }
+        },
+        "rescore_peak": {
+          "soft": 9.1921,
+          "hard": 5.3596,
+          "latent": 7.5405
+        },
+        "delta_peak_soft_minus_hard": 3.8325,
+        "delta_peak_latent_minus_hard": 2.1809
+      },
+      "snap2k-nofill-s0": {
+        "kind": "snap",
+        "scale_steps": 2000,
+        "seed": 0,
+        "arm_class": "nofill",
+        "depths": [
+          0,
+          4,
+          8
+        ],
+        "commits": [
+          "soft",
+          "hard",
+          "latent"
+        ],
+        "stored_match": true,
+        "rescore_bpc": {
+          "0": {
+            "soft": 10.9142,
+            "hard": 5.0234,
+            "latent": 1.131
+          },
+          "4": {
+            "soft": 6.3023,
+            "hard": 1.531,
+            "latent": 6.4088
+          },
+          "8": {
+            "soft": 6.2171,
+            "hard": 1.55,
+            "latent": 6.4055
+          }
+        },
+        "delta_soft_minus_hard": {
+          "0": 5.8908,
+          "4": 4.7713,
+          "8": 4.6671
+        },
+        "delta_latent_minus_hard": {
+          "0": -3.8924,
+          "4": 4.8778,
+          "8": 4.8555
+        },
+        "legal": {
+          "0": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "4": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "8": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          }
+        },
+        "distinct2": {
+          "0": {
+            "soft": 0.0157,
+            "hard": 0.0079,
+            "latent": 0.0236
+          },
+          "4": {
+            "soft": 0.0945,
+            "hard": 0.2283,
+            "latent": 0.0236
+          },
+          "8": {
+            "soft": 0.0787,
+            "hard": 0.2362,
+            "latent": 0.0236
+          }
+        },
+        "rescore_peak": {
+          "soft": 10.9142,
+          "hard": 5.0234,
+          "latent": 6.4088
+        },
+        "delta_peak_soft_minus_hard": 5.8908,
+        "delta_peak_latent_minus_hard": 1.3854
+      },
+      "snap2k-fill-s1": {
+        "kind": "snap",
+        "scale_steps": 2000,
+        "seed": 1,
+        "arm_class": "fill",
+        "depths": [
+          0,
+          4,
+          8
+        ],
+        "commits": [
+          "soft",
+          "hard",
+          "latent"
+        ],
+        "stored_match": true,
+        "rescore_bpc": {
+          "0": {
+            "soft": 10.2286,
+            "hard": 4.0148,
+            "latent": 0.9267
+          },
+          "4": {
+            "soft": 5.1592,
+            "hard": 1.2598,
+            "latent": 7.9799
+          },
+          "8": {
+            "soft": 3.6313,
+            "hard": 1.2983,
+            "latent": 7.9519
+          }
+        },
+        "delta_soft_minus_hard": {
+          "0": 6.2138,
+          "4": 3.8994,
+          "8": 2.333
+        },
+        "delta_latent_minus_hard": {
+          "0": -3.0881,
+          "4": 6.7201,
+          "8": 6.6536
+        },
+        "legal": {
+          "0": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "4": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "8": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          }
+        },
+        "distinct2": {
+          "0": {
+            "soft": 0.0157,
+            "hard": 0.0079,
+            "latent": 0.0236
+          },
+          "4": {
+            "soft": 0.1969,
+            "hard": 0.2283,
+            "latent": 0.0394
+          },
+          "8": {
+            "soft": 0.1969,
+            "hard": 0.2205,
+            "latent": 0.0394
+          }
+        },
+        "rescore_peak": {
+          "soft": 10.2286,
+          "hard": 4.0148,
+          "latent": 7.9799
+        },
+        "delta_peak_soft_minus_hard": 6.2138,
+        "delta_peak_latent_minus_hard": 3.9651
+      },
+      "snap2k-nofill-s1": {
+        "kind": "snap",
+        "scale_steps": 2000,
+        "seed": 1,
+        "arm_class": "nofill",
+        "depths": [
+          0,
+          4,
+          8
+        ],
+        "commits": [
+          "soft",
+          "hard",
+          "latent"
+        ],
+        "stored_match": true,
+        "rescore_bpc": {
+          "0": {
+            "soft": 10.2183,
+            "hard": 3.6558,
+            "latent": 0.7937
+          },
+          "4": {
+            "soft": 4.7054,
+            "hard": 1.7514,
+            "latent": 6.1753
+          },
+          "8": {
+            "soft": 4.6921,
+            "hard": 1.5764,
+            "latent": 6.1635
+          }
+        },
+        "delta_soft_minus_hard": {
+          "0": 6.5625,
+          "4": 2.954,
+          "8": 3.1157
+        },
+        "delta_latent_minus_hard": {
+          "0": -2.8621,
+          "4": 4.4239,
+          "8": 4.5871
+        },
+        "legal": {
+          "0": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "4": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "8": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          }
+        },
+        "distinct2": {
+          "0": {
+            "soft": 0.0157,
+            "hard": 0.0079,
+            "latent": 0.0236
+          },
+          "4": {
+            "soft": 0.2283,
+            "hard": 0.378,
+            "latent": 0.0472
+          },
+          "8": {
+            "soft": 0.252,
+            "hard": 0.3071,
+            "latent": 0.0472
+          }
+        },
+        "rescore_peak": {
+          "soft": 10.2183,
+          "hard": 3.6558,
+          "latent": 6.1753
+        },
+        "delta_peak_soft_minus_hard": 6.5625,
+        "delta_peak_latent_minus_hard": 2.5195
+      },
+      "snap2k-projfill-s0": {
+        "kind": "snap",
+        "scale_steps": 2000,
+        "seed": 0,
+        "arm_class": "projfill",
+        "depths": [
+          0,
+          4,
+          8
+        ],
+        "commits": [
+          "soft",
+          "hard",
+          "latent"
+        ],
+        "stored_match": true,
+        "rescore_bpc": {
+          "0": {
+            "soft": 10.9,
+            "hard": 4.6261,
+            "latent": 1.2222
+          },
+          "4": {
+            "soft": 2.5724,
+            "hard": 1.7586,
+            "latent": 8.0852
+          },
+          "8": {
+            "soft": 2.5578,
+            "hard": 1.2855,
+            "latent": 8.0852
+          }
+        },
+        "delta_soft_minus_hard": {
+          "0": 6.2739,
+          "4": 0.8138,
+          "8": 1.2723
+        },
+        "delta_latent_minus_hard": {
+          "0": -3.4039,
+          "4": 6.3266,
+          "8": 6.7997
+        },
+        "legal": {
+          "0": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "4": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "8": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          }
+        },
+        "distinct2": {
+          "0": {
+            "soft": 0.0157,
+            "hard": 0.0079,
+            "latent": 0.0236
+          },
+          "4": {
+            "soft": 0.1181,
+            "hard": 0.3071,
+            "latent": 0.0236
+          },
+          "8": {
+            "soft": 0.126,
+            "hard": 0.1969,
+            "latent": 0.0236
+          }
+        },
+        "rescore_peak": {
+          "soft": 10.9,
+          "hard": 4.6261,
+          "latent": 8.0852
+        },
+        "delta_peak_soft_minus_hard": 6.2739,
+        "delta_peak_latent_minus_hard": 3.4591
+      },
+      "snap2k-projfill-s1": {
+        "kind": "snap",
+        "scale_steps": 2000,
+        "seed": 1,
+        "arm_class": "projfill",
+        "depths": [
+          0,
+          4,
+          8
+        ],
+        "commits": [
+          "soft",
+          "hard",
+          "latent"
+        ],
+        "stored_match": true,
+        "rescore_bpc": {
+          "0": {
+            "soft": 8.712,
+            "hard": 3.9788,
+            "latent": 0.9697
+          },
+          "4": {
+            "soft": 2.439,
+            "hard": 1.6101,
+            "latent": 7.6146
+          },
+          "8": {
+            "soft": 2.5201,
+            "hard": 1.2555,
+            "latent": 7.6197
+          }
+        },
+        "delta_soft_minus_hard": {
+          "0": 4.7332,
+          "4": 0.8289,
+          "8": 1.2646
+        },
+        "delta_latent_minus_hard": {
+          "0": -3.0091,
+          "4": 6.0045,
+          "8": 6.3642
+        },
+        "legal": {
+          "0": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "4": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "8": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          }
+        },
+        "distinct2": {
+          "0": {
+            "soft": 0.0157,
+            "hard": 0.0079,
+            "latent": 0.0236
+          },
+          "4": {
+            "soft": 0.1024,
+            "hard": 0.1102,
+            "latent": 0.0551
+          },
+          "8": {
+            "soft": 0.1024,
+            "hard": 0.1181,
+            "latent": 0.0551
+          }
+        },
+        "rescore_peak": {
+          "soft": 8.712,
+          "hard": 3.9788,
+          "latent": 7.6197
+        },
+        "delta_peak_soft_minus_hard": 4.7332,
+        "delta_peak_latent_minus_hard": 3.6409
+      },
+      "23c-H2-w0-12k": {
+        "kind": "ref12k",
+        "scale_steps": 12000,
+        "seed": 0,
+        "arm_class": "fill",
+        "depths": [
+          0,
+          4,
+          8
+        ],
+        "commits": [
+          "soft",
+          "hard",
+          "latent"
+        ],
+        "stored_match": true,
+        "rescore_bpc": {
+          "0": {
+            "soft": 25.4544,
+            "hard": 2.5519,
+            "latent": 0.4068
+          },
+          "4": {
+            "soft": 6.0824,
+            "hard": 0.4645,
+            "latent": 0.9081
+          },
+          "8": {
+            "soft": 6.1014,
+            "hard": 0.4645,
+            "latent": 3.1674
+          }
+        },
+        "delta_soft_minus_hard": {
+          "0": 22.9025,
+          "4": 5.6179,
+          "8": 5.6369
+        },
+        "delta_latent_minus_hard": {
+          "0": -2.1451,
+          "4": 0.4436,
+          "8": 2.7029
+        },
+        "legal": {
+          "0": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "4": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "8": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          }
+        },
+        "distinct2": {
+          "0": {
+            "soft": 0.0472,
+            "hard": 0.0079,
+            "latent": 0.0236
+          },
+          "4": {
+            "soft": 0.2598,
+            "hard": 0.2047,
+            "latent": 0.063
+          },
+          "8": {
+            "soft": 0.2835,
+            "hard": 0.2047,
+            "latent": 0.0709
+          }
+        },
+        "rescore_peak": {
+          "soft": 25.4544,
+          "hard": 2.5519,
+          "latent": 3.1674
+        },
+        "delta_peak_soft_minus_hard": 22.9025,
+        "delta_peak_latent_minus_hard": 0.6155
+      },
+      "23e-nofill-12k": {
+        "kind": "ref12k",
+        "scale_steps": 12000,
+        "seed": 0,
+        "arm_class": "nofill",
+        "depths": [
+          0,
+          4,
+          8
+        ],
+        "commits": [
+          "soft",
+          "hard",
+          "latent"
+        ],
+        "stored_match": true,
+        "rescore_bpc": {
+          "0": {
+            "soft": 16.6289,
+            "hard": 2.2125,
+            "latent": 0.548
+          },
+          "4": {
+            "soft": 6.4328,
+            "hard": 0.4614,
+            "latent": 3.9487
+          },
+          "8": {
+            "soft": 6.1713,
+            "hard": 0.4614,
+            "latent": 4.8612
+          }
+        },
+        "delta_soft_minus_hard": {
+          "0": 14.4164,
+          "4": 5.9714,
+          "8": 5.7099
+        },
+        "delta_latent_minus_hard": {
+          "0": -1.6645,
+          "4": 3.4873,
+          "8": 4.3998
+        },
+        "legal": {
+          "0": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "4": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "8": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          }
+        },
+        "distinct2": {
+          "0": {
+            "soft": 0.0236,
+            "hard": 0.0079,
+            "latent": 0.0236
+          },
+          "4": {
+            "soft": 0.2835,
+            "hard": 0.1339,
+            "latent": 0.0709
+          },
+          "8": {
+            "soft": 0.2598,
+            "hard": 0.1339,
+            "latent": 0.0709
+          }
+        },
+        "rescore_peak": {
+          "soft": 16.6289,
+          "hard": 2.2125,
+          "latent": 4.8612
+        },
+        "delta_peak_soft_minus_hard": 14.4164,
+        "delta_peak_latent_minus_hard": 2.6487
+      },
+      "23e-projfill-12k": {
+        "kind": "ref12k",
+        "scale_steps": 12000,
+        "seed": 0,
+        "arm_class": "projfill",
+        "depths": [
+          0,
+          4,
+          8
+        ],
+        "commits": [
+          "soft",
+          "hard",
+          "latent"
+        ],
+        "stored_match": true,
+        "rescore_bpc": {
+          "0": {
+            "soft": 18.3808,
+            "hard": 3.8551,
+            "latent": 0.3612
+          },
+          "4": {
+            "soft": 0.9899,
+            "hard": 0.5879,
+            "latent": 5.5188
+          },
+          "8": {
+            "soft": 1.396,
+            "hard": 0.6152,
+            "latent": 5.4739
+          }
+        },
+        "delta_soft_minus_hard": {
+          "0": 14.5257,
+          "4": 0.402,
+          "8": 0.7808
+        },
+        "delta_latent_minus_hard": {
+          "0": -3.4939,
+          "4": 4.9309,
+          "8": 4.8587
+        },
+        "legal": {
+          "0": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "4": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          },
+          "8": {
+            "soft": true,
+            "hard": true,
+            "latent": true
+          }
+        },
+        "distinct2": {
+          "0": {
+            "soft": 0.0472,
+            "hard": 0.0079,
+            "latent": 0.0236
+          },
+          "4": {
+            "soft": 0.1181,
+            "hard": 0.1811,
+            "latent": 0.0472
+          },
+          "8": {
+            "soft": 0.1181,
+            "hard": 0.3701,
+            "latent": 0.0551
+          }
+        },
+        "rescore_peak": {
+          "soft": 18.3808,
+          "hard": 3.8551,
+          "latent": 5.5188
+        },
+        "delta_peak_soft_minus_hard": 14.5257,
+        "delta_peak_latent_minus_hard": 1.6637
+      }
+    },
+    "missing_checkpoints": []
+  },
+  "rescore_ci": {
+    "fill": {
+      "checkpoints": [
+        "snap2k-fill-s0",
+        "snap2k-fill-s1"
+      ],
+      "delta_peak_soft_minus_hard": [
+        3.8325,
+        6.2138
+      ],
+      "paired_bootstrap_95ci": [
+        3.8325,
+        6.2138
+      ],
+      "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）",
+      "ci_excludes_0": true,
+      "sign_consistent": true,
+      "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）",
+      "n_checkpoints": 2
+    },
+    "nofill": {
+      "checkpoints": [
+        "snap2k-nofill-s0",
+        "snap2k-nofill-s1"
+      ],
+      "delta_peak_soft_minus_hard": [
+        5.8908,
+        6.5625
+      ],
+      "paired_bootstrap_95ci": [
+        5.8908,
+        6.5625
+      ],
+      "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）",
+      "ci_excludes_0": true,
+      "sign_consistent": true,
+      "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）",
+      "n_checkpoints": 2
+    },
+    "projfill": {
+      "checkpoints": [
+        "snap2k-projfill-s0",
+        "snap2k-projfill-s1"
+      ],
+      "delta_peak_soft_minus_hard": [
+        6.2739,
+        4.7332
+      ],
+      "paired_bootstrap_95ci": [
+        4.7332,
+        6.2739
+      ],
+      "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）",
+      "ci_excludes_0": true,
+      "sign_consistent": true,
+      "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）",
+      "n_checkpoints": 2
+    }
+  },
+  "config_parity": {
+    "config-parity-snap2k-fill-s0-vs-12k.json": {
+      "seed0_dir": ".scratch/23-depth-ar/evidence/23c-H2-w0-12k",
+      "seed1_dir": "axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s0",
+      "note": "跨刻度参照：预期差异仅 train.steps（12k 档 vs 2k 快照）；其余字段须逐位相同或缺席字段取引擎缺省",
+      "fields_compared": [
+        "attn_linear",
+        "attn_sparse_k",
+        "aux_anneal_to",
+        "aux_weight",
+        "carry_chunk",
+        "carry_state_dim",
+        "carry_write",
+        "config.attn_linear",
+        "config.attn_sparse_k",
+        "config.aux_mode",
+        "config.carry_chunk",
+        "config.carry_decay",
+        "config.carry_gate",
+        "config.carry_per_layer",
+        "config.carry_rule",
+        "config.carry_state_dim",
+        "config.d_model",
+        "config.dense",
+        "config.dropout",
+        "config.fill_kv",
+        "config.gate_bias_init",
+        "config.linear_chunk",
+        "config.mlp_hidden_sched",
+        "config.mlp_mult",
+        "config.mod_ratio",
+        "config.n_heads",
+        "config.n_kv_heads",
+        "config.n_layers",
+        "config.norm_cap",
+        "config.proj_fill",
+        "config.readout_dims",
+        "config.readout_gated",
+        "config.readout_linear_resid",
+        "config.readout_perdepth",
+        "config.readout_wide_shared",
+        "config.recon_window",
+        "config.seq_len",
+        "config.topology",
+        "config.train_anchors",
+        "config.train_window",
+        "dense_aux",
+        "exit_mode",
+        "fill_kv",
+        "final_weight",
+        "linear_chunk",
+        "mod_ratio",
+        "n_kv_heads",
+        "proj_fill",
+        "readout_dims",
+        "readout_gated",
+        "readout_linear_resid",
+        "readout_perdepth",
+        "readout_wide_shared",
+        "recon_lambda",
+        "recon_window",
+        "shallow_stopgrad",
+        "synth",
+        "topology",
+        "train.batch_size",
+        "train.lr",
+        "train.steps",
+        "train_anchors",
+        "train_window"
+      ],
+      "n_fields": 63,
+      "diffs": [
+        {
+          "field": "train.steps",
+          "seed0": 12000,
+          "seed1": 2000
+        }
+      ],
+      "allowed_diffs": [
+        {
+          "field": "train.steps",
+          "seed0": 12000,
+          "seed1": 2000
+        }
+      ],
+      "allowed_fields": [
+        "train.steps"
+      ],
+      "unexplained_diffs": [],
+      "explained_absent_in_seed0": [
+        {
+          "field": "attn_linear",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "attn_sparse_k",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_state_dim",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_write",
+          "value": "none",
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.attn_linear",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.attn_sparse_k",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.aux_mode",
+          "value": "renorm",
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_decay",
+          "value": 1.0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_gate",
+          "value": true,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_per_layer",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_rule",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_state_dim",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.fill_kv",
+          "value": true,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.linear_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.mlp_hidden_sched",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.mod_ratio",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.n_kv_heads",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.proj_fill",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_dims",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_gated",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_linear_resid",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_perdepth",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_wide_shared",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.recon_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.topology",
+          "value": "sequential",
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.train_anchors",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.train_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "fill_kv",
+          "value": true,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "final_weight",
+          "value": 1.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "linear_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "mod_ratio",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "n_kv_heads",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "proj_fill",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_dims",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_gated",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_linear_resid",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_perdepth",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_wide_shared",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "recon_lambda",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "recon_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "synth",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "topology",
+          "value": "sequential",
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "train_anchors",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "train_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        }
+      ],
+      "passed": true,
+      "seed0_train_seed": 0,
+      "seed1_train_seed": 0,
+      "params_seed0": 6962688,
+      "params_seed1": 6962688
+    },
+    "config-parity-snap2k-fill-s0-vs-s1.json": {
+      "seed0_dir": "/home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s0",
+      "seed1_dir": "/home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s1",
+      "note": "L0 主门：同刻度（2k 步）种子对，唯一预期差异 = train.seed",
+      "fields_compared": [
+        "attn_linear",
+        "attn_sparse_k",
+        "aux_anneal_to",
+        "aux_weight",
+        "carry_chunk",
+        "carry_state_dim",
+        "carry_write",
+        "config.attn_linear",
+        "config.attn_sparse_k",
+        "config.aux_mode",
+        "config.carry_chunk",
+        "config.carry_decay",
+        "config.carry_gate",
+        "config.carry_per_layer",
+        "config.carry_rule",
+        "config.carry_state_dim",
+        "config.d_model",
+        "config.dense",
+        "config.dropout",
+        "config.fill_kv",
+        "config.gate_bias_init",
+        "config.linear_chunk",
+        "config.mlp_hidden_sched",
+        "config.mlp_mult",
+        "config.mod_ratio",
+        "config.n_heads",
+        "config.n_kv_heads",
+        "config.n_layers",
+        "config.norm_cap",
+        "config.proj_fill",
+        "config.readout_dims",
+        "config.readout_gated",
+        "config.readout_linear_resid",
+        "config.readout_perdepth",
+        "config.readout_wide_shared",
+        "config.recon_window",
+        "config.seq_len",
+        "config.topology",
+        "config.train_anchors",
+        "config.train_window",
+        "dense_aux",
+        "exit_mode",
+        "fill_kv",
+        "final_weight",
+        "linear_chunk",
+        "mod_ratio",
+        "n_kv_heads",
+        "proj_fill",
+        "readout_dims",
+        "readout_gated",
+        "readout_linear_resid",
+        "readout_perdepth",
+        "readout_wide_shared",
+        "recon_lambda",
+        "recon_window",
+        "shallow_stopgrad",
+        "synth",
+        "topology",
+        "train.batch_size",
+        "train.lr",
+        "train.steps",
+        "train_anchors",
+        "train_window"
+      ],
+      "n_fields": 63,
+      "diffs": [],
+      "allowed_diffs": [],
+      "allowed_fields": [],
+      "unexplained_diffs": [],
+      "explained_absent_in_seed0": [],
+      "passed": true,
+      "seed0_train_seed": 0,
+      "seed1_train_seed": 1,
+      "params_seed0": 6962688,
+      "params_seed1": 6962688
+    },
+    "config-parity-snap2k-fill-s1-vs-12k.json": {
+      "seed0_dir": ".scratch/23-depth-ar/evidence/23c-H2-w0-12k",
+      "seed1_dir": "axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s1",
+      "note": "跨刻度参照：预期差异仅 train.steps（12k 档 vs 2k 快照）；其余字段须逐位相同或缺席字段取引擎缺省",
+      "fields_compared": [
+        "attn_linear",
+        "attn_sparse_k",
+        "aux_anneal_to",
+        "aux_weight",
+        "carry_chunk",
+        "carry_state_dim",
+        "carry_write",
+        "config.attn_linear",
+        "config.attn_sparse_k",
+        "config.aux_mode",
+        "config.carry_chunk",
+        "config.carry_decay",
+        "config.carry_gate",
+        "config.carry_per_layer",
+        "config.carry_rule",
+        "config.carry_state_dim",
+        "config.d_model",
+        "config.dense",
+        "config.dropout",
+        "config.fill_kv",
+        "config.gate_bias_init",
+        "config.linear_chunk",
+        "config.mlp_hidden_sched",
+        "config.mlp_mult",
+        "config.mod_ratio",
+        "config.n_heads",
+        "config.n_kv_heads",
+        "config.n_layers",
+        "config.norm_cap",
+        "config.proj_fill",
+        "config.readout_dims",
+        "config.readout_gated",
+        "config.readout_linear_resid",
+        "config.readout_perdepth",
+        "config.readout_wide_shared",
+        "config.recon_window",
+        "config.seq_len",
+        "config.topology",
+        "config.train_anchors",
+        "config.train_window",
+        "dense_aux",
+        "exit_mode",
+        "fill_kv",
+        "final_weight",
+        "linear_chunk",
+        "mod_ratio",
+        "n_kv_heads",
+        "proj_fill",
+        "readout_dims",
+        "readout_gated",
+        "readout_linear_resid",
+        "readout_perdepth",
+        "readout_wide_shared",
+        "recon_lambda",
+        "recon_window",
+        "shallow_stopgrad",
+        "synth",
+        "topology",
+        "train.batch_size",
+        "train.lr",
+        "train.steps",
+        "train_anchors",
+        "train_window"
+      ],
+      "n_fields": 63,
+      "diffs": [
+        {
+          "field": "train.steps",
+          "seed0": 12000,
+          "seed1": 2000
+        }
+      ],
+      "allowed_diffs": [
+        {
+          "field": "train.steps",
+          "seed0": 12000,
+          "seed1": 2000
+        }
+      ],
+      "allowed_fields": [
+        "train.steps"
+      ],
+      "unexplained_diffs": [],
+      "explained_absent_in_seed0": [
+        {
+          "field": "attn_linear",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "attn_sparse_k",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_state_dim",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_write",
+          "value": "none",
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.attn_linear",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.attn_sparse_k",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.aux_mode",
+          "value": "renorm",
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_decay",
+          "value": 1.0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_gate",
+          "value": true,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_per_layer",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_rule",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_state_dim",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.fill_kv",
+          "value": true,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.linear_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.mlp_hidden_sched",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.mod_ratio",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.n_kv_heads",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.proj_fill",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_dims",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_gated",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_linear_resid",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_perdepth",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_wide_shared",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.recon_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.topology",
+          "value": "sequential",
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.train_anchors",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.train_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "fill_kv",
+          "value": true,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "final_weight",
+          "value": 1.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "linear_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "mod_ratio",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "n_kv_heads",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "proj_fill",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_dims",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_gated",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_linear_resid",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_perdepth",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_wide_shared",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "recon_lambda",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "recon_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "synth",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "topology",
+          "value": "sequential",
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "train_anchors",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "train_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        }
+      ],
+      "passed": true,
+      "seed0_train_seed": 0,
+      "seed1_train_seed": 1,
+      "params_seed0": 6962688,
+      "params_seed1": 6962688
+    },
+    "config-parity-snap2k-nofill-s0-vs-12k.json": {
+      "seed0_dir": ".scratch/23-depth-ar/evidence/23e-nofill-12k",
+      "seed1_dir": "axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s0",
+      "note": "跨刻度参照：预期差异仅 train.steps（12k 档 vs 2k 快照）；其余字段须逐位相同或缺席字段取引擎缺省",
+      "fields_compared": [
+        "attn_linear",
+        "attn_sparse_k",
+        "aux_anneal_to",
+        "aux_weight",
+        "carry_chunk",
+        "carry_state_dim",
+        "carry_write",
+        "config.attn_linear",
+        "config.attn_sparse_k",
+        "config.aux_mode",
+        "config.carry_chunk",
+        "config.carry_decay",
+        "config.carry_gate",
+        "config.carry_per_layer",
+        "config.carry_rule",
+        "config.carry_state_dim",
+        "config.d_model",
+        "config.dense",
+        "config.dropout",
+        "config.fill_kv",
+        "config.gate_bias_init",
+        "config.linear_chunk",
+        "config.mlp_hidden_sched",
+        "config.mlp_mult",
+        "config.mod_ratio",
+        "config.n_heads",
+        "config.n_kv_heads",
+        "config.n_layers",
+        "config.norm_cap",
+        "config.proj_fill",
+        "config.readout_dims",
+        "config.readout_gated",
+        "config.readout_linear_resid",
+        "config.readout_perdepth",
+        "config.readout_wide_shared",
+        "config.recon_window",
+        "config.seq_len",
+        "config.topology",
+        "config.train_anchors",
+        "config.train_window",
+        "dense_aux",
+        "exit_mode",
+        "fill_kv",
+        "final_weight",
+        "linear_chunk",
+        "mod_ratio",
+        "n_kv_heads",
+        "proj_fill",
+        "readout_dims",
+        "readout_gated",
+        "readout_linear_resid",
+        "readout_perdepth",
+        "readout_wide_shared",
+        "recon_lambda",
+        "recon_window",
+        "shallow_stopgrad",
+        "synth",
+        "topology",
+        "train.batch_size",
+        "train.lr",
+        "train.steps",
+        "train_anchors",
+        "train_window"
+      ],
+      "n_fields": 63,
+      "diffs": [
+        {
+          "field": "train.steps",
+          "seed0": 12000,
+          "seed1": 2000
+        }
+      ],
+      "allowed_diffs": [
+        {
+          "field": "train.steps",
+          "seed0": 12000,
+          "seed1": 2000
+        }
+      ],
+      "allowed_fields": [
+        "train.steps"
+      ],
+      "unexplained_diffs": [],
+      "explained_absent_in_seed0": [
+        {
+          "field": "attn_linear",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "attn_sparse_k",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_state_dim",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_write",
+          "value": "none",
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.attn_linear",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.attn_sparse_k",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.aux_mode",
+          "value": "renorm",
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_decay",
+          "value": 1.0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_gate",
+          "value": true,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_per_layer",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_rule",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_state_dim",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.linear_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.mlp_hidden_sched",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.mod_ratio",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.n_kv_heads",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_dims",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_gated",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_linear_resid",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_perdepth",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_wide_shared",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.recon_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.topology",
+          "value": "sequential",
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.train_anchors",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.train_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "final_weight",
+          "value": 1.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "linear_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "mod_ratio",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "n_kv_heads",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_dims",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_gated",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_linear_resid",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_perdepth",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_wide_shared",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "recon_lambda",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "recon_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "synth",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "topology",
+          "value": "sequential",
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "train_anchors",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "train_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        }
+      ],
+      "passed": true,
+      "seed0_train_seed": 0,
+      "seed1_train_seed": 0,
+      "params_seed0": 6962688,
+      "params_seed1": 6962688
+    },
+    "config-parity-snap2k-nofill-s0-vs-s1.json": {
+      "seed0_dir": "/home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s0",
+      "seed1_dir": "/home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s1",
+      "note": "L0 主门：同刻度（2k 步）种子对，唯一预期差异 = train.seed",
+      "fields_compared": [
+        "attn_linear",
+        "attn_sparse_k",
+        "aux_anneal_to",
+        "aux_weight",
+        "carry_chunk",
+        "carry_state_dim",
+        "carry_write",
+        "config.attn_linear",
+        "config.attn_sparse_k",
+        "config.aux_mode",
+        "config.carry_chunk",
+        "config.carry_decay",
+        "config.carry_gate",
+        "config.carry_per_layer",
+        "config.carry_rule",
+        "config.carry_state_dim",
+        "config.d_model",
+        "config.dense",
+        "config.dropout",
+        "config.fill_kv",
+        "config.gate_bias_init",
+        "config.linear_chunk",
+        "config.mlp_hidden_sched",
+        "config.mlp_mult",
+        "config.mod_ratio",
+        "config.n_heads",
+        "config.n_kv_heads",
+        "config.n_layers",
+        "config.norm_cap",
+        "config.proj_fill",
+        "config.readout_dims",
+        "config.readout_gated",
+        "config.readout_linear_resid",
+        "config.readout_perdepth",
+        "config.readout_wide_shared",
+        "config.recon_window",
+        "config.seq_len",
+        "config.topology",
+        "config.train_anchors",
+        "config.train_window",
+        "dense_aux",
+        "exit_mode",
+        "fill_kv",
+        "final_weight",
+        "linear_chunk",
+        "mod_ratio",
+        "n_kv_heads",
+        "proj_fill",
+        "readout_dims",
+        "readout_gated",
+        "readout_linear_resid",
+        "readout_perdepth",
+        "readout_wide_shared",
+        "recon_lambda",
+        "recon_window",
+        "shallow_stopgrad",
+        "synth",
+        "topology",
+        "train.batch_size",
+        "train.lr",
+        "train.steps",
+        "train_anchors",
+        "train_window"
+      ],
+      "n_fields": 63,
+      "diffs": [],
+      "allowed_diffs": [],
+      "allowed_fields": [],
+      "unexplained_diffs": [],
+      "explained_absent_in_seed0": [],
+      "passed": true,
+      "seed0_train_seed": 0,
+      "seed1_train_seed": 1,
+      "params_seed0": 6962688,
+      "params_seed1": 6962688
+    },
+    "config-parity-snap2k-nofill-s1-vs-12k.json": {
+      "seed0_dir": ".scratch/23-depth-ar/evidence/23e-nofill-12k",
+      "seed1_dir": "axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s1",
+      "note": "跨刻度参照：预期差异仅 train.steps（12k 档 vs 2k 快照）；其余字段须逐位相同或缺席字段取引擎缺省",
+      "fields_compared": [
+        "attn_linear",
+        "attn_sparse_k",
+        "aux_anneal_to",
+        "aux_weight",
+        "carry_chunk",
+        "carry_state_dim",
+        "carry_write",
+        "config.attn_linear",
+        "config.attn_sparse_k",
+        "config.aux_mode",
+        "config.carry_chunk",
+        "config.carry_decay",
+        "config.carry_gate",
+        "config.carry_per_layer",
+        "config.carry_rule",
+        "config.carry_state_dim",
+        "config.d_model",
+        "config.dense",
+        "config.dropout",
+        "config.fill_kv",
+        "config.gate_bias_init",
+        "config.linear_chunk",
+        "config.mlp_hidden_sched",
+        "config.mlp_mult",
+        "config.mod_ratio",
+        "config.n_heads",
+        "config.n_kv_heads",
+        "config.n_layers",
+        "config.norm_cap",
+        "config.proj_fill",
+        "config.readout_dims",
+        "config.readout_gated",
+        "config.readout_linear_resid",
+        "config.readout_perdepth",
+        "config.readout_wide_shared",
+        "config.recon_window",
+        "config.seq_len",
+        "config.topology",
+        "config.train_anchors",
+        "config.train_window",
+        "dense_aux",
+        "exit_mode",
+        "fill_kv",
+        "final_weight",
+        "linear_chunk",
+        "mod_ratio",
+        "n_kv_heads",
+        "proj_fill",
+        "readout_dims",
+        "readout_gated",
+        "readout_linear_resid",
+        "readout_perdepth",
+        "readout_wide_shared",
+        "recon_lambda",
+        "recon_window",
+        "shallow_stopgrad",
+        "synth",
+        "topology",
+        "train.batch_size",
+        "train.lr",
+        "train.steps",
+        "train_anchors",
+        "train_window"
+      ],
+      "n_fields": 63,
+      "diffs": [
+        {
+          "field": "train.steps",
+          "seed0": 12000,
+          "seed1": 2000
+        }
+      ],
+      "allowed_diffs": [
+        {
+          "field": "train.steps",
+          "seed0": 12000,
+          "seed1": 2000
+        }
+      ],
+      "allowed_fields": [
+        "train.steps"
+      ],
+      "unexplained_diffs": [],
+      "explained_absent_in_seed0": [
+        {
+          "field": "attn_linear",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "attn_sparse_k",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_state_dim",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_write",
+          "value": "none",
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.attn_linear",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.attn_sparse_k",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.aux_mode",
+          "value": "renorm",
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_decay",
+          "value": 1.0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_gate",
+          "value": true,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_per_layer",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_rule",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_state_dim",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.linear_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.mlp_hidden_sched",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.mod_ratio",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.n_kv_heads",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_dims",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_gated",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_linear_resid",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_perdepth",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_wide_shared",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.recon_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.topology",
+          "value": "sequential",
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.train_anchors",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.train_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "final_weight",
+          "value": 1.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "linear_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "mod_ratio",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "n_kv_heads",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_dims",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_gated",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_linear_resid",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_perdepth",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_wide_shared",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "recon_lambda",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "recon_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "synth",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "topology",
+          "value": "sequential",
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "train_anchors",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "train_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        }
+      ],
+      "passed": true,
+      "seed0_train_seed": 0,
+      "seed1_train_seed": 1,
+      "params_seed0": 6962688,
+      "params_seed1": 6962688
+    },
+    "config-parity-snap2k-projfill-s0-vs-12k.json": {
+      "seed0_dir": ".scratch/23-depth-ar/evidence/23e-projfill-12k",
+      "seed1_dir": "axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s0",
+      "note": "跨刻度参照：预期差异仅 train.steps（12k 档 vs 2k 快照）；其余字段须逐位相同或缺席字段取引擎缺省",
+      "fields_compared": [
+        "attn_linear",
+        "attn_sparse_k",
+        "aux_anneal_to",
+        "aux_weight",
+        "carry_chunk",
+        "carry_state_dim",
+        "carry_write",
+        "config.attn_linear",
+        "config.attn_sparse_k",
+        "config.aux_mode",
+        "config.carry_chunk",
+        "config.carry_decay",
+        "config.carry_gate",
+        "config.carry_per_layer",
+        "config.carry_rule",
+        "config.carry_state_dim",
+        "config.d_model",
+        "config.dense",
+        "config.dropout",
+        "config.fill_kv",
+        "config.gate_bias_init",
+        "config.linear_chunk",
+        "config.mlp_hidden_sched",
+        "config.mlp_mult",
+        "config.mod_ratio",
+        "config.n_heads",
+        "config.n_kv_heads",
+        "config.n_layers",
+        "config.norm_cap",
+        "config.proj_fill",
+        "config.readout_dims",
+        "config.readout_gated",
+        "config.readout_linear_resid",
+        "config.readout_perdepth",
+        "config.readout_wide_shared",
+        "config.recon_window",
+        "config.seq_len",
+        "config.topology",
+        "config.train_anchors",
+        "config.train_window",
+        "dense_aux",
+        "exit_mode",
+        "fill_kv",
+        "final_weight",
+        "linear_chunk",
+        "mod_ratio",
+        "n_kv_heads",
+        "proj_fill",
+        "readout_dims",
+        "readout_gated",
+        "readout_linear_resid",
+        "readout_perdepth",
+        "readout_wide_shared",
+        "recon_lambda",
+        "recon_window",
+        "shallow_stopgrad",
+        "synth",
+        "topology",
+        "train.batch_size",
+        "train.lr",
+        "train.steps",
+        "train_anchors",
+        "train_window"
+      ],
+      "n_fields": 63,
+      "diffs": [
+        {
+          "field": "train.steps",
+          "seed0": 12000,
+          "seed1": 2000
+        }
+      ],
+      "allowed_diffs": [
+        {
+          "field": "train.steps",
+          "seed0": 12000,
+          "seed1": 2000
+        }
+      ],
+      "allowed_fields": [
+        "train.steps"
+      ],
+      "unexplained_diffs": [],
+      "explained_absent_in_seed0": [
+        {
+          "field": "attn_linear",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "attn_sparse_k",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_state_dim",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_write",
+          "value": "none",
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.attn_linear",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.attn_sparse_k",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.aux_mode",
+          "value": "renorm",
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_decay",
+          "value": 1.0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_gate",
+          "value": true,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_per_layer",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_rule",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_state_dim",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.linear_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.mlp_hidden_sched",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.mod_ratio",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.n_kv_heads",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_dims",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_gated",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_linear_resid",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_perdepth",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_wide_shared",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.recon_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.topology",
+          "value": "sequential",
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.train_anchors",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.train_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "final_weight",
+          "value": 1.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "linear_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "mod_ratio",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "n_kv_heads",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_dims",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_gated",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_linear_resid",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_perdepth",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_wide_shared",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "recon_lambda",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "recon_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "synth",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "topology",
+          "value": "sequential",
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "train_anchors",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "train_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        }
+      ],
+      "passed": true,
+      "seed0_train_seed": 0,
+      "seed1_train_seed": 0,
+      "params_seed0": 7489024,
+      "params_seed1": 7489024
+    },
+    "config-parity-snap2k-projfill-s0-vs-s1.json": {
+      "seed0_dir": "/home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s0",
+      "seed1_dir": "/home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s1",
+      "note": "L0 主门：同刻度（2k 步）种子对，唯一预期差异 = train.seed",
+      "fields_compared": [
+        "attn_linear",
+        "attn_sparse_k",
+        "aux_anneal_to",
+        "aux_weight",
+        "carry_chunk",
+        "carry_state_dim",
+        "carry_write",
+        "config.attn_linear",
+        "config.attn_sparse_k",
+        "config.aux_mode",
+        "config.carry_chunk",
+        "config.carry_decay",
+        "config.carry_gate",
+        "config.carry_per_layer",
+        "config.carry_rule",
+        "config.carry_state_dim",
+        "config.d_model",
+        "config.dense",
+        "config.dropout",
+        "config.fill_kv",
+        "config.gate_bias_init",
+        "config.linear_chunk",
+        "config.mlp_hidden_sched",
+        "config.mlp_mult",
+        "config.mod_ratio",
+        "config.n_heads",
+        "config.n_kv_heads",
+        "config.n_layers",
+        "config.norm_cap",
+        "config.proj_fill",
+        "config.readout_dims",
+        "config.readout_gated",
+        "config.readout_linear_resid",
+        "config.readout_perdepth",
+        "config.readout_wide_shared",
+        "config.recon_window",
+        "config.seq_len",
+        "config.topology",
+        "config.train_anchors",
+        "config.train_window",
+        "dense_aux",
+        "exit_mode",
+        "fill_kv",
+        "final_weight",
+        "linear_chunk",
+        "mod_ratio",
+        "n_kv_heads",
+        "proj_fill",
+        "readout_dims",
+        "readout_gated",
+        "readout_linear_resid",
+        "readout_perdepth",
+        "readout_wide_shared",
+        "recon_lambda",
+        "recon_window",
+        "shallow_stopgrad",
+        "synth",
+        "topology",
+        "train.batch_size",
+        "train.lr",
+        "train.steps",
+        "train_anchors",
+        "train_window"
+      ],
+      "n_fields": 63,
+      "diffs": [],
+      "allowed_diffs": [],
+      "allowed_fields": [],
+      "unexplained_diffs": [],
+      "explained_absent_in_seed0": [],
+      "passed": true,
+      "seed0_train_seed": 0,
+      "seed1_train_seed": 1,
+      "params_seed0": 7489024,
+      "params_seed1": 7489024
+    },
+    "config-parity-snap2k-projfill-s1-vs-12k.json": {
+      "seed0_dir": ".scratch/23-depth-ar/evidence/23e-projfill-12k",
+      "seed1_dir": "axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s1",
+      "note": "跨刻度参照：预期差异仅 train.steps（12k 档 vs 2k 快照）；其余字段须逐位相同或缺席字段取引擎缺省",
+      "fields_compared": [
+        "attn_linear",
+        "attn_sparse_k",
+        "aux_anneal_to",
+        "aux_weight",
+        "carry_chunk",
+        "carry_state_dim",
+        "carry_write",
+        "config.attn_linear",
+        "config.attn_sparse_k",
+        "config.aux_mode",
+        "config.carry_chunk",
+        "config.carry_decay",
+        "config.carry_gate",
+        "config.carry_per_layer",
+        "config.carry_rule",
+        "config.carry_state_dim",
+        "config.d_model",
+        "config.dense",
+        "config.dropout",
+        "config.fill_kv",
+        "config.gate_bias_init",
+        "config.linear_chunk",
+        "config.mlp_hidden_sched",
+        "config.mlp_mult",
+        "config.mod_ratio",
+        "config.n_heads",
+        "config.n_kv_heads",
+        "config.n_layers",
+        "config.norm_cap",
+        "config.proj_fill",
+        "config.readout_dims",
+        "config.readout_gated",
+        "config.readout_linear_resid",
+        "config.readout_perdepth",
+        "config.readout_wide_shared",
+        "config.recon_window",
+        "config.seq_len",
+        "config.topology",
+        "config.train_anchors",
+        "config.train_window",
+        "dense_aux",
+        "exit_mode",
+        "fill_kv",
+        "final_weight",
+        "linear_chunk",
+        "mod_ratio",
+        "n_kv_heads",
+        "proj_fill",
+        "readout_dims",
+        "readout_gated",
+        "readout_linear_resid",
+        "readout_perdepth",
+        "readout_wide_shared",
+        "recon_lambda",
+        "recon_window",
+        "shallow_stopgrad",
+        "synth",
+        "topology",
+        "train.batch_size",
+        "train.lr",
+        "train.steps",
+        "train_anchors",
+        "train_window"
+      ],
+      "n_fields": 63,
+      "diffs": [
+        {
+          "field": "train.steps",
+          "seed0": 12000,
+          "seed1": 2000
+        }
+      ],
+      "allowed_diffs": [
+        {
+          "field": "train.steps",
+          "seed0": 12000,
+          "seed1": 2000
+        }
+      ],
+      "allowed_fields": [
+        "train.steps"
+      ],
+      "unexplained_diffs": [],
+      "explained_absent_in_seed0": [
+        {
+          "field": "attn_linear",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "attn_sparse_k",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_state_dim",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "carry_write",
+          "value": "none",
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.attn_linear",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.attn_sparse_k",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.aux_mode",
+          "value": "renorm",
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_decay",
+          "value": 1.0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_gate",
+          "value": true,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_per_layer",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_rule",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.carry_state_dim",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.linear_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.mlp_hidden_sched",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.mod_ratio",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.n_kv_heads",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_dims",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_gated",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_linear_resid",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_perdepth",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.readout_wide_shared",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.recon_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.topology",
+          "value": "sequential",
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.train_anchors",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "config.train_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = DepthARConfig() 缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "final_weight",
+          "value": 1.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "linear_chunk",
+          "value": 64,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "mod_ratio",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "n_kv_heads",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_dims",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_gated",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_linear_resid",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_perdepth",
+          "value": false,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "readout_wide_shared",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "recon_lambda",
+          "value": 0.0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "recon_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "synth",
+          "value": null,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "topology",
+          "value": "sequential",
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "train_anchors",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        },
+        {
+          "field": "train_window",
+          "value": 0,
+          "note": "seed-0 记录早于该字段面世；值 = 引擎缺省 ⇒ 协议中性"
+        }
+      ],
+      "passed": true,
+      "seed0_train_seed": 0,
+      "seed1_train_seed": 1,
+      "params_seed0": 7489024,
+      "params_seed1": 7489024
+    }
+  },
+  "missing_runs": [],
+  "criteria": {
+    "L0": {
+      "same_scale_seed_pairs": {
+        "config-parity-snap2k-fill-s0-vs-s1.json": true,
+        "config-parity-snap2k-nofill-s0-vs-s1.json": true,
+        "config-parity-snap2k-projfill-s0-vs-s1.json": true
+      },
+      "cross_scale_vs_12k_all_explained": {
+        "config-parity-snap2k-fill-s0-vs-12k.json": true,
+        "config-parity-snap2k-fill-s1-vs-12k.json": true,
+        "config-parity-snap2k-nofill-s0-vs-12k.json": true,
+        "config-parity-snap2k-nofill-s1-vs-12k.json": true,
+        "config-parity-snap2k-projfill-s0-vs-12k.json": true,
+        "config-parity-snap2k-projfill-s1-vs-12k.json": true
+      },
+      "params": {
+        "seed0-fill": 6962688,
+        "seed0-nofill": 6962688,
+        "seed0-projfill": 7489024,
+        "seed1-fill": 6962688,
+        "seed1-nofill": 6962688,
+        "seed1-projfill": 7489024
+      },
+      "note": "同刻度种子对只差 train.seed（allowed 为空）；对 12k 档的差异仅 train.steps（逐条记入 allowed_diffs）"
+    },
+    "L1": {
+      "n_seeds_per_arm": {
+        "fill": 2,
+        "nofill": 2,
+        "projfill": 2
+      },
+      "reproducibility": {
+        "Delta(fill - nofill) depth8": {
+          "seed0": -0.0775,
+          "seed1": -0.0641,
+          "n_seeds": 2,
+          "status": "reproducible",
+          "sign_consistent": true,
+          "range": 0.0134,
+          "values": [
+            -0.0775,
+            -0.0641
+          ],
+          "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"
+        },
+        "Delta(fill - nofill) depth4": {
+          "seed0": -0.0778,
+          "seed1": -0.0644,
+          "n_seeds": 2,
+          "status": "reproducible",
+          "sign_consistent": true,
+          "range": 0.0134,
+          "values": [
+            -0.0778,
+            -0.0644
+          ],
+          "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"
+        },
+        "Delta(projfill - fill) depth8": {
+          "seed0": 0.0297,
+          "seed1": 0.0218,
+          "n_seeds": 2,
+          "status": "reproducible",
+          "sign_consistent": true,
+          "range": 0.0079,
+          "values": [
+            0.0297,
+            0.0218
+          ],
+          "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"
+        },
+        "Delta(projfill - fill) depth4": {
+          "seed0": 0.0293,
+          "seed1": 0.0213,
+          "n_seeds": 2,
+          "status": "reproducible",
+          "sign_consistent": true,
+          "range": 0.008,
+          "values": [
+            0.0293,
+            0.0213
+          ],
+          "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"
+        }
+      }
+    },
+    "L2": {
+      "rescore_ci": {
+        "fill": {
+          "checkpoints": [
+            "snap2k-fill-s0",
+            "snap2k-fill-s1"
+          ],
+          "delta_peak_soft_minus_hard": [
+            3.8325,
+            6.2138
+          ],
+          "paired_bootstrap_95ci": [
+            3.8325,
+            6.2138
+          ],
+          "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）",
+          "ci_excludes_0": true,
+          "sign_consistent": true,
+          "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）",
+          "n_checkpoints": 2
+        },
+        "nofill": {
+          "checkpoints": [
+            "snap2k-nofill-s0",
+            "snap2k-nofill-s1"
+          ],
+          "delta_peak_soft_minus_hard": [
+            5.8908,
+            6.5625
+          ],
+          "paired_bootstrap_95ci": [
+            5.8908,
+            6.5625
+          ],
+          "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）",
+          "ci_excludes_0": true,
+          "sign_consistent": true,
+          "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）",
+          "n_checkpoints": 2
+        },
+        "projfill": {
+          "checkpoints": [
+            "snap2k-projfill-s0",
+            "snap2k-projfill-s1"
+          ],
+          "delta_peak_soft_minus_hard": [
+            6.2739,
+            4.7332
+          ],
+          "paired_bootstrap_95ci": [
+            4.7332,
+            6.2739
+          ],
+          "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）",
+          "ci_excludes_0": true,
+          "sign_consistent": true,
+          "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）",
+          "n_checkpoints": 2
+        }
+      },
+      "declaration": "同一 checkpoint ⇒ 参数逐位相同，容量因素被剥离"
+    },
+    "L3": {
+      "activity_reported": [
+        "fill-s0",
+        "fill-s1",
+        "nofill-s0",
+        "nofill-s1",
+        "projfill-s0",
+        "projfill-s1"
+      ]
+    },
+    "L4": {
+      "readability_reported": [
+        "fill-s0",
+        "fill-s1",
+        "nofill-s0",
+        "nofill-s1",
+        "projfill-s0",
+        "projfill-s1"
+      ]
+    },
+    "L5": {}
+  },
+  "l5_pass": true,
+  "l5_wall_clock_fields": []
+}

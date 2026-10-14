@@ -1,0 +1,288 @@
+# run_log.txt — 命令 / GPU 锁 / 墙钟（2672-fill-n2-13m，本段）
+
+本文件是**允许含墙钟**的运行流水；判据区（`results.json` / `analysis.md`）不含墙钟字段（L5）。
+
+## 时间线与命令
+
+- `2026-10-14T21:44:06+08:00` 本段派发开始（`dispatch_start.txt`）。
+- `21:43` 起 seed-0 rescore 评测（**SCHEMA §20.1.2 一次性并发例外**）：
+  - 命令：`python3 rescore_eval.py --checkpoints .scratch/23-depth-ar/evidence/{23c-H2-w0-12k,23e-nofill-12k,23e-projfill-12k} --out rescore-seed0.json`
+  - 例外依据：纯推理、墙钟 **1:03.95**（≤2 min）、自身峰值 <1GB（7M 参数 fp32 权重 + 激活）、
+    插入时 GPU 空闲 21027 MiB（≥3GB）。
+  - 前后空闲读数：BEFORE `free 21027 MiB / used 3082 MiB`；AFTER `free 21034 MiB / used 3075 MiB`。
+  - 结果：3 checkpoint 全部 `stored_match=true`（逐位复现各自 `results.json.generation`）。
+- `21:44:06` 启动 `run_arm.sh fill 1`（nohup 后台）。等待 `/tmp/pathlm_gpu.lock`。
+  - 锁持有者记录：`wp2652-2.2.1-residual-form`（pid 2400475, `run.py --arm gated`）。
+- `21:54:22` **LOCK TIMEOUT**：fill 等待满 10 min（40×15s）仍未取得锁 ⇒ run_arm 退出 9。
+  （期间锁被 wp2652 整段持有；卡上同时有 7 个以上 python 进程，多数 `--device cpu`。）
+- `21:59:31` 启动链式驱动 `run_all.sh`（pid 2442300）：fill → nofill → seed-1 评测 →
+  config 对平 → 汇聚。仍在等锁，持有者先后为 `wp2642`（D192）、`wp6.3.2`（fill_bidir_r10-s0）。
+- `22:05` 本段时间盒（≤28 min）行将到期：seed-1 两臂均未取得锁、未开始训练。
+  ⇒ 按派发纪律「行将超时先落盘 + RESUME.md 记下一个确切命令」收尾。
+
+## GPU 锁纪律（SCHEMA §20 / §20.1）
+
+- 训练按「逐 run 取放锁」，等锁上限 10 min，不空转（sleep 15）、不改 CPU、不杀他人进程。
+- seed-0 评测走 §20.1.2 例外（不取锁），已登记前后空闲读数与自身峰值（见上）。
+- 本段**未**出现：等锁超时以外的锁泄漏；未强占、未杀任何进程。
+
+## 未完成
+
+- seed-1 `fill` / `nofill` 训练（12k 步）未开始；seed-1 rescore、L0 config 对平未产出。
+  ⇒ 下一步确切命令见 `RESUME.md`。
+- `22:05` 本 worker 主动终止自建的链式驱动 / run_arm（单写入者纪律）；终止时未触碰他人持有的 GPU 锁。
+[2026-10-14T22:17:46+08:00] RUN6 start (pid 2484096) STEPS=2000 DEADLINE=1791988740
+[2026-10-14T22:17:46+08:00] snap2k-fill-s0: waiting for GPU lock
+[2026-10-14T22:18:36+08:00] RUN6 start (pid 2485550) STEPS=2000 DEADLINE=1791988740
+[2026-10-14T22:18:36+08:00] snap2k-fill-s0: waiting for GPU lock
+[2026-10-14T22:22:09+08:00] RUN6 start (pid 2499646) STEPS=2000 DEADLINE=1791988740
+[2026-10-14T22:22:09+08:00] snap2k-fill-s0: waiting for GPU lock
+[2026-10-14T22:25:15+08:00] snap2k-fill-s0: lock acquired (pid 2499655)
+[2026-10-14T22:27:01+08:00] snap2k-fill-s0: exit 0
+[2026-10-14T22:27:01+08:00] snap2k-nofill-s0: waiting for GPU lock
+[2026-10-14T22:27:01+08:00] snap2k-nofill-s0: lock acquired (pid 2511559)
+[2026-10-14T22:28:49+08:00] snap2k-nofill-s0: exit 0
+[2026-10-14T22:28:49+08:00] snap2k-fill-s1: waiting for GPU lock
+[2026-10-14T22:28:49+08:00] snap2k-fill-s1: lock acquired (pid 2514509)
+[2026-10-14T22:30:37+08:00] snap2k-fill-s1: exit 0
+[2026-10-14T22:30:37+08:00] snap2k-nofill-s1: waiting for GPU lock
+[2026-10-14T22:30:42+08:00] snap2k-nofill-s1: lock acquired (pid 2522310)
+[2026-10-14T22:32:22+08:00] snap2k-nofill-s1: exit 0
+[2026-10-14T22:32:22+08:00] snap2k-projfill-s0: waiting for GPU lock
+[2026-10-14T22:32:27+08:00] snap2k-projfill-s0: lock acquired (pid 2566610)
+[2026-10-14T22:34:30+08:00] snap2k-projfill-s0: exit 0
+[2026-10-14T22:34:30+08:00] snap2k-projfill-s1: waiting for GPU lock
+[2026-10-14T22:34:30+08:00] snap2k-projfill-s1: lock acquired (pid 2572717)
+[2026-10-14T22:36:35+08:00] snap2k-projfill-s1: exit 0
+[2026-10-14T22:36:35+08:00] RUN6 training loop done
+[2026-10-14T22:36:35+08:00] FINISH checkpoints: /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s0 /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s0 /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s1 /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s1 /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s0 /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s1
+[2026-10-14T22:36:35+08:00] lock_exec: lock acquired (pid 2576481): python3 /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/rescore_eval.py --checkpoints /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s0 /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s0 /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s1 /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s1 /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s0 /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s1 --out /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/rescore-snap2k.json
+[eval] snap2k-fill-s0: depths=[0, 4, 8] stored_match=True (8.5s)
+[eval] snap2k-nofill-s0: depths=[0, 4, 8] stored_match=True (8.8s)
+[eval] snap2k-fill-s1: depths=[0, 4, 8] stored_match=True (7.4s)
+[eval] snap2k-nofill-s1: depths=[0, 4, 8] stored_match=True (11.5s)
+[eval] snap2k-projfill-s0: depths=[0, 4, 8] stored_match=True (9.5s)
+[eval] snap2k-projfill-s1: depths=[0, 4, 8] stored_match=True (10.7s)
+[eval] wrote /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/rescore-snap2k.json (6 checkpoints)
+[2026-10-14T22:37:34+08:00] lock_exec: exit 0
+[config_match] /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s0 vs /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s1: passed=True diffs=0 allowed=0 unexplained=0 explained_absent=0 seeds 0->1 params 6962688->6962688
+[config_match] /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s0 vs /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s1: passed=True diffs=0 allowed=0 unexplained=0 explained_absent=0 seeds 0->1 params 6962688->6962688
+[config_match] /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s0 vs /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s1: passed=True diffs=0 allowed=0 unexplained=0 explained_absent=0 seeds 0->1 params 7489024->7489024
+[config_match] /home/z/vibe/pathlm/.scratch/23-depth-ar/evidence/23c-H2-w0-12k vs /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s0: passed=False diffs=27 allowed=1 unexplained=26 explained_absent=20 seeds 0->0 params 6962688->6962688
+  DIFF {'field': 'config.attn_linear', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.attn_sparse_k', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.aux_mode', 'seed0': '<absent>', 'seed1': 'renorm'}
+  DIFF {'field': 'config.carry_chunk', 'seed0': '<absent>', 'seed1': 64}
+  DIFF {'field': 'config.carry_decay', 'seed0': '<absent>', 'seed1': 1.0}
+  DIFF {'field': 'config.carry_gate', 'seed0': '<absent>', 'seed1': True}
+  DIFF {'field': 'config.carry_per_layer', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.carry_rule', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.carry_state_dim', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.fill_kv', 'seed0': '<absent>', 'seed1': True}
+  DIFF {'field': 'config.linear_chunk', 'seed0': '<absent>', 'seed1': 64}
+  DIFF {'field': 'config.mlp_hidden_sched', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.mod_ratio', 'seed0': '<absent>', 'seed1': 0.0}
+  DIFF {'field': 'config.n_kv_heads', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.proj_fill', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_dims', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.readout_gated', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_linear_resid', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_perdepth', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_wide_shared', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.recon_window', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.topology', 'seed0': '<absent>', 'seed1': 'sequential'}
+  DIFF {'field': 'config.train_anchors', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.train_window', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'fill_kv', 'seed0': '<absent>', 'seed1': True}
+  DIFF {'field': 'proj_fill', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] /home/z/vibe/pathlm/.scratch/23-depth-ar/evidence/23c-H2-w0-12k vs /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s1: passed=False diffs=27 allowed=1 unexplained=26 explained_absent=20 seeds 0->1 params 6962688->6962688
+  DIFF {'field': 'config.attn_linear', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.attn_sparse_k', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.aux_mode', 'seed0': '<absent>', 'seed1': 'renorm'}
+  DIFF {'field': 'config.carry_chunk', 'seed0': '<absent>', 'seed1': 64}
+  DIFF {'field': 'config.carry_decay', 'seed0': '<absent>', 'seed1': 1.0}
+  DIFF {'field': 'config.carry_gate', 'seed0': '<absent>', 'seed1': True}
+  DIFF {'field': 'config.carry_per_layer', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.carry_rule', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.carry_state_dim', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.fill_kv', 'seed0': '<absent>', 'seed1': True}
+  DIFF {'field': 'config.linear_chunk', 'seed0': '<absent>', 'seed1': 64}
+  DIFF {'field': 'config.mlp_hidden_sched', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.mod_ratio', 'seed0': '<absent>', 'seed1': 0.0}
+  DIFF {'field': 'config.n_kv_heads', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.proj_fill', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_dims', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.readout_gated', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_linear_resid', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_perdepth', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_wide_shared', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.recon_window', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.topology', 'seed0': '<absent>', 'seed1': 'sequential'}
+  DIFF {'field': 'config.train_anchors', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.train_window', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'fill_kv', 'seed0': '<absent>', 'seed1': True}
+  DIFF {'field': 'proj_fill', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] /home/z/vibe/pathlm/.scratch/23-depth-ar/evidence/23e-nofill-12k vs /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s0: passed=False diffs=23 allowed=1 unexplained=22 explained_absent=20 seeds 0->0 params 6962688->6962688
+  DIFF {'field': 'config.attn_linear', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.attn_sparse_k', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.aux_mode', 'seed0': '<absent>', 'seed1': 'renorm'}
+  DIFF {'field': 'config.carry_chunk', 'seed0': '<absent>', 'seed1': 64}
+  DIFF {'field': 'config.carry_decay', 'seed0': '<absent>', 'seed1': 1.0}
+  DIFF {'field': 'config.carry_gate', 'seed0': '<absent>', 'seed1': True}
+  DIFF {'field': 'config.carry_per_layer', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.carry_rule', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.carry_state_dim', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.linear_chunk', 'seed0': '<absent>', 'seed1': 64}
+  DIFF {'field': 'config.mlp_hidden_sched', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.mod_ratio', 'seed0': '<absent>', 'seed1': 0.0}
+  DIFF {'field': 'config.n_kv_heads', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.readout_dims', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.readout_gated', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_linear_resid', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_perdepth', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_wide_shared', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.recon_window', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.topology', 'seed0': '<absent>', 'seed1': 'sequential'}
+  DIFF {'field': 'config.train_anchors', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.train_window', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] /home/z/vibe/pathlm/.scratch/23-depth-ar/evidence/23e-nofill-12k vs /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s1: passed=False diffs=23 allowed=1 unexplained=22 explained_absent=20 seeds 0->1 params 6962688->6962688
+  DIFF {'field': 'config.attn_linear', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.attn_sparse_k', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.aux_mode', 'seed0': '<absent>', 'seed1': 'renorm'}
+  DIFF {'field': 'config.carry_chunk', 'seed0': '<absent>', 'seed1': 64}
+  DIFF {'field': 'config.carry_decay', 'seed0': '<absent>', 'seed1': 1.0}
+  DIFF {'field': 'config.carry_gate', 'seed0': '<absent>', 'seed1': True}
+  DIFF {'field': 'config.carry_per_layer', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.carry_rule', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.carry_state_dim', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.linear_chunk', 'seed0': '<absent>', 'seed1': 64}
+  DIFF {'field': 'config.mlp_hidden_sched', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.mod_ratio', 'seed0': '<absent>', 'seed1': 0.0}
+  DIFF {'field': 'config.n_kv_heads', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.readout_dims', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.readout_gated', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_linear_resid', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_perdepth', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_wide_shared', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.recon_window', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.topology', 'seed0': '<absent>', 'seed1': 'sequential'}
+  DIFF {'field': 'config.train_anchors', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.train_window', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] /home/z/vibe/pathlm/.scratch/23-depth-ar/evidence/23e-projfill-12k vs /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s0: passed=False diffs=23 allowed=1 unexplained=22 explained_absent=20 seeds 0->0 params 7489024->7489024
+  DIFF {'field': 'config.attn_linear', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.attn_sparse_k', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.aux_mode', 'seed0': '<absent>', 'seed1': 'renorm'}
+  DIFF {'field': 'config.carry_chunk', 'seed0': '<absent>', 'seed1': 64}
+  DIFF {'field': 'config.carry_decay', 'seed0': '<absent>', 'seed1': 1.0}
+  DIFF {'field': 'config.carry_gate', 'seed0': '<absent>', 'seed1': True}
+  DIFF {'field': 'config.carry_per_layer', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.carry_rule', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.carry_state_dim', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.linear_chunk', 'seed0': '<absent>', 'seed1': 64}
+  DIFF {'field': 'config.mlp_hidden_sched', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.mod_ratio', 'seed0': '<absent>', 'seed1': 0.0}
+  DIFF {'field': 'config.n_kv_heads', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.readout_dims', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.readout_gated', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_linear_resid', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_perdepth', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_wide_shared', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.recon_window', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.topology', 'seed0': '<absent>', 'seed1': 'sequential'}
+  DIFF {'field': 'config.train_anchors', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.train_window', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] /home/z/vibe/pathlm/.scratch/23-depth-ar/evidence/23e-projfill-12k vs /home/z/vibe/pathlm/axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s1: passed=False diffs=23 allowed=1 unexplained=22 explained_absent=20 seeds 0->1 params 7489024->7489024
+  DIFF {'field': 'config.attn_linear', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.attn_sparse_k', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.aux_mode', 'seed0': '<absent>', 'seed1': 'renorm'}
+  DIFF {'field': 'config.carry_chunk', 'seed0': '<absent>', 'seed1': 64}
+  DIFF {'field': 'config.carry_decay', 'seed0': '<absent>', 'seed1': 1.0}
+  DIFF {'field': 'config.carry_gate', 'seed0': '<absent>', 'seed1': True}
+  DIFF {'field': 'config.carry_per_layer', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.carry_rule', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.carry_state_dim', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.linear_chunk', 'seed0': '<absent>', 'seed1': 64}
+  DIFF {'field': 'config.mlp_hidden_sched', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.mod_ratio', 'seed0': '<absent>', 'seed1': 0.0}
+  DIFF {'field': 'config.n_kv_heads', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.readout_dims', 'seed0': '<absent>', 'seed1': None}
+  DIFF {'field': 'config.readout_gated', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_linear_resid', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_perdepth', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'config.readout_wide_shared', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.recon_window', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.topology', 'seed0': '<absent>', 'seed1': 'sequential'}
+  DIFF {'field': 'config.train_anchors', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'config.train_window', 'seed0': '<absent>', 'seed1': 0}
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[aggregate] wrote results.json; l5_pass=True hits=[]
+[aggregate] points: seed0=['fill', 'nofill', 'projfill'] seed1=['fill', 'nofill', 'projfill']
+[aggregate] missing_runs=[] missing_checkpoints=[]
+[aggregate] deltas={"seed0": {"fill_minus_nofill_depth8": -0.0775, "fill_minus_nofill_depth4": -0.0778, "projfill_minus_fill_depth8": 0.0297, "projfill_minus_fill_depth4": 0.0293}, "seed1": {"fill_minus_nofill_depth8": -0.0641, "fill_minus_nofill_depth4": -0.0644, "projfill_minus_fill_depth8": 0.0218, "projfill_minus_fill_depth4": 0.0213}}
+[aggregate] repro={"Delta(fill - nofill) depth8": {"seed0": -0.0775, "seed1": -0.0641, "n_seeds": 2, "status": "reproducible", "sign_consistent": true, "range": 0.0134, "values": [-0.0775, -0.0641], "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"}, "Delta(fill - nofill) depth4": {"seed0": -0.0778, "seed1": -0.0644, "n_seeds": 2, "status": "reproducible", "sign_consistent": true, "range": 0.0134, "values": [-0.0778, -0.0644], "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"}, "Delta(projfill - fill) depth8": {"seed0": 0.0297, "seed1": 0.0218, "n_seeds": 2, "status": "reproducible", "sign_consistent": true, "range": 0.0079, "values": [0.0297, 0.0218], "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"}, "Delta(projfill - fill) depth4": {"seed0": 0.0293, "seed1": 0.0213, "n_seeds": 2, "status": "reproducible", "sign_consistent": true, "range": 0.008, "values": [0.0293, 0.0213], "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"}}
+[aggregate] rescore_ci={"fill": {"checkpoints": ["snap2k-fill-s0", "snap2k-fill-s1"], "delta_peak_soft_minus_hard": [3.8325, 6.2138], "paired_bootstrap_95ci": [3.8325, 6.2138], "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）", "ci_excludes_0": true, "sign_consistent": true, "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）", "n_checkpoints": 2}, "nofill": {"checkpoints": ["snap2k-nofill-s0", "snap2k-nofill-s1"], "delta_peak_soft_minus_hard": [5.8908, 6.5625], "paired_bootstrap_95ci": [5.8908, 6.5625], "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）", "ci_excludes_0": true, "sign_consistent": true, "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）", "n_checkpoints": 2}, "projfill": {"checkpoints": ["snap2k-projfill-s0", "snap2k-projfill-s1"], "delta_peak_soft_minus_hard": [6.2739, 4.7332], "paired_bootstrap_95ci": [4.7332, 6.2739], "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）", "ci_excludes_0": true, "sign_consistent": true, "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）", "n_checkpoints": 2}}
+[2026-10-14T22:37:35+08:00] FINISH done
+[2026-10-14T22:37:35+08:00] RUN6 finish.sh done
+[2026-10-14T22:37:35+08:00] RUN6 exit
+[2026-10-14T22:39:15+08:00] REPARITY: config_match 补填引擎缺省解释（config.* 缺失字段值 = DepthARConfig() 缺省）
+[config_match] .scratch/23-depth-ar/evidence/23c-H2-w0-12k vs axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s0: passed=False diffs=3 allowed=1 unexplained=2 explained_absent=44 seeds 0->0 params 6962688->6962688
+  DIFF {'field': 'fill_kv', 'seed0': '<absent>', 'seed1': True}
+  DIFF {'field': 'proj_fill', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] .scratch/23-depth-ar/evidence/23c-H2-w0-12k vs axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s1: passed=False diffs=3 allowed=1 unexplained=2 explained_absent=44 seeds 0->1 params 6962688->6962688
+  DIFF {'field': 'fill_kv', 'seed0': '<absent>', 'seed1': True}
+  DIFF {'field': 'proj_fill', 'seed0': '<absent>', 'seed1': False}
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] .scratch/23-depth-ar/evidence/23e-nofill-12k vs axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s0: passed=True diffs=1 allowed=1 unexplained=0 explained_absent=42 seeds 0->0 params 6962688->6962688
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] .scratch/23-depth-ar/evidence/23e-nofill-12k vs axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s1: passed=True diffs=1 allowed=1 unexplained=0 explained_absent=42 seeds 0->1 params 6962688->6962688
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] .scratch/23-depth-ar/evidence/23e-projfill-12k vs axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s0: passed=True diffs=1 allowed=1 unexplained=0 explained_absent=42 seeds 0->0 params 7489024->7489024
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] .scratch/23-depth-ar/evidence/23e-projfill-12k vs axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s1: passed=True diffs=1 allowed=1 unexplained=0 explained_absent=42 seeds 0->1 params 7489024->7489024
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[aggregate] wrote results.json; l5_pass=True hits=[]
+[aggregate] points: seed0=['fill', 'nofill', 'projfill'] seed1=['fill', 'nofill', 'projfill']
+[aggregate] missing_runs=[] missing_checkpoints=[]
+[aggregate] deltas={"seed0": {"fill_minus_nofill_depth8": -0.0775, "fill_minus_nofill_depth4": -0.0778, "projfill_minus_fill_depth8": 0.0297, "projfill_minus_fill_depth4": 0.0293}, "seed1": {"fill_minus_nofill_depth8": -0.0641, "fill_minus_nofill_depth4": -0.0644, "projfill_minus_fill_depth8": 0.0218, "projfill_minus_fill_depth4": 0.0213}}
+[aggregate] repro={"Delta(fill - nofill) depth8": {"seed0": -0.0775, "seed1": -0.0641, "n_seeds": 2, "status": "reproducible", "sign_consistent": true, "range": 0.0134, "values": [-0.0775, -0.0641], "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"}, "Delta(fill - nofill) depth4": {"seed0": -0.0778, "seed1": -0.0644, "n_seeds": 2, "status": "reproducible", "sign_consistent": true, "range": 0.0134, "values": [-0.0778, -0.0644], "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"}, "Delta(projfill - fill) depth8": {"seed0": 0.0297, "seed1": 0.0218, "n_seeds": 2, "status": "reproducible", "sign_consistent": true, "range": 0.0079, "values": [0.0297, 0.0218], "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"}, "Delta(projfill - fill) depth4": {"seed0": 0.0293, "seed1": 0.0213, "n_seeds": 2, "status": "reproducible", "sign_consistent": true, "range": 0.008, "values": [0.0293, 0.0213], "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"}}
+[aggregate] rescore_ci={"fill": {"checkpoints": ["snap2k-fill-s0", "snap2k-fill-s1"], "delta_peak_soft_minus_hard": [3.8325, 6.2138], "paired_bootstrap_95ci": [3.8325, 6.2138], "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）", "ci_excludes_0": true, "sign_consistent": true, "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）", "n_checkpoints": 2}, "nofill": {"checkpoints": ["snap2k-nofill-s0", "snap2k-nofill-s1"], "delta_peak_soft_minus_hard": [5.8908, 6.5625], "paired_bootstrap_95ci": [5.8908, 6.5625], "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）", "ci_excludes_0": true, "sign_consistent": true, "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）", "n_checkpoints": 2}, "projfill": {"checkpoints": ["snap2k-projfill-s0", "snap2k-projfill-s1"], "delta_peak_soft_minus_hard": [6.2739, 4.7332], "paired_bootstrap_95ci": [4.7332, 6.2739], "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）", "ci_excludes_0": true, "sign_consistent": true, "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）", "n_checkpoints": 2}}
+[2026-10-14T22:39:37+08:00] REPARITY-2: NEUTRAL_DEFAULT 补 fill_kv/proj_fill（引擎 CLI 缺省）
+[config_match] .scratch/23-depth-ar/evidence/23c-H2-w0-12k vs axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s0: passed=True diffs=1 allowed=1 unexplained=0 explained_absent=46 seeds 0->0 params 6962688->6962688
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] .scratch/23-depth-ar/evidence/23c-H2-w0-12k vs axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-fill-s1: passed=True diffs=1 allowed=1 unexplained=0 explained_absent=46 seeds 0->1 params 6962688->6962688
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] .scratch/23-depth-ar/evidence/23e-nofill-12k vs axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s0: passed=True diffs=1 allowed=1 unexplained=0 explained_absent=42 seeds 0->0 params 6962688->6962688
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] .scratch/23-depth-ar/evidence/23e-nofill-12k vs axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-nofill-s1: passed=True diffs=1 allowed=1 unexplained=0 explained_absent=42 seeds 0->1 params 6962688->6962688
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] .scratch/23-depth-ar/evidence/23e-projfill-12k vs axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s0: passed=True diffs=1 allowed=1 unexplained=0 explained_absent=42 seeds 0->0 params 7489024->7489024
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[config_match] .scratch/23-depth-ar/evidence/23e-projfill-12k vs axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/snap2k-projfill-s1: passed=True diffs=1 allowed=1 unexplained=0 explained_absent=42 seeds 0->1 params 7489024->7489024
+  DIFF {'field': 'train.steps', 'seed0': 12000, 'seed1': 2000}
+[aggregate] wrote results.json; l5_pass=True hits=[]
+[aggregate] points: seed0=['fill', 'nofill', 'projfill'] seed1=['fill', 'nofill', 'projfill']
+[aggregate] missing_runs=[] missing_checkpoints=[]
+[aggregate] deltas={"seed0": {"fill_minus_nofill_depth8": -0.0775, "fill_minus_nofill_depth4": -0.0778, "projfill_minus_fill_depth8": 0.0297, "projfill_minus_fill_depth4": 0.0293}, "seed1": {"fill_minus_nofill_depth8": -0.0641, "fill_minus_nofill_depth4": -0.0644, "projfill_minus_fill_depth8": 0.0218, "projfill_minus_fill_depth4": 0.0213}}
+[aggregate] repro={"Delta(fill - nofill) depth8": {"seed0": -0.0775, "seed1": -0.0641, "n_seeds": 2, "status": "reproducible", "sign_consistent": true, "range": 0.0134, "values": [-0.0775, -0.0641], "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"}, "Delta(fill - nofill) depth4": {"seed0": -0.0778, "seed1": -0.0644, "n_seeds": 2, "status": "reproducible", "sign_consistent": true, "range": 0.0134, "values": [-0.0778, -0.0644], "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"}, "Delta(projfill - fill) depth8": {"seed0": 0.0297, "seed1": 0.0218, "n_seeds": 2, "status": "reproducible", "sign_consistent": true, "range": 0.0079, "values": [0.0297, 0.0218], "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"}, "Delta(projfill - fill) depth4": {"seed0": 0.0293, "seed1": 0.0213, "n_seeds": 2, "status": "reproducible", "sign_consistent": true, "range": 0.008, "values": [0.0293, 0.0213], "scale_note": "同一 6 个 run 统一快照刻度；与 12k 档不可比"}}
+[aggregate] rescore_ci={"fill": {"checkpoints": ["snap2k-fill-s0", "snap2k-fill-s1"], "delta_peak_soft_minus_hard": [3.8325, 6.2138], "paired_bootstrap_95ci": [3.8325, 6.2138], "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）", "ci_excludes_0": true, "sign_consistent": true, "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）", "n_checkpoints": 2}, "nofill": {"checkpoints": ["snap2k-nofill-s0", "snap2k-nofill-s1"], "delta_peak_soft_minus_hard": [5.8908, 6.5625], "paired_bootstrap_95ci": [5.8908, 6.5625], "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）", "ci_excludes_0": true, "sign_consistent": true, "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）", "n_checkpoints": 2}, "projfill": {"checkpoints": ["snap2k-projfill-s0", "snap2k-projfill-s1"], "delta_peak_soft_minus_hard": [6.2739, 4.7332], "paired_bootstrap_95ci": [4.7332, 6.2739], "resampling_unit": "seed 复本（同一 checkpoint 内 soft/hard 配对）", "ci_excludes_0": true, "sign_consistent": true, "ci_degenerate_note": "n=2 ⇒ bootstrap 区间端点≈两点值；显著性以两 seed 符号一致 + CI 不含 0 为准（契约 §4.2）", "n_checkpoints": 2}}
+
+[2026-10-14T22:40:37+08:00] WRITE_DOCS: 墙钟摘要（仅本文件允许墙钟字段）
+  snap2k-fill-s0: wall_minutes=1.56 steps=2000
+  snap2k-nofill-s0: wall_minutes=1.54 steps=2000
+  snap2k-projfill-s0: wall_minutes=1.82 steps=2000
+  snap2k-fill-s1: wall_minutes=1.58 steps=2000
+  snap2k-nofill-s1: wall_minutes=1.42 steps=2000
+  snap2k-projfill-s1: wall_minutes=1.87 steps=2000
+  rescore snap2k-fill-s0: elapsed_s=8.5
+  rescore snap2k-fill-s1: elapsed_s=7.4
+  rescore snap2k-nofill-s0: elapsed_s=8.8
+  rescore snap2k-nofill-s1: elapsed_s=11.5
+  rescore snap2k-projfill-s0: elapsed_s=9.5
+  rescore snap2k-projfill-s1: elapsed_s=10.7
+  备注：DEADLINE=22:39 只用于「不再启动新 run」；6/6 run 均在截止前跑完，无截断。
