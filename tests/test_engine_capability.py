@@ -23,8 +23,6 @@ from pathlm.depth_ar import (DepthARConfig, DepthARDecoder,  # noqa: E402
                              DepthARModel)
 
 DOC = os.path.join(ROOT, "docs", "engine_capability.md")
-SRC_REL = "pathlm/depth_ar.py"
-SRC = os.path.join(ROOT, SRC_REL)
 
 _BASE = dict(d_model=64, n_layers=2, n_heads=4, seq_len=256, mlp_mult=4)
 
@@ -70,7 +68,8 @@ CASES = {
     "C16": {"kind": "model", "cfg": {"aux_mode": "mean"}},
     # E1（ticket 67 §2）新增开关的能力面：逐层状态 / 可选衰减 γ
     "C17": {"kind": "model", "cfg": {"carry_rule": "delta", "carry_per_layer": True},
-            "block": "CarryChannelBlock"},    "C18": {"kind": "model", "cfg": {"carry_rule": "delta", "carry_per_layer": True,
+            "block": "CarryChannelBlock"},
+    "C18": {"kind": "model", "cfg": {"carry_rule": "delta", "carry_per_layer": True,
             "n_kv_heads": 2, "dense": True}, "block": "ComposableBlock"},
     "C19": {"kind": "model", "cfg": {"carry_rule": "delta", "carry_decay": 0.5},
             "block": "CarryChannelBlock"},

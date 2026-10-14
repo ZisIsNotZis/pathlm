@@ -99,17 +99,29 @@ E2 = `DepthARConfig.mlp_mult`（L50）、各块 `__init__` 的 `self.mlp = nn.Se
 
 - 锁定：`/tmp/pathlm_code.lock`（退出时 `rm -f holder_pid/heartbeat` + `rmdir` 释放；未取 GPU 锁）。
 - E2 定向：`python3 -m pytest tests/test_depth_ar.py tests/test_engine_capability.py -q` ⇒ **174 passed**。
-- E2 全量：`python3 -m pytest tests/ -q` ⇒ **855 passed, 1 failed**（见下「既有失败」）。
+- E2 全量：`python3 -m pytest tests/ -q` ⇒ **855 passed, 1 failed**（见下「既有失败」；
+  口径见「N1 计数口径更正」——`xfailed` 不计入 `passed`）。
 - E3 定向：`python3 -m pytest tests/test_m1.py tests/test_engine_capability.py tests/test_depth_ar.py -q` ⇒ **227 passed**。
-- E3 全量：`python3 -m pytest tests/ -q` ⇒ **865 passed, 1 failed**（同一既有失败）。
+- E3 全量：`python3 -m pytest tests/ -q` ⇒ **865 passed, 1 failed**（同一既有失败；带本地
+  `runs/` 证据的开发工作树实测）。**干净检出**（无 `runs/`）下同命令 = **863 passed,
+  2 xfailed, 1 failed**——差额的 2 条是证据锚测试，见「N1 计数口径更正」。
 - `git diff --check` ⇒ 无空白告警。
 - **提交哈希**：E2 = `4638882`；E3 = `fa6a1ad`。
 
+**N1 计数口径更正**（E2/E3 复核后收尾补记）：pytest 汇总里的 `xfailed` **不计入** `passed`，
+两者是两列。本仓库 2 条证据锚测试（`tests/test_longT_clean.py`、`tests/test_longT_stability.py`
+经 `tests/evidence_anchor.py`）在本地 `runs/` 原始证据**缺失**（干净检出）时 `xfail`、**存在**
+时正常通过。故同一命令的计数随环境而异：带证据的开发工作树 = `865 passed, 1 failed`；
+干净检出 = `863 passed, 2 xfailed, 1 failed`。原记录 E3 行只写「865 passed」，未把 `xfail`
+单列，此处更正（E2 行的分列口径相同，其干净检出分列值未复测，**不臆造**）。**未改任何测量数字**。
+
 **既有失败（与本 patch 无关，须复核者独立确认）**：
 `tests/test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness` —— 报
-`axes/6-predict/6.3.3-latent-regression/experiments/{2660,2670}-*/mutate.py` 未接入统一 harness。
-本 patch 未动 `axes/**`（`git diff --name-only | grep axes/6-predict` = 0），该测试只读 `axes/**`
-的 mutate 脚本 ⇒ 失败独立于本 diff（E2 提交前的全量也只见它一条）。
+`axes/6-predict/{6.3.3-latent-regression/experiments/{2660-…,2670-…},6.3.2-pad-fill/experiments/2671-…}/mutate.py`
+未接入统一 harness。本 patch 未动 `axes/**`（`git diff --name-only | grep axes/6-predict` = 0），
+该测试只读 `axes/**` 的 mutate 脚本 ⇒ 失败独立于本 diff（E2 提交前的全量也只见它一条）。
+**跟踪态**下只有 `2660-…`（既有）；`2670-…`/`2671-…` 是并发轴 6 写者新建的**未跟踪**脚本
+（`git ls-files` 不识别），故本 `pytest tests/ -q` 在当前工作树列出三条，与 E2/E3 diff 无关。
 
 **E2 新增单测**（`tests/test_depth_ar.py`）：`test_mlp_hidden_sched_default_is_bitwise_identical`、
 `test_mlp_hidden_sched_reaches_every_layer_and_changes_forward`、
