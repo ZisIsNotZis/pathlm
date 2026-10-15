@@ -1600,5 +1600,62 @@
   "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/run.py": "77d19f52b48be0bf",
   "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/fp8_arms.py": "3c14e513a99830ae",
   "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/config.json": "77f3ef16e07949ad"
+ },
+ "anchor_single_point_f5": {
+  "purpose": "ticket 66 §13 F5 ③ 的等价证据：把本仓 `fp16` 臂在本机（CPU）的**历史锚口径** 24×16@seed2 上重跑并落盘。只**追加**本键，不改主表与辅助表任何数字。",
+  "arm": "fp16",
+  "device": "cpu",
+  "caliber": "24×16@seed2",
+  "bpc": 1.48357047091,
+  "bpc_arm_recorded_6dp": 1.48357,
+  "bpc_arm_recorded_caliber": {
+   "n_batches": 24,
+   "batch_size": 16,
+   "window_seed": 2,
+   "device": "cpu"
+  },
+  "bpc_paths": {
+   "2653_path": {
+    "path": "2653/run.py::eval_arm → b21.b19.bpc_of（`fa.make_logits_fn(mode='fp16')`，KV 走 fp16 往返）",
+    "bpc": 1.48357047091,
+    "abs_diff_vs_anchor": 1.4709101354704046e-06
+   },
+   "same_repo_same_caliber_other_path": {
+    "path": "2652/run.py::eval_bpc（AqForward fp16/fp16 前向）",
+    "bpc": 1.48356873,
+    "abs_diff_vs_anchor": 2.700488819229463e-07,
+    "source": "axes/5-quant/5.3-activation-quant/experiments/2652-act-quant-13m/results.json::anchor_single_point"
+   }
+  },
+  "anchor_gpu": {
+   "bpc": 1.483569,
+   "device": "cuda",
+   "source": "2614/2610 口径",
+   "comparable": false,
+   "reason": "跨设备（CPU vs GPU）不构成判据，也不声称逐位相等；只作并列与等价性说明"
+  },
+  "abs_diff_vs_anchor": 1.4709101354704046e-06,
+  "verdict": "本机在同口径下复现 GPU 历史锚 1.483569：2653 自己的 `bpc_of` 路径 |Δ| = 1.471e-06，本仓另一条同口径路径（2652 的 AqForward）|Δ| = 2.700e-07 ⇒ F5 ③ 的等价证据成立（两条 CPU 路径之间差 1.74e-06，来自哪一路张量走 fp16 往返不同；都在 1e-6 量级，远小于 0.014 判据带，也小于本臂 6 位小数的记录格）。",
+  "rerun_reproduced_original_fp16_arm": {
+   "original_bpc_6dp": 1.48357,
+   "rerun_bpc_6dp": 1.48357,
+   "equal_at_recorded_precision": true
+  },
+  "checkpoint": {
+   "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+   "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+   "sha256_verified": true
+  },
+  "commands": [
+   "python3 axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/run.py --arms fp16 --out-dir axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/f5-anchor-2653-rerun  # 9.1 min；`--arms` 不过滤 side_arms ⇒ 另跑出 3 个辅助臂（写入该 out-dir，不进本文件）",
+   "python3 axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/f5_anchor_2653_precision.py  # 同一 bpc_of 路径的 12 位单点（144.75 s）"
+  ],
+  "raw_evidence": {
+   "rerun_results": "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/f5-anchor-2653-rerun/results.json",
+   "precision_point": "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/f5-anchor-2653-rerun/precision_point.json",
+   "rerun_wall_minutes": 9.1,
+   "precision_wall_seconds": 144.75
+  },
+  "not_run": "本键未在同口径上跑独立第二路径 `retention.masked_bpc`（`fp16` 档的 KV 往返本身改数值，与未量化路径本就不逐位相等）；同窗口序的逐位对照见主表的 2 批仪器自检（`instrument.bpc_path`）。"
  }
 }

@@ -74,7 +74,7 @@ ARMS = {
                     "role": f"固定跳层：block {SKIP_LAYERS} 对全部 token 恒等旁路（layer-passes 6）"},
     "layers6":     {"layers": 6, "mode": "none",  "lp_design": 6.0,
                     "role": "同预算固定深度对手：直接训 6 层 dense（layer-passes 6，参数更少）"},
-    "layerdrop-pt": {"layers": 8, "mode": "drop", "lp_design": 7.2,
+    "layerdrop-pt": {"layers": 8, "mode": "drop", "p": LAYERDROP_P, "lp_design": 7.2,
                      "role": f"逐 token 独立跳层 p={LAYERDROP_P}（layer-passes ≈ 8·0.9 = 7.2）"},
 }
 ARM_ORDER = ["stock", "skip-mid", "layers6", "layerdrop-pt"]

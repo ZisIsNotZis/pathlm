@@ -1,0 +1,207 @@
+{
+  "experiment": "2656-lowrank-vs-headshare-13m",
+  "axis": "5 量化轴",
+  "item": "5.4 低秩压缩（MLA 式）",
+  "work_package": "WP1",
+  "phase": "Phase 1（契约 + MLA 实现 + 冒烟等价证据 + 训练挂起）",
+  "updated_at": "2026-10-14T23:35:00+08:00",
+  "writer": "axis5-w5.4（fresh 上下文单一写入者）",
+  "next_owner": "finisher（等训练落盘 → 跑评测腿 → 两腿判决）",
+  "driver": {
+    "script": "run_arms.py",
+    "pid": 2620551,
+    "pid_file": "train_driver.pid",
+    "log": "train_driver.log",
+    "state_file": "train_driver.json",
+    "launched_by": "nohup setsid（detach）",
+    "cwd": "仓库根（训练必须；源码用相对路径 .tmp/enwik8 / data/enwik8_full.npz）",
+    "order": [
+      "mha_rep",
+      "mla_c128(s0)",
+      "mla_c128(s1)",
+      "gqa2_eq(s0)",
+      "gqa2_eq(s1)"
+    ],
+    "optional_order": [
+      "mla_c256(s0)"
+    ],
+    "retry": "等锁上限 600s/次（超时 60s 后重排）；单臂训练失败 sleep 20 重跑，最多 3 次后跳过",
+    "smoke_hook": "第一次拿到锁的会话里先跑 smoke_mla.py --no-lock（失败不拦训练，只记 rc）",
+    "first_lines_of_train_driver.log": [
+      "=== driver pid=2620551 arms=['mha_rep', 'mla_c128', 'mla_c128_s1', 'gqa2_eq', 'gqa2_eq_s1'] root=/home/z/vibe/pathlm ===",
+      "=== start mha_rep mha-rep-s0 (attempt 1) wait_lock=0.0s ===",
+      "mha-50step: 13.54M params, vocab 206, topology sequential, ... steps 50 x bs32 x seq256 = 0.4M tokens"
+    ],
+    "stderr_note": "train_driver.log 里另有 PyTorch 的 UserWarning（引擎自带，见 train_depth_ar.py:382/397 的 float(tensor)，非本实验引入；引擎原样行为）"
+  },
+  "gpu_lock_note": {
+    "path": "/tmp/pathlm_gpu.lock",
+    "rule": "SCHEMA §20：mkdir 抢锁、holder_pid/heartbeat、陈旧锁自愈（holder 死或无 pid 且锁龄 >15min）；等锁上限 600s；**不杀他人进程**、不回收活锁",
+    "observed": "本轮开始时锁被其它轴占用（holder_pid=2613938，`hp64_train_driver.py`，elapsed 8:11）；驱动 launch 时锁已释放 ⇒ wait_lock=0.0s",
+    "implementation": "gpu_lock.py（照抄 2632-kv-block-run.py::GpuLock，类体与 2632 逐字一致）"
+  },
+  "arms": {
+    "mha": {
+      "mode": "reuse",
+      "status": "复用",
+      "run": "mha-12k-s0",
+      "seed": 0,
+      "path": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt",
+      "sha256": "557453eb12b56a453b29ea279cdbbc0969cfa6bf0dbe1cdbd9965cd6cec62528",
+      "sha256_reverified_this_round": true,
+      "params": 13536768,
+      "kv_bytes_per_position_fp16": 12288,
+      "n": 2
+    },
+    "gqa2": {
+      "mode": "reuse",
+      "status": "复用",
+      "run": "gqa-12k-s0",
+      "seed": 0,
+      "path": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt",
+      "sha256": "bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00",
+      "sha256_reverified_this_round": true,
+      "params": 12352512,
+      "kv_bytes_per_position_fp16": 3072,
+      "n": 2
+    },
+    "gqa2_rep": {
+      "mode": "reuse",
+      "status": "复用",
+      "run": "gqa-12k-s0-rep",
+      "seed": 0,
+      "path": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/gqa-12k-s0-rep/model.pt",
+      "sha256": "7fa95a7b5419af5b8f9159acb70cd814588337aa784b9a5e1bd4d0ea9ba6cb47",
+      "sha256_reverified_this_round": true,
+      "params": 12352512
+    },
+    "mha_rep": {
+      "mode": "train",
+      "status": "running（Phase 1 收尾时仍在 12k 训练中）",
+      "run": "mha-rep-s0",
+      "seed": 0,
+      "params": 13536768,
+      "checkpoint": "runs/mha-rep-s0/model.pt",
+      "sha256": "训练完成后记入 model_hashes（未跑完 ⇒ 未记录）",
+      "note": "同 seed 同配方的基线重跑；同时是本副本（--mla-latent 0）12k 全长的引擎等价性旁证（train_log 首行 loss 5.4226 与 2616::mha-12k-s0 首行一致）"
+    },
+    "mla_c128": {
+      "mode": "train",
+      "status": "待训（队列第 2）",
+      "run": "mla-c128-s0",
+      "seed": 0,
+      "mla_latent": 128,
+      "params": 13137408,
+      "checkpoint": "runs/mla-c128-s0/model.pt",
+      "sha256": "未跑"
+    },
+    "mla_c128_s1": {
+      "mode": "train",
+      "status": "待训（队列第 3）",
+      "run": "mla-c128-s1",
+      "seed": 1,
+      "mla_latent": 128,
+      "params": 13137408,
+      "checkpoint": "runs/mla-c128-s1/model.pt",
+      "sha256": "未跑"
+    },
+    "gqa2_eq": {
+      "mode": "train",
+      "status": "待训（队列第 4）",
+      "run": "gqa2-eq-s0",
+      "seed": 0,
+      "n_kv_heads": 2,
+      "mlp_hidden_sched": [
+        1729,
+        1729,
+        1729,
+        1729,
+        1728,
+        1728,
+        1728,
+        1728,
+        1728,
+        1728,
+        1728,
+        1728
+      ],
+      "params": 13536516,
+      "checkpoint": "runs/gqa2-eq-s0/model.pt",
+      "sha256": "未跑"
+    },
+    "gqa2_eq_s1": {
+      "mode": "train",
+      "status": "待训（队列第 5）",
+      "run": "gqa2-eq-s1",
+      "seed": 1,
+      "n_kv_heads": 2,
+      "params": 13536516,
+      "checkpoint": "runs/gqa2-eq-s1/model.pt",
+      "sha256": "未跑"
+    },
+    "mla_c256": {
+      "mode": "train",
+      "status": "未排队（可选，需 --include-optional）",
+      "run": "mla-c256-s0",
+      "seed": 0,
+      "mla_latent": 256,
+      "params": 14317056,
+      "sha256": "未跑"
+    }
+  },
+  "smoke_evidence": {
+    "file": "smoke/summary.json（本轮由驱动第一次锁会话生成；因 MLA 腿首次失败已在下一会话自动重跑）",
+    "latent0_vs_engine_50step": {
+      "step0": "5.4226 = 5.4226（逐位相同）",
+      "step49": "2.7002 vs 2.7000（diff −0.0002）",
+      "bitwise_identical": false
+    },
+    "latent0_vs_engine_201step": {
+      "step0": "5.4226 = 5.4226",
+      "step200": "2.5591 vs 2.5571（diff −0.002）",
+      "bitwise_identical": false
+    },
+    "nondeterminism_control": {
+      "source": "2616 引擎自己的同 seed 同配方重训（gqa-12k-s0 vs gqa-12k-s0-rep；未经本 patch）",
+      "step0": "5.4463 = 5.4463（逐位相同）",
+      "step200_diff": 0.0032,
+      "max_abs_diff_over_run": 0.0112,
+      "final_diff": 0.0014,
+      "conclusion": "引擎自身在同 seed 重训下就已经在同步数上差出 ≥ 本次副本/引擎差（step200：0.0032 > 0.002）⇒ 副本与引擎的差异属 CUDA 归约序非确定性，不是 patch 的语义差异；且 step-0 loss 逐位相同 ⇒ 初始化与数据序一致"
+    },
+    "mla_forward_smoke": "首轮 50 步失败：`install_mla_blocks` 新建的块留在 CPU，而基底模型已 `.cuda()` ⇒ `ln1` device 不匹配（RuntimeError）。已修：install 后按基底参数的 device/dtype 搬一次并断言一致；CPU 复测通过。修复后 MLA 全路径冒烟在下一锁会话自动重跑（未跑完 ⇒ 状态待定，不写成已过）"
+  },
+  "checks": {
+    "file": "checks.json（`python3 mla_arms.py` 输出）",
+    "param_account": "五臂解析 == 实测逐位（MHA 13536768 / GQA2 12352512 / MLA_c128 13137408 / MLA_c256 14317056 / GQA2_eq 13536516）",
+    "equal_params": "Δtarget 1184256；斜率 513；1184256 mod 513 = 252 ⇒ 逐位相等不可能；取 ΣΔh=2308（1729×4+1728×8）⇒ −252（−1.86e-5）",
+    "same_byte_axis": "MLA_c128 与 GQA2 都是 1536 值/位置 = 3072 B/位置（断言相等）",
+    "causality_invariance": "改未来 token ⇒ 过去位置输出 max|Δ| = 0.0（MLA 与 stock Block 对照都是 0.0）",
+    "up_projection_reference": "显式 c→k,v + 显式因果 softmax 与 SDPA 路径 max|Δ| = 3.58e-7",
+    "decode_cost": "MLA_c128 上投影 786432 MACs/token = 1572864 FLOPs/token = 单层 FFN 的 8.33%；投影 MACs 比 GQA2 每层 +65536"
+  },
+  "file_hashes": {
+    "mla_arms.py": "fe43ef059873da939846037f8c295ab55627f66ac8d12a9f1a5b74219614cc2c",
+    "train_mla.py": "940c20d128310210c9c51882cddb63718fc969b49f117be338b41af2b6546237",
+    "train_depth_ar.py（引擎，未改）": "cddbbe0d3a758016308ecd9e501a7a0a946f0844b45d3f06a54aaeec9722b6a3",
+    "gpu_lock.py": "ab573583477b52001c03762022a3bbf9daf47deee73cf903df934d002fac7684",
+    "run_arms.py": "3b55cd2b9d781dd1079b9e0c6bea1353560def1d4c13910410bac71b57c18c90",
+    "smoke_mla.py": "2b6b1295011b30d6b3cfc4e18f4b9998361def7a51dcf26ed603f283251b3046",
+    "config.json": "75aa7fa9074cfbbc4a060b8f51b8a7658146a49e232201cdc14fb1c1d652f4d4",
+    "note": "hash 在 Phase 1 收尾时记录（README 的 §5.3/§10 在冒烟结果出来后补写，其 hash 为补写后版本）；若 finisher 再改本目录文件，须重跑受影响的自检与冒烟",
+    "README.md": "d05ccba9cec323725bc7cb8179ac55c360ea0d469e8d722808be66a037937174"
+  },
+  "resume_commands": {
+    "continue_training": "cd /home/z/vibe/pathlm && python3 axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/run_arms.py --include-optional  # 已有 model.pt 的臂自动跳过；可选臂排最后",
+    "check_alive": "pgrep -f 2656-lowrank-vs-headshare-13m/run_arms.py; tail -3 axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/train_driver.log",
+    "rerun_smoke_only": "cd /home/z/vibe/pathlm && python3 axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/smoke_mla.py",
+    "cpu_selfcheck": "cd /home/z/vibe/pathlm && python3 axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/mla_arms.py"
+  },
+  "open_items": [
+    "MLA 全路径冒烟（--mla-latent 128 的 50 步训练 + results.json 活性块）修复后在下一锁会话自动重跑 ⇒ 未跑，不写成已过",
+    "6 条训练（mha_rep / mla_c128×2 / gqa2_eq×2 / 可选 mla_c256）与全部质量数字：未跑",
+    "评测腿（clean bpc + 第二路径对账 + 长程召回 + Wilson CI）与判决：未跑（finisher）",
+    "MLA_c128 与 GQA2 同字节但多 784896 参数（+6.35%）的混杂：由 gqa2_eq 与 gqa2 两个对照夹住，报告中须并列"
+  ],
+  "boundary_check": "本轮只写 axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/**（另有证据报告写到 .scratch/66-axis5-quant/evidence/）；未改 project.yaml、其它轴、docs/**、pathlm/**、tools/**、tests/**、train_depth_ar.py；未 git add/commit"
+}

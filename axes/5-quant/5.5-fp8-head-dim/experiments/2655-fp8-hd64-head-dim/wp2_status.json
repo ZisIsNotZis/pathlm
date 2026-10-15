@@ -1,0 +1,243 @@
+{
+ "experiment": "2655-fp8-hd64-head-dim",
+ "wp": "5.5-fp8-head-dim · WP2（大 head_dim 下标尺摊薄判决）的**实测腿**",
+ "phase": "Phase 1（契约 + 训练 + 冒烟）与 Phase 2（评测与判读）**均已完成**；`hd64-s1`（第二 seed）未训练完成，留给续跑/复核",
+ "generated_at": "2026-10-14T23:45+0800",
+ "generated_by": "WP2 finisher（单一写入者）；只写 2655/** 与 2653/** 的第 4 条追加",
+ "capability_check": {
+  "question": "head_dim=64 是否需要改引擎？",
+  "answer": "不需要。`head_dim = d_model / heads` ⇒ `--heads 4 --d 256` 即 head_dim=64；",
+  "engine_change_required": false,
+  "evidence": "`grep -n add_argument train_depth_ar.py` 显示 `--d/--layers/--heads/--mlp-mult/--dense/--steps/--batch-size/--seed/--lr/--eval-batches/--out-root` 均已存在；`pathlm.depth_ar.DepthARConfig(d_model=256, n_heads=4)` ⇒ `d_model // n_heads = 64`",
+  "ref": "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/wp2_hd64_status.json::capability_check（同结论，本轮复核）"
+ },
+ "contract_invariant": {
+  "config_json_mtime": "2026-10-14T23:10+0800",
+  "results_json_mtime": "2026-10-14T23:41+0800",
+  "ok": true,
+  "note": "判据线（`config.json::criterion`）的 mtime 早于 `results.json`（预登记不等式成立）"
+ },
+ "checkpoint": {
+  "path": "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/runs/hd64-s0/model.pt",
+  "sha256": "ce40e246614f2f50471e6bc66e6468269af83bef3c9ab3e383f04831d433038f",
+  "sha256_expected": null,
+  "sha256_source": "computed_at_eval",
+  "size_bytes": 54193675,
+  "params": 13536768,
+  "head_dim": 64,
+  "model": {
+   "d_model": 256,
+   "n_layers": 12,
+   "n_heads": 4,
+   "seq_len": 256,
+   "mlp_mult": 6,
+   "dense": true
+  },
+  "cross_check": "与 `train_driver_state.json::arms.hd64-s0.sha256` 一致（训练腿收尾时算过一遍）",
+  "driver_state_sha256": "ce40e246614f2f50471e6bc66e6468269af83bef3c9ab3e383f04831d433038f"
+ },
+ "evaluation": {
+  "status": "done",
+  "partial": false,
+  "device": "cpu",
+  "gpu_lock_taken": false,
+  "wall_seconds": 663.23,
+  "command": "cd /home/z/vibe/pathlm && python3 <expdir>/hp64_arms.py",
+  "arms_completed": [
+   "fp16",
+   "int8_block_g64",
+   "fp8_e4m3"
+  ],
+  "side_arms_completed": [
+   "int8_block_g16",
+   "int8_block_g32"
+  ],
+  "wp2_all_consistent": true,
+  "caliber": {
+   "main": "window_seed=2, 24×16",
+   "pairing": "seeds [2,3,4,5,6], 2×16（均匀口径）",
+   "side": "scan 6×16, seed 2"
+  },
+  "readings": {
+   "fp16": {
+    "clean_bpc": 1.483031,
+    "bytes_per_position": 12288.0,
+    "reduction_vs_fp16": 0.0,
+    "paired_max_abs": null,
+    "exceeds_band_0_014": null,
+    "recall_copy": 0.202474,
+    "recall_copy_wilson95": [
+     0.183132,
+     0.223301
+    ],
+    "at_floor": false,
+    "prefix_invariance": [
+     true,
+     true
+    ],
+    "wall_seconds_this_arm": 145.35
+   },
+   "int8_block_g64": {
+    "clean_bpc": 1.48314,
+    "bytes_per_position": 6336.0,
+    "reduction_vs_fp16": 0.484375,
+    "paired_max_abs": 0.000226,
+    "exceeds_band_0_014": false,
+    "recall_copy": 0.202474,
+    "recall_copy_wilson95": [
+     0.183132,
+     0.223301
+    ],
+    "at_floor": false,
+    "prefix_invariance": [
+     true,
+     true
+    ],
+    "wall_seconds_this_arm": 232.86
+   },
+   "fp8_e4m3": {
+    "clean_bpc": 1.484297,
+    "bytes_per_position": 6144.0,
+    "reduction_vs_fp16": 0.5,
+    "paired_max_abs": 0.002294,
+    "exceeds_band_0_014": false,
+    "recall_copy": 0.195312,
+    "recall_copy_wilson95": [
+     0.176257,
+     0.215888
+    ],
+    "at_floor": false,
+    "prefix_invariance": [
+     true,
+     true
+    ],
+    "wall_seconds_this_arm": 193.11
+   },
+   "int8_block_g16": {
+    "clean_bpc_scan": 1.495037,
+    "bytes_per_position": 6912.0,
+    "measured_scales_per_value": 0.0625,
+    "consistent": true,
+    "prefix_invariance": [
+     true,
+     true
+    ]
+   },
+   "int8_block_g32": {
+    "clean_bpc_scan": 1.49494,
+    "bytes_per_position": 6528.0,
+    "measured_scales_per_value": 0.03125,
+    "consistent": true,
+    "prefix_invariance": [
+     true,
+     true
+    ]
+   }
+  },
+  "instrument": {
+   "bpc_path_bitwise_equal": true,
+   "bpc_path_values": [
+    1.471526,
+    1.471526
+   ],
+   "fp32_forward_eq_2619": true,
+   "int8_block_eq_2632": true,
+   "prefix_invariance_fp32": {
+    "n_requests": 4,
+    "future_token_past_logits_equal": true,
+    "peer_request_logits_equal": true
+   }
+  },
+  "secondary_in_force_band_bpc": 0.194059,
+  "anchors": {
+   "gpu_history_1_483569": "不同 checkpoint/设备 ⇒ 只并列、不作判据",
+   "cpu_2653_1_483570": "同设备不同 checkpoint（head_dim=32）⇒ 只并列"
+  }
+ },
+ "f5_anchor_evidence": {
+  "target": "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m",
+  "landed": {
+   "2653/results.json": "新键 `anchor_single_point_f5`（既有键逐键比对未变）",
+   "2653/analysis.md": "追加 §9（不改上文任何数字）"
+  },
+  "reading": {
+   "caliber": "24×16@seed2, CPU, fp16",
+   "bpc_12dp": 1.48357047091,
+   "bpc_6dp": 1.48357,
+   "abs_diff_vs_anchor_1_483569": 1.4709101354704046e-06,
+   "same_repo_other_path": {
+    "bpc": 1.48356873,
+    "abs_diff": 2.700488819229463e-07,
+    "source": "axes/5-quant/5.3-activation-quant/experiments/2652-act-quant-13m/results.json::anchor_single_point"
+   }
+  },
+  "verdict": "本机同口径复现 GPU 历史锚（|Δ| 在 1e-6 量级）⇒ F5 ③ 等价证据成立；跨设备不构成判据",
+  "raw_evidence": [
+   "f5-anchor-2653-rerun/results.json",
+   "f5-anchor-2653-rerun/precision_point.json"
+  ]
+ },
+ "training": {
+  "driver": "hp64_train_driver.py（detach；每臂取一次 §20 锁；失败 sleep 20 重试）",
+  "driver_pid": 2613938,
+  "driver_cmd": "cd <expdir> && setsid nohup python3 hp64_train_driver.py >> train_driver.log 2>&1 &",
+  "arms": {
+   "hd64-s0": {
+    "seed": 0,
+    "status": "done",
+    "wall_seconds": 470.7,
+    "sha256": "ce40e246614f2f50471e6bc66e6468269af83bef3c9ab3e383f04831d433038f",
+    "attempts": 1,
+    "gpu_lock_wait_seconds": 45.001
+   },
+   "hd64-s1": {
+    "seed": 1,
+    "status": "**未完成**：driver attempt=2 停 `waiting_lock`（§20 等锁 600 s 超时后重试）",
+    "attempts": 3,
+    "resume": "cd <expdir> && setsid nohup python3 hp64_train_driver.py >> train_driver.log 2>&1 &（已有 model.pt 的臂自动跳过）"
+   }
+  },
+  "state_file": "train_driver_state.json（权威以 train_driver.log 的行 + runs/**/model.pt 是否存在为准）"
+ },
+ "resume_commands": {
+  "if_driver_died": "cd /home/z/vibe/pathlm/axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim && setsid nohup python3 hp64_train_driver.py >> train_driver.log 2>&1 &  # 已有 model.pt 的臂自动跳过，只补没做完的臂",
+  "train_only_second_seed": "cd /home/z/vibe/pathlm/axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim && setsid nohup python3 hp64_train_driver.py >> train_driver.log 2>&1 &  # hd64-s0 已完成 ⇒ 自动跳过，直接训 hd64-s1",
+  "single_arm_without_driver": "cd /home/z/vibe/pathlm && python3 train_depth_ar.py hd64-s0 --d 256 --layers 12 --heads 4 --mlp-mult 6 --dense --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --eval-batches 24 --out-root axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/runs  # 需自行按 §20 取锁",
+  "retrain_force": "PATHLM_HD64_RETRAIN=1 强制重训已存在的臂"
+ },
+ "eval_command": {
+  "one_command": "cd /home/z/vibe/pathlm && python3 axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/hp64_arms.py",
+  "status": "已执行（wall 663 s，主臂 3 / 辅助 2，partial=False）",
+  "aux_commands": [
+   "python3 <expdir>/hp64_arms.py --ledger-only",
+   "python3 <expdir>/hp64_arms.py --charts-only",
+   "python3 <expdir>/f5_anchor_2653_precision.py"
+  ]
+ },
+ "not_done": [
+  "`hd64-s1`（第二 seed）未训练完成 ⇒ 主表 n=1，无跨 seed 方差",
+  "真正的部署峰值未测（评测实现立刻反量化；分块 cache 实现待立项）",
+  "`head_dim=128` / 其它 T / fp8+块标尺 / E5M2 在 hd64 上：未测（见 analysis.md §7）"
+ ],
+ "artifacts": {
+  "analysis.md": "644231b991aaffcfdc662437dfe67164f013400f6d41ea998b33b442d014c92e",
+  "JOURNAL.md": "46665df97bebe0650f8e24ba00ce0df84e9ae9235513f07b2f7eeae772ee58e4",
+  "README.md": "e0be70667d2841f8c89ca38ccb54704b119626d5e6ae660a96d055674f93ba8c",
+  "config.json": "df9d5e2d1b7e2ffe7091e47c957684e26c36e4033fe63c8bf849e86f3a1d42cf",
+  "hp64_arms.py": "e83128d333d0156cb9c7018f703c1fcec34ff674c7faa92d7526885c1a6264a9",
+  "hp64_train_driver.py": "8532909243ebcca69f246ba3532006fc4a4b74f04092a076c3e144912770b134",
+  "f5_anchor_2653_precision.py": "f757c09a3d04c0d216848fd4dc9d885d41cd9fa27c87d6016601b05f0826cf8c",
+  "results.json": "60cf6d6a2954fa382d819e00b67cc6e0cd864898f9d2fda636fb6de1114b49c4",
+  "table.md": "6e2346f9bf0f446ae8310e497ff27bb134c227fc2f377451f40b9aea4f09f8ab",
+  "f5-anchor-2653-rerun/results.json": "1236ebb697ada862ad52aa5a8950cafc94721768746f62ec1925ba9e415b0bda",
+  "f5-anchor-2653-rerun/precision_point.json": "bfd33bf7ff59f95ae853cd72156251890aaa3ddb0c23fc7be3774ac1dfa3c826"
+ },
+ "code_hashes": {
+  "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/fp8_arms.py": "3c14e513a99830ae79447e921adf6828008d0692fd1a5d5e8e873a8df2e0f5d0",
+  "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/run.py": "77d19f52b48be0bfe0389b716c8058534289fba7ef7e06fe3fcf7ea0be6c0fc0",
+  "tools/evalkit/kv_quant.py": "bc71c232356af88a3e162ea81b608f2558c489419c1d28e238cf99bc6ecf13a2",
+  "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/results.json": "b8c68aa0229ba220104c204d1f76d48ade2873b21460874c0c7e97e04966f32f",
+  "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/analysis.md": "8caa18765f25e8191f42df819095a65ee1b5e06ecb6d987f567a1393351e32b9"
+ },
+ "boundary_statement": "本轮只写 2655-fp8-hd64-head-dim/** 与 2653-fp8-vs-int8-13m 的 {results.json 新键, analysis.md 追加}；未改 `project.yaml`、其它轴、`docs/**`、`pathlm/**`、`tools/**`、`tests/**`、`train_depth_ar.py`；未 git add/commit；未取 GPU 锁。"
+}

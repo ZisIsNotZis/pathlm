@@ -1,0 +1,354 @@
+{
+  "arm": "PYR",
+  "seed": 0,
+  "steps": 12000,
+  "schedule": [
+    256,
+    224,
+    224,
+    192,
+    192,
+    160,
+    160,
+    64
+  ],
+  "sum_w2": 294912,
+  "sum_w": 1472,
+  "residual_width": 256,
+  "eval": {
+    "metric": "clean bpc（最终深度、无退出、序列级、越低越好）",
+    "n_batches": 20,
+    "batch_size": 16,
+    "eval_generator_seed": 2,
+    "bpc_by_depth": [
+      {
+        "depth": 0,
+        "bpc": 7.4464,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "bpc": 4.3921,
+        "acc": 0.2125
+      },
+      {
+        "depth": 2,
+        "bpc": 3.7109,
+        "acc": 0.3236
+      },
+      {
+        "depth": 3,
+        "bpc": 2.5818,
+        "acc": 0.5139
+      },
+      {
+        "depth": 4,
+        "bpc": 2.1782,
+        "acc": 0.573
+      },
+      {
+        "depth": 5,
+        "bpc": 1.7644,
+        "acc": 0.6467
+      },
+      {
+        "depth": 6,
+        "bpc": 1.6632,
+        "acc": 0.6647
+      },
+      {
+        "depth": 7,
+        "bpc": 1.5954,
+        "acc": 0.6764
+      },
+      {
+        "depth": 8,
+        "bpc": 1.593,
+        "acc": 0.6765
+      }
+    ],
+    "clean_bpc": 1.593,
+    "acc_by_depth": [
+      {
+        "depth": 0,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "acc": 0.2125
+      },
+      {
+        "depth": 2,
+        "acc": 0.3236
+      },
+      {
+        "depth": 3,
+        "acc": 0.5139
+      },
+      {
+        "depth": 4,
+        "acc": 0.573
+      },
+      {
+        "depth": 5,
+        "acc": 0.6467
+      },
+      {
+        "depth": 6,
+        "acc": 0.6647
+      },
+      {
+        "depth": 7,
+        "acc": 0.6764
+      },
+      {
+        "depth": 8,
+        "acc": 0.6765
+      }
+    ]
+  },
+  "params": {
+    "params_total_measured": 4202688,
+    "params_blocks_measured": 3558080,
+    "params_ffn_measured": 2366656,
+    "params_gates_dead_measured": 526336,
+    "analytic": {
+      "schedule": [
+        256,
+        224,
+        224,
+        192,
+        192,
+        160,
+        160,
+        64
+      ],
+      "sum_w2": 294912,
+      "sum_w": 1472,
+      "embedding": 52736,
+      "pos_embedding": 65536,
+      "embedding_total": 118272,
+      "blocks": 3558080,
+      "gates_dead_in_dense": 526336,
+      "params_total": 4202688,
+      "params_live": 3676352,
+      "params_live_rel_to_EQ": null,
+      "note": "解析参数量。每层 = qkv(3w²+3w) + proj(w²+w) + FFN(8w²+5w) + LN(2·2w) = 12w² + 13w；embedding/位置嵌入/tied 读出/carry 门都是 256 宽、逐臂相同。gates_dead_in_dense 引擎照建但 dense 前向不用（与 2641 params_total 同口径）。"
+    },
+    "params_total_matches_analytic": true,
+    "params_blocks_matches_analytic": true,
+    "params_live": 3676352
+  },
+  "cost": {
+    "schedule": [
+      256,
+      224,
+      224,
+      192,
+      192,
+      160,
+      160,
+      64
+    ],
+    "mlp_mult": 4,
+    "seq_len": 256,
+    "n_layers": 8,
+    "vocab": 206,
+    "readout_width": 256,
+    "sum_w2": 294912,
+    "sum_w": 1472,
+    "macs_per_token": {
+      "attention": 1933312,
+      "ffn": 2359296,
+      "readout_tied": 52736,
+      "total": 4345344
+    },
+    "macs_attn_per_layer": [
+      393216,
+      315392,
+      315392,
+      245760,
+      245760,
+      184320,
+      184320,
+      49152
+    ],
+    "macs_ffn_per_layer": [
+      524288,
+      401408,
+      401408,
+      294912,
+      294912,
+      204800,
+      204800,
+      32768
+    ],
+    "note": "等效理论量：MACs/token（乘加）。attention 的 T·w 项随序列长度线性、FFN 的 w² 项与 T 无关；不用任何时间量。tokens-per-forward = 1。"
+  },
+  "liveness": {
+    "residual_width": 256,
+    "target_width_by_layer": [
+      256,
+      224,
+      224,
+      192,
+      192,
+      160,
+      160,
+      64
+    ],
+    "measured_ln_input_width_by_layer": [
+      256,
+      224,
+      224,
+      192,
+      192,
+      160,
+      160,
+      64
+    ],
+    "measured_active_width_matches_target": true,
+    "qkv_out_width_by_layer": [
+      768,
+      672,
+      672,
+      576,
+      576,
+      480,
+      480,
+      192
+    ],
+    "qkv_out_matches_3x_target": true,
+    "hidden_by_layer": [
+      1024,
+      896,
+      896,
+      768,
+      768,
+      640,
+      640,
+      256
+    ],
+    "hidden_matches_4x_target": true,
+    "block_out_over_in_by_layer": [
+      14.98857,
+      1.282193,
+      1.195297,
+      1.091393,
+      1.097283,
+      1.013341,
+      1.032888,
+      1.00631
+    ],
+    "min_ratio": 1.00631,
+    "note": "逐层 ‖block_out‖/‖block_in‖（只在前缀通道上取范数）的逐位置均值，>0 ⇒ 该层真的参与前向；measured_ln_input_width 是 LayerNorm 的实际输入宽度（形状约束 ⇒ 前缀列数的硬证据）"
+  },
+  "causality": {
+    "max_abs_dlogit_past_positions": 0.0,
+    "max_abs_dlogit_last_position": 5.015291690826416,
+    "pass": true,
+    "note": "改末位 token：之前位置逐位不变（因果掩码真的在）、末位必须变（活性对照）"
+  },
+  "equivalence_gate_w_eq_d": {
+    "state_dict_bitwise_equal": true,
+    "fp32": {
+      "bitwise_equal_logits": true,
+      "bitwise_equal_loss": true,
+      "max_abs_logit_diff": 0.0
+    },
+    "bf16_autocast": {
+      "bitwise_equal_logits": true,
+      "bitwise_equal_loss": true,
+      "max_abs_logit_diff": 0.0
+    }
+  },
+  "shared_train_results": {
+    "params": 4202688,
+    "train_tokens": 98304000,
+    "wall_minutes": 7.09,
+    "peak_gpu_mem_mb": 751.3,
+    "config": {
+      "d_model": 256,
+      "n_layers": 8,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 4,
+      "mlp_hidden_sched": null,
+      "dropout": 0.0,
+      "norm_cap": 1.0,
+      "gate_bias_init": -2.0,
+      "dense": true,
+      "carry_gate": true,
+      "aux_mode": "renorm",
+      "mod_ratio": 0.0,
+      "fill_kv": true,
+      "proj_fill": false,
+      "readout_dims": null,
+      "readout_gated": false,
+      "readout_linear_resid": false,
+      "readout_perdepth": false,
+      "readout_wide_shared": 0,
+      "topology": "sequential",
+      "attn_sparse_k": 0,
+      "train_window": 0,
+      "train_anchors": 0,
+      "attn_linear": false,
+      "linear_chunk": 64,
+      "n_kv_heads": null,
+      "carry_rule": null,
+      "carry_chunk": 64,
+      "carry_state_dim": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "recon_window": 0
+    },
+    "gnorm_monitor_max": 4.36,
+    "kv_head_liveness": {
+      "probe": "per_layer_prefix_width（替换 train_depth_ar._kv_head_liveness）",
+      "replaced_probe": "kv_head_liveness（其断言 qkv 输出宽 == 3·cfg.d_model 按单一全局宽度定义 ⇒ 逐层宽度下不适用）",
+      "n_layers": 8,
+      "active_width_by_layer": [
+        256,
+        224,
+        224,
+        192,
+        192,
+        160,
+        160,
+        64
+      ],
+      "qkv_out_width_by_layer": [
+        768,
+        672,
+        672,
+        576,
+        576,
+        480,
+        480,
+        192
+      ],
+      "expected_qkv_out_width_by_layer": [
+        768,
+        672,
+        672,
+        576,
+        576,
+        480,
+        480,
+        192
+      ],
+      "all_layers_hooked": true,
+      "qkv_out_matches_expected": true,
+      "probe_tokens_shape": [
+        2,
+        64
+      ],
+      "probe_seed": 1234,
+      "note": "形状类活性量：在一次真实前向里抓每层 qkv 的**实际输出宽度**，与目标 3·w_l 逐位对照 ⇒ 逐层宽度真的到了模型，不是只改了标签"
+    }
+  },
+  "run_dir": "axes/3-width/3.1.2-layer-width/experiments/2646-layer-width-13m/runs/PYR-s0-12k",
+  "code_hash_run_py": "f0b67aa8c52b9594edfae6d811138565a732fef954d892f524139d283840488b",
+  "model_pt_sha256": "dce8752295ca4fa08abf0fd6fb2490b688373335824f634f381d234b369ead12",
+  "no_engine_change": "pathlm/**、train_*.py 零改动：前缀子空间块实现在本实验目录内，复用共享 `Block.forward`；等值性由 T1 逐位钉住"
+}

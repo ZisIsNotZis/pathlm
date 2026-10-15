@@ -1,0 +1,333 @@
+{
+  "experiment": "2656-lowrank-vs-headshare-13m",
+  "axis": "5 量化轴",
+  "item": "5.4 低秩压缩（MLA 式）",
+  "work_package": "WP1（低秩压缩 vs 头共享的同字节判决）",
+  "phase": "运行前预登记（Phase 1：契约 + 实现 + 冒烟等价证据 + 训练挂起）",
+  "registered_at": "2026-10-14T23:30:00+08:00",
+  "registration_note": "本文件在训练启动**之前**写定（判据线逐字来自 `axes/5-quant/5.4-low-rank/project.yaml`，未改）。落地后发现的两处算式缺陷（等参数臂的整数不可达、FFN 参数斜率漏项）与三处驱动缺陷（run 名冲突 / 缺 --n-kv-heads / cwd）在 `corrections` 与 `residual_confounds` 里如实登记。",
+  "criterion": {
+    "verbatim_objective_criteria": "该跌：每位置 KV 部署字节（潜维 + RoPE 分量）；该不跌/可排序：clean bpc（相对同字节头共享臂与 stock 基线，须越 0.014 噪声带）；该保持：合成长程召回（第二腿不塌）；必须不变：因果性与可见性对数；必须报：上投影的每 token 等效解码计算、等参数对照。",
+    "verbatim_falsification": "若 MLA 式低秩压缩在等参数对照下相对同字节头共享臂的 clean bpc 不占优（越噪声带变差或持平）⇒ 判低秩压缩在本尺度不产生新知识；若「从零训练」的收敛代价吃掉全部 KV 收益（等字节下不占优）⇒ 判该路线在本尺度不划算；若上投影额外计算使每 token 等效 FLOPs 显著上升且未被 KV 收益补偿 ⇒ 判代价记账不利。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）为主判；长程召回等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014。",
+    "band_bpc": 0.014,
+    "band_bpc_scope": "配对 Δ、≥5 窗口（C1 裁决）；本实验 clean bpc 用同一窗口序（window_seed=2）逐臂独立评，配对 Δ = 臂 − 对照臂；窗口数 = 评测批数（24）",
+    "rate_metric_rule": "长程召回等率类指标走 Wilson 95% CI / 配对 bootstrap，不跨量纲借用 0.014",
+    "sign_convention": "签名沿用 `SCHEMA.md`：Δ = 臂 bpc − 对照 bpc（正 = 更差）；「该跌」的字节轴用比值（臂 / 对照）",
+    "wall_clock_excluded": true,
+    "reference_100pct": "同尺寸 stock fp16 全因果 MHA（mha 臂）= 100%",
+    "must_not_change": "因果性与可见性对数（低秩只改 K/V 的来源，不改可见位置集合）",
+    "must_report": "上投影每 token 等效解码 FLOPs + 等参数对照 + 每位置 KV 部署字节"
+  },
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "head_dim": 32,
+    "mlp_mult": 6,
+    "seq_len": 256,
+    "vocab_size": 206,
+    "dense": true,
+    "tied_readout": true,
+    "pos_embed": "learned_absolute（无 RoPE/QK-Norm ⇒ 不需要 decoupled RoPE 分量）"
+  },
+  "train": {
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0,
+    "eval_batches": 24,
+    "from_scratch": true,
+    "recipe_source": "2616-gqa-mqa-13m（d256/L12/H8/mlp6/seq256/bs32/lr1e-3/12000 步）；除干预字段外逐字段相同",
+    "data": ".tmp/enwik8 + data/enwik8_full.npz（load_enwik8_full，cwd = 仓库根）",
+    "wall_minutes_expected_per_run": "≈8.5–9.5（2616 实测 8.44–9.06，共享卡）"
+  },
+  "arms": [
+    {
+      "label": "mha",
+      "role": "基线（8 个 KV 头 = stock `Block`，归一为 100%）",
+      "mode": "reuse",
+      "train": false,
+      "run_name": "mha-12k-s0",
+      "seed": 0,
+      "mla_latent": 0,
+      "n_kv_heads": null,
+      "params": 13536768,
+      "kv_values_per_position": 6144,
+      "kv_bytes_per_position_fp16": 12288,
+      "reuse_source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt",
+      "reuse_sha256": "557453eb12b56a453b29ea279cdbbc0969cfa6bf0dbe1cdbd9965cd6cec62528",
+      "reuse_record": "2616/model_hashes.json + MODEL.md（加载时逐臂断言 sha256）",
+      "n": 1
+    },
+    {
+      "label": "mha_rep",
+      "role": "基线重复臂（同 seed 同配方重训；run-to-run 散度 + 本副本 12k 全长的引擎等价性旁证：与 mha-12k-s0 的 train_log 逐行比对）",
+      "mode": "train",
+      "train": true,
+      "run_name": "mha-rep-s0",
+      "seed": 0,
+      "mla_latent": 0,
+      "n_kv_heads": null,
+      "optional": false,
+      "priority": 1
+    },
+    {
+      "label": "gqa2",
+      "role": "头共享对照（2 个 KV 头 = 与 MLA_c128 同每位置字节）",
+      "mode": "reuse",
+      "train": false,
+      "run_name": "gqa-12k-s0",
+      "seed": 0,
+      "mla_latent": 0,
+      "n_kv_heads": 2,
+      "params": 12352512,
+      "kv_values_per_position": 1536,
+      "kv_bytes_per_position_fp16": 3072,
+      "reuse_source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt",
+      "reuse_sha256": "bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00",
+      "n": 2,
+      "n_note": "n=2 = gqa-12k-s0 + gqa-12k-s0-rep（同 seed 重跑）"
+    },
+    {
+      "label": "gqa2_rep",
+      "role": "gqa2 的第二次复制（n=2 的第二点；与 gqa2 同臂不同 run）",
+      "mode": "reuse",
+      "train": false,
+      "run_name": "gqa-12k-s0-rep",
+      "seed": 0,
+      "mla_latent": 0,
+      "n_kv_heads": 2,
+      "params": 12352512,
+      "kv_values_per_position": 1536,
+      "kv_bytes_per_position_fp16": 3072,
+      "reuse_source": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/gqa-12k-s0-rep/model.pt",
+      "reuse_sha256": "7fa95a7b5419af5b8f9159acb70cd814588337aa784b9a5e1bd4d0ea9ba6cb47"
+    },
+    {
+      "label": "mla_c128",
+      "role": "本项主臂：MLA 式低秩 KV（潜维 d_c=128）＝ 与 gqa2 **同一每位置字节**（3072 B/位置）",
+      "mode": "train",
+      "train": true,
+      "run_name": "mla-c128-s0",
+      "seed": 0,
+      "mla_latent": 128,
+      "n_kv_heads": null,
+      "optional": false,
+      "priority": 2,
+      "params": 13137408,
+      "kv_values_per_position": 1536,
+      "kv_bytes_per_position_fp16": 3072
+    },
+    {
+      "label": "mla_c128_s1",
+      "role": "mla_c128 的第二 seed（n≥2）",
+      "mode": "train",
+      "train": true,
+      "run_name": "mla-c128-s1",
+      "seed": 1,
+      "mla_latent": 128,
+      "n_kv_heads": null,
+      "optional": false,
+      "priority": 3,
+      "params": 13137408,
+      "kv_values_per_position": 1536,
+      "kv_bytes_per_position_fp16": 3072
+    },
+    {
+      "label": "gqa2_eq",
+      "role": "等参数头共享臂（与 `5.1::WP3` 共用同一臂）：GQA2 + 把 Δparams 还给 FFN（逐层 mlp-hidden-sched）",
+      "mode": "train",
+      "train": true,
+      "run_name": "gqa2-eq-s0",
+      "seed": 0,
+      "mla_latent": 0,
+      "n_kv_heads": 2,
+      "mlp_hidden_sched": [1729, 1729, 1729, 1729, 1728, 1728, 1728, 1728, 1728, 1728, 1728, 1728],
+      "optional": false,
+      "priority": 4,
+      "params": 13536516,
+      "kv_values_per_position": 1536,
+      "kv_bytes_per_position_fp16": 3072,
+      "eqparams_arithmetic": {
+        "delta_params_target": 1184256,
+        "delta_params_formula": "L · 2 ·(d − n_kv·dh)·(d+1) = 12·2·192·257",
+        "ffn_hidden_slope_per_layer": 513,
+        "ffn_hidden_slope_formula": "2d+1 = 513（mlp[0].weight d·h + mlp[0].bias h + mlp[1].weight h·d）",
+        "sum_delta_hidden": 2308,
+        "params_returned": 1184004,
+        "residual_vs_mha": -252,
+        "exact_equality_possible": false,
+        "impossibility_proof": "513 ∤ 1184256（余 252）⇒ 任何整数逐层隐藏宽只能把 ΣΔh 变成 513 的倍数 ⇒ 与 MHA **逐位相等不可能**；最近可达 = ΣΔh 2308（−252 = −1.86e-5 相对）",
+        "asserted_by": "mla_arms.eqparams_solution()（解析==实测逐位，见 checks.json）"
+      }
+    },
+    {
+      "label": "gqa2_eq_s1",
+      "role": "gqa2_eq 的第二 seed（n≥2）",
+      "mode": "train",
+      "train": true,
+      "run_name": "gqa2-eq-s1",
+      "seed": 1,
+      "mla_latent": 0,
+      "n_kv_heads": 2,
+      "mlp_hidden_sched": [1729, 1729, 1729, 1729, 1728, 1728, 1728, 1728, 1728, 1728, 1728, 1728],
+      "optional": false,
+      "priority": 5,
+      "params": 13536516,
+      "kv_values_per_position": 1536,
+      "kv_bytes_per_position_fp16": 3072
+    },
+    {
+      "label": "mla_c256",
+      "role": "潜维扫描点：d_c=256 ⇒ 每位置 6144 B = MHA 同字节（**排最后**，预算允许才跑）",
+      "mode": "train",
+      "train": true,
+      "run_name": "mla-c256-s0",
+      "seed": 0,
+      "mla_latent": 256,
+      "n_kv_heads": null,
+      "optional": true,
+      "priority": 6,
+      "params": 14317056,
+      "kv_values_per_position": 3072,
+      "kv_bytes_per_position_fp16": 6144
+    }
+  ],
+  "arm_table_note": "复用臂（mha/gqa2/gqa2_rep）不训练、只按 sha256 载入；训练臂由 `run_arms.py` 串行取锁后跑 `train_mla.py`。`mha` 与 `gqa2` 的 n：mha n=1（+ 本实验补 `mha_rep` ⇒ n=2）、gqa2 n=2（复用 2616 的两个 run）。",
+  "band_axis": {
+    "kv_bytes_per_position_fp16": {
+      "mha": 12288,
+      "gqa2": 3072,
+      "mla_c128": 3072,
+      "mla_c256": 6144
+    },
+    "same_byte_axis_check": "mla_c128 与 gqa2 同为 1536 值/位置（= L·d_c = 12·128 = L·2·n_kv·dh = 12·2·2·32）⇒ fp16 同为 3072 B/位置",
+    "no_rope_component": "本仓模型无 RoPE ⇒ 字节账里没有 RoPE 分量（与 DeepSeek-V2 的实质差异，见 README §2）"
+  },
+  "cost": {
+    "caliber": "等效理论量（解析），**不用时间量进判据**（墙钟仅记训练时长）",
+    "decode_macs_per_token": {
+      "unit": "MACs（乘加）/token；FLOPs = 2×",
+      "mha": {"proj_macs_per_layer": 196608},
+      "gqa2": {"proj_macs_per_layer": 98304},
+      "mla_c128": {"q_proj_macs_per_layer": 65536, "down_proj_macs_per_layer": 32768,
+                    "up_proj_macs_per_layer": 65536, "proj_macs_per_layer": 163840,
+                    "up_projection_macs_per_token": 786432,
+                    "up_projection_flops_per_token": 1572864,
+                    "up_projection_frac_of_ffn_macs": 0.083333,
+                    "proj_macs_vs_gqa2_per_layer": 65536,
+                    "proj_macs_vs_mha_per_layer": -32768},
+      "mla_c256": {"proj_macs_per_layer": 262144,
+                    "up_projection_macs_per_token": 1572864,
+                    "up_projection_flops_per_token": 3145728,
+                    "proj_macs_vs_gqa2_per_layer": 65536}
+    },
+    "layer_passes_per_token": "仍为 L（低秩不额外加层）",
+    "tokens_per_forward": "1（解码）",
+    "pipelining": "上投影只依赖当前已生成位置的潜向量，严格前缀不变、不引入额外顺序依赖（MLA 的 K/V 是逐位置投影，无跨位置混合）",
+    "from_scratch_penalty": "MLA 不能像 GQA 那样在已训模型上轻量 uptrain（本实验全部从零训练；业界多在已训大模型上 uptrain/推理包装）——该代价以「同为 12k 步从零」入账，不另计小时数",
+    "params": {
+      "mha": 13536768,
+      "gqa2": 12352512,
+      "mla_c128": 13137408,
+      "mla_c256": 14317056,
+      "gqa2_eq": 13536516
+    }
+  },
+  "checkpoint_definition": {
+    "path_pattern": "runs/<run_name>/model.pt（复用臂见各臂 reuse_source）",
+    "load_rule": "评测侧逐臂 **断言 sha256**（复用臂对 2616::model_hashes.json；训练臂对本实验训练时记录的哈希），不符即拒载",
+    "mla_build_rule": "MLA 臂用 `mla_arms.load_mla_model(model_pt, cfg, vocab, latent)`：先 `DepthARModel(cfg)` 再 `install_mla_blocks`，`load_state_dict(strict=True)`（键不一致直接报错）",
+    "gqa2_eq_build_rule": "`DepthARConfig(..., n_kv_heads=2, mlp_hidden_sched=<列表>)`（载入后断言 params == 13536516）"
+  },
+  "eval_flow": {
+    "device": "cuda",
+    "clean_bpc": {
+      "primary": "pathlm.depth_ar.depth_curve(model, eval_arr, n_batches=24, batch_size=16, device='cuda') 的最终深度 bpc（与 2610/2614/2616 同一数据流）",
+      "second_path": "tools.evalkit.retention.masked_bpc(model, eval_arr, None, n_batches=24, batch_size=16, window_seed=2) —— 必须与 primary 逐位一致（两路径对账）",
+      "window_seed": 2,
+      "note": "配对 Δ 用**同一窗口序**逐臂独立评（24 批）"
+    },
+    "kv_bytes_and_liveness": {
+      "mha_gqa": "pathlm.depth_ar.kv_head_liveness（实际 qkv 输出宽 + 实际 K/V 张量形状）",
+      "mla": "mla_arms.mla_liveness（实际潜向量 [B,T,d_c] + 实际 K/V [B,H,T,dh] 形状；enable_gqa=False）",
+      "assertion": "解析每位置字节必须与实测张量形状一致（标签不算证据）"
+    },
+    "long_range_recall_second_leg": {
+      "battery": "tools.evalkit.longrange_tasks.var_recall_batch（变距离回忆，距离档 16/32/64/128/192/255）",
+      "params": {"sym_vocab": 64, "filler_token": 64, "cue_token": 205, "batch_size": 8, "seq_len": 256},
+      "baselines": ["1/64 均匀 chance（答案集）", "local_prior_accuracy（只看最近 k 个 token 的最强局部预测器）"],
+      "ci": "每档 accuracy 报 Wilson 95% CI；臂间配对差走配对 bootstrap（不借用 0.014 带）",
+      "invariance_check": "因果性/可见性对数不变：改未来 token 后过去位置输出逐位不变（mla_arms.check_causality_invariance）"
+    },
+    "cost_report": "解析等效量（本文件 cost 段）+ 训练墙钟（仅记录，不进判据）"
+  },
+  "variance": {
+    "seed_pairs": "训练臂各 2 个 seed（mla_c128 s0/s1、gqa2_eq s0/s1）；mha 补 mha_rep（同 seed 重跑）",
+    "run_to_run": "gqa2 的 n=2 来自 2616 的同 seed 重跑（gqa-12k-s0 vs -rep），用于 run-to-run 散度读数",
+    "band": "0.014 bpc（配对 Δ、≥5 窗口；C1 裁决）",
+    "n_min": 2,
+    "note": "n=2 时只报逐 seed Δ 与「是否越带」，不做显著性检验（不伪造统计量）"
+  },
+  "prior_art": {
+    "mla": {"ref": "DeepSeek-V2，arXiv:2405.04434（MLA：KV 联合低秩压缩 + decoupled RoPE，head_dim=128）",
+             "use": "只作设计方向（机制归属）；**不作判据**；本项不重造 MLA"},
+    "kv_quant": {"ref": "KIVI，arXiv:2402.02750", "use": "只作设计方向（KV 侧压缩族谱）；不作判据"},
+    "head_sharing": {"ref": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m",
+                      "use": "同轴对照与配方来源（复用其 checkpoint）"},
+    "prior_art_ledger": {"ref": "axes/5-quant/5.6-window-quant-retrieval/experiments/2617-prior-art-hybrid-kv/PRIOR_ART.md",
+                          "use": "同字节轴与「最优分配」公开前例的检索台账"},
+    "increment": "在 13M 受控设定下把「每位置部署字节 → 序列级质量（两腿）」的前沿与头共享放在**同一字节轴**上比（业界缺统一字节轴）；并把 MLA 的独有代价（须从零训练 + 上投影计算）入账"
+  },
+  "corrections": [
+    {
+      "what": "派单给的等参数臂逐层表（9 层 +193 / 3 层 +192 ⇒ ΣΔh=2313）按 `2d·Δh = 512Δh` 估算，漏了 `mlp[0].bias` 的 +Δh 项",
+      "correct": "逐层 FFN 参数斜率 = 2d+1 = 513；且 513 ∤ 1184256 ⇒ 逐位相等**不可能**；本实验取 ΣΔh=2308（1729×4 + 1728×8）⇒ 差 −252（−1.86e-5）",
+      "evidence": "mla_arms.eqparams_solution()（解析==实测逐位，见 checks.json）"
+    },
+    {
+      "what": "派单给的驱动模板里两个 `mla_c128` run 同名（seed 0/1 会互相覆盖 model.pt 与日志）",
+      "correct": "run 名逐 seed 唯一：`mla-c128-s0` / `mla-c128-s1`（gqa2-eq 同）"
+    },
+    {
+      "what": "派单给的驱动模板里 `gqa2_eq` 缺 `--n-kv-heads 2`",
+      "correct": "gqa2_eq 从 `config.json::arms[].n_kv_heads` 取 2（否则会训成「MHA + 大 FFN」）"
+    },
+    {
+      "what": "派单给的驱动模板 `cd <expdir>` 后跑训练",
+      "correct": "训练必须 `cwd=仓库根`（`train_depth_ar.py` 用相对路径 `.tmp/enwik8` / `data/enwik8_full.npz`）"
+    }
+  ],
+  "residual_confounds": [
+    "同字节但**不等参数**：mla_c128 比 gqa2 多 784,896 参数（+6.35%），gqa2_eq 又比 mla_c128 多 399,108 参数 ⇒ 「纯机制」读数需同时看 gqa2（等字节、少参数）与 gqa2_eq（等参数于 MHA、等字节）两个对照，两者夹住 mla_c128",
+    "gqa2_eq 相对 MHA 仍差 −252 参数（不可达性证明见 eqparams_arithmetic）",
+    "seq256 短上下文 ⇒ 每位置字节的绝对收益在本尺度小（MHA 12288 B/位置 vs 3072 B/位置），长上下文的收益外推不在本项判据内",
+    "复用臂的 12k 步与新增臂同为 12k 步、同配方，但复用臂由引擎训练、新增臂由本副本训练 ⇒ 引擎-副本等价性由 smoke 对账与 mha_rep 全长旁证覆盖"
+  ],
+  "outputs": [
+    "README.md（运行前契约）",
+    "config.json（本文件）",
+    "mla_arms.py（MLABlock + 解析账 + 自检）",
+    "train_mla.py（引擎逐字副本 + 3 处最小 patch）",
+    "gpu_lock.py（照抄 2632 的 GpuLock）",
+    "run_arms.py（串行取锁驱动，detach），train_driver.log / train_driver.json",
+    "smoke_mla.py + smoke/summary.json（--mla-latent 0 等价性 + MLA 前向冒烟）",
+    "checks.json（解析账 / 因果性 / 上投影参考 / 字节轴自检输出）",
+    "runs/<run_name>/（model.pt / train_log.jsonl / results.json / cmd.txt）",
+    "wp1_status.json（逐臂状态 + 续跑命令）"
+  ],
+  "failure_decision_tree": {
+    "mla_c128 比 gqa2（同字节）干净 bpc 差 > 0.014": "判低秩压缩在本尺度不产生新知识（`falsification` 第 1 条）；若 gqa2_eq 上 mla 占优 ⇒ 说明是参数混杂而非机制，结论限定为「等参数下占优」",
+    "mla_c128 与 gqa2 的 Δ 在 ±0.014 内": "判「不可分」（该尺度该字节值不值无判决）——按 milestone.acceptance 明确写「不可分」，不许外推",
+    "mla_c128 优于 gqa2 但劣于 gqa2_eq（等参数）": "归因 = 「GQA 省下的参数被还给 FFN 更划算」；结论停在参数分配层，不宣称低秩机制优势",
+    "上投影 FLOPs 显著上升且未被字节收益补偿": "判代价记账不利（`falsification` 第 3 条）；报每 token 等效 FLOPs 与 FFN 的比值（mla_c128 = 8.33% FFN）",
+    "长程召回第二腿塌（Wilson 95% CI 与 gqa2 不重叠且更低）": "记「低秩压缩伤长程召回」，不采纳该潜维",
+    "训练未收敛（loss 斜率未走平，与 mha_rep 斜率差可排序）": "按 `SCHEMA.md` §19 先记「未收敛」，不得在未收敛上判机制"
+  },
+  "non_goals": [
+    "低秩 × 量化叠加（归 `5.6` 组合，默认留白）",
+    "decoupled RoPE（本仓无 RoPE，不需要）",
+    "更长上下文（seq 512+）与更大尺度（>13M）的外推",
+    "MLA 之外的变体（no-RoPE 变体、吸收式 W_UV 融合、分头潜维）"
+  ]
+}

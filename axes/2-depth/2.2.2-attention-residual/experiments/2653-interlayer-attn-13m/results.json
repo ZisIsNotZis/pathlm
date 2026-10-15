@@ -1,0 +1,97 @@
+{
+  "experiment": "2653-interlayer-attn-13m",
+  "criterion": "P1 Δ = bpc_该臂 − bpc_(stock/dense)（符号约定见 README §4，正 = 该臂更好）；方差带 0.014；P2 活性（层维权重非退化）；P3 代价列（额外参数 / 每 token 额外 MACs）；P4 等值门（one-hot ⇒ 与 stock 逐位一致）；P5 基线复用的三条等值证明；P6 层索引因果。",
+  "variance_bound": 0.014,
+  "steps": 12000,
+  "arms": {},
+  "P1_deltas_vs_baselines": {},
+  "P1_verdict": {},
+  "P2_liveness": {},
+  "P3_window_se": {},
+  "P5_baseline_equivalence": {
+    "reference": "axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m/results.json",
+    "reference_arms": {
+      "sequential": {
+        "clean_bpc": 1.5254,
+        "params": 6962688
+      },
+      "dense": {
+        "clean_bpc": 1.5246,
+        "params": 6962724
+      }
+    },
+    "field_by_field": {
+      "d_model": {
+        "mine": 256,
+        "ref": 256
+      },
+      "n_layers": {
+        "mine": 8,
+        "ref": 8
+      },
+      "n_heads": {
+        "mine": 8,
+        "ref": 8
+      },
+      "seq_len": {
+        "mine": 256,
+        "ref": 256
+      },
+      "mlp_mult": {
+        "mine": 4,
+        "ref": 4
+      },
+      "dense": {
+        "mine": true,
+        "ref": true
+      },
+      "exit_mode": {
+        "mine": "uniform",
+        "ref": "uniform"
+      },
+      "dropout": {
+        "mine": 0.0,
+        "ref": 0.0
+      },
+      "norm_cap": {
+        "mine": 1.0,
+        "ref": 1.0
+      },
+      "steps": {
+        "mine": 12000,
+        "ref": 12000
+      },
+      "batch_size": {
+        "mine": 32,
+        "ref": 32
+      },
+      "lr": {
+        "mine": 0.001,
+        "ref": 0.001
+      },
+      "seed": {
+        "mine": 0,
+        "ref": 0
+      },
+      "optimizer": {
+        "mine": "AdamW(wd=0.01) + warmup 200 步 + cosine 到 0.1×",
+        "ref": "AdamW(wd=0.01) + warmup 200 步 + cosine 到 0.1×"
+      },
+      "data": {
+        "mine": "data/enwik8_full.npz",
+        "ref": "data/enwik8_full.npz"
+      },
+      "train_tokens": {
+        "mine": 98304000,
+        "ref": 98304000
+      }
+    },
+    "unequal_fields": {},
+    "implementation_equality": "`test_2653_interlayer_attn.py`：force_last 的 one-hot 权重下前向/loss 与 stock sequential 逐位一致（同一构造顺序 ⇒ trunk 权重也逐位相同）",
+    "caliber_note": "历史同配置对照 + 逐位等值性证明；2613 s0 的 clean bpc 口径 = 全深度、无退出、teacher-forcing、序列级 bpc，与本实验同口径",
+    "pass": true
+  },
+  "source_files": [],
+  "code_hash_run_py": "04419188ece9f42622e37698af3c74bbdac6e642b372c7af05fb4f77af7188fa",
+  "generated_at": "2026-10-15T04:46:19+0800"
+}

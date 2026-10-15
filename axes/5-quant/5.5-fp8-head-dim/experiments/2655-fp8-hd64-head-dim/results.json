@@ -1,0 +1,1574 @@
+{
+ "experiment": "2655-fp8-hd64-head-dim",
+ "contract": "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/README.md（运行前预登记；判据线写在本文件 criterion）",
+ "scope": "单轴单格、单因素：固定数据/评测窗口/任务/判据，只改**模型侧 kv head 数**（`--heads 8 → 4`，⇒ `head_dim = 256/4 = 64`）与**块标尺的组大小 G**（G ∈ {16,32,64}）。纯推理评测、不训练附属物、不新增参数（除训练该 checkpoint 本身）；不做组合实验（组合留白是显式声明，`SCHEMA.md` §4）。本实验只补 5.5 的 WP2 实测腿（`head_dim=64`），不改 WP1 的任何读数。",
+ "config": {
+  "experiment": "2655-fp8-hd64-head-dim",
+  "line": "轴 5 研究项 5.5（fp8 / 大 head_dim）WP2 —— `head_dim=64` 的实测腿",
+  "contract": "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/README.md（运行前预登记；判据线写在本文件 criterion）",
+  "contract_copy": "README.md（同目录，判据线**运行前**写入；本文件 mtime 必须早于 results.json）",
+  "parent_wp1": "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m（WP1 = fp8 vs int8+块标尺同字节判决；WP2 的 `head_dim=32` G 扫描与解析亦在那里）",
+  "scope": "单轴单格、单因素：固定数据/评测窗口/任务/判据，只改**模型侧 kv head 数**（`--heads 8 → 4`，⇒ `head_dim = 256/4 = 64`）与**块标尺的组大小 G**（G ∈ {16,32,64}）。纯推理评测、不训练附属物、不新增参数（除训练该 checkpoint 本身）；不做组合实验（组合留白是显式声明，`SCHEMA.md` §4）。本实验只补 5.5 的 WP2 实测腿（`head_dim=64`），不改 WP1 的任何读数。",
+  "axis_definition": {
+   "quantity": "deployment_bytes_per_position",
+   "formula": "2(K,V) * n_layers * n_kv_heads_eff * head_dim * (value_bytes + scale_bytes_per_value) * (positions_kept / T)",
+   "unit": "字节 / 上下文位置",
+   "seq_len_T": 256,
+   "values_per_position": 6144,
+   "values_per_position_derivation": "2 * L * n_kv_heads * head_dim * (kept/T) = 2*12*4*64*1 = 6144（与 head_dim=32 的 2*12*8*32 相同，只要 n_kv_heads*head_dim = d_model = 256）",
+   "per_position_bytes_fp16_full": 12288,
+   "to_fp16_multiple": "deployment_bytes_per_position / 12288",
+   "caveats": [
+    "块标尺沿 `head_dim`（非 token 轴）⇒ 标尺只由当前 token 自己的值决定 ⇒ 严格前缀确定（判据 gate）。",
+    "`head_dim=64` ⇒ 沿 head_dim 的块可整除到 G ∈ {8,16,32,64}；G=64 时每值 1 + 2/64 = 1.03125 B、每位置 6336 B、省幅 **48.4375%**（比 `head_dim=32` 的封顶 46.875% 更接近 50%）。",
+    "本列是解析（部署口径）KV 占用；评测实现把 K/V 立刻反量化 ⇒ 实测峰值不随档下降，两者分列。",
+    "训练腿（`--heads 4`）只改 `head_dim`；d_model/mlp/步数/批大小/seed 与 `2616` mha 臂逐字段一致。"
+   ]
+  },
+  "reuse": {
+   "fp8_arms": {
+    "path": "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/fp8_arms.py",
+    "sha256": "3c14e513a99830ae79447e921adf6828008d0692fd1a5d5e8e873a8df2e0f5d0",
+    "use": "**只读 import**：`deployment_ledger` / `head_dim_ladder` / `head_dim_cap` / `make_logits_fn` / `kv_logits` / `activity_of`。不复制改写。"
+   },
+   "kv_quant": {
+    "path": "tools/evalkit/kv_quant.py",
+    "sha256": "bc71c232356af88a3e162ea81b608f2558c489419c1d28e238cf99bc6ecf13a2",
+    "use": "int8 块标尺算子 `quantize_kv(scheme=\"block\", G)` 的唯一来源（经由 `fp8_arms` 间接 import）。"
+   },
+   "harness_2621": {
+    "path": "axes/5-quant/5.1-kv-quant/experiments/2621-kv-budget-rest/run.py",
+    "use": "`b21.b19.bpc_of` / `masked_bpc` / `build_tasks` / `pooled_accuracy` / `floor_threshold`（经 `2653/run.py` 间接 import，只读）。"
+   },
+   "wrapper_2653": {
+    "path": "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/run.py",
+    "sha256": "77d19f52b48be0bfe0389b716c8058534289fba7ef7e06fe3fcf7ea0be6c0fc0",
+    "use": "**只读 import** 其 `eval_arm` / `paired_deltas` / `build_tasks`（评测电池本体）；2655 自写 `load_ckpt` / 仪器自检 / 落盘与表格（因为 2653 的 `dump/render_table` 把标题与代码哈希写死为 2653 自己的文件）。"
+   },
+   "lock_2632": {
+    "path": "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/run.py",
+    "sha256": "e1d82b80904d8e55123b8a01974eccbdf29247e34a46b337bb502d7d98d200e5",
+    "use": "训练驱动 `hp64_train_driver.py` 只读 import 其 `GpuLock`（`SCHEMA.md` §20 锁协议），未复制改写。"
+   },
+   "no_new_quant_ops": "本实验不新增任何量化算子；新代码只有配置、训练驱动、评测编排与表格。"
+  },
+  "harness": {
+   "parent_config": "axes/5-quant/5.1-kv-quant/experiments/2621-kv-budget-rest/config.json",
+   "parent_fields": [
+    "data"
+   ],
+   "task_recipe_copied_from": "2653/config.json::tasks|tokens（逐字段一致 ⇒ 与 WP1 同批同任务同 seed）",
+   "seed_role": "cfg.seed = 7 只喂合成任务的 `torch.Generator`（与 2653 同值 ⇒ 任务批逐位相同）"
+  },
+  "model": {
+   "d_model": 256,
+   "n_layers": 12,
+   "n_heads": 4,
+   "seq_len": 256,
+   "mlp_mult": 6,
+   "dense": true
+  },
+  "head_dim": 64,
+  "head_dim_derivation": "d_model / n_heads = 256 / 4 = 64（`pathlm` 引擎无需改动，见 `wp2_hd64_status.json::capability_check`）",
+  "checkpoints": {
+   "trunk": {
+    "path": "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/runs/hd64-s0/model.pt",
+    "sha256": null,
+    "sha256_note": "预登记时该 checkpoint 尚未训练 ⇒ 期望哈希**声明缺失（null），不臆造**（`AGENTS.md` absent）。评测时由 `hp64_arms.py` 现算并写入 `results.json::checkpoint.sha256`（`sha256_source = \"computed_at_eval\"`）；训练驱动另把它记进 `train_driver_state.json` 供交叉核对。",
+    "size_bytes": null,
+    "role": "被测模型：13.5M dense decoder-only，12 层 d256 **4 头**（head_dim=64）、mlp6、seq256、tied 读出、12k 步、seed 0",
+    "train_ref": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/MODEL.md（mha 臂配方，唯一改动 `--heads 8 → 4`）",
+    "train_run": "runs/hd64-s0（见 hp64_train_driver.py；命令落 runs/hd64-s0/cmd.txt）"
+   },
+   "second_seed": {
+    "path": "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/runs/hd64-s1/model.pt",
+    "sha256": null,
+    "role": "n≥2 的第二 seed（seed 1）；预算紧时可在评测前砍掉并如实登记（`STOP_AFTER_FIRST_ARM`）"
+   }
+  },
+  "data": {
+   "name": "enwik8_full",
+   "path": "data/enwik8_full.npz",
+   "split": "前 90M 训练 / 末 10M 评测（本实验只用评测尾段跑 bpc）",
+   "vocab_size": 206,
+   "n_real_tokens": 205,
+   "mask_token": 205,
+   "bpc_only": true,
+   "note": "合成召回任务不使用 enwik8 文本，只用词表大小（206）；SCHEMA §19 不用 enwik8 当长程主任务。"
+  },
+  "tokens": {
+   "sym_vocab": 64,
+   "filler_token": 64,
+   "cue_token": 205,
+   "local_k": 8
+  },
+  "tasks": {
+   "copy": {
+    "copy_len": 32,
+    "src_positions": [
+     0,
+     96,
+     191
+    ],
+    "batch_size": 16,
+    "n_batches": 1,
+    "role": "合成长程召回主腿（与 2619/2621/2632/2653 同任务同 seed）；每臂 n = 3 位置 × 1 批 × 16 请求 × 32 答案 = 1536 个答案（chance = 1/64 = 0.0156，地板阈值由 pool 后算）"
+   },
+   "induction": {
+    "prefix_len": 192,
+    "copy_len": 32,
+    "src_starts": [
+     0
+    ],
+    "batch_size": 16,
+    "n_batches": 1,
+    "role": "副腿：末尾重复段之后的那一项（induction）"
+   },
+   "var_recall": {
+    "distances": [
+     64
+    ],
+    "batch_size": 16,
+    "n_batches": 1,
+    "role": "副腿：单 (key,value) 变距离回忆；同时提供前缀不变性的探针 token（本主干该腿预期落在地板）"
+   }
+  },
+  "arms": {
+   "fp16": {
+    "family": "hd64",
+    "kind": "quant",
+    "mode": "fp16",
+    "value_bytes": 2.0,
+    "bytes_per_position": 12288,
+    "role": "基线（KV 存 fp16）＝ WP2 的对照臂与配对 Δ 的基准"
+   },
+   "int8_block_g64": {
+    "family": "hd64",
+    "kind": "quant",
+    "mode": "int8",
+    "scheme": "block",
+    "group": 64,
+    "value_bytes": 1.0,
+    "bytes_per_value": 1.03125,
+    "bytes_per_position": 6336,
+    "reduction_vs_fp16": 0.484375,
+    "role": "WP2 主臂：`head_dim=64` ⇒ G=64 合法（每 token 沿 head_dim 一把标尺）⇒ 省幅 48.4375%（本实验要实测的那个点）"
+   },
+   "fp8_e4m3": {
+    "family": "hd64",
+    "kind": "quant",
+    "mode": "fp8_e4m3",
+    "value_bytes": 1.0,
+    "scale_mode": "none",
+    "bytes_per_position": 6144,
+    "reduction_vs_fp16": 0.5,
+    "role": "免标尺臂（动态范围 ±448）：与 G=64 的块标尺在同一「每位置字节」轴上比较（WP1 已在 head_dim=32 上判过；本实验看 head_dim=64 下是否仍不可分辨）"
+   }
+  },
+  "side_arms": {
+   "int8_block_g16": {
+    "family": "hd64",
+    "kind": "quant",
+    "mode": "int8",
+    "scheme": "block",
+    "group": 16,
+    "value_bytes": 1.0,
+    "bytes_per_value": 1.125,
+    "bytes_per_position": 6912,
+    "reduction_vs_fp16": 0.4375,
+    "role": "辅助 G 扫描：把 `2/G` 项从 1/16 到 1/64 摊开，与解析对账（实测 n_scales/n_values）"
+   },
+   "int8_block_g32": {
+    "family": "hd64",
+    "kind": "quant",
+    "mode": "int8",
+    "scheme": "block",
+    "group": 32,
+    "value_bytes": 1.0,
+    "bytes_per_value": 1.0625,
+    "bytes_per_position": 6528,
+    "reduction_vs_fp16": 0.46875,
+    "role": "辅助 G 扫描：G=32 在 head_dim=64 下与 `5.1`/`2632` 的 head_dim=32 封顶点同字节（6528 B/位置）⇒ 同字节不同 head_dim 的对照点"
+   }
+  },
+  "analytic": {
+   "source": "由只读复用的 `2653/fp8_arms.py::head_dim_ladder` / `head_dim_cap` 生成（本文件不手抄数字）",
+   "bytes_per_value_rule": "block 标尺：value_bytes + scale_bytes/G（scale = fp16 = 2 B）；fp8 免标尺：1.0 B/值",
+   "head_dim_ladder": [
+    {
+     "head_dim": 32,
+     "group": 8,
+     "legal": true,
+     "reason": "",
+     "scale_bytes_per_value": 0.25,
+     "bytes_per_value": 1.25,
+     "bytes_per_position": 7680.0,
+     "ratio_vs_fp16": 0.625,
+     "reduction_vs_fp16": 0.375,
+     "prefix_invariant": true
+    },
+    {
+     "head_dim": 32,
+     "group": 16,
+     "legal": true,
+     "reason": "",
+     "scale_bytes_per_value": 0.125,
+     "bytes_per_value": 1.125,
+     "bytes_per_position": 6912.0,
+     "ratio_vs_fp16": 0.5625,
+     "reduction_vs_fp16": 0.4375,
+     "prefix_invariant": true
+    },
+    {
+     "head_dim": 32,
+     "group": 32,
+     "legal": true,
+     "reason": "",
+     "scale_bytes_per_value": 0.0625,
+     "bytes_per_value": 1.0625,
+     "bytes_per_position": 6528.0,
+     "ratio_vs_fp16": 0.53125,
+     "reduction_vs_fp16": 0.46875,
+     "prefix_invariant": true
+    },
+    {
+     "head_dim": 32,
+     "group": 64,
+     "legal": false,
+     "reason": "G=64 不整除 head_dim=32",
+     "scale_bytes_per_value": 0.03125,
+     "bytes_per_value": 1.03125,
+     "bytes_per_position": 6336.0,
+     "ratio_vs_fp16": 0.515625,
+     "reduction_vs_fp16": 0.484375,
+     "prefix_invariant": false
+    },
+    {
+     "head_dim": 64,
+     "group": 8,
+     "legal": true,
+     "reason": "",
+     "scale_bytes_per_value": 0.25,
+     "bytes_per_value": 1.25,
+     "bytes_per_position": 7680.0,
+     "ratio_vs_fp16": 0.625,
+     "reduction_vs_fp16": 0.375,
+     "prefix_invariant": true
+    },
+    {
+     "head_dim": 64,
+     "group": 16,
+     "legal": true,
+     "reason": "",
+     "scale_bytes_per_value": 0.125,
+     "bytes_per_value": 1.125,
+     "bytes_per_position": 6912.0,
+     "ratio_vs_fp16": 0.5625,
+     "reduction_vs_fp16": 0.4375,
+     "prefix_invariant": true
+    },
+    {
+     "head_dim": 64,
+     "group": 32,
+     "legal": true,
+     "reason": "",
+     "scale_bytes_per_value": 0.0625,
+     "bytes_per_value": 1.0625,
+     "bytes_per_position": 6528.0,
+     "ratio_vs_fp16": 0.53125,
+     "reduction_vs_fp16": 0.46875,
+     "prefix_invariant": true
+    },
+    {
+     "head_dim": 64,
+     "group": 64,
+     "legal": true,
+     "reason": "",
+     "scale_bytes_per_value": 0.03125,
+     "bytes_per_value": 1.03125,
+     "bytes_per_position": 6336.0,
+     "ratio_vs_fp16": 0.515625,
+     "reduction_vs_fp16": 0.484375,
+     "prefix_invariant": true
+    }
+   ],
+   "caps": {
+    "32": {
+     "head_dim": 32,
+     "max_group": 32,
+     "bytes_per_value": 1.0625,
+     "bytes_per_position": 6528.0,
+     "reduction_vs_fp16": 0.46875
+    },
+    "64": {
+     "head_dim": 64,
+     "max_group": 64,
+     "bytes_per_value": 1.03125,
+     "bytes_per_position": 6336.0,
+     "reduction_vs_fp16": 0.484375
+    }
+   },
+   "head_dim_32_cap": "head_dim=32 ⇒ G ≤ 32 ⇒ 每值 1.0625 B、每位置 6528 B、省幅 **46.875%**（封顶）",
+   "head_dim_64_point": "head_dim=64 ⇒ G=64 ⇒ 每值 1.03125 B、每位置 6336 B、省幅 **48.4375%**",
+   "fp8_point": "fp8 E4M3 免标尺 ⇒ 1.0 B/值 ⇒ 6144 B/位置、省幅 **50%**"
+  },
+  "eval": {
+   "bpc_method": "`2653/run.py::eval_arm` → `b21.b19.bpc_of`（因果移位 CE 的 token 平均；与 2619/2621/2632/2653 同一路径）",
+   "bpc_cross_path_check": "`tools.evalkit.retention.masked_bpc`（独立第二路径；fp32 恒等臂须与 `bpc_of` **逐位相等**）",
+   "n_batches": 24,
+   "batch_size": 16,
+   "window_seed": 2,
+   "pairing_seeds": [
+    2,
+    3,
+    4,
+    5,
+    6
+   ],
+   "pairing_n_batches": 2,
+   "scan_n_batches": 6,
+   "device": "cpu",
+   "all_arms_same_device": true,
+   "cross_device_rule": "跨设备不构成判据：GPU 历史锚 1.483569（2610/2614 口径，device=cuda）与 2653 的 CPU fp16 读数 1.4835687 **不同 checkpoint/不同设备**，本实验只并列报告、不宣称作判据，也不声称逐位相等。判据一律用**同设备（CPU）、同窗口序**的**配对 Δ**。",
+   "side_arm_note": "辅助臂 `int8_block_g16/g32` 只跑 `scan` 口径（6×16, seed=2），与主表 24×16 口径不同 ⇒ 只用于 G 阶梯内部的解析对账，不与其他臂混比、不进配对表。",
+   "note": "主表 = `window_seed=2` + 24×16（与 2610/2614/2619/2621/2632/2653 同一窗口序）。配对腿 = **均匀口径**：5 个窗口 seed {2,3,4,5,6} 各 `n_batches=2`、同 batch_size、同设备（CPU）⇒ 满足「配对 Δ、≥5 窗口」。"
+  },
+  "criterion": {
+   "verbatim_contract": [
+    "该跌：每位置部署字节（fp8 免标尺时 1 B/值；大 `head_dim` 下标尺摊薄 2/G B/值）；该不跌/可排序：clean bpc（fp8 vs int8+块标尺，须越 0.014 噪声带）；必须不变：严格前缀不变性两条、非量化臂逐位不变；必须报：fp8 是否需分组标尺、大 `head_dim` 下的 G 与省幅。",
+    "若 fp8 的 clean bpc 代价越噪声带且其免标尺的字节优势被质量否定（同字节下不占优）⇒ 判 fp8 在本尺度不值得；若 fp8 同样需要分组标尺（免不掉标尺）⇒ 判其『免标尺』前提失败；若大 `head_dim` 下标尺摊薄不改变每位置字节（与解析不符）⇒ 判实测与解析口径不一致、须查明。",
+    "WP2 验收（本实验补的那条）：每位置字节随 `head_dim`/G 的**实测**（标尺密度 n_scales/n_values → 2/G）与**解析**一致；质量不越噪声带；对账差异有解释。"
+   ],
+   "sign_convention": "SCHEMA §17.3：Δ = bpc_实验臂 − bpc_对照臂（正 = 实验臂更差）；对照 = 同 checkpoint、同设备、同窗口序的 `fp16` 臂。",
+   "band_primary_bpc": 0.014,
+   "band_primary_caliber": "跨格 0.014 bpc 带，**限配对 Δ、≥5 窗口**（本 run 主臂满足：5 个窗口 seed {2,3,4,5,6}）",
+   "band_secondary": "本格自测在力带 = 单臂跨窗口 bpc 极差（如实给数值，只作辅助描述）",
+   "bands_not_mixed": "两带不混用：主判用 0.014（配对 Δ），自测带只作辅助描述。",
+   "band_aggregation": "越带判定用逐窗配对 Δ 的 max|Δ| > 带（`2653/run.py::paired_deltas` 的实现，最保守取法），与 docs/research-schema.md §12.1「限配对 Δ、≥5 窗口」一致。",
+   "c1_declaration": "本格引用带 = **跨格 0.014 bpc（限配对 Δ、≥5 窗口）**；本格无自测在力带；率类指标（召回）走 Wilson 95% CI、**不跨量纲借用** 0.014（docs/research-schema.md §12.1）。",
+   "recall_ci": "Wilson 95%",
+   "recall_at_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（读作「在该任务上不可分辨」，不得写成「机制无效」，SCHEMA §19）",
+   "gate": "① 前缀不变性两条（改未来 token / 改同批邻居）任一为 False ⇒ 该臂不得出数，本次实验作废；② fp32 恒等臂与独立第二路径不逐位相等 / int8 块标尺 G=64 与 2632 前向不逐位相等 ⇒ 仪器红、须先修。",
+   "no_single_point_extrapolation": "SCHEMA §17.11：head_dim=64 的实测只描述该点；不把它外推到 head_dim=128 等未测点。",
+   "fp8_scale_claim_rule": "「fp8 免标尺」只在实测 `n_scales = 0` **且**质量不越带时成立；否则如实报 1 + 2/G 并宣布该前提失败。"
+  },
+  "cost": {
+   "caliber": "**成本只用等效理论量**（每位置部署字节 = 值数 × 每值字节）；墙钟**不进判据**，只作预算记账。",
+   "train": {
+    "device": "cuda",
+    "gpu_minutes_per_arm_measured_history": 9.0,
+    "source": "2616-gqa-mqa-13m/MODEL.md（同配方 12k 步墙钟 8.44–9.06 min）",
+    "arms": [
+     "hd64-s0（主臂）",
+     "hd64-s1（n≥2 第二 seed，可砍）"
+    ],
+    "lock": "SCHEMA §20：每臂取一次 `/tmp/pathlm_gpu.lock`，等锁上限 600 s，跑完即放；等不到即重试"
+   },
+   "eval": {
+    "device": "cpu",
+    "measured_batch_seconds": 3.4,
+    "measured_batch_source": ".scratch/66-axis5-quant/evidence/cpu_eval_timing.py（16×256 一批，经 2653 记账）",
+    "batches_estimate": "3 主臂 × (24 + 5×2 + 6) + 2 辅助 × 6 + 仪器 ≈ 135 批",
+    "wall_estimate_minutes": 8,
+    "gpu_lock": "不取（纯 CPU 推理；SCHEMA §20 不适用）"
+   },
+   "budget_cut_rule": "先砍辅助 G 扫描臂 → 再砍配对腿 `n_batches`（2→1）→ 再砍第二 seed；**不砍判据线**、不砍 `int8_block_g64` 与 `fp8_e4m3` 两臂（SCHEMA §8/§17.7）。"
+  },
+  "seed": 7
+ },
+ "criterion": {
+  "verbatim_contract": [
+   "该跌：每位置部署字节（fp8 免标尺时 1 B/值；大 `head_dim` 下标尺摊薄 2/G B/值）；该不跌/可排序：clean bpc（fp8 vs int8+块标尺，须越 0.014 噪声带）；必须不变：严格前缀不变性两条、非量化臂逐位不变；必须报：fp8 是否需分组标尺、大 `head_dim` 下的 G 与省幅。",
+   "若 fp8 的 clean bpc 代价越噪声带且其免标尺的字节优势被质量否定（同字节下不占优）⇒ 判 fp8 在本尺度不值得；若 fp8 同样需要分组标尺（免不掉标尺）⇒ 判其『免标尺』前提失败；若大 `head_dim` 下标尺摊薄不改变每位置字节（与解析不符）⇒ 判实测与解析口径不一致、须查明。",
+   "WP2 验收（本实验补的那条）：每位置字节随 `head_dim`/G 的**实测**（标尺密度 n_scales/n_values → 2/G）与**解析**一致；质量不越噪声带；对账差异有解释。"
+  ],
+  "sign_convention": "SCHEMA §17.3：Δ = bpc_实验臂 − bpc_对照臂（正 = 实验臂更差）；对照 = 同 checkpoint、同设备、同窗口序的 `fp16` 臂。",
+  "band_primary_bpc": 0.014,
+  "band_primary_caliber": "跨格 0.014 bpc 带，**限配对 Δ、≥5 窗口**（本 run 主臂满足：5 个窗口 seed {2,3,4,5,6}）",
+  "band_secondary": "本格自测在力带 = 单臂跨窗口 bpc 极差（如实给数值，只作辅助描述）",
+  "bands_not_mixed": "两带不混用：主判用 0.014（配对 Δ），自测带只作辅助描述。",
+  "band_aggregation": "越带判定用逐窗配对 Δ 的 max|Δ| > 带（`2653/run.py::paired_deltas` 的实现，最保守取法），与 docs/research-schema.md §12.1「限配对 Δ、≥5 窗口」一致。",
+  "c1_declaration": "本格引用带 = **跨格 0.014 bpc（限配对 Δ、≥5 窗口）**；本格无自测在力带；率类指标（召回）走 Wilson 95% CI、**不跨量纲借用** 0.014（docs/research-schema.md §12.1）。",
+  "recall_ci": "Wilson 95%",
+  "recall_at_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（读作「在该任务上不可分辨」，不得写成「机制无效」，SCHEMA §19）",
+  "gate": "① 前缀不变性两条（改未来 token / 改同批邻居）任一为 False ⇒ 该臂不得出数，本次实验作废；② fp32 恒等臂与独立第二路径不逐位相等 / int8 块标尺 G=64 与 2632 前向不逐位相等 ⇒ 仪器红、须先修。",
+  "no_single_point_extrapolation": "SCHEMA §17.11：head_dim=64 的实测只描述该点；不把它外推到 head_dim=128 等未测点。",
+  "fp8_scale_claim_rule": "「fp8 免标尺」只在实测 `n_scales = 0` **且**质量不越带时成立；否则如实报 1 + 2/G 并宣布该前提失败。"
+ },
+ "device": "cpu",
+ "caliber_note": "跨设备不构成判据：GPU 历史锚 1.483569（2610/2614 口径，device=cuda）与 2653 的 CPU fp16 读数 1.4835687 **不同 checkpoint/不同设备**，本实验只并列报告、不宣称作判据，也不声称逐位相等。判据一律用**同设备（CPU）、同窗口序**的**配对 Δ**。",
+ "gpu_lock": null,
+ "gpu_lock_note": "纯 CPU 推理，按 SCHEMA §20 不取 GPU 锁",
+ "deployment_ledger": {
+  "values_per_position": 6144.0,
+  "fp16_bytes_per_position": 12288.0,
+  "anchors_5_1": {
+   "values_per_position": 6144.0,
+   "fp16_bytes_per_position": 12288.0,
+   "int8_block_g32_bytes_per_position": 6528.0,
+   "fp8_no_scale_bytes_per_position": 6144.0
+  },
+  "per_arm": {
+   "fp16": {
+    "mode": "fp16",
+    "scale_mode": "none",
+    "group": null,
+    "values_per_position": 6144.0,
+    "value_bytes_per_value": 2.0,
+    "scale_bytes_per_value": 0.0,
+    "bytes_per_value": 2.0,
+    "bytes_per_position": 12288.0,
+    "ratio_vs_fp16": 1.0,
+    "reduction_vs_fp16": 0.0,
+    "formula": "2*L*n_kv_heads*head_dim*(kept/T) * value_bytes [+ values_per_position * 2/G] for int8-block / fp8-token-scale"
+   },
+   "int8_block_g64": {
+    "mode": "int8",
+    "scale_mode": "none",
+    "group": 64,
+    "values_per_position": 6144.0,
+    "value_bytes_per_value": 1.0,
+    "scale_bytes_per_value": 0.03125,
+    "bytes_per_value": 1.03125,
+    "bytes_per_position": 6336.0,
+    "ratio_vs_fp16": 0.515625,
+    "reduction_vs_fp16": 0.484375,
+    "formula": "2*L*n_kv_heads*head_dim*(kept/T) * value_bytes [+ values_per_position * 2/G] for int8-block / fp8-token-scale"
+   },
+   "fp8_e4m3": {
+    "mode": "fp8_e4m3",
+    "scale_mode": "none",
+    "group": null,
+    "values_per_position": 6144.0,
+    "value_bytes_per_value": 1.0,
+    "scale_bytes_per_value": 0.0,
+    "bytes_per_value": 1.0,
+    "bytes_per_position": 6144.0,
+    "ratio_vs_fp16": 0.5,
+    "reduction_vs_fp16": 0.5,
+    "formula": "2*L*n_kv_heads*head_dim*(kept/T) * value_bytes [+ values_per_position * 2/G] for int8-block / fp8-token-scale"
+   }
+  },
+  "per_side_arm": {
+   "int8_block_g16": {
+    "mode": "int8",
+    "scale_mode": "none",
+    "group": 16,
+    "values_per_position": 6144.0,
+    "value_bytes_per_value": 1.0,
+    "scale_bytes_per_value": 0.125,
+    "bytes_per_value": 1.125,
+    "bytes_per_position": 6912.0,
+    "ratio_vs_fp16": 0.5625,
+    "reduction_vs_fp16": 0.4375,
+    "formula": "2*L*n_kv_heads*head_dim*(kept/T) * value_bytes [+ values_per_position * 2/G] for int8-block / fp8-token-scale"
+   },
+   "int8_block_g32": {
+    "mode": "int8",
+    "scale_mode": "none",
+    "group": 32,
+    "values_per_position": 6144.0,
+    "value_bytes_per_value": 1.0,
+    "scale_bytes_per_value": 0.0625,
+    "bytes_per_value": 1.0625,
+    "bytes_per_position": 6528.0,
+    "ratio_vs_fp16": 0.53125,
+    "reduction_vs_fp16": 0.46875,
+    "formula": "2*L*n_kv_heads*head_dim*(kept/T) * value_bytes [+ values_per_position * 2/G] for int8-block / fp8-token-scale"
+   }
+  },
+  "head_dim_cap": {
+   "32": {
+    "head_dim": 32,
+    "max_group": 32,
+    "bytes_per_value": 1.0625,
+    "bytes_per_position": 6528.0,
+    "reduction_vs_fp16": 0.46875
+   },
+   "64": {
+    "head_dim": 64,
+    "max_group": 64,
+    "bytes_per_value": 1.03125,
+    "bytes_per_position": 6336.0,
+    "reduction_vs_fp16": 0.484375
+   }
+  },
+  "head_dim_ladder": [
+   {
+    "head_dim": 32,
+    "group": 8,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.25,
+    "bytes_per_value": 1.25,
+    "bytes_per_position": 7680.0,
+    "ratio_vs_fp16": 0.625,
+    "reduction_vs_fp16": 0.375,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 32,
+    "group": 16,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.125,
+    "bytes_per_value": 1.125,
+    "bytes_per_position": 6912.0,
+    "ratio_vs_fp16": 0.5625,
+    "reduction_vs_fp16": 0.4375,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 32,
+    "group": 32,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.0625,
+    "bytes_per_value": 1.0625,
+    "bytes_per_position": 6528.0,
+    "ratio_vs_fp16": 0.53125,
+    "reduction_vs_fp16": 0.46875,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 32,
+    "group": 64,
+    "legal": false,
+    "reason": "G=64 不整除 head_dim=32",
+    "scale_bytes_per_value": 0.03125,
+    "bytes_per_value": 1.03125,
+    "bytes_per_position": 6336.0,
+    "ratio_vs_fp16": 0.515625,
+    "reduction_vs_fp16": 0.484375,
+    "prefix_invariant": false
+   },
+   {
+    "head_dim": 64,
+    "group": 8,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.25,
+    "bytes_per_value": 1.25,
+    "bytes_per_position": 7680.0,
+    "ratio_vs_fp16": 0.625,
+    "reduction_vs_fp16": 0.375,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 64,
+    "group": 16,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.125,
+    "bytes_per_value": 1.125,
+    "bytes_per_position": 6912.0,
+    "ratio_vs_fp16": 0.5625,
+    "reduction_vs_fp16": 0.4375,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 64,
+    "group": 32,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.0625,
+    "bytes_per_value": 1.0625,
+    "bytes_per_position": 6528.0,
+    "ratio_vs_fp16": 0.53125,
+    "reduction_vs_fp16": 0.46875,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 64,
+    "group": 64,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.03125,
+    "bytes_per_value": 1.03125,
+    "bytes_per_position": 6336.0,
+    "ratio_vs_fp16": 0.515625,
+    "reduction_vs_fp16": 0.484375,
+    "prefix_invariant": true
+   }
+  ],
+  "note": "fp8 免标尺 ⇒ 1.0 B/值 = 6144 B/位置（= 5.1 的解析价签）；int8 块标尺 ⇒ 1 + 2/G，G=32 时 1.0625 B/值 = 6528 B/位置。head_dim=32 时 G 的上限 = 32 ⇒ 省幅封顶 46.875%。"
+ },
+ "partial": false,
+ "arms_completed": [
+  "fp16",
+  "int8_block_g64",
+  "fp8_e4m3"
+ ],
+ "arms_pending": [],
+ "side_arms_completed": [
+  "int8_block_g16",
+  "int8_block_g32"
+ ],
+ "side_arms_pending": [],
+ "points": [
+  {
+   "arm": "fp16",
+   "mode": "fp16",
+   "scheme": null,
+   "group": null,
+   "scale_mode": "none",
+   "bpc": 1.483031,
+   "bpc_caliber": {
+    "n_batches": 24,
+    "batch_size": 16,
+    "window_seed": 2,
+    "device": "cpu"
+   },
+   "bpc_paired_windows": {
+    "2": 1.471515,
+    "3": 1.381021,
+    "4": 1.456947,
+    "5": 1.512534,
+    "6": 1.574031
+   },
+   "bpc_paired_caliber": {
+    "n_batches": 2,
+    "batch_size": 16,
+    "window_seeds": [
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "device": "cpu"
+   },
+   "bpc_scan": 1.495012,
+   "bpc_scan_caliber": {
+    "n_batches": 6,
+    "window_seed": 2,
+    "device": "cpu"
+   },
+   "prefix_invariance": {
+    "n_requests": 4,
+    "future_token_past_logits_equal": true,
+    "peer_request_logits_equal": true
+   },
+   "activity": {
+    "kind": "quant",
+    "mode": "fp16",
+    "scheme": null,
+    "group": null,
+    "scale_mode": "none",
+    "implementation": "tools/evalkit/kv_quant.quantize_kv",
+    "n_values": 6291456,
+    "n_scales": 0,
+    "mean_abs_err": 0.000144334,
+    "max_abs_err": 0.003702164,
+    "rel_err": 0.000176733,
+    "changed_frac": 0.999848366,
+    "clipped_frac": 0.0,
+    "n_saturated": 0,
+    "saturated_frac": 0.0
+   },
+   "deployment": {
+    "mode": "fp16",
+    "scale_mode": "none",
+    "group": null,
+    "values_per_position": 6144.0,
+    "value_bytes_per_value": 2.0,
+    "scale_bytes_per_value": 0.0,
+    "bytes_per_value": 2.0,
+    "bytes_per_position": 12288.0,
+    "ratio_vs_fp16": 1.0,
+    "reduction_vs_fp16": 0.0,
+    "formula": "2*L*n_kv_heads*head_dim*(kept/T) * value_bytes [+ values_per_position * 2/G] for int8-block / fp8-token-scale"
+   },
+   "measure": {
+    "main": true,
+    "pairing": true,
+    "scan": true,
+    "recall": true
+   },
+   "wall_seconds_this_arm": 145.35,
+   "recall_copy": {
+    "accuracy": 0.202474,
+    "n": 1536,
+    "n_hits": 311,
+    "wilson95": [
+     0.183132,
+     0.223301
+    ],
+    "at_floor": false,
+    "chance": 0.0156,
+    "floor_threshold": 0.025756,
+    "per_setting": {
+     "0": {
+      "accuracy": 0.21875,
+      "n": 512,
+      "n_hits": 112,
+      "wilson95": [
+       0.185108,
+       0.25658
+      ]
+     },
+     "96": {
+      "accuracy": 0.175781,
+      "n": 512,
+      "n_hits": 90,
+      "wilson95": [
+       0.14526,
+       0.211131
+      ]
+     },
+     "191": {
+      "accuracy": 0.212891,
+      "n": 512,
+      "n_hits": 109,
+      "wilson95": [
+       0.179639,
+       0.250419
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.0,
+    "n": 16,
+    "n_hits": 0,
+    "wilson95": [
+     0.0,
+     0.193608
+    ],
+    "at_floor": true,
+    "chance": 0.0156,
+    "floor_threshold": 0.0468,
+    "per_setting": {
+     "0": {
+      "accuracy": 0.0,
+      "n": 16,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.193608
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.0,
+    "n": 16,
+    "n_hits": 0,
+    "wilson95": [
+     0.0,
+     0.193608
+    ],
+    "at_floor": true,
+    "chance": 0.0156,
+    "floor_threshold": 0.0468,
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 16,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.193608
+      ]
+     }
+    }
+   },
+   "plumbing_only": false
+  },
+  {
+   "arm": "int8_block_g64",
+   "mode": "int8",
+   "scheme": "block",
+   "group": 64,
+   "scale_mode": "none",
+   "bpc": 1.48314,
+   "bpc_caliber": {
+    "n_batches": 24,
+    "batch_size": 16,
+    "window_seed": 2,
+    "device": "cpu"
+   },
+   "bpc_paired_windows": {
+    "2": 1.471585,
+    "3": 1.381061,
+    "4": 1.456962,
+    "5": 1.512654,
+    "6": 1.574257
+   },
+   "bpc_paired_caliber": {
+    "n_batches": 2,
+    "batch_size": 16,
+    "window_seeds": [
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "device": "cpu"
+   },
+   "bpc_scan": 1.495123,
+   "bpc_scan_caliber": {
+    "n_batches": 6,
+    "window_seed": 2,
+    "device": "cpu"
+   },
+   "prefix_invariance": {
+    "n_requests": 4,
+    "future_token_past_logits_equal": true,
+    "peer_request_logits_equal": true
+   },
+   "activity": {
+    "kind": "quant",
+    "mode": "int8",
+    "scheme": "block",
+    "group": 64,
+    "scale_mode": "none",
+    "implementation": "tools/evalkit/kv_quant.quantize_kv",
+    "n_values": 6291456,
+    "n_scales": 98304,
+    "mean_abs_err": 0.004733496,
+    "max_abs_err": 0.041389465,
+    "rel_err": 0.00579602,
+    "changed_frac": 0.984479586,
+    "clipped_frac": 0.002195835,
+    "scale_min": 0.0032368807587772608,
+    "scale_max": 0.0833684429526329,
+    "n_saturated": 0,
+    "saturated_frac": 0.0
+   },
+   "deployment": {
+    "mode": "int8",
+    "scale_mode": "none",
+    "group": 64,
+    "values_per_position": 6144.0,
+    "value_bytes_per_value": 1.0,
+    "scale_bytes_per_value": 0.03125,
+    "bytes_per_value": 1.03125,
+    "bytes_per_position": 6336.0,
+    "ratio_vs_fp16": 0.515625,
+    "reduction_vs_fp16": 0.484375,
+    "formula": "2*L*n_kv_heads*head_dim*(kept/T) * value_bytes [+ values_per_position * 2/G] for int8-block / fp8-token-scale"
+   },
+   "measure": {
+    "main": true,
+    "pairing": true,
+    "scan": true,
+    "recall": true
+   },
+   "wall_seconds_this_arm": 232.86,
+   "recall_copy": {
+    "accuracy": 0.202474,
+    "n": 1536,
+    "n_hits": 311,
+    "wilson95": [
+     0.183132,
+     0.223301
+    ],
+    "at_floor": false,
+    "chance": 0.0156,
+    "floor_threshold": 0.025756,
+    "per_setting": {
+     "0": {
+      "accuracy": 0.21875,
+      "n": 512,
+      "n_hits": 112,
+      "wilson95": [
+       0.185108,
+       0.25658
+      ]
+     },
+     "96": {
+      "accuracy": 0.175781,
+      "n": 512,
+      "n_hits": 90,
+      "wilson95": [
+       0.14526,
+       0.211131
+      ]
+     },
+     "191": {
+      "accuracy": 0.212891,
+      "n": 512,
+      "n_hits": 109,
+      "wilson95": [
+       0.179639,
+       0.250419
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.0,
+    "n": 16,
+    "n_hits": 0,
+    "wilson95": [
+     0.0,
+     0.193608
+    ],
+    "at_floor": true,
+    "chance": 0.0156,
+    "floor_threshold": 0.0468,
+    "per_setting": {
+     "0": {
+      "accuracy": 0.0,
+      "n": 16,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.193608
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.0,
+    "n": 16,
+    "n_hits": 0,
+    "wilson95": [
+     0.0,
+     0.193608
+    ],
+    "at_floor": true,
+    "chance": 0.0156,
+    "floor_threshold": 0.0468,
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 16,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.193608
+      ]
+     }
+    }
+   },
+   "plumbing_only": false
+  },
+  {
+   "arm": "fp8_e4m3",
+   "mode": "fp8_e4m3",
+   "scheme": null,
+   "group": null,
+   "scale_mode": "none",
+   "bpc": 1.484297,
+   "bpc_caliber": {
+    "n_batches": 24,
+    "batch_size": 16,
+    "window_seed": 2,
+    "device": "cpu"
+   },
+   "bpc_paired_windows": {
+    "2": 1.47209,
+    "3": 1.381447,
+    "4": 1.459241,
+    "5": 1.514628,
+    "6": 1.575506
+   },
+   "bpc_paired_caliber": {
+    "n_batches": 2,
+    "batch_size": 16,
+    "window_seeds": [
+     2,
+     3,
+     4,
+     5,
+     6
+    ],
+    "device": "cpu"
+   },
+   "bpc_scan": 1.496,
+   "bpc_scan_caliber": {
+    "n_batches": 6,
+    "window_seed": 2,
+    "device": "cpu"
+   },
+   "prefix_invariance": {
+    "n_requests": 4,
+    "future_token_past_logits_equal": true,
+    "peer_request_logits_equal": true
+   },
+   "activity": {
+    "kind": "quant",
+    "mode": "fp8_e4m3",
+    "scheme": null,
+    "group": null,
+    "scale_mode": "none",
+    "implementation": "torch CPU cast x.to(torch.float8_e4m3fn|e5m2).to(fp32)（round-to-nearest，无标尺档不缩放）。实测溢出语义：E4M3（fn，无 inf）超 ±448 **饱和**到 ±448；E5M2 超 ±57344 **溢出为 inf**。本实验另报 `saturated_frac`（|x| > 格式 max 的占比），不把溢出后的数值当结论。",
+    "n_values": 6291456,
+    "n_scales": 0,
+    "mean_abs_err": 0.018444832,
+    "max_abs_err": 0.489549637,
+    "rel_err": 0.022581582,
+    "changed_frac": 0.999999841,
+    "clipped_frac": 0.0,
+    "n_saturated": 0,
+    "saturated_frac": 0.0
+   },
+   "deployment": {
+    "mode": "fp8_e4m3",
+    "scale_mode": "none",
+    "group": null,
+    "values_per_position": 6144.0,
+    "value_bytes_per_value": 1.0,
+    "scale_bytes_per_value": 0.0,
+    "bytes_per_value": 1.0,
+    "bytes_per_position": 6144.0,
+    "ratio_vs_fp16": 0.5,
+    "reduction_vs_fp16": 0.5,
+    "formula": "2*L*n_kv_heads*head_dim*(kept/T) * value_bytes [+ values_per_position * 2/G] for int8-block / fp8-token-scale"
+   },
+   "measure": {
+    "main": true,
+    "pairing": true,
+    "scan": true,
+    "recall": true
+   },
+   "wall_seconds_this_arm": 193.11,
+   "recall_copy": {
+    "accuracy": 0.195312,
+    "n": 1536,
+    "n_hits": 300,
+    "wilson95": [
+     0.176257,
+     0.215888
+    ],
+    "at_floor": false,
+    "chance": 0.0156,
+    "floor_threshold": 0.025756,
+    "per_setting": {
+     "0": {
+      "accuracy": 0.208984,
+      "n": 512,
+      "n_hits": 107,
+      "wilson95": [
+       0.175998,
+       0.246305
+      ]
+     },
+     "96": {
+      "accuracy": 0.169922,
+      "n": 512,
+      "n_hits": 87,
+      "wilson95": [
+       0.139877,
+       0.204883
+      ]
+     },
+     "191": {
+      "accuracy": 0.207031,
+      "n": 512,
+      "n_hits": 106,
+      "wilson95": [
+       0.17418,
+       0.244246
+      ]
+     }
+    }
+   },
+   "recall_induction": {
+    "accuracy": 0.0,
+    "n": 16,
+    "n_hits": 0,
+    "wilson95": [
+     0.0,
+     0.193608
+    ],
+    "at_floor": true,
+    "chance": 0.0156,
+    "floor_threshold": 0.0468,
+    "per_setting": {
+     "0": {
+      "accuracy": 0.0,
+      "n": 16,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.193608
+      ]
+     }
+    }
+   },
+   "recall_var_recall": {
+    "accuracy": 0.0,
+    "n": 16,
+    "n_hits": 0,
+    "wilson95": [
+     0.0,
+     0.193608
+    ],
+    "at_floor": true,
+    "chance": 0.0156,
+    "floor_threshold": 0.0468,
+    "per_setting": {
+     "64": {
+      "accuracy": 0.0,
+      "n": 16,
+      "n_hits": 0,
+      "wilson95": [
+       0.0,
+       0.193608
+      ]
+     }
+    }
+   },
+   "plumbing_only": false
+  }
+ ],
+ "side_points": [
+  {
+   "arm": "int8_block_g16",
+   "mode": "int8",
+   "scheme": "block",
+   "group": 16,
+   "scale_mode": "none",
+   "bpc": null,
+   "bpc_caliber": null,
+   "bpc_paired_windows": null,
+   "bpc_paired_caliber": null,
+   "bpc_scan": 1.495037,
+   "bpc_scan_caliber": {
+    "n_batches": 6,
+    "window_seed": 2,
+    "device": "cpu"
+   },
+   "prefix_invariance": {
+    "n_requests": 4,
+    "future_token_past_logits_equal": true,
+    "peer_request_logits_equal": true
+   },
+   "activity": {
+    "kind": "quant",
+    "mode": "int8",
+    "scheme": "block",
+    "group": 16,
+    "scale_mode": "none",
+    "implementation": "tools/evalkit/kv_quant.quantize_kv",
+    "n_values": 6291456,
+    "n_scales": 393216,
+    "mean_abs_err": 0.00367415,
+    "max_abs_err": 0.039940417,
+    "rel_err": 0.00449893,
+    "changed_frac": 0.937864621,
+    "clipped_frac": 0.008667946,
+    "scale_min": 0.0013353475369513035,
+    "scale_max": 0.08336401730775833,
+    "n_saturated": 0,
+    "saturated_frac": 0.0
+   },
+   "deployment": {
+    "mode": "int8",
+    "scale_mode": "none",
+    "group": 16,
+    "values_per_position": 6144.0,
+    "value_bytes_per_value": 1.0,
+    "scale_bytes_per_value": 0.125,
+    "bytes_per_value": 1.125,
+    "bytes_per_position": 6912.0,
+    "ratio_vs_fp16": 0.5625,
+    "reduction_vs_fp16": 0.4375,
+    "formula": "2*L*n_kv_heads*head_dim*(kept/T) * value_bytes [+ values_per_position * 2/G] for int8-block / fp8-token-scale"
+   },
+   "measure": {
+    "main": false,
+    "pairing": false,
+    "scan": true,
+    "recall": false
+   },
+   "wall_seconds_this_arm": 30.05,
+   "plumbing_only": false
+  },
+  {
+   "arm": "int8_block_g32",
+   "mode": "int8",
+   "scheme": "block",
+   "group": 32,
+   "scale_mode": "none",
+   "bpc": null,
+   "bpc_caliber": null,
+   "bpc_paired_windows": null,
+   "bpc_paired_caliber": null,
+   "bpc_scan": 1.49494,
+   "bpc_scan_caliber": {
+    "n_batches": 6,
+    "window_seed": 2,
+    "device": "cpu"
+   },
+   "prefix_invariance": {
+    "n_requests": 4,
+    "future_token_past_logits_equal": true,
+    "peer_request_logits_equal": true
+   },
+   "activity": {
+    "kind": "quant",
+    "mode": "int8",
+    "scheme": "block",
+    "group": 32,
+    "scale_mode": "none",
+    "implementation": "tools/evalkit/kv_quant.quantize_kv",
+    "n_values": 6291456,
+    "n_scales": 196608,
+    "mean_abs_err": 0.004245751,
+    "max_abs_err": 0.04110837,
+    "rel_err": 0.005198877,
+    "changed_frac": 0.968944232,
+    "clipped_frac": 0.004367987,
+    "scale_min": 0.0027762011159211397,
+    "scale_max": 0.08334417641162872,
+    "n_saturated": 0,
+    "saturated_frac": 0.0
+   },
+   "deployment": {
+    "mode": "int8",
+    "scale_mode": "none",
+    "group": 32,
+    "values_per_position": 6144.0,
+    "value_bytes_per_value": 1.0,
+    "scale_bytes_per_value": 0.0625,
+    "bytes_per_value": 1.0625,
+    "bytes_per_position": 6528.0,
+    "ratio_vs_fp16": 0.53125,
+    "reduction_vs_fp16": 0.46875,
+    "formula": "2*L*n_kv_heads*head_dim*(kept/T) * value_bytes [+ values_per_position * 2/G] for int8-block / fp8-token-scale"
+   },
+   "measure": {
+    "main": false,
+    "pairing": false,
+    "scan": true,
+    "recall": false
+   },
+   "wall_seconds_this_arm": 30.54,
+   "plumbing_only": false
+  }
+ ],
+ "smoke": false,
+ "plumbing_only": false,
+ "checkpoint_override": false,
+ "checkpoint": {
+  "path": "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/runs/hd64-s0/model.pt",
+  "sha256": "ce40e246614f2f50471e6bc66e6468269af83bef3c9ab3e383f04831d433038f",
+  "sha256_expected": null,
+  "size_bytes": 54193675,
+  "sha256_source": "computed_at_eval",
+  "sha256_verified": null,
+  "model_cfg": {
+   "d_model": 256,
+   "n_layers": 12,
+   "n_heads": 4,
+   "seq_len": 256,
+   "mlp_mult": 6,
+   "dense": true
+  },
+  "head_dim": 64
+ },
+ "instrument": {
+  "bpc_path": {
+   "bpc_of": 1.471526,
+   "masked_bpc": 1.471526,
+   "abs_diff": 0.0,
+   "bitwise_equal": true,
+   "n_batches": 2,
+   "window_seed": 2,
+   "note": "fp32 恒等臂两条独立路径（bpc_of / retention.masked_bpc）"
+  },
+  "fp32_forward_eq_2619": true,
+  "int8_block_eq_2632": true,
+  "int8_block_group_checked": 64,
+  "prefix_invariance_fp32": {
+   "n_requests": 4,
+   "future_token_past_logits_equal": true,
+   "peer_request_logits_equal": true
+  },
+  "anchor_gpu": {
+   "clean_bpc": 1.483569,
+   "device": "cuda",
+   "source": "2614/2610 口径",
+   "comparable": false,
+   "reason": "本实验的被测模型是 head_dim=64 的另训 checkpoint；跨设备、跨 checkpoint 都不构成判据"
+  },
+  "reference_cpu_2653": {
+   "arm": "2653::fp16",
+   "clean_bpc": 1.4835687,
+   "device": "cpu",
+   "checkpoint": "2610 trunk (head_dim=32)",
+   "comparable": false,
+   "reason": "同设备、同窗口序，但被测 checkpoint 不同（head_dim=32 的 trunk）"
+  },
+  "note": "int8 块标尺 G=64 与 `2632/block_arms` 前向逐位相等 ⇒ 本实验的标尺算子与 `5.1`/`2632` 同源；fp8 臂只是把同一个往返算子换成 fp8（`2653/fp8_arms.py`）。",
+  "deployment_anchors": {
+   "values_per_position": 6144.0,
+   "fp16_bytes_per_position": 12288.0,
+   "int8_block_g32_bytes_per_position": 6528.0,
+   "fp8_no_scale_bytes_per_position": 6144.0
+  }
+ },
+ "wp2_reconciliation": {
+  "values_per_position": 6144.0,
+  "scale_bytes_per_scale": 2.0,
+  "caliber": "解析 = 1 + SCALE_BYTES/G B/值（fp8 免标尺 ⇒ 1.0）；实测 = 探针批上 n_scales/n_values × SCALE_BYTES + 值字节；每位置字节 = 每值字节 × 6144",
+  "per_arm": {
+   "fp16": {
+    "mode": "fp16",
+    "group": null,
+    "scale_mode": "none",
+    "value_bytes_per_value": 2.0,
+    "measured_scales_per_value": 0.0,
+    "measured_scale_bytes_per_value": 0.0,
+    "measured_bytes_per_value": 2.0,
+    "measured_bytes_per_position": 12288.0,
+    "analytic_bytes_per_value": 2.0,
+    "analytic_bytes_per_position": 12288.0,
+    "delta_bytes_per_position": 0.0,
+    "consistent": true,
+    "prefix_invariant": true
+   },
+   "int8_block_g64": {
+    "mode": "int8",
+    "group": 64,
+    "scale_mode": "none",
+    "value_bytes_per_value": 1.0,
+    "measured_scales_per_value": 0.015625,
+    "measured_scale_bytes_per_value": 0.03125,
+    "measured_bytes_per_value": 1.03125,
+    "measured_bytes_per_position": 6336.0,
+    "analytic_bytes_per_value": 1.03125,
+    "analytic_bytes_per_position": 6336.0,
+    "delta_bytes_per_position": 0.0,
+    "consistent": true,
+    "prefix_invariant": true
+   },
+   "fp8_e4m3": {
+    "mode": "fp8_e4m3",
+    "group": null,
+    "scale_mode": "none",
+    "value_bytes_per_value": 1.0,
+    "measured_scales_per_value": 0.0,
+    "measured_scale_bytes_per_value": 0.0,
+    "measured_bytes_per_value": 1.0,
+    "measured_bytes_per_position": 6144.0,
+    "analytic_bytes_per_value": 1.0,
+    "analytic_bytes_per_position": 6144.0,
+    "delta_bytes_per_position": 0.0,
+    "consistent": true,
+    "prefix_invariant": true
+   },
+   "int8_block_g16": {
+    "mode": "int8",
+    "group": 16,
+    "scale_mode": "none",
+    "value_bytes_per_value": 1.0,
+    "measured_scales_per_value": 0.0625,
+    "measured_scale_bytes_per_value": 0.125,
+    "measured_bytes_per_value": 1.125,
+    "measured_bytes_per_position": 6912.0,
+    "analytic_bytes_per_value": 1.125,
+    "analytic_bytes_per_position": 6912.0,
+    "delta_bytes_per_position": 0.0,
+    "consistent": true,
+    "prefix_invariant": true
+   },
+   "int8_block_g32": {
+    "mode": "int8",
+    "group": 32,
+    "scale_mode": "none",
+    "value_bytes_per_value": 1.0,
+    "measured_scales_per_value": 0.03125,
+    "measured_scale_bytes_per_value": 0.0625,
+    "measured_bytes_per_value": 1.0625,
+    "measured_bytes_per_position": 6528.0,
+    "analytic_bytes_per_value": 1.0625,
+    "analytic_bytes_per_position": 6528.0,
+    "delta_bytes_per_position": 0.0,
+    "consistent": true,
+    "prefix_invariant": true
+   }
+  },
+  "ladder_analytic": [
+   {
+    "head_dim": 32,
+    "group": 8,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.25,
+    "bytes_per_value": 1.25,
+    "bytes_per_position": 7680.0,
+    "ratio_vs_fp16": 0.625,
+    "reduction_vs_fp16": 0.375,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 32,
+    "group": 16,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.125,
+    "bytes_per_value": 1.125,
+    "bytes_per_position": 6912.0,
+    "ratio_vs_fp16": 0.5625,
+    "reduction_vs_fp16": 0.4375,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 32,
+    "group": 32,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.0625,
+    "bytes_per_value": 1.0625,
+    "bytes_per_position": 6528.0,
+    "ratio_vs_fp16": 0.53125,
+    "reduction_vs_fp16": 0.46875,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 32,
+    "group": 64,
+    "legal": false,
+    "reason": "G=64 不整除 head_dim=32",
+    "scale_bytes_per_value": 0.03125,
+    "bytes_per_value": 1.03125,
+    "bytes_per_position": 6336.0,
+    "ratio_vs_fp16": 0.515625,
+    "reduction_vs_fp16": 0.484375,
+    "prefix_invariant": false
+   },
+   {
+    "head_dim": 64,
+    "group": 8,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.25,
+    "bytes_per_value": 1.25,
+    "bytes_per_position": 7680.0,
+    "ratio_vs_fp16": 0.625,
+    "reduction_vs_fp16": 0.375,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 64,
+    "group": 16,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.125,
+    "bytes_per_value": 1.125,
+    "bytes_per_position": 6912.0,
+    "ratio_vs_fp16": 0.5625,
+    "reduction_vs_fp16": 0.4375,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 64,
+    "group": 32,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.0625,
+    "bytes_per_value": 1.0625,
+    "bytes_per_position": 6528.0,
+    "ratio_vs_fp16": 0.53125,
+    "reduction_vs_fp16": 0.46875,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 64,
+    "group": 64,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.03125,
+    "bytes_per_value": 1.03125,
+    "bytes_per_position": 6336.0,
+    "ratio_vs_fp16": 0.515625,
+    "reduction_vs_fp16": 0.484375,
+    "prefix_invariant": true
+   }
+  ],
+  "caps": {
+   "32": {
+    "head_dim": 32,
+    "max_group": 32,
+    "bytes_per_value": 1.0625,
+    "bytes_per_position": 6528.0,
+    "reduction_vs_fp16": 0.46875
+   },
+   "64": {
+    "head_dim": 64,
+    "max_group": 64,
+    "bytes_per_value": 1.03125,
+    "bytes_per_position": 6336.0,
+    "reduction_vs_fp16": 0.484375
+   }
+  },
+  "all_consistent": true
+ },
+ "paired_delta": {
+  "base_arm": "fp16",
+  "comparison": "臂 − fp16",
+  "band_bpc": 0.014,
+  "caliber": "同窗口 seed、同 n_batches=2、同 batch_size=16、同设备（CPU）",
+  "per_arm": {
+   "int8_block_g64": {
+    "delta_by_window": {
+     "2": 7e-05,
+     "3": 4e-05,
+     "4": 1.5e-05,
+     "5": 0.00012,
+     "6": 0.000226
+    },
+    "mean": 9.42e-05,
+    "min": 1.5e-05,
+    "max": 0.000226,
+    "max_abs": 0.000226,
+    "sign": "正 = 该臂比 fp16 更差",
+    "exceeds_band_0_014": false,
+    "n_windows": 5
+   },
+   "fp8_e4m3": {
+    "delta_by_window": {
+     "2": 0.000575,
+     "3": 0.000426,
+     "4": 0.002294,
+     "5": 0.002094,
+     "6": 0.001475
+    },
+    "mean": 0.0013728,
+    "min": 0.000426,
+    "max": 0.002294,
+    "max_abs": 0.002294,
+    "sign": "正 = 该臂比 fp16 更差",
+    "exceeds_band_0_014": false,
+    "n_windows": 5
+   }
+  },
+  "note": "5 个窗口满足『配对 Δ、≥5 窗口』；主判带 = 0.014。"
+ },
+ "ranking_band": {
+  "primary_band_bpc": 0.014,
+  "primary_caliber": "跨格 0.014 bpc 带，**限配对 Δ、≥5 窗口**（本 run 主臂满足：5 个窗口 seed {2,3,4,5,6}）",
+  "windows_used": [
+   2,
+   3,
+   4,
+   5,
+   6
+  ],
+  "n_windows": 5,
+  "standard_met": true,
+  "secondary_in_force_band_bpc": 0.194059,
+  "secondary_caliber": "单臂跨窗口 bpc 极差（只作辅助描述）",
+  "bands_not_mixed": "两带不混用：主判用 0.014（配对 Δ），自测带只作辅助描述。"
+ },
+ "cost": {
+  "device": "cpu",
+  "wall_seconds": 663.23,
+  "gpu_lock_taken": false,
+  "note": "纯 CPU；无 GPU 锁、无显存足迹。科学价签用**等效理论量**（每位置部署字节），墙钟只作预算记账、不进判据。"
+ },
+ "code": {
+  "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/hp64_arms.py": "e83128d333d0156cb9c7018f703c1fcec34ff674c7faa92d7526885c1a6264a9",
+  "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/config.json": "df9d5e2d1b7e2ffe7091e47c957684e26c36e4033fe63c8bf849e86f3a1d42cf",
+  "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/hp64_train_driver.py": "8532909243ebcca69f246ba3532006fc4a4b74f04092a076c3e144912770b134",
+  "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/fp8_arms.py": "3c14e513a99830ae79447e921adf6828008d0692fd1a5d5e8e873a8df2e0f5d0",
+  "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/run.py": "77d19f52b48be0bfe0389b716c8058534289fba7ef7e06fe3fcf7ea0be6c0fc0",
+  "tools/evalkit/kv_quant.py": "bc71c232356af88a3e162ea81b608f2558c489419c1d28e238cf99bc6ecf13a2"
+ }
+}

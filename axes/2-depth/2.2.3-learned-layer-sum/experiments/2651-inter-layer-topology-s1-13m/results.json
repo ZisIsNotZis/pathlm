@@ -4,14 +4,14 @@
     "experiment": "2651-inter-layer-topology-s1-13m",
     "ticket": "ticket 61 §9.2 WP-2651（2.2.3 + 2.2.4）",
     "seed": 1,
-    "steps": 20,
+    "steps": 12000,
     "batch_size": 32,
     "lr": 0.001,
     "optimizer": "AdamW(wd=0.01) + warmup 200 步 + cosine 到 0.1×",
     "data": "data/enwik8_full.npz",
     "data_split": "first 90M train / last 10M eval, vocab from full file",
     "vocab_size": 206,
-    "train_tokens": 163840,
+    "train_tokens": 98304000,
     "base": {
       "d_model": 256,
       "n_layers": 8,
@@ -37,6 +37,18 @@
         "role": "并行子层（单个共享 pre-LN；参数 −L·2d）",
         "params_expected_delta": -4096,
         "run": "runs/parallel-12k-s1"
+      },
+      {
+        "topology": "parallel-dual-ln",
+        "role": "并行子层（两子层各带 pre-LN；与基线逐位等参数）",
+        "params_expected_delta": 0,
+        "run": "runs/parallel-dual-ln-12k-s1"
+      },
+      {
+        "topology": "dense",
+        "role": "层间学习加权和（DenseFormer 式；参数 +36）",
+        "params_expected_delta": 36,
+        "run": "runs/dense-12k-s1"
       }
     ],
     "single_factor_note": "与 2613 s0（契约 E）逐字段相同，唯一科学字段差异 = seed 0→1（2.2.3 n≥2 要求）",
@@ -45,8 +57,8 @@
         {
           "field": "steps",
           "s0": 12000,
-          "s1": 20,
-          "equal": false
+          "s1": 12000,
+          "equal": true
         },
         {
           "field": "batch_size",
@@ -87,8 +99,8 @@
         {
           "field": "train_tokens",
           "s0": 98304000,
-          "s1": 163840,
-          "equal": false
+          "s1": 98304000,
+          "equal": true
         },
         {
           "field": "base.d_model",
@@ -181,6 +193,30 @@
           "equal": true
         },
         {
+          "field": "arms[parallel-dual-ln].role",
+          "s0": "并行子层（两子层各带 pre-LN；与基线逐位等参数）",
+          "s1": "并行子层（两子层各带 pre-LN；与基线逐位等参数）",
+          "equal": true
+        },
+        {
+          "field": "arms[parallel-dual-ln].params_expected_delta",
+          "s0": 0,
+          "s1": 0,
+          "equal": true
+        },
+        {
+          "field": "arms[dense].role",
+          "s0": "层间学习加权和（DenseFormer 式；参数 +36）",
+          "s1": "层间学习加权和（DenseFormer 式；参数 +36）",
+          "equal": true
+        },
+        {
+          "field": "arms[dense].params_expected_delta",
+          "s0": 36,
+          "s1": 36,
+          "equal": true
+        },
+        {
           "field": "seed",
           "s0": 0,
           "s1": 1,
@@ -196,12 +232,10 @@
         }
       ],
       "unequal_fields": [
-        "steps",
-        "train_tokens",
         "seed",
         "experiment"
       ],
-      "only_seed_and_name_differ": false
+      "only_seed_and_name_differ": true
     }
   },
   "cost_face_2_2_4": {

@@ -1,0 +1,658 @@
+{
+  "experiment": "2673-robustness-13m",
+  "wp": "6.2.4 (轴 6 预测轴 · Phase C: 温度>0 的无损投机采样 + 53.9M 对抗臂)",
+  "contract": "README.md（预登记：臂定义 / L0–L5 判据 / 否证条件）",
+  "timing_measured": false,
+  "timing_note": "禁墙钟判据；GPU 实耗只在 run_log.txt，不进本文件",
+  "config": {
+    "temperature": 1.0,
+    "gamma": 2,
+    "vocab": 206,
+    "n_prompts": 12,
+    "seeds_per_prompt": 8,
+    "n_new_sample": 128,
+    "n_new_adv": 200,
+    "n_prompts_adv": 12,
+    "bootstrap": {
+      "B": 2000,
+      "seed": 2673,
+      "cluster": "prompt"
+    },
+    "gate_probe": {
+      "n_prompts": 4,
+      "seeds": 4,
+      "n_new": 96
+    },
+    "lock": "§20.1.2 一次性并发例外（纯推理≤≤1GB；未取锁）",
+    "no_lock": true,
+    "smoke": false
+  },
+  "checkpoints": {
+    "p1_13m_s0": {
+      "path": "6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms/train/13m_s0",
+      "params": 13734149,
+      "n_prompts": 12,
+      "seeds_per_prompt": 8,
+      "n_new": 128,
+      "temperature": 1.0,
+      "vocab": 206,
+      "losslessness": {
+        "spec_T1_vs_target_sample": {
+          "tv": {
+            "point": 0.132161,
+            "ci": [
+              0.11743,
+              0.147628
+            ],
+            "n": 12,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          },
+          "nll_diff": {
+            "point": -0.000264,
+            "ci": [
+              -0.058159,
+              0.063941
+            ],
+            "n": 12,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          }
+        },
+        "null_floor_tv": {
+          "point": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "n": 12,
+          "bootstrap_B": 2000,
+          "seed": 2673,
+          "cluster": "prompt"
+        }
+      },
+      "cost": {
+        "n_forward": 6345,
+        "n_emitted": 12288,
+        "n_rounds": 6345,
+        "tokens_per_forward": 1.936643,
+        "tau": 0.936643,
+        "alpha1": 0.605201,
+        "alpha2_given_alpha1": 0.545312,
+        "positions_per_forward": 3,
+        "R_equivalent_flops": 1.549072,
+        "R_note": "R=(1+γ)/(1+τ)（契约 §5 等效理论量）；target_sample R≡1"
+      },
+      "gate_probe": {
+        "correct_rule": {
+          "tv": {
+            "point": 0.189453,
+            "ci": [
+              0.165365,
+              0.216146
+            ],
+            "n": 4,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          },
+          "nll_diff": {
+            "point": -0.058547,
+            "ci": [
+              -0.201429,
+              0.077048
+            ],
+            "n": 4,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          }
+        },
+        "broken_accept_always": {
+          "tv": {
+            "point": 0.223958,
+            "ci": [
+              0.192057,
+              0.254557
+            ],
+            "n": 4,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          },
+          "nll_diff": {
+            "point": 2.757795,
+            "ci": [
+              2.604132,
+              2.872553
+            ],
+            "n": 4,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          },
+          "tv_vs_correct_null": {
+            "broken_tv_point": 0.223958,
+            "correct_tv_point": 0.132161,
+            "null_tv_point": 0.0
+          }
+        },
+        "broken_resample_from_draft": {
+          "tv": {
+            "point": 0.207031,
+            "ci": [
+              0.158854,
+              0.268229
+            ],
+            "n": 4,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          },
+          "nll_diff": {
+            "point": 2.678058,
+            "ci": [
+              2.649459,
+              2.709179
+            ],
+            "n": 4,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          },
+          "tv_vs_correct_null": {
+            "broken_tv_point": 0.207031,
+            "correct_tv_point": 0.132161,
+            "null_tv_point": 0.0
+          }
+        },
+        "n_prompts": 4,
+        "seeds_per_prompt": 4,
+        "n_new": 96
+      },
+      "per_prompt": {
+        "spec_T1": [
+          {
+            "prompt": 0,
+            "nll": 1.247864,
+            "gen_head": [
+              78,
+              78,
+              91,
+              2,
+              73,
+              84,
+              81,
+              89
+            ]
+          },
+          {
+            "prompt": 1,
+            "nll": 1.199679,
+            "gen_head": []
+          },
+          {
+            "prompt": 2,
+            "nll": 1.162073,
+            "gen_head": []
+          },
+          {
+            "prompt": 3,
+            "nll": 1.158314,
+            "gen_head": []
+          },
+          {
+            "prompt": 4,
+            "nll": 1.295624,
+            "gen_head": []
+          },
+          {
+            "prompt": 5,
+            "nll": 1.372213,
+            "gen_head": []
+          },
+          {
+            "prompt": 6,
+            "nll": 1.163158,
+            "gen_head": []
+          },
+          {
+            "prompt": 7,
+            "nll": 1.230311,
+            "gen_head": []
+          },
+          {
+            "prompt": 8,
+            "nll": 1.251655,
+            "gen_head": []
+          },
+          {
+            "prompt": 9,
+            "nll": 1.007377,
+            "gen_head": []
+          },
+          {
+            "prompt": 10,
+            "nll": 1.281114,
+            "gen_head": []
+          },
+          {
+            "prompt": 11,
+            "nll": 1.298943,
+            "gen_head": []
+          }
+        ],
+        "target_sample": [
+          {
+            "prompt": 0,
+            "nll": 1.24192
+          },
+          {
+            "prompt": 1,
+            "nll": 1.049795
+          },
+          {
+            "prompt": 2,
+            "nll": 1.24486
+          },
+          {
+            "prompt": 3,
+            "nll": 1.222768
+          },
+          {
+            "prompt": 4,
+            "nll": 1.249591
+          },
+          {
+            "prompt": 5,
+            "nll": 1.227744
+          },
+          {
+            "prompt": 6,
+            "nll": 1.222896
+          },
+          {
+            "prompt": 7,
+            "nll": 1.348244
+          },
+          {
+            "prompt": 8,
+            "nll": 1.339394
+          },
+          {
+            "prompt": 9,
+            "nll": 1.179813
+          },
+          {
+            "prompt": 10,
+            "nll": 1.215728
+          },
+          {
+            "prompt": 11,
+            "nll": 1.12874
+          }
+        ]
+      },
+      "gpu_free_mib_before": 21103,
+      "gpu_free_mib_after": 20615,
+      "gpu_peak_mib": 68.6,
+      "lock": "none (§20.1.2 一次性并发例外)"
+    },
+    "p1_13m_s1": {
+      "path": "6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms/train/13m_s1",
+      "params": 13734149,
+      "n_prompts": 12,
+      "seeds_per_prompt": 8,
+      "n_new": 128,
+      "temperature": 1.0,
+      "vocab": 206,
+      "losslessness": {
+        "spec_T1_vs_target_sample": {
+          "tv": {
+            "point": 0.131348,
+            "ci": [
+              0.120848,
+              0.141357
+            ],
+            "n": 12,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          },
+          "nll_diff": {
+            "point": -0.054325,
+            "ci": [
+              -0.097814,
+              -0.01328
+            ],
+            "n": 12,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          }
+        },
+        "null_floor_tv": {
+          "point": 0.0,
+          "ci": [
+            0.0,
+            0.0
+          ],
+          "n": 12,
+          "bootstrap_B": 2000,
+          "seed": 2673,
+          "cluster": "prompt"
+        }
+      },
+      "cost": {
+        "n_forward": 6270,
+        "n_emitted": 12288,
+        "n_rounds": 6270,
+        "tokens_per_forward": 1.959809,
+        "tau": 0.959809,
+        "alpha1": 0.623604,
+        "alpha2_given_alpha1": 0.538363,
+        "positions_per_forward": 3,
+        "R_equivalent_flops": 1.530762,
+        "R_note": "R=(1+γ)/(1+τ)（契约 §5 等效理论量）；target_sample R≡1"
+      },
+      "gate_probe": {
+        "correct_rule": {
+          "tv": {
+            "point": 0.16862,
+            "ci": [
+              0.151042,
+              0.186198
+            ],
+            "n": 4,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          },
+          "nll_diff": {
+            "point": -0.109836,
+            "ci": [
+              -0.20758,
+              -0.028636
+            ],
+            "n": 4,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          }
+        },
+        "broken_accept_always": {
+          "tv": {
+            "point": 0.207682,
+            "ci": [
+              0.178385,
+              0.236979
+            ],
+            "n": 4,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          },
+          "nll_diff": {
+            "point": 2.819806,
+            "ci": [
+              2.747265,
+              2.892348
+            ],
+            "n": 4,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          },
+          "tv_vs_correct_null": {
+            "broken_tv_point": 0.207682,
+            "correct_tv_point": 0.131348,
+            "null_tv_point": 0.0
+          }
+        },
+        "broken_resample_from_draft": {
+          "tv": {
+            "point": 0.207031,
+            "ci": [
+              0.192057,
+              0.227214
+            ],
+            "n": 4,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          },
+          "nll_diff": {
+            "point": 2.860941,
+            "ci": [
+              2.694209,
+              3.000048
+            ],
+            "n": 4,
+            "bootstrap_B": 2000,
+            "seed": 2673,
+            "cluster": "prompt"
+          },
+          "tv_vs_correct_null": {
+            "broken_tv_point": 0.207031,
+            "correct_tv_point": 0.131348,
+            "null_tv_point": 0.0
+          }
+        },
+        "n_prompts": 4,
+        "seeds_per_prompt": 4,
+        "n_new": 96
+      },
+      "per_prompt": {
+        "spec_T1": [
+          {
+            "prompt": 0,
+            "nll": 1.172731,
+            "gen_head": [
+              80,
+              86,
+              2,
+              82,
+              71,
+              84,
+              2,
+              69
+            ]
+          },
+          {
+            "prompt": 1,
+            "nll": 1.220106,
+            "gen_head": []
+          },
+          {
+            "prompt": 2,
+            "nll": 1.081764,
+            "gen_head": []
+          },
+          {
+            "prompt": 3,
+            "nll": 1.12295,
+            "gen_head": []
+          },
+          {
+            "prompt": 4,
+            "nll": 1.213389,
+            "gen_head": []
+          },
+          {
+            "prompt": 5,
+            "nll": 1.277273,
+            "gen_head": []
+          },
+          {
+            "prompt": 6,
+            "nll": 1.164907,
+            "gen_head": []
+          },
+          {
+            "prompt": 7,
+            "nll": 1.199303,
+            "gen_head": []
+          },
+          {
+            "prompt": 8,
+            "nll": 1.282479,
+            "gen_head": []
+          },
+          {
+            "prompt": 9,
+            "nll": 1.109456,
+            "gen_head": []
+          },
+          {
+            "prompt": 10,
+            "nll": 1.243832,
+            "gen_head": []
+          },
+          {
+            "prompt": 11,
+            "nll": 1.225797,
+            "gen_head": []
+          }
+        ],
+        "target_sample": [
+          {
+            "prompt": 0,
+            "nll": 1.262731
+          },
+          {
+            "prompt": 1,
+            "nll": 1.20931
+          },
+          {
+            "prompt": 2,
+            "nll": 1.153631
+          },
+          {
+            "prompt": 3,
+            "nll": 1.210229
+          },
+          {
+            "prompt": 4,
+            "nll": 1.276858
+          },
+          {
+            "prompt": 5,
+            "nll": 1.316963
+          },
+          {
+            "prompt": 6,
+            "nll": 1.413101
+          },
+          {
+            "prompt": 7,
+            "nll": 1.205306
+          },
+          {
+            "prompt": 8,
+            "nll": 1.176945
+          },
+          {
+            "prompt": 9,
+            "nll": 1.169963
+          },
+          {
+            "prompt": 10,
+            "nll": 1.284285
+          },
+          {
+            "prompt": 11,
+            "nll": 1.286567
+          }
+        ]
+      },
+      "gpu_free_mib_before": 20615,
+      "gpu_free_mib_after": 20631,
+      "gpu_peak_mib": 68.6,
+      "lock": "none (§20.1.2 一次性并发例外)"
+    },
+    "p2_53m_s0": {
+      "path": "6-predict/6.2-speculative-decoding/experiments/2631-spec-three-arms/train/53m_s0",
+      "params": 54469125,
+      "n_prompts": 12,
+      "n_new": 200,
+      "K": 4,
+      "candidate_construction": "与 2650-verify-gate-13m 逐字一致（verify_gate.arm_pass_gate / make_cands_adv_random / cands_adv_bottomk4），只换主干到 53.9M",
+      "arms": {
+        "adv_random_k4": {
+          "alpha1": 0.019422,
+          "n_rounds": 2317,
+          "hits": 45,
+          "wilson95": [
+            0.0145,
+            0.0259
+          ],
+          "stream_identical_to_native": true,
+          "first_mismatches": [],
+          "pseudo_accept_uniform": 0.019417,
+          "per_prompt_accepts_sum": [
+            10,
+            11,
+            10,
+            2,
+            2,
+            12,
+            4,
+            9,
+            8,
+            5,
+            6,
+            4
+          ]
+        },
+        "adv_bottomk4": {
+          "alpha1": 0.0,
+          "n_rounds": 2400,
+          "hits": 0,
+          "wilson95": [
+            0.0,
+            0.0016
+          ],
+          "stream_identical_to_native": true,
+          "first_mismatches": [],
+          "pseudo_accept_uniform": 0.019417,
+          "per_prompt_accepts_sum": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "gpu_free_mib_before": 20631,
+      "gpu_free_mib_after": 20631,
+      "gpu_peak_mib": 238.2,
+      "lock": "none (§20.1.2 一次性并发例外)"
+    }
+  },
+  "lock_events": [],
+  "gpu_free_mib": {
+    "p1_13m_s0": {
+      "before": 21103,
+      "after": 20615
+    },
+    "p1_13m_s1": {
+      "before": 20615,
+      "after": 20631
+    },
+    "p2_53m_s0": {
+      "before": 20631,
+      "after": 20630
+    }
+  },
+  "_wall_clock_fields": []
+}

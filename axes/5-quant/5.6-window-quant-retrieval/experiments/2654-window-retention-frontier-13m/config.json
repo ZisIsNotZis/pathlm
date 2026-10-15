@@ -1,0 +1,94 @@
+{
+ "experiment": "2654-window-retention-frontier-13m",
+ "seed": 0,
+ "line": "ticket 66 · 轴 5 · 5.6 WP1（纯推理，CPU 口径；WP2 检索腿另派）",
+ "contract": ".scratch/66-axis5-quant/DISPATCH-5.6.md（Phase B） + DISPATCH-5.6-PHASEC.md（Phase C，冲突以其为准）",
+ "scope": "只做 WP1：按保留预算把窗口曲线补完整（keep32→192）并把它与窗口 × int8/int4 块标尺组合放到同一「每位置部署字节 → 两腿质量」天平上。检索腿（WP2）不在本契约内。基底恒为 stock decoder-only trunk；不训练、不加参数、不改权重。",
+ "proposition": "在 13M / T=256 上，(a) 窗口的 clean bpc 损伤随保留预算单调下降（keep32→192）；(b) 把窗口与 int8/int4 块标尺组合后，能在 2642 的同一「每位置部署字节」水平上给出读数，且组合在等字节下是否优于单用窗口因子可判。",
+ "device": {
+  "device": "cpu",
+  "why": "/tmp/pathlm_gpu.lock 被其它轴训练长期占用；F5 已批准纯推理走 CPU；SCHEMA §20 不适用",
+  "gpu_lock_held": false,
+  "gpu_lock": null,
+  "caliber_note": "全臂同设备（CPU）、同评测窗口序（window_seed=2, 24×16）；跨设备绝对水平不作判据，只作等价证据（本机复现 GPU 历史锚 1.483569）。"
+ },
+ "model": {
+  "d_model": 256,
+  "n_layers": 12,
+  "n_heads": 8,
+  "seq_len": 256,
+  "mlp_mult": 6,
+  "dense": true
+ },
+ "checkpoints": {
+  "trunk": {
+   "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+   "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2"
+  }
+ },
+ "data": {
+  "name": "enwik8_full",
+  "path": "data/enwik8_full.npz",
+  "split": "前 90M 训练 / 末 10M 评测（本实验只用评测尾段跑 bpc）",
+  "vocab_size": 206
+ },
+ "tokens": {"sym_vocab": 64, "filler_token": 64, "cue_token": 205, "local_k": 8},
+ "tasks": {
+  "copy": {"copy_len": 32, "src_positions": [0, 96, 191], "batch_size": 16, "n_batches": 2,
+           "role": "合成长程召回主腿（与 2619/2620/2621/2632 同任务同 seed）"},
+  "induction": {"prefix_len": 192, "copy_len": 32, "src_starts": [0, 159], "batch_size": 16,
+                "n_batches": 2, "role": "只用于局部先验对照（本实验不跑该召回腿，见 gaps）"},
+  "var_recall": {"distances": [64, 192], "batch_size": 16, "n_batches": 2,
+                 "role": "只用于局部先验对照（本实验不跑该召回腿，见 gaps）"}
+ },
+ "eval": {
+  "bpc_method": "bpc_of（2619/2621 的统一路径：因果移位 CE token 平均）",
+  "bpc_cross_path_check": "retention.masked_bpc（独立路径，逐位对照；n_batches=2 的算法恒等检查）",
+  "n_batches": 24,
+  "batch_size": 16,
+  "window_seed": 2,
+  "device": "cpu",
+  "band_extra_seeds": [3, 4, 5, 6],
+  "band_n_batches": 8,
+  "band_arms": ["full", "win32", "win32_int8"],
+  "band_note": "主表 window_seed=2 / 24×16；另跑 seeds[3,4,5,6]（n_batches=8）⇒ 配对 Δ 的 5 个评测窗口。两带不混用。"
+ },
+ "quant_caliber": {
+  "scheme": "block",
+  "group": 32,
+  "axis": "head_dim",
+  "per_value_bytes": {"int8": 1.0625, "int4": 0.5625, "fp16": 2.0},
+  "verbatim": "5.1 的块标尺口径：quantize_kv(scheme='block', G=32) ⇒ int8 1.0625 B/值 = 6528 B/位置；禁止引用已作废的逐值标尺数字。"
+ },
+ "same_byte_levels_2642": {
+  "levels": [432.0, 768.0, 816.0, 864.0, 1536.0, 1632.0, 3072.0],
+  "source": "axes/5-quant/5.1-kv-quant/experiments/2642-kv-same-byte-frontier/results.json::same_byte_groups",
+  "rule": "组合臂必须落在这些水平之一，或明确另立水平并说明理由；禁插值。"
+ },
+ "criterion": {
+  "verbatim_contract": [
+   "主判 = 跨格 0.014 bpc 带，限「配对 Δ、≥5 窗口」；主表 window_seed=2 + 另跑 seeds=[3,4,5,6]（n_batches 可缩到 8）⇒ 5 窗口。",
+   "率类指标（召回）走 Wilson 95% CI，不借用 0.014。",
+   "必须回答：① 窗口 bpc 损伤是否随保留预算单调（keep32≈+0.212 → keep192≈+0.004）；② 窗口+量化组合在等字节下是否优于单用其一；③ 与 M2 ERRATA（keep32=+0.212、keep64=+0.081）是否逐数字一致。",
+   "两腿并报（clean bpc + 合成长程召回），「低损伤 ≠ 保住了」。"
+  ],
+  "variance_band_bpc": 0.014,
+  "band_caliber_in_force": "配对 Δ（同一臂对在 ≥5 个评测窗口重测）的区间；本实验跑满 5 个窗口 ⇒ 用标准口径；跑不满则在 results.json::ranking_band 显式声明并退用单臂跨窗口极差。两带不混用。",
+  "recall_ci": "Wilson 95%",
+  "recall_at_floor_rule": "recall <= chance + 2*σ_wilson(chance) ⇒ at_floor = true（读作『该任务上不可分辨』，不得写成『机制无效』）",
+  "no_single_point_extrapolation": "单点只描述该点；趋势需 ≥2 个直接测点。",
+  "guardrails": [
+   "非量化臂逐位不变：full 臂 bpc_of == retention.masked_bpc（独立路径，逐位）；且 full 与历史锚 1.483569 的 |Δ| 记录在案。",
+   "严格因果/同拓扑 fp16 基线不变：full 臂 prefix 不变性 + bpc 与 2619 的 fp16 点对照。",
+   "变异测试：破坏掩码 / 破坏块标尺 ⇒ 断言报红（selftest_win.py）。"
+  ]
+ },
+ "arms_note": "臂规格在 win_arms.py::SPECS；组合臂语义走 2632/block_arms.py（scheme='block', G=32）与 2621/rest_arms.py（掩码），两者只读复用。",
+ "legs_per_arm": {
+  "bpc": "全部臂",
+  "copy": "全部臂（合成长程召回主腿 + Wilson 95% CI + at_floor）",
+  "corrupt": "full / win64 / win64_int8（预算受限，只在这三个信息量最大的臂上跑毁源对照；其余臂未跑，见 gaps）",
+  "induction_var_recall": "全部臂未跑（预算受限，登记为未测项 + 下一步最小实验成本）"
+ },
+ "reuse_policy": "历史落盘点（2615/2619/2621/2632）只作 source 注明的对照与 prior art，不作本实验读数；本实验的每个判据点都在本机 CPU 同口径自跑。跨设备数字只作等价证据，不作判据。"
+}

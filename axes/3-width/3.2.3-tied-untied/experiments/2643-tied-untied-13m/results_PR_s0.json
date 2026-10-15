@@ -1,0 +1,186 @@
+{
+  "arm": "PR",
+  "seed": 0,
+  "steps": 12000,
+  "eval": {
+    "metric": "clean bpc（最终深度、无退出、序列级、越低越好）",
+    "n_batches": 20,
+    "batch_size": 16,
+    "eval_generator_seed": 2,
+    "bpc_by_depth": [
+      {
+        "depth": 0,
+        "bpc": 7.368,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "bpc": 4.9152,
+        "acc": 0.1395
+      },
+      {
+        "depth": 2,
+        "bpc": 4.3926,
+        "acc": 0.1988
+      },
+      {
+        "depth": 3,
+        "bpc": 3.9041,
+        "acc": 0.2664
+      },
+      {
+        "depth": 4,
+        "bpc": 3.2317,
+        "acc": 0.3799
+      },
+      {
+        "depth": 5,
+        "bpc": 2.6889,
+        "acc": 0.4811
+      },
+      {
+        "depth": 6,
+        "bpc": 2.2259,
+        "acc": 0.5626
+      },
+      {
+        "depth": 7,
+        "bpc": 1.7454,
+        "acc": 0.6548
+      },
+      {
+        "depth": 8,
+        "bpc": 1.5297,
+        "acc": 0.6886
+      }
+    ],
+    "clean_bpc": 1.5297,
+    "acc_by_depth": [
+      {
+        "depth": 0,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "acc": 0.1395
+      },
+      {
+        "depth": 2,
+        "acc": 0.1988
+      },
+      {
+        "depth": 3,
+        "acc": 0.2664
+      },
+      {
+        "depth": 4,
+        "acc": 0.3799
+      },
+      {
+        "depth": 5,
+        "acc": 0.4811
+      },
+      {
+        "depth": 6,
+        "acc": 0.5626
+      },
+      {
+        "depth": 7,
+        "acc": 0.6548
+      },
+      {
+        "depth": 8,
+        "acc": 0.6886
+      }
+    ]
+  },
+  "params": {
+    "params_total": 6977472,
+    "params_added_readout": 14784,
+    "params_added_expected": 14784,
+    "readout_params_matches_analytic": true
+  },
+  "cost": {
+    "d_model": 256,
+    "seq_len": 256,
+    "n_layers": 8,
+    "vocab": 206,
+    "macs_per_token": {
+      "attention": 3145728,
+      "ffn": 4194304,
+      "readout_online": 67520,
+      "total": 7407552
+    },
+    "readout_macs_merged": 52736,
+    "readout_params_added": 14784,
+    "params_total_analytic": 6977472,
+    "note": "等效理论量：MACs/token（乘加），不含时间量。attention/FFN 三臂逐位相同，唯一变量是读出头的结构与参数。在线读出：T/U = d·V；PR = d·V + d·r + r·V；离线合并 E+A·B 后 PR 也是 d·V。"
+  },
+  "liveness": {
+    "arm": "PR",
+    "params_added": 14784,
+    "pr_a": {
+      "w_fro": 2.360871,
+      "w_absmax": 0.141226,
+      "nonzero_frac": 1.0
+    },
+    "pr_b": {
+      "w_fro": 7.730727,
+      "w_absmax": 0.453198,
+      "nonzero_frac": 1.0
+    },
+    "pr_correction_fro": 6.254019,
+    "pr_active_nonzero": true
+  },
+  "prob0_consistency": {
+    "metric": "prob0 一致性 = argmax(Eh)==argmax(U_eff h) 的位置占比",
+    "n_positions": 81600,
+    "agree": 80002,
+    "rate": 0.980417,
+    "wilson_95ci": [
+      0.979443,
+      0.981345
+    ],
+    "cluster_bootstrap_95ci": [
+      0.979596,
+      0.981311
+    ],
+    "per_batch_rates": [
+      0.981373,
+      0.979902,
+      0.980637,
+      0.979657,
+      0.982353,
+      0.977206,
+      0.979657,
+      0.979412,
+      0.981373,
+      0.978676,
+      0.979167,
+      0.982108,
+      0.984559,
+      0.984069,
+      0.982598,
+      0.977451,
+      0.979657,
+      0.978922,
+      0.979657,
+      0.979902
+    ],
+    "semantic_cost_1_minus_rate": 0.019583,
+    "note": "T 臂该值构造性 = 1.0（U_eff = E）；越小 = 解绑后「概率 = 状态在 embedding 基的坐标」这一语义丢得越多。"
+  },
+  "causal": {
+    "max_abs_diff_before_j": 0.0,
+    "bitwise_equal_before_j": true
+  },
+  "reeval_bitwise_identical": true,
+  "checkpoint": {
+    "path": "axes/3-width/3.2.3-tied-untied/experiments/2643-tied-untied-13m/runs/PR-s0-12k/model.pt",
+    "sha256": "d2596252c2b801c3c67d0826de5ba8f9377d5c3325af6d604f5c479dba121db1",
+    "missing_keys": [],
+    "unexpected_keys": []
+  },
+  "run_dir": "axes/3-width/3.2.3-tied-untied/experiments/2643-tied-untied-13m/runs/PR-s0-12k",
+  "code_hash_run_py": "b5b0eab4085f77a30efc57bed37fe2f2da287337efbe0a671dfecb1ad19b5c79"
+}

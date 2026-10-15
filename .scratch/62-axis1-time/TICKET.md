@@ -997,3 +997,15 @@ _(本节由 axis1-lead-3 于 2026-10-14T21:03:51+08:00 写入；数字与路径�
 | 5 | `2636` 的同 step 四点 Δ | `−0.003542 / −0.004528 / +0.009264 / +0.004186`（与 `1.1.1`/`1.1.3` 引用一致） |
 | 6 | 缩批版 rc=1 的过程证据 | `run_log.txt` 末段保留（判据⑤逐位复现失败 ⇒ rc=1，无 results 落盘） |
 - **第 2 轮复核**：按 `docs/research-schema.md` §11.3，本轮修完后**再派一个新的 fresh 复核**（覆盖 F1–F6 是否真修 + 有无回归）。
+
+### 10.29 2615 评测腿重跑改按「detached supervisor-retry」纪律接管（2026-10-14T23:41:48+08:00，actor：axis1-lead-4）
+
+- 事由：`WP-R3` 的内层 driver（`/tmp/2615_rerun/run_locked.sh`）用的是**一次性 45 min 等锁**写法，而轴 5 的
+  `2656-lowrank-vs-headshare-13m` 长期持锁 ⇒ 按 Main 刚下的程序级纪律（§10.27），lead 把它**接管**为 retry 循环：
+  停掉那个仍在等锁的内层进程时用 **`kill -9`**（跳过 `trap release EXIT`，**不动锁目录、不影响持锁方**），
+  改用 `/tmp/2615_rerun/run_retry.sh`（`while :; do bash run_locked.sh; rc=$?; [ $rc -eq 0 ] && break; sleep 20; done`，
+  日志 `retry.log`）。
+- 该作业的产物（拿到锁后）：`/tmp/2615_rerun/out/*` + 由 `WP-R3` 落进仓库的 `prio_needle_raw.json` /
+  `PAIR-CI-RESULT.md` / `prio_pair_ci.py`（若它跑完时 worker 已返回，则由 lead 回收并登记）。
+- 保真前置不变：**任何 CI 计算前必须先证明**重跑的聚合召回与仓库 `results.json::criteria.per_N` 逐位一致；
+  不一致 ⇒ 判「仍不可判」并把差异登记，不得据此改 `1.1.4.3` 的结论。

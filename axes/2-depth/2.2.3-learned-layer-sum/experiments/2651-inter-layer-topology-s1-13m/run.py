@@ -22,6 +22,10 @@
   （>0.014 即代价可排序）**与**代价面同框（层内串行依赖 2 段 → 1 段；
   参数量 −2d 与逐位等参对照两臂并列）；报「质量代价是否换到可兑现的等效收益」。
 
+排队（同目录 `supervise-s1.sh`，detached 后台驱动）：**快轮询抢窗口**——单次取锁
+`--lock-wait-s 8` 拿不到就立刻返回，外层 sleep 5s 重排队，`while :` 不限轮数；
+每臂结束由 `gpu_lock_release(60)` 释放锁并留 ≥60s 窗口再取下一臂（`SCHEMA.md` §20.1）。
+
 用法（后台运行 + ≤120s 轮询日志）：
 
     PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
@@ -186,9 +190,11 @@ def _lock_clean():
 atexit.register(_atexit_release)
 
 
-def gpu_lock_acquire(max_wait_s: int = 600):
-    """§20 取锁：最多等 10 min；自愈回收陈旧锁（holder 死 / 无 holder 且锁龄 >15min）。
-    不杀他人进程、不动他人锁目录（回收前先清内容再 rmdir）。"""
+def gpu_lock_acquire(max_wait_s: float = 600, poll_s: float = 15):
+    """§20 取锁：单次最多等 `max_wait_s` 秒、每 `poll_s` 秒重试一次；自愈回收陈旧锁
+    （holder 死 / 无 holder 且锁龄 >15min）。
+    不杀他人进程、不动他人锁目录（回收前先清内容再 rmdir）。
+    排队交给外层驱动快轮询（每臂 `--lock-wait-s 8 --lock-poll-s 5`，失败即返回）。"""
     t0, n = time.time(), 0
     while True:
         try:
@@ -212,8 +218,8 @@ def gpu_lock_acquire(max_wait_s: int = 600):
                 _lock_clean()
                 continue
             if time.time() - t0 > max_wait_s:
-                raise TimeoutError("等锁超过 10 min，未取到 GPU 锁")
-            time.sleep(15)
+                raise TimeoutError(f"等锁超过 {max_wait_s:.0f}s，未取到 GPU 锁")
+            time.sleep(poll_s)
             n += 1
     with open(os.path.join(LOCK, "holder_pid"), "w") as f:
         f.write(str(os.getpid()))
@@ -607,6 +613,10 @@ def main():
                     help="只跑指定拓扑（逗号分隔，必须含 sequential）；缺省全跑")
     ap.add_argument("--skip-s0-anchor", action="store_true",
                     help="跳过 s0（2613）checkpoint 重测锚")
+    ap.add_argument("--lock-wait-s", type=float, default=600.0,
+                    help="单次取 GPU 锁的最长等待（秒）；排队交给外层驱动快轮询")
+    ap.add_argument("--lock-poll-s", type=float, default=15.0,
+                    help="单次取锁内的重试间隔（秒）")
     args = ap.parse_args()
     if args.arms:
         want = [t.strip() for t in args.arms.split(",") if t.strip()]
@@ -652,7 +662,7 @@ def main():
     # ---- s0（2613）checkpoint 重测锚（口径一致，不参与判据） ----
     lock_held = False
     if not args.skip_s0_anchor:
-        gpu_lock_acquire()
+        gpu_lock_acquire(args.lock_wait_s, args.lock_poll_s)
         lock_held = True
         out["s0_anchor_remeasured"] = remeasure_s0(eval_arr, vocab_size,
                                                    args.eval_batches)
@@ -669,7 +679,12 @@ def main():
                 f"[budget] {args.budget_min} min 墙钟预算已到；已完成 "
                 f"{list(out['arms'])}，未跑 {[a['topology'] for a in ARMS[i:]]}")
         if not lock_held:
-            gpu_lock_acquire()
+            try:
+                gpu_lock_acquire(args.lock_wait_s, args.lock_poll_s)
+            except TimeoutError as e:
+                # 单次等锁到点：不 inline 死等，交外层驱动 5s 后重排队（不放弃重试）
+                print(f"[lock] {e}；交外层驱动重排队", flush=True)
+                raise SystemExit(9)
             lock_held = True
         if args.skip_train or arm_trained(topo, args.steps):
             res = json.load(open(os.path.join(
