@@ -23,6 +23,8 @@
 | 协作/编排制度与文档地图 | `AGENTS.md`（本文件） |
 | 项目是什么 | `README.md` |
 | 设计 / 方法 / 已测定律 | `docs/design.md` / `docs/methodology.md` / `docs/playbook.md` |
+| 计划：里程碑 / 工作包 / owner / 验收 / 状态 / 预算 | `docs/plan.md` |
+| 引擎能力面：哪些组合真跑得起来、哪些明确拒绝、拒绝在哪一行 | `docs/engine_capability.md` |
 | 单个实验 | 实验目录内 `README.md`（预登记契约）· `analysis.md`（**当前**结论与证据）· `results.json`（原始数字）· `MODEL.md`（权重清单） |
 | 旧索引（已退役） | `archive/wiki-legacy/catalog.yaml` / `archive/wiki-legacy/INDEX.md`（只读归档，不是当前 SSOT） |
 

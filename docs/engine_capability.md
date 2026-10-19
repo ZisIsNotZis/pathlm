@@ -13,8 +13,8 @@
 > **ENG2 解锁的是「`carry_rule` × 非 dense 前向」**（单开通道 + 随机退出/ragged/填充，
 > 走 `CarryChannelBlock` 的 `kv_from`/`attn_mask`/`gate_vec` 约定）；
 > **`carry × GQA × 非 dense` 仍被明确拒绝**——`n_kv_heads < n_heads` 的校验要求
-> `dense=True`（`pathlm/depth_ar.py:2172`），且增量解码路径两个组合都拒绝
-> （`:2887` GQA、`:2896` carry）。**未实现的组合不得当作已就绪引用。**
+> `dense=True`（`pathlm/depth_ar.py:2140`），且增量解码路径两个组合都拒绝
+> （`:2905` GQA、`:2914` carry）。**未实现的组合不得当作已就绪引用。**
 
 ## 1. 接受矩阵 / 拒绝点（受控块：机器核对）
 

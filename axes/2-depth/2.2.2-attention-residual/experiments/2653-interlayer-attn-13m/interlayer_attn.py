@@ -124,9 +124,11 @@ class InterLayerAttentionModel(DepthARModel):
                 "extra_over_base_attention": round(agg / stock_attn, 6),
                 "extra_params": self.cfg.n_layers + (
                     3 * d * d if self.mode == "qkv" else 0),
-                "note": ("等效理论量：MACs/token（乘加）。scalar 的额外项极小"
-                         "（2·d·Σk = 2·d·36）；qkv 的额外项 ≈ 3d²·Σk（共享投影但"
-                         "每层对 k 个源各做一次投影）。两列分开报，不用任何时间量。"
+                "note": ("等效理论量：MACs/token（乘加）。qkv 的额外项 = d²·L + 2d²·Σk "
+                         "+ 2d·Σk（W_q 每层对 cur 一次 = d²·L；W_k/W_v 每层对 k 个源各一次 "
+                         "= 2d²·Σk；⟨q, k_j⟩ 与 Σ w_j v_j 各 k·d = 2d·Σk），d=256 / L=8 / "
+                         "Σk=36 ⇒ 5 261 312；scalar 无投影，额外项只有 2d·Σk = 18 432。"
+                         "两列分开报，不用任何时间量。"
                          "tokens-per-forward = 1（每 token 每层一次聚合）。")}
 
     # ------------------------------------------------------------ 活性（SCHEMA §10）

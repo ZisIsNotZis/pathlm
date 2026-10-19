@@ -57,7 +57,7 @@
 | 等值门（one-hot ⇒ 与 stock 逐位一致，前向 + loss） | ✅ `true` | ✅ 同一聚合路径 | `smoke_report.json:A_equivalence_gate` |
 | trunk 参数逐位相同 | ✅ | ✅ | 同上 |
 | 活性（训练**起点**）：层维权重非退化 | ✅ | ✅ | `smoke_report.json:B_liveness_gate` |
-| 单测 | 9 passed | — | `test_2653_interlayer_attn.py` |
+| 单测 | 11 passed | — | `test_2653_interlayer_attn.py` |
 
 等值门探针（证明这条门会红）：不强制时前向**必须**与 stock 不同 —— `probe_free_weights_forward_differs=true`；
 `MODE`/`FORCE_LAST` 在建实例时冻结（前向时读全局会让这条门静默失效，已修并有回归单测）。
@@ -72,6 +72,19 @@
 | `τ` 终值（层 1→8） | 0.937 / 0.954 / 0.841 / 0.095 / 0.166 / 0.336 / 0.243 / 0.424 | 0.937 / 0.093 / 0.078 / 0.047 / 0.073 / 0.074 / 0.118 / 0.129 | `results_<arm>_s0.json::liveness.tau_by_layer` |
 | 额外参数 / 额外 MACs（P3，解析） | +8 / 18 432（+0.59%） | +196 616 / 5 261 312（+167.3%） | `results_<arm>_s0.json::params` |
 | 训练墙钟（过程量，**不进判据**） | 9.73 min | 10.78 min | `results_<arm>_s0.json::shared_train_results.wall_minutes` |
+| 峰值显存（净分配，`max_memory_allocated`） | 14 961.7 MB | 15 141.1 MB | `results_<arm>_s0.json::shared_train_results.peak_gpu_mem_mb` |
+
+峰值显存只是资源事实登记，**不进判据**：`README.md` 的预登记目标为 ≤5GB net，本实验两臂实测
+≈14.6 / 14.8 GiB（同一进程内 32×256 批训练峰值），**超出该自定目标**；这笔超支不改两臂共享同一
+训练配方与同一批尺寸 ⇒ 不影响跨臂对比，也不改变任何判词。
+
+两个 `alive` 同名不同义，读数前先分清：`topology_liveness.alive`（`runs/attn-scalar-s0-12k/
+results.json:517-543`，引擎 `topology_liveness` 的输出）判的是**温度 τ 是否离开初值 1.0**——scalar
+八层 τ 全部动过（`tau_frac_layers_moved = 1.0`）⇒ `true`；`liveness.alive`
+（本目录 `results_attn-scalar_s0.json::liveness.alive`，即下表 **P2 层维权重非退化门**）判的是
+**层维权重有没有退化**（k ≥ 2 每层 `w_immediate_prev < 1` 且熵 > 0）——scalar 的层 2–3 塌成
+one-hot ⇒ `false`。所以「干预是否活」在两条门上结论相反不是矛盾：τ 一直在学，只是它学到的层维
+权重在浅层退化成「只取紧邻上一层」。
 
 scalar 退化的机制是该参数化固有的：`q = h_{k−1}` 而 key 里恰好也有 `h_{k−1}`（自相似），
 训练把 `τ` 压小 ⇒ 注意力变尖 ⇒ 浅层（源只有 2–3 个）直接塌成 one-hot，等价于 stock 残差。
@@ -154,7 +167,7 @@ N3（`README.md §7/§9` 落盘清单删去并不存在的 `run_log.txt`）。�
 | 命令 | 结果 |
 |---|---|
 | `python3 smoke.py` | 三道门（等值 / 活性 / 参数账）全过，报告落 `smoke_report.json` |
-| `python3 -m pytest …/test_2653_interlayer_attn.py -q` | 9 passed |
+| `python3 -m pytest …/test_2653_interlayer_attn.py -q` | 11 passed |
 | `python3 run.py --arms attn-scalar,attn-qkv --seed 0 --steps 12000` | 两臂 12k 步训练 + 评测 + 汇总（`--no-train --force` 可用已存权重只重算 B 表） |
 | `python3 tools/summary.py --check` | OK（46 份 `project.yaml`） |
-| `python3 -m pytest tests/ -q` | 865 passed / 1 failed —— 失败为 `test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`，涉 `axes/6-predict/**` 的三个 `mutate.py`（**非本 WP 引入、与本 WP 无关**，预存失败分开登记） |
+| `python3 -m pytest tests/ -q` | 866 passed / 1 failed —— 失败为 `test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`，涉 `axes/6-predict/**` 的三个 `mutate.py`（**非本 WP 引入、与本 WP 无关**，预存失败分开登记） |

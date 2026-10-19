@@ -150,7 +150,7 @@ parity」，不是「中间层变得更可读」。
    逐臂 `remeasured_bpc_now == recorded_bpc_2613` 逐位一致，引擎等值门打印
    `[s0] remeasured all_bitwise_equal=True`（存证：`run_log-attempt1-crash.txt:3`；同文件 `:1`
    记 `[cfg] vs 2613 unequal fields = ['seed', 'experiment']`）⇒ s0 与 s1 用**同一评测口径**、
-   跨 seed 可比。本轮全跑以 `--skip-s0-anchor` 进行（契约允许的省时开关），故
+   跨 seed 可比。本轮全跑以 `--skip-s0-anchor` 进行（本轮自选的省时开关——契约未点名，取舍见 §10），故
    `results.json` 不含 `s0_anchor_remeasured` 块；该等值门的存证只有上面那行日志。
    同族等值证据：`smoke/smoke.json::checks.identity_start_bitwise_vs_sequential`
    （`parallel-dual-ln` 与基线逐位等参、`dense` 起步逐位等价基线）与
@@ -166,7 +166,8 @@ parity」，不是「中间层变得更可读」。
 判据线（逐字来自 `README.md::§4` / ticket 61 §9.2）：配对 Δ 越 **0.014 bpc 带**才算可排序；
 两 seed 同号且都越带 ⇒ 可排序；不越带 ⇒ 无差异。
 
-符号约定：Δ = `clean_bpc(该臂) − clean_bpc(sequential)`，**正 = 该臂更差**。
+符号约定：Δ = `clean_bpc(该臂) − clean_bpc(sequential)`，**正 = 该臂更差**。本实验方向与 `SCHEMA.md`
+规范的默认方向相反，**以本行定义为准**（跨文件读数时先看方向再比数）。
 
 | 配对 | s0 Δ | s1 Δ | 两 seed 判定 |
 |---|---|---|---|

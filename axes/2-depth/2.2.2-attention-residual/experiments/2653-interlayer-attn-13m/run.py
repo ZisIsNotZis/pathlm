@@ -339,7 +339,7 @@ def aggregate(steps: int, out_root: str, arms: list[str], seeds: list[int]) -> d
 
     out = {
         "experiment": "2653-interlayer-attn-13m",
-        "criterion": ("P1 Δ = bpc_该臂 − bpc_(stock/dense)（符号约定见 README §4，"
+        "criterion": ("P1 Δ = bpc_(stock/dense) − bpc_该臂（符号约定见 README §4，"
                       "正 = 该臂更好）；方差带 0.014；P2 活性（层维权重非退化）；"
                       "P3 代价列（额外参数 / 每 token 额外 MACs）；P4 等值门（one-hot "
                       "⇒ 与 stock 逐位一致）；P5 基线复用的三条等值证明；P6 层索引因果。"),

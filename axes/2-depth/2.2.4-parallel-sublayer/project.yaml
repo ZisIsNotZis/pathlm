@@ -14,14 +14,13 @@ validation: "端到端：对照 = stock 串行子层全深度（归一为 100%�
 objective_criteria: "该跌：clean bpc（序列级，衡量质量代价，须越 0.014 噪声带才算可排序）；必须报：层内串行依赖长度与每层 FLOPs（代价面）；必须不变：等参数对照的参数量、因果性。"
 falsification: "若并行子层在质量面相对 stock 串行子层有可排序代价（旧读数 +0.0458 方向），同时在等效代价面（层内串行依赖 / 每层 FLOPs）也拿不到可兑现的收益 ⇒ 判并行子层在本尺度不划算；若质量代价不越噪声带则可采纳为吞吐优化。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 failure_analysis: ""
-conclusion: "在 13M / 12k 步 / 98.3M token / matched-step 快照 + 0.014 bpc 带下：并行子层（`parallel` / 逐位等参数 `parallel-dual-ln`）相对 stock 串行子层（`sequential`）的质量代价**可排序**（s0 配对 Δ = +0.0458 = 3.27× 带、+0.0402 = 2.87× 带）；同框的**代价面**给出**真实收益**——层内串行链从 2 段砍到 1 段、每 token 串行步数 16→8（同一时间可并起来的活儿多一倍），而算力只差 0.055%（`parallel-dual-ln` 与基线逐位等参；`parallel` 少一个共享 pre-LN = −4096 = −L·2d）。⇒ 本项 falsification 的第二条件（「等效代价面也拿不到可兑现的收益」）**不成立** ⇒ 不判「不划算」；结论 = **以可排序的质量代价换层内并行度翻倍：本尺度上不是免费的，是否采纳取决于场景**（要吞吐/流水者值、要质量者不值）。**臂完整性（as of 2026-10-14T22:34+08:00）**：seed=1（2651）只完成基线 `sequential`，`parallel`/`parallel-dual-ln` 两臂因跨轴 GPU 锁饥饿未跑（等效成本 = 每臂 98.3M token、两臂合计 196.6M token，未消耗），故本判为 **n=1**、不越尺度外推。字面（预登记判据线）：质量代价越带 ⇒ 代价可排序、代价面齐备、给出场景依赖结论，成立；实质：给出「质量代价 vs 并行度收益」的可操作权衡，不越尺度外推。证据：`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md`（§5 代价面同框表）与 `.../2613-inter-layer-topology-13m/analysis.md`。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
-conclusion_review: "status = 已完成：本项在 13M/12k 尺度给出明确结论——并行子层的质量代价可排序（+0.0458 = 3.27× 带 / +0.0402 = 2.87× 带），代价面（层内串行依赖 2→1 段、每 token 串行步数 16→8、算力差 0.055%）给出真实收益，故不满足 falsification 的「代价面无收益」条件、不判不划算；结论为场景依赖的权衡。判定边界：n=1（seed=1 两臂因跨轴锁饥饿未跑，等效成本 196.6M token），不越尺度外推；吞吐/流水面用等效理论量表达（层内串行依赖长度），墙钟不进判据。独立复核（第 1 轮 fresh + 处置 + 第 2 轮 fresh，均非本项 writer）：第 1 轮判 B1（+0.0402 = 2.87× 带，曾被写成「均 >3× 带」）等 1 blocking + 8 non-blocking，已逐条处置（提交 f4c991f）；第 2 轮判「**blocking：无**」（B1 已消除、倍数/区间跨字段一致、无新账实不符）。历轮见 ticket 61 §9.13 与 `.scratch/61-axis2-depth/REVIEW-WP2651.md`。"
+conclusion: "在 13M / 12k 步 / 98.3M token / matched-step 快照 + 0.014 bpc 带下：并行子层（`parallel` / 逐位等参数 `parallel-dual-ln`）相对 stock 串行子层（`sequential`）的质量代价**可排序**（s0 配对 Δ = +0.0458 = 3.27× 带、+0.0402 = 2.87× 带；s1 = +0.0422 = 3.01× 带、+0.0374 = 2.67× 带，两 seed 同号且都越带）；同框的**代价面**给出**真实收益**——层内串行链从 2 段砍到 1 段、每 token 串行步数 16→8（同一时间可并起来的活儿多一倍），而算力只差 0.055%（`parallel-dual-ln` 与基线逐位等参；`parallel` 少一个共享 pre-LN = −4096 = −L·2d）。⇒ 本项 falsification 的第二条件（「等效代价面也拿不到可兑现的收益」）**不成立** ⇒ 不判「不划算」；结论 = **以可排序的质量代价换层内并行度翻倍：本尺度上不是免费的，是否采纳取决于场景**（要吞吐/流水者值、要质量者不值）。**臂完整性**：s1（seed=1，`2651`）四臂全部训完并评测（`sequential` 1.5288 / `parallel` 1.5710 / `parallel-dual-ln` 1.5662 / `dense` 1.5273，各 98.3M token），`results.json::completed_arms` 四臂齐、`pending_arms` 为空 ⇒ 本判为 **n=2** seed（s0 = `2613` + s1 = `2651`），两 seed 同号且都越带、不越尺度外推。字面（预登记判据线）：质量代价越带 ⇒ 代价可排序、代价面齐备、给出场景依赖结论，成立；实质：给出「质量代价 vs 并行度收益」的可操作权衡，不越尺度外推。证据：`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md`（§5 代价面同框表）与 `.../2613-inter-layer-topology-13m/analysis.md`。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
+conclusion_review: "status = 已完成：本项在 13M/12k 尺度给出明确结论——并行子层的质量代价可排序（+0.0458 = 3.27× 带 / +0.0402 = 2.87× 带），代价面（层内串行依赖 2→1 段、每 token 串行步数 16→8、算力差 0.055%）给出真实收益，故不满足 falsification 的「代价面无收益」条件、不判不划算；结论为场景依赖的权衡。判定边界：n=2（s0 = `2613`、s1 = `2651`，四臂齐；质量代价 +0.0458 / +0.0402 → s1 +0.0422 / +0.0374，两 seed 同号且都越带），不越尺度外推；吞吐/流水面用等效理论量表达（层内串行依赖长度），墙钟不进判据。独立复核（第 1 轮 fresh + 处置 + 第 2 轮 fresh，均非本项 writer）：第 1 轮判 B1（+0.0402 = 2.87× 带，曾被写成「均 >3× 带」）等 1 blocking + 8 non-blocking，已逐条处置（提交 f4c991f）；第 2 轮判「**blocking：无**」（B1 已消除、倍数/区间跨字段一致、无新账实不符）。历轮见 ticket 61 §9.13 与 `.scratch/61-axis2-depth/REVIEW-WP2651.md`。"
 experiments:
   - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m"
   - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md"
 argument: "（证据只指针，见 2.2.3 的实验目录。）并行子层是「层内怎么排」的问题：串行版把注意力结果当 MLP 输入（层内 2 段串行），并行版让二者同读层输入（1 段）。同框账：质量面 s0 +0.0458 / +0.0402（可排序代价），代价面层内串行依赖 2→1 段、每 token 串行步数 16→8、算力近似不变（`parallel` −0.055%、`parallel-dual-ln` 与基线逐位等参），等参数臂（dual-LN）将「并行的收益」与「参数账」解耦。故它不是免费的、也不是无收益的，是场景依赖的取舍。同组对照 2.2.3 的 dense 臂用于区分「并行接线」与「层间加权和」。本项**无自有实验目录**（按 MAPPING §3 只指针 see 2.2.3；并行读数即 2.2.3 证据目录里的 `parallel` / `parallel-dual-ln` 臂），这是体例而非缺口。"
 gaps:
-  - "n≥2 seed 复核未完成：seed=1（2651）的 `parallel`/`parallel-dual-ln` 两臂因跨轴 GPU 锁饥饿未跑（等效成本 = 每臂 98.3M token、两臂合计 196.6M token，未消耗）；本项判为 n=1"
   - "吞吐/流水面已给等效理论量（层内串行依赖长度 / 每层 FLOPs），但未做真实流水实现或墙钟外的端到端吞吐代理（本项目约定墙钟不进判据）"
   - "13M/12k 单快照，不越尺度外推"
 cost_model: "等效理论量：每 token 的 layer-passes 仍为 L；并行子层把层内「注意力→MLP」的串行依赖从 2 段压到 1 段（层内关键路径更短），每层 FLOPs 近似不变（≈ −2d 参数的 LayerNorm 输入差）；tokens-per-forward 每步 1。考虑 pipelining：层内串行依赖缩短提升批内并行度，收益须以「层内串行依赖长度」这一等效量表达，而不是以任何时间量表达。"
@@ -44,7 +43,7 @@ work_packages:
     acceptance: "三臂等参数对齐；质量代价与代价面收益同框；结论明确划算/不划算"
     evidence: "axes/2-depth/2.2.3-learned-layer-sum/experiments/"
     review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
-    status: "进行中"
+    status: "已完成"
 
 roadmap:
   - "WP1：补代价面并与质量面同框（证据复用 2.2.3）"
@@ -69,3 +68,6 @@ change_log:
   - date: "2026-10-14T22:57:00+08:00"
     actor: "WP-2651 复核处置 writer（ticket 61 §9.2；fresh 上下文）"
     change: "复核 A 处置（**只改文本与状态语义，未动任何测量数字**）：①倍数订正——`parallel-dual-ln` 的质量代价 +0.0402 = **2.87×** 0.014 带（原写「均 >3× 带」不成立：3×0.014 = 0.042 > 0.0402），`parallel` 的 +0.0458 = **3.27×** 带；`conclusion` / `conclusion_review` / `change_log` 与 2.2.3 的 `2651.../analysis.md` / `.scratch/61-axis2-depth/WP-2651-REPORT.md` / 既有资产 `2613.../analysis.md` 的同族措辞一并改为实数倍数；②`gaps[0]`「无自有实验（按 MAPPING §3 只指针 see 2.2.3）」是事实/指针而不是缺口 ⇒ 挪进 `argument`，`gaps` 删除该条；③按复核 A 的严格读法把 WP1 `status` 由「已完成」改回「进行中」——WP 自己的预登记 `acceptance`/`means` 要求 n≥2，本轮止于 n=1（缺臂与等效成本见 `gaps`）；item 级 `status = 已完成` 与结论、`acceptance` 文字均不变。判据线未改。"
+  - date: "2026-10-19T21:50:00+08:00"
+    actor: "WP-R5 执行者（复核 03d78d4 的 F-1 处置；fresh 上下文）"
+    change: "复核 F-1 处置（**只改文本与状态语义，未动任何测量数字**）：`conclusion` / `conclusion_review` 的臂完整性改为事实——s1（`2651`）四臂齐（`sequential` 1.5288 / `parallel` 1.5710 / `parallel-dual-ln` 1.5662 / `dense` 1.5273，`results.json::completed_arms` 四臂齐、`pending_arms` 为空），本判由 n=1 改为 **n=2**，并补 s1 的质量代价读数（+0.0422 = 3.01× 带 / +0.0374 = 2.67× 带）；`gaps` 删除「n≥2 未完成 / 两臂未跑 / n=1」一条；`conclusion` 正文删除时点标注（`docs/research-schema.md` §8）；WP1 `status` 由「进行中」改「已完成」（其预登记 `means`/`acceptance` 要求 n≥2，现已满足）。判据线未改，代价面读数未改。"
