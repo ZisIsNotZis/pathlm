@@ -214,7 +214,7 @@ tail -4 "$EXP/run_stdout-smoke.txt"  # -> 多轮 "[sh] smoke attempt N smoke_ok=
 
 ## 9. 复核 A 处置 + 机械输出（2026-10-14T22:59+08:00）
 
-复核 A（fresh 上下文独立复核，判词文件 `REVIEW-WP2651.md`，本轮**未改**该文件）对本轮的判词：
+复核 A（fresh 上下文独立复核；复核者无 shell 与写文件能力，判词原文在对应 run output log，摘录见 `TICKET.md` §9.18 复核记录）对本轮的判词：
 **2.2.3 = PASS**（3 条 non-blocking）、**2.2.4 = FAIL**（1 条 blocking），Merge verdict = **BLOCK**。
 唯一 blocking B1 是**纯文本倍数错误**（不改任何结论、不需重训、不动 `results.json`）。处置如下：
 
@@ -232,7 +232,7 @@ tail -4 "$EXP/run_stdout-smoke.txt"  # -> 多轮 "[sh] smoke attempt N smoke_ok=
 
 **未改**：任何测量数字（`results.json` / `2613/results.json` 只读）、`run.py` / `smoke.py` /
 `test_run_persistence.py` / `config.json` 内容、判据线与预登记 `acceptance` 文字、`TICKET.md`、
-`REVIEW-WP2651.md`、`pathlm/**`、`tools/**`、`docs/**`。两份 `project.yaml` 的 `change_log` 各记一条
+`pathlm/**`、`tools/**`、`docs/**`。两份 `project.yaml` 的 `change_log` 各记一条
 （date / actor / change），说明「只改文本与状态语义，未动任何测量数字」。
 
 ### 9.1 机械输出（复核 A 无 shell，由其指定的收口方代跑；原始输出 + 退出码）
