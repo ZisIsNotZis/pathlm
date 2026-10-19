@@ -1222,47 +1222,15 @@ def window_mask_probe(model: "DepthARModel", tokens: torch.Tensor) -> dict:
 
 
 def topology_liveness(model: "DepthARModel") -> dict:
-    """层间拓扑干预的活性量（SCHEMA §10 强制项）。
+    """层间拓扑干预的活性量（SCHEMA §10 强制项）的**唯一入口**。
 
-    - `params_added`：相对 sequential 臂的参数增量（sequential 0 / parallel −L·2d /
-      parallel-dual-ln 0 / dense +L(L+1)/2），必须与实测参数量增量逐位一致
-      （单测 `test_topology_liveness_params_added_matches_param_delta`）；
-    - `params_identical_to_sequential` / `start_bitwise_equals_sequential`：参数账与
-      起步等价性（能逐位核对的两个布尔量）；
-    - dense 臂：层权 α 的 fro / absmax / 非零占比 / 与 identity 起步的最大偏离
-      （α 不动 = 干预死 = 该臂逐位等价基线）；
-    - parallel 臂：接线本身无专属参数，活性量 = 参数增量 + 逐层分支增量范数
-      （`branch_activity`，在 run.py 用评测数据实测）。
+    只转调模型自报的 `model.topology_liveness()`：层间聚合的实现形态不止「dense
+    线性层权 α」一种（例：2653 的层间 causal attention 聚合删掉了 `layer_mix`），
+    共享代码无法假定任何拓扑值的模型都持有 `layer_mix`。聚合形态不同的模型必须
+    覆写该方法自报活性；`DepthARModel` 的实现（α 形态）见
+    `DepthARModel.topology_liveness`。
     """
-    cfg = model.cfg
-    d, L = cfg.d_model, cfg.n_layers
-    delta = {"sequential": 0, "parallel": -L * 2 * d, "parallel-dual-ln": 0,
-             "dense": L * (L + 1) // 2}[cfg.topology]
-    out = {"topology": cfg.topology, "params_added": delta,
-           "parameterized": cfg.topology == "dense",
-           "params_identical_to_sequential":
-               cfg.topology in ("sequential", "parallel-dual-ln"),
-           "start_bitwise_equals_sequential": cfg.topology != "parallel"
-               and cfg.topology != "parallel-dual-ln"}
-    if cfg.topology == "dense":
-        a = model.layer_mix.detach().float()
-        init = torch.zeros_like(a)
-        for k in range(1, L + 1):
-            init[k * (k - 1) // 2 + k - 1] = 1.0
-        out.update({
-            "w_fro": round(float(a.norm()), 6),
-            "w_absmax": round(float(a.abs().max()), 6),
-            "nonzero_frac": round(float(torch.count_nonzero(a) / a.numel()), 6),
-            "max_dev_from_identity_init": round(float((a - init).abs().max()), 6),
-            "alpha_by_layer": [
-                [round(float(v), 6) for v in a[k * (k - 1) // 2: k * (k + 1) // 2]]
-                for k in range(1, L + 1)],
-        })
-        out["alive"] = out["max_dev_from_identity_init"] > 0
-    else:
-        out.update({"w_fro": None, "w_absmax": None, "nonzero_frac": None,
-                    "alive": cfg.topology != "sequential"})
-    return out
+    return model.topology_liveness()
 
 
 def attn_sparse_liveness(model: "DepthARModel",
@@ -2606,6 +2574,56 @@ class DepthARModel(nn.Module):
         out = alpha[0] * states[0]
         for j in range(1, k):
             out = out + alpha[j] * states[j]
+        return out
+
+    def topology_liveness(self) -> dict:
+        """层间拓扑干预的活性量（SCHEMA §10 强制项；入口 = 模块级同名函数）。
+
+        - `params_added`：相对 sequential 臂的参数增量（sequential 0 / parallel −L·2d /
+          parallel-dual-ln 0 / dense +L(L+1)/2），必须与实测参数量增量逐位一致
+          （单测 `test_topology_liveness_params_added_matches_param_delta`）；
+        - `params_identical_to_sequential` / `start_bitwise_equals_sequential`：参数账与
+          起步等价性（能逐位核对的两个布尔量）；
+        - dense 臂：层权 α 的 fro / absmax / 非零占比 / 与 identity 起步的最大偏离
+          （α 不动 = 干预死 = 该臂逐位等价基线）；
+        - parallel 臂：接线本身无专属参数，活性量 = 参数增量 + 逐层分支增量范数
+          （`branch_activity`，在 run.py 用评测数据实测）。
+
+        `topology="dense"` 但层间聚合不是线性层权、因而没有 `layer_mix` 的模型必须
+        在自己的类里覆写本方法：本方法不猜它的活性形态，直接报错。
+        """
+        cfg = self.cfg
+        d, L = cfg.d_model, cfg.n_layers
+        delta = {"sequential": 0, "parallel": -L * 2 * d, "parallel-dual-ln": 0,
+                 "dense": L * (L + 1) // 2}[cfg.topology]
+        out = {"topology": cfg.topology, "params_added": delta,
+               "parameterized": cfg.topology == "dense",
+               "params_identical_to_sequential":
+                   cfg.topology in ("sequential", "parallel-dual-ln"),
+               "start_bitwise_equals_sequential": cfg.topology != "parallel"
+                   and cfg.topology != "parallel-dual-ln"}
+        if cfg.topology == "dense":
+            if not hasattr(self, "layer_mix"):
+                raise TypeError(
+                    f"{type(self).__name__} 的 topology='dense' 不是线性层权聚合"
+                    "（没有 layer_mix）：该模型必须覆写 topology_liveness() 自报活性")
+            a = self.layer_mix.detach().float()
+            init = torch.zeros_like(a)
+            for k in range(1, L + 1):
+                init[k * (k - 1) // 2 + k - 1] = 1.0
+            out.update({
+                "w_fro": round(float(a.norm()), 6),
+                "w_absmax": round(float(a.abs().max()), 6),
+                "nonzero_frac": round(float(torch.count_nonzero(a) / a.numel()), 6),
+                "max_dev_from_identity_init": round(float((a - init).abs().max()), 6),
+                "alpha_by_layer": [
+                    [round(float(v), 6) for v in a[k * (k - 1) // 2: k * (k + 1) // 2]]
+                    for k in range(1, L + 1)],
+            })
+            out["alive"] = out["max_dev_from_identity_init"] > 0
+        else:
+            out.update({"w_fro": None, "w_absmax": None, "nonzero_frac": None,
+                        "alive": cfg.topology != "sequential"})
         return out
 
     @staticmethod

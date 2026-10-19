@@ -86,3 +86,31 @@ def test_factory_global_is_frozen_at_construction():
     free = build_attn("scalar", force_last=False)      # 改全局
     assert forced.force_last is True and free.force_last is False
     assert not torch.equal(forward(forced), forward(free))
+
+
+@pytest.mark.parametrize("mode", ["scalar", "qkv"])
+def test_d_topology_liveness_is_self_reported_not_dense_layer_mix(mode):
+    """回归（非契约 §4 门）：本臂的层间聚合不是线性层权，构造时已删 `layer_mix`，
+    而共享 `topology_liveness` 曾假定 dense ⇒ 落盘阶段抛
+    `AttributeError: 'InterLayerAttentionModel' object has no attribute 'layer_mix'`
+    （2653 训练完 12k 步后在此崩 781 次，每次约 9.5 分钟 GPU）。
+
+    现在：共享入口转调本类自报的 `topology_liveness()`，活性看得见（τ 偏离初值）；
+    且 τ 未动时 `alive` 必须为 False（否则该量没有分辨力）。
+    """
+    from pathlm.depth_ar import topology_liveness
+    m = build_attn(mode, force_last=False)
+    assert not hasattr(m, "layer_mix")        # 本臂真没有线性层权
+    live = topology_liveness(m)               # 修复前：AttributeError
+    assert live["alive"] is False             # τ 还在初值 1.0 ⇒ 未训 ⇒ 不活
+    assert live["tau_absmax_dev_from_init"] == 0.0
+    assert live["attn_weights"] is None       # 尚无真实前向样本
+    d, L = m.cfg.d_model, m.cfg.n_layers
+    assert live["params_added"] == L + (3 * d * d if mode == "qkv" else 0)
+    with torch.no_grad():                     # 模拟训过的 τ：离开初值 ⇒ 活
+        m.tau += torch.linspace(0.0, 0.5, L)
+    forward(m)                                # 真实前向 ⇒ 聚合权重摘要
+    live = topology_liveness(m)
+    assert live["alive"] is True and live["tau_absmax_dev_from_init"] > 0
+    assert live["attn_weights"]["n_samples"] == L - 1   # k ≥ 2 的层
+    assert live["attn_weights"]["w_immediate_prev_min"] < 1.0

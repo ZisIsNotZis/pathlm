@@ -128,3 +128,46 @@ class InterLayerAttentionModel(DepthARModel):
                          "（2·d·Σk = 2·d·36）；qkv 的额外项 ≈ 3d²·Σk（共享投影但"
                          "每层对 k 个源各做一次投影）。两列分开报，不用任何时间量。"
                          "tokens-per-forward = 1（每 token 每层一次聚合）。")}
+
+    # ------------------------------------------------------------ 活性（SCHEMA §10）
+    def topology_liveness(self) -> dict:
+        """本臂的层间聚合不是线性层权（构造时已删 `layer_mix`）⇒ 由本类自报活性：
+        温度 τ 的终值，以及有真实前向样本时逐层聚合权重的摘要。
+
+        共享入口 `pathlm.depth_ar.topology_liveness` 只转调本方法；若不覆写，它会
+        对 `layer_mix` 抛错（2653 曾在落盘阶段因此崩 781 次）。
+
+        - `params_added` 相对 sequential：scalar = L（每层一个 τ），qkv = 3d² + L；
+        - `alive` = 某层 τ 偏离初值 1.0：τ 不动 ⇔ 层间聚合停在未学习的均匀
+          softmax 上，干预没学；
+        - `attn_weights` = `attn_tele` 里 k ≥ 2 的层的汇总（`run.py::
+          attention_liveness` 先 flush 再真实前向）；无样本时为 None。
+        """
+        d, L = self.cfg.d_model, self.cfg.n_layers
+        tau = self.tau.detach().float()
+        dev = (tau - 1.0).abs()
+        out = {
+            "topology": self.cfg.topology,
+            "aggregation": f"interlayer-causal-attention/{self.mode}",
+            "params_added": L + (3 * d * d if self.mode == "qkv" else 0),
+            "parameterized": True,
+            "params_identical_to_sequential": False,
+            "start_bitwise_equals_sequential": False,
+            "tau_by_layer": [round(float(v), 6) for v in tau],
+            "tau_absmax_dev_from_init": round(float(dev.max()), 6),
+            "tau_frac_layers_moved": round(float((dev > 0).float().mean()), 6),
+        }
+        deg = [t for t in self.attn_tele if t["layer"] >= 2]
+        if deg:
+            prev = [t["w_immediate_prev"] for t in deg]
+            ent = [t["entropy"] for t in deg]
+            out["attn_weights"] = {
+                "n_samples": len(deg),
+                "w_immediate_prev_mean": round(sum(prev) / len(prev), 6),
+                "w_immediate_prev_min": round(min(prev), 6),
+                "entropy_mean": round(sum(ent) / len(ent), 6),
+            }
+        else:
+            out["attn_weights"] = None
+        out["alive"] = out["tau_absmax_dev_from_init"] > 0
+        return out

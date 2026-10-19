@@ -1382,6 +1382,27 @@ def test_topology_liveness_params_added_matches_param_delta():
     assert not topology_liveness(ms["dense"])["params_identical_to_sequential"]
 
 
+def test_topology_liveness_requires_model_supplied_hook():
+    """回归：层间聚合的形态不止「dense 线性层权 α」一种，所以共享入口只转调模型
+    自报的 `topology_liveness()`。声明 `topology="dense"` 却删掉 `layer_mix` 的模型
+    必须自己覆写；否则报带名字的 TypeError，而不是裸 AttributeError（修复前的行为）。
+    """
+    bare = tiny_model(dense=True, topology="dense")
+    del bare.layer_mix                         # 非线性层权聚合的形态（如 2653）
+    assert not hasattr(bare, "layer_mix")
+    with pytest.raises(TypeError, match="topology_liveness"):
+        topology_liveness(bare)
+
+    class OwnHook:
+        """只有自报钩子的模型：共享入口不得再读任何 `layer_mix`。"""
+        cfg = bare.cfg
+
+        def topology_liveness(self):
+            return {"topology": self.cfg.topology, "own_hook": True}
+
+    assert topology_liveness(OwnHook())["own_hook"] is True
+
+
 # ---------------- 契约 J：内容 top-k 稀疏注意力（ticket 31） ----------------
 
 def _ref_topk_keep(scores: torch.Tensor, k: int) -> torch.Tensor:
