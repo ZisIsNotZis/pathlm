@@ -90,8 +90,7 @@ Block、tied 读出；`--dense`）。
 - 等值门/冒烟：`smoke.py`；单测：`test_2653_interlayer_attn.py`。
 - resolved config：本目录 `config.json` + 每臂训练产物内 `results.json.config`。
 - 落盘：`results_<arm>_s0.json`、`results.json`、`smoke_report.json`、`analysis.md`、
-  `MODEL.md`、`runs/<arm>-12k-s0/`。本目录**无 `run_log.txt`**（两臂未训的原因是等锁未取到，
-  阻塞证据只在 `.scratch/61-axis2-depth/TICKET.md` §9.11；见 `analysis.md` 独立复核节）。
+  `MODEL.md`、`run_log.txt`（每臂一条起始与状态的机器可读记录）、`runs/<arm>-12k-s0/`。
 
 ## 8 失败决策树（按序排除）
 

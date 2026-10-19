@@ -3,11 +3,90 @@
   "criterion": "P1 Δ = bpc_该臂 − bpc_(stock/dense)（符号约定见 README §4，正 = 该臂更好）；方差带 0.014；P2 活性（层维权重非退化）；P3 代价列（额外参数 / 每 token 额外 MACs）；P4 等值门（one-hot ⇒ 与 stock 逐位一致）；P5 基线复用的三条等值证明；P6 层索引因果。",
   "variance_bound": 0.014,
   "steps": 12000,
-  "arms": {},
-  "P1_deltas_vs_baselines": {},
-  "P1_verdict": {},
-  "P2_liveness": {},
-  "P3_window_se": {},
+  "arms": {
+    "attn-qkv-s0": {
+      "clean_bpc": 1.5431,
+      "params_total": 7159304,
+      "params_added": 196616,
+      "extra_macs_per_token": 5261312,
+      "extra_over_base_attention": 1.672526,
+      "alive": true,
+      "slope_per_1k": 0.00296
+    },
+    "attn-scalar-s0": {
+      "clean_bpc": 1.5336,
+      "params_total": 6962696,
+      "params_added": 8,
+      "extra_macs_per_token": 18432,
+      "extra_over_base_attention": 0.005859,
+      "alive": false,
+      "slope_per_1k": 0.00039
+    }
+  },
+  "P1_deltas_vs_baselines": {
+    "attn-qkv-s0": {
+      "delta_vs_stock_sequential_2613_s0": -0.0177,
+      "delta_vs_dense_lin_sum_2613_s0": -0.0185
+    },
+    "attn-scalar-s0": {
+      "delta_vs_stock_sequential_2613_s0": -0.0082,
+      "delta_vs_dense_lin_sum_2613_s0": -0.009
+    }
+  },
+  "P1_verdict": {
+    "attn-qkv-s0": {
+      "vs_stock": "可分（反向）：该臂劣于对照",
+      "vs_dense_lin_sum": "可分（反向）：该臂劣于对照"
+    },
+    "attn-scalar-s0": {
+      "vs_stock": "不可排序（H0）：|Δ| < 0.014",
+      "vs_dense_lin_sum": "不可排序（H0）：|Δ| < 0.014"
+    }
+  },
+  "P2_liveness": {
+    "attn-qkv-s0": {
+      "alive": true,
+      "max_dev_from_identity_prev": 0.463568,
+      "tau_by_layer": [
+        0.937065,
+        0.092567,
+        0.078453,
+        0.047416,
+        0.072797,
+        0.073901,
+        0.117529,
+        0.128722
+      ]
+    },
+    "attn-scalar-s0": {
+      "alive": false,
+      "max_dev_from_identity_prev": 1.0,
+      "tau_by_layer": [
+        0.937065,
+        0.953731,
+        0.840994,
+        0.094844,
+        0.165611,
+        0.335867,
+        0.243236,
+        0.424442
+      ]
+    }
+  },
+  "P3_window_se": {
+    "attn-qkv-s0": {
+      "delta_vs_stock_by_window_mean": -0.017671,
+      "se_across_windows_vs_stock": 0.011612,
+      "n_windows": 5,
+      "note": "窗口间 SE 是同一 checkpoint 内的抽样噪声；vs 历史臂的逐窗配对只在历史臂的窗数据可得时才是真配对（本表按窗口均值与 SE 报，口径已在 analysis.md 标注）"
+    },
+    "attn-scalar-s0": {
+      "delta_vs_stock_by_window_mean": -0.008228,
+      "se_across_windows_vs_stock": 0.010844,
+      "n_windows": 5,
+      "note": "窗口间 SE 是同一 checkpoint 内的抽样噪声；vs 历史臂的逐窗配对只在历史臂的窗数据可得时才是真配对（本表按窗口均值与 SE 报，口径已在 analysis.md 标注）"
+    }
+  },
   "P5_baseline_equivalence": {
     "reference": "axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m/results.json",
     "reference_arms": {
@@ -91,7 +170,10 @@
     "caliber_note": "历史同配置对照 + 逐位等值性证明；2613 s0 的 clean bpc 口径 = 全深度、无退出、teacher-forcing、序列级 bpc，与本实验同口径",
     "pass": true
   },
-  "source_files": [],
+  "source_files": [
+    "results_attn-qkv_s0.json",
+    "results_attn-scalar_s0.json"
+  ],
   "code_hash_run_py": "04419188ece9f42622e37698af3c74bbdac6e642b372c7af05fb4f77af7188fa",
-  "generated_at": "2026-10-15T04:46:19+0800"
+  "generated_at": "2026-10-19T21:03:28+0800"
 }
