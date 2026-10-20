@@ -19,7 +19,8 @@
 
 用途（Phase 2 = finisher 一条命令接手）：
 
-    cd /home/z/vibe/pathlm && python3 <expdir>/hp64_arms.py                # 正式评测
+    cd /home/z/vibe/pathlm && python3 <expdir>/hp64_arms.py                # 正式评测（主表，hd64-s0）
+    cd /home/z/vibe/pathlm && python3 <expdir>/hp64_arms.py --seed-leg second_seed --out-dir <expdir>/hd64-s1  # n≥2 的第二 seed 腿
     cd /home/z/vibe/pathlm && python3 <expdir>/hp64_arms.py --ledger-only   # 只打印解析字节账（秒级、不装载模型）
     cd /home/z/vibe/pathlm && python3 <expdir>/hp64_arms.py --smoke --checkpoint-path <pt> --checkpoint-sha256 <hex>
 """
@@ -77,8 +78,13 @@ CPU_REF_2653 = {"arm": "2653::fp16", "clean_bpc": 1.4835687, "device": "cpu",
 # ----------------------------------------------------------------- 配置与权重
 
 
-def build_cfg(config_path: str, ckpt_path: str | None, ckpt_sha: str | None) -> dict:
-    """`config.json` + 只读复用 `2621` 的 `data`；`head_dim` 由 `d_model/n_heads` **求出**并核对声明值。"""
+def build_cfg(config_path: str, ckpt_path: str | None, ckpt_sha: str | None,
+              seed_leg: str | None = None) -> dict:
+    """`config.json` + 只读复用 `2621` 的 `data`；`head_dim` 由 `d_model/n_heads` **求出**并核对声明值。
+
+    `seed_leg` 选 `config.json::checkpoints` 里预登记的另一条 seed 腿（如 `second_seed` = `runs/hd64-s1`）：
+    臂表 / 口径 / 判据线逐字不变，只换被测权重 ⇒ 该腿是**读数腿**，不是 plumbing。
+    """
     with open(config_path) as f:
         cfg = json.load(f)
     with open(os.path.join(ROOT, cfg["harness"]["parent_config"])) as f:
@@ -86,7 +92,16 @@ def build_cfg(config_path: str, ckpt_path: str | None, ckpt_sha: str | None) -> 
     derived = cfg["model"]["d_model"] // cfg["model"]["n_heads"]
     if cfg.get("head_dim") != derived:
         raise SystemExit(f"config.head_dim={cfg.get('head_dim')} 与 d_model/n_heads={derived} 不符")
-    if ckpt_path is not None or ckpt_sha is not None:
+    if seed_leg is not None:
+        if ckpt_path is not None or ckpt_sha is not None:
+            raise SystemExit("--seed-leg 与 --checkpoint-path 互斥：前者走预登记的 seed 腿，后者是冒烟覆盖")
+        legs = cfg.get("checkpoints") or {}
+        if seed_leg not in legs or seed_leg == "trunk":
+            raise SystemExit(f"config.json::checkpoints 无 {seed_leg!r}；已知腿 = "
+                             f"{[k for k in legs if k != 'trunk']}")
+        cfg["checkpoints"]["trunk"] = dict(legs[seed_leg])
+        cfg["seed_leg"] = seed_leg
+    elif ckpt_path is not None or ckpt_sha is not None:
         if not (ckpt_path and ckpt_sha):
             raise SystemExit("--checkpoint-path 与 --checkpoint-sha256 必须同时给出")
         cfg["checkpoints"]["trunk"] = {"path": os.path.relpath(os.path.abspath(ckpt_path), ROOT),
@@ -305,12 +320,15 @@ def main() -> int:
     ap.add_argument("--checkpoint-path", default=None,
                     help="覆盖被测权重（**只用于冒烟/仪器自检**；与 --checkpoint-sha256 同时给出）")
     ap.add_argument("--checkpoint-sha256", default=None)
+    ap.add_argument("--seed-leg", default=None,
+                    help="跑 `config.json::checkpoints` 里预登记的另一条 seed 腿（如 second_seed）；"
+                         "臂表/口径/判据线不变，**构成读数**（不是 plumbing）")
     args = ap.parse_args()
     if args.out_dir is None:
         args.out_dir = os.path.join(HERE, "smoke") if args.smoke else HERE
     os.makedirs(args.out_dir, exist_ok=True)
 
-    cfg = build_cfg(args.config, args.checkpoint_path, args.checkpoint_sha256)
+    cfg = build_cfg(args.config, args.checkpoint_path, args.checkpoint_sha256, args.seed_leg)
     dev = cfg["eval"]["device"]
     T = cfg["model"]["seq_len"]
     ledger = fa.deployment_ledger(cfg)          # 逐臂解析字节账（含 head_dim × G 阶梯与 hd32/hd64 封顶）
@@ -348,6 +366,9 @@ def main() -> int:
 
     rec = {"experiment": cfg["experiment"], "contract": cfg["contract"], "scope": cfg["scope"],
            "config": cfg, "criterion": cfg["criterion"], "device": dev,
+           "delta_directions": {"delta_bytes_per_position": "arm_minus_comparator",
+                                "paired_delta": "arm_minus_comparator",
+                                "delta_by_window": "arm_minus_comparator"},
            "caliber_note": cfg["eval"]["cross_device_rule"], "gpu_lock": None,
            "gpu_lock_note": "纯 CPU 推理，按 SCHEMA §20 不取 GPU 锁",
            "deployment_ledger": ledger, "partial": True,
@@ -355,8 +376,13 @@ def main() -> int:
            "side_arms_completed": [], "side_arms_pending": list(side_arms),
            "points": [], "side_points": [],
            "smoke": bool(args.smoke),
-           "plumbing_only": bool(args.smoke or args.checkpoint_path is not None),
-           "checkpoint_override": bool(args.checkpoint_path is not None)}
+           "plumbing_only": bool(args.smoke or (args.checkpoint_path is not None
+                                                and args.seed_leg is None)),
+           "checkpoint_override": bool(args.checkpoint_path is not None),
+           "checkpoint_role": ("smoke" if args.smoke else
+                               args.seed_leg if args.seed_leg else
+                               "plumbing_override" if args.checkpoint_path is not None else
+                               "trunk")}
     dump(args.out_dir, rec, cfg)
 
     t0 = time.time()

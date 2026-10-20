@@ -132,6 +132,12 @@ cd /home/z/vibe/pathlm && python3 axes/5-quant/5.5-fp8-head-dim/experiments/2655
   `paired_delta` / `instrument` / `checkpoint` / `code`）+ `table.md`（4 张表）+ 控制台进度。
 - 辅入口：`--ledger-only`（只打印解析字节账，秒级、不装载模型）；`--charts-only`（从已有 `results.json` 重画表）；
   `--smoke --checkpoint-path … --checkpoint-sha256 …`（冒烟/仪器自检，`plumbing_only = true`，**不构成读数**）。
+- **第二 seed 腿（`n≥2`）**：
+  `python3 <expdir>/hp64_arms.py --seed-leg second_seed --out-dir <expdir>/hd64-s1`
+  ——臂表 / 口径 / 判据线逐字不变，只把被测权重换成 `config.json::checkpoints.second_seed`
+  （`runs/hd64-s1/model.pt`，`sha256` 预登记为 null ⇒ 评测时现算）；产出 `hd64-s1/results.json` +
+  `hd64-s1/table.md`，`plumbing_only = false`、`checkpoint_role = "second_seed"`。
+  两条腿分开落盘、不合并成一张主表（每腿的配对 Δ 都是对**该腿自己的** `fp16` 臂算的）。
 
 ## 11. 数据与脚本清单
 
@@ -165,8 +171,9 @@ cd /home/z/vibe/pathlm && python3 axes/5-quant/5.5-fp8-head-dim/experiments/2655
 ## 13. 产出
 
 `README.md`（本文件）· `config.json` · `hp64_train_driver.py` · `hp64_arms.py` ·
-`train_driver.log` + `train_driver_state.json` · `runs/hd64-s0/**`（权重不入库）·
-`results.json` + `table.md` + `analysis.md`（评测后）· `wp2_status.json`（状态与接手命令）·
+`train_driver.log` + `train_driver_state.json` · `runs/hd64-s0/**`、`runs/hd64-s1/**`（权重不入库）·
+`results.json` + `table.md`（seed 0 主表）· `hd64-s1/results.json` + `hd64-s1/table.md`（seed 1 腿）·
+`analysis.md`（评测后）· `wp2_status.json`（状态与接手命令）·
 `JOURNAL.md`（过程流水）· `f5_anchor_2653_precision.py` + `f5-anchor-2653-rerun/**`（F5 ③ 证据）。
 
 ## 14. 成本（只用等效理论量）
@@ -178,7 +185,8 @@ cd /home/z/vibe/pathlm && python3 axes/5-quant/5.5-fp8-head-dim/experiments/2655
 ## 15. 运行（速查）
 
 ```bash
-python3 hp64_arms.py                  # 正式评测（3 主臂 + 2 辅助臂 + 仪器自检）
+python3 hp64_arms.py                  # 正式评测（3 主臂 + 2 辅助臂 + 仪器自检；seed 0 主表）
+python3 hp64_arms.py --seed-leg second_seed --out-dir hd64-s1   # 第二 seed 腿（n≥2）
 python3 hp64_arms.py --ledger-only    # 解析字节账（秒级）
 python3 hp64_arms.py --charts-only    # 只重画 table.md
 python3 hp64_arms.py --smoke --checkpoint-path <pt> --checkpoint-sha256 <hex>   # 冒烟/plumbing

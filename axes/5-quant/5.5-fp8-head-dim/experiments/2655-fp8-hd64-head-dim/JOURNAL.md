@@ -3,6 +3,24 @@
 本文件是**过程史**（日期流水，允许正序/倒序），不是权威结论；结论见 `analysis.md`、原始数字见
 `results.json`、判据线见 `config.json::criterion`。冲突时以 `analysis.md` / `results.json` 为准。
 
+## 注（Phase 2 第 6 条已被事实文档取代）
+
+Phase 2 第 6 条记的「`hd64-s1` 未训练完成」是那一轮的状态；当前事实是 `hd64-s1` 已训练完成并已出受认可读数
+（`hd64-s1/results.json`），以 `analysis.md` §2.1 与 `wp2_status.json` 为准。
+
+## Phase 3（第二 seed 腿 · seed 1）
+
+时间：2026-10-20 15:34–15:40（+0800）。设备：整程 **CPU**（不取 GPU 锁）。
+
+1. `hp64_arms.py` 加 `--seed-leg second_seed`（读 `config.json::checkpoints.second_seed`，臂表/口径/判据线不变，
+   `plumbing_only = false`、`checkpoint_role = "second_seed"`），并把 `delta_directions` 写进入口产出
+   （此前该键只存在于落盘文件里，重跑会丢）。
+2. `python3 hp64_arms.py --seed-leg second_seed --out-dir hd64-s1` ⇒ 主臂 3 / 辅助 2、`partial=False`、
+   `wp2_all_consistent=True`、墙钟 113.36 s。读数：`fp16` 1.486674、`int8_block_g64` 1.486681、`fp8_e4m3` 1.487655。
+3. 同一条命令再跑一次（墙钟 106.9 s）⇒ 两跑的全部读数逐位相同（只差逐臂墙钟与 `hp64_arms.py` 哈希）
+   ⇒ 入口可重复。
+4. 落盘 `hd64-s1/results.json` + `hd64-s1/table.md`；`analysis.md` 补 §2.1、`wp2_status.json` 更新状态与产物哈希。
+
 ## Phase 2（评测与判读 · finisher）
 
 时间：2026-10-14 23:30–23:44（+0800）。执行者：WP2 收尾 writer（单一写入者）。

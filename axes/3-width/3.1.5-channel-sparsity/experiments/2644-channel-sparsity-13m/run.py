@@ -472,7 +472,16 @@ def aggregate(steps: int, out_root: str, arms: list, seeds: list) -> dict:
                      ["entropy_over_logH"],
                      "mode_set_share": r["activation_profile"]["mode_set_share"],
                      "reeval_bitwise_identical": r["reeval_bitwise_identical"],
-                     "slope_per_1k": r["loss_slope"]["slope_per_1k_steps"]}
+                     "slope_per_1k": r["loss_slope"]["slope_per_1k_steps"],
+                     "code_hash_run_py": r["code_hash_run_py"]}
+    # 逐 (臂, seed) 读数：第二 seed 的证据不被 s0 主表掩盖，也便于跨 seed 一致性核对。
+    arms_by_seed = {}
+    for (arm, s), r in sorted(recs.items()):
+        arms_by_seed.setdefault(arm, {})[f"s{s}"] = {
+            "clean_bpc": r["eval"]["clean_bpc"],
+            "delta_vs_D": round(r["eval"]["clean_bpc"] - D_ANCHOR_BPC, 4),
+            "slope_per_1k": r["loss_slope"]["slope_per_1k_steps"],
+            "code_hash_run_py": r["code_hash_run_py"]}
     def verdict(arm):
         if rows.get(arm, {}).get("clean_bpc") is None:
             return "未跑"
@@ -501,6 +510,25 @@ def aggregate(steps: int, out_root: str, arms: list, seeds: list) -> dict:
                           "F50_mode_set_share": f50["mode_set_share"],
                           "K50_entropy_over_logH": k50["entropy_over_logH"],
                           "K50_collapse_value": 0.9}
+    # 跨 seed：同一 Δ 在每个 seed 上重算，只判「方向是否一致 + 差多少」，不做跨 seed 的合并 p 值。
+    def dkf_at(s):
+        a = arms_by_seed.get("K50", {}).get(f"s{s}")
+        b = arms_by_seed.get("F50", {}).get(f"s{s}")
+        if a is None or b is None:
+            return None
+        return round(a["clean_bpc"] - b["clean_bpc"], 4)
+    per_seed_dkf = {f"s{s}": dkf_at(s) for s in seeds}
+    got = {k: v for k, v in per_seed_dkf.items() if v is not None}
+    cross_seed = {
+        "delta_K50_minus_F50_by_seed": per_seed_dkf,
+        "seeds_with_both_arms": sorted(got),
+        "same_direction": (len({(v > 0) for v in got.values()}) == 1 if got else None),
+        "verdict_by_seed": {k: ("可排序更差（越带）" if v >= VARIANCE_BOUND else
+                                "可排序更优（越带）" if v <= -VARIANCE_BOUND else
+                                "不可排序（带内）") for k, v in got.items()},
+        "note": ("同一 Δ 逐 seed 重算；方向不一致或任一 seed 落带内 ⇒ 主判不得沿用单 seed 判词。"
+                 "不作跨 seed 的合并显著性检验（单格 n=2 只给一致性，不给方差估计）。"),
+    }
     out = {
         "experiment": "2644-channel-sparsity-13m",
         "criterion": ("P1 clean bpc（0.014 带）；P2 活性列（频率/熵/mode_set_share，"
@@ -510,16 +538,22 @@ def aggregate(steps: int, out_root: str, arms: list, seeds: list) -> dict:
             "delta_vs_D": "arm_minus_comparator",
             "delta_K50_minus_U2": "arm_minus_comparator",
             "delta_K50_minus_F50": "arm_minus_comparator",
+            "delta_K50_minus_F50_by_seed": "arm_minus_comparator",
         },
         "band_declaration": ("0.014 仅限 bpc 口径；使用率/熵/mode_set_share 等率类指标单独定门，"
                              "不跨量纲借用。"),
         "anchors": {"D_U4_s0_clean_bpc": D_ANCHOR_BPC, "D_U4_s0_macs_total": D_ANCHOR_MACS,
                     "U2_s0_clean_bpc": U2_ANCHOR_BPC, "U2_s0_macs_total": U2_ANCHOR_MACS,
                     "source": "2641-ffn-ratio-frontier-13m（复用，按 SCHEMA §9 三道门）"},
-        "n_seeds": 1, "seed_note": "n=1（seed 0）：越带结论为单点快照，只报增量方向。",
+        "n_seeds": len({s for (_, s) in recs}),
+        "seeds_measured": sorted({s for (_, s) in recs}),
+        "seed_note": ("逐臂测过的 seed 见 `seeds_measured`；`arms` 主表取第一个 seed，其余 seed 在 "
+                      "`arms_by_seed` 与 `cross_seed`。n=2 只给方向一致性，不给方差估计。"),
         "cost_note": ("实现口径（primary）：按内容选通道必须先算全部 pre-activation ⇒ K50 真实省 "
                       "FFN 的 25%（不是 50%）；F50 固定前缀可同时切两个矩阵 ⇒ 省 50%。"),
         "arms": rows,
+        "arms_by_seed": arms_by_seed,
+        "cross_seed": cross_seed,
         "P1_verdict_vs_D": {a: verdict(a) for a in arms},
         "P3_K50_vs_U2": ({"K50_clean_bpc": k50.get("clean_bpc"),
                           "U2_s0_clean_bpc": U2_ANCHOR_BPC,
@@ -533,7 +567,11 @@ def aggregate(steps: int, out_root: str, arms: list, seeds: list) -> dict:
                          if k50.get("macs_total") else None),
         "P4_falsification": p4,
         "source_files": [f"results_{a}_s{s}.json" for (a, s) in sorted(recs)],
+        "code_hashes_by_arm": {a: rows[a].get("code_hash_run_py") for a in rows},
         "code_hash_run_py": sha256_file(os.path.join(HERE, "run.py")),
+        "code_hash_note": ("逐臂读数由 `code_hashes_by_arm` 的 run.py 版本产出，本聚合文件由 "
+                           "`code_hash_run_py` 的版本产出；两个版本的差异与可重建做法见 "
+                           "`analysis.md` §7。"),
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
     }
     with open(os.path.join(HERE, "results.json"), "w") as f:

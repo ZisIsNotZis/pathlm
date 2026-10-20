@@ -5,7 +5,8 @@
   "delta_directions": {
     "delta_vs_D": "arm_minus_comparator",
     "delta_K50_minus_U2": "arm_minus_comparator",
-    "delta_K50_minus_F50": "arm_minus_comparator"
+    "delta_K50_minus_F50": "arm_minus_comparator",
+    "delta_K50_minus_F50_by_seed": "arm_minus_comparator"
   },
   "band_declaration": "0.014 仅限 bpc 口径；使用率/熵/mode_set_share 等率类指标单独定门，不跨量纲借用。",
   "anchors": {
@@ -15,8 +16,12 @@
     "U2_s0_macs_total": 5295616,
     "source": "2641-ffn-ratio-frontier-13m（复用，按 SCHEMA §9 三道门）"
   },
-  "n_seeds": 1,
-  "seed_note": "n=1（seed 0）：越带结论为单点快照，只报增量方向。",
+  "n_seeds": 2,
+  "seeds_measured": [
+    0,
+    1
+  ],
+  "seed_note": "逐臂测过的 seed 见 `seeds_measured`；`arms` 主表取第一个 seed，其余 seed 在 `arms_by_seed` 与 `cross_seed`。n=2 只给方向一致性，不给方差估计。",
   "cost_note": "实现口径（primary）：按内容选通道必须先算全部 pre-activation ⇒ K50 真实省 FFN 的 25%（不是 50%）；F50 固定前缀可同时切两个矩阵 ⇒ 省 50%。",
   "arms": {
     "K50": {
@@ -30,7 +35,8 @@
       "entropy_over_logH": 0.979831,
       "mode_set_share": 0.0,
       "reeval_bitwise_identical": true,
-      "slope_per_1k": 0.00472
+      "slope_per_1k": 0.00472,
+      "code_hash_run_py": "4d1865b119a9f1aab972a75767888cd303fe85e8d4d0df47541bb1b5d8fb1155"
     },
     "K25": {
       "clean_bpc": 1.6417,
@@ -43,7 +49,8 @@
       "entropy_over_logH": 0.93766,
       "mode_set_share": 0.0,
       "reeval_bitwise_identical": true,
-      "slope_per_1k": 0.00418
+      "slope_per_1k": 0.00418,
+      "code_hash_run_py": "4d1865b119a9f1aab972a75767888cd303fe85e8d4d0df47541bb1b5d8fb1155"
     },
     "F50": {
       "clean_bpc": 1.5678,
@@ -56,8 +63,63 @@
       "entropy_over_logH": 0.9,
       "mode_set_share": 1.0,
       "reeval_bitwise_identical": true,
-      "slope_per_1k": 0.00498
+      "slope_per_1k": 0.00498,
+      "code_hash_run_py": "4d1865b119a9f1aab972a75767888cd303fe85e8d4d0df47541bb1b5d8fb1155"
     }
+  },
+  "arms_by_seed": {
+    "F50": {
+      "s0": {
+        "clean_bpc": 1.5678,
+        "delta_vs_D": 0.0364,
+        "slope_per_1k": 0.00498,
+        "code_hash_run_py": "4d1865b119a9f1aab972a75767888cd303fe85e8d4d0df47541bb1b5d8fb1155"
+      },
+      "s1": {
+        "clean_bpc": 1.5625,
+        "delta_vs_D": 0.0311,
+        "slope_per_1k": 0.00032,
+        "code_hash_run_py": "c4b2910c2feb81ed97187c69e76a9f18fbe0313ed8f63d8c97cfa330fbd05710"
+      }
+    },
+    "K25": {
+      "s0": {
+        "clean_bpc": 1.6417,
+        "delta_vs_D": 0.1103,
+        "slope_per_1k": 0.00418,
+        "code_hash_run_py": "4d1865b119a9f1aab972a75767888cd303fe85e8d4d0df47541bb1b5d8fb1155"
+      }
+    },
+    "K50": {
+      "s0": {
+        "clean_bpc": 1.6295,
+        "delta_vs_D": 0.0981,
+        "slope_per_1k": 0.00472,
+        "code_hash_run_py": "4d1865b119a9f1aab972a75767888cd303fe85e8d4d0df47541bb1b5d8fb1155"
+      },
+      "s1": {
+        "clean_bpc": 1.6263,
+        "delta_vs_D": 0.0949,
+        "slope_per_1k": 0.00517,
+        "code_hash_run_py": "c4b2910c2feb81ed97187c69e76a9f18fbe0313ed8f63d8c97cfa330fbd05710"
+      }
+    }
+  },
+  "cross_seed": {
+    "delta_K50_minus_F50_by_seed": {
+      "s0": 0.0617,
+      "s1": 0.0638
+    },
+    "seeds_with_both_arms": [
+      "s0",
+      "s1"
+    ],
+    "same_direction": true,
+    "verdict_by_seed": {
+      "s0": "可排序更差（越带）",
+      "s1": "可排序更差（越带）"
+    },
+    "note": "同一 Δ 逐 seed 重算；方向不一致或任一 seed 落带内 ⇒ 主判不得沿用单 seed 判词。不作跨 seed 的合并显著性检验（单格 n=2 只给一致性，不给方差估计）。"
   },
   "P1_verdict_vs_D": {
     "K50": "可排序更差（相对 dense 锚）",
@@ -85,9 +147,17 @@
   },
   "source_files": [
     "results_F50_s0.json",
+    "results_F50_s1.json",
     "results_K25_s0.json",
-    "results_K50_s0.json"
+    "results_K50_s0.json",
+    "results_K50_s1.json"
   ],
-  "code_hash_run_py": "ea00108f9077d06037a1e73ca4f661ec9e223e73af6219c94cf87e76b9ce6bfb",
-  "generated_at": "2026-10-20T15:01:37+0800"
+  "code_hashes_by_arm": {
+    "K50": "4d1865b119a9f1aab972a75767888cd303fe85e8d4d0df47541bb1b5d8fb1155",
+    "K25": "4d1865b119a9f1aab972a75767888cd303fe85e8d4d0df47541bb1b5d8fb1155",
+    "F50": "4d1865b119a9f1aab972a75767888cd303fe85e8d4d0df47541bb1b5d8fb1155"
+  },
+  "code_hash_run_py": "003b6fbd70260635cdbfbeb1eeed1e8c2a2680fbe4c40880a4d9637eb0b4cc03",
+  "code_hash_note": "逐臂读数由 `code_hashes_by_arm` 的 run.py 版本产出，本聚合文件由 `code_hash_run_py` 的版本产出；两个版本的差异与可重建做法见 `analysis.md` §7。",
+  "generated_at": "2026-10-20T15:48:36+0800"
 }
