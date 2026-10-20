@@ -1,7 +1,7 @@
 # FINDINGS
 
 已确立的结论，每条一行：结论 + 关键数字 + 出处（`文件:行`）+ 状态（成立 / 部分 / 已撤回）。
-行号绑定 revision `03d78d4`。数字均为仓内文档已记录的值，本文件未重算、未做新实验。
+行号绑定引入本条修订的提交：`git log -1 --format=%h -- STATUS.md FINDINGS.md` 指出该提交。数字均为仓内文档已记录的值，本文件未重算、未做新实验。
 "成立"只表示"该记录所陈述的实测结论在本仓库口径下成立"，**不含跨尺度外推**——跨口径比较会得出相反结论（`README.md:25-26`）。
 
 ## 一、已测出的通用约束（`docs/playbook.md` 的定律，每条带适用边界）
@@ -36,12 +36,12 @@
 | --- | --- | --- | --- |
 | `2.2.2` attention-residual：把层间线性法换成层间 causal attention 在本尺度**无净增量**，`status: 被否证` | `attn-scalar` clean bpc `1.5336`，Δ vs stock `1.5254` = `−0.0082`（`\|Δ\| < 0.014` 不可排序，且层 2–3 训练后退化成 one-hot，活性门未过）；`attn-qkv` `1.5431`，Δ = `−0.0177`（越带、方向更差）；额外参数 `+8` / `+196 616`，额外 MACs `18 432` / `5 261 312` | `docs/plan.md:13-15`、`axes/2-depth/2.2.2-attention-residual/project.yaml:17`、`:56` | 成立（n=1 seed，不越尺度外推） |
 | `2.2.2` 的相对 2.2.3 线性聚合也成立 | 两臂 Δ `−0.0090` / `−0.0185`（对 `dense` = `1.5246`） | `axes/2-depth/2.2.2-attention-residual/project.yaml:17` | 成立 |
-| `2.2.3` 层间学习加权和（`dense`）相对 stock 单残差**无可排序差异**，按预登记 falsification 判**无净增量**，`status: 被否证` | 配对 Δ：s0 `−0.0008`、s1 `−0.0015`，两 seed 同号但都未越 `0.014` 带，且小于基线臂自身换 seed 散度 `0.0034`；配对窗口级 SE `0.0031` 大于偏差本身 | `docs/plan.md:17-19`、`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:287-302`、`axes/2-depth/2.2.3-learned-layer-sum/project.yaml:66` | 成立（尺度受限） |
-| `2.2.3` 的否证**不是**"DenseFormer 普遍无效" | 边界：13M / L=8 / 12k 步 | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:303-304` | 部分（尺度受限的否证） |
-| `dense` 的中间深度可读性实测**更差**（新观测） | s0 depth 1–7 Δ = `+0.226 / +0.544 / +0.448 / +0.312 / +0.206 / +0.257 / +0.279`；s1 同向更大 `+0.472 / +0.613 / +0.502 / +0.445 / +0.283 / +0.298 / +0.268`；只有 depth 8 回到 `−0.0008 / −0.0015` | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:297-300` | 成立 |
-| `2.2.4` 并行子层：以**可排序的质量代价**换层内并行度翻倍，`status: 已完成`（不是免费的，是否采纳取决场景） | 配对 Δ：s0 `+0.0458 / +0.0402`、s1 `+0.0422 / +0.0374`（两 seed 同号且都越 `0.014` 带）；层内串行链 `2 段 → 1 段`、每 token 串行步数 `16 → 8`、算力只差 `0.055%`（`parallel-dual-ln` 与基线**逐位等参**） | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:314-326`、`axes/2-depth/2.2.4-parallel-sublayer/project.yaml:53` | 成立（n=2 seed，不越尺度外推） |
+| `2.2.3` 层间学习加权和（`dense`）相对 stock 单残差**无可排序差异**，按预登记 falsification 判**无净增量**，`status: 被否证` | 配对 Δ：s0 `−0.0008`、s1 `−0.0015`，两 seed 同号但都未越 `0.014` 带，且小于基线臂自身换 seed 散度 `0.0034`；配对窗口级 SE `0.0031` 大于偏差本身 | `docs/plan.md:17-19`、`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:288-303`、`axes/2-depth/2.2.3-learned-layer-sum/project.yaml:66` | 成立（尺度受限） |
+| `2.2.3` 的否证**不是**"DenseFormer 普遍无效" | 边界：13M / L=8 / 12k 步 | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:304-305` | 部分（尺度受限的否证） |
+| `dense` 的中间深度可读性实测**更差**（新观测） | s0 depth 1–7 Δ = `+0.226 / +0.544 / +0.448 / +0.312 / +0.206 / +0.257 / +0.279`；s1 同向更大 `+0.472 / +0.613 / +0.502 / +0.445 / +0.283 / +0.298 / +0.268`；只有 depth 8 回到 `−0.0008 / −0.0015` | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:298-301` | 成立 |
+| `2.2.4` 并行子层：以**可排序的质量代价**换层内并行度翻倍，`status: 已完成`（不是免费的，是否采纳取决场景） | 配对 Δ：s0 `+0.0458 / +0.0402`、s1 `+0.0422 / +0.0374`（两 seed 同号且都越 `0.014` 带）；层内串行链 `2 段 → 1 段`、每 token 串行步数 `16 → 8`、算力只差 `0.055%`（`parallel-dual-ln` 与基线**逐位等参**） | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:315-327`、`axes/2-depth/2.2.4-parallel-sublayer/project.yaml:51` | 成立（n=2 seed，不越尺度外推） |
 | M1/M2 的落盘读数与判词一致（`attn-scalar` 1.5336 / `attn-qkv` 1.5431；四臂 seed=1 clean bpc 1.5288 / 1.5710 / 1.5662 / 1.5273，Δ vs `sequential` = `0 / +0.0422 / +0.0374 / −0.0015`） | 见左 | `docs/plan.md:13-19` | 成立 |
-| 上述判决都**没有**事后改判据线 | — | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:285`、`docs/plan.md:37` | 成立 |
+| 上述判决都**没有**事后改判据线 | — | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:286`、`docs/plan.md:31-33` | 成立 |
 
 ## 三、负结果（已登记为"这条路在这里输了"）
 
@@ -68,8 +68,8 @@
 
 | 结论 | 关键数字 | 出处 | 状态 |
 | --- | --- | --- | --- |
-| `2.2.3` milestone 要求的"更大规模点"未跑 | 最小可判定规模约 4× 参数（~55M）；层间加权和成本 ≈ O(L²·d) | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:330-331` | 部分（未做） |
-| `dense` 的 α 无单纯形约束，与 DenseFormer 严格凸组合语义的对照臂未做 | 成本 = 1 臂 9830 万 token | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:332-333` | 部分（未做） |
-| 中间深度可读性与 `2.2.1` 残差形式 / `2.1.1` 早退的耦合未联合检验 | — | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:334-335` | 部分（未做） |
-| 两份 s0 等值门只有一行日志存证，未落成结构化字段 | 需 `4 × 9830 万 token` 一次全跑 | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:336-338` | 部分（未做） |
-| 长度 / 层数外推未测（并行子层收益按层内串行链线性累加，本尺度只到 8 层） | L=8 | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:339` | 部分（未做） |
+| `2.2.3` milestone 要求的"更大规模点"未跑 | 最小可判定规模约 4× 参数（~55M）；层间加权和成本 ≈ O(L²·d) | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:331-332` | 部分（未做） |
+| `dense` 的 α 无单纯形约束，与 DenseFormer 严格凸组合语义的对照臂未做 | 成本 = 1 臂 9830 万 token | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:333-334` | 部分（未做） |
+| 中间深度可读性与 `2.2.1` 残差形式 / `2.1.1` 早退的耦合未联合检验 | — | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:335-336` | 部分（未做） |
+| 两份 s0 等值门只有一行日志存证，未落成结构化字段 | 需 `4 × 9830 万 token` 一次全跑 | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:337-339` | 部分（未做） |
+| 长度 / 层数外推未测（并行子层收益按层内串行链线性累加，本尺度只到 8 层） | L=8 | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:340` | 部分（未做） |
