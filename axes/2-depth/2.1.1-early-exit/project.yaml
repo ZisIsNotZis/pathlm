@@ -23,6 +23,7 @@ cost_rows:
     touches_trunk: true
     metric: "retry 门控收益 Δbpc（corrupt 输入、τ=0.98；正 = 门控失效）"
     delta: "+0.0146"
+    delta_direction: arm_minus_comparator
     comparator: "不整形（probe 头）臂的 −0.0098"
     scale: "13M / m1 引擎 / 24000 步 / dense 剂量 0.2（EX2）"
     boundary: "整形换来 exit 轴（depth 6 +0.199）却把 retry 关死 ⇒ 「两全」是同一梯度的两面，只能按 profile 选"
@@ -32,6 +33,7 @@ cost_rows:
     touches_trunk: false
     metric: "半栈（depth 6）clean bpc 代价（相对全深度；正 = 更差）"
     delta: "+0.93"
+    delta_direction: arm_minus_comparator
     comparator: "同 checkpoint 全深度 12 层"
     scale: "13M / m1 引擎 / 24000 步 / EX1 协议"
     boundary: "保 retry 就浅层贵：不塑形主干的必然代价，exit 点存在但质量差（0.5 flop 处）"
@@ -41,6 +43,7 @@ cost_rows:
     touches_trunk: true
     metric: "clean bpc 税（相对同引擎 B0；正 = 更差）"
     delta: "+0.6863"
+    delta_direction: arm_minus_comparator
     comparator: "B0（13M，无切分）"
     scale: "13M / 24000 步（归因臂 B，2.1475）"
     boundary: "切分不但不收税、反向恶化：恢复比例 −50.4%（负 = 恶化），同引擎口径 +0.6662"
@@ -50,6 +53,7 @@ cost_rows:
     touches_trunk: true
     metric: "形态税 Δbpc（相对同引擎 dense；正 = 更差）"
     delta: "+0.44"
+    delta_direction: arm_minus_comparator
     comparator: "100M 同引擎 dense（24b 等权臂）"
     scale: "100M / 98.3M token = 1.09 epoch / 24b 等权臂"
     boundary: "税随规模上升：13M matched +0.31 → 100M +0.44（斜率为正）；与回环族方向相反，不许拿一族的斜率当通用规律"
@@ -59,6 +63,7 @@ cost_rows:
     touches_trunk: false
     metric: "代理口径高估的百分点（代理 0.969 vs 实测 0.942；越低越好）"
     delta: "2.7"
+    delta_direction: arm_minus_comparator
     comparator: "实测接受率 0.942（同一 checkpoint 真解码）"
     scale: "13M depth-ar checkpoint / 4 段文本 / 批 1 / 纯推理（2621）"
     boundary: "第 1 个草稿位置 0.970 与代理 0.969 几乎相同，偏差全来自草稿链第 2–4 位 ⇒ 代理只量到链子第一环，不能当整链接受率"
@@ -68,6 +73,7 @@ cost_rows:
     touches_trunk: false
     metric: "3 层与 8 层的 clean bpc 差距（越小 = 按需少跑几层的可撬动空间越小）"
     delta: "0.028"
+    delta_direction: arm_minus_comparator
     comparator: "全深度 8 层（1.8582）"
     scale: "13M / enwik8 / 1 epoch 快照 / 逐位置随机退出配方（2631）"
     boundary: "变化空间近似为 0：逐 token 门控必然被同算力固定截断支配 ⇒ 只能记「本设计下无信号」，不得读成「逐 token 早退机制无效」"
@@ -77,6 +83,7 @@ cost_rows:
     touches_trunk: false
     metric: "每 token 等效算力超出百分比（相对普通全栈 8.0 层×位置；正 = 更费算力）"
     delta: "5.6"
+    delta_direction: arm_minus_comparator
     comparator: "普通全栈贪心（8.0 层×位置、88.2 tok/s）"
     scale: "13M depth-ar / 4 段文本 / 批 1（2621）"
     boundary: "墙钟快 1.86× 而算力反而多 5.6% ⇒ 这是启动开销的收益，不得当 FLOPs 收益报，也不得用墙钟比当算力比"

@@ -33,7 +33,7 @@ LAWS_TOTAL = check_tree.LAWS_TOTAL
 #: 定律 8–11 不是「代价」，而是**用表前必须过的口径与前置条件**。
 CALIBER_LAWS = (8, 9, 10, 11)
 #: 表头（列名自解释；顺序即契约里的顺序）。
-COLUMNS = ("定律", "改动类型", "触主干", "观测代价", "规模与配方", "适用边界", "出处", "研究项")
+COLUMNS = ("定律", "改动类型", "触主干", "观测代价", "Δ 方向", "规模与配方", "适用边界", "出处", "研究项")
 
 BANNER = (
     "<!-- 本文件由 `tools/build_cost_table.py` 从 `axes/**/project.yaml` 生成，禁止手改；"
@@ -45,10 +45,14 @@ INTRO = [
     "> 本文件由 `tools/build_cost_table.py` 从 `axes/**/project.yaml` 的 `laws` / `cost_rows` 生成，"
     "禁止手改；改事实请改 `project.yaml`（契约见 `docs/research-schema.md` §2.1 / §2.2）。",
     "> 定律正文与适用边界只有 `docs/playbook.md` 一个家；本表只把「定律 ↔ 证据 ↔ 代价数字」的对应写出来。",
-    "> 每个数字都逐位照抄「出处」那一栏指向的文件，**未重算、未换算口径**；"
-    "指标的单位与增长方向写在「观测代价」里，因为不同落盘文件的 Δ 方向并不统一。",
+    "> 每个数字都逐位照抄「出处」那一栏指向的文件，**未重算、未换算口径、未翻转符号**；"
+    "指标的单位写在「观测代价」里，**方向写在它右侧的「Δ 方向」列**。",
+    "> **每条行自带方向**：`delta_direction` 是 `project.yaml` 里的必填字段，本表把它翻成"
+    "「Δ 方向」列——`正 = 改善` / `正 = 更差`。任何一行单独摘出来都不会被读反；"
+    "同一张表里两种方向并存，**不许**把列里的符号跨行比较（契约见 `docs/research-schema.md` §2.3）。",
     "> 列义：**改动类型** = 改了什么（人话）；**触主干** = 是否改主干前向 / 残差 / 层间聚合"
     "（旁路判断头、读出、训练配方一律为「否」）；**观测代价** = 实测 `delta` + 指标 + 对照；"
+    "**Δ 方向** = 该行 `delta` 的符号约定（每行自带，见 `docs/research-schema.md` §2.3）；"
     "**规模与配方** = 这个数字所处的规模与训练配方；**适用边界** = 它不能被读成什么；"
     "**研究项** = 事实源所在的 `project.yaml`。",
     "",
@@ -130,6 +134,7 @@ def _table(rows: list[dict]) -> list[str]:
             r["change"],
             "是" if r["touches_trunk"] else "否",
             f"`{r['delta']}` {r['metric']}；对照 = {r['comparator']}",
+            check_tree.DELTA_DIRECTION_LABELS[r["delta_direction"]],
             r["scale"],
             r["boundary"],
             f"`{r['source']}`",

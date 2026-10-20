@@ -23,6 +23,7 @@ cost_rows:
     touches_trunk: true
     metric: "clean bpc 损伤（相对 B0 1.5074；正 = 更差）"
     delta: "+0.545"
+    delta_direction: arm_minus_comparator
     comparator: "B0（13M / m1 引擎）"
     scale: "13M / m1 引擎 / M2 元素税扫描（ticket 06）"
     boundary: "破坏顺序是组合毒药（eval 端 shuffle=1.0 崩到 3.844）；同类里 skip +0.175、redo +0.044 ⇒ 保留或显式标记 identity 的近免费、破坏 identity 或顺序的贵"
@@ -32,6 +33,7 @@ cost_rows:
     touches_trunk: false
     metric: "集成增益 Δbpc（K=8 − K=1；负 = 改善）"
     delta: "0"
+    delta_direction: arm_minus_comparator
     comparator: "同 checkpoint 单路径（K=1）"
     scale: "13M / m1 引擎 / 60-batch probe 口径（B0 = 1.5074）"
     boundary: "8 条路径 logits 逐位相同 ⇒ 增益恰为 0；只否证确定性路径 checkpoint 的集成，beam search 候选前缀不同属另一命题"
@@ -41,6 +43,7 @@ cost_rows:
     touches_trunk: false
     metric: "K=8 集成增益 Δbpc（K=8 − K=1；负 = 改善）"
     delta: "-0.062"
+    delta_direction: arm_minus_comparator
     comparator: "纯 skip 臂（L1）的 −0.047"
     scale: "13M / m1 引擎 / 12k 步 / K∈{1,4,8}"
     boundary: "增益来自练进去的路径多样性；绝对数 1.6227 仍远高于 B0 ⇒ 13M 上税仍占主导，集成不是免费增益来源"
@@ -50,6 +53,7 @@ cost_rows:
     touches_trunk: false
     metric: "clean bpc 税（相对 B0 1.5074；正 = 更差）"
     delta: "+0.087"
+    delta_direction: arm_minus_comparator
     comparator: "两者单独使用之和（I1 +0.127 + C3 +0.150）"
     scale: "13M / m1 引擎 / 12k 步"
     boundary: "共享同一台机器 ⇒ 次可加；破坏对方所需结构的组合则拮抗（IX3 shuffle×retry = 2.2293、INT 全开 = 2.2691）"
@@ -59,6 +63,7 @@ cost_rows:
     touches_trunk: false
     metric: "发散步（该臂在第几步崩掉；越小 = 越早报废）"
     delta: "4600"
+    delta_direction: comparator_minus_arm
     comparator: "同配方加 float32 + pre-step grad-norm gate 的 v3（跑完，集成斜率 −0.062）"
     scale: "13M / DIVL1 配方 / 12k 步预算"
     boundary: "v1 在 step 4600 发散（bf16 + negative-JS）、v2 在 step 2200 静默 NaN（clamp 后梯度爆炸）⇒ 负/奖励类损失在 bf16 下不加门控不可训练"

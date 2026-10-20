@@ -30,6 +30,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
@@ -71,8 +72,36 @@ LAWS_TOTAL = 11
 #: `cost_rows` 一条必须齐备的键（见 `docs/research-schema.md` §2.2）。
 COST_ROW_FIELDS = ("law", "change", "touches_trunk", "metric", "delta",
                    "comparator", "scale", "boundary", "source")
-#: `delta` 必须是带符号数字（含千分位/小数；单位与方向写在 `metric` 里）。
+#: `delta` 必须是带符号数字（含千分位/小数；单位与方向由 `delta_direction` + `metric` 共同声明）。
 NUMBER_RE = re.compile(r"[+-]?\d+(?:[\d,]*)?(?:\.\d+)?")
+
+#: Δ 方向的**唯一枚举**（`docs/research-schema.md` §2.3）：名字即算式，读表的人不可能读反。
+DELTA_DIRECTIONS = ("comparator_minus_arm", "arm_minus_comparator")
+#: 枚举 → 展示层中文短语（`docs/cost-table.md` 的「Δ 方向」列用这一份，不另抄）。
+DELTA_DIRECTION_LABELS = {
+    "comparator_minus_arm": "正 = 改善",
+    "arm_minus_comparator": "正 = 更差",
+}
+#: 方向短语里的「更好 / 更差」词表（`metric` 与 `results.json` 的判据串共用）。
+_BETTER_WORDS = ("更好", "改善", "变好", "更可读", "更优", "有收益")
+_WORSE_WORDS = ("更差", "变差", "损伤", "税", "失效", "更费", "更慢", "恶化",
+                "负迁移", "更早报废", "吃亏")
+#: `正 = …` / `负 = …` / `>1 = …` 三种方向短语（全角等号也收）。
+_POS_CLAIM_RE = re.compile(r"正\s*[=＝]\s*([^；;，,）)|]{1,20})")
+_NEG_CLAIM_RE = re.compile(r"负\s*[=＝]\s*([^；;，,）)|]{1,20})")
+_RATIO_CLAIM_RE = re.compile(r">\s*1\s*[=＝]\s*([^；;，,）)|]{1,20})")
+#: `Δ = A − B` 形式的算式声明（`−` / `-` / `–` 都认）。
+_FORMULA_RE = re.compile(
+    r"Δ\s*[（(]?\s*(?:[=＝]\s*)?([^；;，,（）()]{1,40}?)\s*[−–-]\s*([^；;，,（）()]{1,40})")
+#: 算式里代表「对照」与「臂」的标记词（只认明确的角色词，含糊的一律不判）。
+_COMPARATOR_MARKS = ("对照", "基线", "stock", "B0", "b0", "全因果", "fp16", "sequential",
+                     "base", "同形态基线", "窗口", "纯窗")
+_ARM_MARKS = ("实验", "本臂", "该臂", "臂", "改动", "窄", "量化")
+#: `results.json` 里出现这些键名即视为「本文件报了 Δ 读数」（`workspace.delta` 这类配置项不算）。
+RESULTS_DELTA_KEY_RE = re.compile(
+    r"(?i)(^|_)(delta_(?:bpc|pp|vs_|mean|halves|window_se|min_pp)|_delta_bpc)(_|$|\.)|Δ")
+#: 「本行报的是绝对值/比值，符号不可判」的标记（只校验枚举合法，不校验符号自洽）。
+_UNSIGNED_METRIC_MARKS = ("非负", "|Δ|", "绝对值")
 #: `source` 可带的定位后缀：`:12` / `:12-14` / `#§标题`。
 SOURCE_SUFFIX_RE = re.compile(r"(?::\d+(?:-\d+)?)?(?:#§.*)?$")
 
@@ -151,6 +180,207 @@ def source_path(src) -> str:
     return SOURCE_SUFFIX_RE.sub("", s).strip()
 
 
+def _claim_direction(text: str) -> tuple[str | None, str]:
+    """从一句方向短语（`正 = X` / `负 = X` / `>1 = X`）判方向。返回 (方向 | None, 原词)。
+
+    None = 这一句不能判（既不是更好词也不是更差词）。
+    """
+    t = " ".join(str(text).split())
+    better = any(w in t for w in _BETTER_WORDS)
+    worse = any(w in t for w in _WORSE_WORDS)
+    if better == worse:
+        return None, t  # 都没命中，或同时命中（歧义）⇒ 不判
+    if better:
+        return "comparator_minus_arm", t
+    return "arm_minus_comparator", t
+
+
+def direction_claims(text: str) -> list[tuple[str, str]]:
+    """把一段文字里所有的方向声明抽成 [(方向, 原词)]；`负 = 更好` 一类的反向说法已翻转。"""
+    out: list[tuple[str, str]] = []
+    s = " ".join(str(text).split())
+    for m in _POS_CLAIM_RE.finditer(s):
+        d, _ = _claim_direction(m.group(1))
+        if d:
+            out.append((d, m.group(0)))
+    for m in _NEG_CLAIM_RE.finditer(s):
+        d, _ = _claim_direction(m.group(1))
+        if d:  # 「负 = 更好」⇒ 正 = 更差 ⇒ arm − comparator
+            out.append(("arm_minus_comparator" if d == "comparator_minus_arm"
+                        else "comparator_minus_arm", m.group(0)))
+    for m in _RATIO_CLAIM_RE.finditer(s):
+        d, _ = _claim_direction(m.group(1))
+        if d:
+            out.append((d, m.group(0)))
+    return out
+
+
+def formula_direction(text: str) -> tuple[str | None, str]:
+    """从 `Δ = A − B` 判算式次序；只认角色明确的写法，含糊则返回 (None, 原句)。"""
+    s = " ".join(str(text).split())
+    for m in _FORMULA_RE.finditer(s):
+        a, b = m.group(1).strip(), m.group(2).strip()
+
+        def role(tok: str) -> str | None:
+            is_c = any(w in tok for w in _COMPARATOR_MARKS)
+            is_a = any(w in tok for w in _ARM_MARKS)
+            if is_c == is_a:  # 都不是 / 两者都是 ⇒ 角色不明
+                return None
+            return "comparator" if is_c else "arm"
+
+        ra, rb = role(a), role(b)
+        if ra == "comparator" and rb == "arm":
+            return "comparator_minus_arm", m.group(0)
+        if ra == "arm" and rb == "comparator":
+            return "arm_minus_comparator", m.group(0)
+    return None, s
+
+
+#: 「机械判不了」的行（`metric` 里没有方向短语）——由 `main()` 打到 stderr，不算 fail。
+UNJUDGED: list[str] = []
+
+
+def check_cost_row_direction(row: dict, where: str) -> list[str]:
+    """`cost_rows[].delta_direction` 必填 + 枚举合法 + 与 `metric` 的方向/算式自洽。
+
+    能机械判的：枚举值、`metric` 的 `正/负/>1 = …` 短语、`Δ = A − B` 算式次序。
+    判不了的：`metric` 自己写成「非负 / |Δ| / 绝对值」（行本身就不带符号）——只校枚举。
+    """
+    errors: list[str] = []
+    declared = row.get("delta_direction")
+    if declared is None:
+        return [f"{where} 缺 delta_direction（合法值：{DELTA_DIRECTIONS}）"]
+    if declared not in DELTA_DIRECTIONS:
+        return [f"{where}.delta_direction={declared!r} 非法（合法值：{DELTA_DIRECTIONS}）"]
+    metric = str(row.get("metric") or "")
+    if any(w in metric for w in _UNSIGNED_METRIC_MARKS):
+        return errors  # 本行报的是绝对值/记号本身非负 ⇒ 符号不可机判
+    claims = direction_claims(metric)
+    if not claims:
+        UNJUDGED.append(f"{where}: metric 里没有「正 = …」「负 = …」「>1 = …」方向短语，"
+                        f"符号无法机判（delta_direction 仍必填）：{metric!r}")
+    for d, raw in claims:
+        if d != declared:
+            errors.append(f"{where}: metric 的方向声明「{raw}」与 delta_direction="
+                          f"{declared!r} 矛盾（按该声明应为 {d!r}）")
+    fd, raw = formula_direction(metric)
+    if fd and fd != declared:
+        errors.append(f"{where}: metric 的算式「{raw}」算出来是 {fd!r}，"
+                      f"与 delta_direction={declared!r} 矛盾（数字没变，只是标签对不上）")
+    elif fd and not claims and not errors:
+        pass
+    return errors
+
+
+def _walk_strings(obj, path: tuple[str, ...] = ()) -> list[tuple[str, str]]:
+    """递归抽出 JSON 里所有字符串（带路径），供方向声明扫描用。"""
+    out: list[tuple[str, str]] = []
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            out.extend(_walk_strings(v, path + (str(k),)))
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            out.extend(_walk_strings(v, path + (str(i),)))
+    elif isinstance(obj, str):
+        out.append((".".join(path), obj))
+    return out
+
+
+def results_delta_scope(data) -> bool:
+    """本 `results.json` 是否报出 Δ（= 需要 `delta_direction` 的机械入口）。"""
+    if "Δ" in json.dumps(data, ensure_ascii=False):
+        return True
+    return any(RESULTS_DELTA_KEY_RE.search(k) for k, _ in _all_keys(data))
+
+
+def _all_keys(obj, path: tuple[str, ...] = ()) -> list[tuple[str, str]]:
+    out: list[tuple[str, str]] = []
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            out.append(("".join(path) + str(k), str(k)))
+            out.extend(_all_keys(v, path + (str(k), ".")))
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            out.extend(_all_keys(v, path + (str(i), ".")))
+    return out
+
+
+CRITERION_KEY_RE = re.compile(r"(?i)criteri(on|a)")
+
+
+def criterion_strings(obj, path: tuple[str, ...] = ()) -> list[tuple[str, str]]:
+    """只取「预登记判据」那一类字符串（键名含 criterion/criteria）——方向的权威处。
+
+    别的散文（判词、边界、结论）不参与方向机检：它们常混着别的量纲的读数，
+    拿它们投票只会把方向判错。这条边界在 `docs/research-schema.md` §2.3 写明。
+    """
+    out: list[tuple[str, str]] = []
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if CRITERION_KEY_RE.search(str(k)):
+                out.extend(_walk_strings(v, path + (str(k),)))
+            else:
+                out.extend(criterion_strings(v, path + (str(k),)))
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            out.extend(criterion_strings(v, path + (str(i),)))
+    return out
+
+
+def results_scope_claims(data) -> list[tuple[str, str, str]]:
+    """`results.json` 里可机检的方向声明：[(路径, 方向, 原词)]。
+
+    口径：判据串（键名含 criterion/criteria）里的 `正/负/>1 = …` 与 `Δ = A − B`；
+    判据串里没有时退回全文件的算式声明。两处都没有 ⇒ 无可检的声明。
+    """
+    out: list[tuple[str, str, str]] = []
+    for where, s in criterion_strings(data):
+        for d, raw in direction_claims(s):
+            out.append((where, d, raw))
+        fd, raw = formula_direction(s)
+        if fd:
+            out.append((where, fd, f"算式「{raw}」"))
+    if out:
+        return out
+    for where, s in _walk_strings(data):
+        fd, raw = formula_direction(s)
+        if fd:
+            out.append((where, fd, f"算式「{raw}」"))
+    return out
+
+
+def check_results_delta_direction(rel: str, data) -> list[str]:
+    """`results.json` 的 `delta_direction`：有可检的方向声明就必须声明，且必须一致。"""
+    if not isinstance(data, dict):
+        return []
+    errors: list[str] = []
+    declared = data.get("delta_direction")
+    claims = results_scope_claims(data)
+    dirs = {d for _w, d, _r in claims}
+    if len(dirs) > 1:
+        UNJUDGED.append(f"{rel}: 文件里两条判据的 Δ 方向相反，一条 delta_direction 表达不了"
+                        f"（待人裁决，不猜）：{sorted(dirs)}")
+        return errors
+    if claims and declared is None:
+        errors.append(f"{rel}: 判据串声明了 Δ 方向却缺 delta_direction"
+                      f"（合法值：{DELTA_DIRECTIONS}）")
+    if declared is not None and declared not in DELTA_DIRECTIONS:
+        return errors + [f"{rel}: delta_direction={declared!r} 非法（合法值：{DELTA_DIRECTIONS}）"]
+    for where, d, raw in claims:
+        if declared is not None and d != declared:
+            errors.append(f"{rel}:{where}: 判据串的方向「{raw}」与 delta_direction="
+                          f"{declared!r} 矛盾（按该串应为 {d!r}）")
+    return errors
+
+
+RESULTS_FILES = "results.json"
+
+def collect_results_files() -> list[Path]:
+    if not AXES.is_dir():
+        return []
+    return sorted(AXES.glob("**/results.json"))
+
+
 def check_laws_and_costs(doc: dict, rel: str) -> list[str]:
     """校验 `laws` / `cost_rows`（`docs/research-schema.md` §2.1 / §2.2）。"""
     errors: list[str] = []
@@ -201,7 +431,8 @@ def check_laws_and_costs(doc: dict, rel: str) -> list[str]:
             raw = str(delta).strip()
             if isinstance(delta, bool) or not NUMBER_RE.fullmatch(raw):
                 errors.append(f"{where}.delta={delta!r} 必须是带符号数字"
-                              f"（单位与方向写在 metric 里）")
+                              f"（单位由 metric 声明、方向由 delta_direction 声明）")
+        errors.extend(check_cost_row_direction(row, where))
         src = row.get("source")
         if src is not None:
             p = source_path(src)
@@ -356,6 +587,7 @@ def validate_all() -> tuple[list[str], list[dict]]:
     """校验全部 project.yaml。返回 (errors, entries)。entries 供 summary.py 制表。"""
     errors: list[str] = []
     entries: list[dict] = []
+    UNJUDGED.clear()
     anchors: dict[str, list[str]] = {}
     evidences: dict[str, list[str]] = {}
     seen_ids: dict[str, str] = {}
@@ -384,11 +616,33 @@ def validate_all() -> tuple[list[str], list[dict]]:
             entries.append({"path": rel, "doc": doc})
     errors.extend(check_anchor_syntax(evidences))
     errors.extend(check_anchors(anchors))
+    errors.extend(validate_results_files())
     return errors, entries
+
+
+def unjudged_notes() -> list[str]:
+    """上一次 `validate_all()` 收集到的「符号无法机判」的行（不算 fail，但必须打印）。"""
+    return list(UNJUDGED)
+
+
+def validate_results_files() -> list[str]:
+    """校验全部 `axes/**/results.json` 的 Δ 方向声明（`docs/research-schema.md` §2.3）。"""
+    errors: list[str] = []
+    for path in collect_results_files():
+        rel = path.relative_to(ROOT).as_posix()
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as e:  # noqa: BLE001 —— 解析失败要如实报出
+            errors.append(f"{rel}: JSON 解析失败：{e}")
+            continue
+        errors.extend(check_results_delta_direction(rel, data))
+    return errors
 
 
 def main() -> int:
     errors, entries = validate_all()
+    for note in unjudged_notes():
+        print(f"不判（符号无法机判）：{note}", file=sys.stderr)
     if errors:
         print(f"FAIL：{len(errors)} 项")
         for e in errors:

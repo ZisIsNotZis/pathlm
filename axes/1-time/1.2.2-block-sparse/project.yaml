@@ -21,8 +21,9 @@ cost_rows:
   - law: 10
     change: "线性注意力（归一化线性核 φ=elu+1）替代全因果 softmax"
     touches_trunk: true
-    metric: "clean bpc Δ（实验 − 全因果；负 = 更差）"
+    metric: "clean bpc Δ（全因果 − 实验；负 = 更差）"
     delta: "-0.214"
+    delta_direction: comparator_minus_arm
     comparator: "全因果 softmax（T=256 / 13M）"
     scale: "13M / T=256 / 12k 步 / 原实装"
     boundary: "该臂带伤：归一化分母会触到 clamp 下限（`den_min` 到 1e-06）；稳定化臂把核换成 QK-Norm 后是另一个算子 ⇒ 无伤原核的质量点未取得，只能记「本设计下无信号」"
@@ -32,6 +33,7 @@ cost_rows:
     touches_trunk: true
     metric: "整模型一步耗时倍数（相对全因果；>1 = 更慢）"
     delta: "2.58"
+    delta_direction: arm_minus_comparator
     comparator: "全因果 softmax 同批对照"
     scale: "13M / T=256 / 12k 步（2616）"
     boundary: "纸面 FLOPs 与推理缓存节省（−93.6%@T=256）不等于实测：一步慢 2.58×、训练峰值显存 1.41× ⇒ 不换核时省幅不兑现"

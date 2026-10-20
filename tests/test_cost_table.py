@@ -42,7 +42,8 @@ def test_laws_duplicate_and_non_int_fail():
 def test_cost_row_source_must_exist():
     row = {"law": 1, "change": "x", "touches_trunk": False, "metric": "clean bpc Δ",
            "delta": "+0.1", "comparator": "y", "scale": "13M", "boundary": "z",
-           "source": "axes/no-such-dir/no-such-file.md"}
+           "source": "axes/no-such-dir/no-such-file.md",
+           "delta_direction": "comparator_minus_arm"}
     errs = check_tree.check_laws_and_costs({"laws": [1], "cost_rows": [row]}, "axes/x/project.yaml")
     assert len(errs) == 1, errs
     assert "不存在的路径" in errs[0] and "no-such-file.md" in errs[0]
@@ -50,7 +51,8 @@ def test_cost_row_source_must_exist():
 
 def test_cost_row_shape_checks():
     base = {"law": 4, "change": "x", "touches_trunk": "yes", "metric": "m", "delta": "abc",
-            "comparator": "c", "scale": "s", "boundary": "b", "source": "axes"}
+            "comparator": "c", "scale": "s", "boundary": "b", "source": "axes",
+            "delta_direction": "comparator_minus_arm"}
     errs = check_tree.check_laws_and_costs({"laws": [1], "cost_rows": [dict(base, law=7),
                                                                       dict(base, law=99)]},
                                            "axes/x/project.yaml")
