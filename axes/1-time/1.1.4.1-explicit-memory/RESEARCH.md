@@ -24,15 +24,19 @@
 
 **「显式状态点在（每位置部署字节, 质量 [+ 可检索性]）图上，不被同预算最强基线支配，且该读数的网格边界写明」。**
 
-验收（可观测，逐条对应 `project.yaml::milestone.acceptance` 与 `work_packages`）：
+验收（可观测，逐条对应 `project.yaml::milestone.acceptance` 与 `work_packages`）。**状态只有三种：PASS（已成立 + 证据指针）/ 部分 / 阻塞**：
 
 | # | 验收 | 状态 |
 |---|---|---|
-| 1 | 至少一个预算点（393,216 B）上，显式状态点与**同字节**纯窗口直接点比（不插值），差距与其判据带一并报出 | 已达成（`2639`） |
-| 2 | 该点的可检索性（质量之外的第二轴）有读数，且相对同窗口无通道臂的差及其 CI 报出 | 已达成（`1.1.4.5` 的 `2661` 对撞） |
-| 3 | 「不被支配」的结论带**明确网格限定**（列出在这张网格上、禁止外推到未测档） | 已达成（`2680` 报网格缺口；`2681` 把网格扩到 int8 下 k=60/k=64） |
-| 4 | 量化档（int8 块标尺）与前沿同图；int4 档、carry 族 int8 档仍未叠 | 部分达成（状态以 `project.yaml::conclusion` 的「量化档叠图」段为唯一权威） |
-| 5 | 与真实 DeltaNet / GLA 实现对齐 | 未做（本仓无外部实现，F4） |
+| 1 | 至少一个预算点（393,216 B）上，显式状态点与**同字节**纯窗口直接点比（不插值），差距与其判据带一并报出 | **PASS**（`2639`）：`experiments/2639-carry-perlayer-frontier-13m/results.json::key_readings.pl_minus_win32` 逐字段 `bpc_carrypl16_s0` 1.527595 / `bpc_win32_s0` 1.595823 / `same_bytes` true / `bytes` 393,216 / 差 +0.068228（41 σ_cell、4.9× 0.014 带）；同文件 `frontier.dominated_by.carrypl16_s0` = 空，`frontier.lower_envelope` = win16→win17→win18→win24→win32→**carrypl16_s0**→win128→full；`location.carrypl16_s0.recovery_ratio_r` = 0.8014（补回窗口 16→全量差距的 80.1%）；换评测窗口序（seed 7）`robustness_alt_window_seed.pl_minus_win32_alt_seed` = 0.071912 同号同量级 |
+| 2 | 该点的可检索性（质量之外的第二轴）有读数，且相对同窗口无通道臂的差及其 CI 报出 | **PASS**（`1.1.4.5` 的 `2661`）：`experiments/2661-implicit-vs-explicit-recall-13m/results.json::needle_leg.primary_hard_subset`（同索引硬子集 n=2699，`carrypl16_s0` 276 hits = 10.226%，Wilson [0.091389, 0.114262]；对 `win16_s0` +9.522pp，两比例差 CI [8.336, 10.708]）；同文件 `far_source_probe.carrypl16_s0.delta_bpc_far` = **+0.032965**，逐簇配对 CI [0.026986, 0.038727]（γ=0.99 版只剩 +0.007906、CI [0.00638, 0.009463]） |
+| 3 | 「不被支配」的结论带**明确网格限定**（列出在这张网格上、禁止外推到未测档） | **PASS**（`2680` 报网格缺口；`2681` 把网格扩到 int8 下 k=60/k=64）：`2681-int8-equalbytes-frontier-13m/results.json::frontier.points`（22 点 / 13 臂）+ `frontier.dominating_points` = 空；最弱的同字节挑战者 `win60_s0@int8` 391,680 B（比 carry 少 1,536 B）/ 1.558523，差 **+0.030928**（18.6 σ_cell、2.2× 0.014 带）；多给纯窗 6.25% 字节（`win64_s0@int8` 417,792 B）仍差 +0.026280；禁外推面写在 `experiments/2681-int8-equalbytes-frontier-13m/analysis.md` §3 与 `experiments/2681-int8-equalbytes-frontier-13m/README.md` §9（carry 族 int8 档、int4 档、T ≫ 256） |
+| 4 | 量化档（int8 块标尺）与前沿同图；int4 档、carry 族 int8 档仍未叠 | **部分**：int8 档已叠两轮（`2680`：7 条纯窗臂 Δ +0.000010 ~ +0.000050，字节精确 ×0.53125；`2681`：两条新臂 Δ +0.000079 / +0.000066，CI95 不含 0 但 ≪ 0.014 带）；**int4 档未叠**，**carry 族 int8 档未叠**（`CarryChannelBlock` 不在量化前向的支持范围 ⇒ 要给 `CarryChannelBlock` 写量化前向，属新代码 > 1 个开关）。状态与读数以 `project.yaml::conclusion` 的「量化档叠图」段为唯一权威 |
+| 5 | 与真实 DeltaNet / GLA 实现对齐 | **阻塞**：本仓无外部实现（`project.yaml::gaps` 第三条 F4），要补就得把外部代码 / 依赖引入本仓或新环境——那是依赖变更与外部执行，**需上一层裁决**；本轮未自选 |
+| 6 | `milestone.acceptance` 的字面第 1 条：前沿图上**每个**预算点有质量与可检索性两轴数字 | **部分**：只有 393,216 B 这一个点有第二轴（验收 2）；其余预算点（win16/17/18/24/32/60/64/128）只有质量轴。缺口登记在 `project.yaml::gaps` 第二条，最小实验 = 把 `2661` 的针仪器扩到窗口网格（纯推理、0 训练 token） |
+
+**结论强度边界**：验收 1–3 都成立，但它们共同限定在 enwik8 / T=256 / 13M / 12k 步 / seed 0 这一格；
+「不被支配」只在这张（含 int8 同字节格的）网格上成立，不外推到 carry 族自己的 int8 档、int4 档与 T ≫ 256。
 
 ## 4 工作包
 
