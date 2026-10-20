@@ -183,9 +183,10 @@
 
 ## 5. 失败与局限
 
-1. **单个 checkpoint（seed 0）**：读数只描述这一个 13M 模型；`head_dim=64` 的第二 seed
-   （`hd64-s1`）**未训练完成**（driver 等 GPU 锁超时后排队重试，见 `train_driver_state.json`）
-   ⇒ 本 run 是 **n = 1**，不报跨 seed 方差、不宣称结构优劣。
+1. **单个 checkpoint（seed 0）出读数**：读数只描述这一个 13M 模型；第二 seed 的 checkpoint
+   （`hd64-s1`）已训练并落盘（`train_driver_state.json::arms.hd64-s1.sha256`），但本实验的入口把
+   `--checkpoint-path` 一律标成 `plumbing_only`（只作仪器自检、不构成读数），所以**它没有受认可的
+   读数路径** ⇒ 本 run 是 **n = 1**，不报跨 seed 方差、不宣称结构优劣（见 §7 第一条缺口）。
 2. **整程 CPU**：CPU 与 GPU 的绝对 bpc 并列但**不构成判据**（本 run 不宣称逐位等于 GPU 锚）；
    判据只用同设备、同窗口序的配对 Δ。
 3. **解析字节 ≠ 实测峰值**：§4.1 的「实测」是实测**标尺密度**（⇒ `2/G` 摊薄项），
@@ -217,7 +218,7 @@
 
 | 缺口 | 下一步最小实验 | 成本 |
 |---|---|---|
-| `head_dim=64` 的第二 seed（方差） | 跑 `hd64-s1`（driver 已排队；`train_depth_ar.py --heads 4 --seed 1`）→ 重跑本评测 | ≈9 min GPU + ≈11 min CPU |
+| `head_dim=64` 的第二 seed（方差） | `hd64-s1` 的 checkpoint 已在盘（`runs/hd64-s1/model.pt`，sha256 见 `MODEL.md`）；缺的是**受认可的读数入口**（现 `--checkpoint-path` 一律标 `plumbing_only`）⇒ 先给契约加一条「按 seed 出主表行」的入口，再重跑本评测 | ≈11 min CPU（无 GPU） |
 | 真正的部署峰值 | 写分块存储 + 按需反量化的 cache，测峰值口径 | 待立项（引擎改动） |
 | `head_dim=128`（MLA 方向） | 训 `--heads 2` 的 13M → 同表重跑 | ≈9 min GPU + ≈11 min CPU |
 | `fp8 + 块标尺` / `E5M2` 在 hd64 上 | 复用本 checkpoint 加两臂（1.03125 / 1.0 B/值） | ≈5 min CPU |

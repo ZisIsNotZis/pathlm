@@ -21,10 +21,10 @@
 
 ## 汇总（生成时统计）
 
-- 规模：实验 **120** 个（`axes/**/experiments/*`），run 条目 **393** 个（307 个是 run 子目录或前缀组，86 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 91 个）。
+- 规模：实验 **120** 个（`axes/**/experiments/*`），run 条目 **397** 个（310 个是 run 子目录或前缀组，87 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 92 个）。
 
-- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**86** 个、`not_reproducible`（不可重建）**34** 个。
-- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 87 个。
+- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**87** 个、`not_reproducible`（不可重建）**33** 个。
+- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 88 个。
 
 ## 这个克隆重建不了什么
 
@@ -111,7 +111,7 @@
 | [2646-layer-width-13m](../axes/3-width/3.1.2-layer-width/experiments/2646-layer-width-13m/) | [3.1.2-layer-width](../axes/3-width/3.1.2-layer-width/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 search_schedule.py`（README.md 的复现小节） | `shared_train_results.wall_minutes` = 6.94 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2647-position-width-13m](../axes/3-width/3.1.3-position-width/experiments/2647-position-width-13m/) | [3.1.3-position-width](../axes/3-width/3.1.3-position-width/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 run.py --arm PN --seed 0 --steps 12000 # 训练 + 评测（需 GPU 锁）`（README.md 的复现小节） | — | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2641-ffn-ratio-frontier-13m](../axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/) | [3.1.4-ffn-ratio](../axes/3-width/3.1.4-ffn-ratio/project.yaml) | ✓ | ✓ | ✓ | 17 | 否（`*.pt` 不入库） | `ARMS="U4:0 U2:0 PYR:0 APYR:0 U2:1 PYR:1 APYR:1" bash train_arms.sh`（README.md 的复现小节） | `shared_train_results.wall_minutes` = 7.49 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
-| [2644-channel-sparsity-13m](../axes/3-width/3.1.5-channel-sparsity/experiments/2644-channel-sparsity-13m/) | [3.1.5-channel-sparsity](../axes/3-width/3.1.5-channel-sparsity/project.yaml) | ✓ | ✓ | — | 0 | — | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | — | `not_reproducible` | 有入口脚本 `run.py`，但仓内无 `results*.json` |
+| [2644-channel-sparsity-13m](../axes/3-width/3.1.5-channel-sparsity/experiments/2644-channel-sparsity-13m/) | [3.1.5-channel-sparsity](../axes/3-width/3.1.5-channel-sparsity/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `shared_train_results.wall_minutes` = 6.91 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2610-gated-readout-13m-depthar](../axes/3-width/3.2.1-readout-reparam/experiments/2610-gated-readout-13m-depthar/) | [3.2.1-readout-reparam](../axes/3-width/3.2.1-readout-reparam/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `main_arm.wall_min` = 12.69 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2611-equalparams-linear-control-13m](../axes/3-width/3.2.1-readout-reparam/experiments/2611-equalparams-linear-control-13m/) | [3.2.1-readout-reparam](../axes/3-width/3.2.1-readout-reparam/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `linear_arm.wall_min` = 12.02 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2612-gated-readout-24k-13m](../axes/3-width/3.2.1-readout-reparam/experiments/2612-gated-readout-24k-13m/) | [3.2.1-readout-reparam](../axes/3-width/3.2.1-readout-reparam/project.yaml) | ✓ | ✓ | ✓ | 3 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `A_arm.wall_min` = 21.03 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
@@ -185,7 +185,6 @@
 | [2506-m2-element-tax-law](../axes/2-depth/2.1.2-skipping/experiments/2506-m2-element-tax-law/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2509-m3-composition-law](../axes/2-depth/2.1.2-skipping/experiments/2509-m3-composition-law/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2525-tax-attribution](../axes/3-width/3.1.1-uniform-narrowing/experiments/2525-tax-attribution/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
-| [2644-channel-sparsity-13m](../axes/3-width/3.1.5-channel-sparsity/experiments/2644-channel-sparsity-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `run.py`，但仓内无 `results*.json` |
 | [2656-lowrank-vs-headshare-13m](../axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `gpu_lock.py`，但仓内无 `results*.json` |
 | [2617-prior-art-hybrid-kv](../axes/5-quant/5.6-window-quant-retrieval/experiments/2617-prior-art-hybrid-kv/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 PRIOR_ART.md） |
 | [2510-gap-sweep-b2-c1m](../axes/6-predict/6.2-speculative-decoding/experiments/2510-gap-sweep-b2-c1m/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 MODEL.md, README.md, analysis.md, controls/README.md, results.json） |
@@ -529,7 +528,10 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2641-ffn-ratio-frontier-13m | U4_s0 | ✓ | — | — | — | — |
 | 2641-ffn-ratio-frontier-13m | smoke/probe-60steps-U2-s0 | ✓ | ✓ | 59 | — | — |
 | 2641-ffn-ratio-frontier-13m | smoke/stock-smoke-300 | ✓ | ✓ | 299 | — | — |
-| [2644-channel-sparsity-13m](../axes/3-width/3.1.5-channel-sparsity/experiments/2644-channel-sparsity-13m/) | — | — | — | — | — | 仓内没有 run 产物 |
+| 2644-channel-sparsity-13m | . | ✓ | — | — | — | — |
+| 2644-channel-sparsity-13m | F50_s0 | ✓ | — | — | — | — |
+| 2644-channel-sparsity-13m | K25_s0 | ✓ | — | — | — | — |
+| 2644-channel-sparsity-13m | K50_s0 | ✓ | — | — | — | — |
 | 2610-gated-readout-13m-depthar | . | ✓ | ✓ | 11999 | — | — |
 | 2610-gated-readout-13m-depthar | smoke/smoke-A | ✓ | ✓ | 19 | — | — |
 | 2610-gated-readout-13m-depthar | smoke/smoke-gated | ✓ | ✓ | 19 | — | — |

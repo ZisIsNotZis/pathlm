@@ -5,7 +5,7 @@ date: "2026-10-14"
 grid: 3.1.5-channel-sparsity
 engine: depth-ar（13M 档 · dense 形态）
 budget: "gpu_wall_budget: ≤30 min（3 臂 × 12k 步 ≈ 8 min/臂 + 评测）；峰值显存 ≤5GB net；锁被占时排队（单次 ≤25 min）"
-status: planned
+status: judged
 ---
 
 # 2644 · 通道稀疏激活（per-token top-k 条件计算 vs 固定前缀常开）· 13M · dense

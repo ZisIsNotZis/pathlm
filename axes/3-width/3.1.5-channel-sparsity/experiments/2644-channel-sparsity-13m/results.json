@@ -1,0 +1,93 @@
+{
+  "experiment": "2644-channel-sparsity-13m",
+  "criterion": "P1 clean bpc（0.014 带）；P2 活性列（频率/熵/mode_set_share，率类走 bootstrap/Wilson CI）；P3 与 U2-s0（减参数换计算）同框；P4 否证线。",
+  "variance_bound": 0.014,
+  "delta_directions": {
+    "delta_vs_D": "arm_minus_comparator",
+    "delta_K50_minus_U2": "arm_minus_comparator",
+    "delta_K50_minus_F50": "arm_minus_comparator"
+  },
+  "band_declaration": "0.014 仅限 bpc 口径；使用率/熵/mode_set_share 等率类指标单独定门，不跨量纲借用。",
+  "anchors": {
+    "D_U4_s0_clean_bpc": 1.5314,
+    "D_U4_s0_macs_total": 7392768,
+    "U2_s0_clean_bpc": 1.5709,
+    "U2_s0_macs_total": 5295616,
+    "source": "2641-ffn-ratio-frontier-13m（复用，按 SCHEMA §9 三道门）"
+  },
+  "n_seeds": 1,
+  "seed_note": "n=1（seed 0）：越带结论为单点快照，只报增量方向。",
+  "cost_note": "实现口径（primary）：按内容选通道必须先算全部 pre-activation ⇒ K50 真实省 FFN 的 25%（不是 50%）；F50 固定前缀可同时切两个矩阵 ⇒ 省 50%。",
+  "arms": {
+    "K50": {
+      "clean_bpc": 1.6295,
+      "delta_vs_D": 0.0981,
+      "ffn_macs_impl": 3145728,
+      "ffn_macs_contract": 2097152.0,
+      "macs_total": 6344192,
+      "macs_total_rel_to_D": 0.858162,
+      "params_total": 6962688,
+      "entropy_over_logH": 0.979831,
+      "mode_set_share": 0.0,
+      "reeval_bitwise_identical": true,
+      "slope_per_1k": 0.00472
+    },
+    "K25": {
+      "clean_bpc": 1.6417,
+      "delta_vs_D": 0.1103,
+      "ffn_macs_impl": 2621440,
+      "ffn_macs_contract": 1048576.0,
+      "macs_total": 5819904,
+      "macs_total_rel_to_D": 0.787243,
+      "params_total": 6962688,
+      "entropy_over_logH": 0.93766,
+      "mode_set_share": 0.0,
+      "reeval_bitwise_identical": true,
+      "slope_per_1k": 0.00418
+    },
+    "F50": {
+      "clean_bpc": 1.5678,
+      "delta_vs_D": 0.0364,
+      "ffn_macs_impl": 2097152,
+      "ffn_macs_contract": 2097152.0,
+      "macs_total": 5295616,
+      "macs_total_rel_to_D": 0.716324,
+      "params_total": 6962688,
+      "entropy_over_logH": 0.9,
+      "mode_set_share": 1.0,
+      "reeval_bitwise_identical": true,
+      "slope_per_1k": 0.00498
+    }
+  },
+  "P1_verdict_vs_D": {
+    "K50": "可排序更差（相对 dense 锚）",
+    "K25": "可排序更差（相对 dense 锚）",
+    "F50": "可排序更差（相对 dense 锚）"
+  },
+  "P3_K50_vs_U2": {
+    "K50_clean_bpc": 1.6295,
+    "U2_s0_clean_bpc": 1.5709,
+    "delta_K50_minus_U2": 0.0586,
+    "macs_total_equal": false,
+    "params_K50": 6962688,
+    "params_U2_s0": 4861440,
+    "note": "保参数（K50/F50）vs 减参数（U2）在同一每 token 总 MACs 位点"
+  },
+  "P4_falsification": {
+    "delta_K50_minus_F50": 0.0617,
+    "verdict": "条件性**有害**（K50 可排序劣于 F50）：固定前缀更优",
+    "collapse": {
+      "K50_mode_set_share": 0.0,
+      "F50_mode_set_share": 1.0,
+      "K50_entropy_over_logH": 0.979831,
+      "K50_collapse_value": 0.9
+    }
+  },
+  "source_files": [
+    "results_F50_s0.json",
+    "results_K25_s0.json",
+    "results_K50_s0.json"
+  ],
+  "code_hash_run_py": "ea00108f9077d06037a1e73ca4f661ec9e223e73af6219c94cf87e76b9ce6bfb",
+  "generated_at": "2026-10-20T15:01:37+0800"
+}

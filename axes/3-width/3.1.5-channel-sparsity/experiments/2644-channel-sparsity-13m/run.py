@@ -350,23 +350,29 @@ def causal_check(model: DepthARModel, gen_seed: int = 7) -> dict:
             "bitwise_equal_before_j": bool(torch.equal(lg1, lg2))}
 
 
-@torch.no_grad()
 def ffn_dead_zone(model: DepthARModel) -> dict:
-    """F50 的未用通道梯度恒 0 的实测版：一次性真实前向 + backward，看逐通道梯度范数。"""
+    """F50 的未用通道梯度恒 0 的实测版：一次性真实前向 + backward，看逐通道梯度范数。
+
+    本探针要 autograd，因此**自持** `torch.enable_grad()`：调用方 `evaluate` 整段在
+    `no_grad` 下跑（评测不该建图），探针必须显式把梯度打开，否则 backward 会拿到
+    无 `grad_fn` 的 loss。
+    """
     g = torch.Generator().manual_seed(5)
     x = torch.randint(0, VOCAB, (2, SEQ_LEN), generator=g).to(DEVICE)
-    model.train()
-    loss, _ = model(x)
-    model.zero_grad()
-    loss.backward()
     out = []
-    for blk in model.blocks:
-        lin1, lin2 = blk.mlp.mlp[0], blk.mlp.mlp[2]
-        g1 = lin1.weight.grad
-        g2 = lin2.weight.grad
-        out.append({"rows_nonzero_lin1": int((g1.abs().sum(-1) > 0).sum()),
-                    "cols_nonzero_lin2": int((g2.abs().sum(0) > 0).sum())})
-    model.zero_grad()
+    with torch.enable_grad():
+        model.train()
+        loss, _ = model(x)
+        model.zero_grad()
+        loss.backward()
+        for blk in model.blocks:
+            lin1, lin2 = blk.mlp.mlp[0], blk.mlp.mlp[2]
+            g1 = lin1.weight.grad
+            g2 = lin2.weight.grad
+            out.append({"rows_nonzero_lin1": int((g1.abs().sum(-1) > 0).sum()),
+                        "cols_nonzero_lin2": int((g2.abs().sum(0) > 0).sum())})
+        model.zero_grad()
+    model.eval()
     return {"per_layer": out, "hidden": HIDDEN}
 
 
@@ -500,6 +506,11 @@ def aggregate(steps: int, out_root: str, arms: list, seeds: list) -> dict:
         "criterion": ("P1 clean bpc（0.014 带）；P2 活性列（频率/熵/mode_set_share，"
                       "率类走 bootstrap/Wilson CI）；P3 与 U2-s0（减参数换计算）同框；P4 否证线。"),
         "variance_bound": VARIANCE_BOUND,
+        "delta_directions": {
+            "delta_vs_D": "arm_minus_comparator",
+            "delta_K50_minus_U2": "arm_minus_comparator",
+            "delta_K50_minus_F50": "arm_minus_comparator",
+        },
         "band_declaration": ("0.014 仅限 bpc 口径；使用率/熵/mode_set_share 等率类指标单独定门，"
                              "不跨量纲借用。"),
         "anchors": {"D_U4_s0_clean_bpc": D_ANCHOR_BPC, "D_U4_s0_macs_total": D_ANCHOR_MACS,

@@ -11,6 +11,12 @@
   "exact_command_if_resumed": "python3 train_depth_ar.py fp8-hd64-s0 --d 256 --layers 12 --heads 4 --mlp-mult 6 --dense --steps 12000 --batch-size 32 --seed 0 --lr 0.001 --eval-batches 24 --out-root <expdir>/runs",
   "then_arms": "在该 checkpoint 上跑 {fp16, int8_block G=64, fp8_e4m3} 三臂（同一 CPU 口径），与解析对账：head_dim=64 时 G=64 合法 ⇒ 每值 1.03125 B、每位置 6336 B、省幅 48.4375%。",
   "affected_acceptance": "milestone 里「大 head_dim 省幅与解析一致」只有 **解析 + head_dim=32 的实测** 支撑；head_dim=64 的省幅**不外推**。",
-  "next_minimal_step": "等 GPU 锁释放后按上面命令训练 1 个 13M（≈9 min GPU）再跑 3 臂 CPU 评测（≈4 min），即可补齐该点。"
+  "next_minimal_step": "等 GPU 锁释放后按上面命令训练 1 个 13M（≈9 min GPU）再跑 3 臂 CPU 评测（≈4 min），即可补齐该点。",
+  "delivered_elsewhere": {
+   "where": "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/",
+   "what": "该腿已落盘：hd64-s0（--heads 4）训练 12k 步 + 同一 CPU 口径的 {fp16, int8_block_g64, fp8_e4m3} 三臂与 G∈{16,32} 辅助臂读数",
+   "reading_home": "2655-fp8-hd64-head-dim/results.json",
+   "note": "本文件记录的是当时（等锁超时后）的降级决策；当前事实以 2655 的 results.json 与 5.5 的 project.yaml 为准"
+  }
  }
 }

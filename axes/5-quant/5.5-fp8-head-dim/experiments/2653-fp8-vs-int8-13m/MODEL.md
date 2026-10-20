@@ -19,8 +19,10 @@
 - **不新增参数**：KV 量化/标尺是**推理期**算子，`params_added = 0`，不改权重、不训练。
 - 本实验**没有**任何训练步骤 ⇒ 无优化器状态、无 checkpoint 产出。
 
-## WP2 的 head_dim=64 模型（未交付）
+## WP2 的 head_dim=64 模型（已交付）
 
-- 若补齐该腿，需要另训 1 个 13M：`--d 256 --layers 12 --heads 4 --mlp-mult 6 --dense`（⇒ head_dim = 64）。
-- 该 checkpoint **未产出**（GPU 锁被占，见 `wp2_hd64_status.json`）；命令与后续三臂已在 `config.json::wp2` 与状态文件里写死。
-- **不得**把未跑的训练数字当成已测（契约 §4）。
+- 该腿的模型与读数在 `experiments/2655-fp8-hd64-head-dim/`（`runs/hd64-s0/model.pt`，sha256
+  `ce40e246614f2f50471e6bc66e6468269af83bef3c9ab3e383f04831d433038f`；第二 seed 的 checkpoint 也在盘但无受认可读数路径）。
+- 那里的配方＝`--d 256 --layers 12 --heads 4 --mlp-mult 6 --dense`（⇒ `head_dim = 64`），除 kv 头数外与
+  `2616` 的 mha 臂逐字段一致。权重、训练命令与派生口径只有那一个家：`2655-fp8-hd64-head-dim/MODEL.md`。
+- 本目录（`2653`）仍只负责 `head_dim=32` 的 WP1 四臂；WP2 的 hd64 读数**不在本目录重复**。
