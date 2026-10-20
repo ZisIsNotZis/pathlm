@@ -3,6 +3,28 @@
 本文件写给 agent：它规定**哪类事实写在哪、谁拥有、谁不得写**，以及协作、汇报与提交纪律。
 人类读者的入口是 `README.md`；本文只写 agent 约定。
 
+## 0 顶层契约（比下文任何条款优先，冲突时以本节为准）
+
+**0.1 三层，各看各的。** 本仓是**元研究仓**：它自己不做研究，只管理一批真实研究；每个真实研究本身就是一份研究仓，有自己的主 Agent、唯一里程碑、工作包与 SSOT；实际工作由最低层承担。
+
+| 层 | 谁 | 只拥有 | 不许做 |
+|---|---|---|---|
+| 元级 | 本会话的主 Agent | 研究目录（`docs/catalog.md`：id / 标题 / 目的 / 验收 / 期望产出 / 状态 / 指针）、轴定义（`docs/structure.md`）、本层里程碑与工作包、派发契约 | 读实验读数、判断数字、复核交付物、写研究级文档 |
+| 研究级 | 每个研究一个主 Agent | 该研究的 `RESEARCH.md`（目标 / **唯一里程碑** / 工作包 / 状态）+ 指针 | 亲手做实验、亲手复核 |
+| 工级 | 每个工作包一个 | 代码、实验、`analysis.md`、`results.json`、该研究的细节 | 决定范围、判据、状态 |
+
+**0.2 主 Agent 不许提前退出。** 任何层的主 Agent 只有两种返回：**里程碑达成且有被独立复核接受的证据**，或**硬阻塞**（必须由上一层裁决的具体决定）。「部分完成」「先汇报进度」「等一个更长的队列」「子任务还没回来」都不是返回理由；返回了这些内容的，上一层要打回去继续，不许当成结果。
+
+**0.3 SSOT 写入是无条件的。** 一个当前事实在它成为事实的瞬间就写进拥有它的文档，**不分讨论阶段还是推进阶段**；主 Agent 自己写这类文档，不外包、不等到下一轮。只有当**文档改动本身就是交付物**（迁移、重写、触碰二十个以上文件）时才交给子 Agent。
+
+**0.4 派发要用已有的角色。** 不许为某个任务新造一个 agent 角色或新起一个名字——差异写进派发契约，不写进角色。新造的角色没人检查，必然漂移，最后维护的是角色而不是工作。
+
+**0.5 本层拥有的单元要一起跑。** 主 Agent 驱动它这一层的**全部**单元，不是手上恰好那一个：独立单元按机器容量并发、各有契约；不许因为「一次只盯一个更省心」而串行。
+
+**0.6 共享机器上让位。** 这台机器上还有不属于本项目的工作（`local_lm_research` 等），**它优先**：同一时刻只跑一个 GPU 作业、批与占用从紧、看到对方在用就让开或排队；本地容量空闲不等于可以把卡占满。
+
+**0.7 细节不许上浮。** 实验读数、判据推导、逐格 analysis、代价事实、复现三态、分诊打分属于研究级或 harness 级。元级文档里出现这些，按 `AGENTS.md` §2.1 的单一之家直接改成本层的指针。
+
 ## 1. 本仓库是什么
 
 一份 **LM 算力路径设计空间的完备目录 + 单实验 Playbook**：把语言模型的「算力路径设计空间」
@@ -16,22 +38,21 @@
 | 事实 | 唯一权威 |
 |---|---|
 | 研究树是什么：轴 / 节点 / 用词 / 粒度 / 目录命名 | `docs/structure.md` |
-| 研究项格式契约（`project.yaml` 字段与纪律） | `docs/research-schema.md` |
+| 研究项格式契约（`project.yaml` 字段与纪律） | `harness/research-schema.md` |
 | 有哪些研究项、每项当前状态/结论/证据 | `axes/**/project.yaml`（聚合与计数用 `python3 tools/summary.py` 生成，别处不重算） |
 | 课题页（旧：状态 / 判据 / 结论 / 失败路径） | 旧生成式 wiki 产物，已退役并归档于 `archive/wiki-legacy/axes/**/README.md`（不再是 SSOT；当前 SSOT = `axes/**/project.yaml`） |
-| 课题页与实验的格式契约、分析纪律 | `SCHEMA.md`（§6–§24 仍生效；§1–§3 随旧页退役，旧页归档于 `archive/wiki-legacy/`） |
+| 课题页与实验的格式契约、分析纪律 | `harness/SCHEMA.md`（§6–§24 仍生效；§1–§3 随旧页退役，旧页归档于 `archive/wiki-legacy/`） |
 | 协作/编排制度与文档地图 | `AGENTS.md`（本文件） |
 | 项目是什么 | `README.md` |
-| 设计 / 方法 / 已测定律 | `docs/design.md` / `docs/methodology.md` / `docs/playbook.md` |
+| 设计 / 方法 / 已测定律 | `atlas/design.md` / `harness/methodology.md` / `atlas/playbook.md` |
 | 计划：里程碑 / 工作包 / owner / 验收 / 状态 / 预算 / **测试计数**（`pytest` 的 passed / failed 与预存失败登记） | `docs/plan.md` |
-| 研究优先级：46 个研究项按「能否改变判断」的排序判据、逐格打分与第一批工作包草案 | `docs/triage.md`（改排序或判据请改它；每格的结论仍在各自的 `project.yaml`） |
-| 把定律写成论文的 claim / 结构 / 验收（**计划**，不是结果） | `docs/paper-plan.md`（改它的 claim 或验收要同时对齐计划层；它不持有新数字，数字的家是 `docs/playbook.md` / `docs/cost-table.md`） |
-| 定律 ↔ 证据 ↔ 观测代价 ↔ 边界的对照表 | `docs/cost-table.md`（**生成物，禁止手改**：由 `tools/build_cost_table.py` 从 `axes/**/project.yaml` 的 `laws` / `cost_rows` 生成，`--check` 与手改副本逐字节比对；改事实请改 `project.yaml` 后重跑生成器） |
-| 复现清单：每个实验的 run / 已入库产物 / 重跑命令 / 声明墙钟 / **能否字节级复现**（三态带依据） | `docs/repro.md`（**生成物，禁止手改**：由 `tools/inventory_runs.py` 从已入库路径生成，`--check` 与手改副本逐字节比对 + 校验每条路径存在 + 校验每条 `not_reproducible` 写明缺什么；本机权重字节数/sha256 用 `--local`，不入库） |
-| 引擎能力面：哪些组合真跑得起来、哪些明确拒绝、拒绝在哪一行 | `docs/engine_capability.md` |
-| 当前进展与下一步（**路由器**，不拥有事实） | `STATUS.md`（**只许指向**：计划与里程碑状态看 `docs/plan.md`、逐项事实看 `axes/**/project.yaml`、研究树统计看 `python3 tools/summary.py`、数字看 `docs/cost-table.md` / `docs/playbook.md`；不得在此新写结论或重算数字） |
-| 已确立结论的索引（**路由器**，不拥有事实、不拥有数字） | `FINDINGS.md`（**只许指向**：结论正文的家是 `docs/playbook.md`，代价数字的家是 `docs/cost-table.md`（按定律分节）与各实验 `analysis.md`，逐项结论的家是 `axes/**/project.yaml`；本文件只留「结论 + 出处 + 状态」，不得写数字、不得重算） |
-| 怎么贡献 / 硬性规则 | `CONTRIBUTING.md`（与 `SCHEMA.md` 冲突时以 `SCHEMA.md` 为准；改流程本身由维护者决定） |
+| 研究优先级：46 个研究项按「能否改变判断」的排序判据、逐格打分与第一批工作包草案 | `atlas/triage.md`（改排序或判据请改它；每格的结论仍在各自的 `project.yaml`） |
+| 把定律写成论文的 claim / 结构 / 验收（**计划**，不是结果） | `atlas/paper-plan.md`（改它的 claim 或验收要同时对齐计划层；它不持有新数字，数字的家是 `atlas/playbook.md` / `atlas/cost-table.md`） |
+| 定律 ↔ 证据 ↔ 观测代价 ↔ 边界的对照表 | `atlas/cost-table.md`（**生成物，禁止手改**：由 `tools/build_cost_table.py` 从 `axes/**/project.yaml` 的 `laws` / `cost_rows` 生成，`--check` 与手改副本逐字节比对；改事实请改 `project.yaml` 后重跑生成器） |
+| 复现清单：每个实验的 run / 已入库产物 / 重跑命令 / 声明墙钟 / **能否字节级复现**（三态带依据） | `atlas/repro.md`（**生成物，禁止手改**：由 `tools/inventory_runs.py` 从已入库路径生成，`--check` 与手改副本逐字节比对 + 校验每条路径存在 + 校验每条 `not_reproducible` 写明缺什么；本机权重字节数/sha256 用 `--local`，不入库） |
+| 引擎能力面：哪些组合真跑得起来、哪些明确拒绝、拒绝在哪一行 | `harness/engine_capability.md` |
+| 已确立结论的索引（**路由器**，不拥有事实、不拥有数字） | `atlas/FINDINGS.md`（**只许指向**：结论正文的家是 `atlas/playbook.md`，代价数字的家是 `atlas/cost-table.md`（按定律分节）与各实验 `analysis.md`，逐项结论的家是 `axes/**/project.yaml`；本文件只留「结论 + 出处 + 状态」，不得写数字、不得重算） |
+| 怎么贡献 / 硬性规则 | `CONTRIBUTING.md`（与 `harness/SCHEMA.md` 冲突时以 `harness/SCHEMA.md` 为准；改流程本身由维护者决定） |
 | 许可 | `LICENSE.md`（AGPL-3.0 全文；改许可属对外暴露，需用户同意） |
 | 单个实验 | 实验目录内 `README.md`（预登记契约）· `analysis.md`（**当前**结论与证据）· `results.json`（原始数字）· `MODEL.md`（权重清单） |
 | 旧索引（已退役） | `archive/wiki-legacy/catalog.yaml` / `archive/wiki-legacy/INDEX.md`（只读归档，不是当前 SSOT） |
@@ -39,9 +60,9 @@
 规矩：
 
 - 每类事实**恰好有一个家**，每条事实在事实文档里**恰好出现一次**；别处只放**指针**（如
-  「见 `SCHEMA.md` §17.18」）。
+  「见 `harness/SCHEMA.md` §17.18」）。
 - 一律**陈述式、当前状态**：**正文叙述**不带日期，不带「原本是 A、后来改成 B」，不带变更记录 / ERRATA /
-  事故编号叙事，不写「刷新时间 / 当前波次」式仪表盘（**溯源元数据的日期除外**，见 `SCHEMA.md` §3）。
+  事故编号叙事，不写「刷新时间 / 当前波次」式仪表盘（**溯源元数据的日期除外**，见 `harness/SCHEMA.md` §3）。
 - 事实文档**不得**把日志**叙事**（`.scratch/**` 的流水叙事、`.scratch/doc-log/**` 的过程史、
   `JOURNAL.md`）当结论依据；**证据锚点**可以是**原始证据路径**——`.scratch/**/evidence/**` 的落盘证据、
   `.scratch/**/{REPORT,VERDICTS}.md` 等复核报告（`project.yaml` 的 `experiments` / `evidence` 即指向这类路径）。
@@ -59,7 +80,7 @@
 
 - `catalog.yaml` / `INDEX.md` / `tools/build_wiki.py` / `tools/check_catalog_strict.py` /
   `tools/backfill_legacy.py` **已退役**并归档于 `archive/wiki-legacy/`（新 SSOT = `axes/**/project.yaml`，
-  见 `docs/research-schema.md` 与 `docs/structure.md` §15）；旧轴 `axes/{A-mixing,C-vertical,…}/**` 同样
+  见 `harness/research-schema.md` 与 `docs/structure.md` §15）；旧轴 `axes/{A-mixing,C-vertical,…}/**` 同样
   归档于 `archive/wiki-legacy/axes/`。这些是**只读历史资产**（含 `archive/wiki-legacy/INDEX.md` 的
   `<!-- AUTO:begin/end -->` 旧自动块），不再维护。
 - `archive/` 是旧项目只读资产；**旧数字有口径陷阱，引用前先读 `archive/README.md`**。
@@ -78,10 +99,10 @@
 - **所有信息沟通一律通过目录下的文档完成**；复核结果的**内容**不必回报主 Agent，只有
   「是否需要新一轮复核」需要。
 - 主 Agent **保持 context 最小**：不读研究正文，只读状态与是否需要决策。
-- 一个工作目录同一时刻只允许一个写入者；共享文件的并发写按 `SCHEMA.md` §22 的代码编辑锁
+- 一个工作目录同一时刻只允许一个写入者；共享文件的并发写按 `harness/SCHEMA.md` §22 的代码编辑锁
   与锚点声明执行。
 - 派发前除**共享面分析**外，必须做**能力面分析**（引擎是否支持该 flag 组合）——见
-  `SCHEMA.md` §22.8。
+  `harness/SCHEMA.md` §22.8。
 - 口径选择、判据归因、形态税是否值得付属**框架性取舍**：由主 Agent 集中在课题目录下记录
   并请用户裁决，**不由执行方自选**。
 
@@ -94,7 +115,7 @@
 3. 效果不好时**先自我批判**：是**物理上不可能**，还是**我们的方法/实现有问题**（最常见：
    未收敛、没和训练/推理侧其它改动配套、实现非因果或退化成玩具、基线不公平）。区分清楚再下结论。
 4. 交付后由 **review agent（fork=false，独立上下文，批判性视角）** 检阅是否合理、有无遗漏与
-   错误；复核**必须排在执行之后**（见 `SCHEMA.md` §14b）。
+   错误；复核**必须排在执行之后**（见 `harness/SCHEMA.md` §14b）。
 5. 复核发现遗漏/错误 ⇒ **更新该目录下的文档** ⇒ 由原子代理接手继续做，直到无问题。
 6. 再派新的 review，循环至**找不出问题**为止。
 
@@ -106,11 +127,11 @@
 - 判「删除」与「值得做」的标准：**它是否可能改变我们对「某种算力路径值不值」的判断**。
   不能改变的，删。
 - 每格必须做到**预算内极致**（既有做法查过、判据最严、对照尽试、边界探过、否证路径走完、
-  未测项列成「下一步最小实验 + 成本」、复核通过）——七问清单见 `SCHEMA.md` §23。
+  未测项列成「下一步最小实验 + 成本」、复核通过）——七问清单见 `harness/SCHEMA.md` §23。
 
 ## 6. 研究项的终点状态
 
-每个格子只有两种当前状态（见 `SCHEMA.md` §1）：
+每个格子只有两种当前状态（见 `harness/SCHEMA.md` §1）：
 
 - `judged`——已有明确结论（本地实测的判读，含失败/否证结论）；
 - `todo`——尚无明确结论（待补做／待立项）。业界结论必须给出**可核实的出处**；检索不可用时
@@ -118,7 +139,7 @@
 
 「做到多少」（覆盖了哪些选项、还缺什么）写在 `verdict` 正文里，**不进状态枚举**。
 
-「业界已做透」**不是免做理由**，而是**必须核实并对齐的基线**——见 `SCHEMA.md` §21。
+「业界已做透」**不是免做理由**，而是**必须核实并对齐的基线**——见 `harness/SCHEMA.md` §21。
 
 ## 7. 语言与人话汇报纪律
 
@@ -165,7 +186,7 @@
   「看起来成功」）；每次提交前跑 `git diff --cached --name-only | wc -l` 并**人工核对**，
   提交信息里声称的每个路径都必须**逐条出现在 staged 列表**里（只看列表，不看 exit code）。
 - 证据可回溯（run 目录 + resolved config + commit）与「权重/数据不入库」见
-  `docs/methodology.md` §8。
+  `harness/methodology.md` §8。
 
 工作流与硬性规则：
 
@@ -176,15 +197,15 @@ python3 tools/check_tree.py        # 同上：纯校验（check_schema.py 转调
 python3 -m pytest tests/ -q        # 共享底座测试
 ```
 
-- 新研究 = 在 `axes/<轴>/<格子>/experiments/` 下开目录，契约字段见 `SCHEMA.md` §3 / §6。
-- **只做单轴单格实验**；组合**默认留白**（见 `SCHEMA.md` §4）；`deps` 只记录耦合方向，
+- 新研究 = 在 `axes/<轴>/<格子>/experiments/` 下开目录，契约字段见 `harness/SCHEMA.md` §3 / §6。
+- **只做单轴单格实验**；组合**默认留白**（见 `harness/SCHEMA.md` §4）；`deps` 只记录耦合方向，
   不构成组合实验授权。
-- 新开关的冒烟/单测/变异纪律见 `docs/methodology.md` §5；数字的口径、方差界与复现要求见
-  `docs/methodology.md` §2 / §3。
+- 新开关的冒烟/单测/变异纪律见 `harness/methodology.md` §5；数字的口径、方差界与复现要求见
+  `harness/methodology.md` §2 / §3。
 
 ## 9. 环境与工作区策略
 
-- 硬件为单卡 RTX 4090（24GB）且被多个任务共享：GPU 工作（训练/评测）按 `SCHEMA.md` §20 的
+- 硬件为单卡 RTX 4090（24GB）且被多个任务共享：GPU 工作（训练/评测）按 `harness/SCHEMA.md` §20 的
   互斥锁协议**串行**；纯 CPU 工作（情报、设计、写文档、对账、汇总已落盘数据）**不取锁**、可自由并行。
-- 规模与成本纪律见 `SCHEMA.md` §7 / §8；冒烟纪律见 `docs/methodology.md` §5。
+- 规模与成本纪律见 `harness/SCHEMA.md` §7 / §8；冒烟纪律见 `harness/methodology.md` §5。
 - `/home/z/vibe/AGENTS.md` 的 workspace policy 适用。
