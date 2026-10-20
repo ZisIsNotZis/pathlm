@@ -232,6 +232,30 @@
     "reused_from": null,
     "train_seconds": 507.0,
     "train_rc": 0
+   },
+   {
+    "name": "win64a_s0",
+    "kind": "window",
+    "window": 64,
+    "anchors": 8,
+    "seed": 0,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64a_s0/model.pt",
+    "sha256": "bc51298b787d749fbf32985aa1dbc371a97725119ac7b3ce4f9724615e3c9b00",
+    "reused_from": null,
+    "train_seconds": 527.0,
+    "train_rc": 0
+   },
+   {
+    "name": "win64a_s1",
+    "kind": "window",
+    "window": 64,
+    "anchors": 8,
+    "seed": 1,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64a_s1/model.pt",
+    "sha256": "65788e2b04d7716a569ebc76df355f318171bfb76d2bca213cce6995b34242f1",
+    "reused_from": null,
+    "train_seconds": 526.0,
+    "train_rc": 0
    }
   ],
   "seeds": [
@@ -456,6 +480,28 @@
    "anchors": 0,
    "seed": 1,
    "n_params": 13536768
+  },
+  "win64a_s0": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64a_s0/model.pt",
+   "sha256": "bc51298b787d749fbf32985aa1dbc371a97725119ac7b3ce4f9724615e3c9b00",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 64,
+   "anchors": 8,
+   "seed": 0,
+   "n_params": 13536768
+  },
+  "win64a_s1": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64a_s1/model.pt",
+   "sha256": "65788e2b04d7716a569ebc76df355f318171bfb76d2bca213cce6995b34242f1",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 64,
+   "anchors": 8,
+   "seed": 1,
+   "n_params": 13536768
   }
  },
  "selfchecks": {
@@ -542,6 +588,11 @@
   "(192,0)": {
    "visible_pairs": 30816,
    "expected": 30816,
+   "equal": true
+  },
+  "(64,8)": {
+   "visible_pairs": 15876,
+   "expected": 15876,
    "equal": true
   }
  },
@@ -1846,13 +1897,47 @@
    "note": "预登记预测：cum(32) / Σ_{d≥32} single(d) > 1 且 cum 越本格带。不成立必须写清原因，不得默默只报一条曲线"
   },
   "c6_anchor_lever_at_k64": {
-   "verdict": "not_produced",
-   "note": "可选臂 win64a_s0/s1 未训完（README §4b 已预登记该回落）"
+   "k": 64,
+   "anchors": 8,
+   "n_seeds": 2,
+   "per_seed": {
+    "0": {
+     "bpc_win64a": 1.547552,
+     "bpc_win64": 1.555204,
+     "delta_bpc": -0.007652
+    },
+    "1": {
+     "bpc_win64a": 1.547006,
+     "bpc_win64": 1.555988,
+     "delta_bpc": -0.008982
+    }
+   },
+   "cross_seed": {
+    "n_seeds": 2,
+    "mean": -0.008317,
+    "values": [
+     -0.007652,
+     -0.008982
+    ],
+    "same_sign": true,
+    "unit_note": "每 seed 一个价格（同 seed 配对：bpc(win64a) − bpc(win64)）",
+    "sd": 0.00094,
+    "t_crit": 12.706,
+    "t_interval_95": [
+     -0.016766,
+     0.000132
+    ]
+   },
+   "verdict": "undecidable",
+   "n_req": 1,
+   "reference_k16": -0.00706,
+   "reference_note": "k=16 的 n=4 跨 seed 均值见 2681 判据⑦（−0.00706 bpc）",
+   "rule": "t 区间不含 0 ⇒ 可判（报方向）；含 0 ⇒ 不可判并给所需 n"
   }
  },
  "cost": {
-  "gpu_seconds": 60.1,
-  "wall_seconds": 60.1,
+  "gpu_seconds": 79.1,
+  "wall_seconds": 79.1,
   "kv_bytes_per_position_unit": 12288,
   "k_eff_by_arm": {
    "full": 256,
@@ -1871,7 +1956,9 @@
    "win128_s0": 128,
    "win128_s1": 128,
    "win192_s0": 192,
-   "win192_s1": 192
+   "win192_s1": 192,
+   "win64a_s0": 72,
+   "win64a_s1": 72
   },
   "kv_bytes_by_arm": {
    "full": 3145728,
@@ -1890,7 +1977,9 @@
    "win128_s0": 1572864,
    "win128_s1": 1572864,
    "win192_s0": 2359296,
-   "win192_s1": 2359296
+   "win192_s1": 2359296,
+   "win64a_s0": 884736,
+   "win64a_s1": 884736
   },
   "note": "KV 字节按 fp16（每位置 = 层数 × 2(K,V) × d_model × 2 B × k_eff）"
  },
@@ -1899,7 +1988,7 @@
   "make_config.py": "e4e1ac9fbff5de67c114e18de1d95237f84c5c50e6a8a85e178c8fbec2a5f450",
   "realtext_probe.py": "dbddeb5f8dc3a7bebe6eda6e2d977ce6581fade2b5db7231bc3f0116addd6402",
   "train_arms.sh": "0028be616b7841f818f4790ee2e510efc02ce8456ae31b620037183dabd8f25c",
-  "config.json": "85074a084e4c4c97d08714cdd1c79218c7a993b944067cc0115a239e6731b582",
+  "config.json": "2ed03a68bce87855b2b24b318cc7f82cf11b03c23743ce5c0424ff1ee0b3c360",
   "pathlm/depth_ar.py": "42844306990aebc5a4a4d0df2f115b872e52bb4b36d8b8a1831c3490d1af8de5",
   "train_depth_ar.py": "0f6536fae2369d962434293b37ec8b26287fc180a9c657669f150531601f4764",
   "tools/evalkit/retention.py": "9ef983b70d666460de5d63d5d81c23c685ce708a55dfe1af66fc23187fd12f9a",
