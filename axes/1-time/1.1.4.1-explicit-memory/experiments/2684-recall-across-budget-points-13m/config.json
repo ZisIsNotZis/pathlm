@@ -1,0 +1,279 @@
+{
+  "experiment": "axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m",
+  "owner_cell": "1.1.4.1-explicit-memory",
+  "contract": "axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m/README.md",
+  "budget": {
+    "gpu_wall_budget_min": 20,
+    "note": "纯推理评测（0 训练 token、0 新引擎开关）；上界写在 README.md §6，绑定契约冻结。判据不使用墙钟。"
+  },
+  "device": "cuda",
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true,
+    "topology": "sequential",
+    "train_window": 16,
+    "train_anchors": 0,
+    "carry_chunk": 64
+  },
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）",
+    "vocab_size": 206,
+    "n_real_tokens": 205,
+    "mask_token": 205
+  },
+  "needle": {
+    "n_needles": 8,
+    "phrase_len": 6,
+    "anchors": 8,
+    "anchor_frac": 0.25,
+    "n_batches": 64,
+    "batch_size": 16,
+    "seed": 3,
+    "bucket_anchors": 0,
+    "note": "needle v3 真实文本短语针（`tools/evalkit/retention.phrase_needle_batch`），参数与 `2661` 逐字段相同（seed=3 同一 generator 序列）；placement anchors=8、归属桶按 anchors=0 判 ⇒ 桶只有 window / beyond；地板 = 同生成器序列 plant=False 的配对控制臂。**每臂用自己训练时的可见性**（`window_anchor_keep_mask(T, w, 0)`）评测 ⇒ 桶的边界也随之是各臂自己的 w。"
+  },
+  "instrument": {
+    "reused_from": "axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m",
+    "files": [
+      "run.py",
+      "needle_stats.py"
+    ],
+    "how": "只读导入：`run.load_arm` / `run.resolve` / `run.sha256_file` / `needle_stats`（同索引硬子集、`recall_on_indices`、`beyond_above_floor`）。本实验不复制实现，sha256 记在 `results.json::code_hashes`。",
+    "sha256": {
+      "run.py": "58a1bb57ea1abac229abfc59e3ce1666f0e20641aa4bbe65e7b7bd4d4fdd1304",
+      "needle_stats.py": "cd11bb7cdb3b3e60534f102b2df3d396a1a71b8ab0b471776d62b87584d33d4c"
+    }
+  },
+  "equality_gate": {
+    "source": "axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/results.json::needle_leg",
+    "what": "六个复用臂在**窗口 16 可见性**下的同索引硬子集读数必须与 `2661` 逐位相等（同一 generator 序列、同一仪器、同一桶规则）",
+    "n_intersection": 2699,
+    "hits": {
+      "win16_s0": 19,
+      "win16_s1": 27,
+      "carry16_s0": 43,
+      "carry16_s1": 53,
+      "carrypl16_s0": 276,
+      "carrypl16d_s0": 77
+    }
+  },
+  "fixed_set": {
+    "distance_min_exclusive": 128,
+    "why": "网格里最宽的纯窗臂是窗口 128 ⇒ 「距离 > 128」的针对**每一个**臂都落在注意力看不到的地方，只有显式状态能把它带回来。于是同一索引集上的召回对十三臂是同一个问题的同一个答案口径，跨臂两比例差可以不插值直接比。",
+    "n_note": "索引集 = 距离 > 128 的针 ∩ 十三臂 control 全部答不出（地板在这组索引上恒为 0）。"
+  },
+  "bands": {
+    "rule": "率类只走 Wilson 95% CI 与两比例差 CI（正态近似、未 pooling，`tools/evalkit/carry_channel.two_proportion`），**不跨量纲借 0.014 bpc 带**；bpc 类不在本实验（质量轴的家是 `2638` / `2639` / `2681`）。",
+    "sigma_cell_ref": 0.00166,
+    "cross_cell_band_ref": 0.014
+  },
+  "arms": [
+    {
+      "name": "win16_s0",
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+      "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+      "reused_from": "2634",
+      "role": "纯窗口 16（网格最左端；也是 `2661` 的主 implicit 臂）"
+    },
+    {
+      "name": "win16_s1",
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": null,
+      "seed": 1,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+      "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+      "reused_from": "2634",
+      "role": "纯窗口 16 的第二 seed（臂内噪声，不作判据）"
+    },
+    {
+      "name": "carry16_s0",
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "carry_chunk": 64,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "seed": 0,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s0/model.pt",
+      "sha256": "d92114822c09f2f7538ea6a59802eed21b1297409fe91f66c031dec9d6c305eb",
+      "reused_from": "2634",
+      "role": "退化实现（单共享槽、只从 h₀ 写、无门控）⇒ 完备度的对照臂"
+    },
+    {
+      "name": "carry16_s1",
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "carry_chunk": 64,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "seed": 1,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s1/model.pt",
+      "sha256": "b3d3cdbc57266109b6b461d18c2188c7d1712170f6760b35a48ff9b6170d6843",
+      "reused_from": "2634",
+      "role": "退化实现的第二 seed（臂内噪声，不作判据）"
+    },
+    {
+      "name": "carrypl16_s0",
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "carry_chunk": 256,
+      "carry_per_layer": true,
+      "carry_decay": 1.0,
+      "seed": 0,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16/model.pt",
+      "sha256": "382a74aa0e417b229910cc44f55dcc949c225b3211434df488ee6a72d3036ec3",
+      "reused_from": "2639",
+      "role": "**完备机制**（逐层独立状态 + 内容写门，γ=1）⇒ 本实验的主臂"
+    },
+    {
+      "name": "carrypl16d_s0",
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "carry_chunk": 256,
+      "carry_per_layer": true,
+      "carry_decay": 0.99,
+      "seed": 0,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16d/model.pt",
+      "sha256": "cb1940ee2e97f2311998710870be0c86024ed7d65e2ce54c159fcffbca8fe386",
+      "reused_from": "2639",
+      "role": "完备机制 + 衰减 γ=0.99（记忆短 ⇒ 召回应当更低；方向性旁证）"
+    },
+    {
+      "name": "win17_s0",
+      "kind": "window",
+      "window": 17,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win17/model.pt",
+      "sha256": "70f0acb92067adba4f796612bab49ead7153c1b4b7e5bb3ea15a5219ab9cdc1c",
+      "reused_from": "2638",
+      "role": "纯窗口 17（208,896 B/位置）"
+    },
+    {
+      "name": "win18_s0",
+      "kind": "window",
+      "window": 18,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win18/model.pt",
+      "sha256": "39316ac04f20e158a6833323888990d149bf22c8da76ca04c4aa642cdcfa5913",
+      "reused_from": "2638",
+      "role": "纯窗口 18（221,184 B/位置）"
+    },
+    {
+      "name": "win24_s0",
+      "kind": "window",
+      "window": 24,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win24/model.pt",
+      "sha256": "ebd4ef84736355bc163479e702c34b1383708f90d39510756e38b2cf3fcf90d1",
+      "reused_from": "2638",
+      "role": "纯窗口 24（294,912 B/位置）"
+    },
+    {
+      "name": "win32_s0",
+      "kind": "window",
+      "window": 32,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win32/model.pt",
+      "sha256": "dccc58c0065d70f0c202424b7f5f40e28929ffb238db3d3a3954d3095e43287b",
+      "reused_from": "2638",
+      "role": "纯窗口 32（393,216 B/位置；与 carrypl16 同字节的质量轴对手）"
+    },
+    {
+      "name": "win60_s0",
+      "kind": "window",
+      "window": 60,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/train/win60/model.pt",
+      "sha256": "b82ed96f08780bad6e759b694a6c8be1f7b022fd8705794f0ac55730302cf1fb",
+      "reused_from": "2681",
+      "role": "纯窗口 60（int8 下 391,680 B/位置；同字节最强纯窗挑战者）"
+    },
+    {
+      "name": "win64_s0",
+      "kind": "window",
+      "window": 64,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/train/win64/model.pt",
+      "sha256": "dc5af3e0a3fac881b8f2950d67da3b5211c13271fa820f2f0a92d475f0db402e",
+      "reused_from": "2681",
+      "role": "纯窗口 64（int8 下 417,792 B/位置）"
+    },
+    {
+      "name": "win128_s0",
+      "kind": "window",
+      "window": 128,
+      "anchors": 0,
+      "rule": null,
+      "seed": 0,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win128/model.pt",
+      "sha256": "c17a1cf1747ca59e426eeb1378c90e50802e21401d7058e703a766e8cbe287f7",
+      "reused_from": "2638",
+      "role": "纯窗口 128（1,572,864 B/位置；网格最右端，定义固定索引集的边界）"
+    }
+  ],
+  "arm_roles": {
+    "window_grid": [
+      "win16_s0",
+      "win16_s1",
+      "win17_s0",
+      "win18_s0",
+      "win24_s0",
+      "win32_s0",
+      "win60_s0",
+      "win64_s0",
+      "win128_s0"
+    ],
+    "carry_arms": [
+      "carry16_s0",
+      "carry16_s1",
+      "carrypl16_s0",
+      "carrypl16d_s0"
+    ],
+    "primary_carry": "carrypl16_s0",
+    "degraded_carry": [
+      "carry16_s0",
+      "carry16_s1"
+    ],
+    "primary_window": "win32_s0",
+    "equality_gate_arms": [
+      "win16_s0",
+      "win16_s1",
+      "carry16_s0",
+      "carry16_s1",
+      "carrypl16_s0",
+      "carrypl16d_s0"
+    ]
+  }
+}
