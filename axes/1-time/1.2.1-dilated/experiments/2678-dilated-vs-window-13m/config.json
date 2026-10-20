@@ -37,24 +37,43 @@
   },
   "recall": {
     "task": "var_recall_batch",
-    "far_distances": [64, 128, 192, 240],
-    "near_distances": [16, 32],
+    "far_distances": [
+      64,
+      128,
+      192,
+      240
+    ],
+    "near_distances": [
+      16,
+      32
+    ],
     "n_batches": 8,
     "batch_size": 32,
     "task_seed": 3,
     "statistic": "按批聚类的配对 bootstrap 95% CI（Δ = acc_dil − acc_win，百分位法）",
     "n_boot": 2000,
-    "boot_seed": 0
+    "boot_seed": 0,
+    "power_ratio_threshold": 5.0,
+    "power_note": "某距离档上「跨臂最高准确率 / chance」不足该倍数即判该档无分辨力；远档全部无分辨力时判据②给不出正向证据（仪器边界，判据线不改）"
   },
-  "seeds": [0, 1],
+  "seeds": [
+    0,
+    1
+  ],
   "reused_arms": {
     "win32": "axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/win32",
     "win32_s1": "axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/win32_s1",
     "full": "axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/runs/full-12k-s0"
   },
   "trained_arms": {
-    "dil32": {"seed": 0, "dir": "runs/dil32-s0"},
-    "dil32_s1": {"seed": 1, "dir": "runs/dil32-s1"}
+    "dil32": {
+      "seed": 0,
+      "dir": "runs/dil32-s0"
+    },
+    "dil32_s1": {
+      "seed": 1,
+      "dir": "runs/dil32-s1"
+    }
   },
   "verdict_rules": {
     "main_quality": "两 seed 的配对 Δ 同向且各自 |Δ| >= band_bpc ⇒ 按该方向判（n=2）；否则判『本 n 下不可排序』",

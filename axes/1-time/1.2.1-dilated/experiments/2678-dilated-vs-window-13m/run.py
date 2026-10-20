@@ -435,6 +435,27 @@ def main() -> None:
                 for seed in PAIRS}
     recall_separable = any(far_sep[s] for s in PAIRS)
 
+    # 判据②的仪器分辨力：两臂在所有距离档的准确率相对 chance 的倍数（`config.json::recall`）。
+    # 全臂贴 chance 时，任何「CI 不含 0」都由一两个命中驱动，不能当正向证据——这是仪器的
+    # 边界，写在读数里而不是改判据线（README §4 的判定线不变）。
+    power_thr = float(rc["power_ratio_threshold"])
+    power = {}
+    for dist in distances:
+        key = f"d{dist}"
+        chance = recall[ARMS[0]["name"]][key]["chance"]
+        per_arm = {a["name"]: recall[a["name"]][key]["accuracy"] for a in ARMS}
+        best = max(per_arm.values())
+        power[key] = {"chance": chance, "best_accuracy": best,
+                      "best_over_chance": round(best / chance, 2),
+                      "has_power": bool(best / chance >= power_thr)}
+    instrument_has_power = any(v["has_power"] for k, v in power.items()
+                               if k in [f"d{x}" for x in rc["far_distances"]])
+    # 「远档召回支持空洞占优」= 某个远档的 CI 不含 0 且方向为空洞更好（Δ = win − dil < 0）
+    recall_supports_dilated = any(
+        v["excludes_zero"] and v["delta_acc"] < 0
+        for seed in PAIRS for k, v in recall_delta[seed].items()
+        if k in [f"d{x}" for x in rc["far_distances"]])
+
     if same_sign and both_beyond and d0 > 0:
         main_verdict = "空洞采样占优（两 seed 同向且各自越带 ⇒ n=2）"
     elif same_sign and both_beyond and d0 < 0:
@@ -444,21 +465,30 @@ def main() -> None:
     else:
         main_verdict = "两 seed 同向但至少一 seed 未越带 ⇒ 本 n 下不可排序"
 
-    if recall_separable:
-        recall_verdict = "远档召回可分（至少一 seed 的远档 CI 不含 0）"
+    if not instrument_has_power:
+        recall_verdict = ("远档召回电池在本尺度无分辨力：所有臂在所有距离档都贴 chance"
+                          "（最高 = chance 的 "
+                          f"{max(v['best_over_chance'] for v in power.values())}×，门槛 "
+                          f"{power_thr}×）⇒ 这一条给不出正向证据")
+    elif recall_supports_dilated:
+        recall_verdict = "远档召回有正向可分的档（CI 不含 0 且方向为空洞更好）"
     else:
-        recall_verdict = "远档召回不可分（两 seed 的全部远档 CI 都含 0）"
+        recall_verdict = ("远档召回无可分档支持空洞（可分的远档方向相反或全在带内）"
+                          f"；仪器有分辨力 = {instrument_has_power}")
 
-    falsified = (not recall_separable) and (not (same_sign and both_beyond)) \
-        and all(abs(x) < BAND for x in (d0, d1))
-    if falsified:
-        overall = "判『空洞采样在本尺度无净增量、不成立』：远档召回不可分 且 两 seed 的 bpc 差都落 0.014 带内"
+    bpc_in_band = all(abs(x) < BAND for x in (d0, d1))
+    falsified = (not recall_supports_dilated) and (not (same_sign and both_beyond and d0 > 0))
+    if same_sign and both_beyond and d0 > 0:
+        overall = "判『空洞采样占优』：bpc 两 seed 同向越带为正"
     elif same_sign and both_beyond and d0 < 0:
         overall = "判『按位置最近仍占优』：bpc 两 seed 同向越带为负"
-    elif same_sign and both_beyond and d0 > 0:
-        overall = "判『空洞采样占优』：bpc 两 seed 同向越带为正"
+    elif not same_sign:
+        overall = "本 n 下不可排序（判据①两 seed 不同向，按预登记降级、不取平均掩盖）"
+    elif bpc_in_band and falsified:
+        overall = ("判『空洞采样在本尺度无净增量、不成立』：判据①两 seed 同向但都落 0.014 "
+                   "带内（无改善）；判据②远档召回未出现支持空洞的可分档")
     else:
-        overall = "本 n 下不可排序（判据①未达两 seed 同向越带、判据②远档不可分）"
+        overall = "判据①未达两 seed 同向越带 ⇒ 本 n 下 bpc 不可排序"
 
     out = {
         "experiment": "2678-dilated-vs-window-13m",
@@ -492,6 +522,11 @@ def main() -> None:
         "recall_by_arm": recall,
         "recall_delta_window_minus_dilated": recall_delta,
         "recall_separable": {"far": far_sep, "near": near_sep},
+        "recall_power": {"power_ratio_threshold": power_thr, "by_distance": power,
+                         "instrument_has_power_far": bool(instrument_has_power),
+                         "recall_supports_dilated": bool(recall_supports_dilated),
+                         "note": ("全臂都贴 chance 时，任何「CI 不含 0」都由一两个命中驱动 ⇒ "
+                                  "不作正向证据；这是仪器分辨力的边界，判据线未改")},
         "cross_seed_reference_line": {
             "note": ("同一臂跨 seed 之差是两个独立训练 run 之差，只作参考线，"
                      "不与 0.014 配对带混用（docs/methodology.md §2）"),
