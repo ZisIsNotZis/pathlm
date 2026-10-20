@@ -139,8 +139,6 @@ FENCE_RE = re.compile(r"^\s*(```|~~~)")
 #: `docs/plan.md` §2 点名而**尚未落盘**的工作包交付物：声明「缺失」而不是假装存在。
 #: 它们是计划层的未来路径，落盘后必须从这里删除（`@migrate_on_touch`：碰到就清）。
 PENDING_TARGETS = (
-    "tools/inventory_runs.py",      # 复现清单
-    "docs/repro.md",                 # 复现清单
     "docs/triage.md",                # 树分诊
 )
 

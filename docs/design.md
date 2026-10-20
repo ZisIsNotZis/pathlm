@@ -74,6 +74,7 @@ docs/                设计 / 方法学 / 定律 / 计划 / 引擎能力
   plan.md            计划层：里程碑 / 工作包 / owner / 验收 / 状态 / 测试计数（SSOT）
   paper-plan.md      把定律写成论文的计划：claim / 结构 / 验收（不是结果）
   cost-table.md      代价表（**生成物**：tools/build_cost_table.py 从 axes/**/project.yaml 生成，禁止手改）
+  repro.md           复现清单（**生成物**：tools/inventory_runs.py 从已入库路径生成，禁止手改）
   structure.md       研究树布局（见上）
   research-schema.md 研究项格式契约（见上）
   engine_capability.md 引擎能力面事实表

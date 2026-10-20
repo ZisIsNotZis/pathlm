@@ -26,6 +26,7 @@
 | 计划：里程碑 / 工作包 / owner / 验收 / 状态 / 预算 / **测试计数**（`pytest` 的 passed / failed 与预存失败登记） | `docs/plan.md` |
 | 把定律写成论文的 claim / 结构 / 验收（**计划**，不是结果） | `docs/paper-plan.md`（改它的 claim 或验收要同时对齐计划层；它不持有新数字，数字的家是 `docs/playbook.md` / `docs/cost-table.md`） |
 | 定律 ↔ 证据 ↔ 观测代价 ↔ 边界的对照表 | `docs/cost-table.md`（**生成物，禁止手改**：由 `tools/build_cost_table.py` 从 `axes/**/project.yaml` 的 `laws` / `cost_rows` 生成，`--check` 与手改副本逐字节比对；改事实请改 `project.yaml` 后重跑生成器） |
+| 复现清单：每个实验的 run / 已入库产物 / 重跑命令 / 声明墙钟 / **能否字节级复现**（三态带依据） | `docs/repro.md`（**生成物，禁止手改**：由 `tools/inventory_runs.py` 从已入库路径生成，`--check` 与手改副本逐字节比对 + 校验每条路径存在 + 校验每条 `not_reproducible` 写明缺什么；本机权重字节数/sha256 用 `--local`，不入库） |
 | 引擎能力面：哪些组合真跑得起来、哪些明确拒绝、拒绝在哪一行 | `docs/engine_capability.md` |
 | 当前进展与下一步（**路由器**，不拥有事实） | `STATUS.md`（**只许指向**：计划与里程碑状态看 `docs/plan.md`、逐项事实看 `axes/**/project.yaml`、研究树统计看 `python3 tools/summary.py`、数字看 `docs/cost-table.md` / `docs/playbook.md`；不得在此新写结论或重算数字） |
 | 已确立结论的索引（**路由器**，不拥有事实、不拥有数字） | `FINDINGS.md`（**只许指向**：结论正文的家是 `docs/playbook.md`，代价数字的家是 `docs/cost-table.md`（按定律分节）与各实验 `analysis.md`，逐项结论的家是 `axes/**/project.yaml`；本文件只留「结论 + 出处 + 状态」，不得写数字、不得重算） |
