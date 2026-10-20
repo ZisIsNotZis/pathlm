@@ -260,7 +260,7 @@
 
 - **要闭掉什么**：§2b 给本格点出的那条 3.0 档候选、也是 `5.5` 自己 `gaps` 里「唯一未闭的 milestone 验收项」的
   最后一点——大 `head_dim` 的实测腿只到 64，`head_dim`=128 那个字节水平在代价表里还不存在。
-- **预登记判据**（取自 `5.5` 的 `objective_criteria`，逐字进 `2657/config.json::criterion`）：**该跌** = 每位置部署字节
+- **预登记判据**（取自 `5.5` 的 `objective_criteria`，逐字进 `axes/5-quant/5.5-fp8-head-dim/experiments/2657-fp8-hd128-head-dim/config.json::criterion`）：**该跌** = 每位置部署字节
   （`G=128` ⇒ 6240 B/位置）；**该不跌 / 可排序** = clean bpc，两个二选一：Q1 = `int8_block_g128` vs `fp16`
   是否越 0.014 配对带；Q2 = `fp8_e4m3 − int8_block_g128` 是否越带；**必须不变** = 严格前缀不变性两条、
   非量化臂逐位不变；**必须报** = fp8 是否需标尺、`head_dim`=128 下的 G 与省幅。
