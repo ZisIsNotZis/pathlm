@@ -1,0 +1,212 @@
+{
+  "experiment": "axes/1-time/1.1.4.1-explicit-memory/experiments/2680-quant-overlay-frontier-13m",
+  "owner_cell": "axes/1-time/1.1.4.1-explicit-memory",
+  "device": "cuda",
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true,
+    "topology": "sequential",
+    "note": "与 2634 / 2638 / 2639 逐字段相同的 stock dense 规格；本实验不训练任何臂，只加一条推理期量化档"
+  },
+  "data": {
+    "name": "enwik8_full",
+    "raw_path": ".tmp/enwik8",
+    "cache": "data/enwik8_full.npz",
+    "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）"
+  },
+  "eval": {
+    "n_batches": 96,
+    "batch_size": 16,
+    "window_seed": 2,
+    "note": "与 2639 同一批数、同一窗口序 ⇒ 纯 fp16 格必须逐位复现 2639 落盘 bpc（判据①）"
+  },
+  "quant": {
+    "mode": "int8",
+    "scheme": "block",
+    "group": 32,
+    "note": "块标尺 int8（沿 head_dim，G=32）是 5.1 判定的近无损档；每位置部署字节 = 值 1 B + 标尺 2 B/32 值 ⇒ 6528 B × k（fp16 = 12288 B × k）"
+  },
+  "arms": [
+    {
+      "name": "win16_s0",
+      "kind": "window",
+      "window": 16,
+      "seed": 0,
+      "quant": true,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+      "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7"
+    },
+    {
+      "name": "win16_s1",
+      "kind": "window",
+      "window": 16,
+      "seed": 1,
+      "quant": true,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+      "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162"
+    },
+    {
+      "name": "win17_s0",
+      "kind": "window",
+      "window": 17,
+      "seed": 0,
+      "quant": true,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win17/model.pt",
+      "sha256": "70f0acb92067adba4f796612bab49ead7153c1b4b7e5bb3ea15a5219ab9cdc1c"
+    },
+    {
+      "name": "win18_s0",
+      "kind": "window",
+      "window": 18,
+      "seed": 0,
+      "quant": true,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win18/model.pt",
+      "sha256": "39316ac04f20e158a6833323888990d149bf22c8da76ca04c4aa642cdcfa5913"
+    },
+    {
+      "name": "win24_s0",
+      "kind": "window",
+      "window": 24,
+      "seed": 0,
+      "quant": true,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win24/model.pt",
+      "sha256": "ebd4ef84736355bc163479e702c34b1383708f90d39510756e38b2cf3fcf90d1"
+    },
+    {
+      "name": "win32_s0",
+      "kind": "window",
+      "window": 32,
+      "seed": 0,
+      "quant": true,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win32/model.pt",
+      "sha256": "dccc58c0065d70f0c202424b7f5f40e28929ffb238db3d3a3954d3095e43287b"
+    },
+    {
+      "name": "win128_s0",
+      "kind": "window",
+      "window": 128,
+      "seed": 0,
+      "quant": true,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win128/model.pt",
+      "sha256": "c17a1cf1747ca59e426eeb1378c90e50802e21401d7058e703a766e8cbe287f7"
+    },
+    {
+      "name": "carrypl16_s0",
+      "kind": "carry",
+      "window": 16,
+      "seed": 0,
+      "quant": false,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16/model.pt",
+      "sha256": "382a74aa0e417b229910cc44f55dcc949c225b3211434df488ee6a72d3036ec3"
+    },
+    {
+      "name": "carrypl16d_s0",
+      "kind": "carry",
+      "window": 16,
+      "seed": 0,
+      "quant": false,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16d/model.pt",
+      "sha256": "cb1940ee2e97f2311998710870be0c86024ed7d65e2ce54c159fcffbca8fe386"
+    },
+    {
+      "name": "carry16_s0",
+      "kind": "carry",
+      "window": 16,
+      "seed": 0,
+      "quant": false,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s0/model.pt",
+      "sha256": "d92114822c09f2f7538ea6a59802eed21b1297409fe91f66c031dec9d6c305eb"
+    },
+    {
+      "name": "carry16_s1",
+      "kind": "carry",
+      "window": 16,
+      "seed": 1,
+      "quant": false,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s1/model.pt",
+      "sha256": "b3d3cdbc57266109b6b461d18c2188c7d1712170f6760b35a48ff9b6170d6843"
+    }
+  ],
+  "carry_specs": {
+    "carrypl16_s0": {
+      "carry_rule": "delta",
+      "carry_per_layer": true,
+      "carry_decay": 1.0,
+      "carry_chunk": 64
+    },
+    "carrypl16d_s0": {
+      "carry_rule": "delta",
+      "carry_per_layer": true,
+      "carry_decay": 0.99,
+      "carry_chunk": 64
+    },
+    "carry16_s0": {
+      "carry_rule": "delta",
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "carry_chunk": 64
+    },
+    "carry16_s1": {
+      "carry_rule": "delta",
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "carry_chunk": 64
+    }
+  },
+  "cost_axis": {
+    "kv_bytes_per_position_unit": 12288,
+    "fp16_bytes_per_key": 12288,
+    "int8_block32_bytes_per_key": 6528,
+    "state_bytes": {
+      "carrypl16_s0": 196608,
+      "carrypl16d_s0": 196608,
+      "carry16_s0": 16384,
+      "carry16_s1": 16384
+    },
+    "note": "与 2639 完全同一口径：每位置缓存字节 = n_layers·2·d_model·每值字节·k（fp16 每值 2 B ⇒ 12288·k；int8 块标尺 G=32 每值 1 B + 2 B/32 值 ⇒ 6528·k）；carry 状态按 2639 的 state_bytes 直接沿用（fp16 计）"
+  },
+  "criterion": {
+    "sigma_cell": 0.00166,
+    "sigma_cell_source": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/results.json::bands.sigma_cell",
+    "cross_cell_band": 0.014,
+    "cross_cell_band_role": "配对 Δ、≥5 窗口的 bpc 参考带（0.014）；本格自测带为主判，两带不混用",
+    "n_boot": 10000,
+    "boot_seed": 2680,
+    "alpha": 0.05,
+    "equality_gate": {
+      "win16_s0": 1.62811,
+      "win16_s1": 1.629093,
+      "win17_s0": 1.624104,
+      "win18_s0": 1.619953,
+      "win24_s0": 1.599856,
+      "win32_s0": 1.595823,
+      "win128_s0": 1.513325,
+      "carrypl16_s0": 1.527595,
+      "carrypl16d_s0": 1.585531,
+      "carry16_s0": 1.624979,
+      "carry16_s1": 1.62664
+    },
+    "equality_gate_source": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/results.json::rows[*].bpc",
+    "bytes_ratio_int8_vs_fp16": 0.53125,
+    "decision": {
+      "quant_damage_inside_band": "逐臂 |Δ_int8| < 0.014（配对 Δ）⇒ 「本尺度无质量增量」（int8 块标尺在纯窗族近无损），不许写「无信号」",
+      "quant_damage_outside_band": "逐臂 Δ_int8 ≥ 0.014 ⇒ 量化在纯窗族有可排序质量代价，如实报方向与幅度",
+      "domination": "carry 点被支配 ⇔ 存在 total_bytes ≤ carry 的 total_bytes 且 bpc ≤ carry_bpc − 0.014 的点；若最小差距 < 0.014 ⇒ 「同一字节水平上不可排序」",
+      "grid_gap": "若决定性格点（int8 下 k≈60，等价 391,680 B）不在盘上 ⇒ 只许报「本网格上不被支配」，并把它写成下一步最小实验，不许插值造点"
+    },
+    "direction_convention": "Δ = 实验格 − 对照格（arm_minus_comparator）；bpc 越低越好，故 Δ > 0 = 实验格更差"
+  },
+  "judged_questions": [
+    "把 KV 的块标尺 int8 档叠加到同一条「每位置部署字节」横轴后，显式状态（carry）点是否仍不被纯窗族支配",
+    "量化档在纯窗族自己的 checkpoint 上是否近无损（本尺度有无质量增量）"
+  ],
+  "budget": {
+    "gpu_wall_budget_min": 25,
+    "n_training_tokens": 0,
+    "note": "纯推理：7 个纯窗臂 × 2 档（fp16 / int8）+ 4 个 carry 臂 × fp16；不训练、不改权重"
+  }
+}
