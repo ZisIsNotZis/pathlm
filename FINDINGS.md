@@ -64,6 +64,13 @@
 | `5.5` 的 `fp8 E5M2` 相对 int8 块标尺**越带更差** ⇒ 「用哪个 fp8 格式」有取舍，不是「fp8 一律免费」 | `axes/5-quant/5.5-fp8-head-dim/project.yaml::conclusion` | 成立（只在 `head_dim`=32 上测过） |
 | `3.1.5` 通道稀疏激活：总参数不变、每 token 只算部分 FFN 通道，在本尺度**是真实但很贵的旋钮**——三个稀疏臂都省下实打实的每 token 算力却全部越出噪声带；把「哪些通道」交给逐 token 按内容选比固定砍一半**更差且更费算力**，坍缩门未命中（选择确实逐 token 变化）；保参数换计算与「直接减半 FFN 参数」的同算力位点对比**本项无配对读数、只作参考线、不下判词**。`status: 被否证` | `axes/3-width/3.1.5-channel-sparsity/project.yaml::conclusion`、`::status` | 成立（主判 n=2 同向、`K25` n=1；matched-step 快照；否证只覆盖「无参数、按 `|pre-activation|` 选」这一形态） |
 
+## 三之三、时间轴（轴 1）的两条判词
+
+| 结论 | 出处 | 状态 |
+| --- | --- | --- |
+| `1.2.3` 内容选择 top-k：在**同等每行可见键数**下，「按内容挑」的 clean bpc 可排序优于「按最近位置挑」（k=32 与 64 两档同向、剂量一致，配对 20/20 同向）⇒ 内容选择是**质量杠杆**；但它必须先算完整 `T×T` 分数矩阵，每位置 KV 字节**结构性省不下来**（内容选择本身不是字节杠杆）。旧读数里的「净亏」应读成「每 token 只看 k 个键」的窗口税，不是「按内容挑」的错 | `axes/1-time/1.2.3-content-topk/project.yaml::conclusion`、`axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/analysis.md` | 部分（n=1 临时结果；T=256、k∈{32,64} 两点；长程召回腿与长 T 未测） |
+| `1.2.2` 局部+全局（Longformer 式）：在**同等 24 个可见键**下，把 8 个键切给「最前 8 个恒可见全局槽」比把 24 个键全给最近位置**更差**（两 seed 同向、各自越带）⇒ 紧预算下「用全局槽换远端可达性」这笔交易在本尺度不划算；同一模式在 200 键时与全因果不可分辨（Δ 落带内）⇒ 是交易不划算，不是掩码坏 | `axes/1-time/1.2.2-block-sparse/project.yaml::conclusion`、`axes/1-time/1.2.2-block-sparse/experiments/2677-local-global-vs-band-13m/analysis.md` | 成立（n=2；13M / T=256 / 24 键；块稀疏（BigBird 式）掩码与率类召回腿未测） |
+
 ## 四、撤回记录
 
 | 被撤回的说法 | 原因 | 出处 | 状态 |

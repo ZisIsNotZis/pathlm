@@ -21,10 +21,10 @@
 
 ## 汇总（生成时统计）
 
-- 规模：实验 **120** 个（`axes/**/experiments/*`），run 条目 **400** 个（313 个是 run 子目录或前缀组，87 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 92 个）。
+- 规模：实验 **122** 个（`axes/**/experiments/*`），run 条目 **406** 个（317 个是 run 子目录或前缀组，89 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 94 个）。
 
-- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**87** 个、`not_reproducible`（不可重建）**33** 个。
-- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 88 个。
+- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**89** 个、`not_reproducible`（不可重建）**33** 个。
+- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 90 个。
 
 ## 这个克隆重建不了什么
 
@@ -90,7 +90,9 @@
 | [2661-implicit-vs-explicit-recall-13m](../axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/) | [1.1.4.5-implicit-vs-explicit](../axes/1-time/1.1.4.5-implicit-vs-explicit/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `train_meta.win16_s0.wall_minutes` = 11.94 | `rebuildable_only` | `realtext_probe.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`）；代码引用不入库的产物：`2639/train/pl16d/results.json`（克隆里不存在，需先重训/自取） |
 | [2616-linear-attention-13m](../axes/1-time/1.2.2-block-sparse/experiments/2616-linear-attention-13m/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.full.wall_min` = 5.75 | `rebuildable_only` | `paired_eval.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2637-linear-attn-quality](../axes/1-time/1.2.2-block-sparse/experiments/2637-linear-attn-quality/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.full-256-lin.wall_min` = 3.67 | `rebuildable_only` | `linear_driver.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
+| [2677-local-global-vs-band-13m](../axes/1-time/1.2.2-block-sparse/experiments/2677-local-global-vs-band-13m/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `bash train_arms.sh`（README.md 的复现小节） | `train_declaration.win16a8_s0.wall_minutes` = 13.07 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2614-topk-sparse-attn-13m](../axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/) | [1.2.3-content-topk](../axes/1-time/1.2.3-content-topk/project.yaml) | ✓ | ✓ | ✓ | 8 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.full.wall_min` = 6.34 | `rebuildable_only` | `paired_eval.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
+| [2676-content-vs-window-13m](../axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/) | [1.2.3-content-topk](../axes/1-time/1.2.3-content-topk/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `bash train_arms.sh`（README.md 的复现小节） | `train_declaration.full.wall_minutes` = 5.95 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2518-exit-retry-law](../axes/2-depth/2.1.1-early-exit/experiments/2518-exit-retry-law/) | [2.1.1-early-exit](../axes/2-depth/2.1.1-early-exit/project.yaml) | ✓ | — | — | 0 | — | `命令未在仓内声明` | — | `not_reproducible` | 仓内无入口脚本（只有 README.md） |
 | [2523-depth-ar-first](../axes/2-depth/2.1.1-early-exit/experiments/2523-depth-ar-first/) | [2.1.1-early-exit](../axes/2-depth/2.1.1-early-exit/project.yaml) | ✓ | — | — | 0 | — | `命令未在仓内声明` | — | `not_reproducible` | 仓内无入口脚本（只有 README.md） |
 | [2523c-three-ablations](../axes/2-depth/2.1.1-early-exit/experiments/2523c-three-ablations/) | [2.1.1-early-exit](../axes/2-depth/2.1.1-early-exit/project.yaml) | ✓ | — | — | 0 | — | `命令未在仓内声明` | — | `not_reproducible` | 仓内无入口脚本（只有 README.md） |
@@ -450,6 +452,10 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2637-linear-attn-quality | full-256-lin-qk | — | — | 5999 | ✓ | — |
 | 2637-linear-attn-quality | linear-256-lin | — | — | 5999 | ✓ | — |
 | 2637-linear-attn-quality | linear-256-lin-qk | — | — | 5999 | ✓ | — |
+| 2677-local-global-vs-band-13m | . | ✓ | — | — | — | — |
+| 2677-local-global-vs-band-13m | smoke/smk24 | ✓ | ✓ | 299 | — | — |
+| 2677-local-global-vs-band-13m | train/win24a0_s0 | ✓ | ✓ | 11999 | — | — |
+| 2677-local-global-vs-band-13m | train/win24a0_s1 | ✓ | ✓ | 11999 | — | — |
 | 2614-topk-sparse-attn-13m | . | ✓ | — | — | — | — |
 | 2614-topk-sparse-attn-13m | full-12k-s0 | — | ✓ | 11999 | — | — |
 | 2614-topk-sparse-attn-13m | full-12k-s0-r2 | — | ✓ | 11999 | — | — |
@@ -458,6 +464,8 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2614-topk-sparse-attn-13m | smoke/smoke-k64 | ✓ | ✓ | 19 | — | — |
 | 2614-topk-sparse-attn-13m | topk32-12k-s0 | — | ✓ | 11999 | — | — |
 | 2614-topk-sparse-attn-13m | topk64-12k-s0 | — | ✓ | 11999 | — | — |
+| 2676-content-vs-window-13m | . | ✓ | — | — | — | — |
+| 2676-content-vs-window-13m | smoke/smk32 | ✓ | ✓ | 39 | — | — |
 | [2518-exit-retry-law](../axes/2-depth/2.1.1-early-exit/experiments/2518-exit-retry-law/) | — | — | — | — | — | 仓内没有 run 产物 |
 | [2523-depth-ar-first](../axes/2-depth/2.1.1-early-exit/experiments/2523-depth-ar-first/) | — | — | — | — | — | 仓内没有 run 产物 |
 | [2523c-three-ablations](../axes/2-depth/2.1.1-early-exit/experiments/2523c-three-ablations/) | — | — | — | — | — | 仓内没有 run 产物 |
