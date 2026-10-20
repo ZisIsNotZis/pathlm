@@ -9,7 +9,7 @@
     python3 run.py --out . --ckpts <ckpt1> <ckpt2> ...          # 全臂
     python3 run.py --smoke --out /tmp/wp622-smoke               # 冒烟（2 prompt × 32 token）
 
-GPU 按 `SCHEMA.md` §20 取锁（`/tmp/pathlm_gpu.lock`，mkdir 法 + holder_pid/heartbeat +
+GPU 按 `harness/SCHEMA.md` §20 取锁（`/tmp/pathlm_gpu.lock`，mkdir 法 + holder_pid/heartbeat +
 `trap` 释放，最多等 10 分钟；等不到就上报，不杀别人的进程）。**锁粒度 = 每 checkpoint**：
 每个 checkpoint 取锁 → 跑完 → 释放 → 留 ≥60 秒窗口再取下一把（见 `README.md` §5 记账）。
 """

@@ -9,7 +9,7 @@
         > /tmp/wp624.nohup 2>&1 &
 
 - `--jobs`：要跑的后台任务名。每个 job **取一次 GPU 锁 → 跑完 → 释放 → 落盘**；
-  job 之间按 `SCHEMA.md` §20.1 留 **≥60 秒让出窗口**（`run_log.txt` 记 `[lock] §20.1 让出窗口`）。
+  job 之间按 `harness/SCHEMA.md` §20.1 留 **≥60 秒让出窗口**（`run_log.txt` 记 `[lock] §20.1 让出窗口`）。
 - `--resume`：读回已落盘的 `results.json`，跳过已完成 job。
 - 每 job 结束就 `flush()`（`results.json` / `RESUME.md` 增量落盘，容忍中途被杀）。
 - **禁墙钟**：`results.json` 无墙钟字段（`has_wall_clock` 自检）；墙钟只进 `run_log.txt`。

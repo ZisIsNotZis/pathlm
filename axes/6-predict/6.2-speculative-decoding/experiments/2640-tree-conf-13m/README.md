@@ -135,7 +135,7 @@ checkpoint（`*.pt` 不入库，只在主工作树；本实验**不训练**）�
 - **禁外推**：绝对水平只适用于「该 checkpoint / 该 prompt 集合 / 该训练步数快照 /
   enwik8 风格文本 / 温度 0 / γ=2 / 未取锁外的外部占用水位」。不得读成
   「业界做不到 / 做得到」，不得外推到别的任务、规模或温度。
-- **GPU**：按 `SCHEMA.md` §20 取锁（`/tmp/pathlm_gpu.lock`，mkdir 法 + holder_pid/heartbeat
+- **GPU**：按 `harness/SCHEMA.md` §20 取锁（`/tmp/pathlm_gpu.lock`，mkdir 法 + holder_pid/heartbeat
   + trap 释放，最多等 10 分钟；等不到就上报，不杀别人的进程）。**锁粒度 = 每 checkpoint**：
   每个 checkpoint 取锁 → 跑完 → 释放 → 留 ≥60 秒窗口再取下一把（整程 <10 min 才允许整程持锁；
   本程 ≥3 个 checkpoint、按臂粒度释放会耗掉 ~27 min 纯 sleep 窗口，超出 60 min 硬盒 ⇒

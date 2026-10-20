@@ -88,5 +88,5 @@ tokens-per-forward ≤ 1 ⇒ 判温度>0 下投机在本尺度不成立。*
 
 - 只写 `axes/6-predict/6.2-speculative-decoding/experiments/2673-robustness-13m/**`；只读复用 2640 / 2650 / 2660 的代码与 checkpoint。
 - **禁改**：`pathlm/**`、`train_*.py`、`tools/**`、`docs/**`、其它轴、其他实验目录、任何 `project.yaml`。
-- GPU 按 `SCHEMA.md` §20 取锁（复制 2660 的 `gpu_lock.py`），**先 code 锁再 GPU 锁**；不得杀他人进程。
+- GPU 按 `harness/SCHEMA.md` §20 取锁（复制 2660 的 `gpu_lock.py`），**先 code 锁再 GPU 锁**；不得杀他人进程。
 - 证据不删；数字可回溯到落盘原始数据。

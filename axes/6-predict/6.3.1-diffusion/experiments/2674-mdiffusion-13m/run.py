@@ -10,7 +10,7 @@
 - `all` = `mdiff` +（`--ar retrain` 时 `arretrain`）+ `finalize`。
 
 纪律（契约 §7 / 派发）：
-- **逐 run 取放锁**（`gpu_lock.py`，`SCHEMA.md` §20）；锁被占则带超时重试，**不杀**他人进程。
+- **逐 run 取放锁**（`gpu_lock.py`，`harness/SCHEMA.md` §20）；锁被占则带超时重试，**不杀**他人进程。
 - **禁墙钟**进 `results.json`/`analysis.md`：`P.has_wall_clock` 自检必须 `[]`；墙钟只进 `run_log.txt`。
 - 只写本目录；只读 import / 复用 `2671-padfill-13m/**`。
 """
@@ -534,7 +534,7 @@ def _write_analysis(results: dict, out: str, steps: int, seeds: list[int]) -> No
     L.append("")
     if steps < 6000:
         L.append(f"**Nk 快照口径：本实验 `S = {steps}`（与 2671 matched），与仓库既有 6000 步档不可比；"
-                 "只读臂间增量与排序**（`SCHEMA.md` §20.3）。")
+                 "只读臂间增量与排序**（`harness/SCHEMA.md` §20.3）。")
         L.append("")
     ar_full = [ref["ar"][s]["ar_full_bpc"] for s in ref.get("ar", {})]
     L.append("我们在**同一 harness、同一 token 预算、同一结构**下问一件事：把「逐 token 因果生成」换成"

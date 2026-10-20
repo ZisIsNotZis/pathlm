@@ -54,7 +54,7 @@ bootstrap 95% CI 不含 0 且越 0.014 bpc 参考带恶化，且提高 K 不能�
 | L4 | 代价轴：`tokens-per-forward = |M|/K`、每 block 顺序前向次数（K vs T−1）、**每 token 等效 FLOPs = K·L**（等效理论量；**禁墙钟**） | 报告齐全 |
 | L5 | **禁墙钟自检**（沿用 2671 的 `has_wall_clock`）+ **n≥2**（seed {0,1}）+ 确定性（同 seed 重跑逐值相同） | 0 命中 / 成立 |
 
-- **用哪个带（C1 裁决，`docs/research-schema.md` §12.1）**：主判是 **bpc 口径** ⇒ 用 **0.014 bpc 带**
+- **用哪个带（C1 裁决，`harness/research-schema.md` §12.1）**：主判是 **bpc 口径** ⇒ 用 **0.014 bpc 带**
   （限配对 Δ、≥5 窗口）；率类指标（如需）走配对 bootstrap / Wilson 95% CI，**不跨量纲借用**。
 
 ## 4 否证条件
@@ -90,5 +90,5 @@ bootstrap 95% CI 不含 0 且越 0.014 bpc 参考带恶化，且提高 K 不能�
 - 只写 `axes/6-predict/6.3.1-diffusion/experiments/2674-mdiffusion-13m/**`；只读 import / 复用
   `axes/6-predict/6.3.2-pad-fill/experiments/2671-padfill-13m/**`。
 - **禁改**：`pathlm/**`、`train_*.py`、`tools/**`、`docs/**`、其它轴、其他实验目录、任何 `project.yaml`。
-- GPU 按 `SCHEMA.md` §20 取锁（复制任一实验目录的 `gpu_lock.py`），**先 code 锁再 GPU 锁**；不得杀他人进程。
+- GPU 按 `harness/SCHEMA.md` §20 取锁（复制任一实验目录的 `gpu_lock.py`），**先 code 锁再 GPU 锁**；不得杀他人进程。
 - 证据不删；数字可回溯到落盘原始数据。

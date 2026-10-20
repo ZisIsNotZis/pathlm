@@ -1,7 +1,7 @@
 # 6 预测轴
 
 > 轴：**6 预测轴**（目录 `axes/6-predict/`）。用词、编号、目录以 `docs/structure.md` §12 为准，
-> 每个研究项的字段契约见 `docs/research-schema.md`。
+> 每个研究项的字段契约见 `harness/research-schema.md`。
 
 预测轴问「一次前向产出几个位置、多出来的位置从哪来、怎么验证」。普通 decoder-only transformer
 一次前向只产 1 个位置（自回归），生成长度 T 就要 T 次顺序前向。目标：用更少的**顺序前向次数**

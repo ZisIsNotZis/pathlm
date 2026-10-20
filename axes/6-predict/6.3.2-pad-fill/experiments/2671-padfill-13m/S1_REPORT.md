@@ -13,7 +13,7 @@
 | `padfill.py` | harness 库：模型（`attn_mask ∈ {causal, full}`）、mask 调度、训练循环、评测（bpc / block 聚类配对 bootstrap CI）、`has_wall_clock`、步时→S |
 | `test_padfill.py` | 契约 §5 的 L0 / L0b 硬门 + bpc / CI / tied 读出 / 评测聚合 / S 规则单测（17 项） |
 | `smoke_steptime.py` | ≥100 step 步时冒烟，输出实测步时与选定 S |
-| `gpu_lock.py` | GPU 互斥锁（`SCHEMA.md` §20；从 2660 复制，name 改 `wp6.3.2`） |
+| `gpu_lock.py` | GPU 互斥锁（`harness/SCHEMA.md` §20；从 2660 复制，name 改 `wp6.3.2`） |
 | `MODEL.md` | 结构 / 参数量实测 / 数据 / 复现命令 |
 | `S1_REPORT.md` | 本文件 |
 | `evidence/pytest_test_padfill.txt` | `pytest -v` 真实输出 |

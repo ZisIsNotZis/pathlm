@@ -1,7 +1,7 @@
 # 7 不研究（只当对照组）· 参照台账
 
 > 轴：**7 不研究（只当对照组）**（目录 `axes/7-references/`）。用词、编号、目录以
-> `docs/structure.md` §12 为准；每个研究项的字段契约见 `docs/research-schema.md`。
+> `docs/structure.md` §12 为准；每个研究项的字段契约见 `harness/research-schema.md`。
 > 轴 7 是**参照台账**（只写本 `README.md`）：这些是拿来当跑分线的「巨人」，
 > **不立项、不写 `project.yaml`**（`docs/structure.md` §12 轴 7 / §13.4）。
 > 每条参照登记「是什么 / 当什么跑分线（要打败它什么）/ 出处 / 证据落点」。
@@ -10,7 +10,7 @@
 
 | 参照（exact wording） | 是什么 | 当什么跑分线（要打败它什么） | 证据落点 |
 |---|---|---|---|
-| 全注意力基线 | 无可见性约束的**全因果 softmax 注意力**，stock decoder-only transformer 本身 | **质量锚点与 100% 归一基线**：一切省算力 / 省内存 / 信息右移手段的对照分母；手段必须在同预算下质量不越本格噪声带（`SCHEMA.md` §10–§17） | [`experiments/A2-full-attention/`](experiments/A2-full-attention/)（旧格 A2 整搬）；13M B0 = **1.5074 bpc**（1.1 epoch 快照）/ 1.3459（4.4 epoch 渐近），100M B0 = 1.4612（1.09 epoch）；`.scratch/04-m1-runs/evidence/B0 @e38349f` 留原地作锚 |
+| 全注意力基线 | 无可见性约束的**全因果 softmax 注意力**，stock decoder-only transformer 本身 | **质量锚点与 100% 归一基线**：一切省算力 / 省内存 / 信息右移手段的对照分母；手段必须在同预算下质量不越本格噪声带（`harness/SCHEMA.md` §10–§17） | [`experiments/A2-full-attention/`](experiments/A2-full-attention/)（旧格 A2 整搬）；13M B0 = **1.5074 bpc**（1.1 epoch 快照）/ 1.3459（4.4 epoch 渐近），100M B0 = 1.4612（1.09 epoch）；`.scratch/04-m1-runs/evidence/B0 @e38349f` 留原地作锚 |
 | RoPE（位置语义族） | 旋转位置编码与长度外推一族（RoPE / 插值 YaRN·NTK / 无位置） | **长上下文工程前提**：绝对位置嵌入是硬上界（解码总长 ≤ seq_len），任何长上下文线必须先对齐 / 超越位置语义族的长度泛化 | [`experiments/A8-positional-semantics/`](experiments/A8-positional-semantics/)（旧格 A8 整搬，本仓零经验）；`.scratch/07-x1-x3/evidence @7b47555` |
 | GQA/MQA（KV 头共享） | 减少 KV 头数以省推理显存 / 带宽（MQA 1 头 / GQA G 头 / MLA 低秩） | **KV 预算轴的同字节对手**：窗口（`1.1.1`）/ 量化（`5.1`）/ 低秩（`5.4`）等手段必须在同一「每位置 KV 字节」预算下质量不输 GQA/MQA | [`experiments/W3-kv-head-sharing/2616-gqa-mqa-13m`](experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/)（旧格 W3 整搬）；13M clean bpc：mha **1.4820** / gqa **1.4963**（+0.0143；同 seed 重跑 +0.0139 **跨门槛** ⇒ 依预登记规则该臂判读作废）/ mqa **1.4938**（+0.0118，与 GQA 差 0.0025 ≪ 0.014 不可互排）；解析 KV 内存 12288 → **3072 B/位置（GQA −75%）** / **1536 B（MQA −87.5%）** |
 | CALM/LayerSkip/MoD（既有早退实现） | 三种标准深度自适应实现：置信门控早退（CALM）/ 自投机早退（LayerSkip）/ 逐 token 路由（MoD） | **深度轴与预测轴要打败的基线**：逐 token 早退（`2.1.1`）与投机解码（`6.2`）必须在同算力口径（layer-passes / tokens-per-forward）下质量 ≥ 这些标准实现 | [`experiments/R7-existing-early-exit/2623-standard-early-exit-13m`](experiments/R7-existing-early-exit/2623-standard-early-exit-13m/)（旧格 R7 整搬）；13M：CALM 原式口径退到 **3.43/8 层**（一致率 0.959），LayerSkip 窗口接受率 **0.9109**（条件口径 0.9520），MoD isoFLOP **+0.398 bpc** |

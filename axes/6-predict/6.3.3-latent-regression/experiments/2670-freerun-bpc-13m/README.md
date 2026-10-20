@@ -58,7 +58,7 @@ budget: "GPU ≤10 min（硬时间盒）；一次性生成评测，无训练"
 - **bpc**（每字符比特数，越低越好）= `(Σ −ln p(emitted_token)) / (n_tokens · ln 2)`；prompt 不计分。
 - 主判差：`Δbpc = bpc(候选臂) − bpc(ar 同主干)`，**同一批 prompt 逐 prompt 配对**，
   **prompt 聚类配对 bootstrap 95% CI**（B=2000，seed 写进 `results.json`；clustered by prompt）。
-- **用哪个带（C1 裁决，`docs/research-schema.md` §12.1）**：本实验的指标是 **bpc 口径** ⇒
+- **用哪个带（C1 裁决，`harness/research-schema.md` §12.1）**：本实验的指标是 **bpc 口径** ⇒
   参考门槛用 **0.014 bpc 带**（限配对 Δ、≥5 窗口；本实验 12 个 prompt 聚类窗口满足）；
   率类指标（如需要）走配对 bootstrap / Wilson 95% CI、**不跨量纲借用** 0.014。
 - 必须同时报：每 token 主干等效 FLOPs（`ar` = L；路径 (i) = ≈ L/k）、tokens-per-forward（1 vs k）、
@@ -104,5 +104,5 @@ budget: "GPU ≤10 min（硬时间盒）；一次性生成评测，无训练"
 ## 8 边界与纪律
 
 - 只写本目录；禁改 `pathlm/**`、`train_*.py`、`tools/**`、`docs/**`、其它轴、其它研究项目录。
-- GPU 按 `SCHEMA.md` §20 取锁（本目录内 `gpu_lock.py` 可从 2660 复制），**先 code 锁再 GPU 锁**；不得杀他人进程。
+- GPU 按 `harness/SCHEMA.md` §20 取锁（本目录内 `gpu_lock.py` 可从 2660 复制），**先 code 锁再 GPU 锁**；不得杀他人进程。
 - 证据不删；数字可回溯到落盘原始数据。

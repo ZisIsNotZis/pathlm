@@ -21,7 +21,7 @@
 - 判据 = tokens-per-forward（一次前向产出的位置数，该涨）+ 每 token 顺序前向次数（该跌）+
   序列级 bpc / perplexity（该不跌，须越 0.014 噪声带才算可排序）。
 - 每 token 等效 FLOPs 是**代价轴**、如实报：并行生成必然用更多并行算力换更少顺序前向，
-  「FLOPs 涨」是该范式的定义性质，不是亏损发现（`SCHEMA.md` §10–§17 的判据取向）。
+  「FLOPs 涨」是该范式的定义性质，不是亏损发现（`harness/SCHEMA.md` §10–§17 的判据取向）。
 - **墙钟不进判据**；代价 = 等效理论量（FLOPs / layer-passes / tokens-per-forward），考虑 pipelining。
 - 「手段」不另立研究项；三条路线都是**可独立收口、可独立否证**的问题，故各写一份 `project.yaml`
   （`docs/structure.md` §13.1/§13.3）。

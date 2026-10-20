@@ -56,12 +56,12 @@ python3 axes/7-references/experiments/R7-existing-early-exit/2623-standard-early
 | `pathlm/depth_ar.py` | `b8b78fc` | `b304c234b82b51a49ba477285169b41e` | 新增 `aux_mode` / `carry_gate` / `mod_ratio` 配置与校验、`FrozenOpenGate`、非 dense 前向与解码器的门分支、additive 归一化 |
 | `train_depth_ar.py` | `b8b78fc` | `218b63179e623d6a938e7cabe85a71c5` | 新增 4 个 CLI 开关 + `_r7_intervention` 活性块 + 规格自检 |
 | `pathlm/mod_router.py` | `b8b78fc` | `33c46e9614580b9da230ffe4de91e8a0` | 新文件（MoD 式路由，`mod_ratio>0` 才激活） |
-| `docs/engine_capability.md` | `a78999c` | `6d7a4537dc6cb0da0548a7bc2c4816f0` | 拒绝点行号同步 + 新增 C13–C16 四条能力行 |
+| `harness/engine_capability.md` | `a78999c` | `6d7a4537dc6cb0da0548a7bc2c4816f0` | 拒绝点行号同步 + 新增 C13–C16 四条能力行 |
 | `tests/test_engine_capability.py` | `b8b78fc` | `6d0adb594a2a9dc4eec6e2f8004ebe0d` | 新增 C13–C16 四个可执行用例 |
 
 ## 跨线重叠与归属（复核 P0-1 要求如实登记；**闭环状态见第 3 条**）
 
-1. **`docs/engine_capability.md` 与 `tests/test_engine_capability.py` 的**真实归属**：
+1. **`harness/engine_capability.md` 与 `tests/test_engine_capability.py` 的**真实归属**：
    这两个文件在 `b8b78fc` 之前是**未跟踪**状态（F_CLOSURE / M-carrier 方向的在飞工作，
    由**对方线**撰写）；我的引擎改动使表中「拒绝点行号」实例失效、其机器核对变红，
    为恢复共享 CI 绿我把它们**纳入 `b8b78fc`** 并同步行号 + 补本波新开关的四条能力行。

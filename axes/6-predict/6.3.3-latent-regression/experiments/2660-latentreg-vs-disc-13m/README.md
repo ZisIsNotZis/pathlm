@@ -107,7 +107,7 @@ batch = 4096 个位置、固定数据顺序 seed=2660）；种子 ∈ {0, 1}（n
 - **实现边界**：**不得**修改 `pathlm/**`、`grid=6.3.3` 之外的实验目录、`2631/**`（只读）；
   本实验全部代码在本目录内。
 - **禁外推**：结论只适用于「该冻结 ckpt / char enwik8 / k=2 / 该训练预算 / tied 共享读出」。
-- **GPU**：按 `SCHEMA.md` §20 取锁（`/tmp/pathlm_gpu.lock`，mkdir 法 + holder_pid/heartbeat + `trap`
+- **GPU**：按 `harness/SCHEMA.md` §20 取锁（`/tmp/pathlm_gpu.lock`，mkdir 法 + holder_pid/heartbeat + `trap`
   释放，最多等 10 分钟；等不到就上报）。纯 CPU 段不取锁。
 
 ## 6 必要自检（写进单测，须能失败）

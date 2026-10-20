@@ -1,7 +1,7 @@
 # 9 Backlog（不删，移出主线）
 
 > 轴：**9 Backlog（不删，移出主线）**（目录 `axes/9-backlog/`）。用词、编号、目录以
-> `docs/structure.md` §12 为准，每个研究项的字段契约见 `docs/research-schema.md`。
+> `docs/structure.md` §12 为准，每个研究项的字段契约见 `harness/research-schema.md`。
 > Backlog 项保留**研究项形式**（`status: 未开始`），**证据一律保留、不删**（`docs/structure.md` §13.6）。
 
 Backlog 收「不删、但已移出主线」的算力路径：它们成立与否尚不明确，或机制归属未定；

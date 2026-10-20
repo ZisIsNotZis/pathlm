@@ -83,7 +83,7 @@ status: judged
 
 **口径说明：0.014（= 1.4pp）在本格是预登记的实用阈值，不是已测的准确率方差
 （准确率与 bpc 是两个不同随机变量）；准确率的可排序性用二项 / Wilson 95% CI
-（见 `docs/methodology.md` §2）。四臂差 ≪ 0.014。**
+（见 `harness/methodology.md` §2）。四臂差 ≪ 0.014。**
 
 ## 5. 对照与方差
 

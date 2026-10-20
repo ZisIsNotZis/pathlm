@@ -30,7 +30,7 @@ budget: "GPU ≤60 min（硬时间盒）：只训头（主干冻结）+ 评测�
 | 臂 | 模型 | 说明 |
 |---|---|---|
 | `native` | 新模型 | 全深度逐 token 贪心（无损性参照与正确性基准） |
-| `ar_1step`（诚实对手） | 新模型 | 1-step AR 两次前向（只替换紧邻位置；`SCHEMA.md` §11 口径，与 2631 一致） |
+| `ar_1step`（诚实对手） | 新模型 | 1-step AR 两次前向（只替换紧邻位置；`harness/SCHEMA.md` §11 口径，与 2631 一致） |
 | `direct1` | 新模型 | 单候选（node-2 头 argmax）+ 一次前向精确验证（= 2640 `direct1` 口径） |
 | `lvl1_tree` | 新模型 | **一级树**：位置 N+2 的 K 个候选 + 一次前向批量精确验证（K ∈ {2,4}；行 = K 行平铺，与 2640 `tree_direct_k2` / `tree_topk4` 同机制） |
 | `lvl2_tree` | 新模型 | **完整二级树**：位置 N+2 的 K 个候选，每个候选再以 `chain_second` 的第二级头给出 N+3 草稿，**一次前向**经 `Decoder.step_tree_multi` 树注意力批量验证（父指针 = 该候选） |
@@ -91,7 +91,7 @@ budget: "GPU ≤60 min（硬时间盒）：只训头（主干冻结）+ 评测�
   否则 `tests/test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness` 会红）。
 - `results.json`（臂级 τ / α₁ / CI / 代价轴 / config；**无墙钟字段**）、`analysis.md`（人话摘要在前）、
   `MODEL.md`（头权重哈希 / 复现命令）、`run_log.txt`、`train_log.jsonl`、`RESUME.md`。
-- GPU 纪律：按 `SCHEMA.md` §20 取锁、**逐 run 取放锁**；**长任务用 detached supervisor-retry**（后台 `while` 循环 +
+- GPU 纪律：按 `harness/SCHEMA.md` §20 取锁、**逐 run 取放锁**；**长任务用 detached supervisor-retry**（后台 `while` 循环 +
   短轮询），**不阻塞等锁**；抢不到锁按 blocker 如实记，不动 CPU 全量、不杀他人进程。
 
 ## 8 边界

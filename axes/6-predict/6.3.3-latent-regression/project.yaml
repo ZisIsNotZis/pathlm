@@ -1,4 +1,4 @@
-# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+# 研究项 SSOT：契约见 harness/research-schema.md，布局见 docs/structure.md §12。
 id: "6.3.3"
 axis: "6 预测轴"
 title: "latent regression 批量生成（估计得贪心）"
@@ -35,7 +35,7 @@ argument: "回归式与离散式的差别只在最后一跳：前者把「预测
 gaps:
   - "free-run bpc 只测了 k=2、温度 0 贪心、路径 (i) 直接发；k=4 的 free-run 与温度采样未测（下一步最小实验 = 复用 `2670` 的驱动加 k=4 头 + 12 prompt × 200 token，成本 ≈30 s GPU）"
   - "真值锚只用「另一主干 node-1」当 scorer（同族偏差未剥离）：未用族外第三方模型打分；路径 (i) 只有 13M 一种规模"
-  - "只有 13M 冻结主干一种规模（53.9M 未跑）；无低局部先验对照任务（SCHEMA.md §19），命中率 / α₁ 水平不得外推"
+  - "只有 13M 冻结主干一种规模（53.9M 未跑）；无低局部先验对照任务（harness/SCHEMA.md §19），命中率 / α₁ 水平不得外推"
   - "与 6.2（主干内联合训练离散头）/ 6.3.1（K 步去噪）/ 6.3.2（一次填空）的边界未在同一实验里排开"
   - "λ 网格只到 {0, 0.1, 1.0} 且只正向（增益随 λ 单调上升，最优 λ 与饱和点未探）；k 只到 4"
   - "冻结特征训头相对主干内联合训练头（2640 `direct1` α₁ 0.802）整体弱（−0.069…−0.160）：该差是训练 regime 的差，未做「把同一监督项加进主干内头训练」的对照"
@@ -58,7 +58,7 @@ work_packages:
     means: "13M 冻结主干 + 共享读出，{AR, latent 回归 k=2/4, 同参数量离散跳头 k=2/4}，报 tokens-per-forward / τ / 草稿接受率 / bpc / 每 token 等效 FLOPs，n≥2；含 latent 一致性项有无消融"
     acceptance: "同参数量、同读出对齐；冻结断言（grad is None）通过；增益归因可分（回归式 vs 容量）"
     evidence: "axes/6-predict/6.3.3-latent-regression/experiments/2660-latentreg-vs-disc-13m/"
-    review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b，复核排在执行之后）——已做两轮：`.scratch/63-axis6-predict/REVIEW-B2.md`（fresh、只读、无 shell：判 FAIL，但明确无 blocker 级科学缺陷；2 normal 已修）与 `REVIEW-B3.md`（同 revision 静态复核：本项全部数字逐值对账通过、三项主动证伪未推翻判词；新 1 normal 已修）。**执行类验收（pytest / mutate / summary / 确定性重跑）未获 fresh 复核者亲自执行（三轮复核者均无 shell），由 writer 与 axis6-lead 自跑并留证——见 conclusion_review 的残余缺口声明。**"
+    review: "跑完另派 fresh 复核（harness/SCHEMA.md §14/§14b，复核排在执行之后）——已做两轮：`.scratch/63-axis6-predict/REVIEW-B2.md`（fresh、只读、无 shell：判 FAIL，但明确无 blocker 级科学缺陷；2 normal 已修）与 `REVIEW-B3.md`（同 revision 静态复核：本项全部数字逐值对账通过、三项主动证伪未推翻判词；新 1 normal 已修）。**执行类验收（pytest / mutate / summary / 确定性重跑）未获 fresh 复核者亲自执行（三轮复核者均无 shell），由 writer 与 axis6-lead 自跑并留证——见 conclusion_review 的残余缺口声明。**"
     status: "已完成"
   - id: "WP2"
     what: "路径 (i) 的 free-run 序列级 bpc 与真值锚"

@@ -55,7 +55,7 @@ budget: "S1（harness + 单测 + 步时冒烟）GPU ≤3 min；S2（5 臂 × 2 s
   训练总时 ≤ 25 min」反解 S（取整到 500 的倍数，最低 1500）。S 一旦写进 `results.json::config.steps`
   即对**全部 10 个 run 逐字段相同**，不得逐臂不同。
 - 若 S < 6000，必须在 `analysis.md` 首段声明「**Nk 快照口径：与仓库既有 6000 步档不可比**，本实验只读
-  **臂间增量与排序**」（`SCHEMA.md` §20.3）；**禁止**通过砍臂 / 砍 seed / 改配方来迁就时间盒。
+  **臂间增量与排序**」（`harness/SCHEMA.md` §20.3）；**禁止**通过砍臂 / 砍 seed / 改配方来迁就时间盒。
 
 ## 4 评测口径（写死）
 
@@ -71,7 +71,7 @@ budget: "S1（harness + 单测 + 步时冒烟）GPU ≤3 min；S2（5 臂 × 2 s
 - **信息集注释（必须同时报）**：`fill_bidir` 的信息集 = 全部**非 M** 真 token（含右侧）+ 自身位置的 mask 占位；
   `ar_at_M_r` 的信息集 = 全部**左侧**真 token（含 M 左侧的真值）⇒ 两者**互不包含**，该不对称必须写在
   `analysis.md`，不得把主判差读成「纯机制优劣」。
-- **用哪个带（C1 裁决，`docs/research-schema.md` §12.1）**：本实验主判是 **bpc 口径** ⇒ 参考门槛用
+- **用哪个带（C1 裁决，`harness/research-schema.md` §12.1）**：本实验主判是 **bpc 口径** ⇒ 参考门槛用
   **0.014 bpc 带**（限配对 Δ、≥5 窗口；本实验 64 个 block 聚类窗口满足）；率类指标（如需）走
   配对 bootstrap / Wilson 95% CI、**不跨量纲借用** 0.014。
 - 必须同时报：tokens-per-forward（`ar`=1；填空=|M|≈r·T）、每 block 顺序前向次数（`ar`=T−1；填空=1）、
@@ -117,5 +117,5 @@ budget: "S1（harness + 单测 + 步时冒烟）GPU ≤3 min；S2（5 臂 × 2 s
 ## 9 边界与纪律
 
 - 只写本目录；禁改 `pathlm/**`、`train_*.py`、`tools/**`、`docs/**`、其它轴、其它研究项目录。
-- GPU 按 `SCHEMA.md` §20 取锁（本目录内 `gpu_lock.py` 可从 2660 复制），**先 code 锁再 GPU 锁**；不得杀他人进程。
+- GPU 按 `harness/SCHEMA.md` §20 取锁（本目录内 `gpu_lock.py` 可从 2660 复制），**先 code 锁再 GPU 锁**；不得杀他人进程。
 - 证据不删；数字可回溯到落盘原始数据。

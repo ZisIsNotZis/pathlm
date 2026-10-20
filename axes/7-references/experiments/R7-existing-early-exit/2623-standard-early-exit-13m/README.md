@@ -50,7 +50,7 @@ budget: "GPU 墙钟 ≤120 min（含冒烟 + 全部训练臂 + 推断电池 + �
 | 质量（CALM） | 标定后门控的**平均退出深度** + 与全深度流的**逐 token 一致率** | CALM 式门控的兑现度（该涨：一致率；该跌：平均深度） |
 | 质量（LayerSkip） | 真解码路径的**草稿接受率**（γ=1/2/4/8，按位置） | 自草稿的接受率≠代理口径；必须在真路径上量 |
 | 质量（MoD） | 最终 bpc + 逐层放行比例 | 路由是否真的在跑（活性量）+ 是否值 |
-| 算力（等价） | **解析 layer-position / token**：CALM = 实测平均退出深度；LayerSkip = L(1+γ)/(1+τ)；MoD = ratio·L（实测复核） | **不得用墙钟当算力**（`docs/methodology.md` §3） |
+| 算力（等价） | **解析 layer-position / token**：CALM = 实测平均退出深度；LayerSkip = L(1+γ)/(1+τ)；MoD = ratio·L（实测复核） | **不得用墙钟当算力**（`harness/methodology.md` §3） |
 | 墙钟 | 交错轮次（3 轮 × 4 prompt）单流解码 tok/s 的**比值中位 + 极差** | 部署口径；与算力口径必须并报（`SCHEMA` §17.9） |
 | 内存 | 训练 peak / 解码 peak（`nvidia-smi` 前后 + torch 峰值） | 共享卡礼貌线；MoD 的近等算力不等于近等显存 |
 | 活性 | 门均值（`c1-*`）、放行比例与路由器概率分离度（`mod`）、接受率与轮内位置曲线（spec） | `SCHEMA` §10：不许交付「死开关」 |
@@ -185,7 +185,7 @@ budget: "GPU 墙钟 ≤120 min（含冒烟 + 全部训练臂 + 推断电池 + �
 
 **未找到直接前例**的部分：把「主目标是否被归一化降权」当成**单因素**、在同引擎上拆
 「配方固有 vs 目标降权」——检索词（本地无联网，故只列本仓内检索）：`aux_weight`、
-`final_weight`、`renorm`、`norm` 于 `pathlm/`、`.scratch/23-depth-ar`、`docs/methodology.md`。
+`final_weight`、`renorm`、`norm` 于 `pathlm/`、`.scratch/23-depth-ar`、`harness/methodology.md`。
 
 ## §22.8 能力面分析（派发前逐条）
 

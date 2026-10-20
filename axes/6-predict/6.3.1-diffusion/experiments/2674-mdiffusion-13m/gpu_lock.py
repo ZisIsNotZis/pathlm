@@ -1,4 +1,4 @@
-"""GPU 互斥锁（SCHEMA.md §20）：mkdir 法 + holder_pid + heartbeat + 释放。
+"""GPU 互斥锁（harness/SCHEMA.md §20）：mkdir 法 + holder_pid + heartbeat + 释放。
 
 用法：`with gpu_lock(): ...`。最多等 `max_wait` 秒；等不到抛 GPUUnavailable，
 由调用方上报（**不杀**别人的进程）。

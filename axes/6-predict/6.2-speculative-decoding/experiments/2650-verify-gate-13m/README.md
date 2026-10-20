@@ -120,7 +120,7 @@ native，则门禁有漏洞（真缺陷，先修再报）。
   把被 import 文件的 sha256 记进 `results.json`）；**不修改** `pathlm/**`；
   新臂在本目录内实现（薄扩展 + 对抗候选构造函数）。
 - **禁外推**：绝对水平只适用于该 checkpoint / 该 prompt 集 / 温度 0 / γ=2 / enwik8 char 文本。
-- **GPU**：按 `SCHEMA.md` §20 取锁（`/tmp/pathlm_gpu.lock`，mkdir 法 + holder_pid/heartbeat + `trap` 释放，
+- **GPU**：按 `harness/SCHEMA.md` §20 取锁（`/tmp/pathlm_gpu.lock`，mkdir 法 + holder_pid/heartbeat + `trap` 释放，
   最多等 10 分钟；等不到就上报，不杀别人的进程）。**锁粒度 = 每 checkpoint**：取锁 → 跑完 → 释放 →
   留 ≥60 s 窗口再取下一把。纯 CPU 的写码/单测**不取锁**。
 

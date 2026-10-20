@@ -56,7 +56,7 @@ soft 与 hard 的 rescore 峰值差在 seed {0,1} 上都不显著（配对 CI �
 | L4 | 可读性：`tf_acceptance`（逐深度接受率）与 `depth_curve` 的 `acc` 齐备（「填入位置可读性该涨」的观测面） | 报告齐全 |
 | L5 | **禁墙钟**：`results.json` / `analysis.md` 的判据区不得含墙钟字段（沿用 2660 的 `has_wall_clock` 自检）；墙钟只允许进 `run_log.txt` | 0 命中 |
 
-- **用哪个带（C1 裁决，`docs/research-schema.md` §12.1）**：clean bpc 口径用 **0.014 bpc 带**（限配对 Δ、≥5 窗口）；
+- **用哪个带（C1 裁决，`harness/research-schema.md` §12.1）**：clean bpc 口径用 **0.014 bpc 带**（限配对 Δ、≥5 窗口）；
   **rescore 峰值 / 接受率属率类** ⇒ 走配对 bootstrap / Wilson 95% CI 为主判，**不跨量纲借用** 0.014。
 
 ## 4 否证条件
@@ -89,5 +89,5 @@ soft 与 hard 的 rescore 峰值差在 seed {0,1} 上都不显著（配对 CI �
 
 - 只写 `axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m/**`；**禁改** `pathlm/**`、
   `train_*.py`、`tools/**`、`docs/**`、其它轴、`.scratch/23-depth-ar/evidence/**`（只读复用）、任何 `project.yaml`。
-- GPU 按 `SCHEMA.md` §20 取锁（本目录内 `gpu_lock.py` 可从 2660 复制），**先 code 锁再 GPU 锁**；不得杀他人进程。
+- GPU 按 `harness/SCHEMA.md` §20 取锁（本目录内 `gpu_lock.py` 可从 2660 复制），**先 code 锁再 GPU 锁**；不得杀他人进程。
 - 证据不删；数字可回溯到落盘原始数据。

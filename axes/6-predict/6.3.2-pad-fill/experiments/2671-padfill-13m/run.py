@@ -11,7 +11,7 @@
 纪律：
 - **逐 run 落盘**：每跑完一个 `(arm, seed)` 即重写 `results.json` 与 `RESUME.md`，可取续跑
   （`--resume` 跳过已完成 run）。
-- **GPU 按臂取放锁**（`gpu_lock.py`，`SCHEMA.md` §20）：每个 run 单独 with gpu_lock，绝不整程独占；
+- **GPU 按臂取放锁**（`gpu_lock.py`，`harness/SCHEMA.md` §20）：每个 run 单独 with gpu_lock，绝不整程独占；
   锁被占则登记并重试，**不杀**他人进程。
 - **禁墙钟**：`results.json` / `analysis.md` 判据不含墙钟语义字段（`P.has_wall_clock` 自检必须为 `[]`）；
   墙钟只允许出现在 `run_log.txt`。
@@ -538,7 +538,7 @@ def _write_analysis(results: dict, out: str, steps: int, seeds: list[int]) -> No
     L.append("## 人话摘要")
     L.append("")
     L.append(f"**Nk 快照口径：本实验 `S = {steps}`，与仓库既有 6000 步档不可比；只读臂间增量与排序**"
-             "（`SCHEMA.md` §20.3）。")
+             "（`harness/SCHEMA.md` §20.3）。")
     L.append("")
     L.append("我们在**同一 harness、同一 token 预算、同一结构**（唯一变量 = 注意力可见性 + 损失位置集）下，"
              "比较「一次前向把所有待填位置填出来」的填空臂和全因果 AR 参照：AR 逐 token 生成，"

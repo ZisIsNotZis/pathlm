@@ -9,7 +9,7 @@
 `MODEL.md` / `run_log.txt`（含墙钟，只此一处）/ `train_log.jsonl` / `heads/*.pt`（不入库）/
 `RESUME.md`（已完成 / 下一步确切命令）。
 
-GPU 纪律（`SCHEMA.md` §20 / §20.1）：**逐 run 取放锁**，臂间（以及训练与评测之间）释放后
+GPU 纪律（`harness/SCHEMA.md` §20 / §20.1）：**逐 run 取放锁**，臂间（以及训练与评测之间）释放后
 `sleep 60` 再重取（`run_log.txt` 里可见 `[§20.1] yield window`）；整程 <10 min 的冒烟可
 `--lock-mode whole` 整程持锁。长任务请用 detached（`nohup` + `while` 重试）方式起，
 本驱动**不在前台阻塞等锁**：取不到锁抛 `GPUUnavailable`，由调用方重试。
@@ -288,7 +288,7 @@ def write_model_md(out: str, results: dict, log) -> None:
     lines = ["# MODEL.md · 权重清单与复现命令（2675-second-tree-13m）", "",
              "主干 = 2631-spec-three-arms/train/{13m_s0,13m_s1}（**只读、冻结**）；本 WP 只训二级头",
              "（`transforms_chain2`/`chain_cat2`/`conf_chain3`，见 `second_tree.py::train_chain_head`）。",
-             "头权重 `heads/*.pt` 是派生物、`*.pt` 已被 `.gitignore` 排除（`docs/methodology.md` §8），",
+             "头权重 `heads/*.pt` 是派生物、`*.pt` 已被 `.gitignore` 排除（`harness/methodology.md` §8），",
              "此处只登记内容哈希。", "",
              "| 单元 | 头参数 | state_dict 摘要 | 文件 sha256 |", "|---|---|---|---|"]
     for key, e in sorted(results["runs"].items()):
@@ -370,7 +370,7 @@ def update_resume(out: str, results: dict, todo: list[str], log) -> None:
              "", "## 未完成（下一步确切命令）", ""]
     lines += [f"- {c}" for c in todo] or ["- （无：本次派发的单元都已落盘）"]
     lines += ["", "## 纪律提醒", "",
-              "- 逐 run 取放锁 + 臂间 `sleep 60`（`SCHEMA.md` §20.1）；长任务用 `nohup` detached 重试。",
+              "- 逐 run 取放锁 + 臂间 `sleep 60`（`harness/SCHEMA.md` §20.1）；长任务用 `nohup` detached 重试。",
               "- `--resume` 幂等：重跑同一命令会跳过已完成的 `train|*`/`eval|*` 单元。", ""]
     with open(os.path.join(out, "RESUME.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
