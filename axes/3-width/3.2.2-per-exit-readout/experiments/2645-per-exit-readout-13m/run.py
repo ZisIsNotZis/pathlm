@@ -44,6 +44,9 @@ import time
 import torch
 import torch.nn as nn
 
+from tools.prereg_bind import require as require_prereg
+from pathlib import Path
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
 sys.path.insert(0, ROOT)
@@ -889,6 +892,12 @@ def main():
     ap.add_argument("--aggregate-all", dest="aggregate_all", action="store_true",
                     help="按 config.json::seeds 汇总全部 seed 并套 README §4 的 n=2 规则")
     args = ap.parse_args()
+    # 预登记门：契约（README + config.json + 本脚本）必须在训练之前绑定，绑定必须早于读数
+    # （docs/methodology.md §8）。缺绑定即拒绝启动——训练入口与评测入口同一条门。
+    if require_prereg(Path(__file__).resolve().parent) != 0:
+        raise SystemExit("预登记未绑定：先跑 python3 tools/prereg_bind.py "
+                         "axes/3-width/3.2.2-per-exit-readout/experiments/"
+                         "2645-per-exit-readout-13m --contract README.md config.json run.py")
     if args.out_root is None:
         args.out_root = os.path.join(HERE, "runs")
     if args.aggregate_all:
