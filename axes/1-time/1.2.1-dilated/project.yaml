@@ -14,16 +14,32 @@ validation: "端到端：对照 = stock 全因果基线（归一为 100%）+ 同
 objective_criteria: "该涨：dilated 臂的长程召回（相对同可见键数的硬窗口臂）；该跌/该不变：clean bpc（不得越 0.014 噪声带）；必须不变：每 token 可见键数（与硬窗口严格相等，否则不是同预算比较）与因果性。"
 falsification: "若 dilated 掩码在同可见键数下相对硬窗口的长程召回不越噪声带，且 clean bpc 无改善 ⇒ dilated 这一可见结构在本尺度无净增量、不成立；若 dilated 掩码的召回相对全因果退到 chance ⇒ 扩感受野在此规模未能搬运远距离信息。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）为主判；长程召回等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014。"
 failure_analysis: ""
-conclusion: ""
-conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按本仓的预登记原则写（须有对照 + 客观判据 + 口径 + 否证条件），并把「同可见键数」作为必须不变项钉死。独立复核未做。"
-laws: []
-cost_rows: []
-experiments: []
+conclusion: "本尺度判「空洞采样无净增量、本设计下无信号」（判据线在训练之前绑定：`axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m/README.md` §4 与同目录的 `prereg_binding.json`）。三臂同可见键数：`full` 全因果（复用 `2614` 的 checkpoint）、`win32` 取最近 32 个位置、`dil32` 取近端 16 个位置 + 16 个按行均匀铺满前缀的空洞点；后两臂每行可见键数逐行相等（都 = min(32, i+1)、逐行核过 0 处不等）、因果子集、参数量逐位相等（6,962,688）、主干初始化同 seed 逐位相同。质量：Δ = bpc_win − bpc_dil = **+0.01195**（seed 0，t = 2.48、15/20 批同向）与 **+0.00696**（seed 1，t = 1.69、13/20 批同向），两 seed 同向但**都落 0.014 配对带内**⇒ 无质量增量、本 n 下不可排序（跨 seed 同臂之差 0.00742 / 0.00242 只作参考线）。相对全因果的少看键代价：窗口臂 −0.09462、空洞臂 −0.08267 ⇒ 把可见位置摊开只回收 0.0120（仍落带内）。结构侧确实变远：每行最远可达距离从 31（恒定）变成 255（`i ≥ 32` 时铺满前缀），差异只在 256 行里的 224 行。长程召回腿（`tools/evalkit/longrange_tasks.var_recall_batch`，距离 16/32/64/128/192/240、每档 8 批 × 32 样本）四条臂**全部贴 chance**（chance = 0.0156；各档最高 0.0312 = 2× chance），唯一「CI 不含 0」的远档（seed 0 的 d64/d128）方向还是窗口臂更高，且由一两个命中驱动 ⇒ 该仪器在本尺度无分辨力，不构成空洞占优的证据。按 `docs/playbook.md` 定律 10，这只覆盖「本设计下的本尺度」：可见范围变远，但 enwik8 字符级的局部先验足以补上这片上下文（定律 9 的「模型不需要」）、12k 步没有压力迫使其使用远处那 16 个点、且稠密 bool 掩码没有把纸面省算力兑现成实测省算力。本判词**不外推**到长 T、逐层递增 dilation、真稀疏核与更大规模。"
+conclusion_review: "自评：判据线（同可见键数、0.014 配对带、率类走 CI、四臂对齐核查）在训练之前写完并绑定，两条空洞臂的读数在该绑定之后产出；复用的 `win32` / `win32_s1` 读数逐批复现 `2676` 的落盘值（口径未漂移）；判词由 `run.py` 按预登记规则机械生成，未在读数后改判据线（后续两处改动只动了引用可解析与判词/仪器分辨力的记录字段，见 git 历史与 `prereg_binding.json` 的 `readings_existing_at_bind`）。独立复核未做（执行方不自评）。"
+laws:
+  - 9
+  - 10
+cost_rows:
+  - law: 10
+    change: 同可见键数（32）下把可见位置摊开（近端 16 + 16 个空洞点）对取最近 32 个
+    touches_trunk: true
+    metric: clean bpc Δ（连续窗口 − 空洞；正 = 空洞更好；两 seed 都未越 0.014 带 = 本尺度无信号）
+    delta: '+0.01195'
+    delta_direction: comparator_minus_arm
+    comparator: 最近 32 个位置的连续窗口（每行可见键数逐行相等）
+    scale: 13M / L=8 / T=256 / 12k 步 / 98.3M token / 20 批配对 / seed 0 与 seed 1
+    boundary: 落 0.014 配对带内（seed 1 = +0.00696），判「本尺度无信号、不成立」；可达距离 31 → 255 是结构事实、
+      不构成质量收益；长程召回腿四臂全贴 chance（仪器无分辨力），稠密 bool 掩码未兑现纸面省算力
+    source: axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m/analysis.md
+experiments:
+  - "axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m"
 argument: "dilated 把「感受野」与「每 token 可见量」这两个常被混同的量分开：硬窗口下二者同增同减，dilated 用固定的可见键数覆盖更远。因此判据必须钉在「同可见键数」上，否则无法把「扩感受野」与「单纯加宽」区分开——这正是旧 A6 把 dilated 列为「同预算对照」想要的东西。"
 gaps:
-  - "本仓零经验：需先做最小判决（13M、T=256/512、{全因果, 硬窗口, 硬窗口+空洞} 三臂，对齐每 token 可见键数；长程召回 + clean bpc）"
-  - "dilation 与层数的组合（逐层递增 dilation，LongNet 式）未测"
-  - "dilated 的实测核是否兑现纸面 FLOPs 节省未测（真稀疏/真窗口核，见 1.2.2 gaps）"
+  - "长 T（≥2048）上「摊开可见位置」是否回本未测：本项只有 T=256、k=32 一点"
+  - "逐层递增 dilation（LongNet 式）未测：本实验各层用同一张掩码"
+  - "真稀疏核未做：纸面 O(T·k) 未兑现为实测省算力（与 `1.2.2` 共用该缺口）"
+  - "长程召回仪器在本尺度无分辨力（四臂全贴 chance）⇒ 需要「训练信号迫使使用长程」的任务（合成关联回忆 + 长 T）才能测「远距离信息能不能被搬」"
+  - "两个 seed、单尺寸 13M：不外推到 53.9M 及以上；k=32 之外只由 `1.2.2` / `1.2.3` 的臂覆盖"
 cost_model: "等效理论量：dilated 掩码把每 token 可见键数压到 k（近端窗口 k_local + 空洞取的 k_dilated），attention 的 QKᵀ 与加权项由 O(T²) 降到 O(T·k)，layer-passes 不变。考虑 pipelining：prefill 段可按 chunk 流水，decode 段每步只算新增 query 对 k 个键；dilation 只改键的索引集合，不改变每步键数，故 decode 每步等效 FLOPs 与同宽硬窗口相同。"
 
 role_map:
@@ -44,12 +60,12 @@ work_packages:
     acceptance: "三臂可见键数相等；dilated 相对硬窗口可排序提升或无提升，二选一明确"
     evidence: "axes/1-time/1.2.1-dilated/experiments/"
     review: "跑完另派 fresh 复核（SCHEMA.md §14/§14b）"
-    status: "未开始"
+    status: "已完成"
 
 roadmap:
-  - "WP1：dilated 掩码最小判决（同可见键数）"
-  - "复核通过后写 conclusion，更新 status"
+  - "独立复核这一格的判词与读数（执行方不自评）"
+  - "长 T 与逐层递增 dilation 的重做（见 gaps）"
 
-status: "未开始"
+status: "已完成"
 started: "2026-10-13T10:29:52+08:00"
-ended: ""
+ended: "2026-10-20T20:10:00+08:00"

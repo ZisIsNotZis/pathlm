@@ -855,7 +855,6 @@ def aggregate_all(args) -> dict:
             "delta_tf_by_depth": "arm_minus_comparator",
             "delta": "arm_minus_comparator",
             "delta_ece_vs_ref": "arm_minus_comparator",
-            "paired_bootstrap_95ci": "arm_minus_comparator",
             "delta_clean_bpc_vs_ref_by_seed": "arm_minus_comparator",
         },
         "delta_direction_note": (

@@ -499,7 +499,8 @@ def main() -> None:
             "min_delta": "comparator_minus_arm",
             "max_delta": "comparator_minus_arm",
             "frac_batches_delta_gt_0": "comparator_minus_arm",
-            "ci95": "comparator_minus_arm",
+            "delta_acc": "comparator_minus_arm",
+            "recall_delta_window_minus_dilated": "comparator_minus_arm",
         },
         "delta_direction_note": (
             "所有 Δ 一律 Δ = 读数_对照 − 读数_实验：对照 = win32（连续窗口），实验 = dil32"
