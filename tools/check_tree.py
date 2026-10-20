@@ -21,6 +21,9 @@
      「口径/bpc/...」之一。
  10. `id` 全局唯一；`dir` 必须等于文件实际所在目录。
  11. 证据锚点：`experiments` 路径存在；WP `evidence` 允许未来路径（只校锚点 `@<sha>` 可达）。
+ 12. `laws` / `cost_rows`（`docs/research-schema.md` §2.1 / §2.2）：定律编号限 1–11 且不重复，
+     `cost_rows[].law` 必须是本项 `laws` 的成员，`touches_trunk` 必须是 bool，`delta` 必须是数字，
+     `source` 指向的路径必须存在。
 
 用法：python3 tools/check_tree.py   （退出码 0 = 全过；1 = 有错）
 """
@@ -44,8 +47,8 @@ REQUIRED = (
     "id", "axis", "title", "dir", "purpose", "innovation", "expected_effect",
     "sota_baseline", "gap", "method", "validation", "objective_criteria",
     "falsification", "cost_model", "role_map", "milestone", "work_packages",
-    "roadmap", "status", "failure_analysis", "conclusion_review", "experiments",
-    "argument", "gaps", "started", "ended", "change_log",
+    "roadmap", "status", "failure_analysis", "conclusion_review", "laws",
+    "cost_rows", "experiments", "argument", "gaps", "started", "ended", "change_log",
 )
 #: 「必填」= 必须**非空**的字符串字段（不允许空串/空列表蒙混，见 docs/research-schema.md §2）。
 NONEMPTY = ("purpose", "innovation", "validation", "objective_criteria", "falsification")
@@ -62,6 +65,16 @@ WALLCLOCK_RE = re.compile(
 ANCHOR_RE = re.compile(r"@([0-9a-f]{7,40})")
 #: evidence 里任何 `@` 之后到空白为止的片段（抓 `@FINAL` 这类非法锚点）。
 AT_TOKEN_RE = re.compile(r"@(\S*)")
+
+#: `laws` 的编号域 = `docs/playbook.md` 的「定律 1..11」（见 `docs/research-schema.md` §2.1）。
+LAWS_TOTAL = 11
+#: `cost_rows` 一条必须齐备的键（见 `docs/research-schema.md` §2.2）。
+COST_ROW_FIELDS = ("law", "change", "touches_trunk", "metric", "delta",
+                   "comparator", "scale", "boundary", "source")
+#: `delta` 必须是带符号数字（含千分位/小数；单位与方向写在 `metric` 里）。
+NUMBER_RE = re.compile(r"[+-]?\d+(?:[\d,]*)?(?:\.\d+)?")
+#: `source` 可带的定位后缀：`:12` / `:12-14` / `#§标题`。
+SOURCE_SUFFIX_RE = re.compile(r"(?::\d+(?:-\d+)?)?(?:#§.*)?$")
 
 
 class DuplicateKeyLoader(yaml.SafeLoader):
@@ -129,6 +142,73 @@ def check_anchor_syntax(evidences: dict[str, list[str]]) -> list[str]:
                 errors.append(
                     f"证据锚点非法：`{m.group(0)}` 不是合法提交前缀"
                     f"（须形如 @<7–40 位十六进制 sha>；出现于 {'、'.join(locs)}）")
+    return errors
+
+
+def source_path(src) -> str:
+    """`source` 去掉 `:行` / `#§标题` 定位后缀后的仓库内路径。"""
+    s = str(src).strip()
+    return SOURCE_SUFFIX_RE.sub("", s).strip()
+
+
+def check_laws_and_costs(doc: dict, rel: str) -> list[str]:
+    """校验 `laws` / `cost_rows`（`docs/research-schema.md` §2.1 / §2.2）。"""
+    errors: list[str] = []
+    laws = doc.get("laws")
+    if not isinstance(laws, list):
+        errors.append(f"{rel}: laws 必须是 list（无证据支撑写 []）")
+        laws = []
+    seen: set[int] = set()
+    for i, law in enumerate(laws):
+        if isinstance(law, bool) or not isinstance(law, int):
+            errors.append(f"{rel}: laws[{i}]={law!r} 必须是整数定律编号（1–{LAWS_TOTAL}）")
+            continue
+        if not 1 <= law <= LAWS_TOTAL:
+            errors.append(f"{rel}: laws[{i}]={law} 是未知定律编号"
+                          f"（合法值 1–{LAWS_TOTAL}，见 docs/playbook.md）")
+        if law in seen:
+            errors.append(f"{rel}: laws 里定律 {law} 重复")
+        seen.add(law)
+
+    rows = doc.get("cost_rows")
+    if not isinstance(rows, list):
+        errors.append(f"{rel}: cost_rows 必须是 list（没有可引用数字写 []）")
+        return errors
+    for i, row in enumerate(rows):
+        where = f"{rel}: cost_rows[{i}]"
+        if not isinstance(row, dict):
+            errors.append(f"{where} 不是 map")
+            continue
+        for k in COST_ROW_FIELDS:
+            if k not in row:
+                errors.append(f"{where} 缺 {k}")
+            elif not _nonempty(row[k]):
+                errors.append(f"{where} 的 {k} 不得为空")
+        law = row.get("law")
+        if isinstance(law, bool) or not isinstance(law, int):
+            errors.append(f"{where}.law={law!r} 必须是整数定律编号（1–{LAWS_TOTAL}）")
+        else:
+            if not 1 <= law <= LAWS_TOTAL:
+                errors.append(f"{where}.law={law} 是未知定律编号（合法值 1–{LAWS_TOTAL}，"
+                              f"见 docs/playbook.md）")
+            elif isinstance(doc.get("laws"), list) and law not in doc["laws"]:
+                errors.append(f"{where}.law={law} 不在本项 laws={doc['laws']} 里"
+                              f"（代价事实必须归到本项自己声明的定律）")
+        if "touches_trunk" in row and not isinstance(row["touches_trunk"], bool):
+            errors.append(f"{where}.touches_trunk={row['touches_trunk']!r} 必须是 true/false")
+        delta = row.get("delta")
+        if delta is not None:
+            raw = str(delta).strip()
+            if isinstance(delta, bool) or not NUMBER_RE.fullmatch(raw):
+                errors.append(f"{where}.delta={delta!r} 必须是带符号数字"
+                              f"（单位与方向写在 metric 里）")
+        src = row.get("source")
+        if src is not None:
+            p = source_path(src)
+            if not p:
+                errors.append(f"{where}.source 为空")
+            elif not (ROOT / p).exists():
+                errors.append(f"{where}.source 指向不存在的路径：{p}")
     return errors
 
 
@@ -229,6 +309,9 @@ def validate_file(path: Path) -> tuple[list[str], dict[str, list[str]], dict[str
     if not any(w in val for w in ("口径", "bpc", "FLOPs", "layer-passes",
                                   "tokens-per-forward", "perplexity", "acc", "一致率")):
         errors.append(f"{rel}: validation 缺口径")
+
+    # laws / cost_rows（docs/research-schema.md §2.1 / §2.2）
+    errors.extend(check_laws_and_costs(doc, rel))
 
     # 已完成/被否证 ⇒ conclusion + experiments；被否证 ⇒ failure_analysis 非空
     if st in DONE_STATUS:

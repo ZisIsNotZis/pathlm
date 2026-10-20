@@ -16,6 +16,17 @@ falsification: "若层间 causal attention 相对 stock 单残差与 2.2.3 线�
 failure_analysis: "归因（先区分设计 / 结构 / innovation）：①**设计问题（主因、可修）**：`attn-scalar` 的参数化自带自相似——`q = h_{k−1}` 而 key 里恰好也有 `h_{k−1}`，训练把 `τ` 压小、注意力变尖 ⇒ 浅层（源只有 2–3 个）塌成 one-hot（层 2 = 熵 0.00 / `w_immediate_prev` 1.00、层 3 = 0.03 / 0.994），等价于退回 stock 残差；因此该臂的 P2 活性门**未过**，其 −0.0082 是「部分退化为 stock + 部分混合」的读数，不能读成「跨层混合无收益」的干净证据。②**结构问题（次因）**：本尺度 L=8、只有 8 个源且只监督最终深度，`attn-qkv` 的中间深度 bpc 明显更差且非单调（depth 3 反弹到 5.9630），最终深度 −0.0177 ⇒ 多付的 3d² 投影（+196 616 参数、+167.3% 注意力算力）在本预算买不到可利用的跨层信息。③**非 innovation 本身失败**：Hyper-Connections / Feedback Transformer 族在更大规模或不同任务上有已报告结果，本项只判「13M/12k、seed=0 本尺度无净增量」，n≥2 与长度/层数外推未做（见 gaps）。④**非实现/口径/统计假象**：等值门（one-hot 强制 ⇒ 前向与 loss 与 stock 逐位一致，探针证明不强制时必须不同）、层索引因果单测（聚合对 `states[k]` 及之后不可见）、参数账（+8 / +196 616 与解析值一致）三关皆过；两条评测路径逐臂一致（`clean_bpc_two_paths_agree = true`）；末 25% 窗 loss 斜率 0.00039（scalar）/ 0.00296（qkv）nats/千步 ⇒ 差异不是「没收敛」造成的。⑤**幅度与噪声**：scalar 的 |Δ| = 0.0082 < 0.014 带 ⇒ 不可排序；qkv 的 −0.0177 只越带 26%，其窗口级 SE = 0.0116 与带同量级，故「更差」的证据强度依赖这条带，n≥2 才能压稳。"
 conclusion: "在 13M / 12k 步 / 98.3M token / seed=0 的 matched-step 快照 + 0.014 bpc 带（限配对 Δ、≥5 窗口）下：把层间接法换成层间 causal attention **没有净增量**。`attn-scalar`（q/k/v 恒等 + 每层一个温度 `τ`，额外 8 个参数、每 token 额外 18 432 MACs = 注意力的 +0.59%）clean bpc = 1.5336，相对 stock 单残差 1.5254 的 Δ = −0.0082（|Δ| < 0.014 ⇒ 不可排序），但其层 2–3 训练后退化成 one-hot（P2 活性门未过），故这条中性读数是「部分层已不做跨层聚合」的结果；`attn-qkv`（可学习共享 `W_q/W_k/W_v` + `τ`，额外 196 616 个参数、额外 5 261 312 MACs = +167.3%）clean bpc = 1.5431，Δ = −0.0177（越带、方向为「更差」）⇒ 内容相关权重（q·kᵀ）那份额外算力在本尺度不值。相对 2.2.3 的线性学习加权和（`dense` = 1.5246）两臂同样为 −0.0090 / −0.0185。⇒ 按预登记 falsification （不越噪声带 ⇒ 判在本尺度无净增量、应退化为 2.2.3 的线性聚合）：本项假设**被本地证据否证**，证据形态是「一臂落带内（且活性门未过）+ 一臂显著更差」，不是「两臂都不可排序」。n = 1 seed（s0），不越尺度外推。证据：`experiments/2653-interlayer-attn-13m/results.json`（`P1_verdict` / `P1_deltas_vs_baselines` / `P2_liveness`）、`experiments/2653-interlayer-attn-13m/analysis.md`（B 表）。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 conclusion_review: "本项零经验的判决已下：status = 被否证（预登记 falsification 的直接推论——层间 causal attention 相对 stock 单残差与 2.2.3 线性聚合在 clean bpc 上不越噪声带或方向为更差 ⇒ 判在本尺度无净增量、应退化为线性聚合）。**当前本地事实**：①层间 causal attention 聚合已在实验内实装（`experiments/2653-interlayer-attn-13m/interlayer_attn.py`，复用引擎 `topology=dense` 的前向路径，不改共享代码），等值门（one-hot 强制 ⇒ 前向/损失与 stock 逐位一致，带「不强制时必须不同」的必红探针）、活性门、参数账（+8 / +196 616，含额外 MACs 18 432 / 5 261 312）三关皆过；②两臂（`attn-scalar` / `attn-qkv`，seed=0、12000 步、各 98.3M token）已训练并评测，P1 判词：scalar −0.0082 不可排序、qkv −0.0177 反向可分（`results.json::P1_verdict`）；③判据线 P1–P6 与臂定义在整个过程中**未改**。第 1 轮独立复核（fresh 上下文，判词见 `.scratch/61-axis2-depth/TICKET.md` §9.18）判 PASS，其 non-blocking N1–N3 已处置（N1 参数倍率 2.7 万 → 2.5 万倍；N2 活性区间限定词与 `smoke_report.json` 对齐；N3 `2653/README.md` 落盘清单删去不存在的 `run_log.txt`）。B 表读数落盘后的这一版判词**尚待新一轮 fresh 复核**；n≥2 与长度/层数外推列入 gaps。"
+laws: [10]
+cost_rows:
+  - law: 10
+    change: "层间 causal attention（可学习共享 W_q/W_k/W_v + 温度）"
+    touches_trunk: true
+    metric: "clean bpc Δ（对照 − 实验；越带、负 = 更差）"
+    delta: "-0.0177"
+    comparator: "stock 单残差（1.5254）"
+    scale: "13M / L=8 / 12k 步 / 98.3M token / seed 0（2653）"
+    boundary: "额外 196 616 参数、每 token 额外 5 261 312 MACs（+167.3%）换来越带变差；标量温度臂落带内但层 2–3 退化成 one-hot（活性门未过）⇒ 无信号不等于机制无效"
+    source: "axes/2-depth/2.2.2-attention-residual/experiments/2653-interlayer-attn-13m/analysis.md"
 experiments:
   - "axes/2-depth/2.2.2-attention-residual/experiments/2653-interlayer-attn-13m"
   - "axes/2-depth/2.2.2-attention-residual/experiments/2653-interlayer-attn-13m/analysis.md"
@@ -72,3 +83,6 @@ change_log:
   - date: "2026-10-19T21:31:45+08:00"
     actor: "WP-R2/R3 worker（ticket 61 · 轴 2 wave 3）"
     change: "两臂（attn-scalar / attn-qkv）训练并评测落地，P1 判词按预登记判据线给出（scalar −0.0082 不可排序、qkv −0.0177 反向可分），判据线与臂定义未改；据此改 status 进行中 → 被否证，补 failure_analysis（设计 / 结构 / innovation 分开）与 conclusion，gaps 换成本轮未测项（n≥2、scalar 塌缩机理、qkv 等参数剥离），WP1 进行中 → 已完成，roadmap 换成剩余路径。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

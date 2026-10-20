@@ -16,6 +16,26 @@ falsification: "若某低位宽方案的 clean bpc 代价越噪声带且吃掉�
 failure_analysis: ""
 conclusion: "KV 量化本地结论（块标尺口径，源 `2632`；旧逐值标尺口径已撤回）：（a）块标尺（沿 `head_dim`，G=32）下 int8 KV = 1.0625 B/值 ⇒ 6528 B/位置 = fp16 的 ×0.53（省 46.875%），Δbpc vs fp16 = **+0.000101**（3 窗口配对 Δ 逐 seed +0.000101/+0.000013/+0.000009，全为正、远低于任何可排序带（本格在力带 0.036324））⇒ **8 位 KV 量化近无损且省约一半内存**，写进参照线；（b）int4 块标尺 = 3456 B/位置（省 71.875%），Δbpc **+0.022522**（有损，越本格在力带 0.036324）；（c）严格前缀不变性成立、块标尺**不需 staging**（`block` g16/g32 = True/True），token 轴块（`block_tok` / KIVI 的 K 侧）不满足前缀不变、需 staging；（d）逐值标尺实现（`2631`）给出的「int8 = 3 B/值 = ×1.50、int4 ×1.25，量化是内存负收益」**已被撤回**——那是标尺粒度的产物；（e）头共享 × 4 位换块标尺后变差（`mqa_int4` Δ=+0.054794 可排序、`gqa_int4` Δ=+0.009642 不可排序），归因待核。结论：**8 位 KV 量化（块标尺）是本仓省内存参照线；4 位是唯一两腿都掉的档位**。fp8 KV 质量与大 head_dim 点归 `5.5`（未测）。（f）跨家族同字节重画（WP2，实验 `2642`，纯再分析）：独立重算的 27 臂部署字节与 `2632::deployment_caliber` **逐位相等**（`max|Δ| = 0`），且 `points[*].bytes_per_position` 系**仅值口径**（int8: 6144 vs 部署 6528）⇒ 两口径不得混用；跨家族**恰好同字节**分组共 **7 个**（432/768/816/864/1536/1632/3072 B/位置），组内 bpc 极差全部越在力带（可排序）、**不需插值**；7/7 组的最优臂都是头共享族，但头共享族参数量少 **8.75%（GQA）/10.21%（MQA）**（解析式 `L·(2·d_model+2)·(H−n_kv)·head_dim` 与磁盘实测逐位一致）⇒ 该优势**不能**归因为纯机制；fp8 解析 6144 B/位置比 int8+块标尺 6528 省 384 B/位置而质量未测 ⇒ 不得称 int8 是 8 位最优。结论：**8 位 KV 量化（块标尺）是本仓省内存参照线；同字节跨家族比较在 7 个字节水平上可做，但「纯机制」读数须补等参数臂**。 验收并列读法（C2 裁决）：milestone 预登记文字（字节账与质量同框、前缀不变性）**字面成立**；其实质（不被同字节最强基线支配）**成立**——8 位块标尺近无损省 46.875%；但「同字节纯机制」读数仍须补等参数臂（7/7 同字节组最优臂带参数混杂）。 判据带（C1/66-F1 裁决）：本格在力带 0.036324 为主判；跨格 0.014 bpc 带（限配对 Δ、≥5 窗口）只作参考；两带不得混用。"
 conclusion_review: "本项按 55-review W-08 / R8 修正：旧格 R1 的逐值标尺口径把「量化省一半」反算成「内存负收益」，其跨家族「同 −75% 档 GQA 便宜 3.2×」建立在已作废的逐值标尺 int4 上 ⇒ 该口径与数字一律不迁入。本项结论统一用块标尺（含标尺/staging 的部署字节）口径，并把「严格前缀不变性」列为硬不变量。仍未解的混杂：头共享族的参数量差（实测 −8.75%（GQA）/ −10.21%（MQA））**已由 WP2 精确拆开**（解析式与磁盘实测逐位一致），但「同字节纯机制」读数仍缺等参数臂；`mqa_int4`/`gqa_int4` 变差的归因待核（gaps）。独立复核（`.scratch/49-adversarial-review/REPORT.md`、`.scratch/38-auto-parallel/evidence/REVIEW.md`）已随实验落盘。WP2（`2642`）把参数量混杂从「未拆」推进到**精确拆开**（解析 = 实测），并把同字节跨家族读数摆到统一口径上；其结论强度上限 = 落盘读数在统一口径下的重排（不产生新质量证据），且 7/7 同字节组的最优臂带参数混杂 ⇒ 纯机制读数仍待等参数臂。WP2 的独立复核见 `.scratch/66-axis5-quant/REVIEW-1.md`。"
+laws: [11]
+cost_rows:
+  - law: 11
+    change: "KV int8 量化 + 块标尺（沿 head_dim 每 32 值一把标尺）"
+    touches_trunk: false
+    metric: "clean bpc Δ（实验 − fp16；正 = 更差），且每位置部署字节 6528 = fp16 的 ×0.53"
+    delta: "+0.000101"
+    comparator: "fp16 KV（12288 B/位置）"
+    scale: "13M trunk 冻结 / 纯推理 / 3 窗口配对 / seed 2–4（2632）"
+    boundary: "近无损（远低于本格在力带 0.036324）且省 46.875%；严格前缀不变成立、不需要 staging"
+    source: "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/analysis.md"
+  - law: 11
+    change: "KV int4 量化 + 块标尺"
+    touches_trunk: false
+    metric: "clean bpc Δ（实验 − fp16；正 = 更差），且每位置部署字节 3456（省 71.875%）"
+    delta: "+0.022522"
+    comparator: "fp16 KV（12288 B/位置）"
+    scale: "13M trunk 冻结 / 纯推理 / 3 窗口配对（2632）"
+    boundary: "有损、越本格在力带 0.036324 ⇒ 4 位是唯一两腿都掉的档位；逐值标尺的「量化反占内存 ×1.50」是标尺粒度的产物，不是量化的性质"
+    source: "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/analysis.md"
 experiments:
   - "axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m"
   - "axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart"
@@ -97,3 +117,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

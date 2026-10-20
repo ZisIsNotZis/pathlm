@@ -16,6 +16,17 @@ falsification: "若各残差形式在 clean bpc 与逐深度可读性上相对 s
 failure_analysis: ""
 conclusion: "终质（clean bpc）维不可排序：postln / gated / scaled 相对 stock pre-LN 单残差的配对 Δclean = +0.0026 / −0.0016 / −0.0103，|Δ| 全部 < 0.014 噪声带 ⇒ 换残差写法不改终质。可截断性（逐深度可读性）维可分且方向不一致：post-LN 让中间深度读出大幅变差（depth 1–7 的 Δbase−form = −5.18…−0.48；depth 1 的 bpc 4.95→10.13、acc 0.131→0.054），固定 1/√(l+1) 缩放让中间深度小幅变好（Δ = +0.06…+0.47）但终质略降，门控臂只有 |Δ|≤0.0864 的方向混杂扰动。两读法并列：字面 = 终质「无差别」成立、可截断性「可分」成立而方向与预登记「该跌」相反（post-LN 方向为负、更难截断）；实质 = 预登记否证条件（clean bpc 与逐深度可读性都不越带）因逐深度确实越带而未完全成立，故不判「残差形式在本尺度无头寸」，但正面假设（H1 至少一形式在终质维可排序更优）也未成立。判据线 P1–P6 未被改；post-LN 的读出尺度混杂（stream_rms≈0.87 vs base 1.5–2.1）已量化未剥离。"
 conclusion_review: "自评：判据线 P1–P6 与预登记契约（README.md §4 / TICKET.md §9.2 WP-2652）逐字一致、未被改；数字全部来自落盘的 results_<arm>_s0.json 与 results.json（四臂已折齐，--aggregate 重算未改任何测量值），可逐格复算；等值门（gated@init 与 base 的 logits/loss 逐位相同）与变异自证（M1/M3/M4 三处全红、恢复后重新绿）已复跑通过。'终质不可排序' 与 '可截断性可分' 两维分开写，未把中间深度改动当终质收益、也未把终质不可排序写成 '残差形式没用'；post-LN 中间深度更差这一与派单文字方向相反的事实按落盘证据如实写。**第 1 轮独立复核（fresh 上下文）判 PASS**（判词见 `.scratch/61-axis2-depth/TICKET.md` §9.18「复核记录（本轮）」；`docs/research-schema.md` §11.3 累计 ≤2 轮，本轮为该 WP 的第 1 轮）。该轮登记的 non-blocking N1–N4（P5 门槛「任一历史锚」读法 + 第二锚 0.0053、`1.5257` 出处短名歧义、milestone 的 n≥2/等参剥离与实交未对平、方向纠正无上级回执）不在本次处置 writer 的改动范围（本次只回填判词，未改本项实验正文与数字），由 lead 统一登记/分派。"
+laws: [10]
+cost_rows:
+  - law: 10
+    change: "残差换成 post-LN（相对 stock pre-LN 单残差）"
+    touches_trunk: true
+    metric: "clean bpc Δ（实验 − stock；正 = 更差）"
+    delta: "+0.0026"
+    comparator: "stock pre-LN 单残差"
+    scale: "13M / L=8 / 12k 步 / 98.3M token 快照（2652）"
+    boundary: "|Δ| < 0.014 ⇒ 终质维不可排序（不是「无效应」）；可截断性维越带且方向与预登记相反，post-LN 让中间深度读出更差"
+    source: "axes/2-depth/2.2.1-residual-form/experiments/2652-residual-form-13m/analysis.md"
 experiments:
   - "axes/2-depth/2.2.1-residual-form/experiments/2652-residual-form-13m"
   - "axes/2-depth/2.2.1-residual-form/experiments/2652-residual-form-13m/analysis.md"
@@ -72,3 +83,6 @@ change_log:
   - date: "2026-10-14T22:46:16+08:00"
     actor: "WP-2652 worker（ticket 61 · 轴 2 wave 1 收口）"
     change: "另：post-LN 全程 gnorm_max 19.81（base 7.86）如实报——未发散、无 grad skip、末窗 gnorm 均值反而更低（0.3925 vs 0.4263），判早期尖峰、不改判据不改判词。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

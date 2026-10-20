@@ -16,6 +16,17 @@ falsification: "若并行子层在质量面相对 stock 串行子层有可排序
 failure_analysis: ""
 conclusion: "在 13M / 12k 步 / 98.3M token / matched-step 快照 + 0.014 bpc 带下：并行子层（`parallel` / 逐位等参数 `parallel-dual-ln`）相对 stock 串行子层（`sequential`）的质量代价**可排序**（s0 配对 Δ = +0.0458 = 3.27× 带、+0.0402 = 2.87× 带；s1 = +0.0422 = 3.01× 带、+0.0374 = 2.67× 带，两 seed 同号且都越带）；同框的**代价面**给出**真实收益**——层内串行链从 2 段砍到 1 段、每 token 串行步数 16→8（同一时间可并起来的活儿多一倍），而算力只差 0.055%（`parallel-dual-ln` 与基线逐位等参；`parallel` 少一个共享 pre-LN = −4096 = −L·2d）。⇒ 本项 falsification 的第二条件（「等效代价面也拿不到可兑现的收益」）**不成立** ⇒ 不判「不划算」；结论 = **以可排序的质量代价换层内并行度翻倍：本尺度上不是免费的，是否采纳取决于场景**（要吞吐/流水者值、要质量者不值）。**臂完整性**：s1（seed=1，`2651`）四臂全部训完并评测（`sequential` 1.5288 / `parallel` 1.5710 / `parallel-dual-ln` 1.5662 / `dense` 1.5273，各 98.3M token），`results.json::completed_arms` 四臂齐、`pending_arms` 为空 ⇒ 本判为 **n=2** seed（s0 = `2613` + s1 = `2651`），两 seed 同号且都越带、不越尺度外推。字面（预登记判据线）：质量代价越带 ⇒ 代价可排序、代价面齐备、给出场景依赖结论，成立；实质：给出「质量代价 vs 并行度收益」的可操作权衡，不越尺度外推。证据：`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md`（§5 代价面同框表）与 `.../2613-inter-layer-topology-13m/analysis.md`。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 conclusion_review: "status = 已完成：本项在 13M/12k 尺度给出明确结论——并行子层的质量代价可排序（+0.0458 = 3.27× 带 / +0.0402 = 2.87× 带），代价面（层内串行依赖 2→1 段、每 token 串行步数 16→8、算力差 0.055%）给出真实收益，故不满足 falsification 的「代价面无收益」条件、不判不划算；结论为场景依赖的权衡。判定边界：n=2（s0 = `2613`、s1 = `2651`，四臂齐；质量代价 +0.0458 / +0.0402 → s1 +0.0422 / +0.0374，两 seed 同号且都越带），不越尺度外推；吞吐/流水面用等效理论量表达（层内串行依赖长度），墙钟不进判据。独立复核（第 1 轮 fresh + 处置 + 第 2 轮 fresh，均非本项 writer）：第 1 轮判 B1（+0.0402 = 2.87× 带，曾被写成「均 >3× 带」）等 1 blocking + 8 non-blocking，已逐条处置（提交 f4c991f）；第 2 轮判「**blocking：无**」（B1 已消除、倍数/区间跨字段一致、无新账实不符）。历轮见 ticket 61 §9.13 与 §9.18 复核记录（`.scratch/61-axis2-depth/TICKET.md`；复核者无写文件能力，判词原文在对应 run output log）。"
+laws: [7]
+cost_rows:
+  - law: 7
+    change: "并行子层（层内两段串行链砍成一段；`parallel-dual-ln` 与基线逐位等参数）"
+    touches_trunk: true
+    metric: "clean bpc Δ（实验 − stock 串行；正 = 更差）"
+    delta: "+0.0458"
+    comparator: "stock 串行子层（sequential）"
+    scale: "13M / L=8 / 12k 步 / 98,304,000 token / seed 0（s1 同向 +0.0422）"
+    boundary: "质量代价可排序（3.27× 带），换层内并行度翻倍（每 token 串行步数 16→8），算力只差 0.055% ⇒ 不是免费的，是否采纳看场景"
+    source: "axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md"
 experiments:
   - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m"
   - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md"
@@ -73,3 +84,6 @@ change_log:
   - date: "2026-10-19T22:14:00+08:00"
     actor: "WP-R7 收口执行者（窄复核 P2 文本/指针项；fresh 上下文）"
     change: "窄复核 P2 收口（**只改文本与指针，未动任何测量数字、判据线与预登记 `acceptance`**）：①`sota_baseline` 的本地锚改为「旧格 C3（+0.0458 / +0.0402），现由 `2613` s0 与 `2651` s1 复现，n=2」，消除同一文件里 n=1 与 n=2 并置；②`conclusion_review` 末尾的复核指针由指向一个从未落盘的复核判词文件（复核者无写文件能力）改为真实存在的 `ticket 61 §9.13` 与 `§9.18 复核记录`（`.scratch/61-axis2-depth/TICKET.md`；复核者无 shell 与写文件能力，判词原文在对应 run output log）；③`roadmap` 删除已过期的「复核通过后写 conclusion，更新 status」。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

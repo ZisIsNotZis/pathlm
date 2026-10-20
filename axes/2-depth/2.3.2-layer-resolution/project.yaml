@@ -16,6 +16,8 @@ falsification: "若分辨率 schedule 在等效算力口径下相对 stock 全�
 failure_analysis: ""
 conclusion: ""
 conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 docs/research-schema.md 预登记（对照 + 客观判据 + 口径 + 否证条件），并把「长程召回」列为必须报的损伤对照列，以防只报 bpc 掩盖降采样丢信息。与 1.2.4 的边界已写进 gap。**本轮（轴 2 lead，2026-10-14）登记 blocker：引擎无逐层分辨率能力，三臂最小判决（对齐总 attention FLOPs）的等效算力成本 ≈ 20–25 min GPU + 60–90 min 实现工时，超出本轮 3h 硬预算 ⇒ 未执行、不谎报 PASS**；下一步见 gaps 首条。第 1 轮独立复核（fresh 上下文，判词见 `.scratch/61-axis2-depth/TICKET.md` §9.18「复核记录（本轮）」）判 **PASS**；其 non-blocking N1（milestone/WP1 的臂表与 gaps 未对平）本轮已处置：`milestone.output`/`acceptance` 与 `WP1.means`/`acceptance` 均写明「本轮先三臂，金字塔补臂 +6–8 min GPU」，与 gaps 末条一致。"
+laws: []
+cost_rows: []
 experiments: []
 argument: "分辨率是深度方向上「每层看多少个位置」的 schedule：它不改层数（layer-passes 不变），只改每层的注意力规模，因此收益落在 attention FLOPs（随 token 数平方缩放）而非 layer-passes 上。判据必须同时看质量（bpc）与长程召回，否则会把「浅层池化带来的局部平滑」误当成无损。"
 gaps:
@@ -67,3 +69,6 @@ change_log:
   - date: "2026-10-14T23:10:00+08:00"
     actor: "轴 2 深度轴 lead（ticket 61 · 复核 B 处置 writer）"
     change: "按复核 B 的 non-blocking 2.3.2-N1 对平臂数（不改判据、不改数字、不改状态）：`milestone.output`/`acceptance` 与 `WP1.means`/`acceptance` 補写「本轮先三臂 {全长, 先粗后细, 层级式}，金字塔补臂成本 +6–8 min GPU」，与 `gaps` 末条（金字塔未纳入最小判决）一致；conclusion_review 回填第 1 轮独立复核 = PASS。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

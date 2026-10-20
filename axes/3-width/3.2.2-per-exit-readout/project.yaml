@@ -16,6 +16,8 @@ falsification: "若逐出口读出相对共享 tied 表不能让浅出口 tf@k �
 failure_analysis: ""
 conclusion: ""
 conclusion_review: "**本轮（Phase B）已落**：预登记契约 `experiments/2645-per-exit-readout-13m/README.md`、实现 `run.py`（depth-AR 形态下的逐出口读出臂 `T`/`PE`/`IND`/`LR`，实验目录内实现，不改引擎）、单测 `test_2645_per_exit_readout.py`（含等值门/变异门）、60 步冒烟（`T` 臂）rc=0；**新增臂未跑出任何读数**（GPU 互斥锁被其它轴的长任务持续占用）⇒ 本项**尚无本地判决**，`status: 进行中`、`conclusion` 留空；未跑原因与下一步最小实验见 `gaps`。独立复核未做（无可复核的读数）。"
+laws: []
+cost_rows: []
 experiments:
   - "axes/3-width/3.2.2-per-exit-readout/experiments/2645-per-exit-readout-13m"
 argument: "多出口模型里，读出是最容易被忽略的耦合点：共享一张 tied 表时所有出口被同一条「概率 = 状态在 embedding 基的坐标」约束；逐出口读出正是解这个耦合的候选。判据必须看**浅出口**（早退真正用到的那个），而不是只看末层；独立表虽可能有效但 vocab×d 不可 scale，故单列参数量并把「是否能 scale」当采纳门槛。跑层数归深度轴 `2.1.1`，本项只判出口→词表的形态。"
@@ -63,3 +65,6 @@ change_log:
   - date: "2026-10-14T23:30:00+08:00"
     actor: "axis3-lead"
     change: "Phase B 登记：本项已落预登记契约 + depth-AR 形态的逐出口读出实现 + 单测 + 60 步冒烟 rc=0；四个臂因 GPU 互斥锁饥饿未跑（无读数），`status` 未开始→进行中、`experiments` 登记 2645；未跑项与下一步最小实验写进 gaps。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

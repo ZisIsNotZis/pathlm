@@ -16,6 +16,17 @@ falsification: "若 proj-fill / self-fill 相对无填充的 clean bpc 优势全
 failure_analysis: "非「本项手段失败」：填充语义的主体结论（fill > nofill 可复现、软提交污染等参数成立）成立。唯一未复现的是 **proj-fill 相对 fill 的排序**（12k 档 −0.0226 vs 2k 快照 +0.0218…+0.0297，符号相反）——归因 = **训练步数/收敛阶段效应（规模—regime 效应，不是设计失败也不是 innovation 失败）**：proj-fill 的逐层恒等初始化 adapter 需要从 fill 出发学习 remap，短步数下收益来不及出现；证据 = 同一协议只改步数即翻转、且两种子同向。**下一步**：在 12k 档重跑 proj-fill 的第二个 seed 以判该排序是否在收敛刻度上稳定（成本 ≈10 min GPU）。"
 conclusion: "已有本地读数（旧格 H2 迁入，按 55-review H-I7 归位并写明目的）：保留式填充（self-fill）1.8582 胜 ragged nofill 1.9438（+0.0856，>0.014 可排序）；proj-fill（逐层恒等初始化 adapter）1.8356 = 同协议 matched-step（实测 6.96M）族内最优且全深度逐深度支配 fill；mask / 错误 token 替换分别 +0.059 / +0.127（更贵）；软 latent（Σp·E）提交有 OOD 污染（rescore 峰值三度复现：首验 6.9 vs hard 1.2、@100M 8.42 vs 0.79、C 臂 3.36 vs 0.74）；embedding noise ±0.000。⇒ 本尺度下「未来 / 已退出位置的填充语义」是独立有影响的一维，且「不注入分布外内容」比「填得看起来像」更重要（软提交 OOD 污染）。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。 Phase C 补测（WP1b + WP2，`experiments/2672-fill-n2-13m`）：**(f) n≥2 复本（2k 步快照口径，臂间同刻度）**——`fill` 优于 `nofill` 在 seed {0,1} 上都成立（depth-8 bpc 2.7995 vs 2.8770 与 2.7580 vs 2.8221，Δ = −0.0775 / −0.0641，符号一致、极差 0.0134，方向与 12k 档 −0.0856 一致）⇒ **fill > nofill 可复现**；**(g) proj-fill 的排序依赖训练步数**——同一快照刻度下 `projfill` 反而略差于 `fill`（Δ = +0.0297 / +0.0218，两种子同向），与 12k 档的「proj-fill 更优（−0.0226）」**符号相反** ⇒ 该排序**不得从 2k 快照外推到 12k，反之亦然**；**(h) 软提交 OOD 污染在等参数剥离下成立（WP2）**——同一 checkpoint 只改提交规则，soft 的 rescore 峰值一致远高于 hard：Δ(soft−hard) 逐臂（seed0/seed1）= fill +3.8325/+6.2138、nofill +5.8908/+6.5625、projfill +6.2739/+4.7332（权重逐位相同 ⇒ **容量不再是解释**）。本项的**规模标签按落盘实测更正**：既有 23e 协议与 2672 的实测参数量 = 6,962,688（≈6.96M，d=256/L=8/h=8/mlp_mult=4），milestone 原文的「13M」是措辞误标、不改判据。"
 conclusion_review: "自评：本项已收口（旧格 H2 的 12k 读数 + Phase C 的 2672 快照复本与等参数剥离）。主体结论（fill > nofill、软提交污染）在两种子 / 多种 checkpoints 上一致；唯一未复现的是 proj-fill 相对 fill 的排序，归因为训练步数效应并已登记下一步最小实验。**当前（最后一轮）独立复核判词**：`.scratch/63-axis6-predict/REVIEW-C1-64.md`（fresh、未参与写作、只读）判 **VERDICT: PASS**（blocker 0 · normal 2 · info 3）：normal-2（交付目录名与契约 §6 不一致，仅命名）与 normal-1（辅助 `*.nohup.log` 里有墙钟，非判据区）已记入 `gaps`；info-3 指出「注入分布外内容」的机制措辞强于直接测量（本项只测到 rescore 峰值差，未做嵌入层分布检验），已在 `gaps` 记为未测项。复核者亲自执行了臂级 bpc 与 Δ 的独立复算、6 个 run 与既有 23e 的 config 对平（除 `steps` 外无差异）、rescore 表复算、`summary.py --check` 与越界检查。**残余缺口**：快照口径（2k 步）与 12k 档不可比；proj-fill 的 12k 第二 seed 未跑；pad/mask、错误 token、软 latent 三臂仍只有旧读数、不在本轮 n≥2 复本内——见 `gaps`。历轮过程见 `.scratch/63-axis6-predict/TICKET.md`。"
+laws: [1]
+cost_rows:
+  - law: 1
+    change: "把未来位置的 token 换成 `[mask]`（显式「我不知道」标记）"
+    touches_trunk: false
+    metric: "clean bpc 损伤（相对 B0；正 = 更差）"
+    delta: "+0.059"
+    comparator: "B0（1.5074）"
+    scale: "13M / m1 引擎 / M2 元素税扫描（I2）"
+    boundary: "显式标记最便宜（+0.059），embedding noise ±0.000 免费 ⇒ 保留或显式标记 identity 的近免费；同一扫描里破坏 identity 的 wrong-token 更贵（排序见 `project.yaml` 的 conclusion）"
+    source: ".scratch/06-m2-sweep/evidence/SUMMARY.md"
 experiments:
   - "axes/6-predict/6.4-training-fill/experiments/2523e-fill-variants"
   - "axes/6-predict/6.4-training-fill/experiments/2672-fill-n2-13m"
@@ -89,3 +100,6 @@ change_log:
   - date: "2026-10-14T23:20:00+08:00"
     actor: "axis6-lead（Main 批准的规模标签更正）"
     change: "规模标签正名：预登记为「13M」，本仓 23e 协议与 2672 的**实测参数量 = 6,962,688**（d=256/L=8/h=8/mlp_mult=4）——仅正名、未改判据（判据 / 阈值 / 否证条件逐字未动）。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

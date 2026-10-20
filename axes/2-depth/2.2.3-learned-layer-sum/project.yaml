@@ -16,6 +16,17 @@ falsification: "若层间学习加权和相对 stock 单残差的 clean bpc 不�
 failure_analysis: "归因（先区分设计 / 结构 / innovation）：①**结构问题（主因）**：本尺度 L=8 太浅、且 stock 形态只有最终深度监督，「逐层串联的信息瓶颈」这一 DenseFormer 要缓解的条件在本尺度不成立——层间加权和自由地改变了中间层表示（两个 seed 的中间深度 bpc 一致高于基线：s0 depth 1–7 的 Δ = +0.206…+0.544，s1 同向且更大 = +0.268…+0.613），最终靠后续层重新学回 parity（depth 8 的 Δ = −0.0008 / −0.0015，两 seed 同号且都落 0.014 带内），说明该机制在本尺度没有可兑现的净增量。②**设计问题（次因、可修、非主因）**：本实现的 α 无单纯形约束（≠ DenseFormer 严格凸组合语义），且无中间深度监督约束层间混合；但干预活性成立（seed=1 实测 α fro 3.2103、absmax 2.2438、36 权全非零、第 1 层输入放大 2.24×），故 null **不能**归因于「干预没生效」。③**非 innovation 本身失败**：DenseFormer 族在更大规模有已报告增益（见 sota_baseline / prior art），本项只判「13M/12k 本尺度无净增量」，更大规模与带中间监督的复核未做（见 gaps）。④**非实现/口径/统计假象**：s0 与 s1 的评测口径由引擎等值门钉住（`run.py::remeasure_s0` 逐位复现 2613 记录，`[s0] remeasured all_bitwise_equal=True`）；参数量账逐位核对通过（parallel −4096 / parallel-dual-ln 0 / dense +36）；n=2 已闭合且两 seed 同号，s1 的配对窗口级 SE = 0.0031 大于偏差本身、两半样本反号 ⇒ 偏差在抽样噪声之内。"
 conclusion: "在 13M / 12k 步 / 98.3M token / matched-step 快照 + 0.014 bpc 带（限配对 Δ、≥5 窗口）下：层间学习加权和（`dense` 臂）相对 stock 单残差（`sequential`）**无可排序差异**（配对 Δ：s0 = −0.0008、s1 = −0.0015，两 seed 同号但都未越带，且都小于基线臂自己的换 seed 散度 0.0034）；且**逐深度可读性无改善**（两个 seed 的中间深度实测更差：s0 depth 1–7 的 Δ = +0.206/+0.544/+0.448/+0.312/+0.206/+0.257/+0.279，s1 = +0.472/+0.613/+0.502/+0.445/+0.283/+0.298/+0.268，仅 depth 8 回到 −0.0008 / −0.0015）⇒ 按本项 falsification 两条件，密集跨层线性聚合**在本尺度无净增量**。干预确曾生效（seed=1 实测 α fro 3.2103、36 权全非零、第 1 层输入放大 2.24×），排除「干预没生效」。**臂完整性**：s1（seed=1）四臂全部训完并评测（`sequential` 1.5288 / `parallel` 1.5710 / `parallel-dual-ln` 1.5662 / `dense` 1.5273，各 98.3M token），`results.json::completed_arms` 四臂齐、`pending_arms` 为空，故本判为 **n=2** seed。字面（预登记判据线）：两 seed 皆不越 0.014 带 ⇒「无差异」成立；实质（falsification 全条件）：不越带且逐深度无改善 ⇒ 本机制在本尺度无净增量、提案被否证。同组对照 2.2.4 并行子层的质量代价可排序（+0.0458 / +0.0422 与 +0.0402 / +0.0374，两 seed 同号且都越带）。证据：`experiments/2651-inter-layer-topology-s1-13m/analysis.md` 与 `experiments/2613-inter-layer-topology-13m/analysis.md`。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 conclusion_review: "status = 被否证：本项在 13M/12k 尺度的机制判决由预登记 falsification 直接给出（不越带且逐深度无改善 ⇒ 无净增量），失败归因按 结构问题（主因）/ 设计问题（次因、可修、非主因）/ 非 innovation 本身失败 分开并给证据。判定边界：n=2 已闭合（两 seed 同号、都落 0.014 带内），更大规模复核列入 gaps，是该判决唯一可被推翻的路径。新读数「dense 的中间深度更差」与 2.2.1 残差形式 / 2.1.1 早退的耦合未做。独立复核（第 1 轮 fresh + 处置 + 第 2 轮 fresh，均非本项 writer）：第 1 轮判 B1（+0.0402 曾被写成「>3× 带」，实为 2.87×）等 1 blocking + 8 non-blocking，已逐条处置（提交 f4c991f）；第 2 轮判「**blocking：无**」（B1 已消除、未发现新 blocking，仅剩 4 条 non-blocking：本字段旧文本、3.3 倍四舍五入、2613 改动的 change_log 线索、第 1 轮 N2）。历轮见 ticket 61 §9.13 与 §9.18 复核记录（`.scratch/61-axis2-depth/TICKET.md`；复核者无写文件能力，判词原文在对应 run output log）。本版判词（四臂齐、n=2）尚待新一轮 fresh 复核。"
+laws: [10]
+cost_rows:
+  - law: 10
+    change: "层间学习加权和（DenseFormer 式密集跨层聚合）"
+    touches_trunk: true
+    metric: "clean bpc Δ（dense − sequential；负 = 更好）"
+    delta: "-0.0008"
+    comparator: "stock 单残差（sequential，1.5254 @seed 0）"
+    scale: "13M / L=8 / 12k 步 / 98,304,000 token / seed 0（s1 同号 −0.0015）"
+    boundary: "|Δ| < 0.014 不可排序，且中间深度一致更差（depth 1–7 Δ = +0.206…+0.544）⇒ L=8 太浅、这个机制要缓解的层间瓶颈不存在，属结构条件未满足"
+    source: "axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md"
 experiments:
   - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m"
   - "axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m/analysis.md @b3c2484"
@@ -85,3 +96,6 @@ change_log:
   - date: "2026-10-19T22:14:00+08:00"
     actor: "WP-R7 收口执行者（窄复核 P2 指针项；fresh 上下文）"
     change: "窄复核 P2 收口（**只改指针，未动任何测量数字、判据线与预登记 `acceptance`**）：本文件 `conclusion_review` 与本条末尾的同族复核指针由指向一个从未落盘的复核判词文件（复核者无写文件能力）改为真实存在的 `ticket 61 §9.13` 与 `§9.18 复核记录`（`.scratch/61-axis2-depth/TICKET.md`；复核者无 shell 与写文件能力，判词原文在对应 run output log）。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

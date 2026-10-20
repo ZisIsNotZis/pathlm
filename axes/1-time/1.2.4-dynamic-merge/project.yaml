@@ -16,6 +16,8 @@ falsification: "若在每 token 等效总 FLOPs 对齐的预算下，合并臂�
 failure_analysis: ""
 conclusion: ""
 conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 55-review 的原则预登记（须有对照 + 客观判据 + 口径 + 否证条件），并把「同每 token 等效 FLOPs」作为预算对齐项钉死。独立复核未做。"
+laws: []
+cost_rows: []
 experiments: []
 argument: "把「合并已处理位置」与「减少可见量」分开：前者减少的是**到深层的 token 数**（每 token 等效 FLOPs 与 layer-passes 随深度下降），后者减少的是**每层每 token 看多少**——两者在同预算下未必等价，故须用「每 token 等效总 FLOPs」对齐后比较质量。这正是 PROPOSED-STRUCTURE §4 点名的缺口（T.4 dynamic merging），在本仓从未立项。"
 gaps:
@@ -58,3 +60,6 @@ change_log:
   - date: "2026-10-14T20:51:00+08:00"
     actor: "axis1-lead-3"
     change: "按 `docs/research-schema.md` §12.1 的声明义务补 **`falsification` 字段**的判据带声明（ticket 62 §10.3 F11；此前 C1 回填只落在 `validation`，`falsification` 仍缺声明 ⇒ 判据不可判）：bpc 类走 0.014 bpc 带（限配对 Δ、≥5 窗口）、召回等率类走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014；不改数字、不改结论、不改判据线。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

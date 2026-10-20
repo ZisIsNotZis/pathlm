@@ -16,6 +16,17 @@ falsification: "若等参数纯线性对照与 GLU 式读出的 Δbpc 不可排�
 failure_analysis: "**创新本身失败（主因）+ 结构问题（次因）**。① 创新本身失败：本项的对准机制是「读出非线性重参数化解耦计算空间与读出可见空间 ⇒ 质量提升」，但等参数纯线性对照（h+P(Qh)，同 2·d² 参数）Δ = −0.0888 与 GLU 式 Δ = −0.0812 不可排序（差 0.0076 < 0.014）⇒ **非线性无额外贡献**，机制核被否证（证据：`experiments/2611-equalparams-linear-control-13m` vs `experiments/2610-gated-readout-13m-depthar`）。② 结构问题：同一读出重参数化在 stock dense 上 Δ = −0.0055 / −0.0026（远小于 0.014，差距 16×），机制证据显示 dense 上读出变换相对幅度仅 0.6–1.2%、Q 的 fro 从 5.13 收缩到 0.86（模型主动不用该自由度）⇒ 原增益是**补本 depth-AR 形态的读出缺陷**，不是通用改进（证据：`experiments/2613-readout-reparam-dense-13m`）。③ 次要：增益随训练缩减（12k −0.0812 → 24k −0.0463，缩 43%）且两臂 24k 仍未收敛 ⇒ 更像收敛加速而非最终质量。"
 conclusion: "已有本地读数（旧格 W4 迁入，按 55-review W-10/W-11 修正旧口径）：读出重参数化 gated 在 12k 下 Δ clean bpc −0.0812，但等参数纯线性对照 Δ −0.0888 ⇒ 二者不可排序（差 0.0076 < 0.014）⇒ 增益归**读出重参数化 / 容量**，**非线性本身无额外贡献**；24k 复测 Δ = −0.0463（缩 43%）⇒ 更像收敛加速；同一读出重参数化在 stock dense 上 Δ = −0.0055 / −0.0026（远小于 0.014，模型主动不用该自由度）⇒ **只在本 depth-AR 形态有效、补本形态读出缺陷，不是通用改进**；逐深度读出被等参数「共享宽变换」对照否证（Δ −0.0759 vs −0.1313，差 0.0554 ≫ 0.014）⇒「一个共享读出服务所有深度」不是缺陷。副判据不越带：tf@4 0.9694→0.9680、tf@6 0.9938→0.9933、ECE 0.0066→0.0051。故**不采纳为通用质量机制**，保留为「读出重参数化」候选，待更长训练与更大尺寸确认。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）为主判；tf@k / 校准 ECE 类指标不跨量纲借用 0.014。"
 conclusion_review: "结论看上去成立但有边界：单 seed、单配置（13M / 8L）、24k 两臂仍未收敛 ⇒ 最终质量未定；故本项判「不采纳为通用质量机制」，不判「读出一律无用」。55-review W-11 提示 gated 读出与 GLU 同族、「加 2d² 参数使 bpc 降」本身平凡，本项已把判据落在「等参数对照的归因」与「可迁移性」上，不再是「bpc 降了」。55-review W-10 指出本项问题域只属本项目 depth-AR 形态、按「不能改变判断的删」应删或降工程 note——本项按冻结结构保留为研究项，但结论明确「非通用改进」。独立复核未做。"
+laws: [10]
+cost_rows:
+  - law: 10
+    change: "gated 读出重参数化（旁路读出加非线性，+131k 参数）"
+    touches_trunk: false
+    metric: "clean bpc Δ（相对同形态基线；负 = 改善）"
+    delta: "-0.0812"
+    comparator: "同形态基线（depth-ar 12k 档，1.8582）"
+    scale: "13M depth-ar / 12k 步 / seed 0（24k 复测见 `experiments/2612-gated-readout-24k-13m`）"
+    boundary: "等参数纯线性对照（`experiments/2611-equalparams-linear-control-13m`）的 Δ = −0.0888 与主臂不可排序 ⇒ 增益归读出容量而非非线性；同一读出重参数化在 stock dense 上远小于 0.014（模型主动不用该自由度），不是通用改进"
+    source: "axes/3-width/3.2.1-readout-reparam/experiments/2610-gated-readout-13m-depthar/analysis.md"
 experiments:
   - "axes/3-width/3.2.1-readout-reparam/experiments/2610-gated-readout-13m-depthar"
   - "axes/3-width/3.2.1-readout-reparam/experiments/2611-equalparams-linear-control-13m"
@@ -94,3 +105,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

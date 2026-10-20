@@ -16,6 +16,17 @@ falsification: "若权重量化的 clean bpc 代价越噪声带且吃掉全部�
 failure_analysis: ""
 conclusion: "权重量化本地结论（实验 `2651`，13.5M trunk 冻结、纯推理不训练、CPU 口径）：（a）每参数部署字节（值 + 标尺摊薄）与 clean bpc 同框可分：`fp16` = 2.000000 B/参数（bpc 1.483569）· `int8_per_channel` = **1.005515 B/参数（×0.5028）**、`max|配对 Δbpc|` = **0.000305**（5 窗口 seed 2–6）⇒ **不越 0.014 带**（字面读法：该带内不可排序）· `int8_group32`（每 32 值一把标尺）= 1.062500 B/参数（×0.5312）、`max|配对 Δ|` = **0.000117** ⇒ **不越带** · `int4_group32` = **0.562500 B/参数（×0.2812）**、`max|配对 Δ|` = **0.014904** ⇒ **越带（仅超带 +0.000904，贴边；Δ 均值 0.013946 落在带内）**。（b）结论：**int8 在这一档是白赚**——字节约减半、质量代价落在噪声带内；**int4（每 32 值一把标尺）在本规模有损**，按契约回退 int8。行长远大于分组宽 ⇒ 每行一把标尺（per-channel，1.0055）比每 32 值一把（group32，1.0625）更省且质量代价同在带内。（c）`fp16` 臂与 GPU 历史锚 1.483569 在 6 位小数上一致（`bpc_of` 与 `masked_bpc` 两条路径逐位相等）⇒ 本包设备口径未造成差异。验收并列读法（C2 裁决）：milestone 预登记文字（字节账含标尺齐备、质量代价与内存节省同框可分、非量化臂逐位不变）**字面成立**；其实质（不被同字节最强基线支配）**成立**——`int8_per_channel`/`int8_group32` 在更少字节上质量代价不可分辨，`int4_group32` 因越带而**不**支配 fp16。判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口），本批 5 窗口满足 ⇒ 在力带即 0.014；召回等率类指标走 Wilson 95% CI、不跨量纲借用；本格无自测在力带。"
 conclusion_review: "自评：判据是「每参数部署字节（含标尺）→ clean bpc + 长程召回」的前沿（55-review W-09），字节含标尺摊薄且逐矩阵断言标尺个数（防 55-review W-08 的逐值标尺式口径错误）；单因素隔离由「`fp16` 臂不装补丁 + 三个量化臂装上改 logits / 拆掉逐位还原」硬件证明；12 模块 789504 个死权重被证明只进字节账不进质量读数。局限：单 checkpoint / 单 seed / 单 T=256 / CPU 设备且主表口径与 `5.1` 的 24×16 不同（本包用 24×16@seed2，与锚一致）——不外推到别的尺度、别的行宽、别的标尺粒度。当前（最后一轮）独立复核判词：**OK with notes（blocker 0 / normal 2 / info 3）**，见 `.scratch/66-axis5-quant/REVIEW-52-53.md`；两条 normal（`table.md` 表格空行导致不渲染、`results.json::config.eval.device` 仍写 `cuda` 与实跑 CPU 不符且 `README` §8/§10 仍为 GPU 口径措辞）已由返工 writer 处置。第 2 轮（新的 fresh 上下文，未参与第 1 轮）判词：**PASS** —— 第 1 轮各 blocker/normal 全部落地、**无新 blocker**（新发现仅 2 条**文本自相矛盾**的 normal，均已在收口前改毕）；三包的数字与判据线均**未被事后改动**，见 `.scratch/66-axis5-quant/REVIEW-ROUND2.md`。（本包：`table.md` 渲染与 device 字段已修；info I1「`run_log` 里 Δ锚 标签歧义」为部分修，已登记为局限。）复核者会话无 `exec`/`git` 全视野 ⇒ mtime 顺序与已提交区间其**未能核**，已如实登记。"
+laws: [11]
+cost_rows:
+  - law: 11
+    change: "权重 int8 逐通道量化（主干冻结、纯推理）"
+    touches_trunk: false
+    metric: "max|配对 Δbpc|（5 窗口，非负）与每参数部署字节 1.005515 = fp16 的 ×0.5028"
+    delta: "0.000305"
+    comparator: "fp16 权重（2.0 B/参数、bpc 1.483569）"
+    scale: "13.5M trunk 冻结 / 纯推理 / CPU / 5 窗口 seed 2–6（2651）"
+    boundary: "不越 0.014 带 ⇒ 字节约减半而质量不可分辨；int4（每 32 值一把标尺）Δ 均值 0.013946 贴边 ⇒ 按契约回退 int8"
+    source: "axes/5-quant/5.2-weight-quant/experiments/2651-weight-quant-13m/analysis.md"
 experiments:
   - "axes/5-quant/5.2-weight-quant/experiments/2651-weight-quant-13m"
 argument: "权重量化的收益是**每参数字节/权重访存**，与 KV 量化（每位置字节）和激活量化（中间张量字节）是三类不同的账，必须分开记（本轴 `5.1`/`5.2`/`5.3`）。判定值不值要看「每参数部署字节 → 序列级质量」的前沿，且字节必须含标尺开销——本仓曾因逐值标尺把「省内存」反算成「占内存」（`5.1` 的 `2631`），本项不重蹈。"
@@ -67,3 +78,6 @@ change_log:
   - date: "2026-10-14T22:40:00+08:00"
     actor: "axis5-lead（ticket 66 Phase B）"
     change: "执行 WP1（实验 `2651-weight-quant-13m`：4 臂 × 5 窗口，CPU 口径）；写 conclusion/gaps/experiments/WP1 状态，status 未开始 → 已完成；记第 1 轮独立复核（OK with notes）与返工处置。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

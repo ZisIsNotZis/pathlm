@@ -16,6 +16,8 @@ falsification: "若在等参数对照下，MoE 相对同 FLOPs dense 的 clean b
 failure_analysis: ""
 conclusion: "本项命题的本地判决尚未做（无 13M 三臂 matched-step 读数）。当前已有本地工作（WP0，`2610-moe-arm-ledger-13m`）：① 等 FLOPs / 等参数臂的记账已钉死——13M 基底 dense-B0 = 13,602,304 参数、FFN 9,437,184 MACs/token；等 FLOPs 臂 moe-top1-E8（E=8,k=1,h_e=1536）= 79,837,696 参数、专家 MACs/token 与 dense 逐位相等（另加路由器 E·d 的 +0.26% 路由税）、tokens-per-param 1.23（dense 为 7.23）；moe-top2-E8（E=8,k=2,h_e=768）= 42,015,232 参数、同样等专家 MACs、tokens-per-param 2.34；等参数 dense 对照 mlp_mult=48/24，总参数相对差 <0.2%；② MoE 作为 `Block.mlp` 的透明替换已被断言钉住（E=1,top-1 灌入 stock mlp 权重 ⇒ 与 dense 逐位一致，`bitwise_equal=true`）、路由器梯度非零（干预活着）。质量-代价前沿本身（clean bpc 三臂）尚未测。附：同实验目录另跑了一个**坍缩可观测性探针**（4.2 前提，单臂 13M/top-1/1200 步，见 `analysis.md` §4），结论属 4.2，不计入本项。"
 conclusion_review: "本项无本地质量判决（`status: 未开始`，65-F1 降为 Backlog），故无终局结论可复核。当前自评 + 独立复核的对象 = WP0（记账 + pre-flight）；复核由独立 fresh 复核者出具，判词见 `.scratch/65-axis4-moe/REVIEW-1.md`，结论落点在本文件的 `conclusion` 与 `gaps`。按 55-review W-03/W-04 把「造轮子」风险写进 `gap`，增量已声明；按 W-13 不再保留「todo 待补做」与「prior_art 检索不可用」的自相矛盾口径；按 W-17 成本口径改为等效理论量。判据按 `docs/research-schema.md` 预登记（等 FLOPs/等参数双对照 + 客观判据 + 口径 + 否证条件），「专家使用率分布」为必须报的活性对照列。"
+laws: [10]
+cost_rows: []
 experiments:
   - "axes/4-moe/4.1-sparse-experts/experiments/2610-moe-arm-ledger-13m"
 argument: "「稀疏激活专家」是「保容量减计算」的专家粒度版：总参数（容量）按 E 放大、每 token 只激活 top-k 个专家 ⇒ 每 token FLOPs 与 dense 同级而容量更大。判定它值不值必须给等 FLOPs 与等参数双对照（`SCHEMA.md` §15），否则无法把「容量增益」与「参数/算力记账」分开。活性（专家使用率）是必须报的对照列，否则无法区分「真扩容」与「路由坍缩」。与 `3.1.5` 通道极化 / 稀疏激活的边界：`3.1.5` 是通道粒度、本项是专家（FFN 块）粒度。"
@@ -74,3 +76,6 @@ change_log:
   - date: "2026-10-14T06:44:03+08:00"
     actor: "framework-adjudication-writer（ticket 57）"
     change: "落地 65-F1 / 65-F2 / C1 / C2 裁决（不改数字、不删证据）：status 进行中 → 未开始（降为 Backlog，不在 13M 花算力做 MoE 判决，保留 WP0 记账）；`gaps` 记 65-F1（业界 MoE 跑分线指针）与 65-F2（GPU 协调）；`validation`/`falsification` 补「用哪个带」（C1）；`milestone.acceptance` 补实质验收（C2）。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

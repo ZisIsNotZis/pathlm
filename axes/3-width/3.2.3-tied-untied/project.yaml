@@ -16,6 +16,8 @@ falsification: "若解绑相对 tied 的 clean bpc 不越噪声带 ⇒ 判绑定
 failure_analysis: ""
 conclusion: ""
 conclusion_review: "**本轮（Phase B）已落**：预登记契约 `experiments/2643-tied-untied-13m/README.md`、实现 `run.py`（独立 unembed `U`、部分绑定 `PR` 两种读出的实验目录内挂法，不改引擎 `pathlm/**`）、单测 `test_2643_tied_untied.py`（含「解绑开关关闭时前向 == 引擎 stock readout」等值门与变异门）、复用门（与 `2641` 的 `U4-s0` 锚逐位初始化对照 + 逐字段 config 对照）；**两个新增臂 `U`/`PR` 未跑出任何读数** ⇒ 本项**尚无本地判决**，`status: 进行中`、`conclusion` 留空。未跑的原因 = 单卡 GPU 互斥锁饥饿：`/tmp/pathlm_gpu.lock` 自 21:38 起被其它轴的长任务占用，本实验三次等锁均未排上（22:18 到 25 min 上限 `rc=9`、22:40 到硬时限放弃），全程未伪造读数、未杀他人进程（见 `2643/analysis.md` 与 `2643/results.json::arms_unrun_reason`）。独立复核未做（无可复核的读数）。"
+laws: []
+cost_rows: []
 experiments:
   - "axes/3-width/3.2.3-tied-untied/experiments/2643-tied-untied-13m"
 argument: "tied 与 untied 的本质差别不是「多一层」，而是**语义约束**：tied 把「概率」钉成「状态在 embedding 基的坐标」，解绑放弃该语义以换读出自由度。因此判据必须同时看质量（该不跌/可排序）与语义可用性（prob0 / 线性传输，该不变）与参数（该报 vocab×d），且必须分小词表 / 大词表两档——小词表（本仓 vocab=206）与大词表（100k+）的结论方向可能相反，不得外推。"
@@ -63,3 +65,6 @@ change_log:
   - date: "2026-10-14T22:45:00+08:00"
     actor: "axis3-lead"
     change: "Phase B 登记：本项已落预登记契约 + 实验目录内实现 + 单测（含等值门/变异门）+ 与 2641 `U4-s0` 的复用门；两个新增臂（`U` 独立 unembed、`PR` 部分绑定）因 GPU 互斥锁饥饿未跑（rc=9 / 硬时限放弃），`status` 由 未开始 改 进行中、`experiments` 登记 2643；未跑项与下一步最小实验写入 gaps。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

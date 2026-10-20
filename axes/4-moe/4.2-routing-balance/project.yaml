@@ -16,6 +16,8 @@ falsification: "若加均衡机制后使用率分布仍坍缩到少数专家（�
 failure_analysis: ""
 conclusion: "本项自身命题（均衡机制是否值得）的本地判决尚未做（无 aux loss/capacity factor/expert-choice 四臂读数）。当前已有本地工作：**前提探针**（`4.1` 的 `2610-moe-arm-ledger-13m/probe_collapse_1200.json` + `analysis.md` §4）——13M、top-1、**无 aux loss**、seed 0、1200 步：专家使用率归一化熵全程 **0.952–0.983**（几乎平，斜率 +1.5e-5/步）、最大占比 **0.178–0.214**（均匀值 0.125）、无专家死亡⇒ **在该尺度/该预算下朴素 top-k 路由不自发坍缩**（熵**全程不下移**，斜率 +1.5e-5/步；注：预登记阀值在随机初始化第 1 步即已满足、命中近乎必然，故以斜率与偏斜为主证）；但存在温和持久的偏斜（专家 3/7 长期约 1.3–1.5× 均匀份额）。使用率为**跨 12 层池化**口径（不分辨整层坍缩），逐层活性列已加进 `run.py` 供下一阶段。该探针为**单臂、1200 步快照、无质量对照**，不能当均衡机制判决也不能外推；它指向的意义是：本尺度下均衡的价值必须改从「它是否提高质量」去测，而不再能靠「修复坍缩」立论。"
 conclusion_review: "本项无终局结论（`status: 未开始`，65-F1 降为 Backlog）：前提探针（单臂、无质量对照）不能当均衡机制判决。当前自评 + 独立复核对象 = 前提探针的证据与解释；复核判词见 `.scratch/65-axis4-moe/REVIEW-1.md`。判据按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），「专家使用率分布」与「跨 seed 路由稳定性」为必须报的活性对照列（`SCHEMA.md` 活性判据）。与 `4.1` 的边界：`4.1` 测 top-k 稀疏激活本身，本项只改均衡机制。"
+laws: [9]
+cost_rows: []
 experiments: []
 argument: "路由均衡是「保容量减计算」成立的前提：专家使用率一坍缩，总参数的优势就名存实亡，读到的质量只反映少数专家。因此活性（使用率分布）必须是**可失败的判据**而不是装饰读数（`SCHEMA.md` 活性判据）；「均衡收益」与「均衡损失的主任务代价」必须在同一质量-代价前沿上一起报。与 `4.1` 划界：`4.1` 的臂不含均衡机制（朴素 top-k），本项只改均衡机制、专家本体与 k 固定。"
 gaps:
@@ -65,3 +67,6 @@ change_log:
   - date: "2026-10-14T06:44:03+08:00"
     actor: "framework-adjudication-writer（ticket 57）"
     change: "落地 65-F1 / C1 / C2 裁决（不改数字、不删证据）：status 进行中 → 未开始（降为 Backlog，不在 13M 花算力做 MoE 判决，保留坍缩探针记录）；`gaps` 记 65-F1（业界 MoE 跑分线指针）；`validation`/`falsification` 补「用哪个带」（C1）；`milestone.acceptance` 补实质验收（C2）。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

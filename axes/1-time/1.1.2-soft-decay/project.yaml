@@ -16,6 +16,17 @@ falsification: "若 per-head 可学习 slope 在同分布 bpc 与长度外推两
 failure_analysis: ""
 conclusion: "旧格读数：固定 w、全头共用时 clean bpc = −0.0068（1.5006 vs B0 1.5074），落在 Δ<0.014 不可排序带内、不构成改善；且 per-head 平均注意距离 26–43（均值 ~33）无 head 保持长程。该读数按 55-review P10 判为**口径不全**（丢了 per-head slope 与长度外推），只作旧观测，不作本项结论。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 conclusion_review: "看上去只能作「口径不全的旧观测」：判据用的是错口径（固定 w、无外推），不能据此判手段不成立。故 status 进行中；按正确口径的判决实验未做。独立复核未做。"
+laws: [1]
+cost_rows:
+  - law: 1
+    change: "注意力距离惩罚（dist_pen 0.1，全头共用同一斜率）"
+    touches_trunk: true
+    metric: "clean bpc Δ（实验 − B0；负 = 更好，但落在 0.014 不可排序带内）"
+    delta: "-0.0068"
+    comparator: "B0（m1 引擎的同引擎基线）"
+    scale: "13M / m1 引擎 / 12k 步（ticket 07）"
+    boundary: "保留 identity、只改注意力权重 ⇒ 近免费；该读数按 55-review P10 判口径不全（丢 per-head slope 与长度外推），只作旧观测，−0.0068 不得称「改善」"
+    source: "axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty/README.md"
 experiments:
   - ".scratch/07-x1-x3/evidence/attn_dist_telemetry.json @7b47555"
   - "axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty"
@@ -70,3 +81,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

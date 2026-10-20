@@ -70,6 +70,26 @@ status: "未开始"
 conclusion: ""
 failure_analysis: ""
 conclusion_review: "维持 Backlog：原 F 轴（F2 / F4）没有目的，同一批格子在「信息右移」「同状态多花算力」「损坏修复」三处被安上三个互斥目的（55-review F-01/F-02）；F2 的两个「已有」都站不住（「direct 重入 = 结构性 no-op」是数学错误，实为 f∘f；通道税数字来自已作废引擎，F-06/F-12）；F2 的主题只存在于上一时代引擎（F-19）；F4 的主判据腿是本仓已永久降级的分布外腿，n=1 且方差 ≥ 效应（F-07/F-15）。要移出 Backlog 必须先给出可证伪的新目的与可判定判据。独立复核未做。"
+laws: [8, 9]
+cost_rows:
+  - law: 8
+    change: "回环 retry / corruption 族（C1 系）"
+    touches_trunk: true
+    metric: "clean bpc 税（相对 B0 1.5074；正 = 更差）"
+    delta: "+0.122"
+    comparator: "B0（13M / m1 引擎）"
+    scale: "13M / 24k 步（1.1-epoch 上界为 +0.364@1k）"
+    boundary: "税随规模下降（+0.364@1k → +0.122@24k，其它规模的口径见 2.1.1）；与深度自适应族的上升方向相反 ⇒ 报「规模翻转」前必须先排除口径与刻度差"
+    source: "axes/9-backlog/9.2-iteration-refinement/experiments/2511-retry-matrix-withdrawal/README.md"
+  - law: 9
+    change: "在 6 个 latent retry cell 上做格间排序（旧 retry 矩阵）"
+    touches_trunk: false
+    metric: "格间跨度 bpc（须大于单格换 seed 散布 0.0138 才可排序）"
+    delta: "0.011"
+    comparator: "单格换 seed 散布 0.0138"
+    scale: "13M / m1 引擎 / 6 个 cell"
+    boundary: "跨度落在种子散布内 ⇒ 全部格间排序撤回（含「soft×mixture 最好」）；判据带必须先于排序，否则排出来的是噪声"
+    source: "axes/9-backlog/9.2-iteration-refinement/experiments/2511-retry-matrix-withdrawal/README.md"
 experiments:
   - "axes/9-backlog/9.2-iteration-refinement/experiments/2511-retry-matrix-withdrawal @505a2fd"
   - "axes/9-backlog/9.2-iteration-refinement/experiments/2619-reconstruction-loss-13m @e18283f"
@@ -86,3 +106,6 @@ change_log:
   - date: "2026-10-13T11:32:11+08:00"
     actor: "轴 9 worker（ticket 56 M2）"
     change: "新建 Backlog 研究项：按 MAPPING.md §1/§4 把旧格 F2（2511-retry-matrix-withdrawal）与 F4（2619-reconstruction-loss-13m）的 experiments 整目录迁入本项；按 55-review F-PROBLEMS F-01~F-22 修正目的、判据口径与失败归因（补目的与可判定判据、换掉分布外主腿、等参数对照）。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

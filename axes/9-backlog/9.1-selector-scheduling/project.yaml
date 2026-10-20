@@ -69,6 +69,17 @@ status: "未开始"
 conclusion: ""
 failure_analysis: ""
 conclusion_review: "维持 Backlog：原 G 轴没有 research topic（只有选择器 / 信号 / 校准这些手段），唯一「收益」是 Slider 工具自洽 KPI，唯一「严格占优」落在方差带内不可排序（Δbpc=0.0043 < 0.014），且只在自造货币 forwards 成立、FLOPs 净亏；选择器核心假设在 100M 已失效却未升格为否证（见 55-review G-PROBLEMS P1–P4、P9）。要移出 Backlog 必须先给出可证伪的新目的与判据。独立复核未做。"
+laws: [2, 4]
+cost_rows:
+  - law: 4
+    change: "把逐深度输出当 voter 混合（深度集成：等权 vs 置信度加权）"
+    touches_trunk: false
+    metric: "clean bpc Δ（置信度加权 − 等权；负 = 更好）"
+    delta: "-0.005"
+    comparator: "等权深度集成（1.6070）"
+    scale: "13M / m1 引擎 / 60-batch probe 口径（B0 = 1.5074）"
+    boundary: "两臂都差于同 checkpoint 单路径 1.5744 ⇒ 深度输出是 fallback 不是 voter；置信头只排序深度、不排序逐 token 可靠性，加权只买到 0.005"
+    source: ".scratch/08-tts-probe/evidence/SUMMARY.md"
 experiments:
   - "axes/9-backlog/9.1-selector-scheduling/experiments/2508-tts-probes @505a2fd"
   - "axes/9-backlog/9.1-selector-scheduling/experiments/2514-allocator-selectivity @505a2fd"
@@ -93,3 +104,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

@@ -16,6 +16,17 @@ falsification: "若隐藏比下降带来的质量损失与算力节省相对同�
 failure_analysis: "**设计问题（主因）+ 结构问题（次因）**。① 设计问题：把「FFN 预算在层间怎么分」当作独立设计维度，在 13M / 8 层 / 12k 快照上没有头寸 —— 四条等预算读数（PYR/APYR × 2 seed）相对等宽的差落在 −0.0139…+0.0065，全部在 0.014 带内。（**口径更正**：不得表述为「小于同臂换 seed 的散布 0.0098」——PYR-s1 的 0.0139 大于它，且约等于项目自认的种子散布上界 0.0138；因此判 H0 是阈值规则的判词，不等于效应被排除。）② 结构问题两条：本实验只覆盖**单调阶梯的两个极端**（同多重集 {4,3,2,2,2,1,1,1} 的排序共 1120 种，非单调 schedule 未搜索）⇒「非均匀分配一律无用」超出本证据；且在 Σr=16 档 attention 已占总每 token MACs 的 59.4%，FFN 只占 39.6% ⇒ 可重分配的算力份额本来就窄。③ **innovation 本身失败：不适用**（本项未引入新机制，FFN 隐藏比是业界既有旋钮）⇒ 这是「本尺度不产生新知识」的读数，而非机制被否证。"
 conclusion: "**总量是旋钮，分配不是**。① 总量（可排序）：FFN 宽度 4→2（Σr 32→16）在 13M/12k matched-step 上 clean bpc 1.5314 → 1.5709（**+0.0395 = 2.8× 噪声带**），换来每 token 等效算力 −28.4%、参数 −30.2% ⇒ 每省 1% 每 token 算力 ≈ +0.0014 bpc。② 分配（不可排序）：把同一份 FFN 预算在 8 层间重排 —— PYR（前宽后窄）相对等宽 Δ_up = −0.0021（seed0）/ −0.0139（seed1），APYR（后宽前窄，PYR 镜像）Δ_down = +0.0065 / +0.0010，四个值**全在 0.014 带内** ⇒ 判 **逐层 FFN 分配在本尺度不是独立于 FFN 总量的设计维度**（预登记 H0 成立）。**结论的限定（必须一起读）**：① 只覆盖同多重集 {4,3,2,2,2,1,1,1} 的 1120 种排序里的**两条单调阶梯**（PYR/APYR），「非均匀分配一律无用」超出本证据；② PYR-s1 的 |Δ| = 0.0139 已贴在项目自认的种子散布上界（`docs/methodology.md` §2：≤0.0138）⇒ 判 H0 是**阈值规则**的判词，**不等于效应已被排除**（本实验同臂换 seed 的散列 U2 0.0098 / APYR 0.0043 / PYR 0.0020 不能当 |Δ| 的上界）；③ 全部臂共享同一次初始化且窄臂只保留前 r·d 个通道 ⇒ 「通道子集 × 深度位置」的交互不可识别，不排除换抽样/换子集后出现 0.01–0.014 量级（负向或零）的效应。**没有任何 seed 显示非均匀分配更优**（PYR 两 seed 都更差、APYR 两 seed 都更好但最大 +0.0065）；方向可复现但不足以支撑采纳。本读数并入 `3.1.2` 的深度形状结论时应带上述限定。③ 副产品（不作判据）：非均匀分配**确实改变层间表征质量分布** —— PYR 的中间深度 bpc 明显更低（第 6 层 1.9727 vs 等宽 2.3338、第 7 层 1.7492 vs 1.7887）而最终深度更差；该信号对早退（`2.1.1`）可能有用，本项未测。证据：`experiments/2641-ffn-ratio-frontier-13m`（7 臂 × 12k、n=2 于三个等预算臂、U4 锚 n=1）。 验收并列读法（C2 裁决）：milestone 预登记文字（隐藏比 → (算力, 质量) 前沿点可分）**字面成立**；其实质（不被同算力位点支配）在**总量维度成立**（4→2 省 28.4% 算力、只付 +0.0395 bpc）、在**分配维度否证**（层间 schedule 相对等宽 Δ 全在 0.014 带内）。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 conclusion_review: "**当前（最后一轮）独立复核 = PASS**（fresh 有 shell 的复核者，`.scratch/64-axis3-width/REVIEW-2B.md`，2026-10-14T21:3x+08:00）：派单的 6 项执行类检查**全部实跑且与期望一致**——`pytest test_2641_ffn_ratio.py -q` 13 passed；从 7 个 `results_<arm>_s<seed>.json` 自算的 Δ_up/Δ_down 与 `results.json::P1_P2_deltas_by_seed`、`P1_verdict_by_seed`、`equal_ffn_budget_check` 逐位一致；第 1 轮 3 处 blocker 核为已改（B1 伪命题已删除并改述为「H0 是阈值规则判词、不等于效应已被排除」、B2 APYR-s1 第 6 层落盘 2.4684、B3 参数差余项 4,096 与落盘 `params_ffn` 2,103,296 相符）；T5 初始化控制实跑 6 组（seed 0/1 × U2/PYR/APYR：trunk 与 U4 逐位相同、FFN 为同一次抽样的前缀切片）全 True；T6 三份契约文件与 `49f697f` 的 sha256 逐位相同、mtime 17:58:24 / 17:59:41 / 18:00:10 早于起跑 18:00:37；T9 本轴越界扫描 = 0、`python3 tools/summary.py --check` = OK（46 份）。**自评**：结论停在本尺度实验本体上（等 FFN 预算位点逐位成立、判 H0 由预登记阈值规则得出），并带三条限定（只覆盖同多重集两条单调阶梯；|Δ| 贴种子散布上界 ⇒ 阈值判词不等于效应排除；共享前缀初始化使「通道子集 × 深度位置」不可识别）。残留不确定（复核者自述）：被审 revision 的定位受并发其它轴写入影响；契约冻结由 sha256 + mtime 一对证据支撑。历轮判词与处置过程见 `.scratch/64-axis3-width/TICKET.md` §9 / §10.8 与 `REVIEW-1.md` / `REVIEW-2.md`。"
+laws: [10]
+cost_rows:
+  - law: 10
+    change: "FFN 隐藏比 4→2（Σr 32→16）"
+    touches_trunk: true
+    metric: "clean bpc Δ（实验 − stock；正 = 更差）"
+    delta: "+0.0395"
+    comparator: "stock mlp_mult=4（1.5314）"
+    scale: "13M / 8 层 / 12k 步 / matched-step（2641）"
+    boundary: "换每 token 等效算力 −28.4%、参数 −30.2%；层间分配（PYR/APYR）四个 Δ 全在 0.014 带内 ⇒ 总量是旋钮、分配不是"
+    source: "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/analysis.md"
 experiments:
   - "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m"
 argument: "FFN 是 per-token 参数与 FLOPs 的主项，因此隐藏比是宽度轴上最直接的「算力-质量」旋钮；判据必须是「同 d_model/层数下隐藏比 → (算力, 质量)」的前沿，而不是只报单点 bpc。层间 schedule 若相对常数比无越带差异，则说明该自由度在等参数下无效，须如实记。"
@@ -89,3 +100,6 @@ change_log:
   - date: "2026-10-14T21:35:00+08:00"
     actor: "axis3-lead"
     change: "复核门闭合：第 2 轮（builtin reviewer，无 shell）判 FAIL（窄范围：6 项执行类检查跑不了）；据此改派有 shell 的 fresh 复核者做第 2B 轮，判 **PASS**（REVIEW-2B.md：pytest 13 passed、Δ 重算逐位一致、B1–B3 已改、T5 初始化控制 6 组全 True、T6 契约 sha256 与 mtime 成立、T9 越界 0 且 summary.py --check OK）。`conclusion_review` 按 docs/research-schema.md §11.1 只写当前（最后一轮）判词 = PASS；历轮判词留在 .scratch/64-axis3-width/REVIEW-*.md 与 TICKET.md §9/§10.8。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

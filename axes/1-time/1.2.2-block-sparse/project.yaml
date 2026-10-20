@@ -16,6 +16,26 @@ falsification: "若块稀疏 / 条带 / 局部+全局掩码在同每 token 可�
 failure_analysis: ""
 conclusion: "旧读数（迁移自旧格 A6，均有伤、禁外推）：线性注意力（归一化线性核 φ=elu+1）在 T=256 / 13M 上不比全因果好——**原实装·带伤** Δbpc = −0.214（den 自 step 800 贴 clamp、gnorm_max 899385、25 次跳步），**稳定化·核已改**（QK-Norm）Δbpc = −0.624（该档把 φ 输入钉在有界区间 ⇒ 核被改、是另一个算子）；**无伤原核质量点未取得**。成本侧：T=256 整模型 2.58×/2.78× 慢、训练峰值显存 1.41×/1.27×（理论推理缓存 −93.6%@T=256，T 越大越接近 −100%）。**块稀疏 / 条带 / 局部+全局掩码本身未实装、无读数**（55-review R2）。"
 conclusion_review: "看上去旧读数只能作「线性核算子在退化/已改配置下的负观测」，不能当作块稀疏这一类可见模式的结论，也不是算子规范质量数（数值腿带伤、核被改）。故 status 进行中；块稀疏掩码的判决实验未做，线性核的无伤质量点未取得。独立复核未做。"
+laws: [10, 11]
+cost_rows:
+  - law: 10
+    change: "线性注意力（归一化线性核 φ=elu+1）替代全因果 softmax"
+    touches_trunk: true
+    metric: "clean bpc Δ（实验 − 全因果；负 = 更差）"
+    delta: "-0.214"
+    comparator: "全因果 softmax（T=256 / 13M）"
+    scale: "13M / T=256 / 12k 步 / 原实装"
+    boundary: "该臂带伤：归一化分母会触到 clamp 下限（`den_min` 到 1e-06）；稳定化臂把核换成 QK-Norm 后是另一个算子 ⇒ 无伤原核的质量点未取得，只能记「本设计下无信号」"
+    source: "axes/1-time/1.2.2-block-sparse/experiments/2616-linear-attention-13m/analysis.md"
+  - law: 11
+    change: "线性注意力的纸面省算力（T=256 整模型实测）"
+    touches_trunk: true
+    metric: "整模型一步耗时倍数（相对全因果；>1 = 更慢）"
+    delta: "2.58"
+    comparator: "全因果 softmax 同批对照"
+    scale: "13M / T=256 / 12k 步（2616）"
+    boundary: "纸面 FLOPs 与推理缓存节省（−93.6%@T=256）不等于实测：一步慢 2.58×、训练峰值显存 1.41× ⇒ 不换核时省幅不兑现"
+    source: "axes/1-time/1.2.2-block-sparse/experiments/2616-linear-attention-13m/analysis.md"
 experiments:
   - "axes/1-time/1.2.2-block-sparse/experiments/2616-linear-attention-13m/analysis.md @76a07a8"
   - "axes/1-time/1.2.2-block-sparse/experiments/2637-linear-attn-quality/analysis.md @76a07a8"
@@ -70,3 +90,6 @@ change_log:
   - date: "2026-10-14T06:59:49+08:00"
     actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
     change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

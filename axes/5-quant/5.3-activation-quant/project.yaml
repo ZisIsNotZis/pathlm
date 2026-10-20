@@ -16,6 +16,17 @@ falsification: "若激活量化的 clean bpc 代价越噪声带且吃掉全部�
 failure_analysis: ""
 conclusion: "激活量化本地结论（实验 `2652-act-quant-13m`，13.5M trunk 冻结、纯推理不训练、不改 KV/权重、CPU 口径、5 窗口配对 Δ）：（a）**先隔离激活因子**：主因子臂 `A8`（只把激活压到 int8、权重保持 fp16）每 token 激活字节 = **27744 B（×0.5017）**，clean bpc 1.478151，对 fp16 的 `max|配对 Δbpc|` = **0.003530 < 0.014 ⇒ 不越带（不可分辨）**；`A4`（只把激活压到 4 位、权重 fp16）= **13920 B（×0.2517）**，clean bpc **5.040267**，`max|配对 Δ|` = **3.598298 ≫ 0.014 ⇒ 越带**，且 copy 召回掉到 **地板**（0.0202，CI [0.0143, 0.0285]）；预登记的部署组合点 `W8A8`（权重 int8 per-channel + 激活 int8）= 27744 B，`max|配对 Δ|` = **0.002955 ⇒ 不越带**（其字节账与激活字节账**分列**，未混轴）。（b）**结论**：**只压激活到 int8 基本白赚**（激活字节减半、质量代价落在噪声带内不可排序）；**4 位激活在本规模崩溃**（质量与召回同时掉出带与地板）；`W8A8` 与 `A8` 同字节、同量级代价。（c）**离群通道没有迫使回退**（活性判据的可失败结论）：逐层通道峰值/中位数比均值约 3.36（A8）/ 3.73（A4），最坏张量 `L01.qkv` ≈ 11–12.5（远小于大模型常见的 >100 倍）；超 6×中位数的通道只有 8 个（int8）/ 18 个（4 位），若全部留 fp16 只吃掉标称省幅的 **0.03% / 0.07%** ⇒ `verdict_forces_fallback = false`。（d）**口径**：主表用缩口径 `3×16@seed2`（bpc 1.474621），与 `5.1` 的 `24×16@seed2` 历史锚 1.483569 **不可直接比**；补跑的同口径单点 `24×16@seed2` fp16 = **1.483568730**（`bpc_of` 与 `masked_bpc` 逐位相等，与 GPU 历史锚 `|Δ|` = **2.700e-07**）⇒ 8.95e-03 的差异**已实测确认为批数口径差、非实现缺陷**。验收并列读法（C2 裁决）：milestone 预登记文字（激活字节含标尺账齐备、质量代价与字节节省同框可分、离群分布齐备、非量化臂逐位不变、结论停在该尺度）**字面成立**；实质（不被同字节最强基线支配）**成立** —— `A8`/`W8A8` 在半数字节上质量不可分辨，`A4` 因越带且召回落地板而**不**占优。判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口），本批 5 窗口满足；召回等率类走 Wilson 95% CI、不跨量纲借用；本格无自测在力带。"
 conclusion_review: "自评：判据是「激活字节（含每 token/通道标尺）→ clean bpc + 长程召回」的前沿（55-review W-09），并把「逐层标尺 / 离群通道」做成**可失败**的活性判据（给出 `verdict_forces_fallback` 判定与吃掉省幅的比例），不是装饰读数。局限：单 checkpoint / 单 seed / T=256 / CPU 设备；**主表为缩口径**（`3×16`，预登记的 24×16 只补跑了 fp16 单点）⇒ 结论的对外可比性下降（配对 Δ 的有效性不受影响，已在 `analysis.md` 如实登记为超出预登记裁剪条款的缩口 + 补齐成本）；字节账是解析价签不是实测峰值。当前（最后一轮）独立复核判词：**FAIL（blocker 3 / normal 4 / info 2）**，见 `.scratch/66-axis5-quant/REVIEW-52-53.md`（包 B）；三条 blocker 为：① 未补跑 `24×16@seed2` 单点 ⇒ 预登记硬护栏②未闭；② `config.json::eval.note` 及副本声称「主表 24×16…同口径可比」属不实叙述；③ `bpc_path.anchor_check_applicable` 与自身定义矛盾。三条均已由返工 writer 逐条处置（① 已实测为 1.483568730、|Δanchor| = 2.700e-07；② 已改为与实跑一致的措辞并声明口径不可比；③ 已按 `n_batches` 门控），第 2 轮（新的 fresh 上下文，未参与第 1 轮）判词：**PASS** —— 第 1 轮各 blocker/normal 全部落地、**无新 blocker**（新发现仅 2 条**文本自相矛盾**的 normal，均已在收口前改毕）；三包的数字与判据线均**未被事后改动**，见 `.scratch/66-axis5-quant/REVIEW-ROUND2.md`。（本包：三条 blocker 全部落地，主表数字未动；另 1 条新 normal（`results.json::caliber_note.open_defect` 陈旧矛盾）已在收口前订正；info I1/I2 未修但已登记为局限。）复核者会话无 `exec`/`git` 全视野 ⇒ mtime 顺序与已提交区间其未能核，已如实登记。"
+laws: [11]
+cost_rows:
+  - law: 11
+    change: "只把激活压到 4 位（权重保持 fp16）"
+    touches_trunk: false
+    metric: "max|配对 Δbpc|（5 窗口，非负）与每 token 激活字节 13920 = fp16 的 ×0.2517"
+    delta: "3.598298"
+    comparator: "fp16 权重与激活基线（同 harness 5 窗口配对）"
+    scale: "13M trunk 冻结 / 纯推理 / CPU / 5 窗口（2652）"
+    boundary: "4 位激活在本规模崩溃：质量与 copy 召回同时掉出带与地板（召回 0.0202）；只压到 8 位的 A8 反而不可分辨（max|Δ| 0.003530）"
+    source: "axes/5-quant/5.3-activation-quant/experiments/2652-act-quant-13m/analysis.md"
 experiments:
   - "axes/5-quant/5.3-activation-quant/experiments/2652-act-quant-13m"
 argument: "激活量化与 KV 量化、权重量化是三类不同的账（激活是每 token 的动态中间张量，KV 是每位置缓存，权重是静态参数），必须分开记（本轴 `5.1`/`5.2`/`5.3`）。激活量化的难点是**动态范围随 token/通道剧烈变化**，故「逐层标尺 / 离群通道分布」必须是可失败的活性判据，否则无法区分「真省字节」与「把高精度藏在少数离群通道」。"
@@ -68,3 +79,6 @@ change_log:
   - date: "2026-10-14T22:40:00+08:00"
     actor: "axis5-lead（ticket 66 Phase B）"
     change: "执行 WP1（实验 `2652-act-quant-13m`：4 臂 × 5 窗口 + 离群活性列，CPU 口径）；写 conclusion/gaps/experiments/WP1 状态，status 未开始 → 已完成；记第 1 轮独立复核（FAIL，3 blocker）与返工处置（补跑 24×16@seed2 单点、订正不实口径叙述、按 n_batches 门控锚检查）。"
+  - date: "2026-10-20T10:40:00+08:00"
+    actor: "代价表生成 worker（工作包「代价表生成」）"
+    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"
