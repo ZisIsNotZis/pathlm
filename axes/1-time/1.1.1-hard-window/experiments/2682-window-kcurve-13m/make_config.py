@@ -7,8 +7,8 @@
      每条算 sha256（复用臂的 sha256 也当场算，不抄别人的记录）；
   2. 训练臂缺 `model.pt` 时：必到臂 ⇒ 非零退出（缺必到臂不能出判）；可选臂 ⇒ 记入
      `missing_new_arms`（README §4b 预登记的回落）；
-  3. 打印实耗训练墙钟（从 `train/*/results.json` 的 steps 与 `train_*.log` 的计时字段取，
-     取不到就如实写 `null`，不臆造）。
+  3. 打印实耗训练墙钟与返回码（从驱动日志 `train_driver.log` 的 `TRAIN START/END <臂>` 行取，
+     取不到就如实写 `null`，不臆造）；`*.log` 是 git-ignored 派生物，故这两项必须落进 `config.json`。
 """
 
 from __future__ import annotations
@@ -71,23 +71,30 @@ def sha256_file(path: str) -> str:
     return h.hexdigest()
 
 
-def train_seconds(name: str) -> float | None:
-    """训练墙钟：从 `train_<name>.log` 里读驱动脚本打的 START/END 时间差。"""
-    log = os.path.join(HERE, f"train_{name}.log")
+def train_ledger(name: str) -> dict:
+    """该臂在驱动日志 `train_driver.log` 里的训练流水：墙钟秒数与返回码。
+
+    （只有**本实验训练的**臂才有；复用臂的训练墙钟与 rc 不在本目录，故返回 null 而不臆造。
+    `*.log` 是 git-ignored 的派生物 ⇒ 这两项必须落进仓内的 `config.json` 才可回溯。）
+    """
+    out = {"train_seconds": None, "train_rc": None}
+    log = os.path.join(HERE, "train_driver.log")
     if not os.path.exists(log):
-        return None
+        return out
     txt = open(log, encoding="utf-8", errors="replace").read()
-    m = re.findall(r"(\d{4}-\d\d-\d\dT[\d:+-]+)\]\s+(TRAIN START|TRAIN END)", txt)
+    m = re.findall(r"(\d{4}-\d\d-\d\dT[\d:+-]+)\]\s+TRAIN (START|END) " + re.escape(name) + r"\b", txt)
     if len(m) >= 2:
         from datetime import datetime
         try:
             a = datetime.fromisoformat(m[0][0])
             b = datetime.fromisoformat(m[1][0])
-            return round((b - a).total_seconds(), 1)
+            out["train_seconds"] = round((b - a).total_seconds(), 1)
         except ValueError:
-            return None
-    m2 = re.search(r"elapsed[^\d]*([\d.]+)\s*s", txt)
-    return round(float(m2.group(1)), 1) if m2 else None
+            pass
+    rc = re.search(r"TRAIN END " + re.escape(name) + r"\s+rc=(-?\d+)", txt)
+    if rc:
+        out["train_rc"] = int(rc.group(1))
+    return out
 
 
 def main() -> int:
@@ -98,11 +105,14 @@ def main() -> int:
             if not os.path.exists(full):
                 bucket.append(name)
                 continue
+            ledger = train_ledger(name) if reused is None else {
+                "train_seconds": None, "train_rc": None}
             arms.append({
                 "name": name, "kind": kind, "window": window,
                 "anchors": anchors, "seed": seed, "path": path,
                 "sha256": sha256_file(full), "reused_from": reused,
-                "train_seconds": train_seconds(name) if reused is None else None,
+                "train_seconds": ledger["train_seconds"],
+                "train_rc": ledger["train_rc"],
             })
     if missing_required:
         print(f"缺必到臂的 model.pt：{missing_required} ⇒ 不能生成 config.json（缺必到臂不出判）",

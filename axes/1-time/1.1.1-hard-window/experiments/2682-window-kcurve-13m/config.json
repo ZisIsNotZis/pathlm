@@ -1,0 +1,274 @@
+{
+ "experiment": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m",
+ "contract": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/README.md",
+ "model": {
+  "d_model": 256,
+  "n_layers": 12,
+  "n_heads": 8,
+  "seq_len": 256,
+  "mlp_mult": 6,
+  "dense": true,
+  "topology": "sequential"
+ },
+ "data": {
+  "name": "enwik8_full",
+  "path": "data/enwik8_full.npz",
+  "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）",
+  "vocab_size": 206,
+  "n_real_tokens": 205,
+  "mask_token": 205
+ },
+ "eval": {
+  "bpc": {
+   "n_batches": 96,
+   "batch_size": 16,
+   "window_seed": 2,
+   "note": "与 2662 / 2681 同一函数、同一批数、同一窗口序；bpc token 数 = 96×16×255 = 391,680"
+  }
+ },
+ "curves": {
+  "recent_ds": [
+   16,
+   32,
+   64,
+   128,
+   192,
+   240
+  ],
+  "distance_ds": [
+   1,
+   2,
+   4,
+   8,
+   16,
+   32,
+   64,
+   128,
+   255
+  ],
+  "arms": [
+   "full",
+   "win16_s0",
+   "win64_s0",
+   "win192_s0"
+  ],
+  "note": "recent = 累计预算列（直接测）；distance = 单距离列（只描述形状）"
+ },
+ "seeds": [
+  0,
+  1,
+  2,
+  3
+ ],
+ "arms": [
+  {
+   "name": "full",
+   "kind": "full",
+   "window": 256,
+   "anchors": 0,
+   "seed": 0,
+   "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+   "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+   "reused_from": "2610",
+   "train_seconds": null,
+   "train_rc": null
+  },
+  {
+   "name": "win16_s0",
+   "kind": "window",
+   "window": 16,
+   "anchors": 0,
+   "seed": 0,
+   "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+   "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+   "reused_from": "2634（跨项复本）",
+   "train_seconds": null,
+   "train_rc": null
+  },
+  {
+   "name": "win16_s1",
+   "kind": "window",
+   "window": 16,
+   "anchors": 0,
+   "seed": 1,
+   "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+   "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+   "reused_from": "2634（跨项复本）",
+   "train_seconds": null,
+   "train_rc": null
+  },
+  {
+   "name": "win16_s2",
+   "kind": "window",
+   "window": 16,
+   "anchors": 0,
+   "seed": 2,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/train/win16_s2/model.pt",
+   "sha256": "88b06d5455497689cc2947aad93cc9e8dcd7a638f5caed9839f4947dea704a3a",
+   "reused_from": "2681（本项）",
+   "train_seconds": null,
+   "train_rc": null
+  },
+  {
+   "name": "win16_s3",
+   "kind": "window",
+   "window": 16,
+   "anchors": 0,
+   "seed": 3,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/train/win16_s3/model.pt",
+   "sha256": "42e89ec259f7af683f42f1978cfc3ddeed6e2397661ad8ce7a2a2a9d74438485",
+   "reused_from": "2681（本项）",
+   "train_seconds": null,
+   "train_rc": null
+  },
+  {
+   "name": "win16a_s0",
+   "kind": "window",
+   "window": 16,
+   "anchors": 8,
+   "seed": 0,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s0/model.pt",
+   "sha256": "5a41ed069ee0ba784187b8d2adc054d334ed418c57ba5ff05fbf6347141cdb2d",
+   "reused_from": "2662（本项）",
+   "train_seconds": null,
+   "train_rc": null
+  },
+  {
+   "name": "win16a_s1",
+   "kind": "window",
+   "window": 16,
+   "anchors": 8,
+   "seed": 1,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s1/model.pt",
+   "sha256": "eb6c9d4a8693c45848d55c672f466aa42f92e4c8586011862ca2f2cdf0a55ffb",
+   "reused_from": "2662（本项）",
+   "train_seconds": null,
+   "train_rc": null
+  },
+  {
+   "name": "win16a_s2",
+   "kind": "window",
+   "window": 16,
+   "anchors": 8,
+   "seed": 2,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/train/win16a_s2/model.pt",
+   "sha256": "0e04cb7134e2b7b81d1ff5fb2e7e835cc7aeb348d8de6f462f9b09fd7a265c0f",
+   "reused_from": "2681（本项）",
+   "train_seconds": null,
+   "train_rc": null
+  },
+  {
+   "name": "win16a_s3",
+   "kind": "window",
+   "window": 16,
+   "anchors": 8,
+   "seed": 3,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/train/win16a_s3/model.pt",
+   "sha256": "218508da1f6fda7c7432f6d59ed96a374b9f492bf0fbd072c902c702116faa7f",
+   "reused_from": "2681（本项）",
+   "train_seconds": null,
+   "train_rc": null
+  },
+  {
+   "name": "win32_s0",
+   "kind": "window",
+   "window": 32,
+   "anchors": 0,
+   "seed": 0,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win32_s0/model.pt",
+   "sha256": "e2f250c7068ee7d54602d3c77ae4f2691df6937a438a31f840aaee0a8a15d780",
+   "reused_from": null,
+   "train_seconds": 600.0,
+   "train_rc": 0
+  },
+  {
+   "name": "win32_s1",
+   "kind": "window",
+   "window": 32,
+   "anchors": 0,
+   "seed": 1,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win32_s1/model.pt",
+   "sha256": "159a86cce0091662c5ddbec419cb496f3462f8a180d4f6e0d0c64ed8eacb277f",
+   "reused_from": null,
+   "train_seconds": 499.0,
+   "train_rc": 0
+  },
+  {
+   "name": "win64_s0",
+   "kind": "window",
+   "window": 64,
+   "anchors": 0,
+   "seed": 0,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64_s0/model.pt",
+   "sha256": "5333d57a5d48ec7c09b380d5827b5138c1a5b121f5845c3bff71ddcbe34911d6",
+   "reused_from": null,
+   "train_seconds": 559.0,
+   "train_rc": 0
+  },
+  {
+   "name": "win64_s1",
+   "kind": "window",
+   "window": 64,
+   "anchors": 0,
+   "seed": 1,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64_s1/model.pt",
+   "sha256": "3eb43db676a642a4309d081e34e3f4c8be2ea1178573a492176326fb20509425",
+   "reused_from": null,
+   "train_seconds": 537.0,
+   "train_rc": 0
+  },
+  {
+   "name": "win128_s0",
+   "kind": "window",
+   "window": 128,
+   "anchors": 0,
+   "seed": 0,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win128_s0/model.pt",
+   "sha256": "73a4530aa4e0f1b006110ca8c30f018298a1f3437bd821baf595a27f253cde80",
+   "reused_from": null,
+   "train_seconds": 533.0,
+   "train_rc": 0
+  },
+  {
+   "name": "win128_s1",
+   "kind": "window",
+   "window": 128,
+   "anchors": 0,
+   "seed": 1,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win128_s1/model.pt",
+   "sha256": "e9d727998699ccf10ef11677be3a75c91a4d4ec75117628fa97a7a95bd43018e",
+   "reused_from": null,
+   "train_seconds": 506.0,
+   "train_rc": 0
+  },
+  {
+   "name": "win192_s0",
+   "kind": "window",
+   "window": 192,
+   "anchors": 0,
+   "seed": 0,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win192_s0/model.pt",
+   "sha256": "f345ede8da04be640b0a6d3d239ea72e5cf99c681764521f69dd0495d76e8cf7",
+   "reused_from": null,
+   "train_seconds": 527.0,
+   "train_rc": 0
+  },
+  {
+   "name": "win192_s1",
+   "kind": "window",
+   "window": 192,
+   "anchors": 0,
+   "seed": 1,
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win192_s1/model.pt",
+   "sha256": "d54a4c2055268dc220e064c6797457d41f4d82205fd9f7f50b2b0c0ae85253e4",
+   "reused_from": null,
+   "train_seconds": 507.0,
+   "train_rc": 0
+  }
+ ],
+ "missing_new_arms": [
+  "win64a_s0",
+  "win64a_s1"
+ ],
+ "missing_new_arms_note": "可选臂只服务判据⑥（锚点杠杆在 k=64）；缺它们时判据⑥ 记 not_produced，其余判据不受影响（README §4b）"
+}
