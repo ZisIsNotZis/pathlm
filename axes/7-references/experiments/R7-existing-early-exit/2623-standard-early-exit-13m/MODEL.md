@@ -74,12 +74,10 @@ python3 axes/7-references/experiments/R7-existing-early-exit/2623-standard-early
 3. **回归接单登记（P0-1，已闭环）**：`tests/test_carry_seed2_13m.py::test_engine_files_unchanged_since_2631_run`
    （按 `pathlm/depth_ar.py` 的 sha256 断言引擎未变的 §9 复用前提）曾由本波改动打红。
    **M1 线已接单**并把该断言改成**行为级等价**口径（`--dense` 三档配置逐位 logits 等价）。
-   本轮全量套件实跑：
-   修复后：本波引起的两条引擎哈希断言**已转绿**；M1 线其后已把其剩余一条在飞测试也修好并
-   **提交**（`4e445a5`）⇒ 当前 `tests/test_carry_seed2_13m.py` 单文件 **23 passed**、
-   全量 `python3 -m pytest tests/ -q` = **826 passed / 0 failed**（无卡口径
-   `CUDA_VISIBLE_DEVICES="" python3 -m pytest tests/ -q` = **825 passed**；按最后一次
-   实跑核数，当前工作树含 M1 线在飞改动）。
-   **归属：修复由 M1 线提交，本波未改其文件**；共享套件当前全绿。
+   本轮该文件实跑：
+   修复后：本波引起的两条引擎哈希断言**已转绿**；M1 线其后已把其剩余一条在飞测试也修好并提交 ⇒
+   当前 `tests/test_carry_seed2_13m.py` 单文件 **23 passed**。全仓库的测试计数不在本文件，
+   唯一家 = `docs/plan.md` §3。
+   **归属：修复由 M1 线提交，本波未改其文件**。
 4. 本波与 `archive/wiki-legacy/axes/M-carrier/**`（2633/2634/2635）、`archive/wiki-legacy/axes/A-mixing/**`（2636/2637）、
    `archive/wiki-legacy/axes/H-horizon/H3-composition/**` 并行运行；本线只写自己的路径，未改其目录。

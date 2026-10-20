@@ -56,9 +56,12 @@
 | `gaps` | list | ✅ | 遗漏 / 未测项（列成「下一步最小实验 + 成本」或显式空列表） |
 | `started` | str | ✅ | 起始时间（ISO8601，**溯源元数据**，允许日期） |
 | `ended` | str | ✅ | 结束时间（ISO8601；未结束写 `""`） |
-| `change_log` | list | ✅ | 变更记录，每条 `{date, actor, change}`（见 §8） |
 
 > 未知字段合法（不 fail），但不得与上表字段冲突、也不得与 `docs/structure.md` 用词冲突。
+>
+> **`change_log` 与其条目里的 `actor` 已退役**：`project.yaml` 是事实文档，只写**当前**状态；过程史
+> （谁在哪一轮改了什么、为什么）的行是 `.scratch/doc-log/axes/<轴>/<格子>/CHANGELOG.md`
+> （`AGENTS.md` §2.2）。留着这两个键 ⇒ `tools/check_tree.py` fail。
 
 ### 2.1 `laws`：本项证据支持哪几条定律
 
@@ -207,10 +210,13 @@ work_packages:
 
 ## 8. 时间与变更
 
-- `started` / `ended` 与 `change_log[].date` 是**溯源元数据**，允许日期。
-- `change_log` 每条：`{date: ISO8601, actor: "谁", change: "改了什么、为什么"}`。
-- 正文（`purpose` / `conclusion` / …）**不带流水叙事**、不写「原本是 A、后来改成 B」；
-  历史进 `change_log` 或对应 ticket（见 `AGENTS.md` §2）。
+- `started` / `ended` 是**溯源元数据**，允许日期。
+- 正文（`purpose` / `conclusion` / …）**不带流水叙事**、不写「原本是 A、后来改成 B」；变更叙事
+  （谁在哪一轮改了什么、为什么）的行是 `.scratch/doc-log/axes/<轴>/<格子>/CHANGELOG.md`（家 =
+  `AGENTS.md` §2.2），本文件只写当前状态。
+- 正文里**不得出现内部工单号与复核编号**（`ticket NN` / `NN-review XX` / `WP-xxxx`）：读者打不开一个仓外
+  的工单，而它要判断的实质已经在同一句里；写实质（「按复核意见改读数口径」）而不写编号，编号与过程
+  一起留在 `.scratch/doc-log/**`。机检：`tools/check_tree.py`（出现即 fail）。
 
 ## 9. 校验与汇总
 

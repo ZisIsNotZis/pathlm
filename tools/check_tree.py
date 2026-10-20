@@ -56,8 +56,16 @@ REQUIRED = (
     "sota_baseline", "gap", "method", "validation", "objective_criteria",
     "falsification", "cost_model", "role_map", "milestone", "work_packages",
     "roadmap", "status", "failure_analysis", "conclusion_review", "laws",
-    "cost_rows", "experiments", "argument", "gaps", "started", "ended", "change_log",
+    "cost_rows", "experiments", "argument", "gaps", "started", "ended",
 )
+#: 变更记录形态的键（`change_log` 与其条目里的 `actor`）：`project.yaml` 是事实文档，只写当前状态；
+#: 过程史的家是 `.scratch/doc-log/**`（`AGENTS.md` §2.1 / §2.2）。出现即 fail。
+RETIRED_KEYS = ("change_log", "actor")
+#: 内部工单号 / 复核编号的形态：`ticket 62`、`55-review P10`、`WP-2652`。
+#: `-review` 只认**两位数字**前缀，否则角色名 `axis1-reviewer` 会被误抓。
+PROCESS_REF_RE = re.compile(r"ticket\s*\d+|\d{2}-review|WP-[A-Za-z0-9]+")
+#: 过程史的家（错误信息里指过去的那一条路径）。
+DOC_LOG = ".scratch/doc-log/axes/<轴>/<格子>/CHANGELOG.md"
 #: 「必填」= 必须**非空**的字符串字段（不允许空串/空列表蒙混，见 docs/research-schema.md §2）。
 NONEMPTY = ("purpose", "innovation", "validation", "objective_criteria", "falsification")
 WP_REQUIRED = ("id", "what", "goal", "means", "acceptance", "evidence", "review", "status")
@@ -308,6 +316,41 @@ def _walk_strings(obj, path: tuple[str, ...] = ()) -> list[tuple[str, str]]:
     elif isinstance(obj, str):
         out.append((".".join(path), obj))
     return out
+
+
+def _walk_keys(obj, path: tuple[str, ...] = ()) -> list[tuple[str, str]]:
+    """递归抽出所有 map 的键（带路径），供「已退役字段」扫描用。"""
+    out: list[tuple[str, str]] = []
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            out.append((".".join(path + (str(k),)), str(k)))
+            out.extend(_walk_keys(v, path + (str(k),)))
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            out.extend(_walk_keys(v, path + (str(i),)))
+    return out
+
+
+def check_no_change_narrative(doc: dict, rel: str) -> list[str]:
+    """事实文档不带变更记录，也不带内部工单号 / 复核编号（`AGENTS.md` §2.1）。
+
+    判据只有两条：出现 `change_log` / `actor` 键，或任何字符串值里出现 `ticket NN` /
+    `NN-review` / `WP-xxxx`。两条都是**类**级的：读者的两三个工具调用里，过程编号只会让他
+    去找一个仓外不存在的东西，而当前事实已经写在同一行的正文里。
+    """
+    errors: list[str] = []
+    for path, key in _walk_keys(doc):
+        if key in RETIRED_KEYS:
+            errors.append(
+                f"{rel}: {path} 是变更记录字段（{key}），已退役——事实文档只写当前状态；"
+                f"过程史写进 {DOC_LOG}")
+    for path, s in _walk_strings(doc):
+        m = PROCESS_REF_RE.search(s)
+        if m:
+            errors.append(
+                f"{rel}: {path} 含内部工单号 / 复核编号 {m.group(0)!r}"
+                f"（事实文档不记过程编号，正文写实质；过程史与编号写进 {DOC_LOG}）")
+    return errors
 
 
 def _is_number(x) -> bool:
@@ -670,6 +713,9 @@ def validate_file(path: Path) -> tuple[list[str], dict[str, list[str]], dict[str
     if not any(w in val for w in ("口径", "bpc", "FLOPs", "layer-passes",
                                   "tokens-per-forward", "perplexity", "acc", "一致率")):
         errors.append(f"{rel}: validation 缺口径")
+
+    # 变更叙事与内部工单号（AGENTS.md §2.1：事实文档只写当前状态）
+    errors.extend(check_no_change_narrative(doc, rel))
 
     # laws / cost_rows（docs/research-schema.md §2.1 / §2.2）
     errors.extend(check_laws_and_costs(doc, rel))

@@ -16,8 +16,8 @@
 
 | 定律 | 改动类型 | 触主干 | 观测代价 | Δ 方向 | 规模与配方 | 适用边界 | 出处 | 研究项 |
 |---|---|---|---|---|---|---|---|---|
-| 1 | 注意力距离惩罚（dist_pen 0.1，全头共用同一斜率） | 是 | `-0.0068` clean bpc Δ（实验 − B0；负 = 更好，但落在 0.014 不可排序带内）；对照 = B0（m1 引擎的同引擎基线） | 正 = 更差 | 13M / m1 引擎 / 12k 步（ticket 07） | 保留 identity、只改注意力权重 ⇒ 近免费；该读数按 55-review P10 判口径不全（丢 per-head slope 与长度外推），只作旧观测，−0.0068 不得称「改善」 | `axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty/README.md` | [1.1.2](../axes/1-time/1.1.2-soft-decay/project.yaml) soft 衰减 |
-| 1 | 层序 shuffle（训练时按序列打乱层级顺序） | 是 | `+0.545` clean bpc 损伤（相对 B0 1.5074；正 = 更差）；对照 = B0（13M / m1 引擎） | 正 = 更差 | 13M / m1 引擎 / M2 元素税扫描（ticket 06） | 破坏顺序是组合毒药（eval 端 shuffle=1.0 崩到 3.844）；同类里 skip +0.175、redo +0.044 ⇒ 保留或显式标记 identity 的近免费、破坏 identity 或顺序的贵 | `.scratch/06-m2-sweep/evidence/SUMMARY.md` | [2.1.2](../axes/2-depth/2.1.2-skipping/project.yaml) skipping（跳层） |
+| 1 | 注意力距离惩罚（dist_pen 0.1，全头共用同一斜率） | 是 | `-0.0068` clean bpc Δ（实验 − B0；负 = 更好，但落在 0.014 不可排序带内）；对照 = B0（m1 引擎的同引擎基线） | 正 = 更差 | 13M / m1 引擎 / 12k 步 | 保留 identity、只改注意力权重 ⇒ 近免费；该读数按复核意见判口径不全（丢 per-head slope 与长度外推），只作旧观测，−0.0068 不得称「改善」 | `axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty/README.md` | [1.1.2](../axes/1-time/1.1.2-soft-decay/project.yaml) soft 衰减 |
+| 1 | 层序 shuffle（训练时按序列打乱层级顺序） | 是 | `+0.545` clean bpc 损伤（相对 B0 1.5074；正 = 更差）；对照 = B0（13M / m1 引擎） | 正 = 更差 | 13M / m1 引擎 / M2 元素税扫描 | 破坏顺序是组合毒药（eval 端 shuffle=1.0 崩到 3.844）；同类里 skip +0.175、redo +0.044 ⇒ 保留或显式标记 identity 的近免费、破坏 identity 或顺序的贵 | `.scratch/06-m2-sweep/evidence/SUMMARY.md` | [2.1.2](../axes/2-depth/2.1.2-skipping/project.yaml) skipping（跳层） |
 | 1 | 把未来位置的 token 换成 `[mask]`（显式「我不知道」标记） | 否 | `+0.059` clean bpc 损伤（相对 B0；正 = 更差）；对照 = B0（1.5074） | 正 = 更差 | 13M / m1 引擎 / M2 元素税扫描（I2） | 显式标记最便宜（+0.059），embedding noise ±0.000 免费 ⇒ 保留或显式标记 identity 的近免费；同一扫描里破坏 identity 的 wrong-token 更贵（排序见 `project.yaml` 的 conclusion） | `.scratch/06-m2-sweep/evidence/SUMMARY.md` | [6.4](../axes/6-predict/6.4-training-fill/project.yaml) 训练时未来位置的填充语义：pad / self-fill / 错误 token |
 
 ### 定律 2 · TTA 增益 ∝ 训练路径多样性

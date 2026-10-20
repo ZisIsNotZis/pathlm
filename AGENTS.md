@@ -28,7 +28,7 @@
 | 定律 ↔ 证据 ↔ 观测代价 ↔ 边界的对照表 | `docs/cost-table.md`（**生成物，禁止手改**：由 `tools/build_cost_table.py` 从 `axes/**/project.yaml` 的 `laws` / `cost_rows` 生成，`--check` 与手改副本逐字节比对；改事实请改 `project.yaml` 后重跑生成器） |
 | 引擎能力面：哪些组合真跑得起来、哪些明确拒绝、拒绝在哪一行 | `docs/engine_capability.md` |
 | 当前进展与下一步（**路由器**，不拥有事实） | `STATUS.md`（**只许指向**：计划与里程碑状态看 `docs/plan.md`、逐项事实看 `axes/**/project.yaml`、研究树统计看 `python3 tools/summary.py`、数字看 `docs/cost-table.md` / `docs/playbook.md`；不得在此新写结论或重算数字） |
-| 已确立结论的索引（**路由器**，不拥有事实） | `FINDINGS.md`（**只许指向**：结论正文的家是 `docs/playbook.md`，数字的家是 `docs/cost-table.md` 与 `axes/**`；改数字必须改它指向的家，且它现存的转录数字按 `docs/plan.md` 的工作包「FINDINGS 数字改指针」逐步换成指针） |
+| 已确立结论的索引（**路由器**，不拥有事实、不拥有数字） | `FINDINGS.md`（**只许指向**：结论正文的家是 `docs/playbook.md`，代价数字的家是 `docs/cost-table.md`（按定律分节）与各实验 `analysis.md`，逐项结论的家是 `axes/**/project.yaml`；本文件只留「结论 + 出处 + 状态」，不得写数字、不得重算） |
 | 怎么贡献 / 硬性规则 | `CONTRIBUTING.md`（与 `SCHEMA.md` 冲突时以 `SCHEMA.md` 为准；改流程本身由维护者决定） |
 | 许可 | `LICENSE.md`（AGPL-3.0 全文；改许可属对外暴露，需用户同意） |
 | 单个实验 | 实验目录内 `README.md`（预登记契约）· `analysis.md`（**当前**结论与证据）· `results.json`（原始数字）· `MODEL.md`（权重清单） |

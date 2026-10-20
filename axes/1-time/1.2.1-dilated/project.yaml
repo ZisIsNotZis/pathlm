@@ -8,18 +8,18 @@ purpose: "在每 token 可见量固定（远小于 T）的前提下，让可见�
 innovation: "相对普通 decoder-only transformer 的全因果 attention，只把可见掩码从「最近 k 个位置」换成「近端窗口 + 每隔 dilation 步取一个的稀疏位置」（空洞 / 跨步采样），不改变量、不新增参数。改动量级：可见键数仍固定（如 k_local + k_dilated），attention 的 QKᵀ 与加权项仍为 O(T·可见键数)，相对全因果 O(T²) 省算力；每 token 的可见键数与硬窗口同量级，但有效感受野随 dilation 按层数指数放大。"
 expected_effect: "（a）同每 token 可见量下，dilated 掩码比同宽的硬窗口覆盖更远的上下文，长程召回相对硬窗口应抬升；（b）把 dilated 点放进「质量-代价前沿」（横轴 = 每 token 可见键数 / 等效 FLOPs，纵轴 = 相对全因果的 clean bpc 与长程召回），与硬窗口、soft 衰减、块稀疏同预算比较。"
 sota_baseline: "Longformer 的 dilated-window 变体与 LongNet 的 dilated attention（跨步采样扩感受野）；本地锚 = stock 全因果注意力基线（A2 → axes/7-references，13M B0 = 1.5074 bpc 快照）。旧格 `原 A5-dilated-window` 已被删除并入 archive（`archive/dropped/axes/A-mixing/A5-dilated-window/`），本项承接其概念。业界条目按 `记忆·未核` 标注。"
-gap: "本仓零经验（MAPPING §2「无旧格」）；旧 A6 曾把「位置式稀疏（跨步/膨胀，原 A5-dilated-window）」列为同预算对照选项但从未实装（55-review R2）。本项增量 = 把 dilated 掩码真正实装，并在「同每 token 可见键数」下与硬窗口正面对撞，回答「扩感受野是否比单纯加宽窗口更值」。"
+gap: "本仓零经验（MAPPING §2「无旧格」）；旧 A6 曾把「位置式稀疏（跨步/膨胀，原 A5-dilated-window）」列为同预算对照选项但从未实装。本项增量 = 把 dilated 掩码真正实装，并在「同每 token 可见键数」下与硬窗口正面对撞，回答「扩感受野是否比单纯加宽窗口更值」。"
 method: "单因素：只改 attention 可见掩码。臂 = {stock 全因果, 硬窗口 k, 硬窗口 k + 空洞（dilation∈{2,4}, 每 d 步取一个位置）, 全序列空洞（不保留近端窗口）}。对照时把「每 token 可见键数」对齐（同预算）。基底恒为 stock decoder-only。"
 validation: "端到端：对照 = stock 全因果基线（归一为 100%）+ 同可见键数的硬窗口臂；客观判据 = clean bpc（该跌/该不变）+ 长程召回（该涨，相对同宽硬窗口）+ 每 token 可见键数与等效 FLOPs（作对照列，必须与硬窗口相等）；口径 = matched-step / 同 token 预算，禁墙钟。"
 objective_criteria: "该涨：dilated 臂的长程召回（相对同可见键数的硬窗口臂）；该跌/该不变：clean bpc（不得越 0.014 噪声带）；必须不变：每 token 可见键数（与硬窗口严格相等，否则不是同预算比较）与因果性。"
 falsification: "若 dilated 掩码在同可见键数下相对硬窗口的长程召回不越噪声带，且 clean bpc 无改善 ⇒ dilated 这一可见结构在本尺度无净增量、不成立；若 dilated 掩码的召回相对全因果退到 chance ⇒ 扩感受野在此规模未能搬运远距离信息。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）为主判；长程召回等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014。"
 failure_analysis: ""
 conclusion: ""
-conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按 55-review 的原则预登记（须有对照 + 客观判据 + 口径 + 否证条件），并把「同可见键数」作为必须不变项钉死。独立复核未做。"
+conclusion_review: "本项无旧格、本仓零经验，尚无本地判决，故 status 未开始。判据与基线按本仓的预登记原则写（须有对照 + 客观判据 + 口径 + 否证条件），并把「同可见键数」作为必须不变项钉死。独立复核未做。"
 laws: []
 cost_rows: []
 experiments: []
-argument: "dilated 把「感受野」与「每 token 可见量」这两个常被混同的量分开：硬窗口下二者同增同减，dilated 用固定的可见键数覆盖更远。因此判据必须钉在「同可见键数」上，否则无法把「扩感受野」与「单纯加宽」区分开——这正是旧 A6 把 dilated 列为「同预算对照」想要的东西（55-review R2）。"
+argument: "dilated 把「感受野」与「每 token 可见量」这两个常被混同的量分开：硬窗口下二者同增同减，dilated 用固定的可见键数覆盖更远。因此判据必须钉在「同可见键数」上，否则无法把「扩感受野」与「单纯加宽」区分开——这正是旧 A6 把 dilated 列为「同预算对照」想要的东西。"
 gaps:
   - "本仓零经验：需先做最小判决（13M、T=256/512、{全因果, 硬窗口, 硬窗口+空洞} 三臂，对齐每 token 可见键数；长程召回 + clean bpc）"
   - "dilation 与层数的组合（逐层递增 dilation，LongNet 式）未测"
@@ -53,13 +53,3 @@ roadmap:
 status: "未开始"
 started: "2026-10-13T10:29:52+08:00"
 ended: ""
-change_log:
-  - date: "2026-10-13T10:29:52+08:00"
-    actor: "轴 1 §1.2 worker"
-    change: "新建研究项（无旧格，MAPPING §2）：dilated / 空洞 归 1.2 可见结构；承接已删旧格 A5-dilated-window（archive/dropped）与旧 A6 未实装的「位置式稀疏」选项（55-review R2）；判据钉在「同每 token 可见键数」以区分「扩感受野」与「加宽窗口」。"
-  - date: "2026-10-14T06:59:49+08:00"
-    actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
-    change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
-  - date: "2026-10-20T10:40:00+08:00"
-    actor: "代价表生成 worker（工作包「代价表生成」）"
-    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

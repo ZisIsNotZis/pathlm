@@ -8,20 +8,20 @@ purpose: "把可丢弃的前缀压成更小的载体（摘要槽 / 低秩投影 
 innovation: "相对普通 decoder-only transformer：把历史 KV 用低秩投影 / 摘要槽 / pooling 压到更少字节再读；改的是 KV 的表示与读出，不动主干计算图。改动量级：压缩后每位置字节按压缩率 ρ 缩放，读出仍是 attention。"
 expected_effect: "（a）每位置内存字节下降，长上下文显存随 T 的斜率变小；（b）在质量-代价前沿上给出「同预算下摘要/低秩/pooling 相对窗口/量化是否占优」的判断。"
 sota_baseline: "MLA（DeepSeek 低秩 KV）、Compressive Transformer（压缩记忆 + compression loss）、pooling / AutoCompressors；本地锚 = stock 全因果基线（A2 → axes/7-references，13M B0 = 1.5074 bpc 快照）+ R1 量化预算点。业界条目按 `记忆·未核` 标注。"
-gap: "旧格 M2 的两个实验量的是「删 KV 会掉多少」（依赖），不是任何压缩方法（55-review M-18）；真正的压缩读数在 R1（量化）与 1.1.1（驱逐）。本项增量 = 给出摘要槽 / 低秩投影 / pooling 三类压缩在**同每位置字节预算**下的质量-召回曲线。"
+gap: "旧格 M2 的两个实验量的是「删 KV 会掉多少」（依赖），不是任何压缩方法；真正的压缩读数在 R1（量化）与 1.1.1（驱逐）。本项增量 = 给出摘要槽 / 低秩投影 / pooling 三类压缩在**同每位置字节预算**下的质量-召回曲线。"
 method: "单因素：固定压缩率 ρ，比 {不压, 量化, 驱逐窗口, 摘要槽, 低秩投影（MLA 式）, pooling} 六臂；基底恒为 stock decoder-only。"
 validation: "端到端：对照 = stock 全因果基线（归一为 100%）+ R1 量化点 + 1.1.1 窗口点；客观判据 = 每位置字节（该跌）× clean bpc 与长程召回（该涨）的双边前沿；口径 = 同压缩率 / 同字节预算，禁墙钟。"
 objective_criteria: "该跌：每位置内存字节（同压缩率下）；该涨：压缩后 clean bpc 与长程召回（相对同预算窗口/量化）；必须不变：压缩率 ρ 与总字节预算相等（否则不可比）、因果性。"
 falsification: "若摘要槽 / 低秩投影 / pooling 在同每位置字节预算下相对窗口/量化点被支配（前沿上不占优）⇒ 该压缩手段在本尺度不成立。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）为主判；长程召回等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014。"
 failure_analysis: ""
-conclusion: "旧格两个实验（2614-kv-ablation-retention-13m、2615-retention-retrieval-leg-13m）量的是「删 KV 的保留曲线」（模型对某位置 KV 的依赖），**不是任何压缩方法**；本项自身目的（三类压缩的同预算质量-召回前沿）尚无实验（55-review M-18）。"
+conclusion: "旧格两个实验（2614-kv-ablation-retention-13m、2615-retention-retrieval-leg-13m）量的是「删 KV 的保留曲线」（模型对某位置 KV 的依赖），**不是任何压缩方法**；本项自身目的（三类压缩的同预算质量-召回前沿）尚无实验。"
 conclusion_review: "看上去旧格名不副实：有 retention 仪器但没有压缩实验；旧 verdict 里的「待按因果/流式口径重测（见 R1）」是已被 R1 满足的过期待办（M-19）。故 status 进行中，conclusion 只陈述现状。独立复核未做。"
 laws: []
 cost_rows: []
 experiments:
   - "axes/1-time/1.1.4.2-compression/experiments/2614-kv-ablation-retention-13m/analysis.md @c39dc88"
   - "axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m"
-argument: "旧证据只支撑「保留曲线」这类依赖度量；本项的判据（压缩率-质量曲线）需要真正的压缩算子，因此不能拿旧实验当本项结论——这正是 55-review M-18 指出的判据与实测量错配。"
+argument: "旧证据只支撑「保留曲线」这类依赖度量；本项的判据（压缩率-质量曲线）需要真正的压缩算子，因此不能拿旧实验当本项结论——这正是复核指出的判据与实测量错配。"
 gaps:
   - "无任何自有压缩实验（摘要槽 / 低秩投影 / pooling 均未做）"
   - "需给出压缩率-质量曲线并放进同每位置字节前沿"
@@ -55,13 +55,3 @@ roadmap:
 status: "进行中"
 started: "2026-10-13T10:15:48+08:00"
 ended: ""
-change_log:
-  - date: "2026-10-13T10:15:48+08:00"
-    actor: "轴 1 §1.1 worker"
-    change: "由旧格 M2-carrier-compression 迁移建立（M2 → 1.1.4.2 压缩）；2 个实验目录整目录搬入 experiments/；按 55-review M-18/M-19/M-20 把目的改为「给定每位置字节预算下的压缩质量前沿」，指明旧证据只是 retention 仪器、不构成压缩结论；status 由 todo 改为进行中。"
-  - date: "2026-10-14T20:51:00+08:00"
-    actor: "axis1-lead-3"
-    change: "按 `docs/research-schema.md` §12.1 的声明义务补 **`falsification` 字段**的判据带声明（ticket 62 §10.3 F11；此前 C1 回填只落在 `validation`，`falsification` 仍缺声明 ⇒ 判据不可判）：bpc 类走 0.014 bpc 带（限配对 Δ、≥5 窗口）、召回等率类走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014；不改数字、不改结论、不改判据线。"
-  - date: "2026-10-20T10:40:00+08:00"
-    actor: "代价表生成 worker（工作包「代价表生成」）"
-    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

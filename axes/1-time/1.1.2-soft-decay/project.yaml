@@ -8,13 +8,13 @@ purpose: "在「硬丢远端」与「无差别全看」之间给一个连续插�
 innovation: "相对普通 decoder-only transformer，只在全因果 attention 的 logits 上加距离相关的加性偏置或乘性衰减（软窗口），不改可见集合、不动主干。改动量级：固定偏置零新增参数；per-head 可学习 slope 时每头 1 个标量（可忽略）；attention FLOPs 不变。"
 expected_effect: "（a）以远小于硬窗口的质量税压低远距离注意的权重，使长程 head 仍可存在；（b）长序列上获得类似 ALiBi 的长度外推便利，缓解绝对位置嵌入的硬长度上界。"
 sota_baseline: "ALiBi（Press et al. 2022，per-head slope + 长度外推）与 T5 relative bias、soft-window 一族；本地锚 = 全因果注意力基线（A2 → axes/7-references，13M B0 = 1.5074 bpc 快照）。业界条目按 `记忆·未核` 标注。"
-gap: "业界报 ALiBi 在同分布 bpc 上中性、真实卖点在**长度外推**；旧格 A4 用固定 w、全头共用把 per-head slope 丢掉，且没测长度外推（55-review P10）。本项要补的是 (a) per-head 可学习 slope、(b) 训练短测长的外推判据、(c) per-head 平均注意距离分布，并把它放进同预算前沿。"
+gap: "业界报 ALiBi 在同分布 bpc 上中性、真实卖点在**长度外推**；旧格 A4 用固定 w、全头共用把 per-head slope 丢掉，且没测长度外推。本项要补的是 (a) per-head 可学习 slope、(b) 训练短测长的外推判据、(c) per-head 平均注意距离分布，并把它放进同预算前沿。"
 method: "单因素：只在 attention logits 加距离偏置。臂 = {stock, 固定 w 全头共用（旧实现）, per-head 可学习 slope, 乘性衰减}，并加「训练短、评测长」的长度外推臂。基底恒为 stock decoder-only。"
 validation: "端到端：对照 = stock 全因果基线（归一为 100%）；客观判据 = clean bpc（该跌）+ per-head 平均注意距离分布（必须有 head 保持长程，该涨）+ 长度外推召回（训练短测长，该涨）；口径 = matched-step / 同 token 预算，禁墙钟。"
 objective_criteria: "该跌：clean bpc（相对 stock，须越 0.014 噪声带才算可排序）；该涨：训练短测长的长度外推召回（ALiBi 的真实卖点）；必须不变：因果性（无未来泄漏）、per-head 距离分布不得全部被推向局部（须有 head 保持长程）。"
 falsification: "若 per-head 可学习 slope 在同分布 bpc 与长度外推两项上都不越噪声带，且 per-head 距离分布仍全被推向局部（无 head 保持长程）⇒ 判 soft 衰减作为可见范围手段无净增量、不成立。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 failure_analysis: ""
-conclusion: "旧格读数：固定 w、全头共用时 clean bpc = −0.0068（1.5006 vs B0 1.5074），落在 Δ<0.014 不可排序带内、不构成改善；且 per-head 平均注意距离 26–43（均值 ~33）无 head 保持长程。该读数按 55-review P10 判为**口径不全**（丢了 per-head slope 与长度外推），只作旧观测，不作本项结论。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
+conclusion: "旧格读数：固定 w、全头共用时 clean bpc = −0.0068（1.5006 vs B0 1.5074），落在 Δ<0.014 不可排序带内、不构成改善；且 per-head 平均注意距离 26–43（均值 ~33）无 head 保持长程。该读数按复核意见判为**口径不全**（丢了 per-head slope 与长度外推），只作旧观测，不作本项结论。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）。"
 conclusion_review: "看上去只能作「口径不全的旧观测」：判据用的是错口径（固定 w、无外推），不能据此判手段不成立。故 status 进行中；按正确口径的判决实验未做。独立复核未做。"
 laws: [1]
 cost_rows:
@@ -25,13 +25,13 @@ cost_rows:
     delta: "-0.0068"
     delta_direction: arm_minus_comparator
     comparator: "B0（m1 引擎的同引擎基线）"
-    scale: "13M / m1 引擎 / 12k 步（ticket 07）"
-    boundary: "保留 identity、只改注意力权重 ⇒ 近免费；该读数按 55-review P10 判口径不全（丢 per-head slope 与长度外推），只作旧观测，−0.0068 不得称「改善」"
+    scale: "13M / m1 引擎 / 12k 步"
+    boundary: "保留 identity、只改注意力权重 ⇒ 近免费；该读数按复核意见判口径不全（丢 per-head slope 与长度外推），只作旧观测，−0.0068 不得称「改善」"
     source: "axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty/README.md"
 experiments:
   - ".scratch/07-x1-x3/evidence/attn_dist_telemetry.json @7b47555"
   - "axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty"
-argument: "旧读数用 clean bpc（税）+ per-head 距离遥测，但没做长度外推、没给 per-head slope；因此只能证明「全头共用固定偏置下同分布 bpc 中性」，不能证明 soft 衰减这一手段本身不成立——这正是 55-review P10 指出的「无目的 + 用错口径」。"
+argument: "旧读数用 clean bpc（税）+ per-head 距离遥测，但没做长度外推、没给 per-head slope；因此只能证明「全头共用固定偏置下同分布 bpc 中性」，不能证明 soft 衰减这一手段本身不成立——这正是复核指出的「无目的 + 用错口径」。"
 gaps:
   - "per-head 可学习 slope 的判决未做（下一步最小实验：13M、T=256、{per-head slope vs 固定 w} 两臂 × 2 seed；成本按等效 FLOPs 与 token 预算计）"
   - "长度外推（训练短测长）判决未做"
@@ -75,13 +75,3 @@ roadmap:
 status: "进行中"
 started: "2026-10-13T10:15:48+08:00"
 ended: ""
-change_log:
-  - date: "2026-10-13T10:15:48+08:00"
-    actor: "轴 1 §1.1 worker"
-    change: "由旧格 A4-soft-distance-penalty 迁移建立（A4 → 1.1.2 soft 衰减）；experiments 整目录搬入；按 55-review A-P10 修正——目的改为可见范围手段（时间轴省算力、尽量保住长程可达性），旧「−0.0068 无净增量」降为口径不全的旧观测，补 per-head slope 与长度外推判据；旧「ALiBi 是独立格」的结构错位修正为「轴 1 可见范围下的一项」。"
-  - date: "2026-10-14T06:59:49+08:00"
-    actor: "c1-backfill-writer（ticket 57 · C1 声明回填）"
-    change: "C1 声明回填（ticket 57；不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，给本项引用噪声带 / 阈值却未声明「用哪个带」的字段补一句声明——bpc 口径用 0.014 bpc 带（限配对 Δ、≥5 窗口），概率 / 率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用；本格有自测在力带者以本格带为准（见各字段声明）。"
-  - date: "2026-10-20T10:40:00+08:00"
-    actor: "代价表生成 worker（工作包「代价表生成」）"
-    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"

@@ -6,7 +6,7 @@
 （见顶部迁移通告 / `docs/structure.md` §15）。本文件同时是**分析纪律**的家：
 所有条款都是**当前生效的规则**，按编号引用（编号稳定，正文可读）。
 
-> **迁移通告（ticket 56）**：新结构下研究项的 SSOT = **`axes/**/project.yaml`**
+> **迁移通告**：新结构下研究项的 SSOT = **`axes/**/project.yaml`**
 > （格式契约 = `docs/research-schema.md`；树/用词/粒度/目录 = `docs/structure.md`）。
 > 生成式 wiki（`catalog.yaml` / `tools/build_wiki.py` / `INDEX.md` / `tools/check_catalog_strict.py` /
 > `tools/backfill_legacy.py`）**已退役**；校验入口 `tools/check_schema.py` 已**转调**

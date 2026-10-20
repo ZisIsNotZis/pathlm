@@ -140,7 +140,6 @@ argument:      # 怎么论证的
 gaps: []       # 遗漏
 started:       # 时间
 ended:         # 时间
-change_log: [] # 变更
 ```
 
 > 上表是**最小字段集**；**完整、权威**的字段/取值/纪律（含复核与收口纪律 `docs/research-schema.md` §11：

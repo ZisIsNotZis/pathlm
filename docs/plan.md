@@ -16,6 +16,7 @@
 | 数字被转录成第二份 | 定律的代价数字能被手抄进一张汇总表，抄错没人发现 | **生成物**：`docs/cost-table.md` 由 `tools/build_cost_table.py` 从 `axes/**/project.yaml` 生成，`--check` 与手改副本逐字节比对 |
 | 无界重试 | supervisor 是 `while :`，写结果阶段崩一次就无限重跑，并且一直攥着 GPU 锁 | **单一实现**：`tools/supervise.sh`（总尝试上限 + 连续失败熔断 + 取锁礼让）是树内唯一的重试驱动；`while :` 只剩取锁等待里那一个，带 `deadline` 上限 |
 | 一份事实文档转述另一份的当前内容 | 转述一旧，读者看到的两个事实就打起来 | **判据靠人**（机检只查得到悬空，查不到「转述」）：规矩 = 引用别的文档只放指针，不复述其内容（`AGENTS.md` §2.1） |
+| 过程编号进了事实文档 | `project.yaml` 正文里写着 `ticket NN` / `NN-review XX` 这类读者打不开的编号，而它要判断的实质就在同一句里 | **已机检**：`tools/check_tree.py` 拒绝 `change_log` / `actor` 键与 `ticket NN` / `NN-review` / `WP-xxxx` 串，错误信息指向 `.scratch/doc-log/**`（过程史的家） |
 | 同一事实在多处写数字 | 研究项数、测试计数、里程碑状态各写一份 | **判据靠人 + 单一落点**：每类数字只留一处主读数（`AGENTS.md` §2.1 指明哪份文档持有哪类事实），其余文档只放指针；本文件的 §1 是里程碑状态的落点、§3 是测试计数的落点 |
 
 ## 1 里程碑
@@ -36,7 +37,6 @@
 |---|---|---|---|---|---|---|
 | 陌生阅读复测 | 自证 | worker（fresh context，未读过本仓） | 一轮陌生阅读测试的结论：它答错的每一处，以及对应的账目层修复 | 只给仓库与 8 问清单，≤20 次工具调用答完；答案与 `axes/**` 的落盘事实一致、无一处悬空引用、无一处把第二个家当主读数 ⇒ 通过即作为「自证」里程碑的验收证据 | 30 分钟 | 未开始（等本轮的账目层修复合入） |
 | Δ 方向全树声明 | 自证 | worker | 每个报了 Δ 读数的 `results.json` 逐字段声明 `delta_directions`；把 `cost_rows[].metric` 里机判不了方向的写法改成可机判 | `tools/check_tree.py` 的 Δ 方向汇总行：`undeclared` 计数为 0、「不判」条目为 0（现存条目逐条补声明或改 `metric` 措辞） | 60 分钟 | 进行中 |
-| FINDINGS 数字改指针 | 自证 | worker | `FINDINGS.md` 一、二、三节的数字列改成指向 `docs/playbook.md` / `docs/cost-table.md` / `axes/**` 的指针，只留「结论 + 出处 + 状态」 | `FINDINGS.md` 里不再有**由本文件负责**的代价数字（引用别的家时只放指针）；`tools/check_docs.py --check` 仍 0 违规 | 45 分钟 | 未开始 |
 | 复现清单 | 可引用 | worker | `tools/inventory_runs.py` + `docs/repro.md`：每个实验的 run 目录、权重是否在库、日志、重跑命令、实测墙钟、能否字节级复现 | 每条路径的存在性由脚本校验；不可重建的项显式写「不可重建」而不是留空；脚本进 `tests/` | 60 分钟 | 未开始 |
 | 论文口径收口 | 可引用 | worker → reviewer | `docs/paper-plan.md`：代价按「触主干 / 旁路」分组，定律 8–11 归为「用表前必须过的口径与前置条件」，方法一页只做 router | 与 `docs/playbook.md`、`docs/cost-table.md` 无重复数字（只有指针）；fresh 复核者只按文件本身即可判断其自洽 | 45 分钟 | 未开始 |
 | 树分诊 | 推进 | worker | `docs/triage.md`：每个在途 / 空白格的「能否改变判断」评分、覆盖度、所需算力与时间 | 每格一行，评分有可核对的理由；在途格标注它离「可交付」还缺什么 | 60 分钟 | 未开始 |
@@ -56,7 +56,7 @@ python3 -m pytest tests/ -q                # 需要 requirements-dev.txt（torch
 
 当前读数——**`pytest` 那一行是本仓测试计数的唯一家**，`README.md` 与 `STATUS.md` 只放指针：
 
-- `python3 -m pytest tests/ -q` ⇒ `1 failed, 913 passed`（约 2 分钟，单机 CPU，不占 GPU）。
+- `python3 -m pytest tests/ -q` ⇒ `1 failed, 917 passed`（约 2 分钟，单机 CPU，不占 GPU）。
 - 唯一的失败是**预存失败**，与本计划任何工作包无关，登记在此、不修：
   `tests/test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`。它断言树内每个
   `mutate.py` 都 `from tools.evalkit import mutation`，而下面 4 个还没接入（都在 `axes/6-predict/` 下）：

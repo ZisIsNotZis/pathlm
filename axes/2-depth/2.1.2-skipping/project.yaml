@@ -8,14 +8,14 @@ purpose: "普通 decoder-only transformer 对每个 token 都跑满 L 层（每�
 innovation: "相对普通 decoder-only transformer 的「每 token 固定跑满 L 层」，按概率 p_skip 在训练期随机跳过若干层（LayerDrop 式 layer dropout），或在推理期按预算选定层子集并跳过其余层（被跳层输出 = 输入的恒等旁路）。改动量级：不新增参数；每跳一层省一次 layer-pass（该 token 的 layer-passes 由 L 降到 L−跳层数）。"
 expected_effect: "（a）每 token layer-passes 下降，代价是保留下来的浅/中层必须承担被跳层的表示推进；（b）训练期 layer dropout 应让模型对「缺失某些层」鲁棒，从而推理期可安全跳层；（c）把跳层代价放进以 stock 全深度为 100% 的质量-代价前沿，与 2.1.1 的逐 token 早退比较「整层跳」与「逐 token 停」哪个更值。"
 sota_baseline: "LayerDrop（Fan 2019，训练期 layer dropout）与 LayerSkip（Elhoushi 2024，早退训练 + 自投机）；本仓对照 = 旧格 C2 的元素税定律（`2506` / `2509`）与 stock 全深度（归一为 100%）。"
-gap: "旧格 C2 是**手段枚举、无独立目的**（55-review C-P09）：命题写成「层可以被跳过、重排、重复到什么程度」，没有「要解决什么 / 假设是什么 / 怎么端到端验证」，且税数字来自旧 M2 引擎、`p_skip` 由 `sample_path` **逐序列/逐 batch** 采样一次（整条路径丢同一批层）**不是逐 token**、该格只有 self-review（源工单明文 user approved self-review）。本项增量 = 在能跑本线 checkpoint 的 depth-ar 引擎里、按**序列级**判据重测跳层，并给出与「逐 token 早退」的同预算比较。"
+gap: "旧格 C2 是**手段枚举、无独立目的**：命题写成「层可以被跳过、重排、重复到什么程度」，没有「要解决什么 / 假设是什么 / 怎么端到端验证」，且税数字来自旧 M2 引擎、`p_skip` 由 `sample_path` **逐序列/逐 batch** 采样一次（整条路径丢同一批层）**不是逐 token**、该格只有 self-review（源工单明文 user approved self-review）。本项增量 = 在能跑本线 checkpoint 的 depth-ar 引擎里、按**序列级**判据重测跳层，并给出与「逐 token 早退」的同预算比较。"
 method: "单因素：固定基底（stock depth-ar / dense），只改**跳层策略**。臂 = {stock 全深度, 固定跳 k 层, 训练期随机跳 p_skip（逐 token layer dropout）, 按预算选层子集}。基底恒为 stock decoder-only；跳层位置按层索引或按学习到的选择器给定。"
 validation: "端到端：对照 = 同尺寸 stock 全深度（归一为 100%）+ 同预算固定深度；客观判据 = clean bpc（序列级，该不跌/仅可排序下降）+ 每 token 平均 layer-passes 与跳过层数占比（该跌）+ 训练/评测跳层分布一致性（必须不变）；口径 = layer-passes/token 等等效理论量，**墙钟不进判据**。"
 objective_criteria: "该跌：每 token 平均 layer-passes 与跳过层数占比；该不跌/可排序：clean bpc（序列级，须越 0.014 噪声带才算可排序）；必须不变：训练期与评测期的跳层分布一致（旧 C2 已观测 p_skip 训练/评测不一致导致评测不可信）、因果性、被跳层的恒等旁路不引入非因果。"
 falsification: "若同预算下跳层臂相对「同预算最优固定深度」在 clean bpc 上无可排序改善，或跳层只在训练分布内鲁棒（评测/训练跳层分布不一致即崩，旧 C2 已观测 3.84 崩点）⇒ 判跳层作为独立省算力手段在本尺度无增量，应并入 2.1.1 的逐 token 深度分配。 用哪个带（C1 裁决）：clean bpc 用 0.014 bpc 带（限配对 Δ、≥5 窗口）为主判；跳过层占比、训练/评测跳层分布一致率等率类指标不借用 0.014，走配对 bootstrap / Wilson 95% CI。"
 failure_analysis: ""
 conclusion: ""
-conclusion_review: "status = 进行中：旧格 C2 的数字（skip +0.175、redo +0.044、shuffle +0.545）有本地观测，但按 55-review C-P09 三条硬伤（无目的、跨代引擎、p_skip 逐序列而非逐 token、只有 self-review）不足以作结论，须在 depth-ar 引擎按序列级判据重测。另按 C-P18，旧 C2 的「层序 shuffle」子项没有任何部署会打乱层序、结论无论正负都不改变「某算力路径值不值」，**不立研究项**（数字留 playbook note）；「重复（redo）」属 2.1.3 repeating，不在本项。WP-2654（序列级重测）本轮完成**实装 + 预登记契约 + 一次 20 步冒烟**（工厂替换 + 逐 token 恒等旁路 + 按臂增量落盘，见 experiments/2654-skipping-seqlevel-13m/）：冒烟于 2026-10-14T22:37:39 第 4 轮取到 GPU 锁并运行（`run_log.txt:5`），`stock` / `skip-mid` / `layers6` 三臂活性门过（实测 layer-passes 8.0 / 6.0 / 6.0；`run_log.txt:576` / `:1144` / `:1618`），`layerdrop-pt` 臂活性门抓红（实测 8.0 ≠ 设计 7.2，断言 `run.py:451`，`run_log.txt:2194`），`22:38:50 SMOKE FAILED`（`:2195`）⇒ launcher（`run_remaining.sh:53`）在冒烟后退出，四臂 12k 一个都没训（无 `results.json`）、判据线 P0–P5 无读数 ⇒ 本项仍无新结论。本项缺口的性质 = **实现未过活性门（`layerdrop-pt` 按 `2654/README.md` §4-P1 作废，须先在 CPU 上修 `SkipBlock` 逐 token 跳层接线/记账）+ 资源未获得**。round 1 独立复核 = 1 blocking（B1：冒烟结果与文档不符；本轮已按 B1 处置，待新的 fresh 复核；判词见 `.scratch/61-axis2-depth/TICKET.md` §9.18）。"
+conclusion_review: "status = 进行中：旧格 C2 的数字（skip +0.175、redo +0.044、shuffle +0.545）有本地观测，但有硬伤（无目的、跨代引擎、p_skip 逐序列而非逐 token、只有 self-review）不足以作结论，须在 depth-ar 引擎按序列级判据重测。另按 C-P18，旧 C2 的「层序 shuffle」子项没有任何部署会打乱层序、结论无论正负都不改变「某算力路径值不值」，**不立研究项**（数字留 playbook note）；「重复（redo）」属 2.1.3 repeating，不在本项。序列级重测本轮完成**实装 + 预登记契约 + 一次 20 步冒烟**（工厂替换 + 逐 token 恒等旁路 + 按臂增量落盘，见 experiments/2654-skipping-seqlevel-13m/）：冒烟于 2026-10-14T22:37:39 第 4 轮取到 GPU 锁并运行（`run_log.txt:5`），`stock` / `skip-mid` / `layers6` 三臂活性门过（实测 layer-passes 8.0 / 6.0 / 6.0；`run_log.txt:576` / `:1144` / `:1618`），`layerdrop-pt` 臂活性门抓红（实测 8.0 ≠ 设计 7.2，断言 `run.py:451`，`run_log.txt:2194`），`22:38:50 SMOKE FAILED`（`:2195`）⇒ launcher（`run_remaining.sh:53`）在冒烟后退出，四臂 12k 一个都没训（无 `results.json`）、判据线 P0–P5 无读数 ⇒ 本项仍无新结论。本项缺口的性质 = **实现未过活性门（`layerdrop-pt` 按 `2654/README.md` §4-P1 作废，须先在 CPU 上修 `SkipBlock` 逐 token 跳层接线/记账）+ 资源未获得**。round 1 独立复核 = 1 blocking（B1：冒烟结果与文档不符；本轮已按 B1 处置，待新的 fresh 复核；判词见 `.scratch/61-axis2-depth/TICKET.md` §9.18）。"
 laws: [1, 2, 3, 5]
 cost_rows:
   - law: 1
@@ -25,7 +25,7 @@ cost_rows:
     delta: "+0.545"
     delta_direction: arm_minus_comparator
     comparator: "B0（13M / m1 引擎）"
-    scale: "13M / m1 引擎 / M2 元素税扫描（ticket 06）"
+    scale: "13M / m1 引擎 / M2 元素税扫描"
     boundary: "破坏顺序是组合毒药（eval 端 shuffle=1.0 崩到 3.844）；同类里 skip +0.175、redo +0.044 ⇒ 保留或显式标记 identity 的近免费、破坏 identity 或顺序的贵"
     source: ".scratch/06-m2-sweep/evidence/SUMMARY.md"
   - law: 2
@@ -121,19 +121,3 @@ roadmap:
 status: "进行中"
 started: "2026-10-13T10:37:02+08:00"
 ended: ""
-change_log:
-  - date: "2026-10-13T10:37:02+08:00"
-    actor: "轴 2 §2.1 worker"
-    change: "按 MAPPING §1 由旧格 C2-layer-selection-order 并入 2.1.2 skipping（C2 → 2.1.2），整目录 git mv 两个实验目录进 experiments/；按 55-review C-P09 把「手段枚举」改成有目的/假设/判据的研究项，按 C-P18 不立「层序 shuffle」研究项（redo 归 2.1.3 repeating）。"
-  - date: "2026-10-14T21:00:00+08:00"
-    actor: "轴 2 深度轴 lead（ticket 61）"
-    change: "C1 声明回填（不改数字 / 不改结论 / 不改证据）：按 `docs/research-schema.md` §12.1 的声明义务，`falsification` 字段显式补写「用哪个带」（本项取 bpc 走 0.014 bpc 带（限配对 Δ、≥5 窗口）；跳过层占比 / 分布一致率等率类指标走配对 bootstrap / Wilson 95% CI）；此前本项引用噪声带却只在 `validation` 声明，`falsification` 无声明 ⇒ 按该节判据不可判。"
-  - date: "2026-10-14T22:35:00+08:00"
-    actor: "WP-2654 worker（ticket 61 §9.2）"
-    change: "WP-2654 实装 + 预登记契约落盘（工厂替换 + 逐 token 恒等旁路 + 按臂增量落盘）；四臂训练因 GPU 锁未取到而未跑（该表述后由 23:10 条目按复核 B 的 B1 更正为「冒烟已跑、layerdrop-pt 活性红」。）"
-  - date: "2026-10-14T23:10:00+08:00"
-    actor: "轴 2 深度轴 lead（ticket 61 · 复核 B 处置 writer）"
-    change: "按复核 B 的 blocking 2.1.2-B1 修正账实不符（不改任何测量数字、不改判据线、不改实现）：`2654/analysis.md` §0/§1/§3/§5 把「冒烟未执行」改为真实结论（2026-10-14T22:37:39 第 4 轮取到锁跑 20 步冒烟；`stock` / `skip-mid` / `layers6` 活性门过 lp = 8.0 / 6.0 / 6.0；`layerdrop-pt` 活性门红：实测 lp 8.0 ≠ 设计 7.2，`run_log.txt:2194`，断言 `run.py:451`；22:38:50 SMOKE FAILED，`run_log.txt:2195`）；`conclusion_review` 与 `gaps` 登记「实现未过活性门 + 资源未获得」，`gaps` 补等效算力账（每臂 98.3M token / 四臂 393.2M token）；WP1 的 `status` 维持「进行中」但推进状态改由 `gaps` 与本条说明（实装未过活性门 ⇒ 先修接线，再排 GPU；预登记 `acceptance` 文字未改）；`WP-2654-REPORT.md` 撤销「一次也没轮上」表述。"
-  - date: "2026-10-20T10:40:00+08:00"
-    actor: "代价表生成 worker（工作包「代价表生成」）"
-    change: "按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。"
