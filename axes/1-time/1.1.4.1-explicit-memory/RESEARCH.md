@@ -68,7 +68,7 @@ owner 一律是轴 1 lead 派发的 worker，另配 fresh 复核者（`harness/S
 | `python3 tools/check_docs.py --check` | 本项 0 违规；全树剩 1 处，非本单元 | 唯一红处是 `docs/plan.md:119` 的一条裸相对路径——它引 「2680」那个实验的 results 文件时漏了目录名，在仓根解析不到（元级文档，所有者是元级迁移）；本单元目录下 0 处 |
 | `python3 tools/build_cost_table.py --check` | 绿 | 生成物与 `project.yaml::cost_rows` 逐字节一致（含新增的 `+0.030928` 行） |
 | `python3 tools/inventory_runs.py --check` | 绿 | 重新生成后 128 个实验 / 431 个 run 与磁盘一致；每条路径存在 |
-| `python3 -m pytest tests/ -q` | 962 passed / 8 failed，**8 条全部非本单元引入** | ① `test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness` = 已登记的预存失败；② `test_docs_refs.py` 的 5 条（含 3 条注入式 `test_unmapped_doc_turns_red`）转述的是上面那 1 处元级引用与文档地图注入，属元级所有者；③ `test_repro_inventory.py` 的 2 条在并发写入者新增 run 目录时变红，重新生成 `atlas/repro.md` 后转绿 |
+| `python3 -m pytest tests/ -q` | 964 passed / 6 failed，**6 条全部非本单元引入** | ① `test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness` = 已登记的预存失败；② 其余 5 条全在 `tests/test_docs_refs.py`，根因是同一个上面那 1 处元级引用——`test_all_doc_references_resolve` 与 `test_dangling_reference_turns_red` 直接读它，3 条注入式 `test_unmapped_doc_turns_red` 的收尾断言要求「删掉注入文件后恢复绿」，而全树因那 1 处不绿。本单元目录零违规；`test_repro_inventory.py` 原本因并发写入者新增 run 目录而红，重生成 `atlas/repro.md` 后已全绿 |
 | `python3 -m pytest axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/test_2681_frontier.py -q` | 6 passed | 本目录单测（纯 CPU）：字节账、k=60 那一格的选取、支配定义与阈值算术 |
 
 ## 7 边界（non-goals）
