@@ -70,6 +70,9 @@ CONTRACT_CURVE_ARMS = ["full", "win16_s0", "win64_s0", "win192_s0"]
 #: 判据⑤ 用的对比点。
 CONTRACT_DEMO_D = 32
 CONTRACT_DEMO_SINGLE_DS = [32, 64, 128, 255]
+#: 判据⑤ **只在释放版是全因果的臂上判**（只有那里 D 是真正的预算；窗口臂的 D=32 比它的训练
+#: 窗口更**宽**，不是收紧 ⇒ 比率只作描述量）。
+CONTRACT_DEMO_JUDGED_ARMS = ["full"]
 #: 判据① 复现门：1.1.1 目录内已有 checkpoint 的落盘 clean bpc（`2662` / `2681` 的
 #: `results.json::quality_leg.bpc`，本目录用同一仪器重评后必须逐位相同）。
 REF_BPC = {"full": 1.502689,
@@ -83,6 +86,16 @@ CONTRACT_REPRO_ARMS = ["full", "win16_s0", "win16_s1", "win16_s2", "win16_s3",
 #: 期望的掩码可见对数（`window_anchor_keep_mask(256, w, a)`，判据⑦）。
 EXPECTED_VISIBLE = {(16, 0): 3976, (16, 8): 5868}
 N_PARAMS = 13536768
+
+
+def expected_visible_pairs(T: int, w: int, a: int) -> int:
+    """`window_anchor_keep_mask(T, w, a)` 的可见 (query, key) 对数（闭式）。
+
+    每行 `i` 的可见数 = 最近窗口 `min(i+1, w)` + 锚点额外放行的 `min(a, max(0, i-w+1))`
+    （锚点 `[0, a)` 里那些**不在**最近窗口内的 key）。与 `EXPECTED_VISIBLE` 的两个硬编码
+    点互为独立校验。
+    """
+    return sum(min(i + 1, w) + min(a, max(0, i - w + 1)) for i in range(T))
 
 
 def sha256_file(path: str) -> str:
@@ -271,8 +284,10 @@ def main() -> int:
     if args.smoke:
         eb = dict(eb, n_batches=4)
 
-    eval_arr = load_enwik8_full(resolve(cfg["data"]["path"]))
+    _, eval_arr, vocab_size_file = load_enwik8_full(resolve(cfg["data"]["path"]),
+                                                    resolve("data/enwik8_full.npz"))
     vocab = int(cfg["data"]["vocab_size"])
+    assert vocab_size_file == vocab, f"vocab {vocab_size_file} != {vocab}"
     n_real = int(cfg["data"]["n_real_tokens"])
     mask_token = int(cfg["data"]["mask_token"])
     assert vocab == mask_token + 1, (vocab, mask_token)
@@ -296,19 +311,21 @@ def main() -> int:
         selfchecks[name] = {"causality": causality_probe(arms[name], x_probe, km),
                             "n_params": ckpts[name]["n_params"]}
     visible = {}
-    for (w, a), want in EXPECTED_VISIBLE.items():
-        km = window_anchor_keep_mask(T, w, a)
-        visible[f"({w},{a})"] = {"visible_pairs": int(km.sum().item()), "expected": want,
-                                 "equal": int(km.sum().item()) == want}
+    for k in EXPECTED_VISIBLE:
+        w, a = k
+        got = int(window_anchor_keep_mask(T, w, a).sum().item())
+        visible[f"({w},{a})"] = {"visible_pairs": got, "expected": expected_visible_pairs(T, w, a),
+                                 "expected_hardcoded": EXPECTED_VISIBLE[k],
+                                 "equal": got == expected_visible_pairs(T, w, a) == EXPECTED_VISIBLE[k]}
     for spec in cfg["arms"]:
         if spec["kind"] == "full":
             continue
         w, a = int(spec["window"]), int(spec.get("anchors", 0))
-        km = window_anchor_keep_mask(T, w, a)
-        visible[f"({w},{a})"] = visible.get(f"({w},{a})") or {
-            "visible_pairs": int(km.sum().item()),
-            "expected": int(km.tril().sum().item()) if a == 0 else None,
-            "equal": (int(km.sum().item()) == int(km.tril().sum().item())) if a == 0 else None}
+        if f"({w},{a})" in visible:
+            continue
+        got = int(window_anchor_keep_mask(T, w, a).sum().item())
+        visible[f"({w},{a})"] = {"visible_pairs": got, "expected": expected_visible_pairs(T, w, a),
+                                 "equal": got == expected_visible_pairs(T, w, a)}
     rel_ident = recent_keep_mask(T, T, dev)
     causal = torch.ones(T, T, dtype=torch.bool, device=dev).tril()
     selfchecks["mask_identity"] = {
@@ -394,23 +411,33 @@ def main() -> int:
         if arm not in arms:
             continue
         released = bpc[arm]
+        spec = next(s for s in cfg["arms"] if s["name"] == arm)
+        own = None if spec["kind"] == "full" else int(spec["window"])
         rows = {}
         for D in CONTRACT_RECENT_DS:
             km = recent_keep_mask(T, D, dev)
             v = round(rp.win16_bpc(arms[arm], eval_arr, km, n_batches=eb["n_batches"],
                                    batch_size=eb["batch_size"],
                                    window_seed=eb["window_seed"], device=dev), 6)
+            relation = ("released_causal" if own is None
+                        else ("identity" if D == own else
+                              ("narrower" if D < own else "wider_than_training")))
             rows[str(D)] = {"D": D, "bpc": v, "delta_bpc": round(v - released, 6),
+                            "relation_to_arm_budget": relation,
                             "mask": mask_stats(km.cpu())}
         recent_col[arm] = {
-            "released_bpc": released, "rows": rows,
+            "released_bpc": released, "released_budget": (T if own is None else own),
+            "rows": rows,
             "x_axis_unit": "位置（最近 D 个 key 可见）",
             "drops_what": "所有距离 ≥ D 的 key（累计配置，直接测，不是单点求和）",
             "additivity": "direct_cumulative",
+            "relation_note": ("relation_to_arm_budget：identity = D 等于该臂的训练窗口（掩码恒等，"
+                              "Δ 必须逐位为 0）；narrower = 比训练更窄（对窗口臂是真正的「丢前缀」）；"
+                              "wider_than_training = 比训练更宽（OOD 放行，不是预算收紧）"),
         }
         note(f"  {arm}: " + " ".join(f"D={D}:{rows[str(D)]['delta_bpc']:+.6f}"
                                      for D in CONTRACT_RECENT_DS))
-    # 判据③ 自检：D ≥ 训练窗口且 anchors=0 ⇒ Δ 必须逐位为 0
+    # 判据③ 自检：D == 该臂训练窗口且 anchors=0 ⇒ 掩码恒等 ⇒ Δ 必须逐位为 0
     ident_check = {}
     for arm in CONTRACT_CURVE_ARMS:
         if arm not in recent_col or arm == "full":
@@ -419,11 +446,9 @@ def main() -> int:
         w, a = int(spec["window"]), int(spec.get("anchors", 0))
         if a != 0:
             continue
-        for D in CONTRACT_RECENT_DS:
-            if D >= w:
-                got = recent_col[arm]["rows"][str(D)]["delta_bpc"]
-                ident_check[f"{arm}|D={D}"] = {"delta_bpc": got, "equal_zero": got == 0.0,
-                                               "why": f"D≥训练窗口 {w} 且无锚点 ⇒ 掩码恒等"}
+        got = recent_col[arm]["rows"][str(w)]["delta_bpc"]
+        ident_check[f"{arm}|D={w}"] = {"delta_bpc": got, "equal_zero": got == 0.0,
+                                       "why": f"D == 训练窗口 {w} 且无锚点 ⇒ 掩码恒等"}
     note(f"  自检③ 掩码恒等：{sum(v['equal_zero'] for v in ident_check.values())}"
          f"/{len(ident_check)} 处 Δ 逐位为 0")
 
@@ -452,7 +477,7 @@ def main() -> int:
         note(f"  {arm}: " + " ".join(f"d={d}:{rows[str(d)]['delta_bpc']:+.6f}"
                                      for d in CONTRACT_DISTANCE_DS))
 
-    # ---------------- ⑤ 两列不可互换的演示 ----------------
+    # ---------------- ⑤ 两列不可互换的演示（只在 full 臂上判，README §5c）----------------
     demo = {}
     for arm in CONTRACT_CURVE_ARMS:
         if arm not in recent_col or arm not in dist_col:
@@ -462,16 +487,21 @@ def main() -> int:
                  for d in CONTRACT_DEMO_SINGLE_DS}
         sum_single = round(sum(parts.values()), 6)
         ratio = (None if sum_single == 0 else round(cum / sum_single, 6))
+        judged = arm in CONTRACT_DEMO_JUDGED_ARMS
         demo[arm] = {
             "cum_delta_bpc": cum, "sum_single_delta_bpc": sum_single,
             "single_parts": parts, "ratio_cum_over_sum_single": ratio,
             "cum_above_frozen_band": bool(abs(cum) > FROZEN_SIGMA_CELL),
-            "prediction_holds": bool(ratio is not None and ratio > 1
-                                     and abs(cum) > FROZEN_SIGMA_CELL),
+            "participates_in_prediction": judged,
+            "prediction_holds": (bool(ratio is not None and ratio > 1
+                                       and abs(cum) > FROZEN_SIGMA_CELL) if judged else None),
             "prediction": "cum(32) / Σ_{d∈{32,64,128,255}} single(d) > 1 且 cum 越本格带",
+            "note": (None if judged else
+                     "窗口臂的释放版本来就是窄的（D=32 比训练窗口更宽）⇒ 这里不是预算收紧，"
+                     "比率不作预测判定，只作描述量"),
         }
         note(f"  {arm}: cum(32)={cum:+.6f} Σsingle={sum_single:+.6f} ratio={ratio} "
-             f"⇒ 预测成立={demo[arm]['prediction_holds']}")
+             f"⇒ 参与预测={judged} 成立={demo[arm]['prediction_holds']}")
 
     # ---------------- ⑥ 锚点杠杆在第二个 k（可选臂）----------------
     anchor_k64 = None
