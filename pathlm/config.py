@@ -1,4 +1,4 @@
-"""Config-driven path sampling. Knobs map 1:1 to docs/design.md stage tunables.
+"""Config-driven path sampling. Knobs map 1:1 to atlas/design.md stage tunables.
 
 M1 scope adds: linear/soft transports, dense early-exit supervision, eviction
 training with anchor slots, and the needle (copy-from-context) objective used

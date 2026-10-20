@@ -3,7 +3,7 @@
 本模块是**退出决策**的唯一落点：策略、序列级口径、校准表与算力账。模型与前向语义
 一律复用 `pathlm.depth_ar`（不在这里重造）。
 
-为什么单独开模块（`SCHEMA.md` §22.7）：退出决策是**新逻辑**，塞进 2819 行的
+为什么单独开模块（`harness/SCHEMA.md` §22.7）：退出决策是**新逻辑**，塞进 2819 行的
 `pathlm/depth_ar.py` 会与该文件已有的十几条研究线的未提交改动抢同一片编辑空间。
 共享文件只做最小接线：`DepthARDecoder.step_auto`（生产解码器的逐 token 退出）。
 
@@ -29,7 +29,7 @@
   `DepthARDecoder.step_auto`；用于「发出流与全深度贪心流的逐 token 一致率」。
 
 口径纪律：只产出等效理论量（bpc / layer-passes-per-token / 跳过层占比 / 深度直方图），
-**不产出也不接收任何墙钟或吞吐量**（`docs/research-schema.md` §3、`SCHEMA.md` §7/§8）。
+**不产出也不接收任何墙钟或吞吐量**（`harness/research-schema.md` §3、`harness/SCHEMA.md` §7/§8）。
 """
 
 from __future__ import annotations

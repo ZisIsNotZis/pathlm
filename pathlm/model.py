@@ -1,10 +1,10 @@
-"""PathLM model (M0 skeleton). See docs/design.md for the stage map.
+"""PathLM model (M0 skeleton). See atlas/design.md for the stage map.
 
 Implemented at M0: stages 0/1 (corruption, noise, pure-noise), L (shuffle/skip/
 redo), stage 2 (MTP transform heads + confidence heads, self node k=0, chain
 estimate for node 2), stage 3 transport=direct (latent retry). Tied E=U with
 norm-capped inputs. Retry rounds are separate estimator passes (detached), per
-the training recipe in docs/design.md §6.
+the training recipe in atlas/design.md §6.
 
 Node semantics (design §4): node k at row i predicts the clean token t_{i+k}.
 Node 0 is the self/repair estimate of the CURRENT token; node 1 is the standard

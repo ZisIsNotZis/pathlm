@@ -788,7 +788,7 @@ def main():
         raise SystemExit(f"--recon-lambda 必须 >= 0，收到 {args.recon_lambda}")
 
     run_dir = os.path.join(args.out_root, args.run_name)
-    # 预登记门（docs/methodology.md §8）：本脚本自己就是产物写入点（<out-root>/<run>/results.json），
+    # 预登记门（harness/methodology.md §8）：本脚本自己就是产物写入点（<out-root>/<run>/results.json），
     # 所以门必须在这里——只放在各实验的 run.py / train_arms.sh 里，直跑本脚本就能绕过。
     # out-root 归属 axes/** 的某个实验（含 README.md 的那一层）⇒ 那格的契约必须先绑定；
     # .scratch/ 与 /tmp/ 下的 out-root 不归属任何实验，不受此约束。
