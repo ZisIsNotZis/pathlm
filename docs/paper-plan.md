@@ -15,7 +15,7 @@
 
 ## 现有材料（不需新实验）
 
-- 七条定律与边界：`docs/playbook.md:9-71`，逐条在 `FINDINGS.md` §一
+- 七条定律与边界：`docs/playbook.md:9-74`，逐条在 `FINDINGS.md` §一
 - 形态税：`+0.4563` 跨引擎 / `+0.4362` 同引擎，96% 归因（`.scratch/24-depth-ar-100m/evidence/SUMMARY.md` §2.1、`.scratch/25-tax-attribution/evidence/SUMMARY.md` §0、`docs/methodology.md:76-77`）
 - 负例三条（2.2.2 / 2.2.3 被否证、retry 矩阵排序整体撤回）：`FINDINGS.md` §四
 - 七条定律的"什么时候不成立"已逐条写明，这是论文最该保留的部分

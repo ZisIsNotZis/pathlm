@@ -83,7 +83,7 @@
 | 定律 | 改动类型 | 触主干 | 观测代价 | Δ 方向 | 规模与配方 | 适用边界 | 出处 | 研究项 |
 |---|---|---|---|---|---|---|---|---|
 | 8 | 深度自适应 AR 形态（逐层 carry 门 + 全深度监督 + proj-fill 填充） | 是 | `+0.44` 形态税 Δbpc（相对同引擎 dense；正 = 更差）；对照 = 100M 同引擎 dense（24b 等权臂） | 正 = 更差 | 100M / 98.3M token = 1.09 epoch / 24b 等权臂 | 税随规模上升：13M matched +0.31 → 100M +0.44（斜率为正）；与回环族方向相反，不许拿一族的斜率当通用规律 | `axes/2-depth/2.1.1-early-exit/experiments/2524-depth-ar-100m/README.md` | [2.1.1](../axes/2-depth/2.1.1-early-exit/project.yaml) early exit（最重要） |
-| 8 | 回环 retry / corruption 族（C1 系） | 是 | `+0.122` clean bpc 税（相对 B0 1.5074；正 = 更差）；对照 = B0（13M / m1 引擎） | 正 = 更差 | 13M / 24k 步（1.1-epoch 上界为 +0.364@1k） | 税随规模下降（+0.364@1k → +0.122@24k，其它规模的口径见 2.1.1）；与深度自适应族的上升方向相反 ⇒ 报「规模翻转」前必须先排除口径与刻度差 | `axes/9-backlog/9.2-iteration-refinement/experiments/2511-retry-matrix-withdrawal/README.md` | [9.2](../axes/9-backlog/9.2-iteration-refinement/project.yaml) 迭代精化的其余（原 F 轴剩余） |
+| 8 | 回环 retry / corruption 族（C1 系） | 是 | `+0.122` clean bpc 税（同一曲线上的实验 − 对照；正 = 更差）；对照 = 同规模同引擎的 B0（13M / m1 引擎 / 24k 步 ≈ 4.4 epoch，B0 = 1.3459；同一曲线的 1k 步点上税为 +0.364） | 正 = 更差 | 13M / 24k 步 ≈ 4.4 epoch（渐近口径） | 规模那条：等训练渐近口径下 13M +0.122 → 100M +0.082（2 seeds，`.scratch/19-asym-100m/evidence/SUMMARY.md`），与深度自适应族的上升方向相反 ⇒ 报「规模翻转」前必须先排除口径与刻度差。脚注（**不是**规模证据）：同规模内的税-步数曲线 `+0.364@1k → +0.122@24k` 平台非衰减，只说明「1.1-epoch 快照是渐近值的上界、约高 20%」 | `axes/9-backlog/9.2-iteration-refinement/experiments/2511-retry-matrix-withdrawal/README.md` | [9.2](../axes/9-backlog/9.2-iteration-refinement/project.yaml) 迭代精化的其余（原 F 轴剩余） |
 
 ### 定律 9 · 判据设计比实验本身更值钱
 

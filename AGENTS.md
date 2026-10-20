@@ -17,18 +17,18 @@
 |---|---|
 | 研究树是什么：轴 / 节点 / 用词 / 粒度 / 目录命名 | `docs/structure.md` |
 | 研究项格式契约（`project.yaml` 字段与纪律） | `docs/research-schema.md` |
-| 有哪些研究项、每项当前状态/结论/证据 | `axes/**/project.yaml` |
+| 有哪些研究项、每项当前状态/结论/证据 | `axes/**/project.yaml`（聚合与计数用 `python3 tools/summary.py` 生成，别处不重算） |
 | 课题页（旧：状态 / 判据 / 结论 / 失败路径） | 旧生成式 wiki 产物，已退役并归档于 `archive/wiki-legacy/axes/**/README.md`（不再是 SSOT；当前 SSOT = `axes/**/project.yaml`） |
 | 课题页与实验的格式契约、分析纪律 | `SCHEMA.md`（§6–§24 仍生效；§1–§3 随旧页退役，旧页归档于 `archive/wiki-legacy/`） |
 | 协作/编排制度与文档地图 | `AGENTS.md`（本文件） |
 | 项目是什么 | `README.md` |
 | 设计 / 方法 / 已测定律 | `docs/design.md` / `docs/methodology.md` / `docs/playbook.md` |
-| 计划：里程碑 / 工作包 / owner / 验收 / 状态 / 预算 | `docs/plan.md` |
+| 计划：里程碑 / 工作包 / owner / 验收 / 状态 / 预算 / **测试计数**（`pytest` 的 passed / failed 与预存失败登记） | `docs/plan.md` |
 | 把定律写成论文的 claim / 结构 / 验收（**计划**，不是结果） | `docs/paper-plan.md`（改它的 claim 或验收要同时对齐计划层；它不持有新数字，数字的家是 `docs/playbook.md` / `docs/cost-table.md`） |
 | 定律 ↔ 证据 ↔ 观测代价 ↔ 边界的对照表 | `docs/cost-table.md`（**生成物，禁止手改**：由 `tools/build_cost_table.py` 从 `axes/**/project.yaml` 的 `laws` / `cost_rows` 生成，`--check` 与手改副本逐字节比对；改事实请改 `project.yaml` 后重跑生成器） |
 | 引擎能力面：哪些组合真跑得起来、哪些明确拒绝、拒绝在哪一行 | `docs/engine_capability.md` |
-| 当前进展与下一步（**路由器**，不拥有事实） | `STATUS.md`（**只许指向**：计划看 `docs/plan.md`、逐项事实看 `axes/**/project.yaml`、数字看 `docs/cost-table.md` / `docs/playbook.md`；不得在此新写结论或重算数字） |
-| 已确立结论的索引（**路由器**，不拥有事实） | `FINDINGS.md`（**只许指向**：结论正文的家是 `docs/playbook.md`，数字的家是 `docs/cost-table.md` 与 `axes/**`；改数字必须改它指向的家，且它现存的转录数字按 `docs/plan.md` §4 的默认处置逐步换成指针） |
+| 当前进展与下一步（**路由器**，不拥有事实） | `STATUS.md`（**只许指向**：计划与里程碑状态看 `docs/plan.md`、逐项事实看 `axes/**/project.yaml`、研究树统计看 `python3 tools/summary.py`、数字看 `docs/cost-table.md` / `docs/playbook.md`；不得在此新写结论或重算数字） |
+| 已确立结论的索引（**路由器**，不拥有事实） | `FINDINGS.md`（**只许指向**：结论正文的家是 `docs/playbook.md`，数字的家是 `docs/cost-table.md` 与 `axes/**`；改数字必须改它指向的家，且它现存的转录数字按 `docs/plan.md` 的工作包「FINDINGS 数字改指针」逐步换成指针） |
 | 怎么贡献 / 硬性规则 | `CONTRIBUTING.md`（与 `SCHEMA.md` 冲突时以 `SCHEMA.md` 为准；改流程本身由维护者决定） |
 | 许可 | `LICENSE.md`（AGPL-3.0 全文；改许可属对外暴露，需用户同意） |
 | 单个实验 | 实验目录内 `README.md`（预登记契约）· `analysis.md`（**当前**结论与证据）· `results.json`（原始数字）· `MODEL.md`（权重清单） |

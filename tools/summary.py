@@ -7,6 +7,9 @@
 用法：
     python3 tools/summary.py          # 打印全表
     python3 tools/summary.py --check  # 校验字段/证据（转调 check_tree.py），非零退出
+
+表尾除了「共 N 个研究项」还打印一行辅助实验的条数：轴 7 / 轴 8 的实验直接挂在轴下、没有 `project.yaml`，
+不在研究项表内（见 `docs/structure.md` §16）。
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+AXES = ROOT / "axes"
 sys.path.insert(0, str(ROOT / "tools"))
 
 import check_tree  # noqa: E402
@@ -35,6 +39,16 @@ def _cell(v, width: int) -> str:
     if len(s) > width:
         s = s[: width - 1] + "…"
     return s
+
+
+def _aux_experiments() -> list[Path]:
+    """辅助实验目录：直接挂在轴下（所在轴没有 `project.yaml`），见 `docs/structure.md` §16。"""
+    out: list[Path] = []
+    for exp in sorted(AXES.rglob("experiments")):
+        if not exp.is_dir() or (exp.parent / "project.yaml").is_file():
+            continue
+        out.extend(sorted(d for d in exp.iterdir() if d.is_dir()))
+    return out
 
 
 def _row(doc: dict) -> list[str]:
@@ -74,6 +88,10 @@ def main(argv: list[str]) -> int:
     n_fals = sum(1 for e in entries if e["doc"].get("status") == "被否证")
     print("-" * len(header))
     print(f"共 {len(entries)} 个研究项 ｜ ✅ 已完成 {n_done} ｜ ❌ 被否证 {n_fals}")
+    aux = _aux_experiments()
+    if aux:
+        print(f"另有 {len(aux)} 个辅助实验不在上表内（轴 7 参照线 / 轴 8 工程纪律随附的实验，无 project.yaml）："
+              f"见 docs/structure.md 的「辅助实验」一节")
     return 0
 
 

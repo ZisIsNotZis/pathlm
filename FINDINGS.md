@@ -19,14 +19,15 @@
 | 定律 6：整形 vs 自适应是同一梯度的两面，"两全"被证伪，只能按 profile 选择；剂量响应随规模变化 | dense 0.2 在 13M 温和、@100M corrupt 崩溃 `+1.73` | `docs/playbook.md:53-57` | 成立 |
 | 定律 7：主干被改则税来，旁路判断头可以免费（四个独立设计 × 两个规模，同引擎对照） | 回环 retry/corruption 族 `+0.12~0.19`；深度自适应 AR `+0.44 bpc @100M`（96% 干净归属）；读出结构切分 `−50.4%`；不动主干：probe 式早退 `1.5928` vs `1.5871` @100M | `docs/playbook.md:59-71` | 成立 |
 | 定律 7 边界：这是**深度自适应形态**的判决，"速度走成熟旁路"是倾向而非普遍禁令 | — | `docs/playbook.md:73-74` | 部分（不作普遍结论） |
-| 定律 8：规模会翻转方向——回环族税随规模**下降**，深度自适应族税随规模**上升** | 回环 `+0.122 → +0.082`（渐近口径）；深度自适应 13M `+0.31` → 100M `+0.44`（同引擎） | `docs/playbook.md:78-79` | 成立 |
-| 定律 8 边界：报"规模翻转"前必须先排除口径与刻度差；多 token 预测的 FLOPs 口径 `R=(1+γ)/(1+τ)` 在两规模都 >1，**不翻转** | 13M `1.065–1.253`、100M `1.090–1.268` | `docs/playbook.md:81-87` | 成立 |
-| 定律 9：判据设计比实验本身值钱——保留类结论必须用 KV 消融保留曲线，不能用窗口外命中率 | 「窗口外 90.3% 命中」的陷阱 | `docs/playbook.md:89-94` | 成立 |
-| 定律 10：任何实验契约先问"要让机制产生可测效应，设计上必须满足哪几个条件"；缺条件只能记"本设计下无信号"，不得读成"机制无效" | 例：2634 真实文本收益仅 `0.2%` ⇒ 无必要性损失、无干扰，疑为设计无效；MoD 等解析算力但参数 ×2 ⇒ 归因未隔离；窗口 16 + 源信息在窗外才有意义 | `docs/playbook.md:96-110` | 成立 |
-| 定律 11：算力不得用墙钟；多猜几个词只省前向次数，不省算力 | `R=(1+γ)/(1+τ)`：13M `1.065–1.253`、100M `1.090–1.268`，两规模都 >1 | `docs/playbook.md:112-116` | 成立 |
-| 定律 11：KV int8 块标尺（沿 `head_dim`，每 32 值共用一把标尺）打败 KV 量化基线 | `6528 B/位置` = fp16 的 `×0.53`（省 `46.9%`）、Δbpc `+0.0001`、严格前缀不变 | `docs/playbook.md:117-118` | 成立 |
-| 定律 11：逐值标尺会**反占内存**——那是实现产物，不是量化性质 | `×1.50` | `docs/playbook.md:119` | 成立（对手 fp8 / 更大 `head_dim` 仍未测） |
-| 定律 11：纸面 ≠ 实测——不换核时窗口/稀疏的纸面 FLOPs 节省不兑现 | 实测墙钟不省、峰值显存反而更费且随 T 恶化 | `docs/playbook.md:120-121` | 成立 |
+| 定律 8：规模会翻转方向——回环族税随规模**下降**，深度自适应族税随规模**上升** | 回环：13M 渐近 `+0.122` → 100M 渐近 `+0.082`（两端都取 4.4-epoch 渐近口径，2 seeds）；深度自适应 13M `+0.31`（matched）→ 100M `+0.44`（同引擎） | `docs/playbook.md:78-79`、`.scratch/19-asym-100m/evidence/SUMMARY.md` | 成立 |
+| 定律 8 读法约束：回环族 `+0.364@1k → +0.122@24k` 是**同规模内的训练进度**曲线，**不是**规模证据；它只说「1.1-epoch 快照是渐近值的上界、约高 20%」（两条轴不得并列成一条趋势的两个端点） | 13M 上 1k 步 `+0.364`、24k 步 `+0.122`，平台非衰减 | `docs/playbook.md:81-83`、`.scratch/11-retry-matrix-validity/VERDICTS.md`、`docs/methodology.md:44-45` | 成立（读法约束） |
+| 定律 8 边界：报"规模翻转"前必须先排除口径与刻度差；多 token 预测的 FLOPs 口径 `R=(1+γ)/(1+τ)` 在两规模都 >1，**不翻转** | 13M `1.065–1.253`、100M `1.090–1.268` | `docs/playbook.md:85-91` | 成立 |
+| 定律 9：判据设计比实验本身值钱——保留类结论必须用 KV 消融保留曲线，不能用窗口外命中率 | 「窗口外 90.3% 命中」的陷阱 | `docs/playbook.md:93-98` | 成立 |
+| 定律 10：任何实验契约先问"要让机制产生可测效应，设计上必须满足哪几个条件"；缺条件只能记"本设计下无信号"，不得读成"机制无效" | 例：2634 真实文本收益仅 `0.2%` ⇒ 无必要性损失、无干扰，疑为设计无效；MoD 等解析算力但参数 ×2 ⇒ 归因未隔离；窗口 16 + 源信息在窗外才有意义 | `docs/playbook.md:100-114` | 成立 |
+| 定律 11：算力不得用墙钟；多猜几个词只省前向次数，不省算力 | `R=(1+γ)/(1+τ)`：13M `1.065–1.253`、100M `1.090–1.268`，两规模都 >1 | `docs/playbook.md:116-120` | 成立 |
+| 定律 11：KV int8 块标尺（沿 `head_dim`，每 32 值共用一把标尺）打败 KV 量化基线 | `6528 B/位置` = fp16 的 `×0.53`（省 `46.9%`）、Δbpc `+0.0001`、严格前缀不变 | `docs/playbook.md:121-122` | 成立 |
+| 定律 11：逐值标尺会**反占内存**——那是实现产物，不是量化性质 | `×1.50` | `docs/playbook.md:123` | 成立（对手 fp8 / 更大 `head_dim` 仍未测） |
+| 定律 11：纸面 ≠ 实测——不换核时窗口/稀疏的纸面 FLOPs 节省不兑现 | 实测墙钟不省、峰值显存反而更费且随 T 恶化 | `docs/playbook.md:124-125` | 成立 |
 | 方差界先于排序：`Δ < 0.014` 即不可排序 | nondeterminism `0.0019`；种子散布 `≤0.0138` | `docs/methodology.md:17-19` | 成立 |
 | n=1 结论的采信规则：n=1 正结论默认不可采信，n=1 负结果必须复现后入账 | — | `docs/methodology.md:21-24` | 成立 |
 
@@ -34,14 +35,14 @@
 
 | 结论 | 关键数字 | 出处 | 状态 |
 | --- | --- | --- | --- |
-| `2.2.2` attention-residual：把层间线性法换成层间 causal attention 在本尺度**无净增量**，`status: 被否证` | `attn-scalar` clean bpc `1.5336`，Δ vs stock `1.5254` = `−0.0082`（`\|Δ\| < 0.014` 不可排序，且层 2–3 训练后退化成 one-hot，活性门未过）；`attn-qkv` `1.5431`，Δ = `−0.0177`（越带、方向更差）；额外参数 `+8` / `+196 616`，额外 MACs `18 432` / `5 261 312` | `docs/plan.md:13-15`、`axes/2-depth/2.2.2-attention-residual/project.yaml::conclusion`、`::status` | 成立（n=1 seed，不越尺度外推） |
+| `2.2.2` attention-residual：把层间线性法换成层间 causal attention 在本尺度**无净增量**，`status: 被否证` | `attn-scalar` clean bpc `1.5336`，Δ vs stock `1.5254` = `−0.0082`（`\|Δ\| < 0.014` 不可排序，且层 2–3 训练后退化成 one-hot，活性门未过）；`attn-qkv` `1.5431`，Δ = `−0.0177`（越带、方向更差）；额外参数 `+8` / `+196 616`，额外 MACs `18 432` / `5 261 312` | `axes/2-depth/2.2.2-attention-residual/project.yaml::conclusion`、`::status` | 成立（n=1 seed，不越尺度外推） |
 | `2.2.2` 的相对 2.2.3 线性聚合也成立 | 两臂 Δ `−0.0090` / `−0.0185`（对 `dense` = `1.5246`） | `axes/2-depth/2.2.2-attention-residual/project.yaml::conclusion` | 成立 |
-| `2.2.3` 层间学习加权和（`dense`）相对 stock 单残差**无可排序差异**，按预登记 falsification 判**无净增量**，`status: 被否证` | 配对 Δ：s0 `−0.0008`、s1 `−0.0015`，两 seed 同号但都未越 `0.014` 带，且小于基线臂自身换 seed 散度 `0.0034`；配对窗口级 SE `0.0031` 大于偏差本身 | `docs/plan.md:17-19`、`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:288-303`、`axes/2-depth/2.2.3-learned-layer-sum/project.yaml::status` | 成立（尺度受限） |
+| `2.2.3` 层间学习加权和（`dense`）相对 stock 单残差**无可排序差异**，按预登记 falsification 判**无净增量**，`status: 被否证` | 配对 Δ：s0 `−0.0008`、s1 `−0.0015`，两 seed 同号但都未越 `0.014` 带，且小于基线臂自身换 seed 散度 `0.0034`；配对窗口级 SE `0.0031` 大于偏差本身 | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:288-303`、`axes/2-depth/2.2.3-learned-layer-sum/project.yaml::status` | 成立（尺度受限） |
 | `2.2.3` 的否证**不是**"DenseFormer 普遍无效" | 边界：13M / L=8 / 12k 步 | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:304-305` | 部分（尺度受限的否证） |
 | `dense` 的中间深度可读性实测**更差**（新观测） | s0 depth 1–7 Δ = `+0.226 / +0.544 / +0.448 / +0.312 / +0.206 / +0.257 / +0.279`；s1 同向更大 `+0.472 / +0.613 / +0.502 / +0.445 / +0.283 / +0.298 / +0.268`；只有 depth 8 回到 `−0.0008 / −0.0015` | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:298-301` | 成立 |
 | `2.2.4` 并行子层：以**可排序的质量代价**换层内并行度翻倍，`status: 已完成`（不是免费的，是否采纳取决场景） | 配对 Δ：s0 `+0.0458 / +0.0402`、s1 `+0.0422 / +0.0374`（两 seed 同号且都越 `0.014` 带）；层内串行链 `2 段 → 1 段`、每 token 串行步数 `16 → 8`、算力只差 `0.055%`（`parallel-dual-ln` 与基线**逐位等参**） | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:315-327`、`axes/2-depth/2.2.4-parallel-sublayer/project.yaml::status` | 成立（n=2 seed，不越尺度外推） |
-| M1/M2 的落盘读数与判词一致（`attn-scalar` 1.5336 / `attn-qkv` 1.5431；四臂 seed=1 clean bpc 1.5288 / 1.5710 / 1.5662 / 1.5273，Δ vs `sequential` = `0 / +0.0422 / +0.0374 / −0.0015`） | 见左 | `docs/plan.md:13-19` | 成立 |
-| 上述判决都**没有**事后改判据线 | — | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:286`、`docs/plan.md:31-33` | 成立 |
+| M1/M2 的落盘读数与判词一致（`attn-scalar` 1.5336 / `attn-qkv` 1.5431；四臂 seed=1 clean bpc 1.5288 / 1.5710 / 1.5662 / 1.5273，Δ vs `sequential` = `0 / +0.0422 / +0.0374 / −0.0015`） | 见左 | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:91-133`、`axes/2-depth/2.2.2-attention-residual/experiments/2653-interlayer-attn-13m/results.json` | 成立 |
+| 上述判决都**没有**事后改判据线 | — | `axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md:286` | 成立 |
 
 ## 三、负结果（已登记为"这条路在这里输了"）
 
@@ -51,9 +52,9 @@
 | 层间密集线性聚合（DenseFormer 形态）在 L=8 的 13M 上无净增量，且中间深度变差 | 见上表 | `axes/2-depth/2.2.3-learned-layer-sum/project.yaml::conclusion`、`::status` | 成立 |
 | 确定性路径的多路径集成注定为 0，集成不是免费增益来源 | 8 条路径 logits 逐位相同 | `docs/playbook.md:27` | 成立 |
 | 深度自适应形态两全（浅层 exit 质量 + retry 精炼）被证伪；主干一动就有税 | 形态税 `+0.44 bpc @100M`（96% 干净归属） | `docs/playbook.md:53-57`、`:67` | 成立 |
-| 纸面省算力不兑现：不换核的窗口/稀疏不省墙钟，峰值显存反而更费 | — | `docs/playbook.md:120-121` | 成立 |
-| "构造不好"会造出假失败（needle v1 信号饥饿，全桶 `0.0`） | 全桶 `0.0` | `docs/playbook.md:93` | 成立 |
-| 设计未满足必要性条件时收益可忽略（通道可被忽略 ⇒ 疑为设计无效） | 2634 真实文本收益仅 `0.2%` | `docs/playbook.md:107` | 部分（"疑为"，仓内未定论） |
+| 纸面省算力不兑现：不换核的窗口/稀疏不省墙钟，峰值显存反而更费 | — | `docs/playbook.md:124-125` | 成立 |
+| "构造不好"会造出假失败（needle v1 信号饥饿，全桶 `0.0`） | 全桶 `0.0` | `docs/playbook.md:97` | 成立 |
+| 设计未满足必要性条件时收益可忽略（通道可被忽略 ⇒ 疑为设计无效） | 2634 真实文本收益仅 `0.2%` | `docs/playbook.md:111` | 部分（"疑为"，仓内未定论） |
 
 ## 四、撤回记录
 

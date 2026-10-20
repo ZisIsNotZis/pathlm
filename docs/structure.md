@@ -151,7 +151,7 @@ change_log: [] # 变更
 小脚本扫所有 `project.yaml` → 输出表：`id / 轴 / 起 / 止 / 完成? / 状态 / 结论 / 结论对不对 / 实验 / 论证 / 遗漏`。
 无网页、无缓存、无 fancy。
 
-（实现：`python3 tools/summary.py`；`--check` 校验字段/证据，非零退出。校验器 `tools/check_tree.py`；
+（实现：`python3 tools/summary.py`；`--check` 校验字段/证据，非零退出。表尾除了「共 N 个研究项」还打印一行辅助实验的条数（§16）。校验器 `tools/check_tree.py`；
 旧入口 `tools/check_schema.py` 转调它。）
 
 ---
@@ -268,7 +268,7 @@ change_log: [] # 变更
 | CALM/LayerSkip/MoD | `axes/7-references/README.md`（既有早退实现） |
 | 自回归（一次一个位置） | `6.1` |
 
-> 轴 7 是**参照台账**（`README.md`）：它们拿来当跑分线，不立项、不写 `project.yaml`。
+> 轴 7 是**参照台账**（`README.md`）：它们拿来当跑分线，不立项、不写 `project.yaml`。归到本轴的实验目录直接挂在轴下（`axes/7-references/experiments/`），是**辅助实验**：同样不写 `project.yaml`、因此不进 `tools/summary.py` 的研究项表，覆盖声明见 §16。
 
 ### 轴 8 · 工程纪律（不是研究）（目录 `axes/8-engineering/`）
 
@@ -280,7 +280,7 @@ change_log: [] # 变更
 | 损失权重 | 同上 |
 | 数据构造 | 同上 |
 
-> 轴 8 是**工程纪律台账**（`README.md`）：不是研究，不写 `project.yaml`。
+> 轴 8 是**工程纪律台账**（`README.md`）：不是研究，不写 `project.yaml`。归到本轴的实验目录直接挂在轴下（`axes/8-engineering/experiments/`），是**辅助实验**：同样不写 `project.yaml`、不进研究项表，覆盖声明见 §16。
 
 ### 轴 9 · Backlog（不删，移出主线）（目录 `axes/9-backlog/`）
 
@@ -331,3 +331,24 @@ change_log: [] # 变更
   - 汇总入口 = `tools/summary.py`（一条命令出全表；`--check` 校验）。
 - 出资人原话：「我不需要你给我 build 网页。或者一些 fancy 的玩意。你直接写一个小脚本，可以统计出
   所有这个子项目的状态就完事了。」
+
+## 16 辅助实验（不是研究项，没有 `project.yaml`）
+
+轴 7（参照）与轴 8（工程纪律）**不立项**（§13.4 / §13.5），但它们各自的实验目录留在这两轴的轴目录下、
+**直接挂在轴下**，没有研究项目录。它们是**辅助实验**：不写 `project.yaml`、不参与 `status` 枚举、
+也不进 `tools/summary.py` 的研究项表——「表里没有」不是漏了：
+
+| 辅助实验目录 | 它是什么 | 谁的数字会引它 |
+|---|---|---|
+| `axes/7-references/experiments/A2-full-attention/` | 全注意力基线的跑分与规模点（13M / 100M 的 B0 分母） | `axes/7-references/README.md` |
+| `axes/7-references/experiments/A8-positional-semantics/` | 位置语义族（RoPE / 插值 / 无位置），本仓零经验、只有前提登记 | 同上 |
+| `axes/7-references/experiments/R7-existing-early-exit/` | CALM / LayerSkip / MoD 三种既有早退实现 | 同上（同时是 `2.1.1` 与 `6.2` 的对照） |
+| `axes/7-references/experiments/W3-kv-head-sharing/` | GQA / MQA，KV 预算的同字节对手 | 同上 |
+| `axes/8-engineering/experiments/2523b-shallow-weight-sweep/` | 损失权重（浅层降权与退火）的扫描 | `axes/8-engineering/README.md` |
+
+覆盖声明：`python3 tools/summary.py` 在表尾打印这一组的条数（一行「另有 N 个辅助实验不在研究项表内」），
+所以研究项表看不见它们时，读者不会被误导成「它们不存在」。它们的数字可以进 `docs/playbook.md` 的定律与
+`docs/cost-table.md`（经某个研究项的 `cost_rows` 引用），引用时的落点是上表「台账」列与实验目录本身。
+
+判据：一个实验目录**该不该**升成研究项，按 §13.1 判（能独立推进、可独立否证、有独立 `purpose` +
+`innovation` + `validation` + 单一 `milestone`）；不能就不写 `project.yaml`，留在本节的账上。
