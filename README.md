@@ -31,7 +31,7 @@
 | 看**元级计划、里程碑、工作包 owner 与验收** | `docs/plan.md` |
 | 看**这次搬迁把哪个文件搬到了哪** | `docs/ledger.md`（迁移台账） |
 | 看**研究树布局 / 用词 / 粒度 / 目录命名** | `docs/structure.md` |
-| 接手**一个研究项** | 它的目录：`axes/<轴>/<研究项>/`（计划 `RESEARCH.md`、事实 `project.yaml`、实验 `experiments/**`） |
+| 接手**一个研究项** | 它的目录：`axes/<轴>/<研究项>/`（事实 `project.yaml`、实验 `experiments/**`；已接手时另有派发契约 `RESEARCH.md`） |
 | 查**某条定律的代价数字与出处** | `atlas/cost-table.md`（生成物）→ 正文与边界在 `atlas/playbook.md` |
 | 看**已确立结论的索引**（只指向，不持有数字） | `atlas/FINDINGS.md` |
 | 查**某个实验能不能字节级复现** | `atlas/repro.md`（生成物） |

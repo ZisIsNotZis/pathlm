@@ -314,8 +314,9 @@ python3 tools/check_schema.py       # 兼容入口：转调 check_tree.py（生�
 ## 13. 研究目录的 `RESEARCH.md`（研究级派发契约）
 
 `axes/<轴>/<研究项>/RESEARCH.md` 是**研究级的派发契约**：一份研究项被派活时，执行方读它，
-不用读别的东西就能知道「做什么、做到什么算完、谁复核、证据在哪」。它与 `project.yaml` 的关系是
-**投影与事实源**，不是两份事实：
+不用读别的东西就能知道「做什么、做到什么算完、谁复核、证据在哪」。它**只在该研究已有研究级 Agent
+接手时创建**：没有它的研究项不缺任何事实（`project.yaml` 是该项 SSOT），缺的只是派发口径的集中视图。
+它与 `project.yaml` 的关系是**投影与事实源**，不是两份事实：
 
 | 文件 | 它是什么 | 谁写 | 谁读 |
 |---|---|---|---|
@@ -331,4 +332,5 @@ python3 tools/check_schema.py       # 兼容入口：转调 check_tree.py（生�
   因此某个研究项还没写 `RESEARCH.md` 不会让元级目录缺行（`tools/build_catalog.py --check`）。
 - **与 `project.yaml` 冲突时以 `project.yaml` 为准**，并当场改 `RESEARCH.md`（`@ssot`：冲突靠层归属判，
   不靠谁更新）。
-- 逐项是否已落盘、跑了哪几条命令，由研究级 Agent 在本文里记；元级只在 `docs/plan.md` 记「谁还没落盘」。
+- 逐项是否已落盘、跑了哪几条命令，由研究级 Agent 在本文里记；元级只在 `docs/plan.md` 记「已有几份、
+  哪一项还没建」——**不把「缺 `RESEARCH.md`」当成每个研究的缺陷**（`@ssot`：再造 46 份就是给同一个事实造第二个家）。

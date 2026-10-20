@@ -5,7 +5,7 @@
 > 本文件由 `tools/build_catalog.py` 从 `axes/**/project.yaml` 生成，**禁止手改**；改事实请改 `project.yaml`（字段契约见 `harness/research-schema.md`）。
 > 七列：**id** / **标题** / **目的** / **验收**（= `milestone.acceptance`）/ **期望产出**（= `milestone.output`）/ **状态**（= `status`）/ **指针**（该研究的 SSOT 入口）。
 > 超长的 `目的` / `验收` / `期望产出` 按固定宽度截断并加 `…`：**全文只在家里**（`project.yaml`），本表只做定位，不复制读数——实验读数、判据推导、逐格分析在`axes/**/experiments/**` 与 `atlas/**`。
-> 研究级的派发契约（目标 / 唯一里程碑 / 工作包 owner / 预算 / 复核人 / 证据指针）以同目录的 `RESEARCH.md` 为准（该研究落盘了才有）；本表不重复它。
+> 研究项事实的 SSOT 是同目录的 `project.yaml`（本表七列就是由它逐字生成的）；`RESEARCH.md` 只在该研究**已有研究级 Agent 接手**时才存在，写的是派发口径而不是事实，本表不转发它。
 
 | id | 标题 | 目的 | 验收 | 期望产出 | 状态 | 指针 |
 |---|---|---|---|---|---|---|

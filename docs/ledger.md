@@ -57,7 +57,11 @@
 ## 3 本工具不判（honest limits）
 
 1. **搬迁是否真的无损**：本检只证明「每个原文都有归宿、每个新家都存在」，证明不了新家**内容**
-   完整——那是复核者逐条读 `git diff` 的活（`2d68eb4` 里 12 个文件是 `R100` 纯移动，可逐字节复核）；
+   完整——那是复核者逐条读 `git diff` 的活。`2d68eb4` 里 11 对搬迁是 `R100` 纯移动
+   （`FINDINGS.md`、`docs/{cost-table,design,paper-plan,playbook,repro,triage}.md`、`SCHEMA.md`、
+   `docs/{engine_capability,methodology,research-schema}.md`），**每一对搬迁前后是同一个 blob 哈希**
+   （`git rev-parse 2d68eb4^:<旧路径>` 与 `git rev-parse 2d68eb4:<新路径>` 相等），即字节等价；
+   同提交里 `STATUS.md` 删除与 `AGENTS.md` 重写不计入这 11 对，各自的内容变更见提交 diff。
 2. **删除理由是否成立**：本检只要求理由非空且不短于一句，判不了它说服力够不够；
 3. **新家是否选对了层**：`docs/cost-table.md` 迁到 `harness/` 一样能通过本检，层归属的正确性靠
    `AGENTS.md` 的三层表与复核；

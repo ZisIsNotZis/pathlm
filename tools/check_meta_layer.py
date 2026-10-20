@@ -8,12 +8,12 @@
 
 **扫描面**（元级**作者写**的文档，不是生成物）：
 
-  - 仓库根 `README.md`、`AGENTS.md`
+  - 仓库根 `*.md`（新加一份根级文档就自动进面，不靠有人记得登记）
   - `docs/**/*.md`
 
 **不扫**（每条都有理由，理由本身就是它不被扫的原因）：
 
-  - `CONTRIBUTING.md`：流程文档，不属元级事实层（本文件只判元级事实文档）；
+  - `LICENSE.md`：AGPL-3.0 逐字全文，许可证正文而不是本仓事实（`NON_FACT_ROOT_DOCS`）；
   - `atlas/**`、`harness/**`、`axes/**`：研究级与工级，读数本来就该在那儿；
   - `archive/`、`.scratch/`：只读旧资产与日志，不在 SSOT 义务内；
   - **生成物投影**（`GENERATED` 表）：它的正文逐字来自上游事实源，改了也会被生成器的
@@ -31,6 +31,8 @@
   | `百分比读数` | `46.9%`、`+2.592pp` | 同上 |
   | `逐实验目录路径` | `axes/…/experiments/<实验名>/…` | 逐格事实的地址，元级只认研究项一级 |
   | `逐格判词计数` | `已完成 13`、`被否证 5` | 由 46 个 `project.yaml` 派生的计数，家是生成目录 |
+  | `复现三态计数` | `复现三态：可重算 0 / 只能重训 86 / 不可重建 34` | 三态计数的家是生成物 `atlas/repro.md`（`tools/inventory_runs.py`） |
+  | `裸读数小数` | `价签 +0.000034`、`Δ −0.0012` | 带符号且四位以上小数 = 实测差值，家是实验的 `analysis.md` |
 
 **不判**（honest limits，判了只会给假安全感）：
 
@@ -38,9 +40,10 @@
      （否则读者不知道禁令指的是什么），本检只在它们带上数字时判红；
   2. 整数规格（`24 GB` 的单卡显存、`190 MB` 的数据文件）——那是环境与仓库体量，不是实验读数，
      所以显存规则只收**带小数**的读数；
-  3. 判据**常数**（`0.014 bpc 带`）：它是在测之前定的门槛（家 `harness/methodology.md`），
-     不是测出来的东西——但本检**没有**能力把它和读数区分开，所以这类文字不进元级作者文档，
-     只可能出现在生成物投影里（见上）；
+  3. 判据**常数**与**带不等号的阈值**（`0.014 bpc 带`、`Δ < 0.014`）：前者是在测之前定的门槛（家
+     `harness/methodology.md`），不是测出来的东西；后者的 `Δ` 后面跟的不是数字，`Δ 读数` 规则不命中。
+     本检**没有**能力把它们和读数区分开，所以这类文字不进元级作者文档（`CONTRIBUTING.md` 原来就有一条
+     带不等号的阈值，已改成指向 `harness/methodology.md` §2）——这是本检的一个真缺口，不假装拦得住；
   4. 一段读数式散文（「掉了一点质量」）里没有可机判的形态：那要复核者读，本检不假装抓得住。
 
 **白名单**（`ALLOWLIST`，只放**定义性说明**）：一条 `(文件, 片段, 理由)`，命中的行只要包含该片段
@@ -62,7 +65,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 #: 扫描面：元级作者写的文档（仓库相对路径的 glob）。
-META_GLOBS = ("README.md", "AGENTS.md", "docs/**/*.md")
+#: 根级写 `*.md` 而不是逐个点名：点名的清单漏掉谁，禁令对谁就是空的（`CONTRIBUTING.md` 就是这么漏过一次）。
+META_GLOBS = ("*.md", "docs/**/*.md")
+
+#: 根级 `*.md` 里**不承载本仓事实**的那几份（目录相对路径 → 理由）。它短、按类别写，
+#: 不是「暂时不扫」的白名单：一条理由说不清它凭什么不是事实文档，它就该进扫描面。
+NON_FACT_ROOT_DOCS = {
+    "LICENSE.md": "AGPL-3.0 逐字全文：许可证正文，不写本仓任何事实；改它是改许可（需用户同意），不是写元级事实",
+}
 
 #: 生成物投影：正文逐字来自上游事实源（由各自的生成器 `--check` 保证不漂），
 #: 不是「元级作者写进去的读数」，所以不判（理由必须写清，别处不许照抄这条豁免）。
@@ -96,6 +106,12 @@ RULES: tuple[tuple[str, re.Pattern[str], str], ...] = (
     ("逐格判词计数",
      re.compile(r"(?:已完成|被否证|进行中|未开始)\s*\d+|\d+\s*(?:个研究项)?[^。\n|]{0,4}(?:已完成|被否证)\s*\d"),
      "由 46 个 project.yaml 派生的计数：家是生成目录 docs/catalog.md"),
+    ("复现三态计数",
+     re.compile(r"(?:可重算|可重建|只能重训|不可重建)\s*[:：]?\s*\d+"),
+     "复现三态计数的家是生成物 atlas/repro.md（tools/inventory_runs.py）"),
+    ("裸读数小数",
+     re.compile(r"[+\-−±]\d+\.\d{4,}"),
+     "带符号且四位以上小数 = 实测差值：家是实验的 analysis.md，元级只放指针"),
 )
 
 #: 白名单：只放**定义性说明**（这行在定义规则，不在报告读数）。`(文件, 片段, 理由)`。
@@ -126,7 +142,7 @@ def meta_files() -> list[str]:
             if not path.is_file():
                 continue
             rel = path.relative_to(ROOT).as_posix()
-            if rel in GENERATED:
+            if rel in GENERATED or rel in NON_FACT_ROOT_DOCS:
                 continue
             out.add(rel)
     return sorted(out)
@@ -189,9 +205,11 @@ def main(argv: list[str]) -> int:
     for v in violations:
         print(v)
     exempt = "、".join(f"`{k}`（{v}）" for k, v in GENERATED.items())
+    non_fact = "、".join(f"`{k}`" for k in NON_FACT_ROOT_DOCS)
     print(f"扫描元级 {len(files)} 个文档（{', '.join(files) or '—'}）："
           f"{len(violations)} 处研究级读数；"
           f"生成物投影不判：{exempt or '—'}；"
+          f"非事实根级文档不扫：{non_fact or '—'}；"
           f"白名单 {len(ALLOWLIST)} 条（只放定义性说明）。")
     if violations:
         print("FAIL：元级文档里出现了研究级事实；把读数搬回它自己的家（研究级 / 工级），"
