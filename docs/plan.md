@@ -1,61 +1,53 @@
-# 计划（plan 层 · 当前工作包与状态）
+# 计划（plan 层 · 里程碑、工作包与状态）
 
 > 本文件是本仓库**计划层的唯一权威**：里程碑、工作包、owner、验收与状态都写在这里，别处只放指针。
-> 事实文档的规矩见 `AGENTS.md` §2；工作包完成即改写本文件的状态，不在正文里记录过程史。
+> 事实文档的规矩见 `AGENTS.md` §2；工作包状态改写在此处，过程史留在 git 与非事实文档里。
 
-## 1 当前里程碑
+## 0 这一版计划在治什么（诊断，先说清才不改错地方）
 
-| id | 里程碑 | 交付物 | 验收（可判定的观测） | 状态 |
-|---|---|---|---|---|
-| M1 | 注意力残差（2.2.2 / 实验 `2653`）出判决 | `axes/2-depth/2.2.2-attention-residual/experiments/2653-interlayer-attn-13m/results.json` 的两臂读数 + `analysis.md` 的 B 表 | `results.json.arms` 含 `attn-scalar` 与 `attn-qkv` 的 `clean_bpc`，且 `P1_verdict` 已填；`analysis.md` 的 B 表数字与 `results.json` 逐项一致 | 已完成 |
-| M2 | 层间拓扑种子（2.2.3 / 实验 `2651`）四臂齐 + 全树自检 | `2651-inter-layer-topology-s1-13m/results.json` 四臂读数 + `analysis.md` | 四臂（`sequential` / `parallel` / `parallel-dual-ln` / `dense`）都有 `clean_bpc`；`python3 tools/summary.py --check` 与 `python3 -m pytest tests/ -q` 通过，或预存失败已单独登记；工作区干净并已推送 | 已完成（`tests/` 现状 = 866 passed / 1 failed，唯一失败为预存失败 `test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`，涉 `axes/6-predict/**`，非本计划引入、不修，单独登记） |
+一个外部 agent 读完本仓，写下了这句判断：这些实测约束「只存在于 `docs/playbook.md` 和一个私有仓里」，「代价表没有被写成可引用的形式，也不在任何人能检索到的地方」。同一时期内，两个全新上下文的复核者用 12 条意见抓到了同一形态的问题：陈旧事实（`2.2.4` 还写 n=1）、写反的符号（判据串 Δ 方向与代码相反）、悬空指针（`.scratch/**/REVIEW-WP2651.md` 不存在）、行号漂移（引用整体错一行）、无契约依据的「契约允许」（`--skip-s0-anchor`）、算不出来的公式（`aggregation_cost` 的 note）、未申报的偏离（14.9GB 显存）。
 
-M1 读数：`attn-scalar` 1.5336（Δ vs stock 1.5254 = −0.0082，不可排序）、
-`attn-qkv` 1.5431（Δ = −0.0177，反向可分）；**Δ 方向 = `bpc_对照 − bpc_该臂`，正 = 该臂更好**
-（`2653/README.md` §4）。判词与归因落
-`axes/2-depth/2.2.2-attention-residual/project.yaml`（`status: 被否证`）。
+这不是十几笔孤立错误，而是一个类：**仓库对局外读者不自证**——它断言的事实，读者只能选择相信，无法在两三个工具调用内核对。可核实的证据有两条：
 
-M2 读数：四臂 seed=1 clean bpc = 1.5288 / 1.5710 / 1.5662 / 1.5273
-（Δ vs `sequential` = 0 / +0.0422 / +0.0374 / −0.0015）；**Δ 方向 = `bpc_该臂 − bpc_基线`，正 = 更差**
-（`2651-inter-layer-topology-s1-13m/analysis.md` §4；与 `SCHEMA.md` §17.3 的默认方向相反，以该行为准）。判词落
-`2651-inter-layer-topology-s1-13m/analysis.md` §9 与
-`axes/2-depth/2.2.3-learned-layer-sum/project.yaml`（`status: 被否证`，2.2.4 代价面结论 `已完成`）。
+- `README.md:59` 写着「本仓库是**本地工作副本**：提交均在本地，未 push 到远端」，而 `origin` = `git@github.com:ZisIsNotZis/pathlm.git` 且 `main` 已与远端一致。前线文档给出与事实相反的现状，任何读者据此都会认为成果不可检索——外部 agent 的「私有仓」判断正来自这里。
+- 仓库里没有「引用可解析」的检查、没有代价表生成器、没有机器可读的 Δ 方向字段，而 4 个 `supervise*.sh` 仍是 `while :` 无界重试。后果是可观测的：`2653` 因此在写结果阶段崩了 781 次（约 124 GPU 小时作废），并攥着 GPU 锁把 `2651` 饿死 21580 次。
 
-M2 验收证据（机械正证，基线 `06f7df0`（`STATUS.md` / `FINDINGS.md` 提交处的树）→ 复核处置提交 `3ae0522`）：
+治疗按最强的一级往下选：**能生成的就生成**（代价表、实验清单、前线数字块都是 render，事实仍在 `axes/**/project.yaml`），**能机检的就机检**（引用解析、Δ 方向、无界重试、生成块新鲜度，绑定「本次改动新增的内容」而非全树），最后才写规矩。
 
-1. `git show --stat 3ae0522` ⇒ `13 files changed, 60 insertions(+), 24 deletions(-)`：`AGENTS.md`、`2653` 的
-   `analysis.md` / `interlayer_attn.py` / 三个 `results*.json` / `run.py` / `run_log.txt`、`2651/analysis.md`、
-   `2.2.3` 与 `2.2.4` 的 `project.yaml`、`docs/engine_capability.md`、`docs/plan.md`。
-2. `git diff 06f7df0..3ae0522 -- AGENTS.md` ⇒ `1 file changed, 2 insertions(+)`：**只有** §2.1 事实表新增的两行
-   （计划 → `docs/plan.md`；引擎能力面 → `docs/engine_capability.md`）。
-3. `git diff 06f7df0..3ae0522 -- '*2651-inter-layer-topology-s1-13m/README.md' '*2653-interlayer-attn-13m/README.md'`
-   ⇒ **空输出**：两份预登记契约一字未改、判据节 §4 的 P1–P6 逐字未动（`0234314` 引入的 `2653/README.md`
-   §7「落盘清单」hunk 早于本区间基线 `06f7df0`，故不出现在此 diff 中）。
-4. `git diff 06f7df0..3ae0522 -- '*2653-interlayer-attn-13m/results*.json'` ⇒ `3 files changed, 5 insertions(+), 5 deletions(-)`，
-   **只含三类叶子**：`criterion`（P1 的 Δ 符号串改为 `bpc_(stock/dense) − bpc_该臂`）、`code_hash_run_py`、
-   `generated_at`；两臂 `clean_bpc`（1.5336 / 1.5431）与全部 Δ **逐位不变**。
-5. `python3 tools/summary.py --check` ⇒ `OK：46 个 project.yaml 全部符合 docs/research-schema.md`（EXIT=0）。
-6. `python3 -m pytest tests/ -q` ⇒ `866 passed, 1 failed in 117.31s`；唯一失败 = 预存失败
-   `tests/test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`（涉 `axes/6-predict/**`，
-   本计划未触碰），按上表验收的「预存失败已单独登记」计。
+## 1 里程碑
 
-推送核对：`git ls-remote origin refs/heads/main` 与 `git rev-parse HEAD` 必须相同（相同 = 已推送；不同 = 未推送）。
+| 里程碑 | 交付物 | 验收（可观测） | 状态 |
+|---|---|---|---|
+| **自证** | 局外读者只拿仓库就能核实：它是什么、最硬的几条结论连同口径、代价表在哪、怎么验一个数、许可与报问题的地方 | 派一个**没读过本仓**的 fresh reviewer，只给仓库与 8 个问题的清单；它必须在 ≤20 次工具调用内答完，且答案与 `axes/**` 的落盘事实一致、无一处悬空引用或自相矛盾；`python3 tools/summary.py --check` 与 `python3 -m pytest tests/ -q` 通过（预存失败已登记） | 未开始 |
+| **可引用** | 一张**生成**的代价表（定律 × 是否触主干 × 观测代价 × 边界 × 出处）、一份复现清单（哪些 run 的权重/日志还在、能复跑到什么程度）、论文口径与七/十一条定律的分段 | 代价表由 `tools/build_cost_table.py` 生成且与 `axes/**/project.yaml` 逐行一致，`--check` 模式下与手改过的副本逐字节比对必须失败；复现清单里每条 run 都指向真实存在的路径，缺失项显式标「不可重建」 | 未开始 |
+| **推进** | 恢复研究：先一份廉价分诊（每个在途/空白格：它能否改变我们对「某种算力路径值不值」的判断、所需成本），再按排序派发第一批实验 | 分诊表落盘并给出排序理由；第一批工作包各自有预登记判据与验收，且都跑到「可交付、结论清晰、过程可验证、边界明确」 | 未开始 |
 
 ## 2 工作包
 
-| id | 工作包 | owner | 输入（权威） | 交付物 | 验收 | 预算 | 状态 |
-|---|---|---|---|---|---|---|---|
-| WP-R1 | 停止两条失控的 supervisor，并修掉 `topology_liveness` 与 `InterLayerAttentionModel` 的接口不匹配 | worker（fresh context） | `train_depth_ar.py:880`、`pathlm/depth_ar.py:1248`、`2653/run.py` 的模型定义 | 代码改动 + 回归单测（提交 `640a3aa`）；两条 supervisor 与子进程退出 | 单测红→绿可复现：构造一个无 `layer_mix` 的 dense 拓扑模型，旧代码抛 `AttributeError`、新代码给出活性摘要 | 30 分钟 | 已完成 |
-| WP-R2 | 重跑 `2653` 两臂并落盘判决 | worker | WP-R1 的修复；`2653/README.md` 的预登记判据 | `2653/results.json` 两臂读数 + `analysis.md` B 表（提交 `0234314`） | 见 M1 | 2 臂 × 约 10 分钟 GPU | 已完成 |
-| WP-R3 | 跑完 `2651` 剩余三臂 + 写判读 | worker | `2651/README.md`、`2651/results.json` 已有的 `sequential` 臂 | 四臂读数 + `2651/analysis.md` + 两份 `project.yaml` 的当前事实 | 见 M2 | 3 臂 × 约 10 分钟 GPU | 已完成 |
-| WP-R4 | 独立复核 + 文档收口 + 提交推送 | reviewer（fresh context）→ worker | WP-R1..R3 的落盘证据 | 复核结论；`project.yaml` / `analysis.md` 的当前事实；提交并推送 | 复核无阻塞项；`summary.py --check` 通过；`git status` 干净 | 30 分钟 | 已完成（文档收口与提交推送完成；首轮独立复核判 4 条阻塞 F-1..F-4，处置见 WP-R5，阻塞项由 WP-R6 复核确认消除） |
-| WP-R5 | 复核处置：首轮复核 4 条阻塞项（F-1..F-4）+ 8 条非阻塞项（F-5..F-12）逐条落地 | worker（fresh context） | 首轮复核判词；`2651` / `2653` 的落盘证据与预登记 `README.md` | 提交 `3ae0522`（13 文件）：`2.2.4` 臂完整性改 n=2、P1 的 Δ 符号串订正并只重算 B 表、Δ 方向标注、`AGENTS.md` §2.1 补两行、F-5..F-12 文本修正 | `summary.py --check` 通过；`2653` 两臂 `clean_bpc` 与全部 Δ 逐位不变；预登记契约未改（M2 验收证据第 3/4 条） | 30 分钟 | 已完成 |
-| WP-R6 | 窄复核 `3ae0522`：只判阻塞项是否真落地、有无新增账实不符 | reviewer（fresh context，窄范围） | 提交 `3ae0522`、M2 验收证据、`docs/research-schema.md` §11.3 | 窄复核判词：**OK with notes**（F-1..F-4 四条阻塞项全 PASS） | 判词逐条给 PASS/FAIL 与落点行号 | 20 分钟 | 已完成（余 5 条 P2 文本/指针项与 6 条机械正证随本次收口提交处理） |
+| 工作包 | 归属里程碑 | owner | 交付物 | 验收 | 预算 | 状态 |
+|---|---|---|---|---|---|---|
+| 前线如实 | 自证 | worker（fresh context） | `README.md` 重写前线：一句话是什么/不是谁用、3–5 条最硬结论（带数字与口径）、一条从干净机器跑起来的命令、当前状态与已知偏离、报问题的地方、许可 | 文中每个数字都能指回它的家（`docs/cost-table.md` 或 `axes/**`），无「本地工作副本」这类与 `git remote` 相反的话；命令实测可跑 | 45 分钟 | 未开始 |
+| 代价表生成 | 可引用 | worker | `tools/build_cost_table.py` + `docs/cost-table.md`（生成物，带渲染横幅）+ `project.yaml` 新增 `laws: []` 字段与 schema 说明 | 表由脚本生成；`--check` 在副本被手改时非零退出；11 条定律每条至少被一项证据覆盖，否则脚本显式报缺；数字与 `project.yaml` 逐项一致 | 90 分钟 | 未开始 |
+| 引用即检 | 自证 | worker | `tools/check_docs.py`：解析文档里的 `文件:行` 与 `文件#§标题` 引用，校验目标存在且行在范围内；接入 `tests/` 与 `tools/check_tree.py` | 注入一条悬空引用时检查必须红；全树既有违规清零并逐个修好；检查在 `pytest` 里自动运行 | 60 分钟 | 未开始 |
+| Δ 方向机器可读 | 自证 | worker | `docs/research-schema.md` 增加 `delta_direction` 必填字段；每个 `results.json` 声明其方向；一条单测断言 run.py 的判据串方向与代码实算一致 | 故意把某个 `criterion` 串的方向写反时单测必须红；全仓 `results.json` 都有该字段 | 60 分钟 | 未开始 |
+| supervisor 有界 | 自证 | worker | 一个共享 `tools/supervise.sh`（尝试上限、连续失败熔断、熔断即写 STOPPED 横幅并非零退出、取锁礼让 ≥60s），并替换现有 4 个 `while :` 脚本 | 用一个人为必失败的 run 驱动新脚本：达到上限后停止、写出熔断横幅、不再取锁；旧脚本在树内清零 | 60 分钟 | 未开始 |
+| 文档地图接线 | 自证 | worker | `AGENTS.md` §2.1 与 `docs/design.md` 的目录图补 `docs/plan.md`、`docs/paper-plan.md`、`docs/engine_capability.md`、`docs/cost-table.md` | 目录图里每个文件都存在，每个存在的事实文档都在图里（由「引用即检」扩展断言） | 20 分钟 | 未开始 |
+| 复现清单 | 可引用 | worker | `tools/inventory_runs.py` + `docs/repro.md`（每实验：run 目录、权重是否在库、日志、重跑命令、实测墙钟、能否字节级复现） | 每条路径存在性由脚本校验；不可重建的项显式写「不可重建」而不是留空 | 60 分钟 | 未开始 |
+| 论文口径收口 | 可引用 | worker → reviewer | 更新 `docs/paper-plan.md`：代价按「触主干/旁路」分组，定律 8–11 归为「用表前必须过的口径与前置条件」，补进本轮三条否证，方法一页只做 router | 与 `docs/playbook.md`、`docs/cost-table.md` 无重复数字（只有指针）；fresh 复核者只按文件本身即可判断其自洽 | 45 分钟 | 未开始 |
+| 树分诊 | 推进 | worker | `docs/triage.md`：每个在途/空白格的「能否改变判断」评分、覆盖度、所需算力与时间 | 每格一行，评分有可核对的理由；在途格标注它离「可交付」还缺什么 | 60 分钟 | 未开始 |
+| 研究批次一 | 推进 | worker（并行，按格隔离） | 分诊排序后的前 2–3 格，各自按预登记契约跑到判词 | 各自 `project.yaml` 的状态与 `verdict` 可被 `summary.py --check` 接受；实验证据落盘并有 fresh 复核 | 按格定 | 未开始 |
 
-## 3 纪律（本计划的取舍已定，执行方不自选）
+## 3 我已定的取舍（不需要再问，执行方不自选）
 
-- CPU 侧改动（WP-R1）与 GPU 侧（WP-R2/R3）解耦：先修代码，再占 GPU，避免继续空烧。
-- 已训完的权重优先复用：判 `2653/runs/*/model.pt` 与 `2651/runs/*/model.pt` 能否**只重算判据**
-  而不重训；能复算就不重训，并在 `analysis.md` 说明复算来源。
-- GPU 串行取 `/tmp/pathlm_gpu.lock`（`SCHEMA.md` §20），同一时刻只有一个臂在跑。
-- 预登记判据线与臂定义**不改**；结果不好时改的是归因与下一步，不是判据。
+- 代价表是**生成物**（render），事实仍只住在 `axes/**/project.yaml`；手写汇总表一律不建。
+- `project.yaml` 增加 `laws: []`：每个研究项自己声明「我的证据支持哪几条定律」，代价表按它分组，避免再出现「定律与证据的映射」的第二份家。
+- Δ 方向统一回 `SCHEMA.md` 的默认（`Δ = 对照 − 实验`，正 = 改善）；已被预登记冻结的 `2651` 文字保留，但必须在 `results.json` 里带机器可读方向，读表的人不会读反。
+- supervisor 一律换成有界重试 + 连续失败熔断 + 锁礼让；「无界重试」这种形态不允许再被复制。
+- 检查绑定「本次改动新增的内容」，不要求全树一次性合规；全树迁移只在明确要求时做。
+- 主 Agent 此后只做派发、树管理、守边界、汇报；不再亲手改文件。
+
+## 4 需要用户裁决（未裁决前按默认走）
+
+- `FINDINGS.md` §一 现在是「数字 + 出处」的第二个家：默认保留其路由器身份但把数字换成指向 `docs/cost-table.md` 的指针；不改则接受重复。
+- 许可：`LICENSE.md` 是 AGPL-3.0，而 `paper-plan.md` 的目标是公开可引用；文档/论文通常用 CC BY。发布前需要你的决定（属对外暴露，需同意）。
+- 「推进」里程碑的研究优先级由我按分诊排序自选；你要指定方向随时可以覆盖。
