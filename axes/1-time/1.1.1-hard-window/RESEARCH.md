@@ -34,16 +34,18 @@
 
 ## 3 工作包（owner / 验收 / 预算 / 状态）
 
-| id | 内容 | owner | 验收（可观测） | 预算 | 状态 |
-|---|---|---|---|---|---|
-| WP1 | 自包含复算窗口/锚点臂（同引擎、同数据流、n≥2） | `axis1-w1.1.1` | 锚点臂有 `experiments/2662-hard-window-anchor-13m/{README,config.json,results.json,analysis.md}`，rc=0，bpc 与旧摘要量级一致 | 已花：≈30 min GPU（2 臂 × 12k 步）+ 评测 | 已完成（窗口中轴仍为复用，见 `project.yaml::gaps`） |
-| WP2 | 把「评测期丢前缀」与「累计预算」两列拆开 | `axis1-w1.1.1` | 两列都在结果里且不互相外推 | 0 GPU（再分析） | 未开始 |
-| WP3 | 检索腿重设计 + 锚点通道复核 | `axis1-w1.1.1` | 「锚点桶召回相对同掩码配对地板可排序提升」在**判定单位写对**之后给出可判/不可判的判词，而不是被一个功效为 0 的合取式卡住 | 已花：4 臂 × 12k 步 ≈ 36 min GPU（8.2–10.5 min/臂）+ 评测 2.84 min | **已完成**：`2681` 9 臂齐备、种子层判「可判」，见 §2 |
-| WP4 | 窗口代价随 T 的同 step 曲线复核 | `axis1-w1.1.1` | 同 step 四点 Δ + 两口径之差齐备，结论停在「本 n 下可判/不可判」 | 已花：0 GPU（迁移读数统一口径） | 已完成（`2636-longT-unified`） |
+每条工作包的**内容、验收与状态**的唯一之家是 `project.yaml::work_packages`（状态看
+`work_packages[*].status`）；本表只放**派发口径**（owner / 预算 / 复核人），不复制任何事实。
+
+| id | owner | 预算 | 复核人 |
+|---|---|---|---|
+| WP1 | `axis1-w1.1.1` | 已花：≈30 min GPU（2 臂 × 12k 步）+ 评测 | `axis1-reviewer` |
+| WP2 | `axis1-w1.1.1` | 8 臂 × 12k 步 ≈ 90 min GPU + 评测 ≈ 12 min（`2682` 的 §7 预算） | `axis1-reviewer` |
+| WP3 | `axis1-w1.1.1` | 已花：4 臂 × 12k 步 ≈ 36 min GPU（8.2–10.5 min/臂）+ 评测 2.84 min | `axis1-reviewer` |
+| WP4 | `axis1-w1.1.1` | 已花：0 GPU（迁移读数统一口径） | `axis1-reviewer` |
 
 **复核人**：`axis1-reviewer`（fresh 上下文，非本项 writer）；按 `harness/SCHEMA.md` §14/§14b，
 复核**排在执行之后**，只看落盘产物与证据。
-
 ## 4 WP3 本轮的判定口径（为什么不是「照抄分诊表那一句」）
 
 分诊表给本格的单一动作是「补 seed 2/3，使召回腿从 n=2 不可判变成可判」。**补 seed 保留**，
