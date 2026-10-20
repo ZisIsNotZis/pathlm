@@ -48,7 +48,8 @@
 
 **复用臂（0 GPU）**：`win32` / `win32_s1` 直接复用 `2676-content-vs-window-13m/runs/win32{,_s1}`
 （同配方、只换 `--train-window 32`），`full` 复用 `2614-topk-sparse-attn-13m/runs/full-12k-s0`。
-等值门：本实验重算的 `win32` / `win32_s1` 逐批 bpc 必须与 `2676/results.json::per_batch_bpc`
+等值门：本实验重算的 `win32` / `win32_s1` 逐批 bpc 必须与
+`axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/results.json::per_batch_bpc`
 **逐位相同**（口径未漂移的证据），不等即中止判决。
 
 ## 4 判据线（预登记，跑后不改）
