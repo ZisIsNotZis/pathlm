@@ -13,18 +13,32 @@ method: "单因素：固定主干与出口数，只改各出口到词表的映�
 validation: "端到端：对照 = 共享 tied 线性读出（归一为 100%）+ 等参数对照；客观判据 = 各出口的 tf@k 与各出口 clean bpc（浅出口该涨 / 该不跌，越 0.014 噪声带）+ 读出参数量（独立表 vocab×d 单列）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变 = 末层（全深度）质量不劣于 stock、prob0 可用。 判据带（C1 裁决）：tf@k 等率类指标走配对 bootstrap / Wilson 95% CI 为主判；clean bpc 差用 0.014 bpc 带（限配对 Δ、≥5 窗口）、不跨量纲借用。"
 objective_criteria: "该涨：各出口 tf@k（尤其浅出口）；该不跌：末层 clean bpc；必须报：读出参数量（独立表 vocab×d 单独列）；必须不变：prob0 / 软提交仍可用、末层质量不越带。"
 falsification: "若逐出口读出相对共享 tied 表不能让浅出口 tf@k 可排序提升（越 0.014 噪声带）⇒ 判逐出口读出在本尺度不必要（共享表够用）；若只有不可 scale 的独立表能提升 ⇒ 判该手段在本形态不实用；若逐出口读出反而损末层质量 ⇒ 判不成立。 用哪个带（C1 裁决）：tf@k 等率类指标走配对 bootstrap / Wilson 95% CI 为主判；clean bpc 差用 0.014 bpc 带（限配对 Δ、≥5 窗口）、不跨量纲借用。"
-failure_analysis: ""
-conclusion: ""
-conclusion_review: "**本轮（Phase B）已落**：预登记契约 `experiments/2645-per-exit-readout-13m/README.md`、实现 `run.py`（depth-AR 形态下的逐出口读出臂 `T`/`PE`/`IND`/`LR`，实验目录内实现，不改引擎）、单测 `test_2645_per_exit_readout.py`（含等值门/变异门）、60 步冒烟（`T` 臂）rc=0；**新增臂未跑出任何读数**（GPU 互斥锁被其它轴的长任务持续占用）⇒ 本项**尚无本地判决**，`status: 进行中`、`conclusion` 留空；未跑原因与下一步最小实验见 `gaps`。独立复核未做（无可复核的读数）。"
-laws: []
-cost_rows: []
+failure_analysis: "三件事分开记：①**判据定义**（不是实验缺陷）：`tf@k` 是相对全深度出口的接受率，`PE` 把末层加固得最多 ⇒ 即使浅出口绝对质量也变好，相对接受率仍会下降；本项主判因此不能读成「`PE` 让模型变差」，只能读成「它把早退这笔交易的账做差了」。②**设计/结构**：本尺度 V=206 < d=256 ⇒ `PE` 的头族（`E·M`）包含任意线性头（单测 T5），`IND` 与它的差别只剩参数化与参数量，不是表达力；因此「换一种出口映射形态」在这条轴上本来就几乎没有额外自由度，可用的杠杆只剩「多给容量」。③**innovation 本身**：逐出口读出的两个承诺——「浅出口更可用」被两 seed 否证（深度 2–4 同向更差）、「值它多付的读出参数与算力」在等参数对照缺位下无本地读数；因此本项按预登记判「不成立」，而不是「机制无效」。"
+conclusion: "本尺度判「逐出口读出不是早退可用性的杠杆」（判据线在训练之前绑定：`axes/3-width/3.2.2-per-exit-readout/experiments/2645-per-exit-readout-13m/README.md` §4 与同目录的 `prereg_binding.json`；两 seed 的判词规则是同目录 `config.json::n2_rule`）。两臂只改「出口 → 词表」：`T` = 共享 tied 表（stock），`PE` = 共享表 + 每个出口一个 256×256 变换（`M_k = I` 起步，起步逐位等于 `T`）；主干逐位相同。**末层质量 `PE` 更好**：clean bpc 1.7513 vs 1.8370（seed 0）、1.7517 vs 1.8328（seed 1），Δ = PE − T = **−0.0857 / −0.0811**（两 seed 同向、各自越 0.014 带 6 倍以上）；**早退可用性 `PE` 更差**：`tf@2 / tf@3 / tf@4` 两 seed 同向下降（−0.0468 / −0.0159、−0.0278 / −0.0207、−0.0204 / −0.0219，每条配对 CI 不含 0；深度 1 只在 seed 0 上升 +0.0082、seed 1 不可分）⇒ 预登记的「浅出口可分且为正」不成立（n=2 的读法是「可分且为负」）。代价：读出参数 +589,824（9 × 65,536，占总参数 +8.5%）、每 token 训练算力 +8.0%（9 个出口都算 logits）、推理 +0.9%。校准与软提交仍可用（prob0 ECE 0.0028 / 0.0073，容差 0.003 内；出口 argmax 与 tied 基坐标的一致率 0.71 / 0.70 是 `PE` 出口头含 `M_k` 的构造性后果）。按 `docs/playbook.md` 定律 9 必须与绝对质量一起读：`PE` 在 9 个出口里几乎每一层都更好（唯一例外 seed 0 深度 2 差 0.011、落带内），但末层进步更大 ⇒ 相对接受率下降；所以它买到的是「多给读出容量」，不是「出口 → 词表形态」的好处。**未测**：等参数对照臂（这笔 +8.5% 参数给主干还剩多少收益）、`IND` / `LR` 两臂、真词表；不外推到 100k 词表（V > d 时 `E·M` 只有 d 维自由度）。"
+conclusion_review: "自评：两臂同批同 seed 同构造路径训练（单测 T1/T3 钉住 `PE` 起步逐位等于 `T`、四臂主干逐位相同），12k 步读数与重测电池（`reeval_bitwise_identical`）逐 seed 落盘；判据线、判据常数（`config.json`）与判词规则在 seed 1 两臂训练之前绑定，seed 0 的两条读数绑定更早、其定序见 `prereg_binding.json` 的 `readings_existing_at_bind`。判词由 `run.py --aggregate-all` 按预登记规则机械生成，未在读数后改判据线。`IND` / `LR` 未跑，故 P4 的第二条否证分支标「未测」而不是「否证」。独立复核未做（执行方不自评）。"
+laws:
+  - 9
+cost_rows:
+  - law: 9
+    change: 多出口时每个出口各自映射到词表（共享表 + 每出口 d×d 变换）对共享 tied 表
+    touches_trunk: true
+    metric: clean bpc Δ（逐出口读出 − 共享 tied 表；正 = 更差；两 seed 同向且各自越 0.014 带）
+    delta: '-0.0857'
+    delta_direction: arm_minus_comparator
+    comparator: 共享 tied 线性读出（stock；同批同 seed 重训的 T 臂）
+    scale: 13M / 8L / 9 出口 / T=256 / 12k 步 / 98.3M token / 20 批配对 / seed 0 与 seed 1
+    boundary: 这是末层质量更好（seed 1 = −0.0811）；同一对臂的浅出口 tf@2..4 两 seed 同向下降 ⇒ 早退可用性变差。
+      代价是读出参数 +589,824（占总参数 +8.5%）与每 token 训练算力 +8.0%；等参数对照臂未跑 ⇒ 不得当作采纳理由
+    source: axes/3-width/3.2.2-per-exit-readout/experiments/2645-per-exit-readout-13m/analysis.md
 experiments:
   - "axes/3-width/3.2.2-per-exit-readout/experiments/2645-per-exit-readout-13m"
 argument: "多出口模型里，读出是最容易被忽略的耦合点：共享一张 tied 表时所有出口被同一条「概率 = 状态在 embedding 基的坐标」约束；逐出口读出正是解这个耦合的候选。判据必须看**浅出口**（早退真正用到的那个），而不是只看末层；独立表虽可能有效但 vocab×d 不可 scale，故单列参数量并把「是否能 scale」当采纳门槛。跑层数归深度轴 `2.1.1`，本项只判出口→词表的形态。"
 gaps:
-  - "本仓零经验：需先做最小判决（13M、固定主干与出口数，{共享 tied, 共享+d×d, 独立表, 低秩} 四臂，报各出口 tf@k + 末层 bpc + 参数量）"
-  - "与 `2.1.1`（跑不跑这层）和 `3.2.1`（单出口重参数化）的边界须由 integrator 核一遍"
-  - "出口数 / 出口位置的选择未定（需与 `2.1.1` 的早退设计对齐）"
+  - "等参数对照臂未跑：「末层 +0.086 bpc」在把这笔 +8.5% 参数给主干后还剩多少未测 ⇒ 质量增益的归因未隔离"
+  - "`IND`（每出口独立表）与 `LR`（每出口低秩校正）两臂未跑 ⇒ 预登记否证线的第二条（只有不可 scale 的独立表能提升）无本地读数"
+  - "真词表（100k+）不可判：V > d 时 `PE` 的表达力优势消失，本项结论只覆盖 V=206"
+  - "出口数与出口位置固定为「每层 + 全深度」（9 个）：出口数对结论的影响未测；「跑哪几层 / 退不退」归 `2.1.1`"
+  - "推理期早退调度（真实 tokens-per-forward 与墙钟）不在本项：本项只判「出口 → 词表」的形态"
 cost_model: "等效理论量：每出口加 d×d 变换 ⇒ 每 token 每出口约 +2·d² 出口 FLOPs（在出口处，不重跑主干，layer-passes 每 token 不增加）；独立表参数量 = 出口数 × vocab × d（不可 scale，单列）；tokens-per-forward 每步 1。考虑 pipelining：出口读出在每步结束时对该出口已算出的隐藏态做一次映射，不引入额外顺序依赖。"
 
 role_map:
@@ -45,13 +59,13 @@ work_packages:
     acceptance: "四臂预算对齐；浅出口 tf@k 有/无越噪声带差异，二选一明确；末层质量与参数量列齐备"
     evidence: "axes/3-width/3.2.2-per-exit-readout/experiments/"
     review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b）"
-    status: "进行中"
+    status: "被否证"
 
 roadmap:
-  - "WP1：逐出口读出最小判决"
-  - "复核通过与 2.1.1 的边界整合后写 conclusion，更新 status"
-  - "**本轮（Phase B）受阻**：GPU 互斥锁饥饿 ⇒ 四个臂一个都没跑、无读数（`2645/run_log.txt`）；下一步最小实验 = `PE:0`（每出口 d×d 变换，价值最高）一臂 12k + 同口径 `tf@k` 评测，再补 `IND:0`/`LR:0` 与同批共享 tied 对照臂 `T`"
+  - "独立复核这一格的判词与读数（执行方不自评）"
+  - "补等参数对照臂（把读出参数额给主干），回答「质量增益值不值那笔参数」——见 gaps 第一条"
+  - "补 `IND` / `LR` 两臂以闭合 P4 的第二条否证分支"
 
-status: "进行中"
+status: "被否证"
 started: "2026-10-13T10:57:34+08:00"
-ended: ""
+ended: "2026-10-20T20:40:00+08:00"

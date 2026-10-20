@@ -1,5 +1,19 @@
 {
   "experiment": "2645-per-exit-readout-13m",
+  "delta_directions": {
+    "delta_clean_bpc_vs_ref": "arm_minus_comparator",
+    "delta_tf_by_depth": "arm_minus_comparator",
+    "delta": "arm_minus_comparator",
+    "delta_ece_vs_ref": "arm_minus_comparator",
+    "delta_clean_bpc_vs_ref_by_seed": "arm_minus_comparator",
+    "delta_clean_bpc": "arm_minus_comparator"
+  },
+  "delta_direction_note": "Δ = 读数_实验 − 读数_对照，对照 = 同批共享 tied 臂 T；tf@k 的 Δ > 0 = 该深度接受率更高，clean bpc 的 Δ > 0 = 实验更差（两处语义由各自 metric 写明，算式次序一致）。",
+  "band": {
+    "clean_bpc": 0.014,
+    "ece_tolerance": 0.003,
+    "rates": "tf@k 走配对 cluster bootstrap（按批）+ Wilson 95% CI，不跨量纲借用 0.014"
+  },
   "base": {
     "form": "depth-AR（dense=false + 变深度 + 逐层读出 + 随机退出 + fill_kv）",
     "d_model": 256,
@@ -15,59 +29,915 @@
     "data": "data/enwik8_full.npz",
     "vocab_size": 206
   },
-  "reference_arm": "anchor",
-  "anchor": {
-    "source": ".scratch/23-depth-ar/evidence/23c-H2-w0-12k",
-    "hist_clean_bpc": 1.8582,
-    "hist_tf4": 0.9694,
-    "hist_tf6": 0.9938,
-    "recheck_all_equal": null,
-    "recheck_tf_matches_2610": null,
-    "recheck_clean_bpc": null
-  },
-  "band": {
-    "clean_bpc": 0.014,
-    "ece_tolerance": 0.003,
-    "rates": "tf@k 走配对 cluster bootstrap（按批）+ Wilson 95% CI，不跨量纲借用 0.014"
-  },
-  "arm_rows": {
-    "T": {
-      "clean_bpc": null,
-      "status": "未跑"
-    },
-    "PE": {
-      "clean_bpc": null,
-      "status": "未跑"
-    },
-    "IND": {
-      "clean_bpc": null,
-      "status": "未跑"
-    },
-    "LR": {
-      "clean_bpc": null,
-      "status": "未跑"
-    }
-  },
-  "verdict": {
-    "P1": {
-      "status": "未跑",
-      "note": "PE 未训练 ⇒ 无读数，不做任何推断"
-    },
-    "P2": {
-      "status": "未跑"
-    },
-    "P3": {
-      "status": "未跑"
-    },
-    "P4": {
-      "status": "未跑"
-    }
-  },
-  "arms_declared": [
-    "T",
-    "PE",
-    "IND",
-    "LR"
+  "seeds": [
+    0,
+    1
   ],
-  "code_hash_run_py": "f056e88712e177d49a032c9eede9b4201214eb006c1e1356f943838110f1b005"
+  "per_seed": {
+    "s0": {
+      "arm_rows": {
+        "T": {
+          "clean_bpc": 1.837,
+          "params_readout": 0,
+          "params_total": 6962688,
+          "tf_acceptance": [
+            {
+              "depth": 0,
+              "accept": 0.056605,
+              "n": 81600,
+              "wilson_95ci": [
+                0.055041,
+                0.058212
+              ],
+              "cluster_bootstrap_95ci": [
+                0.052537,
+                0.060588
+              ]
+            },
+            {
+              "depth": 1,
+              "accept": 0.714767,
+              "n": 81600,
+              "wilson_95ci": [
+                0.711659,
+                0.717855
+              ],
+              "cluster_bootstrap_95ci": [
+                0.707377,
+                0.721654
+              ]
+            },
+            {
+              "depth": 2,
+              "accept": 0.873027,
+              "n": 81600,
+              "wilson_95ci": [
+                0.870725,
+                0.875294
+              ],
+              "cluster_bootstrap_95ci": [
+                0.868407,
+                0.877672
+              ]
+            },
+            {
+              "depth": 3,
+              "accept": 0.938799,
+              "n": 81600,
+              "wilson_95ci": [
+                0.937134,
+                0.940423
+              ],
+              "cluster_bootstrap_95ci": [
+                0.935882,
+                0.941471
+              ]
+            },
+            {
+              "depth": 4,
+              "accept": 0.973676,
+              "n": 81600,
+              "wilson_95ci": [
+                0.972556,
+                0.974753
+              ],
+              "cluster_bootstrap_95ci": [
+                0.972267,
+                0.975074
+              ]
+            },
+            {
+              "depth": 5,
+              "accept": 0.987537,
+              "n": 81600,
+              "wilson_95ci": [
+                0.986752,
+                0.988275
+              ],
+              "cluster_bootstrap_95ci": [
+                0.986618,
+                0.988419
+              ]
+            },
+            {
+              "depth": 6,
+              "accept": 0.993297,
+              "n": 81600,
+              "wilson_95ci": [
+                0.992713,
+                0.993834
+              ],
+              "cluster_bootstrap_95ci": [
+                0.992708,
+                0.99386
+              ]
+            },
+            {
+              "depth": 7,
+              "accept": 0.997941,
+              "n": 81600,
+              "wilson_95ci": [
+                0.997606,
+                0.99823
+              ],
+              "cluster_bootstrap_95ci": [
+                0.997659,
+                0.998235
+              ]
+            }
+          ],
+          "prob0_ece": 0.0062,
+          "tied_argmax_agreement": 1.0,
+          "reeval_bitwise_identical": true,
+          "status": "已跑"
+        },
+        "PE": {
+          "clean_bpc": 1.7513,
+          "params_readout": 589824,
+          "params_total": 7552512,
+          "tf_acceptance": [
+            {
+              "depth": 0,
+              "accept": 0.306005,
+              "n": 81600,
+              "wilson_95ci": [
+                0.302852,
+                0.309176
+              ],
+              "cluster_bootstrap_95ci": [
+                0.298824,
+                0.313027
+              ]
+            },
+            {
+              "depth": 1,
+              "accept": 0.723015,
+              "n": 81600,
+              "wilson_95ci": [
+                0.719934,
+                0.726075
+              ],
+              "cluster_bootstrap_95ci": [
+                0.716017,
+                0.729645
+              ]
+            },
+            {
+              "depth": 2,
+              "accept": 0.826201,
+              "n": 81600,
+              "wilson_95ci": [
+                0.823586,
+                0.828786
+              ],
+              "cluster_bootstrap_95ci": [
+                0.819436,
+                0.832341
+              ]
+            },
+            {
+              "depth": 3,
+              "accept": 0.910968,
+              "n": 81600,
+              "wilson_95ci": [
+                0.908995,
+                0.912903
+              ],
+              "cluster_bootstrap_95ci": [
+                0.907292,
+                0.914154
+              ]
+            },
+            {
+              "depth": 4,
+              "accept": 0.953272,
+              "n": 81600,
+              "wilson_95ci": [
+                0.951802,
+                0.954699
+              ],
+              "cluster_bootstrap_95ci": [
+                0.95098,
+                0.955196
+              ]
+            },
+            {
+              "depth": 5,
+              "accept": 0.967365,
+              "n": 81600,
+              "wilson_95ci": [
+                0.966124,
+                0.968562
+              ],
+              "cluster_bootstrap_95ci": [
+                0.966078,
+                0.968615
+              ]
+            },
+            {
+              "depth": 6,
+              "accept": 0.972929,
+              "n": 81600,
+              "wilson_95ci": [
+                0.971793,
+                0.97402
+              ],
+              "cluster_bootstrap_95ci": [
+                0.97174,
+                0.973995
+              ]
+            },
+            {
+              "depth": 7,
+              "accept": 0.977549,
+              "n": 81600,
+              "wilson_95ci": [
+                0.97651,
+                0.978543
+              ],
+              "cluster_bootstrap_95ci": [
+                0.976397,
+                0.978578
+              ]
+            }
+          ],
+          "prob0_ece": 0.0028,
+          "tied_argmax_agreement": 0.712524,
+          "reeval_bitwise_identical": true,
+          "status": "已跑",
+          "delta_clean_bpc_vs_ref": -0.0857,
+          "bpc_beyond_band": true,
+          "delta_tf_by_depth": [
+            {
+              "depth": 0,
+              "delta": 0.2494,
+              "paired_bootstrap_95ci": [
+                0.240368,
+                0.259154
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 1,
+              "delta": 0.008248,
+              "paired_bootstrap_95ci": [
+                0.005245,
+                0.011409
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 2,
+              "delta": -0.046826,
+              "paired_bootstrap_95ci": [
+                -0.051103,
+                -0.042083
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 3,
+              "delta": -0.027831,
+              "paired_bootstrap_95ci": [
+                -0.030221,
+                -0.025355
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 4,
+              "delta": -0.020404,
+              "paired_bootstrap_95ci": [
+                -0.022512,
+                -0.018297
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 5,
+              "delta": -0.020172,
+              "paired_bootstrap_95ci": [
+                -0.021777,
+                -0.01864
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 6,
+              "delta": -0.020368,
+              "paired_bootstrap_95ci": [
+                -0.021752,
+                -0.019093
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 7,
+              "delta": -0.020392,
+              "paired_bootstrap_95ci": [
+                -0.021569,
+                -0.019289
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            }
+          ]
+        },
+        "IND": {
+          "clean_bpc": null,
+          "status": "未跑"
+        },
+        "LR": {
+          "clean_bpc": null,
+          "status": "未跑"
+        }
+      },
+      "verdict": {
+        "P1": {
+          "question": "PE 相对共享 tied 能否让浅出口 tf@k（深度 1..4）可排序提升",
+          "shallow_separable_positive_depths": [
+            1
+          ],
+          "separated": true,
+          "detail": [
+            {
+              "depth": 0,
+              "delta": 0.2494,
+              "paired_bootstrap_95ci": [
+                0.240368,
+                0.259154
+              ]
+            },
+            {
+              "depth": 1,
+              "delta": 0.008248,
+              "paired_bootstrap_95ci": [
+                0.005245,
+                0.011409
+              ]
+            },
+            {
+              "depth": 2,
+              "delta": -0.046826,
+              "paired_bootstrap_95ci": [
+                -0.051103,
+                -0.042083
+              ]
+            },
+            {
+              "depth": 3,
+              "delta": -0.027831,
+              "paired_bootstrap_95ci": [
+                -0.030221,
+                -0.025355
+              ]
+            },
+            {
+              "depth": 4,
+              "delta": -0.020404,
+              "paired_bootstrap_95ci": [
+                -0.022512,
+                -0.018297
+              ]
+            },
+            {
+              "depth": 5,
+              "delta": -0.020172,
+              "paired_bootstrap_95ci": [
+                -0.021777,
+                -0.01864
+              ]
+            },
+            {
+              "depth": 6,
+              "delta": -0.020368,
+              "paired_bootstrap_95ci": [
+                -0.021752,
+                -0.019093
+              ]
+            },
+            {
+              "depth": 7,
+              "delta": -0.020392,
+              "paired_bootstrap_95ci": [
+                -0.021569,
+                -0.019289
+              ]
+            }
+          ]
+        },
+        "P2": {
+          "question": "PE 末层 clean bpc 是否不劣于参考臂（不越 0.014 带）",
+          "delta_clean_bpc": -0.0857,
+          "beyond_band": true,
+          "params_readout": 589824,
+          "params_readout_per_exit": 65536
+        },
+        "P3": {
+          "question": "prob0 / 软提交语义是否仍可用",
+          "prob0_ece": 0.0028,
+          "delta_ece_vs_ref": -0.0034,
+          "tolerance": 0.003,
+          "tied_argmax_agreement": 0.712524
+        },
+        "P4": {
+          "falsification_lines": {
+            "shallow_tf_not_separable": false,
+            "only_unscalable_IND_helps": null,
+            "last_layer_degraded": null
+          },
+          "IND": {
+            "status": "未跑",
+            "params_readout": null,
+            "scalable": false
+          },
+          "LR": {
+            "status": "未跑",
+            "params_readout": null
+          }
+        }
+      },
+      "reference_arm": "T"
+    },
+    "s1": {
+      "arm_rows": {
+        "T": {
+          "clean_bpc": 1.8328,
+          "params_readout": 0,
+          "params_total": 6962688,
+          "tf_acceptance": [
+            {
+              "depth": 0,
+              "accept": 0.057953,
+              "n": 81600,
+              "wilson_95ci": [
+                0.056371,
+                0.059578
+              ],
+              "cluster_bootstrap_95ci": [
+                0.05386,
+                0.061973
+              ]
+            },
+            {
+              "depth": 1,
+              "accept": 0.712059,
+              "n": 81600,
+              "wilson_95ci": [
+                0.708942,
+                0.715156
+              ],
+              "cluster_bootstrap_95ci": [
+                0.704657,
+                0.718738
+              ]
+            },
+            {
+              "depth": 2,
+              "accept": 0.834963,
+              "n": 81600,
+              "wilson_95ci": [
+                0.8324,
+                0.837494
+              ],
+              "cluster_bootstrap_95ci": [
+                0.828676,
+                0.8406
+              ]
+            },
+            {
+              "depth": 3,
+              "accept": 0.935441,
+              "n": 81600,
+              "wilson_95ci": [
+                0.933734,
+                0.937107
+              ],
+              "cluster_bootstrap_95ci": [
+                0.932316,
+                0.938554
+              ]
+            },
+            {
+              "depth": 4,
+              "accept": 0.971103,
+              "n": 81600,
+              "wilson_95ci": [
+                0.969931,
+                0.97223
+              ],
+              "cluster_bootstrap_95ci": [
+                0.969657,
+                0.972574
+              ]
+            },
+            {
+              "depth": 5,
+              "accept": 0.985748,
+              "n": 81600,
+              "wilson_95ci": [
+                0.984911,
+                0.986538
+              ],
+              "cluster_bootstrap_95ci": [
+                0.984706,
+                0.986838
+              ]
+            },
+            {
+              "depth": 6,
+              "accept": 0.9931,
+              "n": 81600,
+              "wilson_95ci": [
+                0.992509,
+                0.993646
+              ],
+              "cluster_bootstrap_95ci": [
+                0.992402,
+                0.993799
+              ]
+            },
+            {
+              "depth": 7,
+              "accept": 0.997745,
+              "n": 81600,
+              "wilson_95ci": [
+                0.997395,
+                0.998048
+              ],
+              "cluster_bootstrap_95ci": [
+                0.997512,
+                0.99799
+              ]
+            }
+          ],
+          "prob0_ece": 0.0056,
+          "tied_argmax_agreement": 1.0,
+          "reeval_bitwise_identical": true,
+          "status": "已跑"
+        },
+        "PE": {
+          "clean_bpc": 1.7517,
+          "params_readout": 589824,
+          "params_total": 7552512,
+          "tf_acceptance": [
+            {
+              "depth": 0,
+              "accept": 0.299988,
+              "n": 81600,
+              "wilson_95ci": [
+                0.296853,
+                0.303141
+              ],
+              "cluster_bootstrap_95ci": [
+                0.292206,
+                0.307365
+              ]
+            },
+            {
+              "depth": 1,
+              "accept": 0.714975,
+              "n": 81600,
+              "wilson_95ci": [
+                0.711868,
+                0.718063
+              ],
+              "cluster_bootstrap_95ci": [
+                0.706936,
+                0.722549
+              ]
+            },
+            {
+              "depth": 2,
+              "accept": 0.819093,
+              "n": 81600,
+              "wilson_95ci": [
+                0.816437,
+                0.821719
+              ],
+              "cluster_bootstrap_95ci": [
+                0.812512,
+                0.825674
+              ]
+            },
+            {
+              "depth": 3,
+              "accept": 0.914755,
+              "n": 81600,
+              "wilson_95ci": [
+                0.912819,
+                0.916651
+              ],
+              "cluster_bootstrap_95ci": [
+                0.911936,
+                0.917574
+              ]
+            },
+            {
+              "depth": 4,
+              "accept": 0.949179,
+              "n": 81600,
+              "wilson_95ci": [
+                0.947651,
+                0.950665
+              ],
+              "cluster_bootstrap_95ci": [
+                0.947267,
+                0.951078
+              ]
+            },
+            {
+              "depth": 5,
+              "accept": 0.96636,
+              "n": 81600,
+              "wilson_95ci": [
+                0.965101,
+                0.967576
+              ],
+              "cluster_bootstrap_95ci": [
+                0.964522,
+                0.968333
+              ]
+            },
+            {
+              "depth": 6,
+              "accept": 0.973971,
+              "n": 81600,
+              "wilson_95ci": [
+                0.972856,
+                0.975041
+              ],
+              "cluster_bootstrap_95ci": [
+                0.972794,
+                0.97511
+              ]
+            },
+            {
+              "depth": 7,
+              "accept": 0.97886,
+              "n": 81600,
+              "wilson_95ci": [
+                0.977851,
+                0.979825
+              ],
+              "cluster_bootstrap_95ci": [
+                0.977672,
+                0.98011
+              ]
+            }
+          ],
+          "prob0_ece": 0.0073,
+          "tied_argmax_agreement": 0.69751,
+          "reeval_bitwise_identical": true,
+          "status": "已跑",
+          "delta_clean_bpc_vs_ref": -0.0811,
+          "bpc_beyond_band": true,
+          "delta_tf_by_depth": [
+            {
+              "depth": 0,
+              "delta": 0.242035,
+              "paired_bootstrap_95ci": [
+                0.232341,
+                0.252022
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 1,
+              "delta": 0.002916,
+              "paired_bootstrap_95ci": [
+                -0.000147,
+                0.005748
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            },
+            {
+              "depth": 2,
+              "delta": -0.01587,
+              "paired_bootstrap_95ci": [
+                -0.019522,
+                -0.011912
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 3,
+              "delta": -0.020686,
+              "paired_bootstrap_95ci": [
+                -0.023051,
+                -0.018346
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 4,
+              "delta": -0.021924,
+              "paired_bootstrap_95ci": [
+                -0.023566,
+                -0.020319
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 5,
+              "delta": -0.019388,
+              "paired_bootstrap_95ci": [
+                -0.020846,
+                -0.01788
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 6,
+              "delta": -0.019129,
+              "paired_bootstrap_95ci": [
+                -0.020343,
+                -0.017794
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 7,
+              "delta": -0.018885,
+              "paired_bootstrap_95ci": [
+                -0.019988,
+                -0.017696
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            }
+          ]
+        },
+        "IND": {
+          "clean_bpc": null,
+          "status": "未跑"
+        },
+        "LR": {
+          "clean_bpc": null,
+          "status": "未跑"
+        }
+      },
+      "verdict": {
+        "P1": {
+          "question": "PE 相对共享 tied 能否让浅出口 tf@k（深度 1..4）可排序提升",
+          "shallow_separable_positive_depths": [],
+          "separated": false,
+          "detail": [
+            {
+              "depth": 0,
+              "delta": 0.242035,
+              "paired_bootstrap_95ci": [
+                0.232341,
+                0.252022
+              ]
+            },
+            {
+              "depth": 1,
+              "delta": 0.002916,
+              "paired_bootstrap_95ci": [
+                -0.000147,
+                0.005748
+              ]
+            },
+            {
+              "depth": 2,
+              "delta": -0.01587,
+              "paired_bootstrap_95ci": [
+                -0.019522,
+                -0.011912
+              ]
+            },
+            {
+              "depth": 3,
+              "delta": -0.020686,
+              "paired_bootstrap_95ci": [
+                -0.023051,
+                -0.018346
+              ]
+            },
+            {
+              "depth": 4,
+              "delta": -0.021924,
+              "paired_bootstrap_95ci": [
+                -0.023566,
+                -0.020319
+              ]
+            },
+            {
+              "depth": 5,
+              "delta": -0.019388,
+              "paired_bootstrap_95ci": [
+                -0.020846,
+                -0.01788
+              ]
+            },
+            {
+              "depth": 6,
+              "delta": -0.019129,
+              "paired_bootstrap_95ci": [
+                -0.020343,
+                -0.017794
+              ]
+            },
+            {
+              "depth": 7,
+              "delta": -0.018885,
+              "paired_bootstrap_95ci": [
+                -0.019988,
+                -0.017696
+              ]
+            }
+          ]
+        },
+        "P2": {
+          "question": "PE 末层 clean bpc 是否不劣于参考臂（不越 0.014 带）",
+          "delta_clean_bpc": -0.0811,
+          "beyond_band": true,
+          "params_readout": 589824,
+          "params_readout_per_exit": 65536
+        },
+        "P3": {
+          "question": "prob0 / 软提交语义是否仍可用",
+          "prob0_ece": 0.0073,
+          "delta_ece_vs_ref": 0.0017,
+          "tolerance": 0.003,
+          "tied_argmax_agreement": 0.69751
+        },
+        "P4": {
+          "falsification_lines": {
+            "shallow_tf_not_separable": true,
+            "only_unscalable_IND_helps": null,
+            "last_layer_degraded": null
+          },
+          "IND": {
+            "status": "未跑",
+            "params_readout": null,
+            "scalable": false
+          },
+          "LR": {
+            "status": "未跑",
+            "params_readout": null
+          }
+        }
+      },
+      "reference_arm": "T"
+    }
+  },
+  "cross_seed": {
+    "reference_arm": "T",
+    "shallow_separable_positive_by_seed": {
+      "s0": [
+        1
+      ],
+      "s1": []
+    },
+    "shallow_separable_negative_by_seed": {
+      "s0": [
+        2,
+        3,
+        4
+      ],
+      "s1": [
+        2,
+        3,
+        4
+      ]
+    },
+    "delta_clean_bpc_vs_ref_by_seed": {
+      "s0": -0.0857,
+      "s1": -0.0811
+    },
+    "bpc_same_sign": true,
+    "bpc_beyond_band_all_seeds": true,
+    "cross_seed_reference_line": {
+      "note": "同一臂跨 seed 的 clean bpc 之差 = 两个独立训练 run 之差，只作参考线，不与 0.014 配对带混用（docs/methodology.md §2）",
+      "T": 0.0042,
+      "PE": 0.0004
+    },
+    "rule": {
+      "main_criteria": [
+        "P1（浅出口 tf@k 可分且为正）",
+        "P2（末层 clean bpc 不越 0.014 带）"
+      ],
+      "upgrade": "同一深度上的 Δ 在 seed 0 与 seed 1 各自可分（tf 的 CI 不含 0 / bpc 越 0.014 带）且同向 ⇒ 该判据按 n=2 出判词",
+      "disagree": "两 seed 不同向（或任一 seed 不可分）⇒ 判『本 n 下不可排序』，status 停『进行中』，不取平均掩盖",
+      "cross_seed_reading": "同一臂跨 seed 的 clean bpc 之差 = 两个独立训练 run 之差，只作参考线，不与 0.014 配对带混用"
+    },
+    "P1_main_judgment": "PE 让浅出口 tf@k 可分但为负（两 seed 同深度同向 ⇒ n=2）⇒ 逐出口读出对早退可用性有害",
+    "P2_last_layer_judgment": "末层 clean bpc 两 seed 同向且各自越 0.014 带 ⇒ n=2：PE 末层更好（这是读出容量带来的增益，不是早退可用性的增益）"
+  }
 }

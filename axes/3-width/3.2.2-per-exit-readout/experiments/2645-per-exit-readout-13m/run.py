@@ -453,6 +453,12 @@ def evaluate(arm: str, seed: int, steps: int, out_root: str,
                        "unexpected_keys": list(unexpected)},
         "run_dir": os.path.relpath(rd, ROOT),
         "code_hash_run_py": sha256_file(os.path.join(HERE, "run.py")),
+        # 逐臂根下唯一的 Δ 键是训练器的 workspace 扰动步长（`workspace.delta`，不是判据
+        # 读数）⇒ 显式标 undeclared；判据读数与方向在实验根的 `results.json` 里声明。
+        "delta_directions": {"workspace.delta": "undeclared"},
+        "delta_direction_note": (
+            "`workspace.delta` 是训练器 workspace 探针的扰动步长（0.01），不是 Δ 判据读数；"
+            "本文件的判据读数（clean bpc / tf@k）没有方向问题，方向声明在实验根的 results.json。"),
     }
     with open(os.path.join(HERE, results_name(arm, seed, steps)), "w") as f:
         json.dump(out, f, indent=2, ensure_ascii=False)
@@ -772,6 +778,38 @@ def _depth_rows(block: dict, arm: str) -> dict:
     return {d["depth"]: d for d in rows.get("delta_tf_by_depth", [])}
 
 
+#: 训练器（`train_depth_ar.py`，共享文件、不改）在每臂 run 目录里也写一份
+#: `results.json`，其中 `workspace.delta` 是 workspace 探针的扰动步长（键名含 delta）。
+#: 那份文件由训练器写，实验无法在写的时候就带上方向声明 ⇒ 这个幂等步骤**只补声明**，
+#: 不动任何读数（`tools/check_tree.py` 的 Δ 方向机检要求每个报了 Δ 的文件都声明）。
+ARM_READING_DECLARATION = {
+    "delta_directions": {"workspace.delta": "undeclared"},
+    "delta_direction_note": (
+        "`workspace.delta` 是训练器 workspace 探针的扰动步长（0.01），不是 Δ 判据读数；"
+        "本文件的判据读数（clean bpc / tf@k）方向声明在实验根的 results.json。"),
+}
+
+
+def annotate_arm_readings(args) -> None:
+    for arm in ARMS:
+        for seed in CFG["seeds"]:
+            p = os.path.join(run_dir(arm, seed, args.steps, args.out_root), "results.json")
+            if not os.path.exists(p):
+                print(f"[annotate] 缺 {os.path.relpath(p, ROOT)}（跳过）")
+                continue
+            d = json.load(open(p))
+            before = json.dumps({k: d.get(k) for k in ARM_READING_DECLARATION},
+                                ensure_ascii=False, sort_keys=True)
+            d.update(ARM_READING_DECLARATION)
+            if before != json.dumps({k: d.get(k) for k in ARM_READING_DECLARATION},
+                                    ensure_ascii=False, sort_keys=True):
+                with open(p, "w") as f:
+                    json.dump(d, f, indent=2, ensure_ascii=False)
+                print(f"[annotate] 补声明 {os.path.relpath(p, ROOT)}")
+            else:
+                print(f"[annotate] 已声明 {os.path.relpath(p, ROOT)}")
+
+
 def aggregate_all(args) -> dict:
     """两 seed 汇总：P1 / P2 按 `config.json::n2_rule` 出 n=2 判词（预登记，见 README §4）。
 
@@ -856,6 +894,7 @@ def aggregate_all(args) -> dict:
             "delta": "arm_minus_comparator",
             "delta_ece_vs_ref": "arm_minus_comparator",
             "delta_clean_bpc_vs_ref_by_seed": "arm_minus_comparator",
+            "delta_clean_bpc": "arm_minus_comparator",
         },
         "delta_direction_note": (
             "Δ = 读数_实验 − 读数_对照，对照 = 同批共享 tied 臂 T；tf@k 的 Δ > 0 = 该深度接受率更高，"
@@ -887,6 +926,8 @@ def main():
     ap.add_argument("--out-root", default=None)
     ap.add_argument("--no-train", action="store_true")
     ap.add_argument("--aggregate", action="store_true")
+    ap.add_argument("--annotate-arm-readings", dest="annotate", action="store_true",
+                    help="给每臂 run 目录里训练器写的 results.json 补 Δ 方向声明（只补声明）")
     ap.add_argument("--aggregate-all", dest="aggregate_all", action="store_true",
                     help="按 config.json::seeds 汇总全部 seed 并套 README §4 的 n=2 规则")
     args = ap.parse_args()
@@ -898,6 +939,9 @@ def main():
                          "2645-per-exit-readout-13m --contract README.md config.json run.py")
     if args.out_root is None:
         args.out_root = os.path.join(HERE, "runs")
+    if args.annotate:
+        annotate_arm_readings(args)
+        return
     if args.aggregate_all:
         aggregate_all(args)
         return
