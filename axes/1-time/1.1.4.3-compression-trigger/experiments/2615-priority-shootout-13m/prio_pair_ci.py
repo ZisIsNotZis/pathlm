@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """2615-priority-shootout · 保留腿（召回）**配对 bootstrap** 分析（0 训练 token，纯再分析）。
 
-背景（`docs/research-schema.md` §12.1 的 C1 细分 + ticket 62 §10.1 第 11 行）：
+背景（`harness/research-schema.md` §12.1 的 C1 细分 + ticket 62 §10.1 第 11 行）：
 本项 `falsification` 声明「长程召回等率类指标走**配对 bootstrap / Wilson 95% CI 不含 0**」。
 原 `results.json` 只存聚合计数、`retention_log.jsonl` 的 `needle_batch` 只含 full/lru 两列
 与 `n_so_far` 累计 ⇒ **逐针配对不可复原**（见 `PAIR-CI-NOTE.md` / `recompute_pair_ci.py`）。

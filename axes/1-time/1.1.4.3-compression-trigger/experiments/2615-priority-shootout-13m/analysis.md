@@ -270,7 +270,7 @@ k=256 在 N=64 的召回（0.5461）仍低于 `distance`（0.5950）。
 
 ## 11. 口径与 scope（结论成立的范围）
 
-- 模型：13.5M dense decoder-only 主干（tied 读出、无 final LN，`docs/design.md` §2 的共享底座），
+- 模型：13.5M dense decoder-only 主干（tied 读出、无 final LN，`atlas/design.md` §2 的共享底座），
   训练 12k 步 × bs32 × seq256 = 98.3M tokens，seed 0；**未重训、未改权重**。
 - 窗口 T=256，enwik8 评测尾段（末 10M bytes），24×16 = 384 个窗口、`window_seed=2`。
 - 删除是**评测期一次性**的（不是流式逐 token 压缩）；统计量取自**全保留前向的整窗口**

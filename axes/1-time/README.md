@@ -1,7 +1,7 @@
 # 1 时间轴
 
 > 轴：**1 时间轴**（目录 `axes/1-time/`）。用词、编号、目录以 `docs/structure.md` §12 为准，
-> 每个研究项的字段契约见 `docs/research-schema.md`。
+> 每个研究项的字段契约见 `harness/research-schema.md`。
 
 一次前向里，一个 token「能看到谁、怎么用」。目标：用更少的计算量拿到**序列级**类似效果；
 代价口径 = 等效理论时间/计算量（FLOPs / layer-passes / tokens-per-forward，考虑 pipelining），**不用墙钟**。

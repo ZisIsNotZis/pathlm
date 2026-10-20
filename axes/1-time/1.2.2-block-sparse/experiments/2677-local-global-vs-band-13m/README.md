@@ -2,7 +2,7 @@
 
 > 本文件是**预登记契约**：判据线在下节写死，跑之前不得修改；读数落 `results.json`，
 > 人话判读落 `analysis.md`。归属 `axes/1-time/1.2.2-block-sparse` 的 `work_packages[WP1]`。
-> 判据带的来源是 `docs/methodology.md` §2（0.014 bpc 带 **仅限配对 Δ、≥5 窗口**）。
+> 判据带的来源是 `harness/methodology.md` §2（0.014 bpc 带 **仅限配对 Δ、≥5 窗口**）。
 
 ## 1 要回答的判决问题
 
@@ -46,7 +46,7 @@ d=256 / L=12 / h=8 / T=256 / mlp_mult=6 / dropout=0 / norm_cap=1 / bs=32 / lr=1e
 
 ## 3 判据线（预登记，写死后不得改）
 
-Δ 方向统一（`SCHEMA.md` §17.3）：**Δ = bpc_对照 − bpc_实验**，本实验的「实验」= 局部+全局（`win16a8`），
+Δ 方向统一（`harness/SCHEMA.md` §17.3）：**Δ = bpc_对照 − bpc_实验**，本实验的「实验」= 局部+全局（`win16a8`），
 「对照」= 同可见键数的均匀条带（`win24a0`）⇒ **Δ = bpc_win24a0 − bpc_win16a8，正 = 非均匀更好**。
 
 | # | 判据 | 判定线 | 该涨 / 该跌 / 必须不变 |
@@ -59,7 +59,7 @@ d=256 / L=12 / h=8 / T=256 / mlp_mult=6 / dropout=0 / norm_cap=1 / bs=32 / lr=1e
 | ⑥ **必须不变**：训练/评测掩码一致 | 训练与评测都调同一个 `window_anchor_keep_mask`（同一 `(window, anchors)`），落盘两处的 `n_visible_pairs` 相等 | 必须不变 |
 | ⑦ **必须不变**：参数量与配方 | 五臂参数逐位相等（13,536,768）；配方逐字段一致（`results.json::arms`） | 必须不变 |
 | ⑧ **复用臂等值门**：复用 checkpoint 的读数可复现 | 本实验重新评测 `win16a8_s0` 必须逐位复现 `2662` 的落盘 bpc | 必须不变 |
-| ⑨ **申报不进判据**：墙钟、峰值显存、步时 | 逐臂申报；`docs/methodology.md` §3 禁把墙钟当判据 | — |
+| ⑨ **申报不进判据**：墙钟、峰值显存、步时 | 逐臂申报；`harness/methodology.md` §3 禁把墙钟当判据 | — |
 
 **长程召回腿（本实验不重跑，如实登记）**：本判据的率类腿（全局槽是否让远端内容可召回）不跨量纲借
 0.014 带，需要按针配对的 CI；它在 `axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/results.json`
@@ -81,7 +81,7 @@ d=256 / L=12 / h=8 / T=256 / mlp_mult=6 / dropout=0 / norm_cap=1 / bs=32 / lr=1e
 |---|---|
 | GPU 预算 | 2 支新臂（`win24a0` seed 0/1）× ≈13 min + 冒烟 ≈1 min ≈ **27 min**（本实验自报上限 32 min）；复用臂只做评测 |
 | 单臂命令超时 | ≤20 min（`train_arms.sh` 的 `timeout`） |
-| 显存 | 逐臂实测 `peak_gpu_mem_mb`；礼貌线 5GB net（`SCHEMA.md` §20.2） |
+| 显存 | 逐臂实测 `peak_gpu_mem_mb`；礼貌线 5GB net（`harness/SCHEMA.md` §20.2） |
 | 可中断性 | 每 200 步落 `train_log.jsonl`；断点即重取锁重跑该臂（驱动先清日志） |
 
 ## 6 失败决策树

@@ -2,7 +2,7 @@
 # 2623 编排补跑：先出 full+win16 的主结果，再补 win16_rep，最后重跑评测纳入复现臂。
 # 每一步自己按标准锁协议取/放锁（`eval_run.sh` / `train_all.sh` 内的 `mkdir /tmp/pathlm_gpu.lock`，
 # 等不到锁以 rc=9 上报）⇒ 重试驱动用 `tools/supervise.sh --command-owns-lock`：supervisor
-# **不探测、不触碰锁**，锁的生命周期整条归这几步自己（见 `docs/methodology.md` §18.1）。
+# **不探测、不触碰锁**，锁的生命周期整条归这几步自己（见 `harness/methodology.md` §18.1）。
 # 有界：每步最多 40 次尝试、连续 3 次非零即熔断（共享卡竞争下的稳健补跑，但不再无限重来）。
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"

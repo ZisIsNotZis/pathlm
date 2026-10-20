@@ -129,7 +129,7 @@ checkpoint 的不确定性；同一个完备机制换 γ（γ=0.99 时 T=256 下
 - **本格自测带 σ_cell = 0.001661 bpc**（`sigma_cell.bpc_win16`，取 `carry16_s0|carry16_s1` 的
   配对极差；`win16_s0|win16_s1` 极差 0.000983 更小）。它是**同配置换训练种子**的 2 样本极差
   ⇒ 描述量，不是方差上界，也不是任何单臂的置信区间。
-- **跨格参考带 0.014 bpc**（`criteria.bands.cross_cell_source` = `docs/methodology.md` 的 13M 跨 run
+- **跨格参考带 0.014 bpc**（`criteria.bands.cross_cell_source` = `harness/methodology.md` 的 13M 跨 run
   漂移界，限配对 Δ、≥5 窗口）。两带**并列报、不得混用**（`criteria.bands.rule`）。
 - bpc 类读数按两带并列给量级（不作判据；判据是逐一配对 Δ 的 CI）：
   - `carrypl16_s0 − win16_s0` = +0.100515 = **60.5× σ_cell** = **7.2× 0.014** → 远出双带。

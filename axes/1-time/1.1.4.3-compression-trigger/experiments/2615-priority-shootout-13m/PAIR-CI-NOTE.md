@@ -36,7 +36,7 @@
 ## 3 下一步最小实验（0 训练 token）
 
 重跑 2615 的**评测腿一次**（24×16 窗口 × 3 规则 × N∈{8,32,64} + 4096 针，纯推理），并把**逐针命中记录**落盘
-（`needle_raw.json`）⇒ 之后按 `docs/research-schema.md` §12.1 做**配对 bootstrap**，本项召回腿才可判。
-在此之前 `1.1.4.3` 保持 `进行中`（判据悬空、无证据的结论不入账，见 `docs/research-schema.md` §7）。
+（`needle_raw.json`）⇒ 之后按 `harness/research-schema.md` §12.1 做**配对 bootstrap**，本项召回腿才可判。
+在此之前 `1.1.4.3` 保持 `进行中`（判据悬空、无证据的结论不入账，见 `harness/research-schema.md` §7）。
 
 _本笔记由 axis1-lead-4 于 2026-10-14T22:32:25+08:00 写入。_

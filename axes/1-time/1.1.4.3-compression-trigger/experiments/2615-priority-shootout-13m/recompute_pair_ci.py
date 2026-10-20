@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """2615-priority-shootout · 保留腿（召回）配对 CI 的**可行性复核 + 可得读法**（0 训练 token，纯再分析）。
 
-背景（`docs/research-schema.md` §12.1 的 C1 细分 + ticket 62 §10.1 第 11 行）：
+背景（`harness/research-schema.md` §12.1 的 C1 细分 + ticket 62 §10.1 第 11 行）：
 本项的 `falsification` 声明「长程召回等率类指标走**配对 bootstrap / Wilson 95% CI 不含 0**」。
 但 2615 落盘的 `results.json` **只有聚合读数**（`criteria.per_N` 的逐配置召回、
 `hard_needle_subset.per_config` 的同索引硬子集召回、`no_needle_control` 的地板），
