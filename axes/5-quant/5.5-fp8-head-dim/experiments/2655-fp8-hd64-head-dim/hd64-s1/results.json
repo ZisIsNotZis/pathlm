@@ -1,14 +1,14 @@
 {
  "experiment": "2655-fp8-hd64-head-dim",
  "contract": "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/README.md（运行前预登记；判据线写在本文件 criterion）",
- "scope": "单轴单格、单因素：固定数据/评测窗口/任务/判据，只改**模型侧 kv head 数**（`--heads 8 → 4`，⇒ `head_dim = 256/4 = 64`）与**块标尺的组大小 G**（G ∈ {16,32,64}）。纯推理评测、不训练附属物、不新增参数（除训练该 checkpoint 本身）；不做组合实验（组合留白是显式声明，`SCHEMA.md` §4）。本实验只补 5.5 的 WP2 实测腿（`head_dim=64`），不改 WP1 的任何读数。",
+ "scope": "单轴单格、单因素：固定数据/评测窗口/任务/判据，只改**模型侧 kv head 数**（`--heads 8 → 4`，⇒ `head_dim = 256/4 = 64`）与**块标尺的组大小 G**（G ∈ {16,32,64}）。纯推理评测、不训练附属物、不新增参数（除训练该 checkpoint 本身）；不做组合实验（组合留白是显式声明，`harness/SCHEMA.md` §4）。本实验只补 5.5 的 WP2 实测腿（`head_dim=64`），不改 WP1 的任何读数。",
  "config": {
   "experiment": "2655-fp8-hd64-head-dim",
   "line": "轴 5 研究项 5.5（fp8 / 大 head_dim）WP2 —— `head_dim=64` 的实测腿",
   "contract": "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/README.md（运行前预登记；判据线写在本文件 criterion）",
   "contract_copy": "README.md（同目录，判据线**运行前**写入；本文件 mtime 必须早于 results.json）",
   "parent_wp1": "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m（WP1 = fp8 vs int8+块标尺同字节判决；WP2 的 `head_dim=32` G 扫描与解析亦在那里）",
-  "scope": "单轴单格、单因素：固定数据/评测窗口/任务/判据，只改**模型侧 kv head 数**（`--heads 8 → 4`，⇒ `head_dim = 256/4 = 64`）与**块标尺的组大小 G**（G ∈ {16,32,64}）。纯推理评测、不训练附属物、不新增参数（除训练该 checkpoint 本身）；不做组合实验（组合留白是显式声明，`SCHEMA.md` §4）。本实验只补 5.5 的 WP2 实测腿（`head_dim=64`），不改 WP1 的任何读数。",
+  "scope": "单轴单格、单因素：固定数据/评测窗口/任务/判据，只改**模型侧 kv head 数**（`--heads 8 → 4`，⇒ `head_dim = 256/4 = 64`）与**块标尺的组大小 G**（G ∈ {16,32,64}）。纯推理评测、不训练附属物、不新增参数（除训练该 checkpoint 本身）；不做组合实验（组合留白是显式声明，`harness/SCHEMA.md` §4）。本实验只补 5.5 的 WP2 实测腿（`head_dim=64`），不改 WP1 的任何读数。",
   "axis_definition": {
    "quantity": "deployment_bytes_per_position",
    "formula": "2(K,V) * n_layers * n_kv_heads_eff * head_dim * (value_bytes + scale_bytes_per_value) * (positions_kept / T)",
@@ -48,7 +48,7 @@
    "lock_2632": {
     "path": "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/run.py",
     "sha256": "e1d82b80904d8e55123b8a01974eccbdf29247e34a46b337bb502d7d98d200e5",
-    "use": "训练驱动 `hp64_train_driver.py` 只读 import 其 `GpuLock`（`SCHEMA.md` §20 锁协议），未复制改写。"
+    "use": "训练驱动 `hp64_train_driver.py` 只读 import 其 `GpuLock`（`harness/SCHEMA.md` §20 锁协议），未复制改写。"
    },
    "no_new_quant_ops": "本实验不新增任何量化算子；新代码只有配置、训练驱动、评测编排与表格。"
   },
@@ -340,8 +340,8 @@
    "band_primary_caliber": "跨格 0.014 bpc 带，**限配对 Δ、≥5 窗口**（本 run 主臂满足：5 个窗口 seed {2,3,4,5,6}）",
    "band_secondary": "本格自测在力带 = 单臂跨窗口 bpc 极差（如实给数值，只作辅助描述）",
    "bands_not_mixed": "两带不混用：主判用 0.014（配对 Δ），自测带只作辅助描述。",
-   "band_aggregation": "越带判定用逐窗配对 Δ 的 max|Δ| > 带（`2653/run.py::paired_deltas` 的实现，最保守取法），与 docs/research-schema.md §12.1「限配对 Δ、≥5 窗口」一致。",
-   "c1_declaration": "本格引用带 = **跨格 0.014 bpc（限配对 Δ、≥5 窗口）**；本格无自测在力带；率类指标（召回）走 Wilson 95% CI、**不跨量纲借用** 0.014（docs/research-schema.md §12.1）。",
+   "band_aggregation": "越带判定用逐窗配对 Δ 的 max|Δ| > 带（`2653/run.py::paired_deltas` 的实现，最保守取法），与 harness/research-schema.md §12.1「限配对 Δ、≥5 窗口」一致。",
+   "c1_declaration": "本格引用带 = **跨格 0.014 bpc（限配对 Δ、≥5 窗口）**；本格无自测在力带；率类指标（召回）走 Wilson 95% CI、**不跨量纲借用** 0.014（harness/research-schema.md §12.1）。",
    "recall_ci": "Wilson 95%",
    "recall_at_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（读作「在该任务上不可分辨」，不得写成「机制无效」，SCHEMA §19）",
    "gate": "① 前缀不变性两条（改未来 token / 改同批邻居）任一为 False ⇒ 该臂不得出数，本次实验作废；② fp32 恒等臂与独立第二路径不逐位相等 / int8 块标尺 G=64 与 2632 前向不逐位相等 ⇒ 仪器红、须先修。",
@@ -384,8 +384,8 @@
   "band_primary_caliber": "跨格 0.014 bpc 带，**限配对 Δ、≥5 窗口**（本 run 主臂满足：5 个窗口 seed {2,3,4,5,6}）",
   "band_secondary": "本格自测在力带 = 单臂跨窗口 bpc 极差（如实给数值，只作辅助描述）",
   "bands_not_mixed": "两带不混用：主判用 0.014（配对 Δ），自测带只作辅助描述。",
-  "band_aggregation": "越带判定用逐窗配对 Δ 的 max|Δ| > 带（`2653/run.py::paired_deltas` 的实现，最保守取法），与 docs/research-schema.md §12.1「限配对 Δ、≥5 窗口」一致。",
-  "c1_declaration": "本格引用带 = **跨格 0.014 bpc（限配对 Δ、≥5 窗口）**；本格无自测在力带；率类指标（召回）走 Wilson 95% CI、**不跨量纲借用** 0.014（docs/research-schema.md §12.1）。",
+  "band_aggregation": "越带判定用逐窗配对 Δ 的 max|Δ| > 带（`2653/run.py::paired_deltas` 的实现，最保守取法），与 harness/research-schema.md §12.1「限配对 Δ、≥5 窗口」一致。",
+  "c1_declaration": "本格引用带 = **跨格 0.014 bpc（限配对 Δ、≥5 窗口）**；本格无自测在力带；率类指标（召回）走 Wilson 95% CI、**不跨量纲借用** 0.014（harness/research-schema.md §12.1）。",
   "recall_ci": "Wilson 95%",
   "recall_at_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（读作「在该任务上不可分辨」，不得写成「机制无效」，SCHEMA §19）",
   "gate": "① 前缀不变性两条（改未来 token / 改同批邻居）任一为 False ⇒ 该臂不得出数，本次实验作废；② fp32 恒等臂与独立第二路径不逐位相等 / int8 块标尺 G=64 与 2632 前向不逐位相等 ⇒ 仪器红、须先修。",

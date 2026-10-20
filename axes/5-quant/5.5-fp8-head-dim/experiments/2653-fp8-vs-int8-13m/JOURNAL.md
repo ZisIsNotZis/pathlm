@@ -6,7 +6,7 @@
 
 - 依据 ticket 66 的派单契约 `.scratch/66-axis5-quant/DISPATCH-5.5.md` 执行 5.5 的 WP1 + WP2。
 - **设备口径改为纯 CPU**（契约 §5 + 派单补充约束）：单卡 4090 被多轴共享，`/tmp/pathlm_gpu.lock`
-  在 22:06 由 `holder_pid 2420657` 持有（占 4944 MiB）⇒ 纯 CPU 推理按 `SCHEMA.md` §20 不适用 GPU 锁。
+  在 22:06 由 `holder_pid 2420657` 持有（占 4944 MiB）⇒ 纯 CPU 推理按 `harness/SCHEMA.md` §20 不适用 GPU 锁。
   全部臂同一设备（CPU），判据改用同设备、同窗口序的**配对 Δ**；与 GPU 历史锚 1.483569 只并列、不宣称逐位相等。
 - 运行前落盘：`README.md`（预登记契约）、`config.json`（判据线写死，mtime 早于 `results.json`）、
   `fp8_arms.py`（新语义层：fp8 往返 + 字节账 + head_dim/G 阶梯）、`run.py`（入口，逐臂持久化）。
@@ -46,7 +46,7 @@
 `analysis.md §3.1`（并在 §0 结论句、§8 判据表、`README.md §6` 加指针）。
 
 **N3 聚合口径声明**：本格越带判定 = 逐窗配对 Δ 的 `max|Δ|`（`run.py::paired_deltas` 的既有实现即此），
-非均值；与 `docs/research-schema.md §12.1`「限配对 Δ、≥5 窗口」一致，与 `5.1/2632` 的「配对 Δ 的区间」一致。
+非均值；与 `harness/research-schema.md §12.1`「限配对 Δ、≥5 窗口」一致，与 `5.1/2632` 的「配对 Δ 的区间」一致。
 披露：`fp8_e5m2` 的 5 窗均值 +0.011375 落在带内、仅 seed 6 越界 ⇒ 该判定依赖 max 聚合。已写入
 `analysis.md §3.1` 与 `config.json::criterion.band_aggregation`（新增键，价值本身即「补声明」）。
 

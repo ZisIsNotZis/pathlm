@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""2655 · `head_dim=64` 训练驱动（detach + 失败重试 + `SCHEMA.md` §20 按臂取锁）。
+"""2655 · `head_dim=64` 训练驱动（detach + 失败重试 + `harness/SCHEMA.md` §20 按臂取锁）。
 
 契约：同目录 `README.md`（§9 训练）与 `config.json::checkpoints`（**运行前**写入）。
 
@@ -9,7 +9,7 @@
   `hd64-s0`，再由 finisher 放 `STOP_AFTER_FIRST_ARM` 文件 / 直接放行两臂，日志显式登记。
 - 配方与 `2616-gqa-mqa-13m` 的 mha 臂逐字段一致，**只改 `--heads 8 → 4`**
   （`d_model/heads = 256/4 = 64` ⇒ `head_dim=64`）：这是本实验唯一的模型侧改动。
-- `SCHEMA.md` §20.1：两臂合计 ≈18 min > 10 min ⇒ **不整程持锁**，每臂取一次锁、跑完即放。
+- `harness/SCHEMA.md` §20.1：两臂合计 ≈18 min > 10 min ⇒ **不整程持锁**，每臂取一次锁、跑完即放。
 - 等锁上限 600 s（只读复用 `2632/run.py::GpuLock`，未复制改写）；等不到按本次尝试失败
   记账并重试，**不杀他人进程**。
 - 每臂落 `<runs>/<arm>/{cmd.txt,stdout.log,model.pt,results.json}`，机器可读状态追加进
@@ -43,7 +43,7 @@ def _load_module(path: str, name: str):
     return mod
 
 
-#: `SCHEMA.md` §20 的锁协议：只读复用 `2632/run.py::GpuLock`（含 holder_pid / 心跳 / 陈旧锁自愈）。
+#: `harness/SCHEMA.md` §20 的锁协议：只读复用 `2632/run.py::GpuLock`（含 holder_pid / 心跳 / 陈旧锁自愈）。
 g2632 = _load_module(os.path.join(P2632, "run.py"), "kv_block_scale_2632")
 
 RUNS = os.path.join(HERE, "runs")

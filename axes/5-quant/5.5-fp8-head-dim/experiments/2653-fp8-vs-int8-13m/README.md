@@ -20,7 +20,7 @@ WP2 另给 `head_dim → G → 每位置字节` 的**解析 + 实测**对账。
 ## 2. 设备口径（本 run 的硬约束）
 
 **整程 CPU（`device: "cpu"`），全部臂同一设备，不取 GPU 锁。** 单卡 4090 被多轴共享，
-`/tmp/pathlm_gpu.lock` 长期被其它轴占用 ⇒ 纯 CPU 推理按 `SCHEMA.md` §20 不适用该锁。
+`/tmp/pathlm_gpu.lock` 长期被其它轴占用 ⇒ 纯 CPU 推理按 `harness/SCHEMA.md` §20 不适用该锁。
 
 > **跨设备不构成判据**：本 run **不**宣称与 GPU 历史锚 `1.483569` bpc 逐位相等（设备不同），
 > 只并列报告并声明差异。判据一律用**同设备（CPU）、同窗口序**的**配对 Δ = bpc_臂 − bpc_fp16**。
@@ -76,8 +76,8 @@ WP2 另给 `head_dim → G → 每位置字节` 的**解析 + 实测**对账。
    `analysis.md` §3.1**（`fp8_e4m3 − int8_block_g32` 的 `max|Δ| = 0.005363` ⇒ 不越带、不可分；
    `fp8_e5m2 − int8_block_g32` = 0.014496 ⇒ 越带）。
 4. **地板规则**：`recall <= chance + 2·σ_wilson` ⇒ `at_floor = true`，读作「该任务上不可分辨」，
-   不写成「机制无效」（`SCHEMA.md` §19）。
-5. **单点不外推**（`SCHEMA.md` §17.11）：`head_dim=64` 的实测缺位时只给解析，不外推。
+   不写成「机制无效」（`harness/SCHEMA.md` §19）。
+5. **单点不外推**（`harness/SCHEMA.md` §17.11）：`head_dim=64` 的实测缺位时只给解析，不外推。
 
 ## 7. 既有做法（prior art）与增量
 
