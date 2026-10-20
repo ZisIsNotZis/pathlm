@@ -78,7 +78,7 @@
 ≈14.6 / 14.8 GiB（同一进程内 32×256 批训练峰值），**超出该自定目标**；这笔超支不改两臂共享同一
 训练配方与同一批尺寸 ⇒ 不影响跨臂对比，也不改变任何判词。
 
-两个 `alive` 同名不同义，读数前先分清：`topology_liveness.alive`（`runs/attn-scalar-s0-12k/results.json:517-543`，引擎 `topology_liveness` 的输出）判的是**温度 τ 是否离开初值 1.0**——scalar
+两个 `alive` 同名不同义，读数前先分清：`topology_liveness.alive`（`runs/attn-scalar-s0-12k/results.json::topology_liveness`，引擎 `topology_liveness` 的输出）判的是**温度 τ 是否离开初值 1.0**——scalar
 八层 τ 全部动过（`tau_frac_layers_moved = 1.0`）⇒ `true`；`liveness.alive`
 （本目录 `results_attn-scalar_s0.json::liveness.alive`，即下表 **P2 层维权重非退化门**）判的是
 **层维权重有没有退化**（k ≥ 2 每层 `w_immediate_prev < 1` 且熵 > 0）——scalar 的层 2–3 塌成

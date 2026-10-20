@@ -1,7 +1,7 @@
 # STATUS
 
 路由文件：只记「它是什么、现在什么状态、进展落在哪、下一步」。结论与数字见 `FINDINGS.md`，权威计划在 `docs/plan.md`。
-本文件与 `FINDINGS.md` 的 `文件:行` 引用绑定引入本条修订的提交：`git log -1 --format=%h -- STATUS.md FINDINGS.md` 指出该提交，被引文件再增删行时用同一命令比对并重核引用。
+本文件与 `FINDINGS.md` 里指向字段的引用用键锚点（`project.yaml::status` 一类，不随目标文件增行而漂），仍用 `文件:行` 的只是叙事行，它们绑定引入本条修订的提交：`git log -1 --format=%h -- STATUS.md FINDINGS.md` 指出该提交，被引文件再增删行时用同一命令比对并重核引用。
 
 ## 它是什么
 
@@ -13,7 +13,7 @@
 
 - 里程碑 M1（注意力残差 `2653` 出判决）、M2（层间拓扑 `2651` 四臂齐 + 全树自检）**已完成**。（`docs/plan.md:10-11`）
 - 工作包 WP-R1 / R2 / R3 / R4 / R5 / R6 **已完成**：首轮独立复核判 4 条阻塞项，处置后窄复核判 **OK with notes**（F-1..F-4 全 PASS），收口提交已推送。（`docs/plan.md:49-53`）
-- 两个深度轴研究项已下判决：`2.2.2` attention-residual `status: 被否证`（`axes/2-depth/2.2.2-attention-residual/project.yaml:56`）、`2.2.3` learned-layer-sum `status: 被否证`（`axes/2-depth/2.2.3-learned-layer-sum/project.yaml:66`）、`2.2.4` parallel-sublayer `status: 已完成`（`axes/2-depth/2.2.4-parallel-sublayer/project.yaml:51`）。
+- 两个深度轴研究项已下判决：`2.2.2` attention-residual `status: 被否证`（`axes/2-depth/2.2.2-attention-residual/project.yaml::status`）、`2.2.3` learned-layer-sum `status: 被否证`（`axes/2-depth/2.2.3-learned-layer-sum/project.yaml::status`）、`2.2.4` parallel-sublayer `status: 已完成`（`axes/2-depth/2.2.4-parallel-sublayer/project.yaml::status`）。
 - 已知预存失败（非本计划引入、不修、单独登记）：`tests/` 现为 866 passed / 1 failed，唯一失败是 `test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`（涉 `axes/6-predict/**`）。（`docs/plan.md:11`）
 - 已知偏离：实验 `2653` 峰值显存 `14961.7` / `15141.1` MB，超出 `SCHEMA.md` §20.1 的 5GB 礼貌线。该线是**共享卡礼貌线、不是科学约束**（`SCHEMA.md` §20.2），偏离已在该实验 `analysis.md` 申报，不进判据。
 
