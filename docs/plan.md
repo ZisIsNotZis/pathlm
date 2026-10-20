@@ -116,7 +116,7 @@ owner 一律是元级主 Agent 派发的 worker；每个包另配一名 fresh re
 - `1.1.1` 与 `5.5` 两条：对应实验的分析与 run 产物已落盘，不存在「未出」这个缺口
   （`2679-anchor-eval-ablation-13m/analysis.md`、`2657-fp8-hd128-head-dim/` 的 `analysis.md` 与 `results.json`）。
 - `atlas/triage.md` 的 `2657` 键锚点与 `2680` 的 `2681` 键锚点两条：前者在 `config.json` 顶层键上真实存在，
-  后者是点号键路径 `rows.win32_s0.bpc_fp16`，按结构解析通过（`2680/results.json` 有 `win32_s0`），
+  后者是点号键路径 `rows.win32_s0.bpc_fp16`，按结构解析通过（上游实验落盘的 `results.json` 里 `win32_s0` 与其内 `bpc_fp16` 真实存在），
   不是通配锚点，两条从未是违规。
 
 **`1.1.4.1` 的让位说明曾带一个仓外路径，已改成不带路径的写法**：那句话说的是**别的项目**在卡上跑的
