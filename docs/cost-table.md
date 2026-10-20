@@ -108,6 +108,7 @@
 | 定律 | 改动类型 | 触主干 | 观测代价 | Δ 方向 | 规模与配方 | 适用边界 | 出处 | 研究项 |
 |---|---|---|---|---|---|---|---|---|
 | 10 | 硬窗口 16 + 8 个锚点位置（StreamingLLM 式 sink，只改可见掩码） | 否 | `-0.005583` clean bpc Δ（锚点臂 − 同 seed 纯窗臂；负 = 质量更好）；对照 = 同 seed 纯窗口 16 臂（锚点 0） | 正 = 更差 | 13M / T=256 / enwik8 / 12k 步 / seed 0（2662） | 代价是可见键 16→24、每位置多 98,304 B KV；锚点锁的是「最前面 8 个位置恒可见」，不是把远处信息搬近（窗外桶停在配对地板） | `axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/analysis.md` | [1.1.1](../axes/1-time/1.1.1-hard-window/project.yaml) hard 窗口 |
+| 10 | 评测期关掉 8 个恒可见锚点位置（同一 checkpoint、0 训练 token） | 否 | `+0.035490` clean bpc Δ（评测期去锚点 − 带锚点；正 = 去掉锚点后质量更差）；对照 = 同一 checkpoint 的带锚点（窗口 16 + 锚点 8）评测 | 正 = 更差 | 13M / T=256 / enwik8 / 12k 步 / seed 0（2679；seed 1 = +0.023958） | 只读作「锚点通道被模型用起来了」（0.024–0.035 ≈ 窗口 16→全量缺口 0.125421 的 19%–28%），不读作「锚点值得买」（净差额只有 0.0056）；反向对照（纯窗臂 + 锚点）掉 1.5–1.9 bpc ⇒ 评测期换掩码是分布外操作 | `axes/1-time/1.1.1-hard-window/experiments/2679-anchor-eval-ablation-13m/analysis.md` | [1.1.1](../axes/1-time/1.1.1-hard-window/project.yaml) hard 窗口 |
 | 10 | 显式状态通道（逐层独立 8192-float 状态 + 内容写门，γ=1） | 是 | `+0.068228` clean bpc Δ（同字节纯窗口对手 − 本臂；正 = 本臂更好）；对照 = 同字节纯窗口 win32（1.595823） | 正 = 改善 | 13M / T=256 / enwik8 / 12k 步 / seed 0（2639 逐层前沿） | 只在「源信息确实超出可见范围」的任务上可测；真实文本上通道可被忽略（2634 实测收益仅 0.2%）⇒ 读数须先满足必要性条件才可归因到机制 | `axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/analysis.md` | [1.1.4.1](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) 显式记忆槽 / 线性状态 / 递归状态（delta 规则族：DeltaNet / GLA / Mamba-2） |
 | 10 | 完备显式机制（逐层状态 + 写门）对同窗口 implicit 臂的对撞 | 是 | `+0.100515` clean bpc Δ（同窗口 implicit 臂 − 完备显式臂；正 = 显式更好）；对照 = 同窗口 implicit 臂 win16_s0（1.628110） | 正 = 改善 | 13M / T=256 / enwik8 / 12k 步 / seed 0 / 6 臂纯推理 | 可检索性腿只答出 10.226%（约盲猜的 21 倍、但只有约十分之一）；无针控制六臂全答不出 ⇒ 「搬回来」是部分而不是全部 | `axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/analysis.md` | [1.1.4.5](../axes/1-time/1.1.4.5-implicit-vs-explicit/project.yaml) implicit（掩码/窗口，已证退化）vs **explicit**（有希望的方向） |
 | 10 | 同可见键数（32）下把可见位置摊开（近端 16 + 16 个空洞点）对取最近 32 个 | 是 | `+0.01195` clean bpc Δ（连续窗口 − 空洞；正 = 空洞更好；两 seed 都未越 0.014 带 = 无质量增量）；对照 = 最近 32 个位置的连续窗口（每行可见键数逐行相等） | 正 = 改善 | 13M / L=8 / T=256 / 12k 步 / 98.3M token / 20 批配对 / seed 0 与 seed 1 | 真实文本：落 0.014 配对带内（seed 1 = +0.00696）⇒ 无质量增量，可达距离 31 → 255 不构成质量收益； 召回电池在本尺度无分辨力（2048 样本/档仍 ≤0.94× chance）。需要远处信息时机制可用（合成关联回忆 n=2：空洞臂 23.1× / 23.6× chance、窗口臂贴 chance），但那对臂的差别是「能不能覆盖到」而非「同等覆盖下谁更省」； 稠密 bool 掩码未兑现纸面省算力 | `axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m/analysis.md` | [1.2.1](../axes/1-time/1.2.1-dilated/project.yaml) dilated / 空洞 |
@@ -144,6 +145,6 @@
 
 ## 覆盖情况（本表生成时统计）
 
-- 代价事实 **51** 条，来自 **30** 个研究项（46 个 `project.yaml` 全量扫描）。
+- 代价事实 **52** 条，来自 **30** 个研究项（46 个 `project.yaml` 全量扫描）。
 - 已被 `cost_rows` 覆盖的定律：1、2、3、4、5、6、7、8、9、10、11。
 - 尚无覆盖的定律：（无）。
