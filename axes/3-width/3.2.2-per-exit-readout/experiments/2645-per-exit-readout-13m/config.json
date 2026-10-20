@@ -1,0 +1,46 @@
+{
+  "experiment": "2645-per-exit-readout-13m",
+  "cell": "axes/3-width/3.2.2-per-exit-readout",
+  "question": "多出口模型里每个出口要不要自己一套到词表的映射：共享 tied 表够用，还是逐出口映射值它多付的读出参数与算力",
+  "band_bpc": 0.014,
+  "band_note": "0.014 bpc 带只用于配对 clean bpc 差（docs/methodology.md §2）；tf@k / 一致率等率类指标走按批 cluster bootstrap 95% CI 与 Wilson 95% CI，不跨量纲借用 0.014",
+  "ece_tolerance": 0.003,
+  "ece_tolerance_note": "承 2610 判据线的 prob0 ECE 容差，本实验声明为容差而不是已测方差",
+  "shallow_depths": [1, 2, 3, 4],
+  "seeds": [0, 1],
+  "arms": ["T", "PE", "IND", "LR"],
+  "delta_direction": "arm_minus_comparator",
+  "delta_direction_note": "Δ = 读数_实验 − 读数_对照，对照 = 同批共享 tied 臂 T ⇒ clean bpc 的 Δ > 0 = 实验更差；tf@k 的 Δ > 0 = 实验该深度的接受率更高（两处符号语义由 metric 各自写明，本文件只声明算式次序）",
+  "n2_rule": {
+    "main_criteria": ["P1（浅出口 tf@k 可分且为正）", "P2（末层 clean bpc 不越 0.014 带）"],
+    "upgrade": "同一深度上的 Δ 在 seed 0 与 seed 1 各自可分（tf 的 CI 不含 0 / bpc 越 0.014 带）且同向 ⇒ 该判据按 n=2 出判词",
+    "disagree": "两 seed 不同向（或任一 seed 不可分）⇒ 判『本 n 下不可排序』，status 停『进行中』，不取平均掩盖",
+    "cross_seed_reading": "同一臂跨 seed 的 clean bpc 之差 = 两个独立训练 run 之差，只作参考线，不与 0.014 配对带混用"
+  },
+  "recipe": {
+    "form": "depth-AR（dense=false + 变深度 + 逐层读出 + 随机退出 + fill_kv）",
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "exits": 9,
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "data": "data/enwik8_full.npz",
+    "vocab_size": 206
+  },
+  "eval": {
+    "n_batches": 20,
+    "batch_size": 16,
+    "eval_generator_seed": 2,
+    "tf_generator_seed": 3
+  },
+  "readout_params_analytic": {
+    "T": 0,
+    "PE": 589824,
+    "IND": 474624,
+    "LR": 66528
+  }
+}

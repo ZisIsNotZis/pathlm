@@ -615,8 +615,8 @@ def _ci_text(ci: list) -> str:
     return f"[{ci[0]}, {ci[1]}]" if ci and ci[0] is not None else "n/a"
 
 
-def aggregate(args) -> dict:
-    seeds = [args.seed]
+def aggregate(args, write: bool = True) -> dict:
+    """单 seed 汇总（P1–P4）。`write=False` 供两 seed 汇总复用，不落盘中间结果。"""
     recs = {}
     for arm in ARMS:
         p = os.path.join(HERE, results_name(arm, args.seed, args.steps))
@@ -753,9 +753,123 @@ def aggregate(args) -> dict:
         "arms_declared": list(ARMS),
         "code_hash_run_py": sha256_file(os.path.join(HERE, "run.py")),
     }
+    if write:
+        with open(os.path.join(HERE, "results.json"), "w") as f:
+            json.dump(out, f, indent=2, ensure_ascii=False)
+    print(json.dumps(verdict, indent=2, ensure_ascii=False), flush=True)
+    return out
+
+
+#: 判据常数（`config.json` 与 `run.py` 一起被 `tools/prereg_bind.py --contract` 绑住）。
+CFG = json.load(open(os.path.join(HERE, "config.json"), encoding="utf-8"))
+
+
+def _depth_rows(block: dict, arm: str) -> dict:
+    """把一个 seed 的 `delta_tf_by_depth` 摊成 {深度: Δ 读数}。"""
+    rows = block["arm_rows"].get(arm) or {}
+    return {d["depth"]: d for d in rows.get("delta_tf_by_depth", [])}
+
+
+def aggregate_all(args) -> dict:
+    """两 seed 汇总：P1 / P2 按 `config.json::n2_rule` 出 n=2 判词（预登记，见 README §4）。
+
+    逐 seed 的 P1–P4 原样保留在 `per_seed`（单 seed 的读数不许被两 seed 判词掩盖）；
+    只有「两 seed 同向且各自可分」才升格成 n=2。
+    """
+    seeds = list(CFG["seeds"])
+    per_seed = {}
+    for s in seeds:
+        args.seed = s
+        per_seed[f"s{s}"] = aggregate(args, write=False)
+
+    ref = "T"
+
+    def shallow_positive(block: dict) -> list[int]:
+        return [d for d in block["verdict"]["P1"]["shallow_separable_positive_depths"]
+                if d in CFG["shallow_depths"]]
+
+    def shallow_negative(block: dict) -> list[int]:
+        return [d["depth"] for d in _depth_rows(block, "PE").values()
+                if d["depth"] in CFG["shallow_depths"] and d["separable_from_zero"]
+                and d["delta"] < 0]
+
+    def bpc_delta(block: dict) -> float | None:
+        row = block["arm_rows"].get("PE") or {}
+        return row.get("delta_clean_bpc_vs_ref")
+
+    pos = {s: shallow_positive(b) for s, b in per_seed.items()}
+    neg = {s: shallow_negative(b) for s, b in per_seed.items()}
+    bpc = {s: bpc_delta(b) for s, b in per_seed.items()}
+    both_positive = all(pos[s] for s in pos) and bool(set.intersection(*[set(v) for v in pos.values()]))
+    both_negative = all(neg[s] for s in neg) and bool(set.intersection(*[set(v) for v in neg.values()]))
+    bpc_runs = [b for b in bpc.values() if b is not None]
+    bpc_same_sign = len(set(1 if b > 0 else -1 for b in bpc_runs)) == 1 if len(bpc_runs) == len(seeds) else False
+    bpc_beyond = all(abs(b) > CFG["band_bpc"] for b in bpc_runs) if bpc_runs else False
+
+    if both_positive:
+        p1 = "PE 让浅出口 tf@k 可分且为正（两 seed 同深度同向 ⇒ n=2）⇒ 逐出口读出值得"
+    elif both_negative:
+        p1 = "PE 让浅出口 tf@k 可分但为负（两 seed 同深度同向 ⇒ n=2）⇒ 逐出口读出对早退可用性有害"
+    elif len(pos) == len(seeds) and all(pos.values() or neg[s] for s in pos):
+        p1 = "两 seed 的浅出口方向不一致 ⇒ 本 n 下不可排序（不取平均掩盖）"
+    else:
+        p1 = "浅出口 tf@k 两 seed 都不可分（至少一 seed 无同向可分的浅出口）⇒ 共享 tied 表够用（本尺度）"
+
+    if bpc_runs and bpc_same_sign and bpc_beyond:
+        p2 = ("末层 clean bpc 两 seed 同向且各自越 0.014 带 ⇒ n=2："
+              + ("PE 末层更差" if bpc_runs[0] > 0 else "PE 末层更好（这是读出容量带来的增益，"
+                 "不是早退可用性的增益）"))
+    elif bpc_runs and bpc_same_sign:
+        p2 = "末层 clean bpc 两 seed 同向但至少一 seed 落 0.014 带内 ⇒ 末层质量不可分"
+    else:
+        p2 = "末层 clean bpc 两 seed 不同向 ⇒ 本 n 下不可排序"
+
+    shared = (per_seed[f"s{seeds[0]}"]["band"], per_seed[f"s{seeds[0]}"]["base"])
+    cross = {
+        "reference_arm": ref,
+        "shallow_separable_positive_by_seed": pos,
+        "shallow_separable_negative_by_seed": neg,
+        "delta_clean_bpc_vs_ref_by_seed": bpc,
+        "bpc_same_sign": bool(bpc_same_sign),
+        "bpc_beyond_band_all_seeds": bool(bpc_beyond),
+        "cross_seed_reference_line": {
+            "note": ("同一臂跨 seed 的 clean bpc 之差 = 两个独立训练 run 之差，只作参考线，"
+                     "不与 0.014 配对带混用（docs/methodology.md §2）"),
+            **{arm: round(abs(
+                per_seed[f"s{seeds[1]}"]["arm_rows"][arm]["clean_bpc"]
+                - per_seed[f"s{seeds[0]}"]["arm_rows"][arm]["clean_bpc"]), 4)
+               if all((per_seed[f"s{x}"]["arm_rows"].get(arm) or {}).get("clean_bpc")
+                      is not None for x in seeds) else None
+               for arm in (ref, "PE")},
+        },
+        "rule": CFG["n2_rule"],
+        "P1_main_judgment": p1,
+        "P2_last_layer_judgment": p2,
+    }
+    out = {
+        "experiment": "2645-per-exit-readout-13m",
+        "delta_directions": {
+            "delta_clean_bpc_vs_ref": "arm_minus_comparator",
+            "delta_tf_by_depth": "arm_minus_comparator",
+            "delta": "arm_minus_comparator",
+            "delta_ece_vs_ref": "arm_minus_comparator",
+            "paired_bootstrap_95ci": "arm_minus_comparator",
+            "delta_clean_bpc_vs_ref_by_seed": "arm_minus_comparator",
+        },
+        "delta_direction_note": (
+            "Δ = 读数_实验 − 读数_对照，对照 = 同批共享 tied 臂 T；tf@k 的 Δ > 0 = 该深度接受率更高，"
+            "clean bpc 的 Δ > 0 = 实验更差（两处语义由各自 metric 写明，算式次序一致）。"),
+        "band": shared[0],
+        "base": shared[1],
+        "seeds": seeds,
+        "per_seed": {s: {"arm_rows": b["arm_rows"], "verdict": b["verdict"],
+                         "reference_arm": b["reference_arm"]}
+                     for s, b in per_seed.items()},
+        "cross_seed": cross,
+    }
     with open(os.path.join(HERE, "results.json"), "w") as f:
         json.dump(out, f, indent=2, ensure_ascii=False)
-    print(json.dumps(verdict, indent=2, ensure_ascii=False), flush=True)
+    print(json.dumps(cross, indent=2, ensure_ascii=False), flush=True)
     return out
 
 
@@ -772,9 +886,14 @@ def main():
     ap.add_argument("--out-root", default=None)
     ap.add_argument("--no-train", action="store_true")
     ap.add_argument("--aggregate", action="store_true")
+    ap.add_argument("--aggregate-all", dest="aggregate_all", action="store_true",
+                    help="按 config.json::seeds 汇总全部 seed 并套 README §4 的 n=2 规则")
     args = ap.parse_args()
     if args.out_root is None:
         args.out_root = os.path.join(HERE, "runs")
+    if args.aggregate_all:
+        aggregate_all(args)
+        return
     if args.aggregate or args.stage == "aggregate":
         aggregate(args)
         return

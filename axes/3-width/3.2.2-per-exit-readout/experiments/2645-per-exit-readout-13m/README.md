@@ -83,6 +83,13 @@
   配对 cluster bootstrap / Wilson 95% CI，**不跨量纲借用** 0.014。
 * **必须不变**：因果性（单测 `T6` + 评测里的 `causal` 列）、评测确定性（同 checkpoint
   两次 `depth_curve` 逐位一致，`reeval_bitwise_identical`）。
+* **n 与升格路径**（`config.json::n2_rule`）：`PE` 与同批对照 `T` 各跑 **seed 0 与 seed 1**。
+  判词规则只有这一条：同一深度上的 Δ 在**两 seed 各自可分**（tf@k 的配对 cluster bootstrap
+  95% CI 不含 0；clean bpc 越 0.014 配对带）且**同向** ⇒ 该判据按 **n=2** 出判词；两 seed
+  **不同向**（或任一 seed 不可分）⇒ 判「本 n 下不可排序」，`status` 停「进行中」，**不得**
+  把不一致解释成噪声、不得对两 seed 取平均掩盖。同一臂跨 seed 的 clean bpc 之差 = 两个独立
+  训练 run 之差，只作**参考线**，不与 0.014 配对带混用（`docs/methodology.md` §2）。
+  `IND` / `LR` 两臂本轮不跑 ⇒ 它们在本轮只报「未跑」与解析参数量，不作任何推断。
 
 ## 5. 口径与锚复用（SCHEMA §9 三道门）
 
@@ -116,45 +123,32 @@ layer-passes 每 token 不增加；tokens-per-forward = 1。
 其余出口逐位不变；`PE`/`LR` 起步梯度非零）；`T5` 表达力（`E M = Y` 可解）；
 `T6` 因果性；`T7` 锚逐字段对照 + 变红用例；`T8` 自持接受率电池与引擎 `tf_acceptance` 逐位一致。
 
-## 8. 运行计划、优先级与现状
+## 8. 运行计划与命令
 
 ```
-python3 run.py --stage anchor                        # 锚重测（不需训练）
-python3 run.py --arm PE --seed 0 --steps 12000       # 首选臂
-STEPS=60 HOLD_ALL=1 ARMS="T:0 PE:0 IND:0 LR:0" bash train_arms.sh   # 冒烟（rc=0 前置）
-python3 run.py --aggregate                            # 汇总 P1–P4 → results.json
+python3 run.py --stage anchor --steps 12000          # 锚重测（SCHEMA §9 第③道门，不需训练）
+ARMS="PE:0 T:0" bash train_arms.sh                   # 12k 臂（逐臂取/放 GPU 锁，臂间 ≥61 s）
+ARMS="PE:1 T:1" bash train_arms.sh                   # 升格对（seed 1，见 §4 的 n=2 规则）
+python3 run.py --aggregate-all                       # 两 seed 汇总 P1–P4 → results.json
 ```
 
-* 优先级（派单）：冒烟 rc=0 → `PE:0`（价值最高）→ `T:0`（同批对照）→ `IND:0` → `LR:0`；
-* 时间盒硬停 **23:30+08:00**；GPU 按 `SCHEMA.md` §20 逐臂取锁（`/tmp/pathlm_gpu.lock`，
-  前台、单次等待 ≤ 15 min、**不杀他人进程、不回收他人锁**）；
-* 单条命令 ≤ 180 s ⇒ 12k 臂（2610 同规模实测墙钟 ≈ 12.7 min）**无法**在前台单次命令内跑完，
-  且引擎无 `--resume` ⇒ 分块续训不可行。故本次实测只承诺**冒烟 + 锚重测**；
-  12k 臂若未跑，`results.json` / `analysis.md` 一律写「**未跑**」，不推断。
+* GPU 按 `SCHEMA.md` §20 逐臂取锁（`/tmp/pathlm_gpu.lock`、**不杀他人进程、不回收他人锁**），
+  单臂 `timeout 20 min`，臂间 ≥61 s；
+* 12k 臂实测墙钟见 `run_log.txt` 与各 `runs/<arm>/results.json`（同规模参考 ≈ 10 min/臂）；
+* `--aggregate` 是单 seed 汇总，`--aggregate-all` 按 `config.json::seeds` 汇总全部 seed 并套
+  §4 的 n=2 规则后写 `results.json`。
 
-## 9. 本次状态（只写事实）
+## 9. 判据常数与绑定
 
-* 预登记与实现已入库：本文件（`README.md`）+ `run.py` + `test_2645_per_exit_readout.py`
-  + `train_arms.sh` + `drive.sh`；`pytest -q` 17 项全绿（CPU 门，见 §7）。
-* **60 步冒烟**（`STEPS=60 HOLD_ALL=1`，`runs` → `smoke/`）：`T` rc=0（22:57，训练 17.9 s）、
-  `PE` rc=0、`IND` rc=0（23:09，训练 19.7 s / 17.9 s，含全电池）；`LR` 训练段跑通
-  （wall 20.1 s，`LR-s0-0k/model.pt` 落盘）但评测电池被**单命令 70 s 上限**截断 ⇒
-  无 `results_LR_s0_0k.json`（该臂逐臂结果**未产出**）。冒烟读数（如 PE clean bpc 4.9994、读出参数量 589,824）
-  **只是接线证据**，60 步模型无质量含义，**不入判据**，且被 `--aggregate` 的步数校验排除。
-  冒烟抓到一个真缺陷：`tf_acceptance_engine_agrees` 原按 6 位小数与引擎的 4 位比较 ⇒ 假阴性；
-  已改为 4 位比较并在单测里加计数一致性，见 `analysis.md` §4.4。
-* **12k 臂：一条也没跑**（`T` / `PE` / `IND` / `LR` 全部「未跑」）。两条独立原因：
-  ①本单硬约束「单条命令 ≤180 s」vs 同规模实测 12k 墙钟 12.69 min（`2610/run_log.txt`），
-  且引擎无 `--resume` ⇒ 前台无法承载也无法分块续训；②GPU 锁被其它轴长任务反复占用，
-  等锁尝试多次（含 95 s、130 s、140 s 前台等待）均未取到（不杀他人进程、不回收他人锁）。
-* **`--stage anchor`（锚重测，SCHEMA §9 第③道门）未执行**：需一次 GPU 前向电池与锁；
-  `anchor_recheck.json` 不存在，`results.json::anchor.recheck_*` 为 `null`。
-* `results.json` = `--aggregate` 的**纯 CPU 聚合**（每个臂 `status: "未跑"`，无任何读数）；
-  `analysis.md` 首段人话摘要 + §4 受阻原因 + §5 与 `3.2.1` 的边界 + §6 下一步最小实验。
+* 判据常数（`band_bpc`、`ece_tolerance`、浅出口深度集、seed 集、`n2_rule`、配方、评测口径）
+  住在 `config.json`，判据的**应用代码**（`VARIANCE_BOUND` 判定、配对 bootstrap）在 `run.py`
+  ⇒ 绑定必须同时覆盖两者：
+  `python3 tools/prereg_bind.py . --contract README.md config.json run.py`（`docs/methodology.md` §8）。
 
 ## 10. 边界与未测项（预登记）
 
-* 单 seed、单尺寸（13M / 8L / V=206）：量级与规模外推未测；**真词表（100k+）下 `PE` 的
-  表达力优势消失**（V > d 时 `E·M` 只有 d 维自由度）⇒ 本项结论**不外推到真词表**。
+* 单尺寸（13M / 8L / V=206）、2 个 seed（`T` / `PE`）：量级与规模外推未测；**真词表（100k+）
+  下 `PE` 的表达力优势消失**（V > d 时 `E·M` 只有 d 维自由度）⇒ 本项结论**不外推到真词表**。
+  `IND` / `LR` 两臂本轮未跑，故「只有不可 scale 的独立表能提升」这一否证分支本轮无本地读数。
 * 「出口在哪一层」与「每 token 跑几层」归深度轴 `2.1.1`，本项只判「出口 → 词表」。
 * 只测**训练期逐层监督**（aux 等权 1.0）下的出口质量；推理期早退调度不在本项。
