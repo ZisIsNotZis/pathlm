@@ -105,11 +105,7 @@ owner 一律是元级主 Agent 派发的 worker；每个包另配一名 fresh re
 `axes/1-time/1.1.1-hard-window/RESEARCH.md`、`axes/1-time/1.1.4.1-explicit-memory/RESEARCH.md`、
 `axes/5-quant/5.5-fp8-head-dim/RESEARCH.md`。元级目录不依赖它（七列取自 `project.yaml`），它不挡里程碑。
 
-**`tools/check_docs.py --check` 上只剩一条悬空引用，归属是研究级未产出**：
-
-- `axes/1-time/1.1.4.1-explicit-memory/RESEARCH.md:53` → 该项第二条臂的分析 `2681-int8-equalbytes-frontier-13m/analysis.md`（未产出）：
-  读数未出、分析尚未落盘。owner = 研究级 `1.1.4.1`；它一落盘 `check_docs` 即自动转绿，
-  `tests/test_docs_refs.py::test_all_doc_references_resolve` 的红也只由这一条引起。
+**`tools/check_docs.py --check` 当前 0 处违规**：此前唯一的一条悬空引用（研究级 `1.1.4.1` 的实验分析未产出）已随该分析落盘而自动转绿，`tests/test_docs_refs.py` 的级联红同期消失。
 
 **这四处上过红名单，但它们不是缺陷**（下一轮复核不要再当红报）：
 
