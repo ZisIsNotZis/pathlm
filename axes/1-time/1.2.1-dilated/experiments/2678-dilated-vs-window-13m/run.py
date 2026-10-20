@@ -406,16 +406,17 @@ def synth_eval_model(arm: str, ckpt: str) -> DepthARModel:
     return model
 
 
-def train_synth(arm: str, seed: int) -> None:
+def train_synth(arm: str, seed: int, steps: int, out_root: str = "runs") -> None:
     sc = CFG["synth_recall"]
+    steps = int(steps) if steps else int(sc["steps"])
     name = f"synth-{arm}"
-    run_dir = os.path.join(HERE, "runs", name)
+    run_dir = os.path.join(HERE, out_root, name)
     os.makedirs(run_dir, exist_ok=True)
     model, info = build_synth_model(arm, seed)
     n_params = sum(p.numel() for p in model.parameters())
-    print(f"{name}: {n_params/1e6:.2f}M params  synth={synth_task()}  steps {sc['steps']}",
+    print(f"{name}: {n_params/1e6:.2f}M params  synth={synth_task()}  steps {steps}",
           flush=True)
-    tcfg = {"steps": sc["steps"], "batch_size": sc["batch_size"],
+    tcfg = {"steps": steps, "batch_size": sc["batch_size"],
             "lr": sc["lr"], "seed": seed}
     torch.cuda.reset_peak_memory_stats()
     wall, _, _, stats = tdt.train(
@@ -429,7 +430,7 @@ def train_synth(arm: str, seed: int) -> None:
     del model
     torch.cuda.empty_cache()
     reading = synth_accuracy(synth_eval_model(arm, ckpt), synth_keep_mask(arm), sc)
-    out = {"run": name, "arm": arm, "seed": seed, "steps": sc["steps"],
+    out = {"run": name, "arm": arm, "seed": seed, "steps": steps, "out_root": out_root,
            "synth_task": synth_task(), "n_params": n_params,
            "wall_minutes": round(wall / 60, 2), "peak_gpu_mem_mb": peak,
            "conversion_check": info["converted"],
@@ -514,6 +515,8 @@ def main() -> None:
     ap.add_argument("--arm", default="dil32")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--steps", type=int, default=RECIPE["steps"])
+    ap.add_argument("--out-root", default="runs",
+                    help="synth 阶段的产物根（相对本目录；给绝对路径可把冒烟写进 /tmp）")
     args = ap.parse_args()
     os.chdir(ROOT)
 
@@ -527,7 +530,7 @@ def main() -> None:
         return
 
     if args.stage == "synth":
-        train_synth(args.arm, args.seed)
+        train_synth(args.arm, args.seed, args.steps, args.out_root)
         return
 
     # ---- eval ----
