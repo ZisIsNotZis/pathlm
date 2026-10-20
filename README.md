@@ -114,6 +114,9 @@ python3 -m pytest tests/ -q               # 需要 requirements-dev.txt（torch 
 
 - **数据**：`data/enwik8_full.npz`（190 MB）与 `.tmp/enwik8`（enwik8 原始字节）都不入库，**也不会自动下载**；
   要跑实验得自己拿到 enwik8 放到 `.tmp/enwik8`，首次运行时生成缓存。
+- **逐 run 的原始产物**：`axes/**/…/runs/` 下的文件被 `.gitignore` 的 `runs/` 规则排除（实测 120 个
+  `results.json`、约 1.1 MB 不在克隆里）；结论与数字引用到的实验级 `analysis.md` / `results.json` /
+  `project.yaml` 都在库内，但逐 run 的原始数字在干净克隆上补不回来（这一条的处置待定，见下）。
 - **权重**：`*.pt` 是派生物，按各实验目录 `README.md` 的命令重训，不入库。
 - **GPU 面**：`tests/` 的完整运行需要 torch + CUDA（`requirements-dev.txt` 声明了，但装它是 GB 级下载），
   本仓实测只在单卡 RTX 4090 24 GB 上跑过。
