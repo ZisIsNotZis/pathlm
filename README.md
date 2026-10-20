@@ -59,7 +59,7 @@
 
 定律正文与适用边界的唯一家是 `docs/playbook.md`；跨口径比较之前请先读它的定律 8–11（用表前必须先过的口径）。
 
-## 怎么跑起来（以下命令都在干净克隆上实测过）
+## 怎么跑起来
 
 ```bash
 git clone git@github.com:ZisIsNotZis/pathlm.git     # origin 的 URL；SSH，可见性未核实
@@ -81,8 +81,8 @@ python3 tools/summary.py | tail -3                  # 看研究树全表的末�
 
 实测范围与耗时（单机，含冷启动）：`git clone` 用本地仓路径做（0.7 s）；GitHub 那条 URL 只验证了
 `git ls-remote` 能取到 HEAD（完整 clone 受网络限制没跑完）。`tools/bootstrap.sh` 在依赖已齐的解释器上 2.2 s，
-在一个只装了 pip、没有 PyYAML 的空 venv 里 33 s（含下载 PyYAML）。`tools/summary.py --check` 3.6 s，
-`tools/check_docs.py --check` 3.6 s。
+在一个只装了 pip、没有 PyYAML 的空 venv 里 33 s（含下载 PyYAML）。`tools/summary.py --check` 3.4–3.6 s，
+`tools/check_docs.py --check` 1.5 s（暖缓存）～3.6 s（冷缓存）。
 
 全树自检就是本仓的 CI 口径，五条命令（前四条只需 PyYAML）：
 
