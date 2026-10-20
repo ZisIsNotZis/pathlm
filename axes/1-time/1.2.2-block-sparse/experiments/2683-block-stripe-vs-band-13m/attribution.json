@@ -1,0 +1,75 @@
+{
+  "experiment": "2683-block-stripe-vs-band-13m",
+  "what_this_is": "契约外·评测期掩码反事实归因（0 训练 token）。不参与判词：判词由 README.md §3 判据① 与 results.json::main_verdict 决定；本文件只把「块条带不如均匀条带」拆成「远块有没有用」与「换推理掩码能不能补回」。",
+  "delta_directions": {
+    "delta_bpc": "comparator_minus_arm",
+    "comparator": "own（该 checkpoint 训练时的那张块条带掩码）"
+  },
+  "delta_direction_note": "两个反事实都记 Δ = bpc_own − bpc_反事实（正 = 反事实更好）。far_block_off 负且越带 ⇒ 关掉远块更差 ⇒ 远块被模型用上；band24_on_block_ckpt 负且越带 ⇒ 只换推理掩码就能补回。",
+  "band_bpc": 0.014,
+  "eval": {
+    "n_batches": 96,
+    "batch_size": 16,
+    "window_seed": 2
+  },
+  "per_seed": {
+    "block8l4_s0": {
+      "bpc_own": 1.610822,
+      "bpc_far_block_off": 1.63971,
+      "bpc_band24_on_block_ckpt": 2.009621,
+      "own_matches_judged_reading": true,
+      "far_block_off": {
+        "n_windows": 1536,
+        "delta_bpc": -0.028888,
+        "sd_of_paired_delta": 0.035173,
+        "se_of_mean": 0.000897,
+        "t_stat": -32.19,
+        "frac_windows_delta_gt_0": 0.155,
+        "min_delta": -0.257835,
+        "max_delta": 0.044284,
+        "in_band": "越带（负：反事实臂更差）"
+      },
+      "band24_on_block_ckpt": {
+        "n_windows": 1536,
+        "delta_bpc": -0.398799,
+        "sd_of_paired_delta": 0.135223,
+        "se_of_mean": 0.00345,
+        "t_stat": -115.58,
+        "frac_windows_delta_gt_0": 0.003,
+        "min_delta": -1.162122,
+        "max_delta": 0.618185,
+        "in_band": "越带（负：反事实臂更差）"
+      },
+      "judged_comparator_bpc": 1.59927
+    },
+    "block8l4_s1": {
+      "bpc_own": 1.609415,
+      "bpc_far_block_off": 1.637055,
+      "bpc_band24_on_block_ckpt": 2.548734,
+      "own_matches_judged_reading": true,
+      "far_block_off": {
+        "n_windows": 1536,
+        "delta_bpc": -0.02764,
+        "sd_of_paired_delta": 0.03533,
+        "se_of_mean": 0.000901,
+        "t_stat": -30.66,
+        "frac_windows_delta_gt_0": 0.157,
+        "min_delta": -0.313373,
+        "max_delta": 0.115623,
+        "in_band": "越带（负：反事实臂更差）"
+      },
+      "band24_on_block_ckpt": {
+        "n_windows": 1536,
+        "delta_bpc": -0.939319,
+        "sd_of_paired_delta": 0.205227,
+        "se_of_mean": 0.005236,
+        "t_stat": -179.38,
+        "frac_windows_delta_gt_0": 0.001,
+        "min_delta": -1.923805,
+        "max_delta": 0.259595,
+        "in_band": "越带（负：反事实臂更差）"
+      },
+      "judged_comparator_bpc": 1.598631
+    }
+  }
+}
