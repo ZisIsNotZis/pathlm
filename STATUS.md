@@ -18,6 +18,8 @@ work packages / 状态），代码与实验产物在该研究项的 `experiments
 计划层有在办工作包。**哪个在办、每个工作包的 owner / 验收 / 预算 / 状态，以及三个里程碑的当前状态，
 只写在 `docs/plan.md` 的「里程碑」与「工作包」两节**（`docs/plan.md#1-里程碑`、`docs/plan.md#2-工作包`）。
 
+- **「自证」里程碑的证据**：两轮陌生阅读测试的原始报告、做题口径与「第一轮 10 条发现各自的下场」
+  对照在 `.scratch/self-verification/evidence/README.md`；里程碑状态仍只从 `docs/plan.md#1-里程碑` 读。
 - **研究项的全表与统计**：`python3 tools/summary.py`；字段 / 证据 / 口径校验用 `--check`。
 - **最近出判决的研究项**：`axes/2-depth/2.2.2-attention-residual/`（用 causal attention 代替残差）、
   `axes/2-depth/2.2.3-learned-layer-sum/`（层间学习加权和）、`axes/2-depth/2.2.4-parallel-sublayer/`
@@ -41,11 +43,9 @@ work packages / 状态），代码与实验产物在该研究项的 `experiments
 
 只列仓内已经写明的开放项，未新增判断：
 
-1. **陌生阅读复测**：账目层改为当前事实之后，再派一轮没读过本仓的 fresh reviewer（`docs/plan.md` 的
-   「工作包」表里那一行）；「自证」里程碑收不收口以它为准。
-2. **Δ 方向全树声明**（还在办，见 `docs/plan.md#2-工作包`）：`tools/check_tree.py` 的 Δ 方向汇总行还有
+1. **Δ 方向全树声明**（还在办，见 `docs/plan.md#2-工作包`）：`tools/check_tree.py` 的 Δ 方向汇总行还有
    `undeclared` 与「不判」条目。
-3. **`2651` 的残余缺口**（`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md`
+2. **`2651` 的残余缺口**（`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md`
    的 §10）：更大规模点（`2.2.3` milestone 要求，最小可判定约 4× 参数 ≈ 55M）、`dense` 的 α 单纯形约束对照臂、
    中间深度可读性与 `2.2.1` / `2.1.1` 的联合检验、s0 等值门的结构化落盘、层数外推。
-4. **新格子动手前**先过 `docs/playbook.md` 的定律 10（变化空间前门）。
+3. **新格子动手前**先过 `docs/playbook.md` 的定律 10（变化空间前门）。

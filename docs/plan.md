@@ -25,7 +25,7 @@
 
 | 里程碑 | 交付物 | 验收（可观测） | 状态 |
 |---|---|---|---|
-| **自证** | 局外读者只拿仓库就能核实：它是什么、最硬的几条结论连同口径、代价表在哪、怎么验一个数、许可与报问题的地方 | 派一个**没读过本仓**的 fresh reviewer，只给仓库与 8 个问题的清单：必须在 ≤20 次工具调用内答完，答案与 `axes/**` 的落盘事实一致、无一处悬空引用或自相矛盾；§3 的五条机检全过（唯一允许的失败是已登记的预存失败） | **已完成**：两轮陌生阅读测试都已跑完，**第二轮 PASS**（≤20 次工具调用内答完 8 问，答案与 `axes/**` 落盘事实一致、无悬空引用）；第一轮暴露的账目层三处发现已修（测试计数单一落点、定律 8 的两组端点、轴 7/轴 8 辅助实验的覆盖声明）；§3 的五条机检全过，唯一失败为已登记的预存失败 |
+| **自证** | 局外读者只拿仓库就能核实：它是什么、最硬的几条结论连同口径、代价表在哪、怎么验一个数、许可与报问题的地方 | 派一个**没读过本仓**的 fresh reviewer，只给仓库与 8 个问题的清单：必须在 ≤20 次工具调用内答完，答案与 `axes/**` 的落盘事实一致、无一处悬空引用或自相矛盾；§3 的六条机检全过（唯一允许的失败是已登记的预存失败） | **已完成**：两轮陌生阅读测试都已跑完（第一轮「有条件的 PASS」、**第二轮 PASS**，≤20 次工具调用内答完 8 问，答案与 `axes/**` 落盘事实一致、无悬空引用）；两轮的原始报告、做题口径与「第一轮 10 条发现各自的下场」都在 `.scratch/self-verification/evidence/README.md`；§3 的六条机检全过，唯一失败为已登记的预存失败 |
 | **可引用** | 一张**生成**的代价表（定律 × 是否触主干 × 观测代价 × 边界 × 出处）、一份复现清单（哪些 run 的权重与日志还在、能复跑到什么程度）、把定律写成论文的口径 | 代价表由 `tools/build_cost_table.py` 生成，`--check` 与手改过的副本逐字节比对必须失败；复现清单里每条 run 都指向真实存在的路径，缺失项显式标「不可重建」 | **进行中**：代价表已生成并被 `--check` 钉住；复现清单已落盘（`docs/repro.md`，120 个实验 / 393 个 run，三态：可重算 0 / 只能重训 86 / 不可重建 34，每条带依据）；论文口径**未做**（见 §2） |
 | **推进** | 恢复研究：先一份廉价分诊（每个在途 / 空白格：它能否改变我们对「某种算力路径值不值」的判断、所需成本），再按排序派发第一批实验 | 分诊表落盘并给出排序理由；第一批工作包各自有预登记判据与验收，且都跑到「可交付、结论清晰、过程可验证、边界明确」 | **未开始** |
 
@@ -35,22 +35,22 @@
 
 | 工作包 | 归属 | owner | 交付物 | 验收 | 预算 | 状态 |
 |---|---|---|---|---|---|---|
-| 陌生阅读复测 | 自证 | worker（fresh context，未读过本仓） | 一轮陌生阅读测试的结论：它答错的每一处，以及对应的账目层修复 | 只给仓库与 8 问清单，≤20 次工具调用答完；答案与 `axes/**` 的落盘事实一致、无一处悬空引用、无一处把第二个家当主读数 ⇒ 通过即作为「自证」里程碑的验收证据 | 30 分钟 | 未开始（等本轮的账目层修复合入） |
 | Δ 方向全树声明 | 自证 | worker | 每个报了 Δ 读数的 `results.json` 逐字段声明 `delta_directions`；把 `cost_rows[].metric` 里机判不了方向的写法改成可机判 | `tools/check_tree.py` 的 Δ 方向汇总行：`undeclared` 计数为 0、「不判」条目为 0（现存条目逐条补声明或改 `metric` 措辞） | 60 分钟 | 进行中 |
-| 复现清单 | 可引用 | worker | `tools/inventory_runs.py` + `docs/repro.md`：每个实验的 run 目录、权重是否在库、日志、重跑命令、实测墙钟、能否字节级复现 | 每条路径的存在性由脚本校验；不可重建的项显式写「不可重建」而不是留空；脚本进 `tests/` | 60 分钟 | **已完成**：`python3 tools/inventory_runs.py --check` 0 违规；120 个实验 / 393 个 run 的判定全带依据；`tests/test_repro_inventory.py` 六条（含「多一个 run 目录」「手改生成物」「`not_reproducible` 缺 `missing`」三条可失败对照） |
+| 复现清单 | 可引用 | worker | `tools/inventory_runs.py` + `docs/repro.md`：每个实验的 run 目录、权重是否在库、日志、重跑命令、实测墙钟、能否字节级复现 | 每条路径的存在性由脚本校验；不可重建的项显式写「不可重建」而不是留空；脚本进 `tests/` | 60 分钟 | **已完成**：`python3 tools/inventory_runs.py --check` 0 违规；120 个实验 / 393 个 run 的判定全带依据；`tests/test_repro_inventory.py` 六条（含「多一个 run 目录」「手改生成物」「`not_reproducible` 缺 `missing`」三条可失败对照）；三态判定的抽检（5/5 成立，规则未改）见 `.scratch/self-verification/evidence/repro-verdict-audit.md` |
 | 论文口径收口 | 可引用 | worker → reviewer | `docs/paper-plan.md`：代价按「触主干 / 旁路」分组，定律 8–11 归为「用表前必须过的口径与前置条件」，方法一页只做 router | 与 `docs/playbook.md`、`docs/cost-table.md` 无重复数字（只有指针）；fresh 复核者只按文件本身即可判断其自洽 | 45 分钟 | 未开始 |
 | 树分诊 | 推进 | worker | `docs/triage.md`：每个在途 / 空白格的「能否改变判断」评分、覆盖度、所需算力与时间 | 每格一行，评分有可核对的理由；在途格标注它离「可交付」还缺什么 | 60 分钟 | 未开始 |
 | 研究批次一 | 推进 | worker（按格隔离，逐格取 GPU 锁） | 分诊排序后的前 2–3 格，各自按预登记契约跑到判词 | 各自 `project.yaml` 的 `status` / `conclusion` 可被 `summary.py --check` 接受；证据落盘并有 fresh 复核 | 按格定 | 未开始 |
 
 ## 3 验收证据：全树机检与测试计数
 
-里程碑与每个工作包的验收都跑这五条命令；前四条只需 PyYAML（依赖门见 `tools/bootstrap.sh`）：
+里程碑与每个工作包的验收都跑这六条命令；前四条只需 PyYAML（依赖门见 `tools/bootstrap.sh`），第五条只要标准库与 `git`：
 
 ```bash
 python3 tools/summary.py --check           # 研究项字段 / 证据 / 口径
 python3 tools/check_docs.py --check        # 文档引用可解析 + 文档地图完整性
 python3 tools/check_tree.py                # 同上，纯校验入口（含 check_docs）
 python3 tools/build_cost_table.py --check  # docs/cost-table.md 与 project.yaml 逐字节一致
+python3 tools/inventory_runs.py --check    # docs/repro.md 与磁盘一致 + 每条路径存在 + 每条不可重建写明缺什么
 python3 -m pytest tests/ -q                # 需要 requirements-dev.txt（torch 为 GB 级下载）
 ```
 
@@ -63,7 +63,7 @@ python3 -m pytest tests/ -q                # 需要 requirements-dev.txt（torch
   `2674-mdiffusion-13m`、`2671-padfill-13m`、`2660-latentreg-vs-disc-13m`、`2670-freerun-bpc-13m`。
   修它要改这 4 个实验的变异脚本，是独立的一件工作，不是本计划的工作包；在它被修好之前，任何工作包的
   红线都是「除这一条外 0 failed」。
-- 其余四条命令：0 违规、非零退出即失败。
+- 其余五条命令：0 违规、非零退出即失败。
 
 ## 4 已定的取舍（执行方不自选）
 

@@ -96,13 +96,14 @@ python3 tools/summary.py | tail -3                  # 看研究树全表的末�
 在一个只装了 pip、没有 PyYAML 的空 venv 里 33 s（含下载 PyYAML）。`tools/summary.py --check` 3.4–3.6 s，
 `tools/check_docs.py --check` 1.5 s（暖缓存）～3.6 s（冷缓存）。
 
-全树自检就是本仓的 CI 口径，五条命令（前四条只需 PyYAML）：
+全树自检就是本仓的 CI 口径，六条命令（前四条只需 PyYAML，第五条只要标准库与 `git`）：
 
 ```bash
 python3 tools/summary.py --check          # 研究项字段 / 证据 / 口径
 python3 tools/check_docs.py --check       # 文档引用可解析 + 文档地图完整性
 python3 tools/check_tree.py               # 同上，纯校验入口
 python3 tools/build_cost_table.py --check # docs/cost-table.md 与 project.yaml 逐字节一致
+python3 tools/inventory_runs.py --check   # docs/repro.md 与磁盘一致 + 每条路径存在 + 每条不可重建写明缺什么
 python3 -m pytest tests/ -q               # 需要 requirements-dev.txt（torch 为 GB 级下载）
 ```
 
