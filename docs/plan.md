@@ -38,8 +38,8 @@
 | Δ 方向全树声明 | 自证 | worker | 每个报了 Δ 读数的 `results.json` 逐字段声明 `delta_directions`；把 `cost_rows[].metric` 里机判不了方向的写法改成可机判 | `tools/check_tree.py` 的 Δ 方向汇总行：`undeclared` 计数为 0、「不判」条目为 0（现存条目逐条补声明或改 `metric` 措辞） | 60 分钟 | 进行中 |
 | 复现清单 | 可引用 | worker | `tools/inventory_runs.py` + `docs/repro.md`：每个实验的 run 目录、权重是否在库、日志、重跑命令、实测墙钟、能否字节级复现 | 每条路径的存在性由脚本校验；不可重建的项显式写「不可重建」而不是留空；脚本进 `tests/` | 60 分钟 | **已完成**：`python3 tools/inventory_runs.py --check` 0 违规；120 个实验 / 393 个 run 的判定全带依据；`tests/test_repro_inventory.py` 六条（含「多一个 run 目录」「手改生成物」「`not_reproducible` 缺 `missing`」三条可失败对照）；三态判定的抽检（5/5 成立，规则未改）见 `.scratch/self-verification/evidence/repro-verdict-audit.md` |
 | 论文口径收口 | 可引用 | worker → reviewer | `docs/paper-plan.md`：代价按「触主干 / 旁路」分组，定律 8–11 归为「用表前必须过的口径与前置条件」，方法一页只做 router | 与 `docs/playbook.md`、`docs/cost-table.md` 无重复数字（只有指针）；fresh 复核者只按文件本身即可判断其自洽 | 45 分钟 | **执行完成，待 fresh 复核**：`docs/paper-plan.md` 已重写——11 条定律按「1–7 = 代价 / 8–11 = 用表前必须过的口径与前置条件」两段落位并逐条给指针，正文不复制定律、不写读数；`grep -nE "[0-9]+\.[0-9]+" docs/paper-plan.md` 只剩计划性数字（页数、规模 `13M` / `100M`、`1.1-epoch`、研究项编号、`AGPL-3.0`）；`python3 tools/check_docs.py --check` 0 违规；成本表 / 复现清单 / 自证三处证据来源与四条本轮新判决（`2.2.2` / `2.2.3` / `2.2.4` / `6.3.1`）都以指针接入；许可写成「待用户裁决」 |
-| 树分诊 | 推进 | worker | `docs/triage.md`：每个在途 / 空白格的「能否改变判断」评分、覆盖度、所需算力与时间 | 每格一行，评分有可核对的理由；在途格标注它离「可交付」还缺什么 | 60 分钟 | 未开始 |
-| 研究批次一 | 推进 | worker（按格隔离，逐格取 GPU 锁） | 分诊排序后的前 2–3 格，各自按预登记契约跑到判词 | 各自 `project.yaml` 的 `status` / `conclusion` 可被 `summary.py --check` 接受；证据落盘并有 fresh 复核 | 按格定 | 未开始 |
+| 树分诊 | 推进 | worker | `docs/triage.md`：每个在途 / 空白格的「能否改变判断」评分、覆盖度、所需算力与时间 | 每格一行，评分有可核对的理由；在途格标注它离「可交付」还缺什么 | 60 分钟 | **已完成**：`docs/triage.md` 落盘——判据写成 `分 = 判决增量 × 缺口紧迫度 ÷ 成本`（D / U / C 各三级，逐级给判据与成本换算），46 个研究项逐行打分（与 `python3 tools/summary.py` 的 id 列表逐个核对齐），三个格演示打分过程，前 3 名各给一份工作包草案，另写「建议删除」与「明确不排序」两节；「推进」里程碑的优先级从本表自选、用户指定的方向优先（§4） |
+| 研究批次一 | 推进 | worker（按格隔离，逐格取 GPU 锁） | `docs/triage.md` 的前三名：`5.5` 的 `head_dim`=64 实测腿（1 臂 + CPU 三臂）、`1.2.3` 的同 k「按位置 vs 按内容」对照（2 臂）、`3.1.5` 的四臂最小判决（3 臂，契约与实现已落盘） | 各自 `project.yaml` 的 `status` / `conclusion` 可被 `summary.py --check` 接受；证据落盘并有 fresh 复核 | 按格定（前三名合计约 70 min GPU） | 未开始 |
 
 ## 3 验收证据：全树机检与测试计数
 
