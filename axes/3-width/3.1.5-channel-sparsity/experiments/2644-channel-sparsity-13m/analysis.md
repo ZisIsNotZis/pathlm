@@ -148,8 +148,8 @@ H1（条件选通道可排序更优）**被否证**；H0（不可排序）也**�
 - `F50` 的反传探针是对 `README` §8 `T4` 的**训练后实测版**：未用的后 512 个通道的 `lin1` 行 /
   `lin2` 列梯度恒 0，而参数仍在账上（总参数与 `K50`/`K25` 逐位相同 6 962 688）。
 - `K25` 的末层只有 688/1024 个通道**在探针批上**拿到了梯度（探针 = 一批前向 + 一次反传），
-  不能读作「整个 12k 步都没被选到过」——探针只覆一个批次的 token。
-  都没被选到过**（选择器无参数、只按 `|pre|`，被压到低幅度的通道难以翻身）。这是「按幅度选」的
+  其余 336 个通道在该批上未被选到（选择器无参数、只按 `|pre|`，被压到低幅度的通道难以翻身）；
+  这不能读作「整个 12k 步都没被选到过」——探针只覆一个批次。这是「按幅度选」的
   自强化副作用，不是坍缩（`mode_set_share` 仍为 0）。
 
 ## 6. 护栏
@@ -177,13 +177,22 @@ H1（条件选通道可排序更优）**被否证**；H0（不可排序）也**�
   `loss.backward()`，必然抛 `RuntimeError: element 0 of tensors does not require grad`，因此
   **先前几次起跑都在训练完成后、出读数之前崩掉**（训练本身已完成、`model.pt` 已落盘）。
   重跑把探针改成自持 `torch.enable_grad()`：`K50` / `F50` 用已落盘 checkpoint 走 `--no-train` 重评，
-  `K25` 从头训练。逐臂读数的代码版本可核：seed 0 三臂的 `results_<臂>_s0.json::code_hash_run_py`
-  = `4d1865b1…`，它逐字节等于提交 `6e34d95` 的 `run.py` **去掉 `--aggregate` 段里的 `delta_directions`
-  五行**后的内容（`git show 6e34d95:…/run.py` 删这五行后 sha256 应为该值）；seed 1 两臂与本次聚合的
-  版本哈希分别落在 `results.json::arms_by_seed.*.s1.code_hash_run_py` 与 `results.json::code_hash_run_py`
-  （本轮补 seed 1 时对 `run.py` 的改动**全在 `aggregate()` 内**，`--arm` 的评测路径一字未动）。
-  而 seed 0 的产出版本相对预登记提交 `7e47522` 的 `run.py`，**唯一源码差异就是这条探针的
-  `torch.enable_grad()` 包裹**。
+  `K25` 从头训练。
+- **三个 `run.py` 版本都绑在可达提交上（无「由未入库改动产生」的读数）**：seed 0 三臂 =
+  `4d1865b1…`，逐字节等于提交 `6e34d95` 的 `run.py` 去掉 `aggregate()` 里 `delta_directions`
+  五行后的内容；seed 1 两臂 = `c4b2910c…`，逐字节等于提交 `70f93ce` 的 `run.py` 去掉
+  `"delta_K50_minus_F50_by_seed": "arm_minus_comparator",` 这一行后的内容；聚合自身 =
+  `results.json::code_hash_run_py`，等于本目录 `run.py` 的当前字节（与 `results.json` 同提交入库）。
+  三者之间的源码差异全在 `aggregate()` 的报数块，`--arm` 的评测路径不读它们；而 seed 0 的产出版本
+  相对预登记提交 `7e47522` 的 `run.py`，diff 全文只有**这条探针的 `torch.enable_grad()` 包裹**
+  （`shared_train_results` 五行在两边都在、未增删）：
+  ```bash
+  D=axes/3-width/3.1.5-channel-sparsity/experiments/2644-channel-sparsity-13m
+  git show 6e34d95:$D/run.py | sed '509,513d' | sha256sum   # 4d1865b1…：seed 0 三臂
+  git show 70f93ce:$D/run.py | sed '541d'      | sha256sum   # c4b2910c…：seed 1 两臂
+  sha256sum $D/run.py                                       # = results.json::code_hash_run_py（聚合）
+  diff <(git show 7e47522:$D/run.py) <(git show 6e34d95:$D/run.py | sed '509,513d')  # 只有探针一处
+  ```
 - **训练侧数字是转的、不是重测的**：`results_<臂>_s0.json::shared_train_results`（`params` /
   `train_tokens` / `wall_minutes` / `peak_gpu_mem_mb`）由评测入口从该臂自己的
   `runs/<臂>-s0-12k/results.json` 读入，属训练 run 的记账，**不是** `--no-train` 重评时的重测值；

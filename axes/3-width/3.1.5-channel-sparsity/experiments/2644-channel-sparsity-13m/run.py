@@ -569,8 +569,9 @@ def aggregate(steps: int, out_root: str, arms: list, seeds: list) -> dict:
         "source_files": [f"results_{a}_s{s}.json" for (a, s) in sorted(recs)],
         "code_hashes_by_arm": {a: rows[a].get("code_hash_run_py") for a in rows},
         "code_hash_run_py": sha256_file(os.path.join(HERE, "run.py")),
-        "code_hash_note": ("逐臂读数由 `code_hashes_by_arm` 的 run.py 版本产出，本聚合文件由 "
-                           "`code_hash_run_py` 的版本产出；两个版本的差异与可重建做法见 "
+        "code_hash_note": ("逐臂读数由各自记录的 run.py 版本产出：seed 0 三臂见 `code_hashes_by_arm`，"
+                           "seed 1 两臂见 `arms_by_seed.*.s1.code_hash_run_py`；本聚合文件由 "
+                           "`code_hash_run_py` 的版本产出。三个版本的源码差异与逐字节绑定的提交见 "
                            "`analysis.md` §7。"),
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
     }

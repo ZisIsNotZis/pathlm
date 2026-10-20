@@ -6,7 +6,7 @@
 |---|---|
 | 权重（出读数的那一个） | `runs/hd64-s0/model.pt` |
 | sha256 | `ce40e246614f2f50471e6bc66e6468269af83bef3c9ab3e383f04831d433038f`（评测时现算，与训练驱动记录逐位一致） |
-| 第二 seed（已训练、无受认可读数路径） | `runs/hd64-s1/model.pt` · sha256 `931df39bb961ee5e178c2eca977732ad962ac63154d630b70cbb60f92946ff5a` |
+| 第二 seed 腿（读数 `hd64-s1/results.json`；n=2 只给方向一致性） | `runs/hd64-s1/model.pt` · sha256 `931df39bb961ee5e178c2eca977732ad962ac63154d630b70cbb60f92946ff5a` |
 | size | 54 193 675 B（两个 checkpoint 同） |
 | params | 13 536 768 |
 | 结构 | 12 层 × `d_model` 256 × **4 头** × `head_dim` **64** × `mlp_mult` 6，dense decoder-only（stock `Block`） |

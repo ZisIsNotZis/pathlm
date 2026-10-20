@@ -22,7 +22,7 @@
 ## WP2 的 head_dim=64 模型（已交付）
 
 - 该腿的模型与读数在 `experiments/2655-fp8-hd64-head-dim/`（`runs/hd64-s0/model.pt`，sha256
-  `ce40e246614f2f50471e6bc66e6468269af83bef3c9ab3e383f04831d433038f`；第二 seed 的 checkpoint 也在盘但无受认可读数路径）。
+  `ce40e246614f2f50471e6bc66e6468269af83bef3c9ab3e383f04831d433038f`；第二 seed 的 checkpoint 与其读数同在 `2655-fp8-hd64-head-dim/`（`runs/hd64-s1/model.pt` + `hd64-s1/results.json`）。
 - 那里的配方＝`--d 256 --layers 12 --heads 4 --mlp-mult 6 --dense`（⇒ `head_dim = 64`），除 kv 头数外与
   `2616` 的 mha 臂逐字段一致。权重、训练命令与派生口径只有那一个家：`2655-fp8-hd64-head-dim/MODEL.md`。
 - 本目录（`2653`）仍只负责 `head_dim=32` 的 WP1 四臂；WP2 的 hd64 读数**不在本目录重复**。
