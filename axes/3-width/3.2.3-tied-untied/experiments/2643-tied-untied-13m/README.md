@@ -43,7 +43,7 @@ status: planned
   实测表达式为 `hf @ self.embed.weight.float().T`）。
 - 本实验在**实验目录内**定义子类 `ReadoutModel(DepthARModel)` 覆写 `readout`，**不改引擎**
   （`pathlm/**`、`train_depth_ar.py` 一字未动）；训练时把 `train_depth_ar` 模块里的全局名
-  `DepthARModel` 换成工厂（与 `2641/run.py` 同款接线），其余训练/落盘全走共享 `main()`。
+  `DepthARModel` 换成工厂（与 `2641-ffn-ratio-frontier-13m/run.py` 同款接线），其余训练/落盘全走共享 `main()`。
 - `T` 臂的覆写表达式与 stock 逐字相同（`hf @ self.embed.weight.float().T`）⇒ **逐位等价**，
   由 §8 的逐位门（T1/T2）钉住。
 - `U` 臂：`logits = h·Uᵀ`，`U` 形状 `[206, 256]`，`U~N(0, d^-0.5)`（与 embedding 同尺度）独立初始化。
@@ -104,7 +104,7 @@ enwik8 字符级（vocab 206），`data/enwik8_full.npz`。
 - 对照 = `T` 臂（2641 `U4-s0`），复用按 `SCHEMA.md` §9 三道门：
   1. **实现层 equality**：`T` 臂构造 + 前向与引擎 stock 逐位相同（单测 `T1`），
      且与 `2641/runs/U4-s0-12k/model.pt` 载入后逐张量逐位相同、键无缺无余（单测 `T2`）；
-  2. **配置层 equality**：读 `2641/config.json` 逐字段列表对照（见 `analysis.md` §2 表），
+  2. **配置层 equality**：读 `2641-ffn-ratio-frontier-13m/config.json` 逐字段列表对照（见 `analysis.md` §2 表），
      不等字段必须显式列出；
   3. **口径标注**：历史同配置对照 + 等值性证明 + 已知口径，写进 `analysis.md` 首段与 §2。
   任一字段不等 ⇒ 回退到自包含双跑（本轮预算不允许，故若发现不等即降级为「不可判」写入）。

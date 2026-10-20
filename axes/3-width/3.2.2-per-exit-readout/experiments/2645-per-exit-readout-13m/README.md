@@ -87,11 +87,11 @@
 ## 5. 口径与锚复用（SCHEMA §9 三道门）
 
 1. **开关关闭逐位同前向单测**：`T` 臂 = stock `readout`（单测 `T1`）；
-2. **逐字段 config 对照**：`--stage anchor` 输出 `anchor_recheck.json::config_equivalence`
-   （17 个字段，含 `final_weight` 的代码谱系标注），并含一个**能变红**的变异用例（单测 `T7`）；
+2. **逐字段 config 对照**：`--stage anchor` 输出 `anchor_recheck.json`（**本次未产出**，见 §9）的
+   `config_equivalence`（17 个字段，含 `final_weight` 的代码谱系标注），并含一个**能变红**的变异用例（单测 `T7`）；
 3. **口径标注**：用**本文件自己的**电池重测 23c 锚 checkpoint，与 2610 用当前代码重测的
    `results.json::A_arm`（clean bpc 1.8582、tf@4 0.9694、tf@6 0.9938、ECE 0.0066）
-   **逐位对照**（`anchor_recheck.json::tf_matches_2610_bitwise`）。
+   **逐位对照**（`anchor_recheck.json` 的 `tf_matches_2610_bitwise`；该文件**本次未产出**，见 §9）。
    ⇒ 本实验的 `tf@k` / bpc / ECE 与 2610、与锚同口径可比。
 
 **与 3.2.1 的关系（须在复核里核）**：`3.2.1` 的 `2621-per-depth-readout-13m` 已有
@@ -139,7 +139,7 @@ python3 run.py --aggregate                            # 汇总 P1–P4 → resul
 * **60 步冒烟**（`STEPS=60 HOLD_ALL=1`，`runs` → `smoke/`）：`T` rc=0（22:57，训练 17.9 s）、
   `PE` rc=0、`IND` rc=0（23:09，训练 19.7 s / 17.9 s，含全电池）；`LR` 训练段跑通
   （wall 20.1 s，`LR-s0-0k/model.pt` 落盘）但评测电池被**单命令 70 s 上限**截断 ⇒
-  无 `results_LR_s0_0k.json`。冒烟读数（如 PE clean bpc 4.9994、读出参数量 589,824）
+  无 `results_LR_s0_0k.json`（该臂逐臂结果**未产出**）。冒烟读数（如 PE clean bpc 4.9994、读出参数量 589,824）
   **只是接线证据**，60 步模型无质量含义，**不入判据**，且被 `--aggregate` 的步数校验排除。
   冒烟抓到一个真缺陷：`tf_acceptance_engine_agrees` 原按 6 位小数与引擎的 4 位比较 ⇒ 假阴性；
   已改为 4 位比较并在单测里加计数一致性，见 `analysis.md` §4.4。

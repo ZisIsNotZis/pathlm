@@ -46,7 +46,7 @@ clean bpc 的差异能否超过项目方差带（0.014 bpc）？
   `H = mlp_mult·d = 1024`），`Block.forward` 里以模块调用 `x = x + self.mlp(self.ln2(x))`。
 - 本实验在**实验目录内**把每个 `blk.mlp` 换成包装模块 `SparseFFN(orig_mlp, arm)`，前向为
   `out = lin2(gelu(lin1(x)) * mask)` + `Dropout`，**不改引擎**（`pathlm/**`、`train_*.py` 一字未动）；
-  训练时把 `train_depth_ar` 模块里的全局名 `DepthARModel` 换成工厂（与 `2641/run.py` 同款接线），
+  训练时把 `train_depth_ar` 模块里的全局名 `DepthARModel` 换成工厂（与 `2641-ffn-ratio-frontier-13m/run.py` 同款接线），
   其余训练/落盘全走共享 `main()`。
 - `mask` 形状 `[B,T,H]`、与激活 **同 dtype**：
   - `K50`/`K25`：`mask = scatter(ones, topk(|pre|, k))`，`k = 50%` / `25%` 的通道，**选择器无参数**；
@@ -115,7 +115,7 @@ pre-activation**，因此 `lin1` 的 `d·H = 262144` MACs **无法省**，省下
 
 - 锚复用 = 2641 `U4-s0`（`D`）与 `U2-s0`（同算力参照），按 `SCHEMA.md` §9 三道门：
   ① 实现层 equality（本实验 `mask≡1` 时前向与 stock 逐位相同；`F50` 掩码全 0 的那一半
-  参数梯度恒 0 的口径在 `analysis.md` 声明）；② 配置层 equality（逐字段对照 `2641/config.json`）；
+  参数梯度恒 0 的口径在 `analysis.md` 声明）；② 配置层 equality（逐字段对照 `2641-ffn-ratio-frontier-13m/config.json`）；
   ③ 口径标注（`n_batches=20, bs=16, seed 2, steps 12000, seed 0`）。
 - 方差界 = 0.014 bpc（`docs/methodology.md` §2）；同 config 跨 seed 散布（2641: 1.5257/1.5298）作参照。
 - n=1（仅 seed 0）：越带结论为单点快照，只报增量方向。

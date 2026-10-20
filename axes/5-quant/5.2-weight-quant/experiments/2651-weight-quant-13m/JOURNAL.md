@@ -6,8 +6,8 @@
 - **2026-10-14T21:0x+08:00 · 开工（writer：axis5-w5.2，fresh 上下文）**
   - 读契约：`axes/5-quant/5.2-weight-quant/project.yaml`（WP1 的 `method` / `validation` /
     `objective_criteria` / `falsification` / `milestone` 逐字照做）。
-  - 读模板与仪器：`2621/run.py`（`b21.b19.load_trunk` / `bpc_of` / `masked_bpc` / `build_tasks` /
-    `pooled_accuracy` / `floor_threshold`）、`2632/run.py`（`GpuLock` + results.json 结构）、
+  - 读模板与仪器：`2621-kv-budget-rest/run.py`（`b21.b19.load_trunk` / `bpc_of` / `masked_bpc` / `build_tasks` /
+    `pooled_accuracy` / `floor_threshold`）、`2632-kv-block-scale/run.py`（`GpuLock` + results.json 结构）、
     `2631/causal_check.prefix_invariance_of_logits`。
   - 摸模型结构：`trunk.pt` 载入后共 **60 个 `nn.Linear`**（48 个 block 矩阵 + 12 个 `gates.*`）。
     发现 `gates.*` 在 `dense=True + exit_depths=None` 前向上**从不被读**（`depth_ar.py` 的

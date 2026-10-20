@@ -32,7 +32,7 @@
 
 ## 3. 共享文件与并发写（SCHEMA §22）
 
-- **本线不修改任何共享文件**：新逻辑全部放在新模块 `gaps_arms.py`；`2619/run.py` 与
+- **本线不修改任何共享文件**：新逻辑全部放在新模块 `gaps_arms.py`；`2619-kv-budget-chart/run.py` 与
   `tools/evalkit/*` 只被**读取 / `importlib` 载入**。故本线未持 `/tmp/pathlm_code.lock`，
   也不涉及「回读邻线标记 / 禁止回滚他人改动」。
 - GPU 面上我线与同批 V2（`2620-capacity-converged`）、V3 共享 `/tmp/pathlm_gpu.lock`，

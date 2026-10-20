@@ -1,6 +1,6 @@
 # 2661 · implicit（纯窗口 16）vs explicit（完备机制：逐层独立状态 + 内容写门）正面对撞 · 13M · enwik8
 
-> 契约来源：`.scratch/62-axis1-time/TICKET.md` §10.2（WP-C1）与本项 `1.1.4.5/project.yaml`
+> 契约来源：`.scratch/62-axis1-time/TICKET.md` §10.2（WP-C1）与本项 `1.1.4.5-implicit-vs-explicit/project.yaml`
 > 的 `milestone` / 判据。本文件是**预登记契约**：§4 判据线与 §4a 操作性定义在**启动任何 GPU
 > 运行之前**写死，写下后不得改。
 > 本实验同时作为 `1.1.4.1`（显式记忆）的**召回轴**证据（目录归 `1.1.4.5`，因该项目的 milestone
@@ -26,7 +26,7 @@
 若其敏感度 `Δbpc_far > 0` 且配对 CI 排除 0、且硬同索引子集上召回显著高于 implicit，
 则「搬回来了」在本尺度上成立（值不值另由等字节点质量差裁决，`2639`）。*
 
-## 2. 臂集（全部已训练完成；只做推理；逐臂 sha256 与 `2639/config.json` 核对）
+## 2. 臂集（全部已训练完成；只做推理；逐臂 sha256 与 `2639-carry-perlayer-frontier-13m/config.json` 核对）
 
 | 臂 | 来源 checkpoint | 机制 | seed | 参数 | 每位置等效状态字节 | sha256 |
 |---|---|---|---|---|---|---|

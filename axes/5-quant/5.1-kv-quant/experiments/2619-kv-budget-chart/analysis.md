@@ -6,7 +6,7 @@
 > 仪器：`tools/evalkit/longrange_tasks.py`（合成长程任务）、`tools/evalkit/kv_quant.py`（KV 量化往返）、
 > `tools/evalkit/retention.py`（可见性掩码 / 检索腿）。
 > 成本：**GPU 墙钟 32.11 s**（`results.json::cost`），**峰值 430.5 MiB**，14 个预算点，全部同进程重测。
-> 代码锚（`results.json::code`，sha256 前 16 位）：`2619/run.py` **32975b7600cf4d72**、
+> 代码锚（`results.json::code`，sha256 前 16 位）：`2619-kv-budget-chart/run.py` **32975b7600cf4d72**、
 > `longrange_tasks.py` **4a02b93f19db8e99**、`kv_quant.py` **1630f4519fa76562**、`retention.py` **8320f03a2ecf74e3**。
 
 ---

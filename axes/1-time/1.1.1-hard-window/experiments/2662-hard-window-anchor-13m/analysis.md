@@ -210,7 +210,7 @@
 | **因果性**（只改后半段 ⇒ 前半段 logits 逐位不变） | ✅ 5 臂全过 | `selfchecks.<arm>.causality.max_abs_logit_diff_prefix = 0.0`；`c5_causality_no_future_leak=true` |
 | **掩码非退化** | ✅ 过 | `selfchecks.win16a_*.mask.visible_pairs = 5868`（= `expected`，`ok=true`）；`win16_* = 3976`；`nondegenerate=true`；均 < `causal_pairs = 32896` |
 | **掩码活性（反事实）** | ✅ 活 | `selfchecks.<arm>.mask_counterfactual.max_abs_logit_diff_masked_vs_open`：win16a 17.07/15.34，win16 16.25/18.46（掩码开/关确实改前向，不是死开关） |
-| **复用臂逐位复现 2634** | ✅ 过 | `quality_leg.reuse_equivalence.win16_s0.bpc = 1.62811 = bpc_2634`（`equal=true`）；`win16_s1.bpc = 1.629093 = bpc_2634`（`equal=true`）；`c6_mask_nondegenerate_and_reuse_equal = true`（另经 `2634/results.json::quality_leg.rt_none_s0.bpc_win16=1.62811 / rt_none_s1=1.629093` 独立对账一致） |
+| **复用臂逐位复现 2634** | ✅ 过 | `quality_leg.reuse_equivalence.win16_s0.bpc = 1.62811 = bpc_2634`（`equal=true`）；`win16_s1.bpc = 1.629093 = bpc_2634`（`equal=true`）；`c6_mask_nondegenerate_and_reuse_equal = true`（另经 `2634-carry-realtext-13m/results.json::quality_leg.rt_none_s0.bpc_win16=1.62811 / rt_none_s1=1.629093` 独立对账一致） |
 | **参数量一致** | ✅ 过 | `selfchecks.*.n_params = 13536768`（5 臂相同；锚点不引入参数） |
 
 ---

@@ -28,7 +28,7 @@ status: judged
 - 长程类用 `tools/evalkit/longrange_tasks.py`；主判据难度档必须在训练分布内（§17.18）。
 - 单因素 + 逐字段对照（含 seed）；活性量每 200 步；语义开关要有可失败单测 + 变异验证（抓红且逐字节还原）。
 - 三道对账 + 禁外推；数字与 results.json/日志逐一对应 + 自带 reconcile_numbers.py。
-- 结束前 `python3 -m pytest tests/ -q` 全绿（**基线 522**）；权重不入库；不碰 catalog.yaml/INDEX.md/axes/**/README.md（实验目录内手写 README 可以）。
+- 结束前 `python3 -m pytest tests/ -q` 全绿（**基线 522**）；权重不入库；不碰 `catalog.yaml` / `INDEX.md` / `axes/**/README.md`（实验目录内手写 README 可以）。
 - **提交前逐条核对**：报告/README 声称的每个交付物路径都要出现在 `git diff --cached --name-only` 里。
 - 遇冲突/预算不够/锁异常/数字可疑 → 停下请示。
 

@@ -4,7 +4,7 @@
 `state_dict` 以取得**参数量**与 `n_kv_heads`（`torch.load(..., map_location="cpu")`，只读、不改、
 不写出）。权重文件不入库（`.gitignore` 覆盖 `*.pt`）。
 
-下表哈希由本文件写入时在磁盘上重算（`sha256sum`），与 `2632/MODEL.md` 的记录逐位相同
+下表哈希由本文件写入时在磁盘上重算（`sha256sum`），与 `2632-kv-block-scale/MODEL.md` 的记录逐位相同
 （`results.json::inputs_sha256` 已把四条一并预登记并在运行时校验）。
 
 | 角色 | 路径 | 大小（B） | 参数量（state_dict 求和） | n_kv_heads | sha256（磁盘实测） |

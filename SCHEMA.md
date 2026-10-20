@@ -588,7 +588,7 @@ rm -f "$LOCK/holder_pid" "$LOCK/heartbeat" 2>/dev/null; rmdir "$LOCK" 2>/dev/nul
      （`2623-standard-early-exit-13m/` 下的 `fill_share.py` / `audit_numbers.py`）。
 
    - **只改了实验文档、漏了账本与生成页**：2634 的硬子集召回从产物 `0.022529` 誊写进正文时
-     误成 `2.53%`（真值 **2.253%**）；发现后只改了 `2634/analysis.md`，**账本**
+     误成 `2.53%`（真值 **2.253%**）；发现后只改了 `2634-carry-realtext-13m/analysis.md`，**账本**
      `catalog.yaml` 的 M1 `verdict` 与**生成页** `archive/wiki-legacy/axes/M-carrier/M1-carrier-type/README.md`
      仍留 `2.53%` ⇒ 账本与它自己引用的证据矛盾。现由
      `tools/check_catalog_strict.py` 的 **跨表面一致性**机检（`local.key_numbers` 声明的关键数字

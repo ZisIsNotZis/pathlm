@@ -149,7 +149,7 @@ T、数据或渐近极限。
 1. **算术**：Δ 从 `eval.json` 重算逐点相等；注意力 MACs 闭式复算；token = S×bs×T = 12,288,000。
 2. **任务**：四臂同一数据切分与**同一评测流**（`window_seed=2`、20 批 × bs16）；逐字段对照只允许差
    `attn_linear` / `qk_norm`。
-3. **口径**：C1 读数来自 `eval.json::batteries`；C3 停摆/数值来自逐臂 `train_summary.json` 与
+3. **口径**：C1 读数来自 `eval.json::batteries`；C3 停摆/数值来自逐臂 `<arm>-train_summary.json` 与
    `runs/<arm>/train_log.jsonl`。
 
 **对账结论**：见 `reconcile_report.json`（`n_fail == 0`）。

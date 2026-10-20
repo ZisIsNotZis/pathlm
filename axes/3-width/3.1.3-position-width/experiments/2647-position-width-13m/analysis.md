@@ -121,7 +121,7 @@ eval generator seed 2)` 的最终深度 clean bpc，与本实验**同一函数�
   单臂 12k 约 8–13 min，队列长度 > 5 ⇒ 在本轮时间盒（95 min）内拿到锁的概率很低。
 - **本实验没有杀任何别人的进程、没有回收任何人的锁**（按 §9/§20 与派单边界）；发起的两个
   detached 作业仍在重试，**父级/integrator 可以继续收**：读数一落地就是
-  `results_PN_s0.json` / `results_NP_s0.json`（`supervise.log` 里会记 `supervise DONE`），
+  逐臂 `results_<arm>_s0.json`（arm = PN / NP；`supervise.log` 里会记 `supervise DONE`），
   之后跑 `python3 run.py --aggregate` 即得 P1/P2 汇总。
 - 60 步冒烟在锁饥饿下也**没跑成**；不过冒烟要确认的两件事——「窄段真的是窄的前向」
   与「attention mask 未变」——已由 CPU 单测 T2/T3b/T5/T6 **等价覆盖**（门在 CPU 上同样能变红，

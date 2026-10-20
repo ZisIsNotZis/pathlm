@@ -176,7 +176,7 @@ T ∈ {256, 512, 1024, 2048} × 训练期可见窗口 ∈ {full, w = T/2}（**�
 - 入口脚本：`run.py`（阶段 `preflight/train/train-all/eval/report/all`）；训练子进程 `clean_driver.py`。
 - resolved config：`config.json`；原始结果：`results.json` / `eval.json` / `smoke/smoke.json`。
 - 运行期引擎指纹：`run_fingerprints_backfill.json`（本次运行的**人工补记**：preflight 当时未自动落盘，
-  由会话内证据（`2637/config.json` 等）反推；形状与 `run.py --stage preflight` 写的 `run_fingerprints.json`
+  由会话内证据（`2637-linear-attn-quality/config.json` 等）反推；形状与 `run.py --stage preflight` 写的 `run_fingerprints.json`（**本次未产出**）
   兼容、两者互不覆盖；report 优先读前者，缺失时回退到补记）。
 - 对照与方差：`<arm>-train_summary.json`（八臂）+ `<arm>-train_log.jsonl`（逐臂轨迹，入库副本）。
 - 对账：`reconcile_numbers.py` → `reconcile_report.json`；变异：`mutate.py` → `mutation_report.json`。

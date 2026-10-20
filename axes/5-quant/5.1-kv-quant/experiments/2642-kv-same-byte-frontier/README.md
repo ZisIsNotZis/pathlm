@@ -27,9 +27,9 @@
 ## 1. 命题（可证伪）
 
 - **P1｜口径对账**：用解析式 `部署字节/位置 = 2·L·n_kv_eff·head_dim·(值字节 + 标尺字节/值)·(kept/T)`
-  独立重算的 27 臂部署字节，与 `2632/results.json::deployment_caliber.per_arm[*].primary.bytes_per_position`
+  独立重算的 27 臂部署字节，与 `2632-kv-block-scale/results.json::deployment_caliber.per_arm[*].primary.bytes_per_position`
   **逐位相等**（`max|Δ| = 0`）。
-- **P2｜两个口径不可混**：`2632/results.json::points[*].bytes_per_position` 是**仅值口径**（不含标尺），
+- **P2｜两个口径不可混**：`2632-kv-block-scale/results.json::points[*].bytes_per_position` 是**仅值口径**（不含标尺），
   量化臂上它比部署口径小（int8: 6144 vs 6528）；凡跨家族比较**必须**用部署口径。
 - **P3｜同字节可比的点对存在但稀疏**：在部署口径下，存在少量**跨家族、恰好同字节**的点对；这些点对
   给出不靠插值的直接比较；其余点对只能报「谁支配谁」。

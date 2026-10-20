@@ -23,7 +23,7 @@ mha 臂逐字段一致），实测 `head_dim → G → 每位置字节 → clean
 ## 2. 设备口径（本 run 的硬约束）
 
 - **训练腿**：单卡 4090 共享 ⇒ 按 `SCHEMA.md` §20 取 `/tmp/pathlm_gpu.lock`（协议只读复用
-  `2632/run.py::GpuLock`，未复制改写）；等锁上限 600 s，等不到**重试排队**、**不杀他人进程**；
+  `2632-kv-block-scale/run.py::GpuLock`，未复制改写）；等锁上限 600 s，等不到**重试排队**、**不杀他人进程**；
   两臂合计 ≈18 min > 10 min ⇒ **不整程持锁，每臂取一次锁、跑完即放**（§20.1）。
 - **评测腿**：`device: "cpu"`，**全部臂同一设备**、同窗口序、只报**配对 Δ**；按 §20 纯 CPU 推理不取 GPU 锁。
 - **跨设备 / 跨 checkpoint 都不构成判据**：GPU 历史锚 `1.483569`（`2614/2610` 口径，`head_dim=32` 的 trunk）
@@ -40,7 +40,7 @@ mha 臂逐字段一致），实测 `head_dim → G → 每位置字节 → clean
 - `fp16` = 2 B/值 ⇒ **12288 B/位置**（基线）；`int8 + 块标尺 G` = `1 + 2/G` B/值
   （G=64 ⇒ **1.03125 B ⇒ 6336 B/位置、省幅 48.4375%**；G=32 ⇒ 1.0625 ⇒ 6528、46.875%；G=16 ⇒ 1.125 ⇒ 6912、43.75%）；
   `fp8 E4M3 免标尺` = 1 B/值 ⇒ **6144 B/位置、省幅 50%**。
-- 每个数字都由只读复用的 `2653/fp8_arms.py::deployment_ledger` 给**逐项因子**，并与 `5.1` 的
+- 每个数字都由只读复用的 `2653-fp8-vs-int8-13m/fp8_arms.py::deployment_ledger` 给**逐项因子**，并与 `5.1` 的
   12288 / 6528 锚逐项断言对账（`config.json::analytic` 由该函数生成，本文件不手抄数字）。
 - **解析 vs 实测的对账口径**（WP2 的验收量）：实测标尺密度 `n_scales/n_values`（探针批）× 2 B/把
   = 每值摊到的标尺字节；加值字节得实测每值字节，乘 6144 得实测每位置字节，与解析价签逐位比对。
@@ -119,7 +119,7 @@ cd <expdir> && setsid nohup python3 hp64_train_driver.py >> train_driver.log 2>&
   （`PATHLM_HD64_RETRAIN=1` 强制重训），所以重跑驱动只会补没做完的臂；`hd64-s0` 已完成时可直接起评测（§10）。
   **预算紧时砍 `hd64-s1`**：先 `touch STOP_AFTER_FIRST_ARM` 再起驱动（或跑完 `hd64-s0` 后 touch），
   驱动会在起 `hd64-s1` 前显式登记 `cut_by_stop_file` 并退出。
-- 历史锚（只作预算记账）：同配方 12k 步墙钟 8.44–9.06 min/臂（`2616/MODEL.md`）。
+- 历史锚（只作预算记账）：同配方 12k 步墙钟 8.44–9.06 min/臂（`2616-gqa-mqa-13m/MODEL.md`）。
 
 ## 10. 评测（finisher 的一条命令）
 
@@ -139,16 +139,16 @@ cd /home/z/vibe/pathlm && python3 axes/5-quant/5.5-fp8-head-dim/experiments/2655
 - checkpoint：`runs/hd64-s0/model.pt`（`config.json::checkpoints.trunk`；预登记时期望 sha256
   **声明缺失 = null**，评测时现算并落盘 `results.json::checkpoint.sha256`）。
 - 只读复用（不在本目录复制改写；sha256 记在 `config.json::reuse`）：
-  `2653/fp8_arms.py`（fp8 往返 + 解析字节账）、`2653/run.py`（`eval_arm` / `paired_deltas` / `build_tasks`）、
-  `2621/run.py`（内含 `2619`：`bpc_of` / `masked_bpc` / `pooled_accuracy` / `floor_threshold`）、
-  `2631/causal_check.py`（前缀不变性两条）、`2632/block_arms.py`（int8 块标尺 equality）、
-  `2632/run.py::GpuLock`（§20 锁协议）、`tools/evalkit/kv_quant.py`（`quantize_kv(scheme="block", G)`）。
+  `2653-fp8-vs-int8-13m/fp8_arms.py`（fp8 往返 + 解析字节账）、`2653-fp8-vs-int8-13m/run.py`（`eval_arm` / `paired_deltas` / `build_tasks`）、
+  `2621-kv-budget-rest/run.py`（内含 `2619`：`bpc_of` / `masked_bpc` / `pooled_accuracy` / `floor_threshold`）、
+  `2631-kv-budget-causal/causal_check.py`（前缀不变性两条）、`2632-kv-block-scale/block_arms.py`（int8 块标尺 equality）、
+  `2632-kv-block-scale/run.py::GpuLock`（§20 锁协议）、`tools/evalkit/kv_quant.py`（`quantize_kv(scheme="block", G)`）。
 - 本实验新文件：`config.json`（运行前契约）· `hp64_train_driver.py`（训练驱动）·
   `hp64_arms.py`（评测入口 + WP2 对账 + 表格）· `README.md`（本文件）· `wp2_status.json`（状态登记）·
   `analysis.md`（结论与对账）· `JOURNAL.md`（过程流水）·
   `f5_anchor_2653_precision.py`（F5 ③ 的 12 位单点，写 `f5-anchor-2653-rerun/precision_point.json`）。
-- `f5-anchor-2653-rerun/`：F5 ③ 等价证据的原始证据子目录（`2653/run.py --arms fp16` 的输出 +
-  12 位单点），**不是本实验的读数**，仅供 `2653/results.json::anchor_single_point_f5` 溯源。
+- `f5-anchor-2653-rerun/`：F5 ③ 等价证据的原始证据子目录（`2653-fp8-vs-int8-13m/run.py --arms fp16` 的输出 +
+  12 位单点），**不是本实验的读数**，仅供 `2653-fp8-vs-int8-13m/results.json::anchor_single_point_f5` 溯源。
 
 ## 12. 失败决策树
 

@@ -31,7 +31,7 @@ bootstrap 95% CI 不含 0 且越 0.014 bpc 参考带恶化，且提高 K 不能�
 | 臂 | 说明 |
 |---|---|
 | `ar`（参照） | **只读复用** `2671-padfill-13m` 的 `ar` 臂 checkpoint（同 config / 同步数 S / seed {0,1}）；记录其文件 sha256 与实测参数量。若该 checkpoint 不可得，则在本目录用**逐字段相同的 config** 重训一个 AR 臂并在 `analysis.md` 显式声明 |
-| `mdiff`（本项变量） | `PadFillLM(attn_mask="full")`，训练目标 = **吸收态掩码扩散**：每 step 独立地对每个位置以概率 `r ~ U(0,1)` 替换为 `[mask]`（per-step 采样，固定调度种子），损失 = **只在被 mask 位置**上的 CE；`matched-step = S`（与 2671 的 S 逐字段相同，从 `2671/results.json::config.steps` 读，不得自行改） |
+| `mdiff`（本项变量） | `PadFillLM(attn_mask="full")`，训练目标 = **吸收态掩码扩散**：每 step 独立地对每个位置以概率 `r ~ U(0,1)` 替换为 `[mask]`（per-step 采样，固定调度种子），损失 = **只在被 mask 位置**上的 CE；`matched-step = S`（与 2671 的 S 逐字段相同，从 `2671-padfill-13m/results.json::config.steps` 读，不得自行改） |
 
 - **K 步采样器（写死，K ∈ {1,4,8,16}）**：置信度解掩码（MaskGIT / MDLM 式）——
   第 0 步把目标位置集 `M` 全部置 `[mask]`；每一步对当前全部 mask 位置做**一次全段前向**，

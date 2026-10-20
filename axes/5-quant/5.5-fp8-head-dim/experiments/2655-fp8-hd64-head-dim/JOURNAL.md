@@ -14,7 +14,7 @@
 2. `23:30:37` 起 **2653 的 `fp16` 臂历史锚口径重跑**（detach，F5 ③ 的等价证据）：
    `python3 axes/…/2653-fp8-vs-int8-13m/run.py --arms fp16 --out-dir <expdir>/f5-anchor-2653-rerun`
    ⇒ `[自检]` 三条 equality 全 True；`[主臂] fp16 bpc=1.483570（158 s，24×16@seed2）`；
-   `--arms` 不过滤 `side_arms`，故另跑出 3 个辅助臂（写入该 out-dir，不进 `2653/results.json`）；
+   `--arms` 不过滤 `side_arms`，故另跑出 3 个辅助臂（写入该 out-dir，不进 `2653-fp8-vs-int8-13m/results.json`）；
    `23:39:38` 完成（9.1 min）。
 3. `23:35:35` 起 **12 位精度单点**（detach，同一 `bpc_of` 路径）：
    `python3 <expdir>/f5_anchor_2653_precision.py` ⇒ `1.48357047091`（144.75 s），
@@ -23,7 +23,7 @@
    `partial=False`；逐臂读数：`fp16 1.483031`、`int8_block_g64 1.483140`、`fp8_e4m3 1.484297`、
    `int8_block_g16(scan) 1.495037`、`int8_block_g32(scan) 1.494940`。
 5. 落盘 `analysis.md`（人话摘要 + 主表 + 三道对账 + 判据逐条）、`table.md`（脚本生成）、
-   `2653/results.json::anchor_single_point_f5`（**新键**，既有键逐键比对未变）+ `2653/analysis.md` §9 追加。
+   `2653-fp8-vs-int8-13m/results.json::anchor_single_point_f5`（**新键**，既有键逐键比对未变）+ `2653-fp8-vs-int8-13m/analysis.md` §9 追加。
 6. `hd64-s1` **未训练完成**：driver `attempt=2` 在 `waiting_lock`（`wait_lock_timeout` 600 s 后
    sleep 20 重试）⇒ 本 run 主表按 `hd64-s0` n=1 出数并显式声明（见 `analysis.md` §5.1）。
 

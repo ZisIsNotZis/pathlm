@@ -4,7 +4,7 @@
 `config.json` 不重复列哈希，运行时由 `run.py` 从父实验 config 载入并由 `2619` 的载入器断言）。
 本实验**不训练、不新增参数**（`params_added = 0`）；只读复用他人目录的 checkpoint，权重不入库
 （`.gitignore` 覆盖 `*.pt`）。下表哈希由本文件写入时**在磁盘上重算**（`sha256sum`），与
-`2631/config.json::checkpoints.*.sha256` 逐位相同。
+`2631-kv-budget-causal/config.json::checkpoints.*.sha256` 逐位相同。
 
 | 角色 | 路径 | 大小 | sha256（磁盘实测） | 生成命令 |
 |---|---|---|---|---|

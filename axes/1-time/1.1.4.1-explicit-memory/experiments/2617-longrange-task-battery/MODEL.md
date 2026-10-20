@@ -11,7 +11,7 @@
 | 参数 | 13,536,768（13.54M） |
 | 词表 | 206（enwik8 全文件 205 个不同 byte + 1 个 mask 槽 205） |
 | 训练 | 12000 步 × bs32 × seq256 = 98.3M tokens，AdamW lr 1e-3 + cosine，seed 0（enwik8） |
-| 主干 clean bpc / t+1 acc | 1.4836 / 0.6979（eval 24×16 窗口，口径见 2610/MODEL.md） |
+| 主干 clean bpc / t+1 acc | 1.4836 / 0.6979（eval 24×16 窗口，口径见 `2610-frozen-trunk-jumphead-13m/MODEL.md`） |
 | SHA-256 | `86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2` |
 | 体积 | 54,193,675 B（54.2 MB） |
 | 文件 | `axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt` |

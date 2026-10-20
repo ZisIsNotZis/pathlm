@@ -8,9 +8,9 @@
 |---|---|---|
 | [`2503-engine-m1-extensions`](2503-engine-m1-extensions/README.md) | 目录内 README | 引擎使能项（非判决） |
 | [`2616-window192-trained-13m`](2616-window192-trained-13m/README.md) | 目录内 README | |
-| [`2617-design-rightcarry`](2617-design-rightcarry/README.md) | 目录内 README | 设计稿 |
+| [`2617-design-rightcarry`](2617-design-rightcarry/DESIGN.md) | 目录内 DESIGN.md | 设计稿 |
 | [`2617-longrange-task-battery`](2617-longrange-task-battery/README.md) | 目录内 README | 仪器 |
-| [`2617-prior-art-memory`](2617-prior-art-memory/README.md) | 目录内 README | 情报 |
+| [`2617-prior-art-memory`](2617-prior-art-memory/PRIOR_ART.md) | 目录内 PRIOR_ART.md | 情报 |
 | [`2618-carry-channel-13m`](2618-carry-channel-13m/README.md) | 目录内 README | |
 | [`2619-carry-difficulty-capacity`](2619-carry-difficulty-capacity/README.md) | 目录内 README | |
 | [`2620-capacity-converged`](2620-capacity-converged/README.md) | 目录内 README | |

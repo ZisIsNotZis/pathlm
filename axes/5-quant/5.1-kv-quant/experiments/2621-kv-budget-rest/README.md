@@ -193,7 +193,7 @@ python3 -m pytest tests/test_kv_budget_rest.py -q   # 19 绿
 - 被测量 checkpoint 全部**复用**（trunk / mha / gqa / mqa），只读 + 运行时 sha256 断言；
   权重不入库。清单见 `MODEL.md`。
 - 本实验**不修改任何共享文件**：新逻辑全部放在**新模块** `rest_arms.py`；`gaps_arms.py`
-  （2620）与 `2619/run.py`、`tools/evalkit/*` 只被**读取 / `importlib` 载入**。故本线未持
+  （2620）与 `2619-kv-budget-chart/run.py`、`tools/evalkit/*` 只被**读取 / `importlib` 载入**。故本线未持
   `/tmp/pathlm_code.lock`，也不涉及「回读邻线标记 / 禁止回滚他人改动」（SCHEMA §22 第 7 条
   的「更优解」路径）。
 - GPU 面上本线持有 `/tmp/pathlm_gpu.lock`（取锁 → 写 `holder_pid` + `heartbeat` → 释放先清

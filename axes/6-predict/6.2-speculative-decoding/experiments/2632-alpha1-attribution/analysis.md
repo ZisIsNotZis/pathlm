@@ -65,7 +65,7 @@ d3                             位置 N+3；2631 三臂固定为 node3
 | 53m_s0 | `2631-spec-three-arms/train/53m_s0` | `062786246886` | True |
 
 - **代码面**：`2631/train_arms.sh` 按 `<scale>_seed` 训练（如 `13m_s0`），配置 `config_13m.json`
-  **无臂开关**；`2631/run.py::load_ckpt` 每个 checkpoint 只加载一次并跑全部臂。
+  **无臂开关**；`2631-spec-three-arms/run.py::load_ckpt` 每个 checkpoint 只加载一次并跑全部臂。
 - **行为面**：三臂 `v1 = argmax node1(h_N)` 依赖同一 `h_N`（同 checkpoint、同前缀）⇒ `v1` 逐位
   相同；发出流因此逐位相同（本实验 3×checkpoint 全部 `bit_identical_all_arms=True`）。
 - ⇒ **`chain`/`direct`/`combined` 不是三个模型**，①「独立训练漂移」被构造性排除。
@@ -207,7 +207,7 @@ chain 0.842/0.919/0.975/0.995 vs direct 0.677/0.810/0.918/0.970；另两点同�
 
 ### 6.1 按预登记判据 T1 的原答案：翻转分支**触发**，必须做完整树实验
 
-`2632/README.md` §4.5 预登记的是 **cross-K 规则**：
+`2632-alpha1-attribution/README.md` §4.5 预登记的是 **cross-K 规则**：
 
 > 若存在 k 使 `recall@k(chain) ≥ recall@1(direct)` ⇒ **树可能翻转**，须做完整树实验才能定论。
 
@@ -256,7 +256,7 @@ chain 0.842/0.919/0.975/0.995 vs direct 0.677/0.810/0.918/0.970；另两点同�
   **三个点（13m_s0/s1、53m_s0）一致**：全部 **R>1 ⇒ 算力净亏**（旧口径的「~2× 省算力」
   是符号级错误）；**臂序不变**（direct < combined < chain，direct 亏最少）。
   墙钟加速比只作**相对排序**报（本机全程有外部 `llama-server` 占用，绝对墙钟不可用、禁外推）。
-  详细 old-vs-new 见 `2631/analysis.md` §3 与 `2631/results.json::compute_ledger_correction`。
+  详细 old-vs-new 见 `2631-spec-three-arms/analysis.md` §3 与 `2631-spec-three-arms/results.json::compute_ledger_correction`。
 
 ## 8. 未测项与「下一步最小实验 + 成本」
 

@@ -24,6 +24,8 @@
  12. `laws` / `cost_rows`（`docs/research-schema.md` §2.1 / §2.2）：定律编号限 1–11 且不重复，
      `cost_rows[].law` 必须是本项 `laws` 的成员，`touches_trunk` 必须是 bool，`delta` 必须是数字，
      `source` 指向的路径必须存在。
+ 13. 文档引用可解析：转调 `tools/check_docs.py`（文档里的 `文件:行` 与裸路径必须存在；该文件的
+     扫描范围与「不判」清单写在它自己的文件头）。一条命令覆盖树校验 + 引用校验。
 
 用法：python3 tools/check_tree.py   （退出码 0 = 全过；1 = 有错）
 """
@@ -37,6 +39,10 @@ import sys
 from pathlib import Path
 
 import yaml
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import check_docs  # noqa: E402  —— 文档引用校验只此一份实现
 
 ROOT = Path(__file__).resolve().parent.parent
 AXES = ROOT / "axes"
@@ -773,7 +779,8 @@ def main() -> int:
             print("  -", e)
         return 1
     print(f"OK：{len(entries)} 个 project.yaml 全部符合 docs/research-schema.md。")
-    return 0
+    # 文档引用（`tools/check_docs.py` 是唯一实现，这里只转调）
+    return check_docs.main([])
 
 
 if __name__ == "__main__":

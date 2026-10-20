@@ -51,7 +51,7 @@
 | 代价（质量腿 2） | 合成长程召回 copy/induction/var_recall（越高越好）+ Wilson 95% + 逐源簇 | `tools/evalkit/longrange_tasks.py` |
 | 参照系 | chance = 1/64 = 0.0156；局部先验（最近 8 token）= 0.0146；**逐臂毁源对照** | 同仪器内置 |
 | 收益（内存） | 相对全精度基线的每位置字节（**解析**；实测显存单列） | 解析公式（值字节列 + 部署列） |
-| 新旧对照 | Δbpc(新−旧) 逐臂 + 方向标签；非量化臂必须逐位不变 | `causal_check.compare_causal_vs_noncausal`（对 `2621/results.json`） |
+| 新旧对照 | Δbpc(新−旧) 逐臂 + 方向标签；非量化臂必须逐位不变 | `causal_check.compare_causal_vs_noncausal`（对 `2621-kv-budget-rest/results.json`） |
 | 可控性 | ① 仪器自检（本路径 vs 既有仪器逐位）；② 与来源实验逐位对照；③ `--charts-only` 可重画 | `results.json::instrument` / `cross_check_vs_source` |
 | 活性 | 量化：`n_values` / `changed_frac` / `rel_err` / `scale_min` / `scale_max`；掩码：挡掉的因果对数；头共享：真实 K/V 张量形状 | `results.json::points[*].activity` |
 

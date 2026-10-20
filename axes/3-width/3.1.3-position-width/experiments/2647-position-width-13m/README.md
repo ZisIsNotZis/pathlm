@@ -48,7 +48,7 @@ status: planned
 - 挂点 = `pathlm.model.Block.forward`（pre-LN：`ln1 → qkv → SDPA → proj` 残差、
   `ln2 → mlp[0] → GELU → mlp[1] → Dropout` 残差）。本实验在**实验目录内**把每个
   `blk.forward` 换成 `position_width_forward`（只改前向实现、不进 `pathlm/**`）；
-  训练时把 `train_depth_ar` 模块里的全局名 `DepthARModel` 换成工厂（与 `2641/run.py` 同款接线），
+  训练时把 `train_depth_ar` 模块里的全局名 `DepthARModel` 换成工厂（与 `2641-ffn-ratio-frontier-13m/run.py` 同款接线），
   参数解析 / 配置装配 / `train()` 循环 / checkpoint / `results.json` 全走**共享实现**。
 - **位置分段**：段由**绝对位置**决定（前 128 / 后 128），与内容无关、与可见集合无关。
   每段宽度 `w(p) ∈ {256, 128}`。

@@ -85,8 +85,8 @@ budget: "GPU ≤60 min（硬时间盒）：只训头（主干冻结）+ 评测�
 
 ## 7 交付物
 
-- `second_tree.py`（树构造 / 候选 / 验证接线）+ `run.py`（驱动，含 `--resume`）+ `test_second_tree.py`
-  （L0 与 L3 的**可失败**单测 + gate probe）+ `mutate.py`（≥3 条变异抓红 + 逐字节还原）+
+- `second_tree.py`（树构造 / 候选 / 验证接线）+ `run.py`（驱动，含 `--resume`）+ `test_second_tree.py`（**未产出**；L0 与 L3 的**可失败**单测 + gate probe）
+  + `mutate.py`（≥3 条变异抓红 + 逐字节还原）+
   `mutation_report.json`（**不得含逐次运行耗时**；**必须接统一变异框架** `from tools.evalkit import mutation`，
   否则 `tests/test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness` 会红）。
 - `results.json`（臂级 τ / α₁ / CI / 代价轴 / config；**无墙钟字段**）、`analysis.md`（人话摘要在前）、

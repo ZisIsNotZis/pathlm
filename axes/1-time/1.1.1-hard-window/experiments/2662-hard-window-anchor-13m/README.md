@@ -46,7 +46,7 @@
 | `full` | 复用 `2610-frozen-trunk-jumphead-13m/trunk.pt` | — | — | 0 | `None`（全因果） | 13,536,768 |
 
 - 复用臂**只做评测**（eval-only）；其等值性由「`win16_s0`/`win16_s1` 的 clean bpc 与
-  `2634/results.json` 落盘值**逐位相同**」佐证（判据⑥）。
+  `2634-carry-realtext-13m/results.json` 落盘值**逐位相同**」佐证（判据⑥）。
 - `full` 是全因果锚：质量与代价的**上界参照**（不是本 WP 的干预臂，无掩码 ⇒ 不参与弃源探针）。
 
 ## 4 判据线（**预登记**：写下后不得改）

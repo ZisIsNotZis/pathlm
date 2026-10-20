@@ -42,7 +42,7 @@
 | 量 | 值 | 来源 |
 |---|---|---|
 | 评测侧同 seed 整批重跑 | 见 `results.json::reproducibility`（期望逐位相同） | `run.py` 复现性块 |
-| 训练侧同类散度（本批已实测，另一条线） | **+3.271pp**（同配置两次 plain 写臂） | `.scratch/35-carry-channel` → `2618/divergence.json` |
+| 训练侧同类散度（本批已实测，另一条线） | **+3.271pp**（同配置两次 plain 写臂） | `.scratch/35-carry-channel` → `2618-carry-channel-13m/divergence.json` |
 | 本实验训练侧散度 | `B` vs `B_rep` 的答案行 CE 与主腿准确率之差 | `results.json::comparisons.B_vs_Brep` |
 | 方法学的 Δ < 0.014（bpc 口径）不可排序线 | 本实验**不用 bpc** 作判据（合成任务的 CE 是混合量），主判据用准确率 + 二项 CI | `docs/methodology.md` §2 |
 

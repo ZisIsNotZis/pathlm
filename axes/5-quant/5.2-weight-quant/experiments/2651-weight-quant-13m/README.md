@@ -115,7 +115,7 @@ G6 `gates.*` 的死权重性质必须被逐位证明。任一不成立 ⇒ 对�
 | 3 | **LLM.int8()**（Dettmers et al. 2022, arXiv:2208.07339） | 离群通道留 fp16（混合精度）；int8 主体 + 离群保护 | **本项不做离群保护** ⇒ 若 int4 越带，第一个嫌疑就是「未做离群保护」，见 `analysis.md` 局限 |
 | 4 | **块量化**（每 G 个连续权重共享一把 fp16 scale，llama.cpp `q8_0`/`q4_0` 式） | 把标尺从逐值摊到 `2/G` B/值 | **本地实测** G=32 在本仓 13M trunk 上的质量代价，并**逐矩阵**核标尺个数（防 5.1 的 2631 那种「逐值标尺把省内存算成占内存」的口径错误） |
 
-**检索说明**：arXiv 编号来自 `5.2/project.yaml::sota_baseline` 的本轮联网核实（HTTP 200）；
+**检索说明**：arXiv 编号来自 `5.2-weight-quant/project.yaml::sota_baseline` 的本轮联网核实（HTTP 200）；
 本文件只引用编号与一句方法方向，**不引用论文数字**，也不把它们当判据。
 
 ## 7. 对照与方差
@@ -152,7 +152,7 @@ G6 `gates.*` 的死权重性质必须被逐位证明。任一不成立 ⇒ 对�
 | 数据集 | `data/enwik8_full.npz`（末 10M 评测尾段跑 clean bpc）；**不入库** |
 | 合成任务 | `tools/evalkit/longrange_tasks.py`（copy / induction / var_recall）——SCHEMA §19 不用 enwik8 当长程主任务 |
 | 入口 | `python3 run.py`（全跑）／`--smoke`／`--charts-only` |
-| resolved config | `config.json`（`model`/`data`/`tokens`/`tasks`/`eval`/`checkpoints`/`controls`/`seed` 抄自 `2621/config.json`，出处见 `provenance`） |
+| resolved config | `config.json`（`model`/`data`/`tokens`/`tasks`/`eval`/`checkpoints`/`controls`/`seed` 抄自 `2621-kv-budget-rest/config.json`，出处见 `provenance`） |
 | 语义层 | `wq_arms.py`（权重假量化 + 字节账 + 活性量 + 死权重探针） |
 | 结果 | `results.json`（4 臂 + 配对窗口 + 字节账逐矩阵 + 仪器自检 + §20 记账 + 代码哈希） |
 | 表 | `table.md`（主表 + 字节账逐矩阵表 + 配对 Δ 表 + 召回表 + 解析阶梯） |

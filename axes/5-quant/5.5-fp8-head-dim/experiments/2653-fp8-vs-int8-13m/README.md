@@ -108,7 +108,7 @@ CPU 现测约 **2–5 s / 批（16×256）**（`.scratch/66-axis5-quant/evidence
 - 数据：`pathlm.data.load_enwik8_full`（`data/enwik8_full.npz` 的评测尾段；**不入库**）。
 - checkpoint：`2610-frozen-trunk-jumphead-13m/trunk.pt`，sha256 `86953d…159d2`，运行时断言。
 - harness（只读）：`axes/5-quant/5.1-kv-quant/experiments/2621-kv-budget-rest/run.py`（`b21`，
-  内含 `2619/run.py` 的 `bpc_of` / `masked_bpc` / `build_tasks` / `pooled_accuracy` / `floor_threshold`）、
+  内含 `2619-kv-budget-chart/run.py` 的 `bpc_of` / `masked_bpc` / `build_tasks` / `pooled_accuracy` / `floor_threshold`）、
   `2631-kv-budget-causal/causal_check.py`（前缀不变性两条）、`2632-kv-block-scale/block_arms.py`（int8 块标尺 equality 对照）、
   `tools/evalkit/kv_quant.py`（`quantize_kv` 的 scheme 分支）。
 - 本实验新文件：`fp8_arms.py`（fp8 往返 + 字节账，唯一新逻辑层）、`run.py`（入口，逐臂持久化）、

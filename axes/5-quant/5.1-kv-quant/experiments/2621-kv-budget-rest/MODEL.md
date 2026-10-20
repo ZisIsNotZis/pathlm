@@ -35,7 +35,7 @@
 ## 3. 共享文件与并发写（SCHEMA §22）
 
 - **本线不修改任何共享文件**：新逻辑全部放在**新模块** `rest_arms.py`；`gaps_arms.py`、
-  `2619/run.py`、`tools/evalkit/*` 只被**读取 / `importlib` 载入**。故本线未持
+  `2619-kv-budget-chart/run.py`、`tools/evalkit/*` 只被**读取 / `importlib` 载入**。故本线未持
   `/tmp/pathlm_code.lock`，也不涉及「回读邻线标记 / 禁止回滚他人改动」。
 - GPU 面上本线与同批六线共享 `/tmp/pathlm_gpu.lock`，遵守 SCHEMA §20 的串行协议
   （取锁 → 写 `holder_pid` + `heartbeat` → 释放先清内容再 `rmdir`）。本实验整程

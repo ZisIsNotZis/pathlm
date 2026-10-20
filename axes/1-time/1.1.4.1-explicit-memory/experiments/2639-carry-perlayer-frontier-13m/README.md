@@ -3,7 +3,7 @@
 > 契约来源：`.scratch/62-axis1-time/TICKET.md` §3 序 1 的**第二轮**（同一 WP：研究项 `1.1.4.1` 的 WP1）。
 > 动机：WP1 第一轮（实验 `2638`）判「显式状态点被同预算纯窗口严格支配」，但其否证归因是
 > **「单共享槽 = 被引擎/墙钟开销逼出的退化实现，完整机制未测」**（`55-review` M-05/M-06；
-> `2638/analysis.md` §5、`project.yaml` failure_analysis ①②③）。引擎侧 E1
+> `2638-carry-frontier-13m/analysis.md` §5、`project.yaml` failure_analysis ①②③）。引擎侧 E1
 > （`.scratch/67-engine-changes/E1-CARRYCHANNEL.md`，独立复核 PASS `REVIEW-E1.md`）已给出
 > **逐层独立状态 + 内容相关写入门 + 可选衰减 γ**——本实验用该完整机制**重测同一前沿**，
 > 回答「是机制不成立，还是那一个退化实现不成立」。
@@ -132,7 +132,7 @@
 
 同一 token 预算（12k × 32 × 256 = 98.3M）。复用臂的复用范围 = **eval-only**（不重训、不改配置）；
 复用等值性由「复用臂的 bpc 与本实验评测口径下 2638/2634 的产出逐位相同」独立佐证
-（见 `results.json` 的 `reuse_equivalence` 与 `2638/analysis.md`）。
+（见 `results.json` 的 `reuse_equivalence` 与 `2638-carry-frontier-13m/analysis.md`）。
 
 **主判据臂 = `carrypl16_s0`**（完整机制，γ=1）；`carrypl16d_s0`（γ）与 `c16c256_s0`（chunk 匹配的
 退化机制对照）为**补充臂**，缺任一个都不影响③的成立（不得事后以「缺 γ/缺 chunk 对照」为由软化判词）。

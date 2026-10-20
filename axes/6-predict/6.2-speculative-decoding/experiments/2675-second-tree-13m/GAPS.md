@@ -4,8 +4,7 @@
 
 - **缺什么**：`Decoder.step_tree_multi` 能表达**链**（`parents=[-1,0,1,…]`，与因果逐位一致，引擎单测钉住），
   但不能表达**同深度多兄弟**的分支树：`pathlm/decode.py:224` 把扁平第 j 个节点放在绝对位置 `p0+j`，
-  而 K 个 N+2 候选的正确位置都是 N+2。实测（本目录 `test_second_tree.py::test_flat_tree_siblings_are_not_position_faithful`
-  + `QUESTIONS.md` §3）：兄弟节点 logits 与位置正确条件分布的 TV = 0.0116，vs fp 噪声 3e-8。
+  而 K 个 N+2 候选的正确位置都是 N+2。实测（`QUESTIONS.md` §3）：兄弟节点 logits 与位置正确条件分布的 TV = 0.0116，vs fp 噪声 3e-8。
 - **最小 patch 是什么**：给 `step_multi`/`_run_stack_multi`/`step_tree_multi` 增一个可选
   `positions: list[int] | None = None`（缺省 `None` ⇒ 现状 `p0+j`，逐位不变），把它用于
   `model.pos_embed.weight[positions]` 与 `self.layer_pos[i] = [positions...]`；树的每个节点用**真实生成位置**

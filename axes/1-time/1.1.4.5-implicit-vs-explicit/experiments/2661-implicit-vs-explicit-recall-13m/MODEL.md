@@ -22,7 +22,7 @@
 
 | 文件 | sha256 | 说明 |
 |---|---|---|
-| `run.py` | `941a3ab245be560d178cbce83770f597006c2bd3deb5d1e37d36622dbf1b530a` | 本目录评测入口（fork 自 `2634/run.py`，改臂集与逐臂配置） |
+| `run.py` | `941a3ab245be560d178cbce83770f597006c2bd3deb5d1e37d36622dbf1b530a` | 本目录评测入口（fork 自 `2634-carry-realtext-13m/run.py`，改臂集与逐臂配置） |
 | `config.json` | `5a6856cb6f108941f3a31469bd4458490034f04e7bfdea2a8aee675393284cfb` | 本目录配置（含逐臂 path+sha256 + 预登记记录值 + 带） |
 | `realtext_probe.py` | `828225b37f665b01809a2c1014c6bb10db795c0dadffeb5485c578e5ee9df2fb` | 仪器层，自 `2634` **逐字节复制（不改）** |
 | `needle_stats.py` | `cd11bb7cdb3b3e60534f102b2df3d396a1a71b8ab0b471776d62b87584d33d4c` | needle 统计层，自 `2634` **逐字节复制（不改）** |

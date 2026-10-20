@@ -5,7 +5,7 @@
 > 「真实文本上的同口径复现」列为待办）。
 > 入口：`smoke_steptime.sh`（先测步时）→ `train_realtext.sh`（4 臂，按臂释放锁）→
 > `run.py`（真实文本三条腿 + 毁源/消融对照）；语义层 `realtext_probe.py`；本地单测
-> `test_realtext_probe.py`；原始结果 `results.json`；判读 `analysis.md`；权重清单 `MODEL.md`。
+> `tests/test_carry_realtext_13m.py`；原始结果 `results.json`；判读 `analysis.md`；权重清单 `MODEL.md`。
 
 ## 1. 命题
 

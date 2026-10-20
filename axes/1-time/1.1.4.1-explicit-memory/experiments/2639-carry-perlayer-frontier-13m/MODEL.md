@@ -45,7 +45,7 @@ CARRY_PER_LAYER=1 CARRY_DECAY=1.0 python3 axes/1-time/1.1.4.1-explicit-memory/ex
 - `win16_s0/s1`、`carry16_s0/s1` = `.../2634-carry-realtext-13m/train/{rt_none_s0,rt_none_s1,rt_delta_s0,rt_delta_s1}/model.pt`。
 - `win{17,18,24,32,128}_s0` = `.../2638-carry-frontier-13m/train/win{17,18,24,32,128}/model.pt`。
 - 复用等值性（`results.json.reuse_equivalence`）：**10/10 复用臂的 clean bpc 与
-  `2638/results.json` 逐位相同** ⇒ 换引擎（E1 默认路径逐位不变）后复用臂未被扰动。
+  `2638-carry-frontier-13m/results.json` 逐位相同** ⇒ 换引擎（E1 默认路径逐位不变）后复用臂未被扰动。
 
 ## 共享文件指纹（本轴未改任何共享文件；只读引用）
 

@@ -69,7 +69,7 @@ d3 = 草稿                     位置 N+3；2631 里三臂固定为 node3
   只新增本目录内文件。
 - **复核驱动的后续同步（超出实验本体，已记入本目录）**：为把「R=(1+γ)/(1+τ)」口径落到**生成器**，
   同步了 `2631-spec-three-arms/run.py::arm_ledger` 与 `controls/README.md`，并在
-  `tests/test_h3_spec_three_arms_ledger.py` 加了一条可失败断言（该测试读 `2631/results.json`）。
+  `tests/test_h3_spec_three_arms_ledger.py` 加了一条可失败断言（该测试读 `2631-spec-three-arms/results.json`）。
 
 ## 4. 判据线（预登记，事后不得改）
 
@@ -149,7 +149,7 @@ d3 = 草稿                     位置 N+3；2631 里三臂固定为 node3
 
 本研究**只做单轴单格**（H3-composition 内的「多位置预测的组合方式」），基底恒为 stock 对照；
 组合默认留白。`deps` 只记录耦合方向。**不引入新机制、不训练；实验本体不写共享文件**（唯一
-超出的共享改动是复核驱动的 `2631/run.py` 算力口径同步 + `tests/` 断言，见 §3）。
+超出的共享改动是复核驱动的 `2631-spec-three-arms/run.py` 算力口径同步 + `tests/` 断言，见 §3）。
 
 ## 11. 产出与复核
 

@@ -52,9 +52,9 @@
 | G1 | 独立重算的 27 臂部署字节 vs `2632::deployment_caliber.per_arm[*].primary.bytes_per_position`：`max|Δ| = 0` | **PASS**（`max|Δ| = 0`） |
 | G1b | 仅值口径核对：独立重算的仅值字节 vs `points[*].bytes_per_position` | 27/27 一致（该列确为仅值口径） |
 | G2 | 进入前沿表的量化臂全部为块标尺（`scheme = block`、`G = 32`）；出现 `per_value` 量化数字即作废 | **PASS**（非块标尺量化臂 = 空） |
-| 输入指纹 | 6 个输入（`2632/results.json`、`2632/config.json`、4 个 checkpoint）的 sha256 与预登记一致 | **PASS**（4 个 checkpoint 的 sha256 与 `2632/MODEL.md` 记录亦逐位相同） |
+| 输入指纹 | 6 个输入（`2632-kv-block-scale/results.json`、`2632-kv-block-scale/config.json`、4 个 checkpoint）的 sha256 与预登记一致 | **PASS**（4 个 checkpoint 的 sha256 与 `2632-kv-block-scale/MODEL.md` 记录亦逐位相同） |
 | 必须不变 (a) | 本实验对读数是**逐值透传**（不做任何数值变换）⇒ 预登记第 4 条在本层是**构造性事实/过程陈述，不构成独立检验** | `gates.readings_passed_through_untouched = true` |
-| 必须不变 (b) | **跨文档独立核**（本条才是真检验）：解析父实验**另一份产物** `2632/table.md` 表 1（markdown，由 `2632` 自己的代码路径生成、格式与 `results.json` 不同），与 2642 rows 逐臂比部署字节 / bpc / copy 召回 / CI | **PASS**：27 臂全解析，`max|Δ|` = 0（字节）/ 0（bpc）/ 4.9e-5（召回）/ 4.9e-5（CI），不一致 **0**；零头来自 `table.md` 只印 4 位小数（容差 5e-5，非口径差异） ⇒ `gates.cross_artifact_table_md_ok = true` |
+| 必须不变 (b) | **跨文档独立核**（本条才是真检验）：解析父实验**另一份产物** `2632-kv-block-scale/table.md` 表 1（markdown，由 `2632` 自己的代码路径生成、格式与 `results.json` 不同），与 2642 rows 逐臂比部署字节 / bpc / copy 召回 / CI | **PASS**：27 臂全解析，`max|Δ|` = 0（字节）/ 0（bpc）/ 4.9e-5（召回）/ 4.9e-5（CI），不一致 **0**；零头来自 `table.md` 只印 4 位小数（容差 5e-5，非口径差异） ⇒ `gates.cross_artifact_table_md_ok = true` |
 | 上游不变性 | 父实验自证的非量化臂逐位保持（相对 `2631`） | `2632::reuse.nonquant_bitwise_preserved = true`，`max|Δbpc| = 0` |
 
 两个门禁任一不成立即判本实验作废；此处不成立的是「作废」，不是「结论反转」。
@@ -155,7 +155,7 @@
 |---|---|
 | 27 臂部署字节独立重算与 `2632` 记录逐位一致 | `results.json::gates`、`rows[*].abs_diff_vs_recorded` |
 | 本实验对读数为逐值透传（过程陈述，非独立检验） | `results.json::gates.readings_passed_through_untouched` |
-| 跨文档独立核：`2632/table.md`（markdown，另一代码路径）vs 2642 rows 27 臂一致 | `results.json::gates.cross_artifact_table_md` |
+| 跨文档独立核：`2632-kv-block-scale/table.md`（markdown，另一代码路径）vs 2642 rows 27 臂一致 | `results.json::gates.cross_artifact_table_md` |
 | 仅值口径 ≠ 部署口径 | `rows[*].recorded_value_only_bytes` vs `deployment_bytes_per_position` |
 | 7 个跨家族同字节组 | `results.json::same_byte_groups`、`table.md` 表 2 |
 | 参数混杂拆开（解析 = 实测） | `results.json::param_confound`、`table.md` 表 3 |

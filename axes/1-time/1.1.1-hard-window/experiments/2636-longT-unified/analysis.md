@@ -282,8 +282,8 @@ T=256 臂远未收敛）。
 
 **共享文件并发状态（SCHEMA §22.6，如实记账）**：本实验**训练/评测运行期间**工作树
 `pathlm/depth_ar.py` 指纹为 `f2e72361…`、`train_depth_ar.py` 为 `3288b3d…→218b631…`
-（**含他线 M-carrier/R7 的未提交改动**；运行期的这一指纹由当时写下的 `2637/config.json` 与
-`2636/run.py` 首轮 `report` 佐证）；**运行之后**这些改动被其他线提交（HEAD `depth_ar.py` 现为
+（**含他线 M-carrier/R7 的未提交改动**；运行期的这一指纹由当时写下的 `2637-linear-attn-quality/config.json` 与
+`2636-longT-unified/run.py` 首轮 `report` 佐证）；**运行之后**这些改动被其他线提交（HEAD `depth_ar.py` 现为
 `b304c234…`）。`config.json::code_fingerprints_at_report` 是 **report 阶段**重算的 ⇒ 它记的是**报告时 HEAD**，
 **不是运行版本**（`code_fingerprints_at_run` 与 `code_fingerprints_at_report` 已分列，见
 `config.json`；前者的来源是 `run_fingerprints_backfill.json`——本次运行的**人工补记**，因为 preflight

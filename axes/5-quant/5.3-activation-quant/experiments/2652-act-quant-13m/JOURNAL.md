@@ -14,7 +14,7 @@
 ## 1. 时间线（真实时钟 +08:00）
 
 - `2026-10-14T20:54+08:00` 开工：读 `axes/5-quant/5.3-activation-quant/project.yaml`（本项契约）、
-  5.1 的 harness 模板（`2632/run.py` / `2621/run.py` + `config.json` / `2619/run.py`）、
+  5.1 的 harness 模板（`2632-kv-block-scale/run.py` / `2621-kv-budget-rest/run.py` + `config.json` / `2619-kv-budget-chart/run.py`）、
   `pathlm/depth_ar.py`（`Block` / `DepthARModel._input_states` / `readout`）、
   `tools/evalkit/kv_quant.py`（量化与活性量口径）、`tools/evalkit/retention.py`
   （`masked_logits` / `masked_bpc`）、`.scratch/66-axis5-quant/TICKET.md`。

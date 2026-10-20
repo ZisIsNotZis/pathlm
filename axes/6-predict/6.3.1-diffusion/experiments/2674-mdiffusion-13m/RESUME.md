@@ -1,6 +1,6 @@
 # RESUME · 2674-mdiffusion-13m（WP 6.3.1-WP1 掩码扩散最小判决）
 
-- 目标 / 契约：`README.md`（预登记，不得改）；matched-step = `2671/results.json::config.steps` = 1500；
+- 目标 / 契约：`README.md`（预登记，不得改）；matched-step = `2671-padfill-13m/results.json::config.steps` = 1500；
   seed {0,1}；K∈{1,4,8,16} 置信度解掩码采样；AR 只读复用 2671 读数。
 - owner / 状态：WP worker（单一写入者）；执行中，**GPU 锁被他人长占**（见下）。
 
@@ -18,7 +18,7 @@
 ## L0 已实证（无需 GPU）
 
 `python3 -c` 复现 2671 `eval_block_set` 的 M 生成顺序（r=0.25、min_pos=8、eval_mask_seed=2674）：
-64 block 的 `n_m` 与 `2671/results.json::ar[*].blocks` **逐条一致（差异清单为空）** ⇒ 同一位置集。
+64 block 的 `n_m` 与 `2671-padfill-13m/results.json::ar[*].blocks` **逐条一致（差异清单为空）** ⇒ 同一位置集。
 
 ## 阻塞：GPU 锁
 

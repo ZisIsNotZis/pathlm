@@ -202,7 +202,7 @@
    **排除的解释**：不是「做不到摊薄」，而是**可摊销的轴只有非 token 轴**，其宽度就是 `head_dim`。
 3. **以为**：逐值标尺是「因果性」的必然代价。
    **实际**：沿 `head_dim` 摊薄既严格前缀确定、又摊到 `2/G` B/值 ⇒ 逐值标尺并非物理下限，
-   而是一种（最贵的）实现选择。**⇒ 撤回 `2631/budget_caliber.py::mixed_axis_note` 的
+   而是一种（最贵的）实现选择。**⇒ 撤回 `2631-kv-budget-causal/budget_caliber.py::mixed_axis_note` 的
    「K 侧做不到非 token 轴摊薄」：本实验证明 K 沿 head_dim 分块可摊薄且保因果**（见 §9）。
 4. **局限**：① 单 seed、单规模（13.5M）、单 T（256）、`head_dim=32`、快照口径；② 质量数字只覆盖
    列出的方案（未测 fp8 标尺、旋转/投影类量化、权重/激活量化）；③ 「KIVI」为 `记忆·未核`（本机联网
@@ -228,8 +228,8 @@
 **明确撤回两句**：
 
 1. **「量化在任何拓扑上都是内存负收益」**——它是**逐值标尺实现**的产物，被本实验（块标尺 G=32，
-  int8 省 46.875%、前缀不变）否证。落点：R1 格页 `tax`/`benefit` 与 `2631/analysis.md` 的读法。
-2. **`2631/budget_caliber.py::mixed_axis_note` 的「K 侧做不到非 token 轴摊薄」**——被本实验否证：
+  int8 省 46.875%、前缀不变）否证。落点：R1 格页 `tax`/`benefit` 与 `2631-kv-budget-causal/analysis.md` 的读法。
+2. **`2631-kv-budget-causal/budget_caliber.py::mixed_axis_note` 的「K 侧做不到非 token 轴摊薄」**——被本实验否证：
    K 沿 `head_dim` 分块（`block`）就能摊薄到 `2/G` 且**保持严格因果**。（该文件是 `2631` 的冻结产物，
    本实验只在此处与 R1 格页撤回该句，不改 `2631/` 以免破坏其 `results.json::code` 的哈希绑定。）
 

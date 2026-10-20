@@ -103,7 +103,7 @@ checkpoint（`*.pt` 不入库，只在主工作树；本实验**不训练**）�
 - **P5（代价轴，如实报，不作判据）**：每 token 等效 FLOPs `R = B_verified·(1+γ)/(1+τ)`
   （树臂 `B_verified` = 每轮实际候选行数 K（1–4），单候选臂 = 1），并**明确声明 `R>1` 是
   投机解码范式的定义性质（用 FLOPs 换顺序前向次数）、不可证伪、不是「亏损发现」**；
-  附解析的 MTP 头 MAC 占比（照抄 `2631/spec_arms.py::mtp_head_macs`）。另并报树臂 vs 单臂的
+  附解析的 MTP 头 MAC 占比（照抄 `2631-spec-three-arms/spec_arms.py::mtp_head_macs`）。另并报树臂 vs 单臂的
   `R` 对比（树用 K 倍 FLOPs 换更高 τ 是否值），**不得**写成硬判据。
 
 **否证条件（预登记）**：

@@ -196,5 +196,5 @@ python3 reconcile_numbers.py   # 三道对账
 
 - 被测量 checkpoint 全部**复用**（trunk / mha / gqa / mqa），只读 + 运行时 sha256 断言；
   权重不入库。清单见 `MODEL.md`。
-- 本实验**不修改任何共享文件**（`2619/run.py` 只以 `importlib` 载入；新增逻辑全在
+- 本实验**不修改任何共享文件**（`2619-kv-budget-chart/run.py` 只以 `importlib` 载入；新增逻辑全在
   `gaps_arms.py`），故不涉及 SCHEMA §22 的代码编辑锁。
