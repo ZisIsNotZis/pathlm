@@ -8,8 +8,9 @@
 **做了什么**：在同一个 13M / 8 层 / 256 宽 / T=256 / 12k 步的 dense 主干上，只换注意力「能看见
 哪些位置」：对照臂 `win32` 看最近 32 个位置（复用 `2676` 的两条已训臂），实验臂 `dil32` 看
 近端 16 个位置 + 16 个按行均匀铺满前缀的空洞点（本实验新训 seed 0 与 seed 1 两条）。两臂的
-**每行可见键数逐行相等**（都 = min(32, i+1)）、参数量逐位相等（6,962,688）、主干初始化同 seed
-逐位相同 ⇒ 唯一变量就是「挑哪 32 个位置」。
+**每行可见键数逐行相等**（都 = min(32, i+1)）、参数量逐位相等（6,962,688）、主干**构造路径同源**
+（同一个训练函数、同 seed 构造，转换前后各参数逐位不变；两个 run 各自训练后的 checkpoint 本来就不
+相同，本实验**没有**把 dil 的初始权重与 `win32` 的 checkpoint 逐位比过）⇒ 唯一变量就是「挑哪 32 个位置」。
 
 **测出来多少（本尺度）**：
 
@@ -76,7 +77,7 @@
 | ② 主判：远档召回（`config.json::recall.far_distances` = 64/128/192/240，每档 64 批 × 32 样本 = 2048 样本/臂） | `recall_power.by_distance.*.best_over_chance` = 0.38–0.94（都 < 1× chance）、`instrument_has_power_far = false`；`recall_separable.far.s0` = 四档全含、`s1` = `["d240"]`，`delta_acc` 在 +0.00488…+0.01074（正 = 窗口更高） | 8 倍样本下「可分」的档更多，但每一档的**绝对**准确率都 ≤ 0.0156 = chance ⇒ 那是系统偏置不是召回能力 ⇒ 仪器在本尺度**无分辨力**，判据②**给不出正向证据** |
 | ③ 近档对照（16/32） | `recall_separable.near` = 两 seed 的 `d16` / `d32` 都「可分」，`delta_acc` = +0.00928 / +0.01270（s0）、+0.00537 / +0.00488（s1）（正 = 窗口更高） | 只有 `d = 16` 才是「两臂都够得着」的对照，且它的偏差也只有 ~0.005–0.009、两臂绝对准确率都在 chance 以下 ⇒ 与召回机制无关；`d = 32` 超出 `win32` 的可达上界 31，不作对照 |
 | ④ 必须不变：可见键数逐行相等 / 因果 | `alignment_checks.per_row_count_equal = true`、`mismatch_rows = 0`、`per_row_count_equals_min_k = true`、`mask_offending_future_pairs = 0` | 同预算对照成立 |
-| ⑤ 必须不变：参数量与初始化 | `params_all_equal = true`、`params_value = 6962688`；`runs/dil32-s*/results.json::conversion_check.params_identical_to_stock = true` | 唯一变量 = 掩码 |
+| ⑤ 必须不变：参数量与初始化 | `params_all_equal = true`、`params_value = 6962688`；`runs/dil32-s*/results.json::conversion_check.params_identical_to_stock = true`（转换前后逐位不变，即构造路径同源） | 唯一变量 = 掩码；⑤ 的「同 seed 逐位相同」只有构造路径同源的证据，未与 `win32` checkpoint 逐位比 |
 | ⑥ 参照线：相对 `full` | `paired_vs_full.win32.delta_bpc = -0.09462`（20/20 批同向为负）、`dil32 = -0.08267` | 少看键的代价：窗口 0.0946、空洞 0.0827 ⇒ 回收 0.0120（带内） |
 | ⑦ 申报（不进判据） | `train_declaration`：`dil32` 6.85 min / 1191.8 MiB、`dil32_s1` 6.85 min / 1191.8 MiB、`win32` 7.14 min / 1191.4 MiB、`win32_s1` 6.89 min / 1191.4 MiB、`full` 5.95 min | 墙钟与显存不作判据（`docs/methodology.md` §3） |
 | 门户 | `reuse_equivalence.win32{,_s1}.reproduced = true` | 复用臂的逐批 bpc 逐位复现 `2676`，评测口径未漂移 |
