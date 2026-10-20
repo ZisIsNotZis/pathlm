@@ -120,7 +120,7 @@ k=64 只涨 +0.000066，都远小于 0.014 带），所以「纯窗口变强」�
 
 | 要证的事 | 命令 | 结果 |
 |---|---|---|
-| `README.md` 一生只被两个提交碰过 | `git log --follow --format='%h %ad' -- .../2681-.../README.md` | `4aca516` 23:03:09（首建）、`b671069` 23:59:17（修键锚点），**其后无提交** |
+| `README.md` 只被两个提交动过 | `git log --follow --format='%h %ad' -- .../2681-.../README.md` | `4aca516` 23:03:09（首建）、`b671069` 23:59:17（修键锚点），**其后无提交** |
 | 唯一那次改动改了什么 | `git diff 4aca516 b671069 -- .../README.md` | 1 行：判据① 的键锚点 `rows[*]` → `rows.win32_s0`（前者解析不到）；**判定线、阈值、§3 字节账一字未动** |
 | 最终绑定（00:27:26）之后没再碰 `README.md` | `git diff b671069 HEAD -- .../README.md` | **空** |
 | 契约文件当前字节 = 绑定时的字节 | 对 `prereg_binding.json::contract_files` 逐个算 sha256 | 4/4 相同（`README.md` `a655998c…`、`config.json` `ffd4d381…`、`run.py` `77ed4f98…`、`train_arms.sh` `d69843a5…`） |
