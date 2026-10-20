@@ -1,0 +1,110 @@
+{
+  "experiment": "axes/1-time/1.1.1-hard-window/experiments/2679-anchor-eval-ablation-13m",
+  "owner_cell": "axes/1-time/1.1.1-hard-window",
+  "device": "cuda",
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true,
+    "topology": "sequential",
+    "note": "与 2662 / 2634 逐字段相同的 stock dense 规格；本实验不训练任何臂，只对已训 checkpoint 改评测期掩码"
+  },
+  "data": {
+    "name": "enwik8_full",
+    "raw_path": ".tmp/enwik8",
+    "cache": "data/enwik8_full.npz",
+    "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）"
+  },
+  "eval": {
+    "n_batches": 96,
+    "batch_size": 16,
+    "window_seed": 2,
+    "note": "与 2662 / 2634 同一函数（realtext_probe.win16_bpc）、同一批数、同一窗口序 ⇒ 带锚点那四个格子必须逐位复现 2662 落盘值（判据①）"
+  },
+  "arms": [
+    {
+      "name": "win16a_s0",
+      "trained_window": 16,
+      "trained_anchors": 8,
+      "seed": 0,
+      "path": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s0/model.pt",
+      "sha256": "5a41ed069ee0ba784187b8d2adc054d334ed418c57ba5ff05fbf6347141cdb2d",
+      "provenance": "本格 WP1（2662）自训臂"
+    },
+    {
+      "name": "win16a_s1",
+      "trained_window": 16,
+      "trained_anchors": 8,
+      "seed": 1,
+      "path": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s1/model.pt",
+      "sha256": "eb6c9d4a8693c45848d55c672f466aa42f92e4c8586011862ca2f2cdf0a55ffb",
+      "provenance": "本格 WP1（2662）自训臂"
+    },
+    {
+      "name": "win16_s0",
+      "trained_window": 16,
+      "trained_anchors": 0,
+      "seed": 0,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+      "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+      "provenance": "2634 的 rt_none 纯窗臂（2662 也复用同一 checkpoint）"
+    },
+    {
+      "name": "win16_s1",
+      "trained_window": 16,
+      "trained_anchors": 0,
+      "seed": 1,
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+      "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+      "provenance": "2634 的 rt_none 纯窗臂（2662 也复用同一 checkpoint）"
+    }
+  ],
+  "cells": [
+    {"name": "a_s0_eval_anchors8", "arm": "win16a_s0", "eval_window": 16, "eval_anchors": 8},
+    {"name": "a_s0_eval_anchors0", "arm": "win16a_s0", "eval_window": 16, "eval_anchors": 0},
+    {"name": "a_s1_eval_anchors8", "arm": "win16a_s1", "eval_window": 16, "eval_anchors": 8},
+    {"name": "a_s1_eval_anchors0", "arm": "win16a_s1", "eval_window": 16, "eval_anchors": 0},
+    {"name": "w_s0_eval_anchors0", "arm": "win16_s0", "eval_window": 16, "eval_anchors": 0},
+    {"name": "w_s0_eval_anchors8", "arm": "win16_s0", "eval_window": 16, "eval_anchors": 8},
+    {"name": "w_s1_eval_anchors0", "arm": "win16_s1", "eval_window": 16, "eval_anchors": 0},
+    {"name": "w_s1_eval_anchors8", "arm": "win16_s1", "eval_window": 16, "eval_anchors": 8}
+  ],
+  "criterion": {
+    "sigma_cell": 0.000983,
+    "sigma_cell_source": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/results.json::quality_leg.sigma_cell_own_cell（本格自测带，描述量：两臂两 seed 的清洁 bpc 极差）",
+    "cross_cell_band": 0.014,
+    "cross_cell_band_role": "参考线，不与本格带混用（C1 裁决）；主判用 sigma_cell",
+    "n_boot": 10000,
+    "boot_seed": 2679,
+    "alpha": 0.05,
+    "equality_gate": {
+      "a_s0_eval_anchors8": 1.622527,
+      "a_s1_eval_anchors8": 1.621799,
+      "w_s0_eval_anchors0": 1.62811,
+      "w_s1_eval_anchors0": 1.629093
+    },
+    "equality_gate_source": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/results.json::quality_leg.bpc",
+    "cell_band_must_close_the_gap": 0.125421,
+    "cell_band_must_close_the_gap_source": "2662 的 quality_leg.gap_win16_full（窗口 16 → 全因果的质量差；质量收益要拿它做分母才读得懂量级）",
+    "visible_pairs_expected": {"anchors8": 5868, "anchors0": 3976},
+    "decision": {
+      "ablation_at_or_above_band": "若逐 seed 的 Δ_abl 同向 > 0、配对 bootstrap CI 不含 0、且 |Δ_abl| ≥ sigma_cell ⇒ 「推理期锚点可见性承载质量收益」",
+      "ablation_inside_band": "若两 seed 的 |Δ_abl| 都 < sigma_cell ⇒ 「质量收益属训练侧（训练期见过 16+8 个键），评测期锚点可见性不承载它」",
+      "otherwise": "其余情形（异向 / 同向但 CI 含 0 / 恰好骑带）⇒ 「本 n 下不可判」，如实报，不写成机制结论",
+      "reverse_control": "Δ_rev 不设方向预登记，正负都如实报；|Δ_rev| < sigma_cell ⇒ 「评测期白给 8 个锚点不改变质量」"
+    },
+    "direction_convention": "Δ = 实验格 − 对照格（arm_minus_comparator）；bpc 越低越好，故 Δ > 0 = 实验格更差"
+  },
+  "judged_questions": [
+    "带锚点训练的那份质量收益（−0.005583 / −0.007294 bpc）在评测期把锚点去掉后还剩多少 ⇒ 归因到训练侧还是推理期可见性",
+    "反向：纯窗臂在评测期白给 8 个锚点位置（0 训练 token）会不会改善质量 ⇒ 锚点是否为一种评测期免费的技巧"
+  ],
+  "budget": {
+    "gpu_wall_budget_min": 20,
+    "n_training_tokens": 0,
+    "note": "纯推理：8 个格子 × 96 批 × 16 × 256 token；不训练、不改权重、不改共享引擎"
+  }
+}
