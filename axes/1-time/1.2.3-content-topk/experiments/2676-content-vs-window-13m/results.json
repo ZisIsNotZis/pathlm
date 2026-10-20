@@ -2,12 +2,13 @@
   "experiment": "2676-content-vs-window-13m",
   "delta_directions": {
     "delta_bpc": "comparator_minus_arm",
+    "delta_by_seed": "comparator_minus_arm",
     "sd_of_paired_delta": "comparator_minus_arm",
     "frac_batches_delta_gt_0": "comparator_minus_arm",
     "min_delta": "comparator_minus_arm",
     "max_delta": "comparator_minus_arm"
   },
-  "delta_direction_note": "所有 Δ 读数一律 Δ = bpc_对照 − bpc_实验，正 = 实验更好。`vs_full` 的对照 = full、实验 = 该臂；`content_vs_window` 的对照 = 同 k 的位置窗口、实验 = 内容 top-k（README §3 的 Δ 方向）。",
+  "delta_direction_note": "所有 Δ 读数一律 Δ = bpc_对照 − bpc_实验，正 = 实验更好。`vs_full` 的对照 = full、实验 = 该臂；`content_vs_window` / `cross_seed` 的对照 = 同 k 的位置窗口、实验 = 内容 top-k（README §3 的 Δ 方向）。",
   "config": {
     "d_model": 256,
     "n_layers": 8,
@@ -18,6 +19,7 @@
     "batch_size": 32,
     "lr": 0.001,
     "seed": 0,
+    "seed_note": "主表 = seed 0；主判 k=32 另有 seed 1 的升格对（`topk32_s1` / `win32_s1`），逐臂 seed 见 arms[].seed",
     "data": "data/enwik8_full.npz",
     "data_split": "前 90M 训练 / 末 10M 评测（enwik8，vocab 206）",
     "eval": {
@@ -34,6 +36,7 @@
       "kind": "full",
       "k": 0,
       "window": 0,
+      "seed": 0,
       "role": "基线：全因果（每行可见 i+1 个键）",
       "ckpt": "/home/z/vibe/pathlm/axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/runs/full-12k-s0/model.pt",
       "params": 6962688
@@ -43,6 +46,7 @@
       "kind": "topk",
       "k": 32,
       "window": 0,
+      "seed": 0,
       "role": "内容选择 k=32（因果内按 q·kᵀ 取前 32）",
       "ckpt": "/home/z/vibe/pathlm/axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/runs/topk32-12k-s0/model.pt",
       "params": 6962688
@@ -52,6 +56,7 @@
       "kind": "topk",
       "k": 64,
       "window": 0,
+      "seed": 0,
       "role": "内容选择 k=64",
       "ckpt": "/home/z/vibe/pathlm/axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/runs/topk64-12k-s0/model.pt",
       "params": 6962688
@@ -61,6 +66,7 @@
       "kind": "window",
       "k": 32,
       "window": 32,
+      "seed": 0,
       "role": "位置选择 k=32（最近的 32 个位置）",
       "ckpt": "/home/z/vibe/pathlm/axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/win32/model.pt",
       "params": 6962688
@@ -70,8 +76,29 @@
       "kind": "window",
       "k": 64,
       "window": 64,
+      "seed": 0,
       "role": "位置选择 k=64",
       "ckpt": "/home/z/vibe/pathlm/axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/win64/model.pt",
+      "params": 6962688
+    },
+    {
+      "name": "topk32_s1",
+      "kind": "topk",
+      "k": 32,
+      "window": 0,
+      "seed": 1,
+      "role": "内容选择 k=32，seed 1（主判升格对）",
+      "ckpt": "/home/z/vibe/pathlm/axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/topk32_s1/model.pt",
+      "params": 6962688
+    },
+    {
+      "name": "win32_s1",
+      "kind": "window",
+      "k": 32,
+      "window": 32,
+      "seed": 1,
+      "role": "位置选择 k=32，seed 1（主判升格对）",
+      "ckpt": "/home/z/vibe/pathlm/axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/win32_s1/model.pt",
       "params": 6962688
     }
   ],
@@ -1129,7 +1156,9 @@
     "topk32": 1.54704,
     "topk64": 1.53993,
     "win32": 1.62503,
-    "win64": 1.57694
+    "win64": 1.57694,
+    "topk32_s1": 1.54084,
+    "win32_s1": 1.61761
   },
   "per_batch_bpc": {
     "full": [
@@ -1241,6 +1270,50 @@
       1.61623,
       1.44641,
       1.59042
+    ],
+    "topk32_s1": [
+      1.48005,
+      1.55932,
+      1.53204,
+      1.52493,
+      1.64581,
+      1.54853,
+      1.46734,
+      1.64676,
+      1.50688,
+      1.46169,
+      1.69229,
+      1.54131,
+      1.44879,
+      1.45262,
+      1.64617,
+      1.58066,
+      1.51387,
+      1.59405,
+      1.40249,
+      1.57117
+    ],
+    "win32_s1": [
+      1.55876,
+      1.61165,
+      1.63069,
+      1.58062,
+      1.73753,
+      1.63878,
+      1.61223,
+      1.77461,
+      1.56808,
+      1.50344,
+      1.74085,
+      1.64526,
+      1.5354,
+      1.52036,
+      1.70499,
+      1.68664,
+      1.54524,
+      1.64873,
+      1.47561,
+      1.63278
     ]
   },
   "paired_vs_full": {
@@ -1307,13 +1380,66 @@
       "max_delta": 0.07588
     }
   },
+  "cross_seed": {
+    "delta_by_seed": {
+      "s0": 0.07799,
+      "s1": 0.07677
+    },
+    "paired_stats_by_seed": {
+      "s0": {
+        "n_batches": 20,
+        "delta_bpc": 0.07799,
+        "sd_of_paired_delta": 0.03092,
+        "se_of_mean": 0.00691,
+        "t_stat": 11.28,
+        "frac_batches_delta_gt_0": 1.0,
+        "min_delta": 0.03553,
+        "max_delta": 0.16526
+      },
+      "s1": {
+        "n_batches": 20,
+        "delta_bpc": 0.07677,
+        "sd_of_paired_delta": 0.02932,
+        "se_of_mean": 0.00656,
+        "t_stat": 11.71,
+        "frac_batches_delta_gt_0": 1.0,
+        "min_delta": 0.03137,
+        "max_delta": 0.14489
+      }
+    },
+    "arm_mean_bpc_by_seed": {
+      "topk32": {
+        "s0": 1.54704,
+        "s1": 1.54084
+      },
+      "win32": {
+        "s0": 1.62503,
+        "s1": 1.61761
+      }
+    },
+    "seed_spread_bpc": {
+      "topk32": 0.0062,
+      "win32": 0.00742
+    },
+    "seeds_with_both_arms": [
+      "s0",
+      "s1"
+    ],
+    "same_direction": true,
+    "both_beyond_band": true,
+    "n_batches_per_seed": 20,
+    "note": "同 seed 内两臂是配对差（同批位置、同 batch 顺序）；跨 seed 的 `seed_spread_bpc` 是两个独立训练 run 之差，只作种子散布、不是配对差。单格 n=2 只给一致性，不给跨 seed 方差的合并显著性检验（同 2644-channel-sparsity-13m/results.json::cross_seed 的口径）。"
+  },
   "main_verdict": {
     "criterion": "主判：Δ = bpc_win − bpc_topk（对照 = 位置窗口，实验 = 内容 top-k）；Δ ≥ +0.014 ⇒ 内容选择占优；|Δ| < 0.014 ⇒ 无质量增量；Δ ≤ -0.014 ⇒ 内容选择更差",
     "band_bpc": 0.014,
-    "k32": "内容选择占优（Δ ≥ +0.014，越带）",
+    "k32": "内容选择占优（两 seed 同向且各自越带 ⇒ n=2）",
     "k64": "内容选择占优（Δ ≥ +0.014，越带）",
-    "n_seed": 1,
-    "n_note": "五臂都是 seed 0 单 run ⇒ 越带只能报「临时结果（n=1）」，不越带则「同质量」这一读法对标量差本就成立"
+    "n_seed": {
+      "k32": 2,
+      "k64": 1
+    },
+    "n_note": "k=32 有 seed 0 与 seed 1 两对（升格对，见 cross_seed）⇒ 判词按 README §3 的升格规则出；k=64 仍是 seed 0 单 run ⇒ 越带只能报「临时结果（n=1）」，不越带则「同质量」这一读法对标量差本就成立"
   },
   "cost_theory": {
     "kv_bytes_per_position_fp16": {
@@ -1357,36 +1483,58 @@
       "max_abs_logit_diff": 0.0,
       "batch": 4,
       "note": "模型自己的前向（含该臂可见集）vs masked_logits 的显式掩码前向"
+    },
+    "topk32_s1": {
+      "max_abs_logit_diff": 0.0,
+      "batch": 4,
+      "note": "模型自己的前向（含该臂可见集）vs masked_logits 的显式掩码前向"
+    },
+    "win32_s1": {
+      "max_abs_logit_diff": 0.0,
+      "batch": 4,
+      "note": "模型自己的前向（含该臂可见集）vs masked_logits 的显式掩码前向"
     }
   },
   "measured_step": {
     "full": {
-      "median_ms": 12.91,
-      "min_ms": 12.58,
+      "median_ms": 15.59,
+      "min_ms": 14.17,
       "n_iters": 8,
       "peak_mem_gib": 0.457
     },
     "topk32": {
-      "median_ms": 22.73,
-      "min_ms": 22.39,
+      "median_ms": 29.92,
+      "min_ms": 25.24,
       "n_iters": 8,
       "peak_mem_gib": 0.722
     },
     "topk64": {
-      "median_ms": 31.9,
-      "min_ms": 26.15,
+      "median_ms": 30.62,
+      "min_ms": 23.36,
       "n_iters": 8,
       "peak_mem_gib": 0.723
     },
     "win32": {
-      "median_ms": 20.74,
-      "min_ms": 15.55,
+      "median_ms": 22.39,
+      "min_ms": 19.12,
       "n_iters": 8,
       "peak_mem_gib": 0.645
     },
     "win64": {
-      "median_ms": 24.51,
-      "min_ms": 20.77,
+      "median_ms": 20.26,
+      "min_ms": 14.57,
+      "n_iters": 8,
+      "peak_mem_gib": 0.645
+    },
+    "topk32_s1": {
+      "median_ms": 24.66,
+      "min_ms": 23.13,
+      "n_iters": 8,
+      "peak_mem_gib": 0.722
+    },
+    "win32_s1": {
+      "median_ms": 16.78,
+      "min_ms": 13.51,
       "n_iters": 8,
       "peak_mem_gib": 0.645
     }
@@ -1433,6 +1581,16 @@
       "wall_minutes": 6.24,
       "peak_mem_mib": 1191.4,
       "source": "axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/win64/results.json"
+    },
+    "topk32_s1": {
+      "wall_minutes": 8.43,
+      "peak_mem_mib": 1911.6,
+      "source": "axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/topk32_s1/results.json"
+    },
+    "win32_s1": {
+      "wall_minutes": 6.89,
+      "peak_mem_mib": 1191.4,
+      "source": "axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/win32_s1/results.json"
     }
   }
 }

@@ -21,11 +21,12 @@ work packages / 状态），代码与实验产物在该研究项的 `experiments
 - **「自证」里程碑的证据**：两轮陌生阅读测试的原始报告、做题口径与「第一轮 10 条发现各自的下场」
   对照在 `.scratch/self-verification/evidence/README.md`；里程碑状态仍只从 `docs/plan.md#1-里程碑` 读。
 - **研究项的全表与统计**：`python3 tools/summary.py`；字段 / 证据 / 口径校验用 `--check`。
-- **最近出判决的研究项**：`axes/5-quant/5.5-fp8-head-dim/`（fp8 / 大 head_dim）、
-  `axes/3-width/3.1.5-channel-sparsity/`（通道稀疏激活）；更早的深度轴三项是
-  `axes/2-depth/2.2.2-attention-residual/`、`axes/2-depth/2.2.3-learned-layer-sum/`、
-  `axes/2-depth/2.2.4-parallel-sublayer/`——状态与判词在各自的 `project.yaml::status` / `::conclusion`，
-  本文件不转述。
+- **最近出判决的研究项**：`axes/1-time/1.2.3-content-topk/`（内容选择 top-k：同可见键数下的位置对照）、
+  `axes/1-time/1.2.2-block-sparse/`（局部+全局对均匀条带）；更早的一批是
+  `axes/5-quant/5.5-fp8-head-dim/`（fp8 / 大 head_dim）、`axes/3-width/3.1.5-channel-sparsity/`
+  （通道稀疏激活）与深度轴三项 `axes/2-depth/2.2.2-attention-residual/`、
+  `axes/2-depth/2.2.3-learned-layer-sum/`、`axes/2-depth/2.2.4-parallel-sublayer/`——状态与判词在各自的
+  `project.yaml::status` / `::conclusion`，本文件不转述。
 - **预存测试失败**：计数、失败名与「为什么与本计划无关」只在 `docs/plan.md` 的「验收证据」节
   （`docs/plan.md#3-验收证据全树机检与测试计数`）。
 - **已知偏离**（训练峰值显存超出 `SCHEMA.md` §20.1 的共享卡礼貌线，该线不是科学约束）：

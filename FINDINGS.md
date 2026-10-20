@@ -68,7 +68,7 @@
 
 | 结论 | 出处 | 状态 |
 | --- | --- | --- |
-| `1.2.3` 内容选择 top-k：在**同等每行可见键数**下，「按内容挑」的 clean bpc 可排序优于「按最近位置挑」（k=32 与 64 两档同向、剂量一致，配对 20/20 同向）⇒ 内容选择是**质量杠杆**；但它必须先算完整 `T×T` 分数矩阵，每位置 KV 字节**结构性省不下来**（内容选择本身不是字节杠杆）。旧读数里的「净亏」应读成「每 token 只看 k 个键」的窗口税，不是「按内容挑」的错 | `axes/1-time/1.2.3-content-topk/project.yaml::conclusion`、`axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/analysis.md` | 部分（n=1 临时结果；T=256、k∈{32,64} 两点；长程召回腿与长 T 未测） |
+| `1.2.3` 内容选择 top-k：在**同等每行可见键数**下，「按内容挑」的 clean bpc 可排序优于「按最近位置挑」（k=32 那一对两个 seed 同向、k=64 同向，剂量一致，配对 20/20 同向）⇒ 内容选择是**质量杠杆**；但它必须先算完整 `T×T` 分数矩阵，每位置 KV 字节**结构性省不下来**（内容选择本身不是字节杠杆）。旧读数里的「净亏」应读成「每 token 只看 k 个键」的窗口税，不是「按内容挑」的错 | `axes/1-time/1.2.3-content-topk/project.yaml::conclusion`、`axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/analysis.md` | 部分（k=32 为 n=2；k=64 仍 n=1；T=256 一点、k∈{32,64} 两点；随机选键的毁源对照、长程召回腿与长 T 未测） |
 | `1.2.2` 局部+全局（Longformer 式）：在**同等 24 个可见键**下，把 8 个键切给「最前 8 个恒可见全局槽」比把 24 个键全给最近位置**更差**（两 seed 同向、各自越带）⇒ 紧预算下「用全局槽换远端可达性」这笔交易在本尺度不划算；同一模式在 200 键时与全因果不可分辨（Δ 落带内）⇒ 是交易不划算，不是掩码坏 | `axes/1-time/1.2.2-block-sparse/project.yaml::conclusion`、`axes/1-time/1.2.2-block-sparse/experiments/2677-local-global-vs-band-13m/analysis.md` | 成立（n=2；13M / T=256 / 24 键；块稀疏（BigBird 式）掩码与率类召回腿未测） |
 
 ## 四、撤回记录
