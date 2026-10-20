@@ -64,11 +64,11 @@ owner 一律是轴 1 lead 派发的 worker，另配 fresh 复核者（`harness/S
 | 检查 | 结果 | 说明 |
 |---|---|---|
 | `python3 tools/summary.py --check` | 本项 0 违规 | 46 个 `project.yaml` 全部符合 `harness/research-schema.md`；本项字段 / 证据锚点 / Δ 方向均齐 |
-| `python3 tools/check_tree.py` | 本项 0 违规 | 预登记绑定：本项 `2680` / `2681` 的根读数晚于绑定且与绑定分属不同提交；`2681` 的两次绑定都早于根读数 |
-| `python3 tools/check_docs.py --check` | 本项 0 违规；全树剩 1 处，非本单元 | 唯一红处是 `docs/plan.md:119` 的一条裸相对路径——它引 「2680」那个实验的 results 文件时漏了目录名，在仓根解析不到（元级文档，所有者是元级迁移）；本单元目录下 0 处 |
+| `python3 tools/check_tree.py` | 本项 0 违规 | 预登记绑定：本项 `2680` / `2681` 的根读数晚于绑定且与绑定分属不同提交；`2681` 的**当前**绑定（`bound_at` 2026-10-21T00:27:26）早于根读数，且根读数不在 `readings_existing_at_bind` 内——该键里只有 `train/win60` / `train/win64` 两份**训练**读数，工具口径下它们的定序不可判（逐条时间线与「判据线未改」的 diff 见 `experiments/2681-int8-equalbytes-frontier-13m/analysis.md` §4/§6）。全树：已绑定 8（读数晚于绑定 5、定序不可判 3）、unbound 92（历史产物，只计数）、缺绑定 0 |
+| `python3 tools/check_docs.py --check` | 全树 0 处违规（465 个文档 / 8589 处引用） | 本单元目录 0 处；文档地图缺项 0 个。（上一轮报的那 1 处 `docs/plan.md` 裸路径已由元级迁移线修掉。） |
 | `python3 tools/build_cost_table.py --check` | 绿 | 生成物与 `project.yaml::cost_rows` 逐字节一致（含新增的 `+0.030928` 行） |
-| `python3 tools/inventory_runs.py --check` | 绿 | 重新生成后 128 个实验 / 431 个 run 与磁盘一致；每条路径存在 |
-| `python3 -m pytest tests/ -q` | 964 passed / 6 failed，**6 条全部非本单元引入** | ① `test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness` = 已登记的预存失败；② 其余 5 条全在 `tests/test_docs_refs.py`，根因是同一个上面那 1 处元级引用——`test_all_doc_references_resolve` 与 `test_dangling_reference_turns_red` 直接读它，3 条注入式 `test_unmapped_doc_turns_red` 的收尾断言要求「删掉注入文件后恢复绿」，而全树因那 1 处不绿。本单元目录零违规；`test_repro_inventory.py` 原本因并发写入者新增 run 目录而红，重生成 `atlas/repro.md` 后已全绿 |
+| `python3 tools/inventory_runs.py --check` | 绿 | 重新生成后 128 个实验 / 434 个 run 与磁盘一致；每条路径存在。`2681` 的「声明墙钟」列取到 `budget.gpu_wall_budget_min` = 39，其 `train/win60` 步数回到 11999、另有一次 200 步的中断重训单列成自己的 run |
+| `python3 -m pytest tests/ -q` | 968 passed / 2 failed，**两条都不是本单元引入** | ① `test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness` = 已登记的预存失败（4 个 `mutate.py` 未接入统一框架，全在 6-predict 轴）；② `tests/test_docs_refs.py::test_all_doc_references_resolve` 曾红一次，是同树内**另一个并发 pytest 进程**正在跑注入式「悬空引用必须变红」用例时的竞态（它注入的那条**故意悬空**的路径引用只活在那一瞬，`tests/test_docs_refs.py` 是它的生产者）；隔离重跑 `python3 -m pytest tests/test_docs_refs.py -q` = **15 passed**，且 `tools/check_docs.py --check` 单独跑是 0 违规。本单元目录零违规 |
 | `python3 -m pytest axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/test_2681_frontier.py -q` | 6 passed | 本目录单测（纯 CPU）：字节账、k=60 那一格的选取、支配定义与阈值算术 |
 
 ## 7 边界（non-goals）
