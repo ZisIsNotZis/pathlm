@@ -3,7 +3,11 @@
 用法：python train_depth_ar.py <run_name> --d 256 --layers 8 [--dense]
                               [--steps 3600] [--seed 0] [--out-root DIR]
 训练 + 测量电池（depth 曲线 / TF 接受率 / workspace 探针 / 出口提交生成 /
-门曲线）→ .scratch/23-depth-ar/evidence/<run_name>/。
+门曲线）→ <out-root>/<run_name>/（缺省 .scratch/23-depth-ar/evidence/）。
+
+预登记门：out-root 归属 `axes/**` 的某个实验目录（含 `README.md` 的那一层）时，那格的契约必须
+已绑定（`tools/prereg_bind.py`），否则拒绝启动——本脚本自己就是产物写入点，直跑它能绕过各实验
+自己的 `run.py` / `train_arms.sh` 两道门。`.scratch/`、`/tmp/` 下的 out-root 不受此约束。
 """
 
 import argparse, json, math, os, sys, time
@@ -13,7 +17,10 @@ import torch
 import torch.nn.functional as F
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.abspath(__file__))
 from pathlm.data import load_enwik8_full, batch
+# 预登记门：out-root 归属 axes/** 的实验时，那格的契约必须先绑定（tools/prereg_bind.py）。
+from tools.prereg_bind import owner_for_output, require as require_prereg
 from tools.evalkit.longrange_tasks import assoc_recall_multi_batch
 from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
                              depth_curve, tf_acceptance, workspace_probe,
@@ -781,6 +788,16 @@ def main():
         raise SystemExit(f"--recon-lambda 必须 >= 0，收到 {args.recon_lambda}")
 
     run_dir = os.path.join(args.out_root, args.run_name)
+    # 预登记门（docs/methodology.md §8）：本脚本自己就是产物写入点（<out-root>/<run>/results.json），
+    # 所以门必须在这里——只放在各实验的 run.py / train_arms.sh 里，直跑本脚本就能绕过。
+    # out-root 归属 axes/** 的某个实验（含 README.md 的那一层）⇒ 那格的契约必须先绑定；
+    # .scratch/ 与 /tmp/ 下的 out-root 不归属任何实验，不受此约束。
+    run_owner = owner_for_output(run_dir)
+    if run_owner is not None:
+        owner_rel = os.path.relpath(run_owner, ROOT)
+        if require_prereg(run_owner) != 0:
+            raise SystemExit(f"预登记未绑定：{owner_rel}"
+                             f"（先跑 python3 tools/prereg_bind.py {owner_rel}）")
     os.makedirs(run_dir, exist_ok=True)
     # 诊断开关（默认关闭）：共享卡上出现「无进展但 CPU 满载」时，用它定期把**全线程
     # Python 栈**打进 stderr（子进程的 stdout.log），定位卡在哪一步。

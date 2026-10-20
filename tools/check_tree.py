@@ -29,8 +29,9 @@
      它自己的文件头）。一条命令覆盖树校验 + 引用校验。
  14. 预登记定序：转调 `tools/prereg_bind.py` 的 `check()`——有 `results.json` 的实验必须有
      `prereg_binding.json`；契约文件当前 sha256 必须与绑定时的相同；`bound_at` 必须严格早于读数
-     的产物时间；两文件都已入库时，绑定的提交必须早于读数的提交。`bound_at = "unbound"`
-     （历史产物，无定序证据）只计数、不判失败（见 `docs/methodology.md` §8）。
+     的产物时间；两文件都已入库时，绑定的提交必须早于读数的提交；`bound_at` 必须落在绑定文件那次
+     提交的 ±`BIND_WINDOW_MINUTES` 分钟窗内。`bound_at = "unbound"`（历史产物，无定序证据）只计数、
+     不判失败，但实验名打进汇总行（见 `docs/methodology.md` §8）。
 
 用法：python3 tools/check_tree.py   （退出码 0 = 全过；1 = 有错）
 """

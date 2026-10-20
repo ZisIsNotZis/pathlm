@@ -286,12 +286,14 @@ def main() -> None:
     }
 
     def verdict(block: dict) -> str:
+        """单 seed 判词（README §3）：越带即判方向，但 n=1 只能报「临时结果」（methodology §2）。"""
+        n1 = "（n=1 临时结果，未升格）"
         d = block["delta_bpc"]
         if d >= BAND:
-            return "内容选择占优（Δ ≥ +0.014，越带）"
+            return "内容选择占优（Δ ≥ +0.014，越带）" + n1
         if d <= -BAND:
-            return "内容选择更差（Δ ≤ -0.014，越带）"
-        return "无质量增量（|Δ| < 0.014，落带内）"
+            return "内容选择更差（Δ ≤ -0.014，越带）" + n1
+        return "无质量增量（|Δ| < 0.014，落带内）" + n1
 
     def n2_verdict() -> str:
         """两 seed 的判词：只有同向且各自越带才升格成 n=2；否则按预登记判「不可排序」。"""

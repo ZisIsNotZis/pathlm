@@ -11,8 +11,18 @@
     python3 tools/prereg_bind.py <实验目录>             # 绑定（幂等：已绑定且契约未变则不动 bound_at）
     python3 tools/prereg_bind.py <实验目录> --require   # 只核绑定存在且契约未变（训练 / 评测入口用）
     python3 tools/prereg_bind.py <实验目录> --rebind    # 契约改过之后显式重绑（bound_at 改写为现在）
+    python3 tools/prereg_bind.py <实验目录> --contract README.md run.py   # 契约文件清单（默认 README.md[+config.json]）
     python3 tools/prereg_bind.py --backfill-unbound     # 历史产物：写 bound_at="unbound"（显式缺失，不伪造时间）
     python3 tools/prereg_bind.py --check                # 全树机检（`check_tree.py` 用的同一实现）
+
+契约文件清单要覆盖**判据本身落在哪**：判据线写在 `README.md` 只约束文字；`BAND`、配对规则这类
+**应用判据的代码**若写在实验自己的 `run.py` 里，`--contract README.md run.py` 才把它一起绑住
+（或者把它移进 `config.json`，反正默认清单会自动纳入）。只绑 `README.md` 时，`run.py` 事后改判据线
+不会让绑定失效——sha256 变了才叫「契约被改过」。
+
+`bound_at` 必须落在**绑定文件入库提交**的时间窗内（`BIND_WINDOW_MINUTES`）：只有文件 mtime 与提交
+先后两道证据时，「先跑读数 → 事后补一条带旧 `bound_at` 的绑定 → 再重跑读数」能凑出合法的先后差，
+时间窗把这条路堵住（绑定完就提交，别隔很久）。
 
 绑定记录 `prereg_binding.json`（实验根目录，契约文件旁边）：
 
@@ -25,15 +35,28 @@
 | `readings_existing_at_bind` | 绑定那一刻已存在的 `results.json`（路径 → 当时的 `sha256`）：它们是**绑定之前**的读数，定序不可判；判定时要求读数被重跑（`sha256` 变了）且产物时间晚于 `bound_at` |
 | `tool` | 产生这条记录的工具 |
 
-机检四项（`check()`）：**有 `results.json` 的实验必须有绑定记录**；契约文件当前 `sha256`
+机检五项（`check()`）：**有 `results.json` 的实验必须有绑定记录**；契约文件当前 `sha256`
 必须与绑定时的相同（不同 ⇒ 报「契约在绑定后被改过」并列出差异文件）；`bound_at` 必须
 **严格早于** 判序锚的产物时间（判序锚 = 实验根 `results.json`；该实验只有嵌套读数时取其中
 最新的一份），且该读数不得是绑定时已存在的那一份（`sha256` 必须变）；两份文件都已入库时，
-绑定记录的提交必须**早于**读数的提交（同一提交 ⇒ 仓内仍无独立定序证据，判失败）。
+绑定记录的提交必须**早于**读数的提交（同一提交 ⇒ 仓内仍无独立定序证据，判失败）；`bound_at`
+必须落在绑定文件入库提交时间的 `BIND_WINDOW_MINUTES` 窗内（超窗 ⇒ 这条 `bound_at` 不是绑定那次
+提交写下的，仓内先后能凑但不能成立）。
 
-`"unbound"` 是**显式缺失**：`--check` 只计数、不判失败并打印计数。它不得用来给新实验免检——
-新实验一律先绑定再训练。同一实验目录里追加第二批读数时，绑定记下当时已有的读数
-（`readings_existing_at_bind`），因此给旧读数「补绑」不会伪装成定序证据：旧读数要重新产出才过门。
+`"unbound"` 是**显式缺失**：`--check` 只计数、不判失败，并把它们的实验名打进汇总行（读者要看得出
+**哪几个**实验定序不可判）。它不得用来给新实验免检——新实验一律先绑定再训练，两道口都会拦：
+`--require`（`train_arms.sh` / `run.py` / 共享训练器 `train_depth_ar.py`）与 `--backfill-unbound`
+（只接受入库提交早于本工具引入提交的读数；更晚的、或没入库因而无从定序的，一律拒绝回填并非零退出）。
+同一实验目录里追加第二批读数时，绑定记下当时已有的读数（`readings_existing_at_bind`），因此给旧读数
+「补绑」不会伪装成定序证据：旧读数要重新产出才过门。
+
+训练器的门在这里而不只在各实验自己的入口：`train_depth_ar.py` 本身就是产物写入点
+（`<out-root>/<run>/results.json`），直跑它能绕过实验入口的两道门。`owner_for_output()` 判定一个
+out-root 是否归属 `axes/**` 的某个实验目录（含 `README.md` 的那一层）；`.scratch/` / `/tmp/` 下的
+out-root 不归属任何实验，不受此门约束。
+
+诚实边界：这些判据看的是**字节与提交时间**，不读训练日志。读数被手工改过时 `sha256` 也会变，
+机制把它读成「重跑过」——它证明的是字节变了，而不是真跑了一遍。
 """
 
 from __future__ import annotations
@@ -43,7 +66,7 @@ import hashlib
 import json
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -55,6 +78,8 @@ CONTRACT_REQUIRED = "README.md"
 CONTRACT_OPTIONAL = ("config.json",)
 #: `bound_at` 的显式缺失值（历史产物）。
 UNBOUND = "unbound"
+#: `bound_at` 与「绑定文件入库提交时间」允许的最大偏差（绑定完就提交，超窗即 `bound_at` 是回填的旧时间）。
+BIND_WINDOW_MINUTES = 10
 UNBOUND_REASON = "历史产物，无定序证据"
 TOOL = "tools/prereg_bind.py"
 
@@ -208,6 +233,25 @@ def owner_of(p: Path) -> Path:
     return p.parent                               # 没有契约目录可归（不该发生）：按自身目录计
 
 
+def owner_for_output(out_dir: str | Path) -> Path | None:
+    """产物目录（`<out-root>/<run>`）→ 它所属的实验目录；不属于任何实验 ⇒ None。
+
+    训练器写产物前用它定门：out-root 落在 `axes/**` 的某个实验目录下（向上最近的含 `README.md`
+    的那一层）⇒ 该实验的契约必须先绑定。`.scratch/`、`/tmp/` 这类 out-root 不属于任何实验。
+    """
+    axes = AXES.resolve()
+    start = Path(out_dir)
+    if not start.is_absolute():
+        start = Path.cwd() / start
+    start = start.resolve()
+    for d in (start, *start.parents):
+        if not d.is_relative_to(axes):
+            return None                           # 走出 axes/ 就再没有实验目录可归属
+        if (d / CONTRACT_REQUIRED).exists():
+            return d
+    return None
+
+
 def order_anchor(results: list[Path]) -> Path:
     """判序锚：实验根 `results.json`；只有嵌套读数时取其中最新的一份。"""
     owner = owner_of(results[0])
@@ -238,11 +282,16 @@ def uncommitted(path: Path) -> bool:
     return bool(out.stdout.strip())
 
 
+def introduced_at() -> str | None:
+    """引入本工具的入库提交时间（「哪些读数早于机制」的时间原点）；未入库 / 无 git ⇒ None。"""
+    return last_commit(["log", "--diff-filter=A", "-1", "--format=%cI", "--", TOOL])
+
+
 def check() -> tuple[list[str], dict]:
     """全树机检。返回 (errors, stats)；stats 供打印计数（含 unbound 的历史计数）。"""
     errors: list[str] = []
     stats = {"experiments": 0, "results_files": 0, "bound": 0, "unbound": 0,
-             "missing": 0, "ordered": 0, "predate": 0,
+             "unbound_names": [], "missing": 0, "ordered": 0, "predate": 0,
              "git_ordered": 0, "git_pending": 0, "git_same_commit": 0}
     for exp, results in sorted(experiments().items()):
         stats["experiments"] += 1
@@ -257,6 +306,7 @@ def check() -> tuple[list[str], dict]:
         bound_at = record.get("bound_at")
         if bound_at == UNBOUND:
             stats["unbound"] += 1            # 显式缺失：只计数，不判失败
+            stats["unbound_names"].append(name)   # 读者要看得见是哪几个实验定序不可判
             continue
         if not isinstance(bound_at, str):
             errors.append(f"{name}: {BINDING} 的 bound_at 不是 ISO 时间也不是 {UNBOUND!r}")
@@ -302,6 +352,15 @@ def check() -> tuple[list[str], dict]:
         if not bind_commit or not anchor_commit:
             stats["git_pending"] += 1
             continue
+        # bound_at 必须落在「绑定文件入库提交」的时间窗内：否则「先跑读数 → 事后补一条带旧
+        # bound_at 的绑定 → 再重跑读数」能凑出合法的先后差（文件 mtime 与提交先后都对得上，
+        # 只有 bound_at 是回填的旧时间）。
+        skew = abs(bound_dt - datetime.fromisoformat(bind_commit))
+        if skew > timedelta(minutes=BIND_WINDOW_MINUTES):
+            errors.append(f"{name}: bound_at {bound_at} 不在 {BINDING} 的提交 {bind_commit} 的 "
+                          f"±{BIND_WINDOW_MINUTES} 分钟窗内（差 {skew}）⇒ 这条 bound_at 不是绑定那次"
+                          "提交写下的；先跑读数、事后补一条带旧 bound_at 的绑定、再重跑读数，能凑出"
+                          "合法的先后差，时间窗把它堵住")
         if bind_commit >= anchor_commit:
             stats["git_same_commit"] += 1
             errors.append(f"{name}: 绑定与读数在仓内没有先后：{BINDING} 的提交 "
@@ -313,19 +372,45 @@ def check() -> tuple[list[str], dict]:
 
 
 def summary_line(stats: dict) -> str:
+    names = stats.get("unbound_names") or []
+    listed = f"：{'、'.join(names)}" if names else ""
     return (f"预登记绑定：{stats['experiments']} 个有读数的实验（{stats['results_files']} 份 results.json）"
             f"—— 已绑定 {stats['bound']}（其中读数晚于绑定 {stats['ordered']}、"
             f"读数早于绑定即定序不可判 {stats['predate']}）、"
-            f"unbound（历史产物，只计数不判失败）{stats['unbound']}、缺绑定 {stats['missing']}；"
+            f"unbound（历史产物，只计数不判失败，定序不可判）{stats['unbound']}{listed}、"
+            f"缺绑定 {stats['missing']}；"
             f"仓内定序：分提交有先后 {stats['git_ordered']}、未提交 {stats['git_pending']}、"
             f"同一提交 {stats['git_same_commit']}")
 
 
 def backfill_unbound(dry_run: bool = False) -> int:
-    """历史产物：为有读数、无绑定记录的实验写 `bound_at: "unbound"`（不填看起来真的时间）。"""
-    written = 0
+    """历史产物：为有读数、无绑定记录的实验写 `bound_at: "unbound"`（不填看起来真的时间）。
+
+    只接受**入库提交早于本工具引入提交**的读数：晚于它的说明这实验是本轮新做的，它必须走
+    「先绑定再训练」而不是被洗成「历史产物」。读数未入库 / 无 git ⇒ 定序不可判，同样拒绝：
+    它没被更新，只是没证据（先回填再补读数，就是绕过「必须有序」的那条路）。
+    """
+    intro = introduced_at()
+    if intro is None:
+        print(f"拒绝回填：取不到 {TOOL} 的引入提交时间（未入库 / 无 git）⇒ "
+              "无法判定读数是否早于机制引入", file=sys.stderr)
+        return 1
+    written = refused = 0
     for exp, results in sorted(experiments().items()):
         if (exp / BINDING).exists():
+            continue
+        late = []
+        for r in results:
+            commit = last_commit(["log", "-1", "--format=%cI", "--", rel(r)])
+            if commit is None or commit >= intro:
+                late.append((rel(r), commit))
+        if late:
+            refused += 1
+            print(f"拒绝回填 {rel(exp)}：{len(late)} 份读数不能证明早于 {TOOL} 的引入提交 "
+                  f"{intro} ⇒ 它不是历史产物，先绑定再训练（python3 {TOOL} {rel(exp)}）",
+                  file=sys.stderr)
+            for path, commit in late:
+                print(f"  - {path}（入库提交 {commit or '未入库'}）", file=sys.stderr)
             continue
         record = {"experiment": rel(exp), "bound_at": UNBOUND,
                   "unbound_reason": UNBOUND_REASON, "tool": TOOL}
@@ -335,8 +420,8 @@ def backfill_unbound(dry_run: bool = False) -> int:
             continue
         write_record(exp, record)
         print(f"已写 {rel(exp / BINDING)}（unbound，{len(results)} 份 results.json）")
-    print(f"回填 {written} 条 unbound 记录（历史产物：不填时间，不伪装定序）")
-    return 0
+    print(f"回填 {written} 条 unbound 记录（历史产物：不填时间，不伪装定序），拒绝 {refused} 条")
+    return 1 if refused else 0
 
 
 def main(argv: list[str] | None = None) -> int:
