@@ -10,7 +10,7 @@ status: planned
 
 # 2652 · 残差形式最小判决 · 13M · depth-ar/dense
 
-> 本文件即本实验的本地契约。判据线 P1–P6 **预登记、不可改**（`SCHEMA.md` §8 / §17）。
+> 本文件即本实验的本地契约。判据线 P1–P6 **预登记、不可改**（`harness/SCHEMA.md` §8 / §17）。
 > 原始结果：`results.json`（汇总）+ `results_<arm>_s0.json`（逐臂）；判读：`analysis.md`；
 > 权重清单：`MODEL.md`；`analysis.md` 未写全前的任何数字都以 `results.json` 为准。
 
@@ -35,7 +35,7 @@ pre-LN 单残差换成（a）归一化后置（post-LN）、（b）固定深度�
 
 **唯一变量 = 残差形式**（子层输出如何接回残差流）。基底 = 主流标准 decoder-only transformer
 （`train_depth_ar.py --dense --topology sequential`：无 carry 门、无退出采样、仅最终深度 CE；
-= stock 形态 + 共享底座三条必要偏离，见 `docs/design.md` §2）。
+= stock 形态 + 共享底座三条必要偏离，见 `atlas/design.md` §2）。
 
 - d=256 / L=8 / h=8 / seq=256 / mlp_mult=4 / dropout=0 / norm_cap=1 / bs=32 / lr=1e-3 /
   12k 步 / seed=0 / 98.3M token / enwik8 前 90M train、末 10M eval / vocab 206 —— **四臂逐字段相同**；
@@ -88,16 +88,16 @@ pre-LN 单残差换成（a）归一化后置（post-LN）、（b）固定深度�
 | **P1（主判据）** | 各形式相对 base 的 clean bpc：`Δ_form = bpc_base − bpc_form`（**正 = 该形式更好**） | 该跌（各形式 bpc 相对 base） | `Δ ≥ +0.014` ⇒ 该形式**可排序更优**；`\|Δ\| < 0.014` ⇒ **不可排序（H0）**；`Δ ≤ −0.014` ⇒ 可排序**更差** |
 | **P2** | **逐深度 bpc 曲线**（engine `depth_curve`，全深度前向的逐深度读出）：`Δ_by_depth[k] = bpc_base[k] − bpc_form[k]`，重点看**中间深度** k=1..7 | 该跌（中间深度可读性） | 中间深度（k=1..7）任一处 `\|Δ_by_depth\| ≥ 0.014` ⇒ 「中间深度可读性被改变」；否则报「深度形状未变」 |
 | **P3** | 训练稳定性：末 25% 窗 loss 斜率（同一最小二乘、同一窗口）+ gnorm 末窗均值/全程 max | 该不变 | 出现非有限 loss 或 `gnorm > 1e3` ⇒ **如实报**崩步与 gnorm，不得隐藏；不因不稳定改判据 |
-| **P4** | 干预活性（`SCHEMA.md` §10） | 必须报 | `gated`：逐层门终值 + 门控梯度非零（两条腿）；`scaled`：逐层 α 落盘；`postln`：逐层残差流 RMS 落盘；`base`：对照臂本身无干预 |
+| **P4** | 干预活性（`harness/SCHEMA.md` §10） | 必须报 | `gated`：逐层门终值 + 门控梯度非零（两条腿）；`scaled`：逐层 α 落盘；`postln`：逐层残差流 RMS 落盘；`base`：对照臂本身无干预 |
 | **P5** | 引擎等值门 | 必须不变 | `base-s0` 的 clean bpc 与历史 dense 13M 锚（`.scratch/23-depth-ar/evidence/23d-dense-B-12k` = **1.5287**；2613 重训 baseline-s0 = **1.5257**）之差 < 0.005 ⇒ 本实验与既有 dense 主干同引擎、同配方 |
 | **P6** | 等参数对照口径 + 单因素机械核对 | 必须不变 | ①`gated` 的额外参数 **= 2L = 16**（实测审计），占总参数 **0.00023% ≤ 0.1%** ⇒ **直接与 base 比**，**不另加等参数对照臂**（本契约选定此口径并保持一致）；②四臂共享 CLI 模板逐字相同（`results.json::single_factor_check`） |
 
 - 质量口径 = **clean bpc**（dense 形态只有最终深度被监督 ⇒ `depth_curve()[-1]["bpc"]`，
   序列级、越低越好），eval 批固定 generator seed 2（臂间同一批）。
-- 方差带 = **0.014**（`docs/methodology.md` §2：13M 跨 run bpc 漂移界；限配对 Δ、≥5 窗口）。
+- 方差带 = **0.014**（`harness/methodology.md` §2：13M 跨 run bpc 漂移界；限配对 Δ、≥5 窗口）。
   本实验另报**同配置跨 seed 实测散布**（2613 的 baseline s0/s1 = 1.5257/1.5298 ⇒ 0.0041）
   作参照，但**不以它替代 0.014 预登记门槛**。
-- **不得事后调判据**（`SCHEMA.md` §8）：预算不够时**砍臂**（先砍 `scaled`）、**不砍判据线**。
+- **不得事后调判据**（`harness/SCHEMA.md` §8）：预算不够时**砍臂**（先砍 `scaled`）、**不砍判据线**。
 
 ## 5. 对照与方差
 
@@ -105,16 +105,16 @@ pre-LN 单残差换成（a）归一化后置（post-LN）、（b）固定深度�
 - n = 1 seed（0）：本 WP 预算内四臂各一次；**跨 seed 复现留给后续**（写进 `analysis.md` 残余缺口）。
 - 臂间不得比较不同 token 预算：四臂 `steps=12000, batch=32, seq=256` = **98.3M token**（enwik8
   前 90M 的 1.09 epoch）**matched-step / 同 token 预算**。
-- 收敛对账（`SCHEMA.md` §16）：报每臂**同方法**（末 25% 同一窗口、同一最小二乘）训练 loss 斜率，
-  防「某臂收敛更慢」被读成「质量更差」；快照增益只读臂间增量（`SCHEMA.md` §20.3）。
+- 收敛对账（`harness/SCHEMA.md` §16）：报每臂**同方法**（末 25% 同一窗口、同一最小二乘）训练 loss 斜率，
+  防「某臂收敛更慢」被读成「质量更差」；快照增益只读臂间增量（`harness/SCHEMA.md` §20.3）。
 
 ## 6. 规模、预算与显存
 
 - 规模：13M 档（d=256 / L=8 / h=8 / T=256 / B=32）＝本仓全部 26xx 实验的同一档（实测总参数
   6,962,688；`base`/`postln`/`scaled` 逐位相同，`gated` +16）。
 - **`gpu_wall_budget: 45 min`（唯一数字，含 CPU 等值门 + 20 步冒烟 + 4 臂 × 12k 步 + 全部评测）**；
-  GPU 按 `SCHEMA.md` §20 互斥锁**按臂取/放**（臂间 ≥60 s 礼貌窗口）；峰值显存 ≤5GB net。
-- 预算不够时砍什么（`SCHEMA.md` §8 / §9.2）：**先砍 `scaled`**（执行顺序 `base, postln, gated, scaled`
+  GPU 按 `harness/SCHEMA.md` §20 互斥锁**按臂取/放**（臂间 ≥60 s 礼貌窗口）；峰值显存 ≤5GB net。
+- 预算不够时砍什么（`harness/SCHEMA.md` §8 / §9.2）：**先砍 `scaled`**（执行顺序 `base, postln, gated, scaled`
   把它排最后 ⇒ 直接不跑即符合「先砍 scaled」），并把「缩放残差未测」写进 `gaps`；
   **不砍判据线、不砍步数**（步数一改臂间刻度就不可比）。
 
@@ -130,7 +130,7 @@ pre-LN 单残差换成（a）归一化后置（post-LN）、（b）固定深度�
 | 副产品 | 逐层残差流 RMS（post-LN 的归一化效应、base 的温流形状）；末窗 loss 斜率与 gnorm | 臂间 |
 | 活性 | `gated` 门终值 + 门控梯度；`scaled` 逐层 α；`postln` 逐层 RMS | 契约定义 |
 
-## 8. 等值门与变异验证（`SCHEMA.md` §9 / §24 / `docs/methodology.md` §5）
+## 8. 等值门与变异验证（`harness/SCHEMA.md` §9 / §24 / `harness/methodology.md` §5）
 
 `smoke.py`（CPU 等值门）+ `mutation_check.py`（可达性自证）+ `run.py --smoke-steps 20`：
 
@@ -141,7 +141,7 @@ pre-LN 单残差换成（a）归一化后置（post-LN）、（b）固定深度�
 - **G3 非无操作**：`postln` / `scaled` 在 init 处与 `base` 的前向**必须不同**。
 - **M1/M3/M4 变异（必须抓红）**：`mutation_check.py` 在同一进程里注入三处变异——
   M1 门初值改 0.99、M3 `postln` 偷偷退回 base 公式、M4 残差形式根本没接线——等值门**必须**
-  相应失败；三处都不红 ⇒ 说明对应的门是恒真的摆设（`SCHEMA.md` §24）。
+  相应失败；三处都不红 ⇒ 说明对应的门是恒真的摆设（`harness/SCHEMA.md` §24）。
 - **冒烟**：20 步 × 4 臂（一次持锁，整程 <10 min），确认四臂都能跑通并量实测步时。
 
 ## 9. 否证条件（做不出来时怎么区分）
@@ -158,7 +158,7 @@ pre-LN 单残差换成（a）归一化后置（post-LN）、（b）固定深度�
 - 若只有 `gated` 越带而其余不越 ⇒ 先过 P6 的等参数口径（额外参数 ≤0.1% 已满足），
   再判「增益来自可学习门」；`gated` 的增益**不得**归因于参数量。
 
-## 10. 既有做法（`SCHEMA.md` §18，先站巨人肩膀）
+## 10. 既有做法（`harness/SCHEMA.md` §18，先站巨人肩膀）
 
 本环境检索不可用 ⇒ 以下均为 `记忆（未核）`，只作设计方向，**不作判据**：
 
@@ -178,7 +178,7 @@ pre-LN 单残差换成（a）归一化后置（post-LN）、（b）固定深度�
 上，把这四种形式放在**同一次初始化 + 同一条共享训练代码**里做单因素对照，并**同时**读
 clean bpc 与逐深度 bpc —— 这正是本实验的增量。
 
-## 11. scope 与混杂声明（`SCHEMA.md` §4）
+## 11. scope 与混杂声明（`harness/SCHEMA.md` §4）
 
 - 单轴单格：只改 `2.2.1 残差的形式`；与 `2.1.1`（按需深度）的耦合（截断可用性）本实验只读
   **逐深度 bpc** 这个代理，真截断由 2.1.1 的口径承担（见 `gaps`）；与 `8-engineering` 的分工：
@@ -188,10 +188,10 @@ clean bpc 与逐深度 bpc —— 这正是本实验的增量。
 - 已知混杂/局限（写死在契约里，防事后解释）：
   1. `postln` 的残差流被 LN 归一 ⇒ tied 读出（无 final LN）输入量级与 base 不同（§3）；
   2. `scaled` 的 `l=0` 层与 base 逐位一致 ⇒ 它的「干预量」逐层递减（首层无干预）；
-  3. 13M / 12k 快照：只读臂间增量，绝对水平是快照值（`SCHEMA.md` §20.3）；
+  3. 13M / 12k 快照：只读臂间增量，绝对水平是快照值（`harness/SCHEMA.md` §20.3）；
   4. 单任务（enwik8 字符级 next-token）+ 单 seed：结论不外推到其他任务/规模，跨 seed 复现
      写进残余缺口；
-  5. GPU 与其它 worker 共享（`SCHEMA.md` §20 锁排队）；**墙钟不进判据**，仅作过程量留痕。
+  5. GPU 与其它 worker 共享（`harness/SCHEMA.md` §20 锁排队）；**墙钟不进判据**，仅作过程量留痕。
 
 ## 12. 复现手段
 

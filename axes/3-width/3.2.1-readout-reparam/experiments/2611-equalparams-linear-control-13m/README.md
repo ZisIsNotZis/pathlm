@@ -38,7 +38,7 @@ readout_dims=None / aux_weight=1.0 / final_weight=1.0 / shallow_stopgrad=False /
 dense_aux=False / steps=12000 / batch_size=32 / lr=1e-3 / **seed=0** /
 train_tokens=98.3M / vocab=206 / 数据切分（前 90M train、末 10M eval，词表来自全文件）。
 
-基底 = RAP 共享底座（三条必要偏离见 `docs/design.md` §2），不引入第二个非标准因素。
+基底 = RAP 共享底座（三条必要偏离见 `atlas/design.md` §2），不引入第二个非标准因素。
 **非必要性例外**：无。A 臂与 gated 臂按 SCHEMA §9 复用历史/既有 run，附
 「实现层逐位等值（关闭开关单测）+ 配置层逐字段对照 + 口径标注」三道门。
 
@@ -68,7 +68,7 @@ train_tokens=98.3M / vocab=206 / 数据切分（前 90M train、末 10M eval，�
 - **稳定性报告（必交）**：两臂 + 本对照的 `gnorm` max / 中位数 / 尖峰次数、有无 NaN
   或 loss 突跳、按深度 ECE 表（可从既有日志与重跑日志出）。
 
-方差界参照：Δ < 0.014 不可排序（`docs/methodology.md` §2）；判据阈值 0.02 > 0.014，
+方差界参照：Δ < 0.014 不可排序（`harness/methodology.md` §2）；判据阈值 0.02 > 0.014，
 即可判定性成立。
 
 ## 5. 对照与方差

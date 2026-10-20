@@ -23,7 +23,7 @@
     python3 run.py --smoke                                       # 20 步冒烟（全臂）
     python3 run.py --aggregate                                   # 汇总 P0–P5 → results.json
 
-本文件不取 GPU 锁；训练由驱动脚本 `run_remaining.sh` 按臂取/放锁（`SCHEMA.md` §20.1）。
+本文件不取 GPU 锁；训练由驱动脚本 `run_remaining.sh` 按臂取/放锁（`harness/SCHEMA.md` §20.1）。
 """
 
 import argparse
@@ -96,7 +96,7 @@ class SkipBlock(nn.Module):
 
     旁路语义 = `out = where(skip, x, block_out)`（被跳 token 的输出就是该层输入，
     即恒等残差旁路）。`x` 是层输入张量本身 ⇒ 被跳 token 的梯度沿恒等路径回传。
-    活性量：记录**训练期**与**最近一次**前向的逐层跳过占比（`SCHEMA.md` §10）。
+    活性量：记录**训练期**与**最近一次**前向的逐层跳过占比（`harness/SCHEMA.md` §10）。
     """
 
     def __init__(self, block: nn.Module, layer_idx: int, mode: str,

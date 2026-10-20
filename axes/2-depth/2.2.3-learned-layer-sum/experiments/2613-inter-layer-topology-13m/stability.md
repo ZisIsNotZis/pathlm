@@ -51,7 +51,7 @@
 ## 3. 与结论的关系
 
 - 稳定性四项（有限性 / 跳步 / loss 突跳 / gnorm 量级）四臂全绿 ⇒ 无法用「训练不稳定」
-  解释并行接线的 **+0.0458 / +0.0402** 质量差；按 `docs/methodology.md` §14 决策树，
+  解释并行接线的 **+0.0458 / +0.0402** 质量差；按 `harness/methodology.md` §14 决策树，
   该负结果可归因到**设计（接线）**而非测量。
 - `dense` 与 `sequential` 的第 0 步 gnorm、loss 完全相同（7.86 / 5.3131），为
   「identity 起步逐位等价基线」的训练侧佐证（单测 `test_dense_identity_start_bitwise_equals_sequential`

@@ -334,7 +334,7 @@ def _logits(model: DepthARModel, tokens: torch.Tensor) -> torch.Tensor:
 @torch.no_grad()
 def activation_profile(model: DepthARModel, eval_arr, n_batches: int = 2,
                        batch_size: int = 8, seed: int = 1234) -> dict:
-    """实测活性（`SCHEMA.md` §10）：① 每位置**实测参与前向的通道/隐藏单元数**
+    """实测活性（`harness/SCHEMA.md` §10）：① 每位置**实测参与前向的通道/隐藏单元数**
     （进入 `qkv` 的输入、GELU 之后进入 `mlp[2]` 的隐藏激活，按段分报，应与段宽逐位一致）；
     ② 每块增量 `‖out − in‖`（>0 ⇒ 干预真的在前向里生效，不是死开关）。"""
     spec = model._pw_spec
@@ -495,7 +495,7 @@ def causal_check(model: DepthARModel, tokens: torch.Tensor) -> dict:
 
 
 def loss_slope(rows: list[dict], steps: int, frac: float = 0.25) -> dict:
-    """同方法 loss 斜率（`SCHEMA.md` §16）：末 frac 窗、最小二乘、×1000。"""
+    """同方法 loss 斜率（`harness/SCHEMA.md` §16）：末 frac 窗、最小二乘、×1000。"""
     start = int(steps * (1 - frac))
     win = [r for r in rows if start <= r["step"] <= steps]
     if len(win) < 2:

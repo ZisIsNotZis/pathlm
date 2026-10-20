@@ -41,7 +41,7 @@ latent 传输所依赖的 tied 几何。
 
 只改读出几何。其余与 A 臂（ticket 25 的 depth-ar 配置：全深度并行监督 + carry 门 +
 随机退出 + fill_kv）**逐位一致**（同 seed、同超参、同 token 预算）。
-基底 = RAP 共享底座（三条必要偏离，见 `docs/design.md` §2），不引入第二个非标准因素。
+基底 = RAP 共享底座（三条必要偏离，见 `atlas/design.md` §2），不引入第二个非标准因素。
 **非必要性例外**：无。
 
 ## 3. 指标表（逐项分析）
@@ -72,7 +72,7 @@ latent 传输所依赖的 tied 几何。
 - A 臂（tied 线性，同配置同 seed）= 主对照；
 - 同引擎 dense-AR = 税的分母（已知 13M 级 dense 参照）；
 - **seed 数**：冒烟 1 seed；若落在判据线 ±0.02 内，补第 2 个 seed。
-- 方差界：Δ < 0.014 不可排序（`docs/methodology.md` §2）。
+- 方差界：Δ < 0.014 不可排序（`harness/methodology.md` §2）。
 
 ## 6. 成本与 scope
 

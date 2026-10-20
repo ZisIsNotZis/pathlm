@@ -32,7 +32,7 @@ status: planned
 **唯一变量 = 同一层内每个位置的激活宽度（参与前向的残差流通道前缀长度）**。
 
 - 基底 = 主流标准 decoder-only transformer（`train_depth_ar.py --dense --topology sequential
-  --exit-mode uniform`；三条共享底座偏离见 `docs/design.md` §2）；
+  --exit-mode uniform`；三条共享底座偏离见 `atlas/design.md` §2）；
 - embedding / 位置嵌入 / 层数（8）/ 头数（8）/ `mlp_mult=4` / 优化器 / 步数 / 批大小 / lr / seed /
   数据切分 / 评测批（`depth_curve`，`n_batches=20, bs=16, generator seed 2`）**逐字段相同**；
 - **总参数逐臂/逐位相同且全部有梯度**：不新增、不裁剪任何参数；窄段只是**用**全宽权重的前缀
@@ -91,7 +91,7 @@ bs=32, lr=1e-3, seed=0`，enwik8 字符级（vocab 206）、`data/enwik8_full.np
   `w(p) = 256` 若 `σ(g_p) > 0.5` 否则 `128`，`g_p` 为每位置一个标量（+128 参数 ⇒ 总参数不再逐位相同，
   必须单列）；登记为未做，不当作结论。
 
-## 4. 锚复用（`2641` 的 `U4-s0` = 1.5314，按 `SCHEMA.md` §9 三道门）
+## 4. 锚复用（`2641` 的 `U4-s0` = 1.5314，按 `harness/SCHEMA.md` §9 三道门）
 
 1. **等值门（本仓可跑）**：`FULL` 臂前向与 stock 逐位相同（单测 T1），且 `FULL` 的解析 MACs /
    参数量与 `U4-s0` 实测值逐位一致（§3 表）；

@@ -20,7 +20,7 @@
     python3 run.py --arms uniform --no-train          # 仅评测（复用 runs/…/model.pt）
     python3 run.py --aggregate                        # 汇总 P1–P6 → results.json
 
-GPU 锁按 `SCHEMA.md` §20 取、**按臂释放**（§20.1，臂间 ≥60 s 窗口）。
+GPU 锁按 `harness/SCHEMA.md` §20 取、**按臂释放**（§20.1，臂间 ≥60 s 窗口）。
 """
 
 import argparse
@@ -171,7 +171,7 @@ def windowed_bpc(model: DepthARModel, eval_arr, n_windows: int = N_WINDOWS,
 @torch.no_grad()
 def ffn_liveness(model: DepthARModel, eval_arr, n_batches: int = 2,
                  batch_size: int = 8, seed: int = 1234) -> dict:
-    """干预活性（`SCHEMA.md` §10）：在一次真实前向里用 forward hook 抓每层 `mlp` 的
+    """干预活性（`harness/SCHEMA.md` §10）：在一次真实前向里用 forward hook 抓每层 `mlp` 的
     输入/输出，报逐层 `‖out‖/‖in‖` 的逐位置均值 —— 窄层不是死路径、宽层不是摆设；
     同时抓实际隐藏维（审计 schedule 是否真的到了模型）。"""
     from pathlm.data import batch
@@ -219,7 +219,7 @@ def param_audit(model: DepthARModel) -> dict:
 
 
 def loss_slope(rows: list[dict], steps: int, frac: float = 0.25) -> dict:
-    """同方法 loss 斜率（`SCHEMA.md` §16）：末 frac 窗、最小二乘、×1000。"""
+    """同方法 loss 斜率（`harness/SCHEMA.md` §16）：末 frac 窗、最小二乘、×1000。"""
     start = int(steps * (1 - frac))
     win = [r for r in rows if start <= r["step"] <= steps]
     if len(win) < 2:

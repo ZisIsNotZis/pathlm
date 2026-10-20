@@ -3,7 +3,7 @@
 * **A 等值门**（契约 §4-A）：`force_last=True`（层维权重强制 one-hot 到紧邻上一层）
   的本地模型前向与 stock 单残差（`topology="sequential"`）**逐位一致**；且 trunk 参数
   逐位相同。探针：`force_last=False` 时前向必须**不**逐位一致（否则门没有分辨力）。
-* **B 活性门**（`SCHEMA.md` §10）：层维注意力权重非退化——逐层 `w_immediate_prev < 1`、
+* **B 活性门**（`harness/SCHEMA.md` §10）：层维注意力权重非退化——逐层 `w_immediate_prev < 1`、
   熵 > 0，且相对「只取上一层」的偏离量落盘；探针：one-hot 输入下 `w_immediate_prev == 1`
   （证明该量确实能测到「退化成单残差」）。
 * **C 参数账**：额外参数 = L（scalar）/ 3d²+L（qkv），与解析值逐位一致。

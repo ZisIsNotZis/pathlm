@@ -1,4 +1,4 @@
-"""2613 · 契约 F 的 20 步冒烟（SCHEMA §3 / docs/methodology.md §10：先冒烟再全跑）。
+"""2613 · 契约 F 的 20 步冒烟（SCHEMA §3 / harness/methodology.md §10：先冒烟再全跑）。
 
 落 `smoke/smoke.json`，回答五件事：
 1. **恒等起步（全尺寸 13M）**：dense+linres 的 readout_p=0 ⇒ 与同 seed 的 dense

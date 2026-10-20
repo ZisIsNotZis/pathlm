@@ -7,7 +7,7 @@
   建出的模型 state_dict 与前向输出**逐位一致**；探针：把 schedule 改一位 ⇒ 必须不一致。
 * **B 等预算门**（契约 P4）：三臂 `Σh`、FFN 参数量逐位相等；探针：故意给一个 Σh 不同的
   schedule ⇒ 必须不等。
-* **C 活性门**（契约 P6 / `SCHEMA.md` §10）：`hidden_by_layer` 逐位等于 schedule；
+* **C 活性门**（契约 P6 / `harness/SCHEMA.md` §10）：`hidden_by_layer` 逐位等于 schedule；
   非均匀臂的前向输出与 uniform 不同（干预真的生效）；探针：uniform 自身相对 uniform
   必须一致。
 

@@ -20,7 +20,7 @@
 
 - 对照 = **tied 线性读出**（stock，归一为 100%）；重参数化类必须给**等参数纯线性对照**
   （否则把重参数化/容量记成非线性）。
-- 判据 = clean bpc（该跌 / 可排序，须越 `docs/methodology.md` §2 的 0.014 噪声带）+ 出口资产 tf@k 与校准 ECE（该不跌）。
+- 判据 = clean bpc（该跌 / 可排序，须越 `harness/methodology.md` §2 的 0.014 噪声带）+ 出口资产 tf@k 与校准 ECE（该不跌）。
 - 参数量口径分开记：重参数化 = 2·d²（本仓可 scale）；解绑 = vocab×d（本仓 vocab=206、小词表 +52736，大词表不可 scale）。
 - **墙钟不进判据**；代价一律等效理论量（FLOPs / layer-passes / tokens-per-forward），考虑 pipelining。
 - 每项有且仅有一个 `milestone`，推进过程见各自 `project.yaml` 的 work_packages（每条含独立 `review`）。

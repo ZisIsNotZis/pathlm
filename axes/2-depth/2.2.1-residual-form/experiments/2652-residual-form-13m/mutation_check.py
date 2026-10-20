@@ -1,11 +1,11 @@
-"""2652 · 等值门的**可达性自证**（`SCHEMA.md` §24 两条强制动作 ① / `proof.gate_probe`）：
+"""2652 · 等值门的**可达性自证**（`harness/SCHEMA.md` §24 两条强制动作 ① / `proof.gate_probe`）：
 「没被抓红过的门不是门」。本脚本在同一进程里注入三处**故意的**变异，断言等值门
 `smoke.init_equality_gate` **必须**相应失败：
 
 - **M1** `gated` 的门初值从 1.0 改成 0.99 ⇒ `gated@init` 与 `base` 不再逐位一致
   （参数量审计仍过 ⇒ 只有等值门能抓）；
 - **M3** 把 `postln` 的块偷偷换成 `base` 公式 ⇒ 非无操作检查失败
-  （「归一化后置」这个干预成了死干预，`SCHEMA.md` §10）；
+  （「归一化后置」这个干预成了死干预，`harness/SCHEMA.md` §10）；
 - **M4** 让 `apply_residual_form` 对所有形式都原样返回 stock 模型 ⇒ `gated` 的
   参数量增量从 16 变 0 ⇒ 参数量审计失败。
 

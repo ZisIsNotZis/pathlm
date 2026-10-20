@@ -84,7 +84,7 @@
 | T5b | 因果性（改最后一个 token 不改变前面位置的 logits）；非 dense / 带掩码路径**显式拒绝**而不是静默走错 | 通过 |
 | T6 | 训练模式前向+反向 loss 有限；`blocks.*` 全部参数有非零梯度，且零梯度参数集合与 stock **逐位相同**（`gates.*` 在 dense 形态下 stock 本来就没有梯度——预先存在，不是本干预引入的死参数） | 通过 |
 
-**锚复用（`SCHEMA.md` §9 三道门）**：① 等值门 = T1 / T1b（逐位）＋上面两条解析对账；
+**锚复用（`harness/SCHEMA.md` §9 三道门）**：① 等值门 = T1 / T1b（逐位）＋上面两条解析对账；
 ② 逐字段 config 对照 = 本实验 `shared_argv()` 与 `2641` 的 `shared_argv()` 逐字段相同，
 且 `2641` 的 `U4` 臂不做任何切片（`narrow_ffn_prefix` 在 `schedule=[4]*8` 时是无操作）⇒ 锚就是
 stock 全宽 13M；③ 口径标注 = 锚值 1.5314 = `depth_curve(n_batches=20, batch_size=16,

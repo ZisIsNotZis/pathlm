@@ -44,7 +44,7 @@ FFN 参数 4 204 544 / 每 token FFN 4 194 304 MACs），所以任何差异只�
 
 ## B 表：主判据（P1–P3）
 
-符号约定（`SCHEMA.md` §17.3）：`Δ = bpc_uniform − bpc_该臂`，**正 = 该臂更好**；噪声带 0.014（限配对 Δ、≥5 窗口）。
+符号约定（`harness/SCHEMA.md` §17.3）：`Δ = bpc_uniform − bpc_该臂`，**正 = 该臂更好**；噪声带 0.014（限配对 Δ、≥5 窗口）。
 
 | 臂 | clean bpc（全精度） | Δ vs uniform（4dp 报数 / 全精度） | 逐窗配对 Δ 均值 | 窗间 SE | t = 均值/SE | 判词（0.014 带） |
 |---|---|---|---|---|---|---|
@@ -88,13 +88,13 @@ attention / embedding / LN / 读出参数逐位相同（非 FFN 参数 2 758 144
   （2613 sequential-s0 1.5254，差 +0.0037；2641 U4-s0 1.5314，差 −0.0023）⇒ 同引擎同配方。
   `results.json:P5_engine_equivalence_gate.pass = true`。
 
-### P6 活性（`SCHEMA.md` §10）
+### P6 活性（`harness/SCHEMA.md` §10）
 
 - 逐层隐藏维 == schedule：三臂全 true。
 - 逐层 FFN 相对幅度（真实前向 `‖mlp_out‖/‖mlp_in‖`）全 > 0：`uniform` 0.484–2.014、
   `front-big` 0.375–2.410、`growing` 0.442–1.875 ⇒ 窄层不是死路径、宽层不是摆设。
 
-## 对账（`SCHEMA.md` §12 三对账）
+## 对账（`harness/SCHEMA.md` §12 三对账）
 
 - **算术对账**：FFN 参数解析式 `Σ_l (2·h_l·d + h_l + d)` 与实测 `params_ffn` 逐位相等
   （4 204 544 == 4 204 544）；FFN MACs 解析 `Σ_l 2·h_l·d` == 4 194 304。三臂的解析值与实测值
@@ -105,7 +105,7 @@ attention / embedding / LN / 读出参数逐位相同（非 FFN 参数 2 758 144
   三臂同为 matched-step 快照（12k 步）。**无任何墙钟量进判据或 `cost_model`**（训练的墙钟 /
   显存只作过程量留在 `shared_train_results`）。
 
-## 对照三要素（`SCHEMA.md` §13）
+## 对照三要素（`harness/SCHEMA.md` §13）
 
 对照臂 = 同实验 `uniform` 臂（= stock uniform 全深度、引擎缺省形态）：
 
@@ -127,7 +127,7 @@ attention / embedding / LN / 读出参数逐位相同（非 FFN 参数 2 758 144
 - 「跨轴干预证据能否当本项终局判据 / 2.3.1 与 3.1.4 是否同题」属**框架性取舍，已上报 Main**，
   本目录不自行合并或改名。
 
-## 字面 / 实质两读法（`docs/research-schema.md` §5 C2）
+## 字面 / 实质两读法（`harness/research-schema.md` §5 C2）
 
 - **字面读法**（milestone 预登记文字）：验收要求「各臂总参数逐位相等」+「非均匀相对 uniform
   有/无越噪声带差异，二选一明确」。两条均满足——等预算门逐位相等（P4 pass）；差异二分明确
@@ -146,7 +146,7 @@ attention / embedding / LN / 读出参数逐位相同（非 FFN 参数 2 758 144
 
 ## 独立复核
 
-**独立复核未做**（fresh 复核者排在 writer 停止之后，`SCHEMA.md` §14/§14b；本轮窗口内未启动）。
+**独立复核未做**（fresh 复核者排在 writer 停止之后，`harness/SCHEMA.md` §14/§14b；本轮窗口内未启动）。
 
 ## 回归与可复算的校验命令
 

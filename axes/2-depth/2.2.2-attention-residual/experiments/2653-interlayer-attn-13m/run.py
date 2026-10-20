@@ -9,7 +9,7 @@
   路径，只覆写 `_layer_mix_input` = 层间 causal attention 聚合），再调
   `train_depth_ar.main()` —— 参数解析 / 配置装配 / `train()` / checkpoint 全是共享实现。
 * **基线复用 2613 s0**（`sequential` = stock 单残差、`dense` = 2.2.3 的线性学习加权和）：
-  按 `SCHEMA.md` §9 三条给等值证明（实现层逐位单测 + 配置逐字段对照 + 口径标注），
+  按 `harness/SCHEMA.md` §9 三条给等值证明（实现层逐位单测 + 配置逐字段对照 + 口径标注），
   任一不满足则回退自包含双跑。
 * 代价列：层间聚合的额外参数与每 token 额外 MACs（解析，**不含任何时间量**）。
 
@@ -19,7 +19,7 @@
     python3 run.py --arms attn-scalar --no-train     # 仅评测（复用 model.pt）
     python3 run.py --aggregate                       # 汇总 P1–P6 → results.json
 
-GPU 锁按 `SCHEMA.md` §20 取、**按臂释放**（§20.1，臂间 ≥60 s 窗口）。
+GPU 锁按 `harness/SCHEMA.md` §20 取、**按臂释放**（§20.1，臂间 ≥60 s 窗口）。
 """
 
 import argparse
@@ -54,7 +54,7 @@ N_WINDOWS, BATCHES_PER_WINDOW, EVAL_BATCH_SIZE = 5, 4, 16
 #: 臂 → 聚合参数化（`interlayer_attn.MODE`）。
 ARM_MODES = {"attn-scalar": "scalar", "attn-qkv": "qkv"}
 
-#: 复用基线（2613 s0，`SCHEMA.md` §9 三条等值证明见 `baseline_equivalence()`）。
+#: 复用基线（2613 s0，`harness/SCHEMA.md` §9 三条等值证明见 `baseline_equivalence()`）。
 BASE_2613 = os.path.join(ROOT, "axes", "2-depth", "2.2.3-learned-layer-sum",
                          "experiments", "2613-inter-layer-topology-13m",
                          "results.json")
@@ -141,7 +141,7 @@ def windowed_bpc(model, eval_arr, n_windows: int = N_WINDOWS,
 @torch.no_grad()
 def attention_liveness(model, eval_arr, n_batches: int = 2, batch_size: int = 8,
                        seed: int = 1234) -> dict:
-    """活性（`SCHEMA.md` §10）：一次真实前向里收集层间注意力权重 → 逐层熵 / 紧邻上一层
+    """活性（`harness/SCHEMA.md` §10）：一次真实前向里收集层间注意力权重 → 逐层熵 / 紧邻上一层
     权重 / 最大权重，以及各层温度 τ 的终值。"""
     from pathlm.data import batch
     gen = torch.Generator().manual_seed(seed)
@@ -256,7 +256,7 @@ def evaluate(arm: str, seed: int, steps: int, out_root: str,
 # ---------------------------------------------------------------- 基线复用等值证明
 
 def baseline_equivalence(my_config: dict | None) -> dict:
-    """`SCHEMA.md` §9 三条：① 实现层等值（one-hot 单测，见 smoke/test）；② 配置层逐字段
+    """`harness/SCHEMA.md` §9 三条：① 实现层等值（one-hot 单测，见 smoke/test）；② 配置层逐字段
     对照（与 2613 s0）；③ 口径标注（`analysis.md`）。任一字段不等 ⇒ 回退自包含双跑。"""
     ref = json.load(open(BASE_2613))
     ref_base = ref["config"]["base"]

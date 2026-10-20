@@ -131,7 +131,7 @@ next-token acc 差 0.0006。
 而这些中间深度的正偏差是它的几十倍。⇒ 层间加权和在本尺度是「中间层被改动、最后层重新学回
 parity」，不是「中间层变得更可读」。
 
-## 3. 与 s0（2613）的逐字段对照（`SCHEMA.md` §9 第 2 条）
+## 3. 与 s0（2613）的逐字段对照（`harness/SCHEMA.md` §9 第 2 条）
 
 `config.json::vs_2613` 由 `run.py::config_vs_2613` 逐字段生成（29 行），规范态
 （`--steps 12000`、四臂）：
@@ -142,9 +142,9 @@ parity」，不是「中间层变得更可读」。
 | `only_seed_and_name_differ` | **true** |
 | 相等字段（27） | `steps` / `batch_size` / `lr` / `optimizer` / `data` / `data_split` / `vocab_size` / `train_tokens` = 9830 万；`base.{d_model,n_layers,n_heads,seq_len,mlp_mult,dropout,norm_cap,dense,exit_mode,loss,readout}`；`arms[4].{role,params_expected_delta}` |
 
-⇒ **本实验相对 2613 的唯一科学变量 = 训练 seed（0→1）**，满足 `SCHEMA.md` §9 第 2 条（配置层等值）。
+⇒ **本实验相对 2613 的唯一科学变量 = 训练 seed（0→1）**，满足 `harness/SCHEMA.md` §9 第 2 条（配置层等值）。
 
-### 3.1 `SCHEMA.md` §9 三条等值门（本实验对 2613 的复用）
+### 3.1 `harness/SCHEMA.md` §9 三条等值门（本实验对 2613 的复用）
 
 1. **实现层等值（可失败）**：`run.py::remeasure_s0` 用**当前电池**重测 2613 的四条 s0 checkpoint，
    逐臂 `remeasured_bpc_now == recorded_bpc_2613` 逐位一致，引擎等值门打印
@@ -158,7 +158,7 @@ parity」，不是「中间层变得更可读」。
 2. **配置层等值**：§3 的逐字段对照，不等字段只有 `seed` 与 `experiment`。
 3. **口径标注**：见 §8。
 
-**结论**：s0（2613）可作本实验 seed=0 的对照臂复用，无须自包含双跑（`SCHEMA.md` §9 第 4 条的
+**结论**：s0（2613）可作本实验 seed=0 的对照臂复用，无须自包含双跑（`harness/SCHEMA.md` §9 第 4 条的
 唯一例外——不等字段已显式列出且只有 seed / 目录名）。
 
 ## 4. 配对 Δ 表（判据）+ 窗口级 SE
@@ -166,7 +166,7 @@ parity」，不是「中间层变得更可读」。
 判据线（逐字来自 `README.md::§4` / ticket 61 §9.2）：配对 Δ 越 **0.014 bpc 带**才算可排序；
 两 seed 同号且都越带 ⇒ 可排序；不越带 ⇒ 无差异。
 
-符号约定：Δ = `clean_bpc(该臂) − clean_bpc(sequential)`，**正 = 该臂更差**。本实验方向与 `SCHEMA.md`
+符号约定：Δ = `clean_bpc(该臂) − clean_bpc(sequential)`，**正 = 该臂更差**。本实验方向与 `harness/SCHEMA.md`
 规范的默认方向相反，**以本行定义为准**（跨文件读数时先看方向再比数）。
 
 | 配对 | s0 Δ | s1 Δ | 两 seed 判定 |
@@ -218,7 +218,7 @@ parity」，不是「中间层变得更可读」。
 调度偶发）。seed=1 的对应值为 `parallel` 0.0325 s / `parallel-dual-ln` 0.0350 s / `dense` 0.0400 s
 （`sequential` 臂本轮走 resume，未记步时），同向、同量级。
 
-## 6. `SCHEMA.md` §12 三对账 + §13 对照三要素
+## 6. `harness/SCHEMA.md` §12 三对账 + §13 对照三要素
 
 ### 6.1 §12 三对账
 
@@ -247,9 +247,9 @@ parity」，不是「中间层变得更可读」。
 | `dense` | 同上 | 同上 | 层输入 = 对所有此前层输出的学习加权和（DenseFormer 式） |
 
 四臂**同一任务定义、同一输入分布、同一位置集**；无「假上下文 + 真目标」式对照
-（`SCHEMA.md` §13 禁止项）。
+（`harness/SCHEMA.md` §13 禁止项）。
 
-## 7. 干预活性（`SCHEMA.md` §10 强制项）
+## 7. 干预活性（`harness/SCHEMA.md` §10 强制项）
 
 seed=1 实测（`results.json::arms.<topo>.intervention`）：
 
@@ -270,7 +270,7 @@ seed=1 实测（`results.json::arms.<topo>.intervention`）：
   `grad_skips = 0`；gnorm 采样点最大值 6.58（`sequential` / `dense`）、4.94（两并行臂），
   中位数 0.42–0.47，尖峰（>3× 中位数）1–2 次。
 
-## 8. 口径标注（`SCHEMA.md` §9 第 3 条）
+## 8. 口径标注（`harness/SCHEMA.md` §9 第 3 条）
 
 - **规模 / 配方**：13M 档（d=256 / L=8 / h=8 / seq=256 / mlp_mult=4），enwik8 字符级 AR，
   12000 步 × 批 32 × 序列 256 = **9830 万 token**，matched-step 快照（**非渐近、非墙钟、
@@ -333,7 +333,7 @@ seed=1 实测（`results.json::arms.<topo>.intervention`）：
 2. **`dense` 的 α 无单纯形约束**：与 DenseFormer 严格凸组合语义的对照臂未做
    （成本 = 1 臂 9830 万 token）。
 3. **`dense` 的「中间深度更差」是本项新观测**：与 2.2.1 残差形式 / 2.1.1 早退的耦合
-   （「中间深度可读性」是它们的判据线之一）未做联合检验（组合留白，见 `SCHEMA.md` §4）。
+   （「中间深度可读性」是它们的判据线之一）未做联合检验（组合留白，见 `harness/SCHEMA.md` §4）。
 4. **两份 s0 等值门的落盘**：本轮以 `--skip-s0-anchor` 省时，`results.json` 不含
    `s0_anchor_remeasured` 块，该门存证只有 `run_log-attempt1-crash.txt:3` 一行日志
    （要落成结构化字段需一次全跑 = 4 × 9830 万 token）。
@@ -350,5 +350,5 @@ seed=1 实测（`results.json::arms.<topo>.intervention`）：
 | `python3 tools/summary.py --check` | 通过（`project.yaml` 字段 / 证据 / 墙钟口径） |
 | `python3 -m pytest tests/ -q` | 866 passed / 1 failed：`test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`（涉 `axes/6-predict/**` 的 `mutate.py`，**预存失败、与本实验无关**，单独登记、不修） |
 
-> 契约副本标注（`SCHEMA.md` §17.6）：§9 的判据线逐字来自 `.scratch/61-axis2-depth/TICKET.md`
+> 契约副本标注（`harness/SCHEMA.md` §17.6）：§9 的判据线逐字来自 `.scratch/61-axis2-depth/TICKET.md`
 > §9.2 WP-2651 与 `README.md::§4`，**未改**。

@@ -46,7 +46,7 @@ HIST_DENSE_BPC = 1.5287
 DEPTHAR_LINRES_DELTA_12K = -0.0888
 DEPTHAR_LINRES_DELTA_24K = -0.0463
 
-# 方差界（docs/methodology.md §2）：Δ < 0.014 不可排序
+# 方差界（harness/methodology.md §2）：Δ < 0.014 不可排序
 VARIANCE_BOUND = 0.014
 
 ARMS = {

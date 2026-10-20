@@ -102,7 +102,7 @@ def main():
         },
         "eval": {"metric": "clean bpc（depth_curve 最终深度，n_batches=20, bs=16, "
                            "eval generator seed=2）"},
-        "gpu_lock": "SCHEMA.md §20：按臂取/放 /tmp/pathlm_gpu.lock，臂间 ≥61 s；"
+        "gpu_lock": "harness/SCHEMA.md §20：按臂取/放 /tmp/pathlm_gpu.lock，臂间 ≥61 s；"
                     "锁取放时间戳与 free 读数见 run_log.txt",
         "arms_run": [f"{a}-s{s}" for a, s in present],
         "code_frozen_during_training": frozen,

@@ -1,6 +1,6 @@
 """2642 · 等值性门与审计单测（自包含，不改共享 `tests/`）。
 
-`SCHEMA.md` §9 / `docs/methodology.md` §5 / 契约 `README.md` §2.2：
+`harness/SCHEMA.md` §9 / `harness/methodology.md` §5 / 契约 `README.md` §2.2：
 
 - **T1**：ρ=1.0（w=d=256）的**前缀前向** == stock 引擎前向 —— logits 与 loss **逐位相同**；
 - **T2**：推理期**切片模型**（原生 d=w）前向 == 同宽度训练期**前缀子网络**前向 —— 逐位相同，

@@ -8,7 +8,7 @@ status: preregistered
 
 # 2653 · 层间 causal attention 最小判决（vs stock 单残差 / vs 线性学习加权和）· 13M · dense
 
-> 预登记契约（`SCHEMA.md` §6 九节）。判据线 P1–P6 **写在跑之前，跑完不得改**（`SCHEMA.md` §8）。
+> 预登记契约（`harness/SCHEMA.md` §6 九节）。判据线 P1–P6 **写在跑之前，跑完不得改**（`harness/SCHEMA.md` §8）。
 > 口径（`TICKET.md` §9.1）：判据只用**等效理论算力**（额外参数、每 token 额外 MACs、
 > layer-passes/token）；**墙钟不得进判据或 `cost_model`**。
 
@@ -48,17 +48,17 @@ Block、tied 读出；`--dense`）。
 
 ## 4 判据线（预登记，不可改）
 
-符号约定（`SCHEMA.md` §17.3）：`Δ = bpc_对照 − bpc_实验`，正 = 实验臂更好。
+符号约定（`harness/SCHEMA.md` §17.3）：`Δ = bpc_对照 − bpc_实验`，正 = 实验臂更好。
 
 - **P1** 每臂对两个基线的配对 Δ：`Δ_stock = bpc_sequential(2613 s0) − bpc_arm`；
   `Δ_dense = bpc_dense(2613 s0) − bpc_arm`。Δ ≥ +0.014 ⇒ 可分更优；≤ −0.014 ⇒ 可分更差；
   |Δ| < 0.014 ⇒ **不可排序（H0）**。
-- **P2** 活性（`SCHEMA.md` §10）：层维权重**非退化**——k ≥ 2 的层 `w_immediate_prev < 1` 且熵 > 0
+- **P2** 活性（`harness/SCHEMA.md` §10）：层维权重**非退化**——k ≥ 2 的层 `w_immediate_prev < 1` 且熵 > 0
   （层 1 只有唯一源 ⇒ 平凡，不计）；`τ` 终值落盘。
 - **P3** 代价列：额外参数与每 token 额外 MACs（相对 stock 单残差）逐臂落盘。
 - **P4** 等值门：`force_last=True`（层维权重强制 one-hot 到紧邻上一层）时前向与 loss 与 stock
   sequential **逐位一致**（`test_2653_interlayer_attn.py` 钉住，探针：不强制时必须不同）。
-- **P5** 基线复用的三条等值证明（`SCHEMA.md` §9）：实现层（P4 的逐位单测）、配置层（与
+- **P5** 基线复用的三条等值证明（`harness/SCHEMA.md` §9）：实现层（P4 的逐位单测）、配置层（与
   2613 s0 逐字段对照）、口径标注（`analysis.md`）；任一不等 ⇒ 回退自包含双跑。
 - **P6** 层索引因果：聚合只取 `states[0..k−1]`（`j ≤ k−1`），代码结构保证；单测断言聚合
   对 `states[k]` 及之后**不可见**（不可见量 = 不参与计算）。
@@ -69,14 +69,14 @@ Block、tied 读出；`--dense`）。
 
 - 对照 = 2613 s0 的 `sequential`（stock 单残差，clean bpc 1.5254）与 `dense`（2.2.3 线性学习
   加权和，1.5246，+36 参数），**同一实现/同一配置/同一 98.3M token 预算/同一 seed**（P5 三条等值证明）。
-- seed 数 = 1（s0）；噪声带 0.014（`docs/methodology.md` §2 跨 run 界）。
+- seed 数 = 1（s0）；噪声带 0.014（`harness/methodology.md` §2 跨 run 界）。
 - 窗间 SE 另报（5 窗口 × 4 批，所有臂共用同一 generator seed 的同一批序）；历史臂的逐窗数据
   不可得 ⇒ 对历史臂只报窗口均值与窗内 SE，**不假装是真配对**（口径在 `analysis.md` 标注）。
 
 ## 6 成本
 
 - `gpu_wall_budget: 30 min`（含冒烟 + 2 臂 × 12k 步 + 评测）。
-- 硬件 = 单卡 RTX 4090（24GB）共享；GPU 按 `SCHEMA.md` §20 取锁、**按臂释放**（§20.1，臂间 ≥60 s）。
+- 硬件 = 单卡 RTX 4090（24GB）共享；GPU 按 `harness/SCHEMA.md` §20 取锁、**按臂释放**（§20.1，臂间 ≥60 s）。
 - 峰值显存目标 ≤5GB net；每臂等效算力 = 12k × 32 × 256 = **98.3M token**（两臂 196.6M token）。
 - 可中断性：`run.py --arms <单臂>` 可续；结果**按臂增量落盘**。
 - 冒烟计划：`smoke.py`（CPU：等值门 + 活性门 + 参数账，各带必红探针）→ 20 步 CLI 小跑。
@@ -105,5 +105,5 @@ Block、tied 读出；`--dense`）。
 `results.json` / `results_<arm>_s0.json` / `smoke_report.json` / `analysis.md` /
 `MODEL.md`；`project.yaml`（`status`/`conclusion`/`failure_analysis`/`conclusion_review`/`argument`/
 `gaps`/`experiments`/WP `status`/`change_log`）更新；`.scratch/61-axis2-depth/WP-2653-REPORT.md`。
-独立复核（fresh 上下文，`SCHEMA.md` §14/§14b）排在 writer 停止之后：**第 1 轮判 PASS**（判词由
+独立复核（fresh 上下文，`harness/SCHEMA.md` §14/§14b）排在 writer 停止之后：**第 1 轮判 PASS**（判词由
 lead 落盘于 `.scratch/61-axis2-depth/**`）；两臂训完后再派新一轮。

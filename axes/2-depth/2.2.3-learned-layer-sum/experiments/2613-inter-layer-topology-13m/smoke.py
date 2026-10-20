@@ -1,4 +1,4 @@
-"""2613 · 层间拓扑 · 13M —— 20 步冒烟（先冒烟再全跑，SCHEMA §3 / docs/methodology §10）。
+"""2613 · 层间拓扑 · 13M —— 20 步冒烟（先冒烟再全跑，SCHEMA §3 / harness/methodology §10）。
 
 验证四件事，落 `smoke/smoke.json`：
 1. **参数量逐位账**（SCHEMA §15 记账）：sequential = parallel-dual-ln，

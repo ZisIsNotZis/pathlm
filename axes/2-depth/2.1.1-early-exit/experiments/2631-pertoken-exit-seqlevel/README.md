@@ -29,7 +29,7 @@
 | **对照** | ①全深度（`never-exit`）②**固定前缀退 k 层** `prescribed-k`（k=2..7；同预算的「笨」对手） |
 | **不变量** | 因果性（后面的 token 改了不影响前面位置的退出深度与读出，单测钉住）；`τ=1.0` 退化臂必须逐位等于全深度 |
 | **噪声** | 仓内跨 run 噪声带 `0.014`；同 checkpoint 内比较另报**逐窗口配对差 Δbpc 的 SE**（各臂同一批窗口，配对设计） |
-| **禁入判据** | 墙钟、吞吐、tok/s（`docs/research-schema.md` §3）。墙钟只出现在 `run_log.txt` 的过程行 |
+| **禁入判据** | 墙钟、吞吐、tok/s（`harness/research-schema.md` §3）。墙钟只出现在 `run_log.txt` 的过程行 |
 | **校准** | 每深度 top-1 概率 vs 两种标签：`tf`（`argmax_k == argmax_L`）与 `true`（`argmax_k == 真实下一字节`）；报 ECE（10 等宽箱）与 risk–coverage |
 
 **与 `depth_curve` 的关系（必须讲清）**：`depth_curve[k]` = 全深度上下文下第 k 层读出的 bpc
@@ -52,7 +52,7 @@
 - `shuffled-token-thr-*`：保留该臂退出深度的**边缘分布**、打散「内容↔深度」相关（置换控制）；
 - `nofill-token-thr-*`：关掉填充（no-fill 语义；该臂**偏离训练语义**，标为语义迁移臂）；
 - `prescribed-4 × {fill, no-fill}`：**结构零假设**——全同深度下填充不触发，两臂必须逐位相同
-  （活性判据，`SCHEMA.md` §10）；
+  （活性判据，`harness/SCHEMA.md` §10）；
 - `same_position_paired`：把每个深度桶的位置拿出来，与**全深度基线在同一批位置上**的 CE 配对。
 
 ## 3 否证条件（预登记）

@@ -32,7 +32,7 @@ clean bpc 的差异能否超过项目方差带（0.014 bpc）？
 **唯一变量 = 每 token 参与前向的 FFN 隐藏通道子集**。
 
 - 基底 = 主流标准 decoder-only transformer（`train_depth_ar.py --dense --topology sequential
-  --exit-mode uniform`；三条共享底座偏离见 `docs/design.md` §2）；
+  --exit-mode uniform`；三条共享底座偏离见 `atlas/design.md` §2）；
 - attention / LN / embedding / 位置嵌入 / 读出头（tied 线性）/ 优化器 / 步数 / 批大小 / lr / seed /
   数据切分 / 评测批（`depth_curve`，`n_batches=20, bs=16, generator seed 2`）**逐字段相同**；
 - **总参数逐臂相同**：所有臂都保留完整 FFN 权重（`mlp_mult=4`，1024 隐藏通道），只改前向里
@@ -113,16 +113,16 @@ pre-activation**，因此 `lin1` 的 `d·H = 262144` MACs **无法省**，省下
 
 ## 5. 对照与方差
 
-- 锚复用 = 2641 `U4-s0`（`D`）与 `U2-s0`（同算力参照），按 `SCHEMA.md` §9 三道门：
+- 锚复用 = 2641 `U4-s0`（`D`）与 `U2-s0`（同算力参照），按 `harness/SCHEMA.md` §9 三道门：
   ① 实现层 equality（本实验 `mask≡1` 时前向与 stock 逐位相同；`F50` 掩码全 0 的那一半
   参数梯度恒 0 的口径在 `analysis.md` 声明）；② 配置层 equality（逐字段对照 `2641-ffn-ratio-frontier-13m/config.json`）；
   ③ 口径标注（`n_batches=20, bs=16, seed 2, steps 12000, seed 0`）。
-- 方差界 = 0.014 bpc（`docs/methodology.md` §2）；同 config 跨 seed 散布（2641: 1.5257/1.5298）作参照。
+- 方差界 = 0.014 bpc（`harness/methodology.md` §2）；同 config 跨 seed 散布（2641: 1.5257/1.5298）作参照。
 - n=1（仅 seed 0）：越带结论为单点快照，只报增量方向。
 
 ## 6. 成本与预算
 
-- 单卡 RTX 4090（24GB）共享；GPU 工作按 `SCHEMA.md` §20 取/放 `/tmp/pathlm_gpu.lock`，**按臂释放**、
+- 单卡 RTX 4090（24GB）共享；GPU 工作按 `harness/SCHEMA.md` §20 取/放 `/tmp/pathlm_gpu.lock`，**按臂释放**、
   臂间 ≥61 s，单次等锁 ≤25 min，**不杀他人进程**。
 - 每臂 12k 步 ≈ 7–8 min（2641 实测 `wall_minutes ≈ 7.8`）⇒ 3 臂 ≈ 24 min GPU；冒烟 60 步 × 3 臂 <10 min。
 - 可中断性：臂级可中断；中断不入账。
@@ -136,7 +136,7 @@ pre-activation**，因此 `lin1` 的 `d·H = 262144` MACs **无法省**，省下
 
 ## 8. 单测与冒烟（含变异）
 
-- 先 **60 步冒烟 rc=0**，再全跑（`docs/methodology.md` §5）。
+- 先 **60 步冒烟 rc=0**，再全跑（`harness/methodology.md` §5）。
 - 单测 `test_2644_channel_sparsity.py`（自包含，不改共享 `tests/`）：
   - `T1` **等值门**：`keep_frac = 1.0`（mask 全 1）时 `SparseFFN` 前向与 stock `blk.mlp`
     **逐位相同**（整个模型最终深度 logits 逐位相同）；
@@ -153,7 +153,7 @@ pre-activation**，因此 `lin1` 的 `d·H = 262144` MACs **无法省**，省下
 - 冒烟 rc≠0 ⇒ 修实现，不跑 12k。
 - 单测红 ⇒ 修实现；等值门恒真（变异不变红）⇒ 门无效，重写门。
 - 锁等不到（>25 min）⇒ 按 `K50` → `F50` → `K25` 优先级跑；未跑臂如实写「未跑」，**不编读数**。
-- 频率/熵探针若与掩码实现不一致 ⇒ 先修测量（`docs/methodology.md` §5 反例：假失败）。
+- 频率/熵探针若与掩码实现不一致 ⇒ 先修测量（`harness/methodology.md` §5 反例：假失败）。
 
 ## 10. 产出与终点状态
 
@@ -166,8 +166,8 @@ pre-activation**，因此 `lin1` 的 `d·H = 262144` MACs **无法省**，省下
 - 本轴 `2641`（`3.1.4`）：等 FFN 预算下逐层非均匀宽度；`U2-s0` = 1.5709 是「**减参数**换 50% FFN 算力」
   的本仓实测位点，本条 `F50` 正是它的**保参数孪生**。
 - `2642`（`3.1.1` 均匀收窄）：解码器整体宽度收窄的位点。
-- `docs/design.md` §2 / `SCHEMA.md` §15：减参数的结构改动要与「同 FLOPs 的稀疏/稠密对照」比，
+- `atlas/design.md` §2 / `harness/SCHEMA.md` §15：减参数的结构改动要与「同 FLOPs 的稀疏/稠密对照」比，
   故本条的 `F50` 对照是**必要的**，不是可选的。
 - 业界 MoE / 条件计算（switch-transformer 一族）用**可学习路由**换来「参数不增、算力降」，
   但路由本身有容量/负载均衡代价；本条刻意**去掉路由器**，只测「既有激活内容选通道」的纯条件性。
-  业界数字不作结论依据；本仓以本地单跑为准（`SCHEMA.md` §21）。
+  业界数字不作结论依据；本仓以本地单跑为准（`harness/SCHEMA.md` §21）。

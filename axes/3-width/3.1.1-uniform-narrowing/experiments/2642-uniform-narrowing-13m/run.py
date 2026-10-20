@@ -54,7 +54,7 @@ DEVICE = "cuda"
 D_MODEL, N_LAYERS, N_HEADS, SEQ_LEN, MLP_MULT = 256, 8, 8, 256, 4
 HEAD_DIM = 32
 VOCAB = 206
-VARIANCE_BOUND = 0.014                    # bpc 带（docs/research-schema.md §12.1 / C1）
+VARIANCE_BOUND = 0.014                    # bpc 带（harness/research-schema.md §12.1 / C1）
 GATE_BATCH, GATE_SEED = 8, 1234           # 等值门的固定批（B=8，generator seed 1234）
 LIVENESS_SEED = 1234
 REEVAL_EVAL_GENERATOR_SEED = 2           # = depth_curve 缺省（与 2641 同口径）
@@ -422,7 +422,7 @@ def _build_full_model(d: int, heads: int, vocab: int) -> DepthARModel:
 def block_liveness(model: DepthARModel, eval_arr, w: int | None = None,
                    n_batches: int = 2, batch_size: int = 8,
                    seed: int = LIVENESS_SEED) -> dict:
-    """活性（`SCHEMA.md` §10）：**真实前向**中用 forward hook 抓每层块的输入/输出，
+    """活性（`harness/SCHEMA.md` §10）：**真实前向**中用 forward hook 抓每层块的输入/输出，
     报逐层 ‖out‖/‖in‖ 的逐位置均值 —— 每层真的参与前向、不是死路径。"""
     gen = torch.Generator().manual_seed(seed)
     acc = [[] for _ in model.blocks]
@@ -1042,7 +1042,7 @@ def aggregate(steps: int, out_root: str, arms: list[str], seeds: list[int],
                       "与同宽 uniform 比较；P4 评测确定性/因果性/活性/参数与维数审计；"
                       "P5 否证线"),
         "variance_bound": VARIANCE_BOUND,
-        "variance_bound_declaration": ("docs/research-schema.md §12.1 / C1：0.014 bpc 带，"
+        "variance_bound_declaration": ("harness/research-schema.md §12.1 / C1：0.014 bpc 带，"
                                        "限配对 Δ、≥5 窗口；率类指标才走 bootstrap/Wilson"),
         "steps": steps,
         "seeds_available": {a: [s for (aa, s) in sorted(recs) if aa == a] for a in arms},

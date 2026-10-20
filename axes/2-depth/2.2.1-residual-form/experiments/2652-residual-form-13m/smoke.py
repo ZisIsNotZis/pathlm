@@ -1,4 +1,4 @@
-"""2652 · 冒烟与等值门（`SCHEMA.md` §9 / `docs/methodology.md` §5）。
+"""2652 · 冒烟与等值门（`harness/SCHEMA.md` §9 / `harness/methodology.md` §5）。
 
 **等值门（必须能失败，抓红即停）**：
 
@@ -9,7 +9,7 @@
 2. 参数量审计：`gated` 相对 `base` 的增量 **恰好 = 2L = 16**（这是唯一被允许的
    额外参数；其余三臂为 0）。
 3. **非无操作检查**：`postln` / `scaled` 在 init 处与 `base` 的前向**必须不同**
-   （否则干预是死的，`SCHEMA.md` §10）。
+   （否则干预是死的，`harness/SCHEMA.md` §10）。
 
 任一条不成立 ⇒ 非零退出。
 

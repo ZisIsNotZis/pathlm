@@ -53,11 +53,11 @@ token 难不难。本实验把 FFN 权重**一个不少地留着**（总参数�
 ## 1. 口径与设备
 
 - **设备**：单卡 RTX 4090（训练）；评测与活性探针同设备（`DEVICE = "cuda"`，同一台机器、同一批
-  评测窗口序）。臂间逐臂取放 `/tmp/pathlm_gpu.lock`（`SCHEMA.md` §20.1），臂间 ≥61 s。
+  评测窗口序）。臂间逐臂取放 `/tmp/pathlm_gpu.lock`（`harness/SCHEMA.md` §20.1），臂间 ≥61 s。
 - **判据线**：`README.md` §4（预登记、不可改）。主判 = `clean bpc` 配对 Δ 对 dense 锚，带 = 0.014
   bpc；率类（选择一致率 / 熵）走 Wilson 95% CI 与 batch 聚类 bootstrap，**不跨量纲借用** 0.014。
 - **锚复用**：`D` = `2641-ffn-ratio-frontier-13m` 的 `U4-s0`（1.5314），`U2-s0`（1.5709）作同算力
-  参照；复用按 `SCHEMA.md` §9 三道门（本实验 `mask ≡ 1` 时前向与 stock 逐位相同的等值门由
+  参照；复用按 `harness/SCHEMA.md` §9 三道门（本实验 `mask ≡ 1` 时前向与 stock 逐位相同的等值门由
   `test_2644_channel_sparsity.py::T1` 钉住、变异 `T2` 钉住它不是恒真）。
 - **每臂配方**：`d=256, layers=8, heads=8, seq=256, mlp_mult=4, steps=12000, bs=32, lr=1e-3, seed=0`，
   enwik8 字符级（vocab 206），98 304 000 token/臂。评测 `n_batches=20, batch_size=16,
@@ -89,7 +89,7 @@ token 难不难。本实验把 FFN 权重**一个不少地留着**（总参数�
 - `D` 的 FFN MACs 4 194 304 = 同一条解析式（`results_K50_s0.json::cost`）在 `k = h` 处的取值
   （`8 × 2·1024·256`）；它的总 MACs 取自 `results.json::anchors.D_U4_s0_macs_total` = 7 392 768，
   与 `2641` 的 `D_ANCHOR_MACS` 逐位相同。
-- 末窗 loss 斜率（末 25%、`SCHEMA.md` §17.15 口径）三臂都是 **正的小斜率**（+0.0042～+0.0050 /1k 步）⇒
+- 末窗 loss 斜率（末 25%、`harness/SCHEMA.md` §17.15 口径）三臂都是 **正的小斜率**（+0.0042～+0.0050 /1k 步）⇒
   三个臂在 12k 步收尾时都还没进入平台，**读数只作同预算（matched-step）比较，不作渐近口径**。
 - 三条 Δ 全部越带且方向一致：**在本尺度、本预算下，少算通道就是掉质量，掉得比噪声带大一个量级附近**。
 
@@ -231,4 +231,4 @@ H1（条件选通道可排序更优）**被否证**；H0（不可排序）也**�
   **这是把「条件性无收益」从「本实现」推向「机制」的唯一便宜路径**，也是 `4.1`–`4.3`（MoE，Backlog）
   在 13M 上最便宜的前哨。
 - **真稀疏核**：上表的省幅是**纸面 MACs**；`lin1` 全算 + `lin2` 按 k 的实现下，实际墙钟与显存收益
-  未测（`SCHEMA.md` §17.12 同一陷阱，`2642` 侧的对照已记在 `docs/cost-table.md` 定律 11 一节）。
+  未测（`harness/SCHEMA.md` §17.12 同一陷阱，`2642` 侧的对照已记在 `atlas/cost-table.md` 定律 11 一节）。

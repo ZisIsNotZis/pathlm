@@ -226,7 +226,7 @@ def param_audit(model: ReadoutModel) -> dict:
 
 
 def intervention_liveness(model: ReadoutModel) -> dict:
-    """`SCHEMA.md` §10：干预必须真的被激活（参数幅度非 0）且读出真的在用。"""
+    """`harness/SCHEMA.md` §10：干预必须真的被激活（参数幅度非 0）且读出真的在用。"""
     out = {"arm": model.arm, "params_added": param_audit(model)["params_added_readout"]}
     def stat(name, t):
         tf = t.detach().float()

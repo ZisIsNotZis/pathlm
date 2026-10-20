@@ -99,7 +99,7 @@ def _run_dir(out_root: str, run: str) -> str:
 
 
 def _loss_slope(rows: list[dict], steps: int, frac: float = 0.25) -> dict:
-    """同方法 loss 斜率（`SCHEMA.md` §16）：末 frac 窗、最小二乘、×1000。"""
+    """同方法 loss 斜率（`harness/SCHEMA.md` §16）：末 frac 窗、最小二乘、×1000。"""
     start = int(steps * (1 - frac))
     win = [r for r in rows if start <= r["step"] <= steps
            and math.isfinite(r["loss"])]
@@ -121,7 +121,7 @@ def _stream_rms_by_layer(model, eval_arr, n_batches: int = 2,
     """**残差流 RMS 逐层**：在一次真实前向里 forward-hook 每块输出（`out[0]`），
     报 `sqrt(mean(x²))` 的逐批均值。`base` 是未归一温流、`postln` 是每子层后被 LN
     归一的流（RMS≈1）——这条曲线就是「归一化后置」的活性量，也是 `gated`/`scaled`
-    的残差流诊断（`SCHEMA.md` §10）。"""
+    的残差流诊断（`harness/SCHEMA.md` §10）。"""
     acc: list[list[float]] = [[] for _ in model.blocks]
     handles = []
 

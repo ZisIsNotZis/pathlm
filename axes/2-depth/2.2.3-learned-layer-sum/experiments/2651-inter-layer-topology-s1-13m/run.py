@@ -24,7 +24,7 @@
 
 排队（同目录 `supervise-s1.sh`，detached 后台驱动）：**快轮询抢窗口**——单次取锁
 `--lock-wait-s 8` 拿不到就立刻返回，外层 sleep 5s 重排队，`while :` 不限轮数；
-每臂结束由 `gpu_lock_release(60)` 释放锁并留 ≥60s 窗口再取下一臂（`SCHEMA.md` §20.1）。
+每臂结束由 `gpu_lock_release(60)` 释放锁并留 ≥60s 窗口再取下一臂（`harness/SCHEMA.md` §20.1）。
 
 用法（后台运行 + ≤120s 轮询日志）：
 

@@ -1,7 +1,7 @@
 # 2 深度轴
 
 > 轴：**2 深度轴**（目录 `axes/2-depth/`）。用词、编号、目录以 `docs/structure.md` §12 为准，
-> 每个研究项的字段契约见 `docs/research-schema.md`。
+> 每个研究项的字段契约见 `harness/research-schema.md`。
 
 深度轴问「算力沿深度怎么花」：普通 decoder-only transformer 对每个 token 都跑满 L 层、
 每层用同一种连接、每层容量相同；本轴把「要不要跑这层」「跑完怎么接回去」「深度的形状」

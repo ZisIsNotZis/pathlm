@@ -39,7 +39,7 @@ bf16 autocast × train/eval）。
   `Σ 2·T·w_l` 更大）。这两项**逐位报告**，不回避、也不据此改预算。
 - **PYR/HG/APYR 参数与 MACs 完全相等**：三者是同一宽度多重集的三种**逐层分配**
   ⇒ 「非均匀 vs 等宽」之外，还能读出「分配形态」这一层。
-- **U4 复用三道具**（`SCHEMA.md` §9）：① 全层 `w_l = d` 的前缀模型 == stock 逐位（T1）；
+- **U4 复用三道具**（`harness/SCHEMA.md` §9）：① 全层 `w_l = d` 的前缀模型 == stock 逐位（T1）；
   ② 逐字段配置对照 `anchor_config_parity`（全等）；③ 口径标注（`depth_curve` 最终深度、
   generator seed 2、同一解析代价公式）。
 

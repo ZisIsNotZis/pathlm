@@ -30,7 +30,7 @@ status: planned
 **唯一变量 = 输出读出头与输入 embedding 表是否共享**。
 
 - 基底 = 主流标准 decoder-only transformer（`train_depth_ar.py --dense --topology sequential
-  --exit-mode uniform`：无 carry 门、无退出采样、仅最终深度 CE；三条共享底座偏离见 `docs/design.md` §2）；
+  --exit-mode uniform`：无 carry 门、无退出采样、仅最终深度 CE；三条共享底座偏离见 `atlas/design.md` §2）；
 - attention / LN / FFN / 位置嵌入 / 残差接线 / 优化器 / 步数 / 批大小 / lr / seed / 数据切分 /
   评测批（`depth_curve`，`n_batches=20, bs=16, generator seed 2`）**逐字段相同**；
 - 三个臂的**主干权重来自同一次随机抽样**：同一 `torch.manual_seed(0)` 下先构造 stock `DepthARModel`
@@ -48,7 +48,7 @@ status: planned
   由 §8 的逐位门（T1/T2）钉住。
 - `U` 臂：`logits = h·Uᵀ`，`U` 形状 `[206, 256]`，`U~N(0, d^-0.5)`（与 embedding 同尺度）独立初始化。
 - `PR` 臂：`logits = h·(E + A·B)ᵀ`，`A [256, 32]`、`B [32, 206]`；**init `B ~ N(0, 0.02)`、`A = 0`**
-  （单边零，见 `SCHEMA.md` §10）：起步**逐位等于 tied**（`A·B = 0`），但 `A` 在 step 0 就有非零梯度
+  （单边零，见 `harness/SCHEMA.md` §10）：起步**逐位等于 tied**（`A·B = 0`），但 `A` 在 step 0 就有非零梯度
   （`dL/dA = hᵀ·g_logits·Bᵀ ≠ 0`），非鞍点；`dL/dB` 在 step 0 为零，`A` 一旦离开零点 `B` 即获得梯度。
   （把两侧都置零会落进鞍点、学习永久停住——§8 的 `T5` 单测用「双侧零 ⇒ grad_A == 0」钉住这一点。）
 
@@ -66,7 +66,7 @@ enwik8 字符级（vocab 206），`data/enwik8_full.npz`。
 代价口径：attention / FFN 的每 token 等效 MACs 三臂逐位相同（6,814,032 + 读出头项）。
 读出头项（在线实现）：`T`/`U` = `d·V` = 52,736；`PR` = `d·V + d·r + r·V` = 52,736 + 14,784 = **67,520**
 （低秩项在线算出）。**离线合并**（`E + A·B` 预先算好）后 `PR` 的读出也是 `d·V`。
-本条不把墙钟当判据或代价表述（`SCHEMA.md` §20 / `docs/methodology.md` §3）。
+本条不把墙钟当判据或代价表述（`harness/SCHEMA.md` §20 / `harness/methodology.md` §3）。
 
 ## 4. 判据线（预登记，不可事后调整）
 
@@ -75,14 +75,14 @@ enwik8 字符级（vocab 206），`data/enwik8_full.npz`。
 **主判据** = `P1` 的 clean bpc 配对 Δ；其余并列。
 
 - **P1（质量）**：Δbpc(`U`−`T`)、Δbpc(`PR`−`T`)。带 = **0.014 bpc**（配对 Δ、≥5 窗口的口径，
-  `docs/methodology.md` §2）。判定：`|Δ| ≤ 0.014` ⇒ **不可排序**；`Δ ≤ −0.014` ⇒ 解绑可排序更优；
+  `harness/methodology.md` §2）。判定：`|Δ| ≤ 0.014` ⇒ **不可排序**；`Δ ≤ −0.014` ⇒ 解绑可排序更优；
   `Δ ≥ +0.014` ⇒ 解绑可排序更差。**seed 0 单点**，跨 seed 复现不在本轮预算内，结论须标注 n=1。
 - **P2（语义代价 + 参数账）**：
   - 参数：总线单列（见 §3 表），强调 `T` 省 `V·d = 52,736`（读出头单列）；
   - **prob0 一致性**（解绑的语义代价）= 同一 `h` 下 `argmax(Eh) == argmax(Uh)` 的位置占比
     （在各自模型的最终深度状态上算，`n_batches=20, bs=16, seed 2`，序列位移位后逐位置）；
     `PR` 的 `U_eff = E + A·B`。**率类指标单独定门**：主判 = 按 batch 聚类的配对 bootstrap
-    95% CI 与 Wilson 95% CI；`0.014` **不**跨量纲借用（`docs/methodology.md` §2）。
+    95% CI 与 Wilson 95% CI；`0.014` **不**跨量纲借用（`harness/methodology.md` §2）。
     `T` 臂该值为 1.0（构造性对照）。
 - **P3（必须不变）**：
   - 因果性：单测断言改「未来 token」不改变更早位置的 logits（`U`/`PR` 臂）；
@@ -101,20 +101,20 @@ enwik8 字符级（vocab 206），`data/enwik8_full.npz`。
 
 ## 5. 对照与方差
 
-- 对照 = `T` 臂（2641 `U4-s0`），复用按 `SCHEMA.md` §9 三道门：
+- 对照 = `T` 臂（2641 `U4-s0`），复用按 `harness/SCHEMA.md` §9 三道门：
   1. **实现层 equality**：`T` 臂构造 + 前向与引擎 stock 逐位相同（单测 `T1`），
      且与 `2641/runs/U4-s0-12k/model.pt` 载入后逐张量逐位相同、键无缺无余（单测 `T2`）；
   2. **配置层 equality**：读 `2641-ffn-ratio-frontier-13m/config.json` 逐字段列表对照（见 `analysis.md` §2 表），
      不等字段必须显式列出；
   3. **口径标注**：历史同配置对照 + 等值性证明 + 已知口径，写进 `analysis.md` 首段与 §2。
   任一字段不等 ⇒ 回退到自包含双跑（本轮预算不允许，故若发现不等即降级为「不可判」写入）。
-- 方差界 = 0.014 bpc（`docs/methodology.md` §2）；同 config 跨 seed 散布（2641: 1.5257/1.5298）作参照，
+- 方差界 = 0.014 bpc（`harness/methodology.md` §2）；同 config 跨 seed 散布（2641: 1.5257/1.5298）作参照，
   **不替代** 0.014。
 - n=1（仅 seed 0）：所有「越带」结论须标 n=1 快照；只报增量方向，不称「已收敛后的最终质量」。
 
 ## 6. 成本与预算
 
-- 硬件 = 单卡 RTX 4090（24GB）共享；GPU 工作按 `SCHEMA.md` §20 取/放 `/tmp/pathlm_gpu.lock`，
+- 硬件 = 单卡 RTX 4090（24GB）共享；GPU 工作按 `harness/SCHEMA.md` §20 取/放 `/tmp/pathlm_gpu.lock`，
   **按臂释放**、臂间 ≥61 s，单次等锁 ≤25 min，**不杀他人进程**。
 - 每臂 12k 步 ≈ 7–8 min（2641 实测 `wall_minutes ≈ 7.8`、`peak_gpu_mem_mb ≈ 935`）⇒ 2 臂 ≈ 16 min GPU。
 - 冒烟：60 步（rc=0 才允许起 12k）；评测 ≈ 20 s/臂。
@@ -133,7 +133,7 @@ enwik8 字符级（vocab 206），`data/enwik8_full.npz`。
 
 ## 8. 单测与冒烟（含变异）
 
-- 先 **60 步冒烟 rc=0**，再全跑（`docs/methodology.md` §5）。
+- 先 **60 步冒烟 rc=0**，再全跑（`harness/methodology.md` §5）。
 - 单测 `test_2643_tied_untied.py`（自包含，不改共享 `tests/`）：
   - `T1` **逐位门**：`T` 臂前向最终深度 logits 与 stock `DepthARModel` **逐位相同**（解绑开关关闭）；
   - `T2` **构造/复用门**：同 seed 下 `T` 臂 `state_dict` 与 stock 构造逐位相同；载入
@@ -162,10 +162,10 @@ enwik8 字符级（vocab 206），`data/enwik8_full.npz`。
 
 ## 11. 既有做法（站巨人肩膀）
 
-- `docs/design.md` §2 三条共享底座偏离；`SCHEMA.md` §9 复用三道具、§10 活性、§15 等参数对照。
+- `atlas/design.md` §2 三条共享底座偏离；`harness/SCHEMA.md` §9 复用三道具、§10 活性、§15 等参数对照。
 - 本仓既有的读出重参数化族（W4：gated / linear_resid / perdepth / wide_shared，见 `2641` 的
   `README.md` 与 `pathlm/depth_ar.py::readout` 文档）已经证明「读出重参数化 + 2d² 参数」在
-  不可排序带内不产生独立增益（`SCHEMA.md` §15 实例：gated −0.0812 vs 等参数线性 −0.0888，
+  不可排序带内不产生独立增益（`harness/SCHEMA.md` §15 实例：gated −0.0812 vs 等参数线性 −0.0888，
   差 0.0076 < 0.014）——本条是该族最底线的版本：**连多出的参数都不给**（`T`）。
 - 业界（tied vs untied）结论普遍是「大词表下解绑略优、小词表下绑定省参数」；本仓
-  vocab=206 ⇒ **待核实的基线**，本轮以本地单跑对齐，不引用未核实数字（`SCHEMA.md` §21）。
+  vocab=206 ⇒ **待核实的基线**，本轮以本地单跑对齐，不引用未核实数字（`harness/SCHEMA.md` §21）。

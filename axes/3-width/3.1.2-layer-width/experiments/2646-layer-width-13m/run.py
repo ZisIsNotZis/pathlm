@@ -55,7 +55,7 @@ DEVICE = "cuda"
 D_MODEL, N_LAYERS, N_HEADS, SEQ_LEN, MLP_MULT = 256, 8, 8, 256, 4
 HEAD_DIM = 32
 VOCAB = 206
-VARIANCE_BOUND = 0.014                    # bpc 带（docs/research-schema.md §12.1 / C1）
+VARIANCE_BOUND = 0.014                    # bpc 带（harness/research-schema.md §12.1 / C1）
 EVAL_GENERATOR_SEED = 2                   # = depth_curve 缺省（与 2641 同口径）
 LIVENESS_SEED = 1234
 
@@ -388,7 +388,7 @@ def eval_model(schedule: list[int], seed: int, rd: str,
 @torch.no_grad()
 def prefix_liveness(model: DepthARModel, eval_arr, n_batches: int = 2,
                     batch_size: int = 8, seed: int = LIVENESS_SEED) -> dict:
-    """逐层活性与**实测活跃维**（`SCHEMA.md` §10）。
+    """逐层活性与**实测活跃维**（`harness/SCHEMA.md` §10）。
 
     在**真实前向**里抓：① 每层块输入/输出的逐位置范数比（>0 ⇒ 该层真的参与前向）；
     ② 每层 `ln1` 的**实际输入宽度** —— `F.layer_norm(x, (w,), …)` 在形状上要求
@@ -616,7 +616,7 @@ def load_anchor(arm: str, seed: int = 0) -> dict:
 
 
 def anchor_config_parity(steps: int, batch_size: int, lr: float) -> dict:
-    """逐字段配置对照（复用纪律 `SCHEMA.md` §9 三道具之二）。"""
+    """逐字段配置对照（复用纪律 `harness/SCHEMA.md` §9 三道具之二）。"""
     cfg = json.load(open(os.path.join(ANCHOR_DIR, "config.json")))
     base, tr = cfg["base"], cfg["training"]
     fields = {"d_model": [base["d_model"], D_MODEL],
@@ -645,7 +645,7 @@ def anchor_config_parity(steps: int, batch_size: int, lr: float) -> dict:
 # ---------------------------------------------------------------- 汇总（P1–P4）
 
 def band_verdict(delta: float | None) -> dict:
-    """0.014 bpc 带（`docs/research-schema.md` §12.1 / C1）判「可排序 / 不可排序」。"""
+    """0.014 bpc 带（`harness/research-schema.md` §12.1 / C1）判「可排序 / 不可排序」。"""
     if delta is None:
         return {"delta": None, "sorted": None, "verdict": "缺读数"}
     d = round(delta, 4)
@@ -767,7 +767,7 @@ def aggregate(steps: int, out_root: str, arms: list[str], seeds: list[int],
         "step": steps, "seeds": seeds, "arms_read": list(arms),
         "n_results_per_arm": n_from_each_arm,
         "variance_bound_bpc": VARIANCE_BOUND,
-        "variance_bound_source": "docs/research-schema.md §12.1 / C1（限配对 Δ、≥5 窗口）",
+        "variance_bound_source": "harness/research-schema.md §12.1 / C1（限配对 Δ、≥5 窗口）",
         "eval_metric": ("clean bpc = depth_curve 最终深度 bpc（n_batches=20、"
                         "batch_size=16、generator seed 2）"),
         "p1_table": table,

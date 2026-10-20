@@ -5,7 +5,7 @@
 #  2) 四臂 12k 训练+评测：**逐臂**取/放 GPU 锁（SCHEMA §20 / §20.1）——每臂结束必释放锁，
 #     并留 SEP_SEC（缺省 60s）礼貌窗口再重取；长等待交给命令自己（不在前台 inline 死等）。
 #  3) 有界重试：**轮**（枚举未完成臂 → 逐臂训练）由 `tools/supervise.sh --command-owns-lock`
-#     驱动（`docs/methodology.md` §18.1）。锁在本脚本里按臂 mkdir/rmdir（`run.py` 内部不取锁），
+#     驱动（`harness/methodology.md` §18.1）。锁在本脚本里按臂 mkdir/rmdir（`run.py` 内部不取锁），
 #     所以 supervisor 不探测、不触碰锁，只用 `--attempts-max` / `--fail-max` 给轮数封顶。
 #     轮数上限由本脚本自己的 deadline 推出：一轮至少要跑完一臂的 ARM_BUDGET_MIN，
 #     所以最多 DEADLINE_MIN/ARM_BUDGET_MIN + 1 轮（缺省 240/30+1 = 9）；连续失败上限取同一个数，

@@ -1,6 +1,6 @@
 """2646 · 等值性门与审计单测（自包含，不改共享 `tests/`）。
 
-`SCHEMA.md` §9 / `docs/methodology.md` §5 / 契约 `README.md` §2.3：
+`harness/SCHEMA.md` §9 / `harness/methodology.md` §5 / 契约 `README.md` §2.3：
 
 - **T1**：全层 `w_l = d = 256` 时，前缀子空间模型与 stock 引擎**逐位相同**
   （state_dict 逐位 + logits/loss 逐位；fp32 与 bf16 autocast 各一次）；

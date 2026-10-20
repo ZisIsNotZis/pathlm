@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""2643 · 复用门 ②（`SCHEMA.md` §9「配置层 equality」）：把复用锚（2641 `U4-s0`）的
+"""2643 · 复用门 ②（`harness/SCHEMA.md` §9「配置层 equality」）：把复用锚（2641 `U4-s0`）的
 resolved config 与本实验的对照配置**逐字段**列表对照。任何应等字段不等 ⇒ exit 1。
 
 可失败：把本实验 config.json 的 `base.mlp_mult` 改成 2 再跑，本脚本必须非零退出。

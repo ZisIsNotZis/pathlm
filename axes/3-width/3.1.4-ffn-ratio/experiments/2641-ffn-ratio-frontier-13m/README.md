@@ -29,7 +29,7 @@ status: planned
 **唯一变量 = 每层 FFN 中间维 r_l·d（逐层 FFN 宽度分配）**。
 
 - 基底 = 主流标准 decoder-only transformer（`train_depth_ar.py --dense`：无 carry 门、
-  无退出采样、仅最终深度 CE；= stock 形态 + 共享底座三条必要偏离，见 `docs/design.md` §2）；
+  无退出采样、仅最终深度 CE；= stock 形态 + 共享底座三条必要偏离，见 `atlas/design.md` §2）；
 - attention / LN / embedding / 位置嵌入 / 读出（tied 线性）**逐位相同**；
 - 数据、步数、批大小、lr、seed、评测批（`depth_curve` 固定 generator seed 2）全同；
 - **非必要性例外：无**。
@@ -85,11 +85,11 @@ d = 256，L = 8，r_max = 4（= stock）。**Σ_l r_l 与 Σ_l r_l² 口径见�
 | **P3** | 前沿斜率：`(每 token 等价 MACs, clean bpc)`，以 U4 = 100% 代价为原点 | 该跌（代价）/ 该不跌（质量） | 报 U4→U2 的 `Δbpc per 1% FLOPs` 与三/四点支配关系（谁被谁支配，含等代价平局判定） |
 | **P4** | seed 复现 | 该不变 | 同一 Δ 在两个 seed 上**同号**；不同号 ⇒ 该 Δ 记为「不可复现」，只报带 |
 | **P5** | 对照与等值性门 | 必须不变 | U4-s0 的 clean bpc 与历史 dense 13M 锚（`.scratch/23-depth-ar/evidence/23d-dense-B-12k` = **1.5287**；2613 全新重训 baseline-s0 = **1.5257**）之差 < 0.005 ⇒ 本实验与既有 dense 主干同引擎、同配方 |
-| **P6** | 干预活性（`SCHEMA.md` §10） | 必须报 | 逐层 FFN 隐藏维审计 == schedule（逐位）；逐层 FFN 输出相对幅度非零（窄层不是死路径） |
+| **P6** | 干预活性（`harness/SCHEMA.md` §10） | 必须报 | 逐层 FFN 隐藏维审计 == schedule（逐位）；逐层 FFN 输出相对幅度非零（窄层不是死路径） |
 
 - 质量口径 = **clean bpc**（`DepthARConfig(dense=True)` 下只有最终深度被监督 ⇒
   `depth_curve()[-1]["bpc"]`，序列级、越低越好），eval 批固定 seed 2（臂间同一批）。
-- 方差带 = **0.014**（`docs/methodology.md` §2：13M 跨 run bpc 漂移界）。
+- 方差带 = **0.014**（`harness/methodology.md` §2：13M 跨 run bpc 漂移界）。
   本实验另报**同配置跨 seed 实测散布**（2613 的 baseline s0/s1 = 1.5257/1.5298 ⇒ 0.0041）
   作参照，但**不以它替代 0.014 预登记门槛**（口径选择属框架性取舍，上报 Main）。
 
@@ -99,15 +99,15 @@ d = 256，L = 8，r_max = 4（= stock）。**Σ_l r_l 与 Σ_l r_l² 口径见�
 - n = 2 seed（0 / 1）：每臂在两个 seed 上重训；报逐 seed 值、逐 seed Δ 与跨 seed 极差。
 - 两臂之间不得比较不同 token 预算：所有臂 `steps=12000, batch=32, seq=256` =
   **98.3M token**（enwik8 前 90M 的 1.09 epoch）**matched-step / 同 token 预算**。
-- 收敛对账（`SCHEMA.md` §16）：报每臂**同方法**（末 25% 同一窗口、同一最小二乘）
+- 收敛对账（`harness/SCHEMA.md` §16）：报每臂**同方法**（末 25% 同一窗口、同一最小二乘）
   训练 loss 斜率，防「某臂收敛更慢」被读成「质量更差」。
 
 ## 6. 规模、预算与显存
 
 - 规模：13M 档（d=256 / L=8 / h=8 / T=256 / B=32）＝本仓全部 26xx 实验的同一档。
 - **`gpu_wall_budget: 60 min`（唯一数字，含冒烟 + 全部臂 + 全部评测）**；GPU 按
-  `SCHEMA.md` §20 互斥锁**按臂取/放**（臂间 ≥60 s）。
-- 预算不够时砍什么（`SCHEMA.md` §8）：先砍**臂数**（先砍 U4-s1，再砍 APYR-s1），
+  `harness/SCHEMA.md` §20 互斥锁**按臂取/放**（臂间 ≥60 s）。
+- 预算不够时砍什么（`harness/SCHEMA.md` §8）：先砍**臂数**（先砍 U4-s1，再砍 APYR-s1），
   再砍 seed 数，**不砍判据线、不砍步数**（步数一改臂间刻度就不可比）。
 - 显存：13M dense 形态峰值 ≤5GB net（共享卡礼貌线，§20.2 记账）。
 
@@ -123,7 +123,7 @@ d = 256，L = 8，r_max = 4（= stock）。**Σ_l r_l 与 Σ_l r_l² 口径见�
 | 副产品 | 逐层 FFN 输出幅度（哪层 FFN 被真用） | 臂间 |
 | 活性 | 逐层隐藏维审计、等值性门（P6/P5） | schedule 定义 |
 
-## 8. 等值性门与变异验证（`SCHEMA.md` §9 / `docs/methodology.md` §5）
+## 8. 等值性门与变异验证（`harness/SCHEMA.md` §9 / `harness/methodology.md` §5）
 
 单测文件 `test_2641_ffn_ratio.py`（自包含，不改共享 `tests/`）：
 
@@ -141,12 +141,12 @@ d = 256，L = 8，r_max = 4（= stock）。**Σ_l r_l 与 Σ_l r_l² 口径见�
   无可排序增益」，本读数并入 `3.1.2`（逐层宽度变化）的深度形状结论，本项不再单独主张。
 - 若 P5（等值性门）失败 ⇒ 视为**实现/口径问题**，先修实现再判机制（不得据此判机制失败）。
 - 若 P4 不同号 ⇒ 记为**方差问题**（不可复现），结论只写「不可排序」，不写方向。
-- 归因三分（`docs/research-schema.md` §7）：判负时必须区分
+- 归因三分（`harness/research-schema.md` §7）：判负时必须区分
   ①**设计问题**（FFN 逐层分配本身在此尺度无头寸）②**结构问题**（引擎/接线逼出的退化，
   如切片实现不等价、attention 占算力比过大使 FFN 分配无从体现）③**innovation 本身失败**
   （「非均匀宽度」这条路线在等预算下不成立）。
 
-## 10. 既有做法（`SCHEMA.md` §18，先站巨人肩膀）
+## 10. 既有做法（`harness/SCHEMA.md` §18，先站巨人肩膀）
 
 - FFN 隐藏比与 GLU 变体（Shazeer 2020 的 SwiGLU r≈8/3 等价取舍）——本实验**不重造 GLU**，
   只固定 GELU 配方调 r；外部条目标 `记忆·未核`（本环境检索不可用），只作设计方向、**不作判据**。
@@ -157,7 +157,7 @@ d = 256，L = 8，r_max = 4（= stock）。**Σ_l r_l 与 Σ_l r_l² 口径见�
 - 结论**不假设**业界已有定论方向（不写「金字塔一定更好」）；PYR 与 APYR 互为镜像正是
   为了不预设方向。
 
-## 11. scope 与混杂声明（`SCHEMA.md` §4）
+## 11. scope 与混杂声明（`harness/SCHEMA.md` §4）
 
 - 单轴单格：只改 `3.1.4 前馈隐藏比`的「逐层变化」半边；与深度轴 `2.3.1`（逐层容量）
   在实现上相邻，本实验只读**FFN 宽**这一面，深度形状读数归 `2.3.1`；
@@ -168,7 +168,7 @@ d = 256，L = 8，r_max = 4（= stock）。**Σ_l r_l 与 Σ_l r_l² 口径见�
   2. 前缀切片让「保留哪些通道」与通道下标相关；在 i.i.d. 初始化下保留子集是 i.i.d. 的，
      因此不引入方向性偏置，但**同一层窄臂的存活通道是宽臂的前缀**（这是刻意的：
      它让臂间初始化完全一致）；
-  3. 13M / 12k 快照：只读臂间增量，绝对水平是快照值（`SCHEMA.md` §20.3）；
+  3. 13M / 12k 快照：只读臂间增量，绝对水平是快照值（`harness/SCHEMA.md` §20.3）；
   4. 单任务（enwik8 字符级 next-token）：结论不外推到其他任务/规模。
 
 ## 12. 复现手段

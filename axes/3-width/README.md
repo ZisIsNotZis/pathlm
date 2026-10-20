@@ -1,7 +1,7 @@
 # 3 宽度轴
 
 > 轴：**3 宽度轴**（目录 `axes/3-width/`）。用词、编号、目录以 `docs/structure.md` §12 为准，
-> 每个研究项的字段契约见 `docs/research-schema.md`。
+> 每个研究项的字段契约见 `harness/research-schema.md`。
 
 宽度轴问「算力沿宽度怎么花」：普通 decoder-only transformer 对每个 token、每一层、每个位置都用
 同一宽度（同 hidden 维、同 FFN 隐藏比、激活全部通道），把每 token 的算力/参数均匀摊在所有 token 上。

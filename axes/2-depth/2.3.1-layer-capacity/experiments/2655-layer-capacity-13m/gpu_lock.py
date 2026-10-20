@@ -1,9 +1,9 @@
-"""GPU 互斥锁（`SCHEMA.md` §20）：mkdir 法 + holder_pid + heartbeat + 自愈回收。
+"""GPU 互斥锁（`harness/SCHEMA.md` §20）：mkdir 法 + holder_pid + heartbeat + 自愈回收。
 
 用法：`with gpu_lock(): ...`。最多等 `max_wait` 秒（缺省 600 = 10 min）；等不到抛
 `GPUUnavailable`，由调用方上报（**不杀**别人的进程、**不动**别人的锁）。
 
-自愈回收两条（`SCHEMA.md` §20）：① `holder_pid` 不存在或其进程已死；
+自愈回收两条（`harness/SCHEMA.md` §20）：① `holder_pid` 不存在或其进程已死；
 ② 无 `holder_pid` 且锁龄 > 900 s。回收一律**先删除锁目录内容再 rmdir**。
 释放时同样先删内容再 rmdir（锁目录含 `holder_pid` 时 rmdir 删不掉非空目录）。
 

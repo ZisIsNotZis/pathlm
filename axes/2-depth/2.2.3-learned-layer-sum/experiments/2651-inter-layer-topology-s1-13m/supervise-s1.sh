@@ -2,11 +2,11 @@
 # 2651 · seed=1 supervisor 薄包装（有界重试，setsid nohup 后台）。
 #
 # 重试上限、连续失败熔断、取锁礼让**全部**由仓库共享实现 `tools/supervise.sh` 提供
-# （`docs/methodology.md` §18.1）；本脚本只保留本实验自己的命令与参数。
+# （`harness/methodology.md` §18.1）；本脚本只保留本实验自己的命令与参数。
 # 判活看末行横幅 `[sup] DONE rc=0`；熔断看 `[sup] FUSED reason=<attempts|consecutive>`——
 # 熔断后不再取锁、不再重试。
 # 取锁：supervisor 在启动命令前探测锁是否空闲（单次窗口 ≤600s，两次尝试间隔 ≥60s）；
-# 真正的取/放锁由 run.py 的 `gpu_lock` 负责，每臂结束释放并留 ≥60s 窗口（`SCHEMA.md` §20.1）。
+# 真正的取/放锁由 run.py 的 `gpu_lock` 负责，每臂结束释放并留 ≥60s 窗口（`harness/SCHEMA.md` §20.1）。
 # 形态：按臂续跑 + 逐臂增量落盘（run.py 每臂写 results.json + append run_log.txt）；
 # 已训完的臂（sequential-12k-s1）由 run.py::arm_trained 自动跳过重训（只重算电池，~3s）。
 # 三条待训臂 = parallel / parallel-dual-ln / dense（seed=1，其余与 2613 s0 逐字段相同）。

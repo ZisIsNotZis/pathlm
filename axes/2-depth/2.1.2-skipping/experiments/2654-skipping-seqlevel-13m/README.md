@@ -46,7 +46,7 @@ seq=256 / mlp_mult=4 / batch=32 / lr=1e-3 / steps=12000 / seed=0 / 数据 `data/
 
 ## 4. 判据线（**预登记、不可事后改**）
 
-符号统一（`SCHEMA.md` §17.3）：`Δ(x vs y) := bpc_y − bpc_x`（**正 = x 更好**，即 x 的 bpc 更低）；
+符号统一（`harness/SCHEMA.md` §17.3）：`Δ(x vs y) := bpc_y − bpc_x`（**正 = x 更好**，即 x 的 bpc 更低）；
 所有 bpc 判据用**配对逐窗口 Δ**（同 `EVAL_SEED=2` ⇒ 四臂同位置），0.014 bpc 带。
 
 - **P0 引擎等值门**：`stock` 臂的 clean bpc 与 `2613` s0 sequential 臂（**1.5254**）之差
@@ -54,7 +54,7 @@ seq=256 / mlp_mult=4 / batch=32 / lr=1e-3 / steps=12000 / seed=0 / 数据 `data/
   stock 基线不可信，先按 §8 决策树查实现。
 - **P1 活性**：实测 layer-passes/token 与设计值一致 —— `stock` 8.000、`skip-mid` 6.000、
   `layers6` 6.000、`layerdrop-pt` 7.2（逐 token 逐层独立 Bernoulli(0.1) 的期望；实测落
-  `7.2 ± 窗口间 SE`）。不一致（|实测 − 设计| ≥ 0.2）⇒ 该臂作废（`SCHEMA.md` §10）。
+  `7.2 ± 窗口间 SE`）。不一致（|实测 − 设计| ≥ 0.2）⇒ 该臂作废（`harness/SCHEMA.md` §10）。
 - **P1b 训练/评测分布一致**：`layerdrop-pt` 的**训练期**逐层跳过占比与**评测期**逐层跳过占比
   逐层差 `< 0.05`（两边走同一份 `SkipBlock` 采样代码）。`skip-mid` 恒跳 ⇒ 两边恒 1.0。
 - **P2 判据（三条，逐条判）**：
@@ -74,7 +74,7 @@ seq=256 / mlp_mult=4 / batch=32 / lr=1e-3 / steps=12000 / seed=0 / 数据 `data/
   （每窗口 = batch16 × seq256 = 4080 预测位）。
 - `layerdrop-pt` 的评测**逐窗口重采跳层掩码** ⇒ 另报 `delta_window_se` 与 `delta_halves`（两半样本），
   不把采样噪声读成跨 run 训练噪声。
-- 复用 `2613` s0 作 P0 的**等值锚**（非对照臂）：`SCHEMA.md` §9 三条 —— ① 实现等值（stock 臂
+- 复用 `2613` s0 作 P0 的**等值锚**（非对照臂）：`harness/SCHEMA.md` §9 三条 —— ① 实现等值（stock 臂
   不套跳层、逐位等于 plain `DepthARModel`，见 §8 冒烟）；② 配置逐字段对照（`config.json` 与
   `2613 config` 逐字段相同，仅评测口径一致）；③ 口径标注（同为 `depth_curve` 最终深度 bpc）。
 
@@ -86,7 +86,7 @@ seq=256 / mlp_mult=4 / batch=32 / lr=1e-3 / steps=12000 / seed=0 / 数据 `data/
 - 可中断性：**按臂增量落盘**（每臂训练+评测完立刻写 `results.json` 的 `completed_arms` /
   `pending_arms`）⇒ 中断后 `python3 run.py --arms <剩余臂>` 续跑，不重跑已完成臂。
 - 冒烟：`python3 run.py --smoke`（全臂 20 步训练 + 2 窗口评测，断言 layer-passes 与设计一致）。
-- GPU 纪律：`SCHEMA.md` §20 锁（`/tmp/pathlm_gpu.lock`），**按臂取/放**（§20.1，含 ≥60s 礼貌
+- GPU 纪律：`harness/SCHEMA.md` §20 锁（`/tmp/pathlm_gpu.lock`），**按臂取/放**（§20.1，含 ≥60s 礼貌
   窗口），等锁上限 10 min/轮，不杀他人进程、不动他人锁。
 
 ## 7. 数据与脚本清单
@@ -107,7 +107,7 @@ seq=256 / mlp_mult=4 / batch=32 / lr=1e-3 / steps=12000 / seed=0 / 数据 `data/
    `drop` 是否逐 token 独立、`torch.where` 是否用**层输入**做旁路）；训练/评测分布不一致 ⇒ 查两
    边是否同一 `p`、同一采样代码。
 3. **规模**：所有臂 bpc 都异常高/低（训练未收敛）⇒ 查 loss 斜率与 gnorm，必要时缩步数保**臂间同刻度**
-   （`SCHEMA.md` §20.3），不砍臂。
+   （`harness/SCHEMA.md` §20.3），不砍臂。
 4. **设计**：P2 判决线读数为「无独立增量」⇒ 按 `project.yaml` `falsification` 如实判，不调判据线。
 
 ## 9. 产出

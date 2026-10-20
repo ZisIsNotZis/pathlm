@@ -148,7 +148,7 @@
   - **P5c（WP2 弹性）成立（即被否证）**：WD256@192 比同宽 uniform 差 0.0486 ≥ 0.014 ⇒
     **「一训多档」在本尺度不成立**，并如实落盘各档质量（不外推）。
 
-**归因三分**（`docs/research-schema.md` §7）：WP1 属①**设计问题**（d_model 减宽本身在此尺度有明显质量税，
+**归因三分**（`harness/research-schema.md` §7）：WP1 属①**设计问题**（d_model 减宽本身在此尺度有明显质量税，
 但每算力代价并不比 FFN 旋钮差）；WP2 属③**innovation 本身失败**（弹性宽度在 13M/12k 尺度不成立，
 且全宽档被正则拉低），非实现问题——T1/T2 等值门逐位通过，实现是干净的。
 
@@ -167,7 +167,7 @@
 
 - 质量口径 = clean bpc（最终深度、无退出、序列级、越低越好），eval 批固定 generator seed 2、
   n_batches=20、batch_size=16，与 2641 逐字段同口径（paired）。
-- 方差带 = 0.014 bpc（`docs/research-schema.md` §12.1 / C1，限配对 Δ、≥5 窗口）。本实验另报历史同配置
+- 方差带 = 0.014 bpc（`harness/research-schema.md` §12.1 / C1，限配对 Δ、≥5 窗口）。本实验另报历史同配置
   dense 13M/12k run 散布 1.5257 / 1.5287 / 1.5298 / 1.5314（极差 0.0057）作参照，不替代 0.014。
 - 代价 = 等效理论量（每 token MACs：attention `4w²+2Tw`、FFN `2·r·w²`、tied 读出 `w·V`，V=206）。
   **墙钟/吞吐只进 `run_log.txt`，不进本文件任何判据或代价表述。**

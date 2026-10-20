@@ -42,7 +42,7 @@ status: judged
 统一纪律（ticket 61 §9.1，逐字要点）：判据只用**等效理论算力**（layer-passes/token、FLOPs、
 tokens-per-forward，考虑 pipelining），**墙钟/吞吐不得进判据或 `cost_model`**；bpc 类用
 **0.014 bpc 带**（限配对 Δ、≥5 窗口）；对照臂必须自持（本实验自带 stock `sequential` 对照）；
-干预臂必须有非零活性量并落盘；`run.py` 一条命令复现全臂；GPU 按 `SCHEMA.md` §20 取锁、
+干预臂必须有非零活性量并落盘；`run.py` 一条命令复现全臂；GPU 按 `harness/SCHEMA.md` §20 取锁、
 §20.1 按臂释放。
 
 ## 1. 命题（一句话、可证伪）
@@ -79,7 +79,7 @@ tokens-per-forward，考虑 pipelining），**墙钟/吞吐不得进判据或 `c
 |---|---|---|
 | 解决什么问题 | 层间拓扑（顺序 / 并行 / 层间加权和）在 stock 形态上的质量头寸 | 命题本身 |
 | 代价（质量面） | Δ clean bpc（13M / 12k / seed1 / 98.3M token，matched-step 快照） | `sequential` 基线 |
-| 有效性 | Δ vs 基线 + 方差带 0.014（|Δ|<0.014 不可排序） | `SCHEMA.md` §12 判据线 |
+| 有效性 | Δ vs 基线 + 方差带 0.014（|Δ|<0.014 不可排序） | `harness/SCHEMA.md` §12 判据线 |
 | 收益·用法 1（质量） | 同引擎 dense 13M matched 税分母（1.5287）下的税 | 历史 `23d-dense-B-12k` |
 | 收益·用法 2（口径） | 逐深度 clean bpc 曲线 + next-token acc | 基线 |
 | 收益·用法 3（出口资产） | tf@k 接受率（tf@4/tf@6）、等效验证加速（FLOPs 口径） | 基线；并列判据 tf@4 ≥0.95 |
@@ -105,7 +105,7 @@ tokens-per-forward，考虑 pipelining），**墙钟/吞吐不得进判据或 `c
 ## 5. 对照与方差
 
 - 四臂**自包含双跑**（同一脚本、同一代码、同一 seed、同一数据切分、同一评测电池），
-  不复用历史 run 作判据臂（`SCHEMA.md` §9）。
+  不复用历史 run 作判据臂（`harness/SCHEMA.md` §9）。
 - **n = 2 seed**：s0 = 2613（seed 0，`2613-inter-layer-topology-13m/results.json`），
   s1 = 本实验（seed 1）。s0 与本实验的评测口径一致性用**当前电池重测 s0 四条 checkpoint**
   证明（clean_bpc 与 2613 记录逐位一致）；实际存证在 `run_log-attempt1-crash.txt:3`
@@ -125,7 +125,7 @@ tokens-per-forward，考虑 pipelining），**墙钟/吞吐不得进判据或 `c
 | 冒烟计划 | `smoke.py`：参数量账 + 初始化逐位一致 + 恒等起步 + 三个非基线臂各 20 步 CLI（接线/活性/步时/显存） |
 | 预算不够时砍什么 | 先砍 `dense` s1（用 2613 s0 dense 作 n=1 记录并如实降级结论）；**不砍判据线** |
 
-规模纪律（`SCHEMA.md` §7）：单卡 RTX 4090 24GB 且被多任务共享，GPU 任务串行（§20 锁）；
+规模纪律（`harness/SCHEMA.md` §7）：单卡 RTX 4090 24GB 且被多任务共享，GPU 任务串行（§20 锁）；
 只做 13M 原理验证，不外推规模/渐近。
 
 ## 7. 既有做法（prior art，SCHEMA §18）
@@ -158,5 +158,5 @@ tokens-per-forward，考虑 pipelining），**墙钟/吞吐不得进判据或 `c
 `analysis.md` / `MODEL.md` / `run_log.txt` / 四臂 `*-train_log.jsonl` + `*-gate_log.jsonl` /
 `smoke/smoke.json` / `runs/<arm>-12k-s1/`（权重，`.pt` 不入库）。
 
-> 契约副本标注（`SCHEMA.md` §17.6）：§0 为契约摘要，**判据线逐字保留**；原文见
+> 契约副本标注（`harness/SCHEMA.md` §17.6）：§0 为契约摘要，**判据线逐字保留**；原文见
 > `.scratch/61-axis2-depth/TICKET.md` §9.2 WP-2651。

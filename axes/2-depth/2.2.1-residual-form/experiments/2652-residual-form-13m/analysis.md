@@ -1,10 +1,10 @@
 # 2652 · 残差形式最小判决（2.2.1）· 判读
 
 状态：**四臂（base / postln / gated / scaled）12k 步全部训完并评测，数字已落盘；判据线 P1–P6
-未改；独立复核未做**（fresh 复核排在 writer 停止之后，`SCHEMA.md` §14 / §14b）。
+未改；独立复核未做**（fresh 复核排在 writer 停止之后，`harness/SCHEMA.md` §14 / §14b）。
 
 判据线逐字取自本目录 `README.md` §4（预登记，未改）与 `.scratch/61-axis2-depth/TICKET.md` §9.2 WP-2652。
-**Δ 符号统一约定**（`SCHEMA.md` §17.3 / `README.md` §4-P1）：`Δ = bpc_base − bpc_form`
+**Δ 符号统一约定**（`harness/SCHEMA.md` §17.3 / `README.md` §4-P1）：`Δ = bpc_base − bpc_form`
 （**正 = 该形式更好**）。全篇同号。
 
 ## 人话摘要
@@ -91,7 +91,7 @@ bpc 越低 = 该深度读出越可读。方向：`Δbase−form > 0` = 该形式
 出处：`results.json::arms[*].params_total` / `form_added_params`；`smoke.py` 的 `params_total` 逐臂一致。
 `--arm` 模板逐字段相同（`results.json::single_factor_check.all_arms_same_shared_cli = true`，n_arms = 4）。
 
-## D 表：干预活性（P4，`SCHEMA.md` §10）
+## D 表：干预活性（P4，`harness/SCHEMA.md` §10）
 
 | 臂 | 活性量（落盘） | 判活 |
 |---|---|---|
@@ -102,7 +102,7 @@ bpc 越低 = 该深度读出越可读。方向：`Δbase−form > 0` = 该形式
 
 - **等值起步（G1）**：`smoke.py` 实测 `gated@init` 与 `base` 的 `logits`/`loss` **逐位相同**
   （`torch.equal`，CPU fp32）。`postln`/`scaled` 在 init 处与 `base` **必须不同**，二者均 `true`。
-- **可达性自证（`SCHEMA.md` §24）**：`mutation_check.py` 注入三处变异，等值门必须相应抓红——
+- **可达性自证（`harness/SCHEMA.md` §24）**：`mutation_check.py` 注入三处变异，等值门必须相应抓红——
   M1（门初值改 0.99）、M3（postln 偷偷退回 base 公式）、M4（残差形式根本没接线）**三处全红**，
   恢复后等值门重新变绿（证明门非恒真、变异是「注入—恢复」）。
 - 门控臂额外参数 +16 已过等参数口径（C 表）：`gated` 的任何效应**不得**归因于参数量。
@@ -116,13 +116,13 @@ bpc 越低 = 该深度读出越可读。方向：`Δbase−form > 0` = 该形式
 | `gated` | +0.00220 | 0.3856 | 7.86 | 0 / 0 | 否 |
 | `scaled` | +0.00295 | 0.4612 | 3.20 | 0 / 0 | 否 |
 
-- 四臂同方法（末 25% 窗 = 步 9000–11999，16 个点，同一最小二乘，`SCHEMA.md` §16）；末窗 loss
+- 四臂同方法（末 25% 窗 = 步 9000–11999，16 个点，同一最小二乘，`harness/SCHEMA.md` §16）；末窗 loss
   基本平坦（如 base 从 1.0408 到 1.0406），斜率量级 ~0.002–0.003/1k 步 = 噪声级，四臂一致。
 - **`postln` 的 `gnorm_max = 19.81`（base 7.86）如实报**：全程未发散、无 grad skip，
   且末窗 gnorm 均值（0.3925）反而不高于 base（0.4263），故这是**早期一次尖峰**，不改判据、不改判词。
 - 出处：各臂 `results_<arm>_s0.json::stability`；gdepth 源自 `runs/<arm>-s0-12k/train_log.jsonl`。
 
-## 两面读法（`SCHEMA.md` §17.17：净和不可排序时必须给分量分解两列）
+## 两面读法（`harness/SCHEMA.md` §17.17：净和不可排序时必须给分量分解两列）
 
 | 读法 | 预登记判据线 | 实测 | 判词 |
 |---|---|---|---|
@@ -175,12 +175,12 @@ bpc 越低 = 该深度读出越可读。方向：`Δbase−form > 0` = 该形式
   三形式 = 只改「子层输出如何接回残差流」的等价部署变体（`postln` 归一化位置后置、`scaled` 固定深度缩放、
   `gated` 可学习标量门）。四臂**同一任务定义、同一位置集**。
 
-## 口径标注（`SCHEMA.md` §12.3 / §20.3）
+## 口径标注（`harness/SCHEMA.md` §12.3 / §20.3）
 
 - **快照口径**：13M 档（d=256 / L=8 / h=8 / T=256 / B=32，总参数 6 962 688）、12k 步 = **98.3M token**
   （enwik8 前 90M 的 1.09 epoch）的 **matched-step 快照**；结论只读**臂间配对增量**，绝对水平是快照值
   （未收敛时不能外推为渐近质量）。
-- **噪声带** = 0.014 bpc（`docs/methodology.md` §2；限配对 Δ、≥5 窗口；C1 裁决）。同配置跨 seed 参照
+- **噪声带** = 0.014 bpc（`harness/methodology.md` §2；限配对 Δ、≥5 窗口；C1 裁决）。同配置跨 seed 参照
   = 2613 baseline s0/s1 差 0.0041，**不以它替代 0.014 预登记门槛**。
 - **墙钟不进判据**：`train_wall_s`（base 382.2 / postln 508.2 / gated 614.9 / scaled 539.4 s）与
   `peak_gpu_mem_mb`（935.3 / 1000.2 / 999.4 / 935.3）只登记为过程量；本项是质量/深度判决，不是算力判决。
@@ -213,7 +213,7 @@ bpc 越低 = 该深度读出越可读。方向：`Δbase−form > 0` = 该形式
 
 ## 独立复核
 
-**独立复核未做**（fresh 复核者排在 writer 停止之后，`SCHEMA.md` §14 / §14b；本轮窗口内未启动）。
+**独立复核未做**（fresh 复核者排在 writer 停止之后，`harness/SCHEMA.md` §14 / §14b；本轮窗口内未启动）。
 `conclusion_review` 只写自评 + 「独立复核未做」标注。
 
 ## 回归与可复算的校验命令

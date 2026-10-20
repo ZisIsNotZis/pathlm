@@ -70,7 +70,7 @@ embedding/位置嵌入：E[:, :w]、P[:, :w]
 > 干预全部实现在本实验目录内（前缀前向 + checkpoint→w 模型转换），共享 `pathlm/**` 与
 > `train_*.py` **零改动**。把该能力收进引擎的申请记在 `.scratch/64-axis3-width/TICKET.md`。
 
-两条**等值门**（`SCHEMA.md` §9 / `docs/methodology.md` §5，落成 pytest 单测 + 训练后 CUDA 复核）：
+两条**等值门**（`harness/SCHEMA.md` §9 / `harness/methodology.md` §5，落成 pytest 单测 + 训练后 CUDA 复核）：
 
 | 门 | 内容 | 判法 |
 |---|---|---|
@@ -90,7 +90,7 @@ embedding/位置嵌入：E[:, :w]、P[:, :w]
 | **WD256**（WP2） | 嵌套宽度 dropout，训练 d=256/heads=8，每步 w∈{128,192,256} | `--d 256 --heads 8` + 前缀前向 | 一 checkpoint ⇒ 三档部署 |
 
 - n：**seed 0 全新增臂**；GPU 预算有余补 `D192-s1`、`WD256-s1`（若补，结论如实记 n）。
-- 复用纪律（`SCHEMA.md` §9）：U4/U2 只作**阈值/前沿位点**引用，逐字段配置对照与代码哈希由
+- 复用纪律（`harness/SCHEMA.md` §9）：U4/U2 只作**阈值/前沿位点**引用，逐字段配置对照与代码哈希由
   `--aggregate` 从 2641 的 `config.json` / `results_*.json` **程序化核对**并落进 `results.json`
   （三道具：① 开关关闭逐位等值单测 = 本实验 T1；② 逐字段配置对照 = `anchor_config_parity`；
   ③ 口径标注 = `cost`/`eval` 块内注明与 2641 同口径）。
@@ -103,12 +103,12 @@ embedding/位置嵌入：E[:, :w]、P[:, :w]
 | **P2** | 前沿对照：{U4, U2, D192, D128} 在同一 (每 token 等效 MACs, clean bpc) 平面 | 该报 | 报支配关系与「每 1% 算力节省的质量代价」=（Δbpc 相对 U4）/(MACs 节省 %)。回答「d_model 减宽 vs FFN 比例在等算力位点落哪一侧」。**必须并列报参数量**（防把「减参数」记成「减宽度」） |
 | **P3** | WD256 同一 checkpoint 在宽度 {256,192,128} 的质量曲线 | 该单调（越宽越好） | 单调 = `bpc(128) > bpc(192) > bpc(256)`（严格）；相邻档差 < 0.014 时标「相邻档不可排序」。弹性判定：`\|bpc_WD@192 − bpc_D192\| < 0.014` **且** `\|bpc_WD@128 − bpc_D128\| < 0.014` ⇒ **不可排序 ⇒ 弹性宽度成立**；任一档差 ≥ 0.014 且 WD 更差 ⇒ **明确劣于同宽 uniform** |
 | **P4** | 必须不变/活性 | 必须不变 | ① 评测确定性：`--no-train` 重评与首评 clean bpc 及逐深度 bpc **逐位一致**；② 因果性：改末位 token ⇒ 之前位置 logits 逐位不变、末位必须变；③ 活性：每个宽度下逐层 `‖block_out‖/‖block_in‖ > 0`；④ D192/D128 实测参数 == 解析参数；⑤ WD256 三档切片模型实测活跃维 == 目标 w |
-| **P5** | 否证线（`docs/research-schema.md` §12.2） | — | **a**：若 `\|Δ_D192\| < 0.014` 且 `\|Δ_D128\| < 0.014` ⇒ 写「在本尺度质量代价落在噪声带内，减宽该不跌」；**b**：否则若 D192 与 D128 的「每 1% 算力节省的质量代价」**均 ≥** U2 同口径斜率 ⇒ 写「d_model 减宽不占前沿优势」；**c**（WP2）：质量曲线不单调，或 WD256 任一档比同宽 uniform 差 ≥ 0.014 ⇒ 判弹性宽度在本尺度不成立 |
+| **P5** | 否证线（`harness/research-schema.md` §12.2） | — | **a**：若 `\|Δ_D192\| < 0.014` 且 `\|Δ_D128\| < 0.014` ⇒ 写「在本尺度质量代价落在噪声带内，减宽该不跌」；**b**：否则若 D192 与 D128 的「每 1% 算力节省的质量代价」**均 ≥** U2 同口径斜率 ⇒ 写「d_model 减宽不占前沿优势」；**c**（WP2）：质量曲线不单调，或 WD256 任一档比同宽 uniform 差 ≥ 0.014 ⇒ 判弹性宽度在本尺度不成立 |
 
 - 质量口径 = **clean bpc**（dense 形态下只有最终深度被监督 ⇒ `depth_curve()[-1]["bpc"]`，
   序列级、越低越好），eval 批固定 `depth_curve` 的 generator seed 2、n_batches=20、batch_size=16
   —— 与 2641 逐字段同口径（paired）。
-- 方差带 = **0.014 bpc**（`docs/research-schema.md` §12.1 / C1 裁决：限**配对 Δ**、≥5 窗口；
+- 方差带 = **0.014 bpc**（`harness/research-schema.md` §12.1 / C1 裁决：限**配对 Δ**、≥5 窗口；
   率类指标才走配对 bootstrap / Wilson 95% CI，本实验无率类判据）。本实验另报历史同配置 dense
   13M/12k run 散布 1.5257 / 1.5287 / 1.5298 / 1.5314（极差 0.0057）作**参照**，不替代 0.014。
 - **口径**：墙钟 / 吞吐**只进 `run_log.txt` 过程日志**，不进 `analysis.md` 判据、不进任何
@@ -119,9 +119,9 @@ embedding/位置嵌入：E[:, :w]、P[:, :w]
 
 - `gpu_wall_budget: 75 min`（含冒烟 ≤4 min、WP1 两臂 ≈7 min/臂、WP2 一臂 ≈5 min
   （平均活跃宽度² ≈ 0.61×全宽）、逐臂评测 ≈40 s、重评 ≈40 s）。
-- 预算不够时砍什么（`SCHEMA.md` §8）：先砍 **seed 数**（seed 1 一律不跑），再砍 **WP2**
+- 预算不够时砍什么（`harness/SCHEMA.md` §8）：先砍 **seed 数**（seed 1 一律不跑），再砍 **WP2**
   （WP1 必须落地完整判决包），**不砍判据线、不砍步数**（步数一改臂间刻度就不可比）。
-- GPU 按 `SCHEMA.md` §20 互斥锁**按臂取/放**（`/tmp/pathlm_gpu.lock`，写 pid + 用途 + ISO 时间），
+- GPU 按 `harness/SCHEMA.md` §20 互斥锁**按臂取/放**（`/tmp/pathlm_gpu.lock`，写 pid + 用途 + ISO 时间），
   臂间 sleep ≥61 s；峰值显存 <8 GB（13M 档实测 ≈1 GB 量级）。
 
 ## 6. 指标表（逐项分析，不合成单一分数）
@@ -141,7 +141,7 @@ embedding/位置嵌入：E[:, :w]、P[:, :w]
 - 若 P1 落带内且 P2 斜率不优于 FFN 旋钮 ⇒ H0：判「本尺度 d_model 减宽无可排序收益、
   不占前沿优势」，结论并入 `3.1.4` 的 FFN 预算结论（「总量」这一自由度已足够）。
 - 若 T1/T2 失败 ⇒ 视为**实现问题**（先修实现），不得据此判机制失败。
-- 归因三分（`docs/research-schema.md` §7）：①**设计问题**（d_model 减宽本身在此尺度无头寸）
+- 归因三分（`harness/research-schema.md` §7）：①**设计问题**（d_model 减宽本身在此尺度无头寸）
   ②**结构问题**（切片实现不等价 / attention 占算力比过大使宽度分配无从体现）
   ③**innovation 本身失败**（弹性宽度路线不成立）。
 - WD256 若某档明显劣于同宽 uniform（≥0.014）⇒ 判「一训多档要付容量/干扰代价」，
@@ -151,7 +151,7 @@ embedding/位置嵌入：E[:, :w]、P[:, :w]
 
 - 参数量（总 / FFN / embedding / 结构上门参数）与**每 token 等效 MACs** 必须**并列**出现在
   前沿表与 WD256 曲线表里；引用锚（U4/U2）时用其 `results_*.json` 里的实测值。
-- 对照口径 = 剪枝类**同 FLOPs 位点**（`docs/research-schema.md` §12.2 / 64-F1）：U2 即
+- 对照口径 = 剪枝类**同 FLOPs 位点**（`harness/research-schema.md` §12.2 / 64-F1）：U2 即
   「d_model 固定、FFN 预算减半」的等算力近似位点；D192/D128 与之比较时**报两列**（MACs、参数）。
 
 ## 9. 复现手段

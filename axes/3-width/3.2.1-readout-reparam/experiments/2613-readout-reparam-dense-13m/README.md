@@ -56,7 +56,7 @@ steps=12000 / batch_size=32 / lr=1e-3 / **seed=0** / train_tokens=98.3M /
 vocab=206 / 数据切分（前 90M train、末 10M eval，词表来自全文件）。
 
 基底 = 主流标准 decoder-only transformer + RAP 共享底座三条偏离
-（`docs/design.md` §2）。**非必要性例外**：无——读出重参数化在 stock dense 形态上
+（`atlas/design.md` §2）。**非必要性例外**：无——读出重参数化在 stock dense 形态上
 可独立生效，不引入第二个非标准因素。
 
 ## 3. 指标表（逐项分析）
@@ -88,7 +88,7 @@ vocab=206 / 数据切分（前 90M train、末 10M eval，词表来自全文件�
 **必附**：两臂同方法（末 25% 同一窗口、同一最小二乘算法）loss 斜率，作为
 「是否只是收敛加速」的收敛对账（SCHEMA §16）。若报增益，须补 2× 更长训练点。
 
-方差界参照：Δ < 0.014 不可排序（`docs/methodology.md` §2）。
+方差界参照：Δ < 0.014 不可排序（`harness/methodology.md` §2）。
 
 ## 5. 对照与方差
 

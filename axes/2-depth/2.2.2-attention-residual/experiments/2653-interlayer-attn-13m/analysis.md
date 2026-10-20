@@ -113,14 +113,14 @@ scalar 退化的机制是该参数化固有的：`q = h_{k−1}` 而 key 里恰�
   2.6281 / 2.1895 / 1.7381 / **1.5254**。⇒ scalar 的中间深度整体略优于基线（depth 1–5 更低），
   但最终深度落后 0.0082（带内）；qkv 的中间深度**明显更差**且非单调（depth 3 反弹到 5.963），
   最终深度也落后 0.0177。
-- 对照口径（`SCHEMA.md` §9 三条）：①**实现层等值** = 上面的 one-hot 逐位单测（`smoke_report.json`）
+- 对照口径（`harness/SCHEMA.md` §9 三条）：①**实现层等值** = 上面的 one-hot 逐位单测（`smoke_report.json`）
   **且**两臂与 stock 走同一构造顺序（`tau`/`W=init` 不消耗随机数流）⇒ trunk 权重逐位相同；
   ②**配置层等值** = `run.py baseline_equivalence()` 与 2613 s0 的 resolved config 逐字段对照
   （d/layers/heads/seq/mlp_mult/dense/exit_mode/dropout/norm_cap/steps/batch/lr/seed/optimizer/
   data/train_tokens，`unequal_fields = {}`、`pass = true`）；③**口径标注** = 2613 s0 与 2653 均为
   「全深度、无退出、teacher-forcing、序列级 bpc、批 16 × 20 批」，同口径。
 - 噪声带 0.014（跨 run 训练漂移）；同一 checkpoint 内的比较另报**窗口间 SE**（见上）。
-- **对账（`SCHEMA.md` §12）**：算术对账——额外参数与额外 MACs 都是解析式并可实测核对（已一致）；
+- **对账（`harness/SCHEMA.md` §12）**：算术对账——额外参数与额外 MACs 都是解析式并可实测核对（已一致）；
   任务对账——两臂与基线在同一任务定义、同一输入分布、同一位置集打分（同一评测批序）；
   口径对账——全深度 bpc，无墙钟量进判据。
 
@@ -150,12 +150,12 @@ scalar 退化的机制是该参数化固有的：`q = h_{k−1}` 而 key 里恰�
    加上下界，可以检验「scalar 的中性是不是被浅层退化吃掉了」——这是新机制，需新预登记，不在本项判据内。
 3. **外推**：长度/层数外推未测（层数越多、可读的早层越多，本尺度 L=8 只有 8 个源），`gaps` 已记。
 4. **基线自包含双跑（未触发）**：P5 的配置逐字段对照不等字段为空、实现层等值门通过 ⇒ 按
-   `SCHEMA.md` §9 复用历史对照臂，不追加 2 × 98.3M token 的双跑。
+   `harness/SCHEMA.md` §9 复用历史对照臂，不追加 2 × 98.3M token 的双跑。
 
 ## 独立复核
 
 **第 1 轮独立复核（fresh 上下文）判 PASS**（判词由 lead 落盘于 `.scratch/61-axis2-depth/**`
-与 `TICKET.md`；`SCHEMA.md` §14/§14b，`docs/research-schema.md` §11.3 累计 ≤2 轮）。
+与 `TICKET.md`；`harness/SCHEMA.md` §14/§14b，`harness/research-schema.md` §11.3 累计 ≤2 轮）。
 其 non-blocking 编号清单 N1–N3 已处置：N1（参数倍率 2.7 万 → **2.5 万倍**，`project.yaml::argument`）、
 N2（活性区间限定词 → 「k ≥ 5（层 2–4 更低，熵 0.69–1.38）」，本文件与 `project.yaml` 同步）、
 N3（`README.md §7/§9` 落盘清单删去并不存在的 `run_log.txt`）。两臂训练完成后的这一版 B 表
