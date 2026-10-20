@@ -1,0 +1,64 @@
+{
+  "experiment": "2678-dilated-vs-window-13m",
+  "cell": "axes/1-time/1.2.1-dilated",
+  "question": "同每行可见键数 k=32 下，空洞采样（近端窗口 16 + 摊满前缀的 16 个空洞点）相对连续窗口（最近 32 个位置）是否保住更多远程信息",
+  "delta_direction": "comparator_minus_arm",
+  "delta_direction_note": "Δ = 读数_对照 − 读数_实验；对照 = win32（连续窗口），实验 = dil32（空洞采样）⇒ Δ > 0 = 空洞占优",
+  "band_bpc": 0.014,
+  "band_note": "0.014 bpc 带只用于配对 bpc 读数（docs/methodology.md §2）；率类指标（召回）走按批聚类配对 bootstrap 95% CI；跨 seed 同臂之差只作参考线、不与本带混用",
+  "k": 32,
+  "mask": {
+    "local": 16,
+    "n_dilated": 16,
+    "rule": "keep[i,j] = (j <= i) and ((i-j) < local or j in {round(t*(P-1)/(n_dilated-1)) : t=0..n_dilated-1}, P = i-local+1)；i+1 <= k 的行退化为全因果",
+    "per_row_count": "min(32, i+1)",
+    "static": true
+  },
+  "recipe": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "dense": true,
+    "topology": "sequential",
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "data": "data/enwik8_full.npz"
+  },
+  "eval": {
+    "n_batches": 20,
+    "batch_size": 16,
+    "window_seed": 2,
+    "paired": true
+  },
+  "recall": {
+    "task": "var_recall_batch",
+    "far_distances": [64, 128, 192, 240],
+    "near_distances": [16, 32],
+    "n_batches": 8,
+    "batch_size": 32,
+    "task_seed": 3,
+    "statistic": "按批聚类的配对 bootstrap 95% CI（Δ = acc_dil − acc_win，百分位法）",
+    "n_boot": 2000,
+    "boot_seed": 0
+  },
+  "seeds": [0, 1],
+  "reused_arms": {
+    "win32": "axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/win32",
+    "win32_s1": "axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/win32_s1",
+    "full": "axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/runs/full-12k-s0"
+  },
+  "trained_arms": {
+    "dil32": {"seed": 0, "dir": "runs/dil32-s0"},
+    "dil32_s1": {"seed": 1, "dir": "runs/dil32-s1"}
+  },
+  "verdict_rules": {
+    "main_quality": "两 seed 的配对 Δ 同向且各自 |Δ| >= band_bpc ⇒ 按该方向判（n=2）；否则判『本 n 下不可排序』",
+    "main_recall": "远档 CI 不含 0 才算可分；全部远档 CI 含 0 = 不可分",
+    "falsification": "远档召回全部不可分 且 ① 两 seed 都落带内 ⇒ 空洞采样在本尺度无净增量、不成立"
+  }
+}
