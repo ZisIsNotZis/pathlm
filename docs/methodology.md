@@ -213,11 +213,26 @@ exec bash "$ROOT/tools/supervise.sh" --attempts-max 40 --fail-max 3 \
 | `--lock-wait-s S` | 单次尝试的取锁窗口；窗口用尽记一次 `lock-busy` 尝试，**不计入**连续失败（锁被占用不是实验失败） |
 | `--gap-s G` | 两次尝试之间的礼让窗口（秒，缺省 60）——失败后等待，且绝不瞬间重抢 |
 | `--log FILE` | 日志文件（追加写；命令的 stdout/stderr 也追加进去） |
+| `--command-owns-lock` | 锁的生命周期整条归命令：supervisor 不探测、不读、不建、不删锁目录，也不写 `lock-busy`；`--lock-wait-s` 不起作用（仍要求给值，CLI 只有一个形状） |
 
-**横幅判读**（熔断的唯一痕迹，不建任何仓库级状态文件）：`[sup] attempt N start <iso> holder=<pid|none>`
+**横幅判读**（熔断的唯一痕迹，不建任何仓库级状态文件）：`[sup] attempt N start <iso> holder=<pid|none|cmd-owned>`
 = 一次尝试；`[sup] DONE rc=0 <iso>` = 成功收口（退出 0）；`[sup] FUSED reason=<attempts|consecutive> at=<iso>`
 = 熔断（退出 3，此后**不再取锁、不再重试**）。判活看这三种横幅，不看进程名。
 
 **锁语义**：supervisor **不替命令持锁**——它只在启动命令前探测 `SCHEMA.md` §20 的 GPU 锁是否
 空闲（路径可用 `PATHLM_GPU_LOCK` 覆盖，供测试用），取/放锁仍由命令里的 `gpu_lock` 负责：
 两边抢同一把锁的持有权会互相等死。锁粒度与「按臂释放 + ≥60 秒窗口」见 `SCHEMA.md` §20.1。
+
+**两种锁分工，判据是「谁承担长等锁」**：
+
+- 默认（探测式礼让）：命令只在**短窗口**里等锁（`2651` / `2653` 的 `run.py` 用 `gpu_lock(max_wait=8s)`，
+  等不到就把该臂记 `gpu_lock_timeout` 并以 rc=9 退出），长等待由 supervisor 的取锁窗口（600s）
+  加 `--gap-s` 承担；supervisor 的探测就是命题「锁空闲 ⇒ 命令能跑」；
+- `--command-owns-lock`：命令**自己承担长等锁**并自己上报超时（`2654/run_supervise.sh` 按臂
+  `mkdir` + `WAIT_MAX=600s`、`2623` 的 `eval_run.sh` / `train_all.sh` 40×15s + rc=9）——
+  这时 supervisor 再探测一遍就是同一把锁上的第二个等锁人，两个窗口互相遮蔽，日志里说不清谁在等。
+  开关把锁整条时间线交给命令，supervisor 只留次数上的界（上限、熔断、礼让、`FUSED` 横幅与退 3 照旧）。
+
+**普查口径**：`grep -rn 'while :\|while true' --include=*.sh axes/ tools/`。当前唯一命中是
+`2624/gpu_lock.sh::acquire_lock`——它等锁带 deadline（`return 9`）并把重试交还调用方，
+属**等锁助手**而不是 supervisor，故保留；其余命中都已改成对本节的包装。新增 `while :` 前先读本节。

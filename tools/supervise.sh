@@ -7,7 +7,7 @@
 #
 # 用法：
 #   tools/supervise.sh --attempts-max N --fail-max M --lock-wait-s S --gap-s G \
-#       --log FILE -- <命令> [参数...]
+#       --log FILE [--command-owns-lock] -- <命令> [参数...]
 #
 #   --attempts-max N   总尝试上限（含「锁被占用」那次）。触达 ⇒ 熔断 reason=attempts。
 #   --fail-max M       允许的**连续**命令失败次数。触达 ⇒ 熔断 reason=consecutive。
@@ -16,6 +16,8 @@
 #                      `lock-busy` 尝试，退避 --gap-s 后重来。
 #   --gap-s G          两次尝试之间的礼让窗口（秒，缺省 60）：失败后等待，且绝不瞬间重抢。
 #   --log FILE         日志文件（追加写；命令的 stdout/stderr 也追加进去）。
+#   --command-owns-lock 锁的生命周期整条归被包装的命令：本脚本**不探测、不读、不建、不删**锁目录，
+#                      也不写 `lock-busy`；`--lock-wait-s` 此时不起作用（仍要求给值，CLI 只有一个形状）。
 #
 # 锁的语义（重要）：本脚本**不持有** GPU 锁，只在启动命令前**探测**锁是否空闲
 # （`SCHEMA.md` §20 的 `/tmp/pathlm_gpu.lock`，可用环境变量 `PATHLM_GPU_LOCK` 改路径，测试用）。
@@ -24,10 +26,18 @@
 # 「锁被活着的持有者占着就不启动命令」+「两次尝试之间至少间隔 --gap-s」，绝不删别人的锁目录。
 # 取锁失败（`lock-busy`）按**一次尝试**计，但**不计入连续失败**——锁被占用不是实验失败。
 #
+# `--command-owns-lock`（命令自己管锁）：2654 的驱动**按臂** mkdir/rmdir 锁（`run.py` 内部不取锁，
+# 锁的等待与超时全在驱动里，`WAIT_MAX` 缺省 600s），2623 的 `eval_run.sh` / `train_all.sh` 自己取锁、
+# 等锁、回收陈旧锁并以 rc=9 上报超时（40×15s）。这两种命令本身就是长等锁人：supervisor 再探测
+# 一遍就是同一个锁上的**第二个等锁人**，两个窗口（`--lock-wait-s` 与命令内部的窗口）互相遮蔽，
+# 日志里就说不清到底是谁在等。所以这个模式把锁整条时间线交给命令，supervisor 只留次数上的界
+# （上限、熔断、礼让、`FUSED` 横幅、退 3 全部照旧）。两种模式的判据是：命令自己长等锁就用本开关；
+# 命令只在短窗口里等、超时就把这次尝试交还给 supervisor（2651/2653 的 `run.py` 用 8s 窗口）就用默认。
+#
 # 日志横幅（唯一痕迹，不建任何仓库级状态文件）：
-#   [sup] supervise start cmd=... attempts-max=... fail-max=... lock-wait-s=... gap-s=...
-#   [sup] attempt N start <iso> holder=<pid|none>
-#   [sup] attempt N lock-busy holder=<pid|none> waited=Ns        （不计入连续失败）
+#   [sup] supervise start cmd=... attempts-max=... fail-max=... gap-s=... <lock-wait-s=N lock=路径 | command-owns-lock=1 lock=unmanaged> pid=...
+#   [sup] attempt N start <iso> holder=<pid|none|cmd-owned>
+#   [sup] attempt N lock-busy holder=<pid|none> waited=Ns        （不计入连续失败；仅探测模式）
 #   [sup] attempt N rc=<rc> end <iso> consecutive=<k>
 #   [sup] DONE rc=0 <iso>                                        （退出 0，判活看这一行）
 #   [sup] FUSED reason=<attempts|consecutive> at=<iso>           （退出 3，不再取锁、不再重试）
@@ -41,19 +51,20 @@ STALE_AGE=900       # 无 holder_pid 时锁龄上限（`SCHEMA.md` §20）
 usage() {   # $1 = 输出 fd（--help 用 1 = stdout 且退出 0；用法错误用 2 = stderr 且退出 2）
   local fd="${1:-2}"
   cat >&"$fd" <<'EOF'
-用法：tools/supervise.sh --attempts-max N --fail-max M --lock-wait-s S [--gap-s G] --log FILE -- <命令> [参数...]
+用法：tools/supervise.sh --attempts-max N --fail-max M --lock-wait-s S [--gap-s G] --log FILE [--command-owns-lock] -- <命令> [参数...]
   --attempts-max N  总尝试上限（含 lock-busy 那次）；触达 ⇒ FUSED reason=attempts
   --fail-max M      连续命令失败上限；触达 ⇒ FUSED reason=consecutive
   --lock-wait-s S   单次尝试的取锁窗口（秒）；窗口用尽 ⇒ 记一次 lock-busy 尝试（不计入连续失败）
   --gap-s G         两次尝试之间的礼让窗口（秒，缺省 60）
   --log FILE        日志文件（追加写；命令 stdout/stderr 也追加进去）
+  --command-owns-lock 锁由命令自己管：不探测/不触碰锁目录，--lock-wait-s 不起作用
   --                其后为实际命令
 退出码：0 = 命令成功（日志有 `[sup] DONE rc=0`）；3 = 熔断（日志有 `[sup] FUSED reason=...`）；2 = 用法错误
 EOF
   [ "$fd" -eq 1 ] && exit 0 || exit 2
 }
 
-attempts_max= fail_max= lock_wait_s= gap_s=60 log_file=
+attempts_max= fail_max= lock_wait_s= gap_s=60 log_file= command_owns_lock=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --attempts-max) attempts_max=${2:-}; shift 2 ;;
@@ -61,6 +72,7 @@ while [ $# -gt 0 ]; do
     --lock-wait-s)  lock_wait_s=${2:-};  shift 2 ;;
     --gap-s)        gap_s=${2:-};        shift 2 ;;
     --log)          log_file=${2:-};     shift 2 ;;
+    --command-owns-lock) command_owns_lock=1; shift ;;
     --help|-h)      usage 1 ;;
     --)             shift; break ;;
     *) echo "$PROG: 未知参数 '$1'（命令必须放在 -- 之后）" >&2; usage ;;
@@ -78,6 +90,8 @@ done
 iso() { date -Iseconds; }
 log() { echo "[sup] $*" >>"$log_file"; }
 holder() {
+  # --command-owns-lock：锁不归本脚本管，也不去读它（读也是一种探测）
+  [ "$command_owns_lock" -eq 1 ] && { echo "cmd-owned"; return 0; }
   local hp
   hp=$(cat "$LOCK/holder_pid" 2>/dev/null || true)
   echo "${hp:-none}"
@@ -108,7 +122,12 @@ probe_lock() {
 }
 
 mkdir -p "$(dirname "$log_file")"
-log "supervise start cmd=$* attempts-max=$attempts_max fail-max=$fail_max lock-wait-s=$lock_wait_s gap-s=$gap_s lock=$LOCK pid=$$"
+if [ "$command_owns_lock" -eq 1 ]; then
+  lock_desc="command-owns-lock=1 lock=unmanaged"
+else
+  lock_desc="lock-wait-s=$lock_wait_s lock=$LOCK"
+fi
+log "supervise start cmd=$* attempts-max=$attempts_max fail-max=$fail_max gap-s=$gap_s $lock_desc pid=$$"
 
 fuse() { log "FUSED reason=$1 at=$(iso)"; exit 3; }
 
@@ -118,7 +137,7 @@ while [ "$attempt" -lt "$attempts_max" ]; do
   attempt=$((attempt + 1))
   log "attempt $attempt start $(iso) holder=$(holder)"
 
-  if ! probe_lock; then
+  if [ "$command_owns_lock" -eq 0 ] && ! probe_lock; then
     # 锁被占用：计一次尝试，**不计入**连续失败（锁被占用不是实验失败）
     log "attempt $attempt lock-busy holder=$(holder) waited=${lock_wait_s}s"
     [ "$attempt" -lt "$attempts_max" ] && sleep "$gap_s"
