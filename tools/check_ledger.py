@@ -65,6 +65,10 @@ NEW_MARKER = "（本次新增）"
 SECTION_START = "## 1"
 SECTION_END = "## 2"
 
+#: 测试注入探针的文件名：`tests/test_docs_refs.py` 用它造一份「没接进本层索引的新文档」，
+#: 它只活到那一条用例结束（几百毫秒），不是交付文档；两个 pytest 并行时它会短暂出现在树里。
+TEST_PROBES = ("未入地图的事实文档.md",)
+
 #: 处置为删除时必须以这个词开头。
 DELETE_WORD = "删除"
 
@@ -147,7 +151,7 @@ def new_docs() -> list[str]:
     out: set[str] = set()
     for pattern in NEW_DOC_GLOBS:
         for path in ROOT.glob(pattern):
-            if path.is_file():
+            if path.is_file() and path.name not in TEST_PROBES:
                 rel = path.relative_to(ROOT).as_posix()
                 if rel not in BASE_FILES:
                     out.add(rel)

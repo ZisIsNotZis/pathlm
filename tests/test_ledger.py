@@ -104,3 +104,15 @@ def test_second_section_is_not_parsed_as_ledger_rows():
     assert not errors, errors
     assert not any(r.source.startswith("`") for r in rows)
     assert not any("| 位置 |" in r.raw for r in rows)
+
+
+def test_probe_exclusion_is_narrow():
+    """排除清单只放测试注入探针的那一个名字，并且真的把它排除掉（其余新文档照旧要登记）。"""
+    assert check_ledger.TEST_PROBES == ("未入地图的事实文档.md",), (
+        "排除清单只能放 `tests/test_docs_refs.py` 的注入探针；放第二个名字就是在给台账开后门")
+    probe = check_ledger.ROOT / "atlas" / check_ledger.TEST_PROBES[0]
+    try:
+        probe.write_text("# 探针（只活到用例结束）\n", encoding="utf-8")
+        assert "atlas/" + check_ledger.TEST_PROBES[0] not in check_ledger.new_docs()
+    finally:
+        probe.unlink()
