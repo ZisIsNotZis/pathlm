@@ -506,6 +506,53 @@ def synth_summary() -> dict | None:
             "verdict": verdict}
 
 
+def two_half_verdict(d0: float, d1: float, synth: dict | None, win_reach: int,
+                     max_over_chance: float) -> str:
+    """判据① 否证线成立时的合并判词：两半结论，两条限定照 SSOT 一起说。
+
+    ① 这一半由判据① 机械出词（两 seed 的配对 Δ 同向但都落 `band_bpc` 带内 ⇒ 无质量增量）；
+    ② 这一半取合成多查询关联回忆的读数，并按 `1.2.1` 的 `project.yaml::conclusion` 写明
+    「那对臂的差别是能不能覆盖到」与「召回电池在本尺度无分辨力」两条限定，措辞不得比它强。
+    """
+    first = (f"两半结论，强度不同。①真实文本上无质量增量（这一半被否证，n={len(PAIRS)}）："
+             f"Δ = bpc_win − bpc_dil = {d0:+.5f}（seed 0）/ {d1:+.5f}（seed 1），"
+             f"两 seed 同向但都落 {BAND} 配对带内 ⇒ 无质量增量")
+    if synth is None:
+        second = ("；②需要远处信息时掩码可用这一半未判：合成关联回忆的 "
+                  "`runs/synth-*/results.json` 未全落盘（absent，不当作否定）")
+    elif synth["supports_dilated"]:
+        s0, s1 = (synth["per_seed"][k] for k in ("s0", "s1"))
+        task = synth["task"]
+        second = (
+            f"；②需要远处信息时掩码可用（这一半成立，n={synth['n_seed_supporting']}）："
+            f"多查询关联回忆（key 全在序列最前 {2 * task['pairs']} 个位置、查询距离 "
+            f"{s0['arms']['dil32']['distance']['min']}–{s0['arms']['dil32']['distance']['max']}，"
+            f"窗口臂的可达上界 {win_reach} ⇒ 根本够不到）上空洞臂 "
+            f"{s0['arms']['dil32']['accuracy']:g} / {s1['arms']['dil32']['accuracy']:g} 对窗口臂 "
+            f"{s0['arms']['win32']['accuracy']:g} / {s1['arms']['win32']['accuracy']:g}"
+            f"（chance {s0['arms']['win32']['chance']:.4f} ⇒ "
+            f"{round(s0['arms']['dil32']['over_chance'], 1)}× / "
+            f"{round(s1['arms']['dil32']['over_chance'], 1)}× chance），"
+            "配对 Δ = acc_win − acc_dil = "
+            f"{s0['delta_win_minus_dil']['delta_acc']:+g}"
+            f"（95% CI {s0['delta_win_minus_dil']['ci95'][0]:+g}…"
+            f"{s0['delta_win_minus_dil']['ci95'][1]:+g}）/ "
+            f"{s1['delta_win_minus_dil']['delta_acc']:+g}"
+            f"（{s1['delta_win_minus_dil']['ci95'][0]:+g}…"
+            f"{s1['delta_win_minus_dil']['ci95'][1]:+g}），两 seed 同向且都不含 0")
+    else:
+        second = ("；②需要远处信息时掩码可用这一半未判（合成关联回忆）："
+                  f"{synth['verdict']}")
+    limits = ("。两条限定必须与结论一起读：(a) 构造性差异——合成那对臂的差别是「能不能覆盖到」"
+              "（窗口臂看不到远处 key），所以只支持「掩码确实交付了远处信息」，不得读成"
+              "「同等可见键下 dilation 是更优的取样方式」（后者在真实文本读数上恰恰是被否证的"
+              "那一半）；(b) 仪器侧——召回电池（判据②③）在本尺度无分辨力"
+              f"（最高 = chance 的 {max_over_chance}×），判据②给不出正向证据的正当理由是仪器"
+              "不够，不是「无信号」。判词不外推到长 T、逐层递增 dilation、真稀疏核与更大规模；"
+              "稠密 bool 掩码没有把纸面的 O(T·k) 省算力兑现成实测省算力")
+    return first + second + limits
+
+
 def alignment_checks() -> dict:
     """判据④：两臂逐行可见键数相等、掩码恒为因果子集、最远可达距离列。"""
     """判据④：两臂逐行可见键数相等、掩码恒为因果子集、最远可达距离列。"""
@@ -645,10 +692,11 @@ def main() -> None:
     else:
         main_verdict = "两 seed 同向但至少一 seed 未越带 ⇒ 本 n 下不可排序"
 
+    max_over_chance = max(v["best_over_chance"] for v in power.values())
     if not instrument_has_power:
         recall_verdict = ("远档召回电池在本尺度无分辨力：所有臂在所有距离档都贴 chance"
                           "（最高 = chance 的 "
-                          f"{max(v['best_over_chance'] for v in power.values())}×，门槛 "
+                          f"{max_over_chance}×，门槛 "
                           f"{power_thr}×）⇒ 这一条给不出正向证据")
     elif recall_supports_dilated:
         recall_verdict = "远档召回有正向可分的档（CI 不含 0 且方向为空洞更好）"
@@ -658,6 +706,8 @@ def main() -> None:
 
     bpc_in_band = all(abs(x) < BAND for x in (d0, d1))
     falsified = (not recall_supports_dilated) and (not (same_sign and both_beyond and d0 > 0))
+    # 合并判词要把两半结论一起说：① 取判据①（bpc），② 取合成关联回忆的读数。
+    synth = synth_summary()
     if same_sign and both_beyond and d0 > 0:
         overall = "判『空洞采样占优』：bpc 两 seed 同向越带为正"
     elif same_sign and both_beyond and d0 < 0:
@@ -665,8 +715,8 @@ def main() -> None:
     elif not same_sign:
         overall = "本 n 下不可排序（判据①两 seed 不同向，按预登记降级、不取平均掩盖）"
     elif bpc_in_band and falsified:
-        overall = ("判『空洞采样在本尺度无净增量、不成立』：判据①两 seed 同向但都落 0.014 "
-                   "带内（无改善）；判据②远档召回未出现支持空洞的可分档")
+        overall = two_half_verdict(d0, d1, synth, align["reach"]["win32_max"],
+                                  max_over_chance)
     else:
         overall = "判据①未达两 seed 同向越带 ⇒ 本 n 下 bpc 不可排序"
 
@@ -724,7 +774,7 @@ def main() -> None:
             "n_seed": len(PAIRS),
             "falsified": bool(falsified),
         },
-        "synth_recall": synth_summary(),
+        "synth_recall": synth,
         "wall_reference": {"wall_in_criterion": False,
                            "note": "训练墙钟与峰值显存逐臂申报（train_declaration），不进判据（docs/methodology.md §3）"},
         "reuse_equivalence": reuse_ref,
