@@ -409,7 +409,7 @@ def synth_eval_model(arm: str, ckpt: str) -> DepthARModel:
 def train_synth(arm: str, seed: int, steps: int, out_root: str = "runs") -> None:
     sc = CFG["synth_recall"]
     steps = int(steps) if steps else int(sc["steps"])
-    name = f"synth-{arm}"
+    name = f"synth-{arm}-s{seed}"
     run_dir = os.path.join(HERE, out_root, name)
     os.makedirs(run_dir, exist_ok=True)
     model, info = build_synth_model(arm, seed)
@@ -445,43 +445,60 @@ def train_synth(arm: str, seed: int, steps: int, out_root: str = "runs") -> None
 
 
 def synth_summary() -> dict | None:
-    """两臂的合成读数若都已落盘，按 `config.json::synth_recall.rule` 给出对撞读数。"""
+    """两臂 × 两个 seed 的合成读数若都已落盘，按 `config.json::synth_recall.rule` 给出对撞读数。"""
     sc = CFG["synth_recall"]
-    paths = {arm: os.path.join(HERE, "runs", f"synth-{arm}", "results.json")
-             for arm in ("win32", "dil32")}
-    if not all(os.path.exists(p) for p in paths.values()):
-        return None
-    rec = {arm: json.load(open(p)) for arm, p in paths.items()}
-    acc = {arm: [h / n for h, n in rec[arm]["eval"]["per_batch"]] for arm in rec}
-    delta = boot_ci_paired(acc["win32"], acc["dil32"],
-                           CFG["recall"]["n_boot"], CFG["recall"]["boot_seed"])
+    seeds = [int(v) for v in sc["seeds"]]
+    rec = {}
+    for seed in seeds:
+        for arm in ("win32", "dil32"):
+            p = os.path.join(HERE, "runs", f"synth-{arm}-s{seed}", "results.json")
+            if not os.path.exists(p):
+                return None
+            rec[(arm, seed)] = json.load(open(p))
     thr = float(sc["power_ratio_threshold"])
-    chance = rec["win32"]["eval"]["chance"]
-    over = {arm: rec[arm]["eval"]["accuracy"] / chance for arm in rec}
-    has_power = max(over.values()) >= thr
-    supports = bool(has_power and delta["excludes_zero"] and delta["delta_acc"] < 0)
-    if supports:
-        verdict = ("合成任务上训练信号确实迫使使用远处信息，且空洞路径能把它搬回来（dil32 更高、"
-                   f"Δ 的 CI 不含 0 且越 {thr}× chance）⇒ 判词须重读")
-    elif not has_power:
-        verdict = (f"两臂都贴 chance（最高 = chance 的 {round(max(over.values()), 2)}×，门槛 "
-                   f"{thr}×）⇒ 该合成任务对两条掩码都没有可用路径；本条读数不能区分「机制无效」"
-                   "与「本任务不需要」")
+    per_seed = {}
+    for seed in seeds:
+        acc = {arm: [h / n for h, n in rec[(arm, seed)]["eval"]["per_batch"]]
+               for arm in ("win32", "dil32")}
+        delta = boot_ci_paired(acc["win32"], acc["dil32"],
+                               CFG["recall"]["n_boot"], CFG["recall"]["boot_seed"])
+        chance = rec[("win32", seed)]["eval"]["chance"]
+        over = {arm: rec[(arm, seed)]["eval"]["accuracy"] / chance
+                for arm in ("win32", "dil32")}
+        per_seed[f"s{seed}"] = {
+            "arms": {arm: {"accuracy": rec[(arm, seed)]["eval"]["accuracy"],
+                           "chance": chance,
+                           "over_chance": round(over[arm], 2),
+                           "n": rec[(arm, seed)]["eval"]["n"],
+                           "distance": rec[(arm, seed)]["eval"]["distance"],
+                           "wall_minutes": rec[(arm, seed)]["wall_minutes"],
+                           "peak_gpu_mem_mb": rec[(arm, seed)]["peak_gpu_mem_mb"]}
+                     for arm in ("win32", "dil32")},
+            "delta_win_minus_dil": delta,
+            "instrument_has_power": bool(max(over.values()) >= thr),
+            "supports_dilated": bool(max(over.values()) >= thr
+                                     and delta["excludes_zero"]
+                                     and delta["delta_acc"] < 0),
+        }
+    supported = [k for k, v in per_seed.items() if v["supports_dilated"]]
+    n2 = len(supported) == len(per_seed)          # 两个 seed 都支持才算 n=2
+    if n2:
+        verdict = (f"两个 seed 同向：合成任务上训练信号确实迫使使用远处信息，且空洞路径能把它搬回来"
+                   f"（dil32 高于 {thr}× chance、Δ = acc_win − acc_dil 的 CI 不含 0 且为负）⇒ 入账（n=2）")
+    elif supported:
+        verdict = (f"只有 {supported} 支持该方向（其余 seed 不满足）⇒ 临时读数（n=1 单种子，未见重复），"
+                   "不作 n=2 结论")
+    elif not any(v["instrument_has_power"] for v in per_seed.values()):
+        verdict = (f"两臂都贴 chance（门槛 {thr}×）⇒ 该合成任务对两条掩码都没有可用路径；"
+                   "本条读数不能区分「机制无效」与「本任务不需要」")
     else:
         verdict = ("仪器有分辨力但两臂无可分差（Δ = acc_win − acc_dil 的 CI 含 0，或可分却不利于"
                    "空洞）⇒ 该任务上空洞不占优")
     return {"rule": sc["rule"], "task": synth_task(), "steps": sc["steps"],
-            "seed": sc["seed"],
-            "arms": {arm: {"accuracy": rec[arm]["eval"]["accuracy"],
-                           "chance": chance,
-                           "over_chance": round(over[arm], 2),
-                           "n": rec[arm]["eval"]["n"],
-                           "distance": rec[arm]["eval"]["distance"],
-                           "wall_minutes": rec[arm]["wall_minutes"],
-                           "peak_gpu_mem_mb": rec[arm]["peak_gpu_mem_mb"]}
-                     for arm in ("win32", "dil32")},
-            "delta_win_minus_dil": delta, "instrument_has_power": has_power,
-            "supports_dilated": supports, "verdict": verdict}
+            "seeds": seeds, "per_seed": per_seed,
+            "n_seed_supporting": len(supported),
+            "supports_dilated": n2,
+            "verdict": verdict}
 
 
 def alignment_checks() -> dict:

@@ -70,13 +70,16 @@
     "steps": 6000,
     "batch_size": 32,
     "lr": 0.001,
-    "seed": 0,
     "eval_n_batches": 32,
     "eval_batch_size": 64,
     "eval_task_seed": 11,
     "power_ratio_threshold": 5.0,
     "layout_note": "[k0 v0 … k7 v7] filler [cue q_j a_j 14×filler]×8 ⇒ 每条查询的 key 都在序列最前的 16 个位置、距离远超 32 ⇒ win32 臂看不到 key，dil32 臂只能靠它的 16 个空洞点碰到 key 所在的少数位置",
-    "rule": "Δ = acc_win − acc_dil（对照 − 实验，同本文件 delta_direction）：dil32 的答案准确率 ≥5× chance 且该 Δ 的按批配对 bootstrap 95% CI 不含 0 且为负（= dil32 更高）⇒ 训练信号可迫使使用远处信息、且空洞路径能搬（判词须重读）；两臂都 <5× chance ⇒ 该合成任务对两条掩码都没有可用路径，本条读数不能区分「机制无效」与「本任务不需要」"
+    "rule": "Δ = acc_win − acc_dil（对照 − 实验，同本文件 delta_direction）：**两个 seed 各自**满足 dil32 的答案准确率 ≥5× chance 且该 Δ 的按批配对 bootstrap 95% CI 不含 0 且为负（= dil32 更高）⇒ 训练信号可迫使使用远处信息、且空洞路径能搬，按 n=2 入账；只有一个 seed 满足 ⇒ 临时读数（n=1 单种子，未见重复）；两臂都 <5× chance ⇒ 该合成任务对两条掩码都没有可用路径，本条读数不能区分「机制无效」与「本任务不需要」",
+    "seeds": [
+      0,
+      1
+    ]
   },
   "seeds": [
     0,

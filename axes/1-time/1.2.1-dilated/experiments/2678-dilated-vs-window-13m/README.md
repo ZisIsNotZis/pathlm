@@ -93,16 +93,19 @@
 * 若 8 倍样本下可分档消失、四臂仍贴 chance（`best_over_chance` ≤ 2×）⇒ **仪器在本尺度仍无分辨力**，
   ② 给不出正向证据这一条**不变**，判词维持「本设计下无信号」。
 
-**B · 合成关联回忆对撞（`config.json::synth_recall`）**：`win32` 与 `dil32` 各一支，在
-**必须用远处信息**的任务（多查询关联回忆：key 全在序列最前 16 个位置，查询行只看最近 32 个键
-根本看不到 key）上同构造、同 seed、同 6000 步训练，再在**同一批**保留任务上按批配对比较答案
-准确率（chance = 1/64）。判定规则（`config.json::synth_recall.rule`）：
+**B · 合成关联回忆对撞（`config.json::synth_recall`）**：`win32` 与 `dil32` × **seed 0 与 seed 1**
+四支，在**必须用远处信息**的任务（多查询关联回忆：key 全在序列最前 16 个位置，查询行只看最近 32
+个键根本看不到 key）上同构造、同 seed 对、同 6000 步训练，再在**同一批**保留任务上按批配对比较
+答案准确率（chance = 1/64）。判定规则（`config.json::synth_recall.rule`）：
 
-* `dil32` 准确率 ≥ 5× chance **且** `dil32 − win32` 的配对 95% CI 不含 0 且为正 ⇒ 训练信号确实
-  迫使使用远处信息、且空洞路径能把它搬回来 ⇒ 判词须重读（不再停在「本任务不需要」）；
-* 两臂都 < 5× chance ⇒ 该合成任务对两条掩码都没有可用路径（`dil32` 的 16 个空洞点按行均匀铺满
-  前缀，碰不到 key–value 对的概率很高）⇒ 这条读数**不能**区分「机制无效」与「本任务不需要」，
-  判词维持「本设计下无信号」并把该缺口写进 `gaps`。
+* **两个 seed 各自**满足 `dil32` 准确率 ≥ 5× chance **且** `Δ = acc_win − acc_dil` 的配对 95% CI
+  不含 0 且为负 ⇒ 训练信号确实迫使使用远处信息、且空洞路径能把它搬回来，按 n=2 入账；
+* 只有一个 seed 满足 ⇒ 临时读数（n=1 单种子，未见重复），不作 n=2 结论；
+* 两臂都 < 5× chance ⇒ 该合成任务对两条掩码都没有可用路径 ⇒ 这条读数**不能**区分「机制无效」
+  与「本任务不需要」。
+
+（这一对臂的差别是「**能不能覆盖到**」——窗口臂在距离 107–240 的 key 上根本看不到 key，不是
+「同样覆盖下谁更省」；所以它只能回答「掩码有没有交付远处信息」。）
 
 **披露**：A 的样本数是在读到 8 批那一版之后加密的（同一估计量、同一判定线，只是样本变多），
 B 是本轮新加的同任务对撞。两格的**契约都没有先于旧读数**（见 `docs/plan.md` 的批次三行与
@@ -133,7 +136,7 @@ B 是本轮新加的同任务对撞。两格的**契约都没有先于旧读数*
 本目录：`README.md`（本文件）/ `config.json`（判据常数）/ `run.py`（训练 + 评测 + 判词）/
 `train_arms.sh`（取锁驱动）/ `results.json` / `analysis.md` / `prereg_binding.json` /
 `runs/dil32-s{0,1}/{model.pt,train_log.jsonl,gate_log.jsonl,results.json}` /
-`runs/synth-{win32,dil32}/{model.pt,train_log.jsonl,gate_log.jsonl,results.json}`（§4.1 的 B）。
+`runs/synth-{win32,dil32}-s{0,1}/{model.pt,train_log.jsonl,gate_log.jsonl,results.json}`（§4.1 的 B）。
 
 ## 8 复现 / 重跑
 
@@ -142,7 +145,8 @@ python3 tools/prereg_bind.py axes/1-time/1.2.1-dilated/experiments/2678-dilated-
   --contract README.md config.json run.py          # 训练之前绑定（缺绑定两处入口拒绝启动）
 bash train_arms.sh                                  # 2 臂（逐臂取/放 GPU 锁，臂间 61 s）
 python3 run.py --stage eval                         # 对齐核查 + 配对评测 + 召回电池 → results.json
-python3 run.py --stage synth --arm win32 --seed 0   # §4.1 B：合成关联回忆，窗口臂
-python3 run.py --stage synth --arm dil32 --seed 0   # §4.1 B：合成关联回忆，空洞臂
+for A in win32 dil32; do for S in 0 1; do
+  python3 run.py --stage synth --arm $A --seed $S  # §4.1 B：合成关联回忆（两臂 × 两 seed）
+done; done
 python3 run.py --stage eval                         # 再跑一次：把两条 synth 读数汇入 results.json::synth_recall
 ```
