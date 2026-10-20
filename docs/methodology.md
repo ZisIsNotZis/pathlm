@@ -194,3 +194,30 @@ sub-agent 的产出必须落成实验目录内的规定文件，**口头汇报�
 - 遇到「契约有缺陷 / 数字可疑 / 干预是死的」→ **停下记录并改用保守解释**，
   绝不为了推进而放宽判据；
 - 每批结束向用户留一份可离线阅读的汇报（提交信息 + ticket SUMMARY 即为其载体）。
+
+### 18.1 supervisor 必须有界：重试驱动的唯一实现是 `tools/supervise.sh`
+
+重试驱动（跑长训练、崩了重来的 supervisor）**一律**写成对 `tools/supervise.sh` 的薄包装，
+不得再自己写 `while :` 无界重试。无界形态的代价是可测的：`2653` 在「训练完、写结果时崩」的
+循环里跑了 781 次（≈124 GPU 小时作废），同时一直攥着 GPU 锁，把 `2651` 饿死 21580 次重试。
+
+```bash
+exec bash "$ROOT/tools/supervise.sh" --attempts-max 40 --fail-max 3 \
+  --lock-wait-s 600 --gap-s 60 --log "$EXP/supervise.out" -- python3 "$EXP/run.py" <本实验自己的参数>
+```
+
+| 参数 | 含义 |
+|---|---|
+| `--attempts-max N` | 总尝试上限（含 `lock-busy` 那次）；触达 ⇒ `FUSED reason=attempts` |
+| `--fail-max M` | **连续**命令失败上限；触达 ⇒ `FUSED reason=consecutive`；命令成功一次即清零 |
+| `--lock-wait-s S` | 单次尝试的取锁窗口；窗口用尽记一次 `lock-busy` 尝试，**不计入**连续失败（锁被占用不是实验失败） |
+| `--gap-s G` | 两次尝试之间的礼让窗口（秒，缺省 60）——失败后等待，且绝不瞬间重抢 |
+| `--log FILE` | 日志文件（追加写；命令的 stdout/stderr 也追加进去） |
+
+**横幅判读**（熔断的唯一痕迹，不建任何仓库级状态文件）：`[sup] attempt N start <iso> holder=<pid|none>`
+= 一次尝试；`[sup] DONE rc=0 <iso>` = 成功收口（退出 0）；`[sup] FUSED reason=<attempts|consecutive> at=<iso>`
+= 熔断（退出 3，此后**不再取锁、不再重试**）。判活看这三种横幅，不看进程名。
+
+**锁语义**：supervisor **不替命令持锁**——它只在启动命令前探测 `SCHEMA.md` §20 的 GPU 锁是否
+空闲（路径可用 `PATHLM_GPU_LOCK` 覆盖，供测试用），取/放锁仍由命令里的 `gpu_lock` 负责：
+两边抢同一把锁的持有权会互相等死。锁粒度与「按臂释放 + ≥60 秒窗口」见 `SCHEMA.md` §20.1。
