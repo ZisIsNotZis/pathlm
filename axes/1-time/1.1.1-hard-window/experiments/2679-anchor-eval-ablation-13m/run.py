@@ -160,8 +160,11 @@ def paired_delta(exp_bits, exp_n, cmp_bits, cmp_n, crit: dict) -> dict:
     diff = [a - b for a, b in zip(exp_bits, cmp_bits)]
     n_tok = sum(exp_n)
     delta = sum(diff) / n_tok / rp.LN2
-    ci = rp.paired_cluster_bootstrap_ci(diff, exp_n, n_boot=crit["n_boot"],
-                                       seed=crit["boot_seed"], alpha=crit["alpha"])
+    # `paired_cluster_bootstrap_ci` 的口径是**每 token 纳特**，本文件报的是**每字符比特**
+    # ⇒ CI 必须同除 LN2，否则点估计与区间不同量纲（首轮读数就撞到这一点：区间不含点估计）。
+    ci_nats = rp.paired_cluster_bootstrap_ci(diff, exp_n, n_boot=crit["n_boot"],
+                                             seed=crit["boot_seed"], alpha=crit["alpha"])
+    ci = [round(v / rp.LN2, 6) for v in ci_nats]
     return {"delta_bpc": round(delta, 6), "ci95_paired_bootstrap": ci,
             "n_windows": len(exp_n), "n_tokens": n_tok,
             "ci_excludes_zero": bool(ci[0] > 0 or ci[1] < 0),
