@@ -51,6 +51,7 @@ cost_rows:
 experiments:
   - "axes/1-time/1.2.2-block-sparse/experiments/2616-linear-attention-13m/analysis.md @76a07a8"
   - "axes/1-time/1.2.2-block-sparse/experiments/2637-linear-attn-quality/analysis.md @76a07a8"
+  - "axes/1-time/1.2.2-block-sparse/experiments/2677-local-global-vs-band-13m/analysis.md @92d8e84"
 argument: "把「可见模式」与「合并算子」分开，再把「少看键的代价」与「非均匀本身的价值」分开：同 24 个可见键下，全给最近位置的条带臂比「16 最近 + 8 全局槽」好 0.023（两 seed、越带）⇒ 非均匀性在本尺度是负增量；而 200 键时同一模式与全因果不可分辨 ⇒ 模式可以工作、只是紧预算下这笔交易不划算。线性臂的旧结论因数值带伤只作负观测。"
 gaps:
   - "BigBird 式块稀疏（按块取可见块 + 跨块条带）未实装、无读数（条带与局部+全局已在 T=256 / 24 键出判决，见 experiments/2677）；下一步最小实验 = 块稀疏掩码的同预算对照（实验内 1 个掩码开关 + 2 臂 ≈ 20 min GPU）"
