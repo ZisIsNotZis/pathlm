@@ -2,7 +2,7 @@
 
 > 本文件是**预登记契约**：判据线在下节写死，跑之前不得修改；读数落 `results.json`，
 > 人话判读落 `analysis.md`。归属 `axes/1-time/1.2.3-content-topk` 的 `work_packages[WP2]`。
-> 判据带的来源是 `docs/methodology.md` §2（0.014 bpc 带 **仅限配对 Δ、≥5 窗口**）。
+> 判据带的来源是 `harness/methodology.md` §2（0.014 bpc 带 **仅限配对 Δ、≥5 窗口**）。
 
 ## 1 要回答的判决问题
 
@@ -46,21 +46,21 @@ dropout=0 / norm_cap=1 / bs=32 / lr=1e-3 / 12k 步 / 98.3M token（enwik8 前 90
 
 ## 3 判据线（预登记，写死后不得改）
 
-Δ 方向统一（`SCHEMA.md` §17.3）：**Δ = bpc_对照 − bpc_实验**，本实验的「实验」= 内容选择（`topk`），
+Δ 方向统一（`harness/SCHEMA.md` §17.3）：**Δ = bpc_对照 − bpc_实验**，本实验的「实验」= 内容选择（`topk`），
 「对照」= 同 k 的位置窗口（`win`）⇒ **Δ = bpc_win − bpc_topk，正 = 内容选择更好**。
 
 | # | 判据 | 判定线 | 该涨 / 该跌 / 必须不变 |
 |---|---|---|---|
-| ① **主判（质量）**：同 k 下「内容 vs 位置」的 clean bpc 配对差 | 20 批配对 Δ 对 **0.014 带**（`docs/methodology.md` §2，仅限配对 Δ、≥5 窗口）；三态：`Δ ≥ +0.014` = 内容选择占优、`|Δ| < 0.014` = 无质量增量、`Δ ≤ −0.014` = 内容选择更差 | 该涨（内容该更好）或如实报无增量 / 更差 |
+| ① **主判（质量）**：同 k 下「内容 vs 位置」的 clean bpc 配对差 | 20 批配对 Δ 对 **0.014 带**（`harness/methodology.md` §2，仅限配对 Δ、≥5 窗口）；三态：`Δ ≥ +0.014` = 内容选择占优、`|Δ| < 0.014` = 无质量增量、`Δ ≤ −0.014` = 内容选择更差 | 该涨（内容该更好）或如实报无增量 / 更差 |
 | ② **质量参照线**：各臂相对 `full` 的配对 Δ | 同 0.014 带；只作「少看键的代价」参照，**不与 ① 混用** | 该跌（少看必掉质量） |
 | ③ **成本（该跌）**：每位置 KV 缓存字节 | 解析量 `12288 B × 每位置可见键数`（fp16、MHA、d=256/L=8）：`topk32/topk64` 结构性 **−0%**（按内容选必须先算完 T×T 分数 ⇒ 全部 K/V 必须在场），`win32` = −87.5%、`win64` = −75%（相对 `full`）。**本实装是稠密 bool 掩码，省幅是结构上界，未兑现为实测**，如实标注 | 该跌（只有位置窗口能真降） |
 | ④ **必须不变**：因果性 | 两条掩码都不得放出未来键：`keep ⊆ causal` 逐位为真，且 `mask_offending_future_pairs == 0` | 必须不变 |
 | ⑤ **必须不变**：可见键数逐行相等 | 同 k 两臂的 `kept_per_row[i]` 逐行相等（`min(k, i+1)`），`visible_keys_per_row.mismatch_rows == 0` | 必须不变 |
 | ⑥ **必须不变**：参数量与配方 | 五臂参数逐位相等（6,962,688）；配方逐字段一致（见 `results.json::arms`） | 必须不变 |
-| ⑦ **申报不进判据**：墙钟、峰值显存、步时 | 逐臂申报；`docs/methodology.md` §3 禁把墙钟当判据 | — |
+| ⑦ **申报不进判据**：墙钟、峰值显存、步时 | 逐臂申报；`harness/methodology.md` §3 禁把墙钟当判据 | — |
 
 **n 与带的关系（预登记）**：本实验对 `full`/`topk32`/`topk64` 是 **seed 0 单 run 复用**，对新臂 `win32`/`win64`
-是 **seed 0 单 run**。按 `docs/methodology.md` §2「n=1 的负结果必须复现后入账」，主判若越带，本轮只报
+是 **seed 0 单 run**。按 `harness/methodology.md` §2「n=1 的负结果必须复现后入账」，主判若越带，本轮只报
 **「临时结果（n=1）」**，`status` 停在「进行中」并在 `conclusion` 注明缺第二 seed；不把 n=1 越带写成定论。
 
 **升格路径（预登记，唯一）**：主判 k=32 的第二 seed = 两臂各补一支 seed 1（`topk32_s1` / `win32_s1`，
@@ -87,7 +87,7 @@ k=64 的升格对不在本轮预登记内（n 仍为 1）。单格 n=2 只给一
 | GPU 预算 | 2 支新臂 × ≈7 min + 冒烟 ≈1 min + 评测 ≈3 min ≈ **18 min**（本实验自报上限 25 min） |
 | 升格对预算（seed 1） | `topk32_s1` ≈10 min + `win32_s1` ≈7 min + 评测 ≈3 min ≈ **20 min**（两臂共用同一把 GPU 锁，臂间 ≥61 s） |
 | 单臂命令超时 | ≤20 min（`train_arms.sh` 的 `timeout`） |
-| 显存 | 逐臂实测 `peak_gpu_mem_mb`；礼貌线 5GB net（`SCHEMA.md` §20.2） |
+| 显存 | 逐臂实测 `peak_gpu_mem_mb`；礼貌线 5GB net（`harness/SCHEMA.md` §20.2） |
 | 可中断性 | 每 200 步落 `train_log.jsonl`；断点即重取锁重跑该臂（`run_s 是 append 语义` ⇒ 驱动先清日志） |
 
 ## 6 失败决策树
@@ -119,7 +119,7 @@ python3 run.py
 ```
 
 - **跑之前先绑定契约**：`python3 tools/prereg_bind.py axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m`
-  （缺绑定 `train_arms.sh` / `run.py` 拒绝启动；判据「先于读数」的机检见 `docs/methodology.md` §8）。
+  （缺绑定 `train_arms.sh` / `run.py` 拒绝启动；判据「先于读数」的机检见 `harness/methodology.md` §8）。
 - 冒烟（40 步、量步时、不进判据）：`MODE=smoke bash train_arms.sh`。
 - 墙钟与峰值显存见 `results.json::train_declaration`（`win32` / `win64` 是本实验新训的两臂；
   三条复用臂的墙钟取自 `2614-topk-sparse-attn-13m` 的落盘读数）。

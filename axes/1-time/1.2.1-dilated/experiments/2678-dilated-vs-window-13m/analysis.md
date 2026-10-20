@@ -79,7 +79,7 @@
 | ④ 必须不变：可见键数逐行相等 / 因果 | `alignment_checks.per_row_count_equal = true`、`mismatch_rows = 0`、`per_row_count_equals_min_k = true`、`mask_offending_future_pairs = 0` | 同预算对照成立 |
 | ⑤ 必须不变：参数量与初始化 | `params_all_equal = true`、`params_value = 6962688`；`runs/dil32-s*/results.json::conversion_check.params_identical_to_stock = true`（转换前后逐位不变，即构造路径同源） | 唯一变量 = 掩码；⑤ 的「同 seed 逐位相同」只有构造路径同源的证据，未与 `win32` checkpoint 逐位比 |
 | ⑥ 参照线：相对 `full` | `paired_vs_full.win32.delta_bpc = -0.09462`（20/20 批同向为负）、`dil32 = -0.08267` | 少看键的代价：窗口 0.0946、空洞 0.0827 ⇒ 回收 0.0120（带内） |
-| ⑦ 申报（不进判据） | `train_declaration`：`dil32` 6.85 min / 1191.8 MiB、`dil32_s1` 6.85 min / 1191.8 MiB、`win32` 7.14 min / 1191.4 MiB、`win32_s1` 6.89 min / 1191.4 MiB、`full` 5.95 min | 墙钟与显存不作判据（`docs/methodology.md` §3） |
+| ⑦ 申报（不进判据） | `train_declaration`：`dil32` 6.85 min / 1191.8 MiB、`dil32_s1` 6.85 min / 1191.8 MiB、`win32` 7.14 min / 1191.4 MiB、`win32_s1` 6.89 min / 1191.4 MiB、`full` 5.95 min | 墙钟与显存不作判据（`harness/methodology.md` §3） |
 | 门户 | `reuse_equivalence.win32{,_s1}.reproduced = true` | 复用臂的逐批 bpc 逐位复现 `2676`，评测口径未漂移 |
 | 跨 seed 参考线 | `cross_seed_reference_line.win32_abs_diff = 0.00742`、`dil32_abs_diff = 0.00242` | 独立 run 之差 = 参考线，**不与 0.014 配对带混用** |
 | ⑧ 追补：合成关联回忆对撞（`config.json::synth_recall`，两臂 × 两 seed、同 12000 步） | `synth_recall.per_seed.s0`：`win32` 0.0155 / `dil32` 0.36121（23.12× chance），Δ = −0.3457（CI −0.3524…−0.3387）；`s1`：0.01611 / 0.36853（23.59×），Δ = −0.3524（−0.3589…−0.3460）；`n_seed_supporting = 2` | 两个 seed 同向且 CI 都不含 0 ⇒ **需要远处信息时空洞掩码搬得动**（n=2）；窗口臂同一任务下贴 chance（它看不到 key）⇒ 差别是「能不能覆盖到」 |

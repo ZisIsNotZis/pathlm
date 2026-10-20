@@ -20,7 +20,7 @@ batch 32/lr 1e-3/12000 步/seed 0/enwik8 字符级 vocab=206）。
 * 出口数 = L+1 = 9（深度 0..8）。引擎的 `tf_acceptance` 给 8 行（深度 0..7，
   与全深度出口 8 比 greedy argmax），深度 8 是验证者本身（自参照、构造性 1.0）。
 * 锚复用：`.scratch/23-depth-ar/evidence/23c-H2-w0-12k`（clean bpc 1.8582、
-  tf@4 0.9694、tf@6 0.9938），按 `SCHEMA.md` §9 三道门——①「T 臂 = 开关关闭」
+  tf@4 0.9694、tf@6 0.9938），按 `harness/SCHEMA.md` §9 三道门——①「T 臂 = 开关关闭」
   与 stock `DepthARModel.readout` 逐位同前向单测 ②逐字段 config 对照
   ③口径标注：用**本文件自己的**评测电池重测该 checkpoint，并与 2610 用当前代码
   重测的 `results.json::A_arm` 逐位对照 ⇒ 口径可比（`--stage anchor`）。
@@ -874,7 +874,7 @@ def aggregate_all(args) -> dict:
         "bpc_beyond_band_all_seeds": bool(bpc_beyond),
         "cross_seed_reference_line": {
             "note": ("同一臂跨 seed 的 clean bpc 之差 = 两个独立训练 run 之差，只作参考线，"
-                     "不与 0.014 配对带混用（docs/methodology.md §2）"),
+                     "不与 0.014 配对带混用（harness/methodology.md §2）"),
             **{arm: round(abs(
                 per_seed[f"s{seeds[1]}"]["arm_rows"][arm]["clean_bpc"]
                 - per_seed[f"s{seeds[0]}"]["arm_rows"][arm]["clean_bpc"]), 4)
@@ -932,7 +932,7 @@ def main():
                     help="按 config.json::seeds 汇总全部 seed 并套 README §4 的 n=2 规则")
     args = ap.parse_args()
     # 预登记门：契约（README + config.json + 本脚本）必须在训练之前绑定，绑定必须早于读数
-    # （docs/methodology.md §8）。缺绑定即拒绝启动——训练入口与评测入口同一条门。
+    # （harness/methodology.md §8）。缺绑定即拒绝启动——训练入口与评测入口同一条门。
     if require_prereg(Path(__file__).resolve().parent) != 0:
         raise SystemExit("预登记未绑定：先跑 python3 tools/prereg_bind.py "
                          "axes/3-width/3.2.2-per-exit-readout/experiments/"

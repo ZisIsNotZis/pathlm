@@ -88,7 +88,7 @@
   95% CI 不含 0；clean bpc 越 0.014 配对带）且**同向** ⇒ 该判据按 **n=2** 出判词；两 seed
   **不同向**（或任一 seed 不可分）⇒ 判「本 n 下不可排序」，`status` 停「进行中」，**不得**
   把不一致解释成噪声、不得对两 seed 取平均掩盖。同一臂跨 seed 的 clean bpc 之差 = 两个独立
-  训练 run 之差，只作**参考线**，不与 0.014 配对带混用（`docs/methodology.md` §2）。
+  训练 run 之差，只作**参考线**，不与 0.014 配对带混用（`harness/methodology.md` §2）。
   `IND` / `LR` 两臂本轮不跑 ⇒ 它们在本轮只报「未跑」与解析参数量，不作任何推断。
 
 ## 5. 口径与锚复用（SCHEMA §9 三道门）
@@ -133,7 +133,7 @@ ARMS="PE:1 T:1" bash train_arms.sh                   # 升格对（seed 1，见 
 python3 run.py --aggregate-all                       # 两 seed 汇总 P1–P4 → results.json
 ```
 
-* GPU 按 `SCHEMA.md` §20 逐臂取锁（`/tmp/pathlm_gpu.lock`、**不杀他人进程、不回收他人锁**），
+* GPU 按 `harness/SCHEMA.md` §20 逐臂取锁（`/tmp/pathlm_gpu.lock`、**不杀他人进程、不回收他人锁**），
   单臂 `timeout 20 min`，臂间 ≥61 s；
 * 12k 臂实测墙钟见 `run_log.txt` 与各 `runs/<arm>/results.json`（同规模参考 ≈ 10 min/臂）；
 * `--aggregate` 是单 seed 汇总，`--aggregate-all` 按 `config.json::seeds` 汇总全部 seed 并套
@@ -144,7 +144,7 @@ python3 run.py --aggregate-all                       # 两 seed 汇总 P1–P4 �
 * 判据常数（`band_bpc`、`ece_tolerance`、浅出口深度集、seed 集、`n2_rule`、配方、评测口径）
   住在 `config.json`，判据的**应用代码**（`VARIANCE_BOUND` 判定、配对 bootstrap）在 `run.py`
   ⇒ 绑定必须同时覆盖两者：
-  `python3 tools/prereg_bind.py . --contract README.md config.json run.py`（`docs/methodology.md` §8）。
+  `python3 tools/prereg_bind.py . --contract README.md config.json run.py`（`harness/methodology.md` §8）。
   `run.py` 的 `VARIANCE_BOUND` / `ECE_TOLERANCE` 直接读 `config.json::band_bpc` / `::ece_tolerance`，
   所以改判据常数只有一处家。
 

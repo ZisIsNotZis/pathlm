@@ -761,7 +761,7 @@ def main() -> None:
                                   "不作正向证据；这是仪器分辨力的边界，判据线未改")},
         "cross_seed_reference_line": {
             "note": ("同一臂跨 seed 之差是两个独立训练 run 之差，只作参考线，"
-                     "不与 0.014 配对带混用（docs/methodology.md §2）"),
+                     "不与 0.014 配对带混用（harness/methodology.md §2）"),
             "win32_abs_diff": round(abs(bpc_mean["win32_s1"] - bpc_mean["win32"]), 5),
             "dil32_abs_diff": round(abs(bpc_mean["dil32_s1"] - bpc_mean["dil32"]), 5),
         },
@@ -776,7 +776,7 @@ def main() -> None:
         },
         "synth_recall": synth,
         "wall_reference": {"wall_in_criterion": False,
-                           "note": "训练墙钟与峰值显存逐臂申报（train_declaration），不进判据（docs/methodology.md §3）"},
+                           "note": "训练墙钟与峰值显存逐臂申报（train_declaration），不进判据（harness/methodology.md §3）"},
         "reuse_equivalence": reuse_ref,
         "train_declaration": {a["name"]: _decl(a["name"]) for a in ARMS},
     }
