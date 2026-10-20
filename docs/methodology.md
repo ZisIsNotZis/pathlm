@@ -70,6 +70,14 @@
 - 反例（不得犯）：「逐位相等」只在 13M 成立，@100M fp 平局会翻转（enwik8 k=2 首错位 169、
   级联 68 token、gap 0.0079，两轮运行复现）⇒ 规模性质不得当跨规模结论。
 
+**报告的 Δ 必须与它自己那两个格的 bpc 机器对得上**：`Δ` 是从逐窗量算出来的话，就必须满足
+`|Δ − (bpc_exp − bpc_cmp)| < 2e-6`（舍入误差量级），且这个核对写在 `run.py` 里 fail loud 而不是留给复核者——
+一条 `SystemExit` 能拓住的错，不该靠人读。
+范例：`axes/1-time/1.1.1-hard-window/experiments/2679-anchor-eval-ablation-13m/run.py::paired_delta` 与
+`axes/1-time/1.1.4.1-explicit-memory/experiments/2680-quant-overlay-frontier-13m/run.py` 的量化腿。
+它拓的是一类真实错：逐窗值已是比特（`ce.sum(1)/LN2`）时再除一次 `LN2`，全部 Δ 与 CI 被放大 1.4427 倍，
+而两级 bpc 本身不变 ⇒ 只看 bpc 的复现门全绿、错全在有 Δ 的那一列。
+
 ## 4. 对照必须同引擎、同配方、同 token 预算
 
 跨引擎对照会让归属不可分。正确做法：**三列拆混杂**（形态 / 引擎 / 配方）。

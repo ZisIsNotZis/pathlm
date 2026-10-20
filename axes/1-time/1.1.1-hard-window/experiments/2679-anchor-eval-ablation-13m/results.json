@@ -9,7 +9,7 @@
  },
  "prereg_gate": {
   "require_rc": 0,
-  "stdout": "预登记已绑定：axes/1-time/1.1.1-hard-window/experiments/2679-anchor-eval-ablation-13m/prereg_binding.json（bound_at 2026-10-20T22:07:53+08:00）"
+  "stdout": "预登记已绑定：axes/1-time/1.1.1-hard-window/experiments/2679-anchor-eval-ablation-13m/prereg_binding.json（bound_at 2026-10-20T22:23:42+08:00）"
  },
  "checkpoints": {
   "win16a_s0": {
@@ -145,7 +145,7 @@
  },
  "cost": {
   "eval_peak_gpu_mem_mb": 298.8,
-  "wall_minutes_total": 0.13,
+  "wall_minutes_total": 0.12,
   "n_training_tokens": 0,
   "note": "墙钟与显存峰值只作过程指标，不进判据"
  },
@@ -173,15 +173,16 @@
    }
   },
   "all_equal": true,
+  "tolerance_bpc": 1e-06,
   "consequence": "不等 ⇒ 本实验作废（仪器/权重不一致），判据线不改"
  },
  "attribution": {
   "ablation": {
    "0": {
-    "delta_bpc": 0.03549,
+    "delta_bpc": 0.0246,
     "ci95_paired_bootstrap": [
-     0.033367,
-     0.03766
+     0.023128,
+     0.026104
     ],
     "n_windows": 1536,
     "n_tokens": 391680,
@@ -192,10 +193,10 @@
     "bpc_with_anchors": 1.622527
    },
    "1": {
-    "delta_bpc": 0.023958,
+    "delta_bpc": 0.016607,
     "ci95_paired_bootstrap": [
-     0.022293,
-     0.02567
+     0.015452,
+     0.017793
     ],
     "n_windows": 1536,
     "n_tokens": 391680,
@@ -208,10 +209,10 @@
   },
   "reverse_control": {
    "0": {
-    "delta_bpc": 1.882186,
+    "delta_bpc": 1.304632,
     "ci95_paired_bootstrap": [
-     1.860019,
-     1.905046
+     1.289267,
+     1.320477
     ],
     "n_windows": 1536,
     "n_tokens": 391680,
@@ -222,10 +223,10 @@
     "bpc_plain": 1.62811
    },
    "1": {
-    "delta_bpc": 1.527625,
+    "delta_bpc": 1.058869,
     "ci95_paired_bootstrap": [
-     1.50728,
-     1.548635
+     1.044767,
+     1.073432
     ],
     "n_windows": 1536,
     "n_tokens": 391680,
@@ -236,9 +237,11 @@
     "bpc_plain": 1.629093
    }
   },
-  "verdict": "H_A_inference_visibility",
-  "label": "推理期锚点可见性承载质量收益",
+  "verdict": "undecidable_at_this_n",
+  "label": "本 n 下不可判：判据②的机械分支（H_A）被触发，但该 Δ 不具区分力",
+  "fired_branch": "H_A_inference_visibility",
   "rule": "若逐 seed 的 Δ_abl 同向 > 0、配对 bootstrap CI 不含 0、且 |Δ_abl| ≥ sigma_cell ⇒ 「推理期锚点可见性承载质量收益」 / 若两 seed 的 |Δ_abl| 都 < sigma_cell ⇒ 「质量收益属训练侧（训练期见过 16+8 个键），评测期锚点可见性不承载它」",
+  "verdict_caveat": "反向对照（纯窗臂评测期白加 8 个锚点）掉 +1.30 / +1.06 bpc ⇒ 评测期换掩码是分布外操作；Δ_abl 同时兼容「锚点可见性承载质量收益」与「分布外失配」两种解释⇒ 不能把它读成 H_A 成立，两半拆不开",
   "gain_to_explain_bpc": {
    "0": -0.005583,
    "1": -0.007294,
@@ -313,7 +316,7 @@
  },
  "delta_direction_note": "本文件所有 delta_bpc 一律 = 实验格 − 对照格（arm_minus_comparator）。ablation 里实验格 = 同一 checkpoint 的**评测期去锚点**格、对照格 = 带锚点格；reverse_control 里实验格 = 纯窗臂的**评测期加锚点**格、对照格 = 纯窗臂自有掩码格。bpc 越低越好 ⇒ Δ > 0 = 实验格更差。",
  "code_hashes": {
-  "run.py": "4fc1d3b946fad37793c544894bc1947ffdb17a87365bcc30c659cce2025f5660",
+  "run.py": "4e58c1ee54d4ff1df979393580dd43cafc73dc344a977a1640f445cb326044cf",
   "config.json": "2750e77ac9f83f261945eddb63920f8d937f5656fd1b8d8790c8fc4a3bfe1ddf",
   "realtext_probe.py(2662)": "dbddeb5f8dc3a7bebe6eda6e2d977ce6581fade2b5db7231bc3f0116addd6402",
   "pathlm/depth_ar.py": "42844306990aebc5a4a4d0df2f115b872e52bb4b36d8b8a1831c3490d1af8de5",

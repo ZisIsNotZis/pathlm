@@ -66,13 +66,16 @@
 
 | `3.2.2` 逐出口读出：多出口模型里「每个出口各自映射到词表」**不是相对接受率（`tf@k`）的杠杆，而且绝对层数—质量前沿更好**——共享 tied 表 + 每出口 256×256 变换让末层 clean bpc 更好，且它的 4 层就已优于共享表用满 8 层；浅出口的相对接受率两 seed 同向下降，但 `tf@k` 是**相对**全深度出口的量，给末层加固会机械压低它。它买到的是「多给读出容量」，不是「出口→词表形态」的好处。代价与全部读数见出处的 `analysis.md` 与 `docs/cost-table.md` | `axes/3-width/3.2.2-per-exit-readout/project.yaml::conclusion`、`axes/3-width/3.2.2-per-exit-readout/experiments/2645-per-exit-readout-13m/analysis.md` | 成立（n=2；13M / 8L / 9 出口 / V=206；等参数对照臂与 `IND`/`LR` 未跑，真词表不可判） |
 
-## 三之三、时间轴（轴 1）的两条判词
+## 三之三、时间轴（轴 1）的四条判词
 
 | 结论 | 出处 | 状态 |
 | --- | --- | --- |
 | `1.2.3` 内容选择 top-k：在**同等每行可见键数**下，「按内容挑」的 clean bpc 可排序优于「按最近位置挑」（k=32 那一对两个 seed 同向、k=64 同向，剂量一致，配对 20/20 同向）⇒ 内容选择是**质量杠杆**；但它必须先算完整 `T×T` 分数矩阵，每位置 KV 字节**结构性省不下来**（内容选择本身不是字节杠杆）。旧读数里的「净亏」应读成「每 token 只看 k 个键」的窗口税，不是「按内容挑」的错 | `axes/1-time/1.2.3-content-topk/project.yaml::conclusion`、`axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/analysis.md` | 部分（k=32 为 n=2；k=64 仍 n=1；T=256 一点、k∈{32,64} 两点；随机选键的毁源对照、长程召回腿与长 T 未测） |
 | `1.2.1` 空洞 / dilated：两半结论。**真实文本上无质量增量（这一半被否证，n=2）**——同等每行可见键数（32）下把可见位置摊开到更远，clean bpc 差两 seed 同向但都落噪声带内，可达距离抬到 255 换不到质量；**需要远处信息时机制可用（这一半成立，n=2）**——在多查询关联回忆任务上空洞掩码把远处答案搬了回来（远高于 chance），同构造的窗口臂贴 chance。两条限定：那对合成臂的差别是「能不能覆盖到」而不是「同等覆盖下谁更省」，召回电池在本尺度无分辨力。数字与口径见出处的 `analysis.md` 与 `docs/cost-table.md` | `axes/1-time/1.2.1-dilated/project.yaml::conclusion`、`axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m/analysis.md` | 第一半成立与否 n=2；第二半 n=2；不外推长 T / 逐层递增 dilation / 真稀疏核（13M / T=256 / k=32 一点） |
 | `1.2.2` 局部+全局（Longformer 式）：在**同等 24 个可见键**下，把 8 个键切给「最前 8 个恒可见全局槽」比把 24 个键全给最近位置**更差**（两 seed 同向、各自越带）⇒ 紧预算下「用全局槽换远端可达性」这笔交易在本尺度不划算；同一模式在 200 键时与全因果不可分辨（Δ 落带内）⇒ 是交易不划算，不是掩码坏 | `axes/1-time/1.2.2-block-sparse/project.yaml::conclusion`、`axes/1-time/1.2.2-block-sparse/experiments/2677-local-global-vs-band-13m/analysis.md` | 成立（n=2；13M / T=256 / 24 键；块稀疏（BigBird 式）掩码与率类召回腿未测）；**成立与否不受定序影响，但它的读数入库早于 `tools/prereg_bind.py` 引入 ⇒「契约先于读数」定序不可判**（披露见 `docs/plan.md`） |
+
+| `1.1.1` 评测期锚点消融：同一个 checkpoint 只改评测期掩码（0 训练 token）⇒ **锚点通道在推理期真的被模型用起来了**（把它关掉，质量下降，幅度越带），但**这个消融拆不开「推理期可见」与「训练时多见键」两半**——反向对照（纯窗臂评测期白加锚点）直接崩塌，说明评测期换掩码本身就是分布外操作 ⇒ 该 Δ 同时兼容两种解释。原先「收益无法区分锚点槽本身与训练多见键」的缺口降级为更精确的形态，残余是「哪 8 个键」与召回腿的 n | `axes/1-time/1.1.1-hard-window/project.yaml::conclusion`、`axes/1-time/1.1.1-hard-window/experiments/2679-anchor-eval-ablation-13m/analysis.md` | 部分（n=2；归因**不可判**；等键数 24 键对照臂与补 seed 2/3 未跑） |
+| `1.1.4.1` 量化档叠图：把 KV 的 int8 + 块标尺档叠到同一条「每位置部署字节」横轴（11 个已训 checkpoint 的评测期量化，0 训练 token）⇒ **int8 在纯窗族自己的 checkpoint 上本尺度无质量增量**，纯窗前沿因此整体左移；**显式状态点仍不被支配**，但纯窗族要到 int8 下的另一条臂（与 carry 几乎同字节）才追得上，**那一格不在盘上** ⇒ 只能报「本网格上不被支配」，不能报「同字节仍占优」 | `axes/1-time/1.1.4.1-explicit-memory/project.yaml::conclusion`、`axes/1-time/1.1.4.1-explicit-memory/experiments/2680-quant-overlay-frontier-13m/analysis.md` | 部分（7 条纯窗臂多为 n=1 seed、`win16` 两 seed；`win64`+int8 同字节格与 carry 族 int8 档未跑） |
 
 ## 四、撤回记录
 
