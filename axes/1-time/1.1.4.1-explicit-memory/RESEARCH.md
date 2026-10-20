@@ -29,11 +29,11 @@
 | # | 验收 | 状态 |
 |---|---|---|
 | 1 | 至少一个预算点（393,216 B）上，显式状态点与**同字节**纯窗口直接点比（不插值），差距与其判据带一并报出 | **PASS**（`2639`）：`experiments/2639-carry-perlayer-frontier-13m/results.json::key_readings.pl_minus_win32` 逐字段 `bpc_carrypl16_s0` 1.527595 / `bpc_win32_s0` 1.595823 / `same_bytes` true / `bytes` 393,216 / 差 +0.068228（41 σ_cell、4.9× 0.014 带）；同文件 `frontier.dominated_by.carrypl16_s0` = 空，`frontier.lower_envelope` = win16→win17→win18→win24→win32→**carrypl16_s0**→win128→full；`location.carrypl16_s0.recovery_ratio_r` = 0.8014（补回窗口 16→全量差距的 80.1%）；换评测窗口序（seed 7）`robustness_alt_window_seed.pl_minus_win32_alt_seed` = 0.071912 同号同量级 |
-| 2 | 该点的可检索性（质量之外的第二轴）有读数，且相对同窗口无通道臂的差及其 CI 报出 | **PASS**（`1.1.4.5` 的 `2661`）：`experiments/2661-implicit-vs-explicit-recall-13m/results.json::needle_leg.primary_hard_subset`（同索引硬子集 n=2699，`carrypl16_s0` 276 hits = 10.226%，Wilson [0.091389, 0.114262]；对 `win16_s0` +9.522pp，两比例差 CI [8.336, 10.708]）；同文件 `far_source_probe.carrypl16_s0.delta_bpc_far` = **+0.032965**，逐簇配对 CI [0.026986, 0.038727]（γ=0.99 版只剩 +0.007906、CI [0.00638, 0.009463]） |
+| 2 | 该点的可检索性（质量之外的第二轴）有读数，且相对同窗口无通道臂的差及其 CI 报出 | **PASS**（`1.1.4.5` 的 `2661`）：`experiments/2661-implicit-vs-explicit-recall-13m/results.json::needle_leg.primary_hard_subset`（同索引硬子集 n=2699，`carrypl16_s0` 276 hits = 10.226%，Wilson [0.091389, 0.114262]；对 `win16_s0` +9.522pp，两比例差 CI [8.336, 10.708]）；同文件 `far_source_probe.carrypl16_s0.delta_bpc_far` = **+0.032965**，逐簇配对 CI [0.026986, 0.038727]（γ=0.99 版只剩 +0.007906、CI [0.00638, 0.009463]）；**并已扩到整条网格**：`experiments/2684-recall-across-budget-points-13m/results.json::per_arm`（固定远端集 n=1206，完备机制 6.4677%、九个纯窗臂 0.33%~0.91%，`contrasts` 九条差 +5.556~+6.136pp 且 CI 全不含 0） |
 | 3 | 「不被支配」的结论带**明确网格限定**（列出在这张网格上、禁止外推到未测档） | **PASS**（`2680` 报网格缺口；`2681` 把网格扩到 int8 下 k=60/k=64）：`2681-int8-equalbytes-frontier-13m/results.json::frontier.points`（22 点 / 13 臂）+ `frontier.dominating_points` = 空；最弱的同字节挑战者 `win60_s0@int8` 391,680 B（比 carry 少 1,536 B）/ 1.558523，差 **+0.030928**（18.6 σ_cell、2.2× 0.014 带）；多给纯窗 6.25% 字节（`win64_s0@int8` 417,792 B）仍差 +0.026280；禁外推面写在 `experiments/2681-int8-equalbytes-frontier-13m/analysis.md` §3 与 `experiments/2681-int8-equalbytes-frontier-13m/README.md` §9（carry 族 int8 档、int4 档、T ≫ 256） |
 | 4 | 量化档（int8 块标尺）与前沿同图；int4 档、carry 族 int8 档仍未叠 | **部分**：int8 档已叠两轮（`2680`：7 条纯窗臂 Δ +0.000010 ~ +0.000050，字节精确 ×0.53125；`2681`：两条新臂 Δ +0.000079 / +0.000066，CI95 不含 0 但 ≪ 0.014 带）；**int4 档未叠**，**carry 族 int8 档未叠**（`CarryChannelBlock` 不在量化前向的支持范围 ⇒ 要给 `CarryChannelBlock` 写量化前向，属新代码 > 1 个开关）。状态与读数以 `project.yaml::conclusion` 的「量化档叠图」段为唯一权威 |
 | 5 | 与真实 DeltaNet / GLA 实现对齐 | **阻塞**：本仓无外部实现（`project.yaml::gaps` 第三条 F4），要补就得把外部代码 / 依赖引入本仓或新环境——那是依赖变更与外部执行，**需上一层裁决**；本轮未自选 |
-| 6 | `milestone.acceptance` 的字面第 1 条：前沿图上**每个**预算点有质量与可检索性两轴数字 | **部分**：只有 393,216 B 这一个点有第二轴（验收 2）；其余预算点（win16/17/18/24/32/60/64/128）只有质量轴。缺口登记在 `project.yaml::gaps` 第二条，最小实验 = 把 `2661` 的针仪器扩到窗口网格（纯推理、0 训练 token） |
+| 6 | `milestone.acceptance` 的字面第 1 条：前沿图上**每个**预算点有质量与可检索性两轴数字 | **PASS**（`2684`）：九个窗口预算点（16/17/18/24/32/60/64/128）+ 四个 carry 臂在**同一组**对每个臂都在窗外的固定子集上都有召回数字——`experiments/2684-recall-across-budget-points-13m/results.json::per_arm`（n=1206；完备机制 78 hits = 6.4677%、Wilson [5.21%, 8.00%]；纯窗臂 4–11 hits = 0.33%~0.91%），`contrasts` 九条差 +5.556~+6.136pp（pp = 百分点）且 95% CI 全不含 0，退化实现（单共享槽）0.83%/0.91% ⇒ 召回轴可归因到机制完备度。质量轴各自的家仍是 `2638` / `2639` / `2681`（本实验 0 个 bpc 读数） |
 
 **结论强度边界**：验收 1–3 都成立，但它们共同限定在 enwik8 / T=256 / 13M / 12k 步 / seed 0 这一格；
 「不被支配」只在这张（含 int8 同字节格的）网格上成立，不外推到 carry 族自己的 int8 档、int4 档与 T ≫ 256。
@@ -55,7 +55,7 @@ owner 一律是轴 1 lead 派发的 worker，另配 fresh 复核者（`harness/S
   `axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/analysis.md`、
   `axes/1-time/1.1.4.1-explicit-memory/experiments/2680-quant-overlay-frontier-13m/analysis.md`、
   `axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/analysis.md`。
-- **召回轴**：`axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/analysis.md`。
+- **召回轴**：`axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/analysis.md`（一个预算点）与 `axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m/analysis.md`（整条窗口网格）。
 - **机制实现（引擎侧）**：`.scratch/67-engine-changes/E1-CARRYCHANNEL.md`、`.scratch/67-engine-changes/REVIEW-E1.md`。
 - **实验索引**：`axes/1-time/1.1.4.1-explicit-memory/experiments/README.md`；权重清单见各实验目录 `MODEL.md`（权重不入库）。
 - **复现三态**：`atlas/repro.md`（生成物）；代价事实：`atlas/cost-table.md`（生成物，源在 `project.yaml::cost_rows`）。
@@ -67,12 +67,12 @@ owner 一律是轴 1 lead 派发的 worker，另配 fresh 复核者（`harness/S
 
 | 检查 | 结果 | 说明 |
 |---|---|---|
-| `python3 tools/summary.py --check` | 本项 0 违规 | 46 个 `project.yaml` 全部符合 `harness/research-schema.md`；本项字段 / 证据锚点 / Δ 方向均齐 |
-| `python3 tools/check_tree.py` | 本项 0 违规 | 预登记绑定：本项 `2680` / `2681` 的根读数晚于绑定且与绑定分属不同提交；`2681` 的**当前**绑定（`bound_at` 2026-10-21T00:27:26）早于根读数，且根读数不在 `readings_existing_at_bind` 内——该键里只有 `train/win60` / `train/win64` 两份**训练**读数，工具口径下它们的定序不可判（逐条时间线与「判据线未改」的 diff 见 `experiments/2681-int8-equalbytes-frontier-13m/analysis.md` §4/§6）。全树：已绑定 8（读数晚于绑定 5、定序不可判 3）、unbound 92（历史产物，只计数）、缺绑定 0 |
-| `python3 tools/check_docs.py --check` | 全树 0 处违规（465 个文档 / 8589 处引用） | 本单元目录 0 处；文档地图缺项 0 个。（上一轮报的那 1 处 `docs/plan.md` 裸路径已由元级迁移线修掉。） |
-| `python3 tools/build_cost_table.py --check` | 绿 | 生成物与 `project.yaml::cost_rows` 逐字节一致（含新增的 `+0.030928` 行） |
-| `python3 tools/inventory_runs.py --check` | 绿 | 重新生成后 128 个实验 / 434 个 run 与磁盘一致；每条路径存在。`2681` 的「声明墙钟」列取到 `budget.gpu_wall_budget_min` = 39，其 `train/win60` 步数回到 11999、另有一次 200 步的中断重训单列成自己的 run |
-| `python3 -m pytest tests/ -q` | 968 passed / 2 failed，**两条都不是本单元引入** | ① `test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness` = 已登记的预存失败（4 个 `mutate.py` 未接入统一框架，全在 6-predict 轴）；② `tests/test_docs_refs.py::test_all_doc_references_resolve` 曾红一次，是同树内**另一个并发 pytest 进程**正在跑注入式「悬空引用必须变红」用例时的竞态（它注入的那条**故意悬空**的路径引用只活在那一瞬，`tests/test_docs_refs.py` 是它的生产者）；隔离重跑 `python3 -m pytest tests/test_docs_refs.py -q` = **15 passed**，且 `tools/check_docs.py --check` 单独跑是 0 违规。本单元目录零违规 |
+| `python3 tools/summary.py --check` | 本项 0 违规（rc=0） | 46 个 `project.yaml` 全部符合 `harness/research-schema.md`；本项字段 / 证据锚点 / Δ 方向均齐（`2684` 的 11 个 Δ 读数已在 `results.json::delta_directions` 逐字段声明） |
+| `python3 tools/check_tree.py` | 0 违规（rc=0） | 预登记绑定：已绑定 11（读数晚于绑定 8、定序不可判 3）、unbound 92（历史产物，只计数）、缺绑定 0。本项的 `2684` 属「读数晚于绑定」：最终绑定 `bound_at` 2026-10-21T07:55:54 早于最后一次读数的落盘，且那次读数与重跑前逐位相同（`analysis.md` §4/§6 记全过程） |
+| `python3 tools/check_docs.py --check` | 全树 0 处违规（472 个文档 / 8899 处引用） | 本单元目录 0 处；文档地图缺项 0 个 |
+| `python3 tools/build_cost_table.py --check` | 绿 | 生成物与 `project.yaml::cost_rows` 逐字节一致（59 条代价事实） |
+| `python3 tools/inventory_runs.py --check` | 绿 | 重新生成后 131 个实验 / 449 个 run 与磁盘一致；本项 `2684` 的实验级汇总行已收进（0 run 子目录、`rebuildable_only`），`2681` 的「声明墙钟」列取到 `budget.gpu_wall_budget_min` = 39 |
+| `python3 -m pytest tests/ -q` | 见本节末的实测一行 | 全树测试；既往只有一条已登记的预存失败（`test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`），同树内其它研究级 owner 在跑的改动会让 `test_docs_refs` / `test_repro_inventory` 的注入式用例间歇变红（它们断言「注入后必须变红」，而并发写入者的临时文件正好也会让它变红） |
 | `python3 -m pytest axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/test_2681_frontier.py -q` | 6 passed | 本目录单测（纯 CPU）：字节账、k=60 那一格的选取、支配定义与阈值算术 |
 
 ## 7 边界（non-goals）

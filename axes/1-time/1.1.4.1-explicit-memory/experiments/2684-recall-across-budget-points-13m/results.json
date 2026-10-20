@@ -1,0 +1,1340 @@
+{
+  "experiment": "axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m",
+  "contract": "axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m/README.md",
+  "config": {
+    "experiment": "axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m",
+    "owner_cell": "1.1.4.1-explicit-memory",
+    "contract": "axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m/README.md",
+    "budget": {
+      "gpu_wall_budget_min": 20,
+      "note": "纯推理评测（0 训练 token、0 新引擎开关）；上界写在 README.md §6，绑定契约冻结。判据不使用墙钟。"
+    },
+    "device": "cuda",
+    "model": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "seq_len": 256,
+      "mlp_mult": 6,
+      "dense": true,
+      "topology": "sequential",
+      "train_window": 16,
+      "train_anchors": 0,
+      "carry_chunk": 64
+    },
+    "data": {
+      "name": "enwik8_full",
+      "path": "data/enwik8_full.npz",
+      "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）",
+      "vocab_size": 206,
+      "n_real_tokens": 205,
+      "mask_token": 205
+    },
+    "needle": {
+      "n_needles": 8,
+      "phrase_len": 6,
+      "anchors": 8,
+      "anchor_frac": 0.25,
+      "n_batches": 64,
+      "batch_size": 16,
+      "seed": 3,
+      "bucket_anchors": 0,
+      "note": "needle v3 真实文本短语针（`tools/evalkit/retention.phrase_needle_batch`），参数与 `2661` 逐字段相同（seed=3 同一 generator 序列）；placement anchors=8、归属桶按 anchors=0 判 ⇒ 桶只有 window / beyond；地板 = 同生成器序列 plant=False 的配对控制臂。**每臂用自己训练时的可见性**（`window_anchor_keep_mask(T, w, 0)`）评测 ⇒ 桶的边界也随之是各臂自己的 w。"
+    },
+    "instrument": {
+      "reused_from": "axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m",
+      "files": [
+        "run.py",
+        "needle_stats.py"
+      ],
+      "how": "只读导入：`run.load_arm` / `run.resolve` / `run.sha256_file` / `needle_stats`（同索引硬子集、`recall_on_indices`、`beyond_above_floor`）。本实验不复制实现，sha256 记在 `results.json::code_hashes`。",
+      "sha256": {
+        "run.py": "58a1bb57ea1abac229abfc59e3ce1666f0e20641aa4bbe65e7b7bd4d4fdd1304",
+        "needle_stats.py": "cd11bb7cdb3b3e60534f102b2df3d396a1a71b8ab0b471776d62b87584d33d4c"
+      }
+    },
+    "equality_gate": {
+      "source": "axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/results.json::needle_leg",
+      "what": "六个复用臂在**窗口 16 可见性**下的同索引硬子集读数必须与 `2661` 逐位相等（同一 generator 序列、同一仪器、同一桶规则）",
+      "n_intersection": 2699,
+      "hits": {
+        "win16_s0": 19,
+        "win16_s1": 27,
+        "carry16_s0": 43,
+        "carry16_s1": 53,
+        "carrypl16_s0": 276,
+        "carrypl16d_s0": 77
+      }
+    },
+    "fixed_set": {
+      "distance_min_exclusive": 128,
+      "why": "网格里最宽的纯窗臂是窗口 128 ⇒ 「距离 > 128」的针对**每一个**臂都落在注意力看不到的地方，只有显式状态能把它带回来。于是同一索引集上的召回对十三臂是同一个问题的同一个答案口径，跨臂两比例差可以不插值直接比。",
+      "n_note": "索引集 = 距离 > 128 的针 ∩ 十三臂 control 全部答不出（地板在这组索引上恒为 0）。"
+    },
+    "bands": {
+      "rule": "率类只走 Wilson 95% CI 与两比例差 CI（正态近似、未 pooling，`tools/evalkit/carry_channel.two_proportion`），**不跨量纲借 0.014 bpc 带**；bpc 类不在本实验（质量轴的家是 `2638` / `2639` / `2681`）。",
+      "sigma_cell_ref": 0.00166,
+      "cross_cell_band_ref": 0.014
+    },
+    "arms": [
+      {
+        "name": "win16_s0",
+        "kind": "window",
+        "window": 16,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+        "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+        "reused_from": "2634",
+        "role": "纯窗口 16（网格最左端；也是 `2661` 的主 implicit 臂）"
+      },
+      {
+        "name": "win16_s1",
+        "kind": "window",
+        "window": 16,
+        "anchors": 0,
+        "rule": null,
+        "seed": 1,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+        "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+        "reused_from": "2634",
+        "role": "纯窗口 16 的第二 seed（臂内噪声，不作判据）"
+      },
+      {
+        "name": "carry16_s0",
+        "kind": "carry",
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "carry_chunk": 64,
+        "carry_per_layer": false,
+        "carry_decay": 1.0,
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s0/model.pt",
+        "sha256": "d92114822c09f2f7538ea6a59802eed21b1297409fe91f66c031dec9d6c305eb",
+        "reused_from": "2634",
+        "role": "退化实现（单共享槽、只从 h₀ 写、无门控）⇒ 完备度的对照臂"
+      },
+      {
+        "name": "carry16_s1",
+        "kind": "carry",
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "carry_chunk": 64,
+        "carry_per_layer": false,
+        "carry_decay": 1.0,
+        "seed": 1,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s1/model.pt",
+        "sha256": "b3d3cdbc57266109b6b461d18c2188c7d1712170f6760b35a48ff9b6170d6843",
+        "reused_from": "2634",
+        "role": "退化实现的第二 seed（臂内噪声，不作判据）"
+      },
+      {
+        "name": "carrypl16_s0",
+        "kind": "carry",
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "carry_chunk": 256,
+        "carry_per_layer": true,
+        "carry_decay": 1.0,
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16/model.pt",
+        "sha256": "382a74aa0e417b229910cc44f55dcc949c225b3211434df488ee6a72d3036ec3",
+        "reused_from": "2639",
+        "role": "**完备机制**（逐层独立状态 + 内容写门，γ=1）⇒ 本实验的主臂"
+      },
+      {
+        "name": "carrypl16d_s0",
+        "kind": "carry",
+        "window": 16,
+        "anchors": 0,
+        "rule": "delta",
+        "carry_chunk": 256,
+        "carry_per_layer": true,
+        "carry_decay": 0.99,
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16d/model.pt",
+        "sha256": "cb1940ee2e97f2311998710870be0c86024ed7d65e2ce54c159fcffbca8fe386",
+        "reused_from": "2639",
+        "role": "完备机制 + 衰减 γ=0.99（记忆短 ⇒ 召回应当更低；方向性旁证）"
+      },
+      {
+        "name": "win17_s0",
+        "kind": "window",
+        "window": 17,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win17/model.pt",
+        "sha256": "70f0acb92067adba4f796612bab49ead7153c1b4b7e5bb3ea15a5219ab9cdc1c",
+        "reused_from": "2638",
+        "role": "纯窗口 17（208,896 B/位置）"
+      },
+      {
+        "name": "win18_s0",
+        "kind": "window",
+        "window": 18,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win18/model.pt",
+        "sha256": "39316ac04f20e158a6833323888990d149bf22c8da76ca04c4aa642cdcfa5913",
+        "reused_from": "2638",
+        "role": "纯窗口 18（221,184 B/位置）"
+      },
+      {
+        "name": "win24_s0",
+        "kind": "window",
+        "window": 24,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win24/model.pt",
+        "sha256": "ebd4ef84736355bc163479e702c34b1383708f90d39510756e38b2cf3fcf90d1",
+        "reused_from": "2638",
+        "role": "纯窗口 24（294,912 B/位置）"
+      },
+      {
+        "name": "win32_s0",
+        "kind": "window",
+        "window": 32,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win32/model.pt",
+        "sha256": "dccc58c0065d70f0c202424b7f5f40e28929ffb238db3d3a3954d3095e43287b",
+        "reused_from": "2638",
+        "role": "纯窗口 32（393,216 B/位置；与 carrypl16 同字节的质量轴对手）"
+      },
+      {
+        "name": "win60_s0",
+        "kind": "window",
+        "window": 60,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/train/win60/model.pt",
+        "sha256": "b82ed96f08780bad6e759b694a6c8be1f7b022fd8705794f0ac55730302cf1fb",
+        "reused_from": "2681",
+        "role": "纯窗口 60（int8 下 391,680 B/位置；同字节最强纯窗挑战者）"
+      },
+      {
+        "name": "win64_s0",
+        "kind": "window",
+        "window": 64,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/train/win64/model.pt",
+        "sha256": "dc5af3e0a3fac881b8f2950d67da3b5211c13271fa820f2f0a92d475f0db402e",
+        "reused_from": "2681",
+        "role": "纯窗口 64（int8 下 417,792 B/位置）"
+      },
+      {
+        "name": "win128_s0",
+        "kind": "window",
+        "window": 128,
+        "anchors": 0,
+        "rule": null,
+        "seed": 0,
+        "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win128/model.pt",
+        "sha256": "c17a1cf1747ca59e426eeb1378c90e50802e21401d7058e703a766e8cbe287f7",
+        "reused_from": "2638",
+        "role": "纯窗口 128（1,572,864 B/位置；网格最右端，定义固定索引集的边界）"
+      }
+    ],
+    "arm_roles": {
+      "window_grid": [
+        "win16_s0",
+        "win16_s1",
+        "win17_s0",
+        "win18_s0",
+        "win24_s0",
+        "win32_s0",
+        "win60_s0",
+        "win64_s0",
+        "win128_s0"
+      ],
+      "carry_arms": [
+        "carry16_s0",
+        "carry16_s1",
+        "carrypl16_s0",
+        "carrypl16d_s0"
+      ],
+      "primary_carry": "carrypl16_s0",
+      "degraded_carry": [
+        "carry16_s0",
+        "carry16_s1"
+      ],
+      "primary_window": "win32_s0",
+      "equality_gate_arms": [
+        "win16_s0",
+        "win16_s1",
+        "carry16_s0",
+        "carry16_s1",
+        "carrypl16_s0",
+        "carrypl16d_s0"
+      ]
+    }
+  },
+  "budget": {
+    "gpu_wall_budget_min": 20,
+    "note": "纯推理评测（0 训练 token、0 新引擎开关）；上界写在 README.md §6，绑定契约冻结。判据不使用墙钟。"
+  },
+  "checkpoints": {
+    "win16_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+      "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": null,
+      "carry_rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win16_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+      "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 16,
+      "anchors": 0,
+      "rule": null,
+      "carry_rule": null,
+      "seed": 1,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "carry16_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s0/model.pt",
+      "sha256": "d92114822c09f2f7538ea6a59802eed21b1297409fe91f66c031dec9d6c305eb",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "carry_rule": "delta",
+      "seed": 0,
+      "carry_chunk": 64,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 8192,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "carry16_s1": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_delta_s1/model.pt",
+      "sha256": "b3d3cdbc57266109b6b461d18c2188c7d1712170f6760b35a48ff9b6170d6843",
+      "size_bytes": 55255619,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "carry_rule": "delta",
+      "seed": 1,
+      "carry_chunk": 64,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 8192,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "carrypl16_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16/model.pt",
+      "sha256": "382a74aa0e417b229910cc44f55dcc949c225b3211434df488ee6a72d3036ec3",
+      "size_bytes": 55264963,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "carry_rule": "delta",
+      "seed": 0,
+      "carry_chunk": 256,
+      "carry_per_layer": true,
+      "carry_decay": 1.0,
+      "state_floats_actual": 98304,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "carrypl16d_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/train/pl16d/model.pt",
+      "sha256": "cb1940ee2e97f2311998710870be0c86024ed7d65e2ce54c159fcffbca8fe386",
+      "size_bytes": 55264963,
+      "sha256_verified": true,
+      "kind": "carry",
+      "window": 16,
+      "anchors": 0,
+      "rule": "delta",
+      "carry_rule": "delta",
+      "seed": 0,
+      "carry_chunk": 256,
+      "carry_per_layer": true,
+      "carry_decay": 0.99,
+      "state_floats_actual": 98304,
+      "block_class": "CarryChannelBlock",
+      "n_params": 13801064
+    },
+    "win17_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win17/model.pt",
+      "sha256": "70f0acb92067adba4f796612bab49ead7153c1b4b7e5bb3ea15a5219ab9cdc1c",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 17,
+      "anchors": 0,
+      "rule": null,
+      "carry_rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win18_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win18/model.pt",
+      "sha256": "39316ac04f20e158a6833323888990d149bf22c8da76ca04c4aa642cdcfa5913",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 18,
+      "anchors": 0,
+      "rule": null,
+      "carry_rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win24_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win24/model.pt",
+      "sha256": "ebd4ef84736355bc163479e702c34b1383708f90d39510756e38b2cf3fcf90d1",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 24,
+      "anchors": 0,
+      "rule": null,
+      "carry_rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win32_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win32/model.pt",
+      "sha256": "dccc58c0065d70f0c202424b7f5f40e28929ffb238db3d3a3954d3095e43287b",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 32,
+      "anchors": 0,
+      "rule": null,
+      "carry_rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win60_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/train/win60/model.pt",
+      "sha256": "b82ed96f08780bad6e759b694a6c8be1f7b022fd8705794f0ac55730302cf1fb",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 60,
+      "anchors": 0,
+      "rule": null,
+      "carry_rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win64_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/train/win64/model.pt",
+      "sha256": "dc5af3e0a3fac881b8f2950d67da3b5211c13271fa820f2f0a92d475f0db402e",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 64,
+      "anchors": 0,
+      "rule": null,
+      "carry_rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    },
+    "win128_s0": {
+      "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/train/win128/model.pt",
+      "sha256": "c17a1cf1747ca59e426eeb1378c90e50802e21401d7058e703a766e8cbe287f7",
+      "size_bytes": 54193675,
+      "sha256_verified": true,
+      "kind": "window",
+      "window": 128,
+      "anchors": 0,
+      "rule": null,
+      "carry_rule": null,
+      "seed": 0,
+      "carry_chunk": null,
+      "carry_per_layer": false,
+      "carry_decay": 1.0,
+      "state_floats_actual": 0,
+      "block_class": "Block",
+      "n_params": 13536768
+    }
+  },
+  "arm_roles": {
+    "window_grid": [
+      "win16_s0",
+      "win16_s1",
+      "win17_s0",
+      "win18_s0",
+      "win24_s0",
+      "win32_s0",
+      "win60_s0",
+      "win64_s0",
+      "win128_s0"
+    ],
+    "carry_arms": [
+      "carry16_s0",
+      "carry16_s1",
+      "carrypl16_s0",
+      "carrypl16d_s0"
+    ],
+    "primary_carry": "carrypl16_s0",
+    "degraded_carry": [
+      "carry16_s0",
+      "carry16_s1"
+    ],
+    "primary_window": "win32_s0",
+    "equality_gate_arms": [
+      "win16_s0",
+      "win16_s1",
+      "carry16_s0",
+      "carry16_s1",
+      "carrypl16_s0",
+      "carrypl16d_s0"
+    ]
+  },
+  "selfchecks": {
+    "n_params_by_role": {
+      "window": 13536768,
+      "carry": 13801064
+    },
+    "n_needles_total": 8192,
+    "pairing_asserted": true
+  },
+  "equality_gate": {
+    "n_indexed": 8178,
+    "n_intersection": 2699,
+    "n_intersection_2661": 2699,
+    "per_arm": {
+      "win16_s0": {
+        "hits": 19,
+        "hits_2661": 19,
+        "recall": 0.00704,
+        "wilson_ci": [
+          0.004511,
+          0.010969
+        ],
+        "equal": true
+      },
+      "win16_s1": {
+        "hits": 27,
+        "hits_2661": 27,
+        "recall": 0.010004,
+        "wilson_ci": [
+          0.006884,
+          0.014516
+        ],
+        "equal": true
+      },
+      "carry16_s0": {
+        "hits": 43,
+        "hits_2661": 43,
+        "recall": 0.015932,
+        "wilson_ci": [
+          0.011849,
+          0.02139
+        ],
+        "equal": true
+      },
+      "carry16_s1": {
+        "hits": 53,
+        "hits_2661": 53,
+        "recall": 0.019637,
+        "wilson_ci": [
+          0.015044,
+          0.025595
+        ],
+        "equal": true
+      },
+      "carrypl16_s0": {
+        "hits": 276,
+        "hits_2661": 276,
+        "recall": 0.10226,
+        "wilson_ci": [
+          0.091389,
+          0.114262
+        ],
+        "equal": true
+      },
+      "carrypl16d_s0": {
+        "hits": 77,
+        "hits_2661": 77,
+        "recall": 0.028529,
+        "wilson_ci": [
+          0.022887,
+          0.035511
+        ],
+        "equal": true
+      }
+    },
+    "all_equal": true
+  },
+  "fixed_set": {
+    "distance_min_exclusive": 128,
+    "n_far_positions": 4413,
+    "n_indexed": 1206,
+    "definition": "针距离 > 128（网格最宽的纯窗臂 win128 也看不见）∩ 十三臂 control 全部答不出（该子集上地板结构性为 0，仍逐臂按配对控制报地板）"
+  },
+  "per_arm": {
+    "win16_s0": {
+      "n_records": 8192,
+      "fixed_set": {
+        "n": 1206,
+        "hits": 5,
+        "recall": 0.004146,
+        "wilson_ci": [
+          0.001772,
+          0.009669
+        ]
+      },
+      "fixed_set_floor": {
+        "n": 1206,
+        "hits": 0,
+        "recall": 0.0,
+        "wilson_ci": [
+          0.0,
+          0.003175
+        ]
+      },
+      "by_bucket": {
+        "beyond": {
+          "n": 8178,
+          "recall": 0.463561
+        },
+        "window": {
+          "n": 14,
+          "recall": 0.428571
+        }
+      }
+    },
+    "win16_s1": {
+      "n_records": 8192,
+      "fixed_set": {
+        "n": 1206,
+        "hits": 10,
+        "recall": 0.008292,
+        "wilson_ci": [
+          0.00451,
+          0.015196
+        ]
+      },
+      "fixed_set_floor": {
+        "n": 1206,
+        "hits": 0,
+        "recall": 0.0,
+        "wilson_ci": [
+          0.0,
+          0.003175
+        ]
+      },
+      "by_bucket": {
+        "beyond": {
+          "n": 8178,
+          "recall": 0.473832
+        },
+        "window": {
+          "n": 14,
+          "recall": 0.428571
+        }
+      }
+    },
+    "carry16_s0": {
+      "n_records": 8192,
+      "fixed_set": {
+        "n": 1206,
+        "hits": 10,
+        "recall": 0.008292,
+        "wilson_ci": [
+          0.00451,
+          0.015196
+        ]
+      },
+      "fixed_set_floor": {
+        "n": 1206,
+        "hits": 0,
+        "recall": 0.0,
+        "wilson_ci": [
+          0.0,
+          0.003175
+        ]
+      },
+      "by_bucket": {
+        "beyond": {
+          "n": 8178,
+          "recall": 0.497677
+        },
+        "window": {
+          "n": 14,
+          "recall": 0.357143
+        }
+      }
+    },
+    "carry16_s1": {
+      "n_records": 8192,
+      "fixed_set": {
+        "n": 1206,
+        "hits": 11,
+        "recall": 0.009121,
+        "wilson_ci": [
+          0.005101,
+          0.016259
+        ]
+      },
+      "fixed_set_floor": {
+        "n": 1206,
+        "hits": 0,
+        "recall": 0.0,
+        "wilson_ci": [
+          0.0,
+          0.003175
+        ]
+      },
+      "by_bucket": {
+        "beyond": {
+          "n": 8178,
+          "recall": 0.479824
+        },
+        "window": {
+          "n": 14,
+          "recall": 0.285714
+        }
+      }
+    },
+    "carrypl16_s0": {
+      "n_records": 8192,
+      "fixed_set": {
+        "n": 1206,
+        "hits": 78,
+        "recall": 0.064677,
+        "wilson_ci": [
+          0.052131,
+          0.079987
+        ]
+      },
+      "fixed_set_floor": {
+        "n": 1206,
+        "hits": 0,
+        "recall": 0.0,
+        "wilson_ci": [
+          0.0,
+          0.003175
+        ]
+      },
+      "by_bucket": {
+        "beyond": {
+          "n": 8178,
+          "recall": 0.520665
+        },
+        "window": {
+          "n": 14,
+          "recall": 0.5
+        }
+      }
+    },
+    "carrypl16d_s0": {
+      "n_records": 8192,
+      "fixed_set": {
+        "n": 1206,
+        "hits": 19,
+        "recall": 0.015755,
+        "wilson_ci": [
+          0.010109,
+          0.024476
+        ]
+      },
+      "fixed_set_floor": {
+        "n": 1206,
+        "hits": 0,
+        "recall": 0.0,
+        "wilson_ci": [
+          0.0,
+          0.003175
+        ]
+      },
+      "by_bucket": {
+        "beyond": {
+          "n": 8178,
+          "recall": 0.485693
+        },
+        "window": {
+          "n": 14,
+          "recall": 0.357143
+        }
+      }
+    },
+    "win17_s0": {
+      "n_records": 8192,
+      "fixed_set": {
+        "n": 1206,
+        "hits": 4,
+        "recall": 0.003317,
+        "wilson_ci": [
+          0.001291,
+          0.008497
+        ]
+      },
+      "fixed_set_floor": {
+        "n": 1206,
+        "hits": 0,
+        "recall": 0.0,
+        "wilson_ci": [
+          0.0,
+          0.003175
+        ]
+      },
+      "by_bucket": {
+        "beyond": {
+          "n": 8174,
+          "recall": 0.469415
+        },
+        "window": {
+          "n": 18,
+          "recall": 0.444444
+        }
+      }
+    },
+    "win18_s0": {
+      "n_records": 8192,
+      "fixed_set": {
+        "n": 1206,
+        "hits": 7,
+        "recall": 0.005804,
+        "wilson_ci": [
+          0.002814,
+          0.011933
+        ]
+      },
+      "fixed_set_floor": {
+        "n": 1206,
+        "hits": 0,
+        "recall": 0.0,
+        "wilson_ci": [
+          0.0,
+          0.003175
+        ]
+      },
+      "by_bucket": {
+        "beyond": {
+          "n": 8173,
+          "recall": 0.481463
+        },
+        "window": {
+          "n": 19,
+          "recall": 0.421053
+        }
+      }
+    },
+    "win24_s0": {
+      "n_records": 8192,
+      "fixed_set": {
+        "n": 1206,
+        "hits": 8,
+        "recall": 0.006633,
+        "wilson_ci": [
+          0.003365,
+          0.013035
+        ]
+      },
+      "fixed_set_floor": {
+        "n": 1206,
+        "hits": 0,
+        "recall": 0.0,
+        "wilson_ci": [
+          0.0,
+          0.003175
+        ]
+      },
+      "by_bucket": {
+        "beyond": {
+          "n": 8121,
+          "recall": 0.471247
+        },
+        "window": {
+          "n": 71,
+          "recall": 0.661972
+        }
+      }
+    },
+    "win32_s0": {
+      "n_records": 8192,
+      "fixed_set": {
+        "n": 1206,
+        "hits": 5,
+        "recall": 0.004146,
+        "wilson_ci": [
+          0.001772,
+          0.009669
+        ]
+      },
+      "fixed_set_floor": {
+        "n": 1206,
+        "hits": 0,
+        "recall": 0.0,
+        "wilson_ci": [
+          0.0,
+          0.003175
+        ]
+      },
+      "by_bucket": {
+        "beyond": {
+          "n": 8016,
+          "recall": 0.458458
+        },
+        "window": {
+          "n": 176,
+          "recall": 0.693182
+        }
+      }
+    },
+    "win60_s0": {
+      "n_records": 8192,
+      "fixed_set": {
+        "n": 1206,
+        "hits": 10,
+        "recall": 0.008292,
+        "wilson_ci": [
+          0.00451,
+          0.015196
+        ]
+      },
+      "fixed_set_floor": {
+        "n": 1206,
+        "hits": 0,
+        "recall": 0.0,
+        "wilson_ci": [
+          0.0,
+          0.003175
+        ]
+      },
+      "by_bucket": {
+        "beyond": {
+          "n": 7322,
+          "recall": 0.468588
+        },
+        "window": {
+          "n": 870,
+          "recall": 0.705747
+        }
+      }
+    },
+    "win64_s0": {
+      "n_records": 8192,
+      "fixed_set": {
+        "n": 1206,
+        "hits": 10,
+        "recall": 0.008292,
+        "wilson_ci": [
+          0.00451,
+          0.015196
+        ]
+      },
+      "fixed_set_floor": {
+        "n": 1206,
+        "hits": 0,
+        "recall": 0.0,
+        "wilson_ci": [
+          0.0,
+          0.003175
+        ]
+      },
+      "by_bucket": {
+        "beyond": {
+          "n": 7169,
+          "recall": 0.46994
+        },
+        "window": {
+          "n": 1023,
+          "recall": 0.738025
+        }
+      }
+    },
+    "win128_s0": {
+      "n_records": 8192,
+      "fixed_set": {
+        "n": 1206,
+        "hits": 11,
+        "recall": 0.009121,
+        "wilson_ci": [
+          0.005101,
+          0.016259
+        ]
+      },
+      "fixed_set_floor": {
+        "n": 1206,
+        "hits": 0,
+        "recall": 0.0,
+        "wilson_ci": [
+          0.0,
+          0.003175
+        ]
+      },
+      "by_bucket": {
+        "beyond": {
+          "n": 4683,
+          "recall": 0.442238
+        },
+        "window": {
+          "n": 3509,
+          "recall": 0.716158
+        }
+      }
+    }
+  },
+  "delta_directions": {
+    "delta_pp": "arm_minus_comparator"
+  },
+  "delta_direction_note": "本文件里所有 `delta_pp` / `diff_ci_95` 都是**两比例差**：`contrasts[*]` 是 carrypl16_s0 − 该纯窗臂（第一组 carry 当「臂」、第二组纯窗户当「对照」⇒ arm_minus_comparator，正 = carry 召回更高）；`degraded_vs_complete[*].vs_primary` 同向（carrypl16_s0 − 退化臂）。bpc 类 Δ 本文件一个都没有（质量轴的家是 2638 / 2639 / 2681）。",
+  "contrasts": {
+    "carrypl16_s0_minus_win16_s0": {
+      "param_positions": "第一组 = carrypl16_s0，第二组 = 该纯窗臂；delta_pp 正 = carry 更高",
+      "window": 16,
+      "planted_recall": 0.064677,
+      "control_recall": 0.004146,
+      "delta_pp": 6.053,
+      "diff_ci_95": [
+        0.046183,
+        0.074878
+      ],
+      "diff_ci_95_pp": [
+        4.618,
+        7.488
+      ],
+      "z": 8.154,
+      "p_value": 0.0,
+      "ci_overlap": false,
+      "passes": true,
+      "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+    },
+    "carrypl16_s0_minus_win16_s1": {
+      "param_positions": "第一组 = carrypl16_s0，第二组 = 该纯窗臂；delta_pp 正 = carry 更高",
+      "window": 16,
+      "planted_recall": 0.064677,
+      "control_recall": 0.008292,
+      "delta_pp": 5.638,
+      "diff_ci_95": [
+        0.04159,
+        0.07118
+      ],
+      "diff_ci_95_pp": [
+        4.159,
+        7.118
+      ],
+      "z": 7.385,
+      "p_value": 0.0,
+      "ci_overlap": false,
+      "passes": true,
+      "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+    },
+    "carrypl16_s0_minus_win17_s0": {
+      "param_positions": "第一组 = carrypl16_s0，第二组 = 该纯窗臂；delta_pp 正 = carry 更高",
+      "window": 17,
+      "planted_recall": 0.064677,
+      "control_recall": 0.003317,
+      "delta_pp": 6.136,
+      "diff_ci_95": [
+        0.047104,
+        0.075616
+      ],
+      "diff_ci_95_pp": [
+        4.71,
+        7.562
+      ],
+      "z": 8.314,
+      "p_value": 0.0,
+      "ci_overlap": false,
+      "passes": true,
+      "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+    },
+    "carrypl16_s0_minus_win18_s0": {
+      "param_positions": "第一组 = carrypl16_s0，第二组 = 该纯窗臂；delta_pp 正 = carry 更高",
+      "window": 18,
+      "planted_recall": 0.064677,
+      "control_recall": 0.005804,
+      "delta_pp": 5.887,
+      "diff_ci_95": [
+        0.044344,
+        0.073401
+      ],
+      "diff_ci_95_pp": [
+        4.434,
+        7.34
+      ],
+      "z": 7.84,
+      "p_value": 0.0,
+      "ci_overlap": false,
+      "passes": true,
+      "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+    },
+    "carrypl16_s0_minus_win24_s0": {
+      "param_positions": "第一组 = carrypl16_s0，第二组 = 该纯窗臂；delta_pp 正 = carry 更高",
+      "window": 24,
+      "planted_recall": 0.064677,
+      "control_recall": 0.006633,
+      "delta_pp": 5.804,
+      "diff_ci_95": [
+        0.043425,
+        0.072661
+      ],
+      "diff_ci_95_pp": [
+        4.343,
+        7.266
+      ],
+      "z": 7.687,
+      "p_value": 0.0,
+      "ci_overlap": false,
+      "passes": true,
+      "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+    },
+    "carrypl16_s0_minus_win32_s0": {
+      "param_positions": "第一组 = carrypl16_s0，第二组 = 该纯窗臂；delta_pp 正 = carry 更高",
+      "window": 32,
+      "planted_recall": 0.064677,
+      "control_recall": 0.004146,
+      "delta_pp": 6.053,
+      "diff_ci_95": [
+        0.046183,
+        0.074878
+      ],
+      "diff_ci_95_pp": [
+        4.618,
+        7.488
+      ],
+      "z": 8.154,
+      "p_value": 0.0,
+      "ci_overlap": false,
+      "passes": true,
+      "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+    },
+    "carrypl16_s0_minus_win60_s0": {
+      "param_positions": "第一组 = carrypl16_s0，第二组 = 该纯窗臂；delta_pp 正 = carry 更高",
+      "window": 60,
+      "planted_recall": 0.064677,
+      "control_recall": 0.008292,
+      "delta_pp": 5.638,
+      "diff_ci_95": [
+        0.04159,
+        0.07118
+      ],
+      "diff_ci_95_pp": [
+        4.159,
+        7.118
+      ],
+      "z": 7.385,
+      "p_value": 0.0,
+      "ci_overlap": false,
+      "passes": true,
+      "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+    },
+    "carrypl16_s0_minus_win64_s0": {
+      "param_positions": "第一组 = carrypl16_s0，第二组 = 该纯窗臂；delta_pp 正 = carry 更高",
+      "window": 64,
+      "planted_recall": 0.064677,
+      "control_recall": 0.008292,
+      "delta_pp": 5.638,
+      "diff_ci_95": [
+        0.04159,
+        0.07118
+      ],
+      "diff_ci_95_pp": [
+        4.159,
+        7.118
+      ],
+      "z": 7.385,
+      "p_value": 0.0,
+      "ci_overlap": false,
+      "passes": true,
+      "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+    },
+    "carrypl16_s0_minus_win128_s0": {
+      "param_positions": "第一组 = carrypl16_s0，第二组 = 该纯窗臂；delta_pp 正 = carry 更高",
+      "window": 128,
+      "planted_recall": 0.064677,
+      "control_recall": 0.009121,
+      "delta_pp": 5.556,
+      "diff_ci_95": [
+        0.040673,
+        0.070438
+      ],
+      "diff_ci_95_pp": [
+        4.067,
+        7.044
+      ],
+      "z": 7.237,
+      "p_value": 0.0,
+      "ci_overlap": false,
+      "passes": true,
+      "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+    }
+  },
+  "degraded_vs_complete": {
+    "carry16_s0": {
+      "fixed_set": {
+        "n": 1206,
+        "hits": 10,
+        "recall": 0.008292,
+        "wilson_ci": [
+          0.00451,
+          0.015196
+        ]
+      },
+      "param_positions": "第一组 = carrypl16_s0（完备），第二组 = 该退化臂；delta_pp 正 = 完备更好",
+      "vs_primary": {
+        "planted_recall": 0.064677,
+        "control_recall": 0.008292,
+        "delta_pp": 5.638,
+        "diff_ci_95": [
+          0.04159,
+          0.07118
+        ],
+        "diff_ci_95_pp": [
+          4.159,
+          7.118
+        ],
+        "z": 7.385,
+        "p_value": 0.0,
+        "ci_overlap": false,
+        "passes": true,
+        "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+      }
+    },
+    "carry16_s1": {
+      "fixed_set": {
+        "n": 1206,
+        "hits": 11,
+        "recall": 0.009121,
+        "wilson_ci": [
+          0.005101,
+          0.016259
+        ]
+      },
+      "param_positions": "第一组 = carrypl16_s0（完备），第二组 = 该退化臂；delta_pp 正 = 完备更好",
+      "vs_primary": {
+        "planted_recall": 0.064677,
+        "control_recall": 0.009121,
+        "delta_pp": 5.556,
+        "diff_ci_95": [
+          0.040673,
+          0.070438
+        ],
+        "diff_ci_95_pp": [
+          4.067,
+          7.044
+        ],
+        "z": 7.237,
+        "p_value": 0.0,
+        "ci_overlap": false,
+        "passes": true,
+        "direction_note": "正 = 植入高于地板（判据④要的方向）；参数顺序 (control, planted) 已在函数内固化"
+      }
+    }
+  },
+  "window_recall_curve": [
+    {
+      "window": 16,
+      "recall": 0.004146
+    },
+    {
+      "window": 16,
+      "recall": 0.008292
+    },
+    {
+      "window": 17,
+      "recall": 0.003317
+    },
+    {
+      "window": 18,
+      "recall": 0.005804
+    },
+    {
+      "window": 24,
+      "recall": 0.006633
+    },
+    {
+      "window": 32,
+      "recall": 0.004146
+    },
+    {
+      "window": 60,
+      "recall": 0.008292
+    },
+    {
+      "window": 64,
+      "recall": 0.008292
+    },
+    {
+      "window": 128,
+      "recall": 0.009121
+    }
+  ],
+  "code_hashes": {
+    "run.py": "b9b0a9e66fb4ac004f64d8be3d9c74dccbfca4637a895de5da70bbdf9f62b5a7",
+    "needle_stats.py": "cd11bb7cdb3b3e60534f102b2df3d396a1a71b8ab0b471776d62b87584d33d4c"
+  },
+  "cost": {
+    "wall_minutes_total": 0.73,
+    "eval_peak_gpu_mem_mb": 1010.9,
+    "n_training_tokens": 0,
+    "lock_note": "纯推理评测：整程 <10 min ⇒ 按 harness/SCHEMA.md §20.1 整程持 /tmp/pathlm_gpu.lock；取/放时间戳见 run_log.jsonl 的首末条",
+    "note": "墙钟与显存峰值只作过程指标，不进判据"
+  }
+}

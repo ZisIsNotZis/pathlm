@@ -235,6 +235,15 @@ def main() -> None:
                            "（该子集上地板结构性为 0，仍逐臂按配对控制报地板）"),
         },
         "per_arm": armed,
+        "delta_directions": {
+            "delta_pp": "arm_minus_comparator",
+        },
+        "delta_direction_note": (
+            "本文件里所有 `delta_pp` / `diff_ci_95` 都是**两比例差**：`contrasts[*]` 是 "
+            "carrypl16_s0 − 该纯窗臂（第一组 carry 当「臂」、第二组纯窗户当「对照」⇒ "
+            "arm_minus_comparator，正 = carry 召回更高）；`degraded_vs_complete[*].vs_primary` "
+            "同向（carrypl16_s0 − 退化臂）。bpc 类 Δ 本文件一个都没有（质量轴的家是 "
+            "2638 / 2639 / 2681）。"),
         "contrasts": contrasts,
         "degraded_vs_complete": degraded,
         "window_recall_curve": [{"window": w, "recall": r} for w, r in curve_sorted],
