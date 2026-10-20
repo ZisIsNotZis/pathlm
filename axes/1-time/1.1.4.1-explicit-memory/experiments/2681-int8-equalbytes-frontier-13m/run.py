@@ -134,11 +134,24 @@ def load_arm(cfg: dict, arm: dict, vocab: int, dev: str):
     if arm.get("sha256") is not None and got != arm["sha256"]:
         raise SystemExit(f"{arm['name']}: sha256 mismatch\n want {arm['sha256']}\n got  {got}")
     if arm.get("trained_here"):
-        # 本实验新训的臂：权重必须晚于预登记绑定（先绑契约、后产权重，定序可判）
-        born = datetime.fromtimestamp(path.stat().st_mtime).astimezone()
-        if born <= bound_at():
-            raise SystemExit(f"{arm['name']}: 权重 mtime {born.isoformat()} 早于绑定 "
-                             f"{bound_at().isoformat()} ⇒ 不是本实验训练产物")
+        # 本实验新训的臂：用**训练产物溯源**而不是 mtime-vs-绑定时刻来判「这是本实验训的那条臂」。
+        # 理由：契约可以在不产生读数的前提下被修过一次再重绑（例如修一个不解析的键锚点），
+        # 那样重绑时刻会晚于早先训完的臂，mtime 比法会把真臂误判成外来臂；溯源法则只问
+        # 「训练产物说它跑的是不是这条臂的配方」，且与重绑次数无关。
+        run_dir = path.parent
+        rec_p = run_dir / "results.json"
+        if not rec_p.exists():
+            raise SystemExit(f"{arm['name']}: 缺训练产物 {rec_p.relative_to(ROOT)} ⇒ 无法证明是本实验训的臂")
+        rec = json.loads(rec_p.read_text())
+        want = {a["name"]: a for a in cfg["train"]["arms"]}[f"win{arm['window']}"]
+        got_recipe = {"run": rec.get("run"), "train_window": rec.get("train_window")}
+        train_rec = rec.get("train") or {}
+        if (got_recipe["run"] != want["name"]
+                or int(got_recipe["train_window"]) != int(want["window"])
+                or int(train_rec.get("steps", -1)) != int(cfg["train"]["steps"])
+                or int(train_rec.get("batch_size", -1)) != int(cfg["train"]["batch_size"])
+                or float(train_rec.get("lr", -1)) != float(cfg["train"]["lr"])):
+            raise SystemExit(f"{arm['name']}: 训练产物与契约配方不一致：{got_recipe} / {train_rec}")
     model = DepthARModel(DepthARConfig(**model_kwargs(cfg, arm)), vocab)
     model.load_state_dict(torch.load(path, map_location=dev))
     model.to(dev).eval()
