@@ -37,7 +37,7 @@
 |---|---|---|---|---|---|---|
 | 陌生阅读复测 | 自证 | worker（fresh context，未读过本仓） | 一轮陌生阅读测试的结论：它答错的每一处，以及对应的账目层修复 | 只给仓库与 8 问清单，≤20 次工具调用答完；答案与 `axes/**` 的落盘事实一致、无一处悬空引用、无一处把第二个家当主读数 ⇒ 通过即作为「自证」里程碑的验收证据 | 30 分钟 | 未开始（等本轮的账目层修复合入） |
 | Δ 方向全树声明 | 自证 | worker | 每个报了 Δ 读数的 `results.json` 逐字段声明 `delta_directions`；把 `cost_rows[].metric` 里机判不了方向的写法改成可机判 | `tools/check_tree.py` 的 Δ 方向汇总行：`undeclared` 计数为 0、「不判」条目为 0（现存条目逐条补声明或改 `metric` 措辞） | 60 分钟 | 进行中 |
-| 复现清单 | `可引用` | worker | `tools/inventory_runs.py` + `docs/repro.md`：每个实验的 run 目录、权重是否在库、日志、重跑命令、实测墙钟、能否字节级复现 | 每条路径的存在性由脚本校验；不可重建的项显式写「不可重建」而不是留空；脚本进 `tests/` | 60 分钟 | **已完成**：`python3 tools/inventory_runs.py --check` 0 违规；120 个实验 / 393 个 run 的判定全带依据；`tests/test_repro_inventory.py` 六条（含「多一个 run 目录」「手改生成物」「`not_reproducible` 缺 `missing`」三条可失败对照） |
+| 复现清单 | 可引用 | worker | `tools/inventory_runs.py` + `docs/repro.md`：每个实验的 run 目录、权重是否在库、日志、重跑命令、实测墙钟、能否字节级复现 | 每条路径的存在性由脚本校验；不可重建的项显式写「不可重建」而不是留空；脚本进 `tests/` | 60 分钟 | **已完成**：`python3 tools/inventory_runs.py --check` 0 违规；120 个实验 / 393 个 run 的判定全带依据；`tests/test_repro_inventory.py` 六条（含「多一个 run 目录」「手改生成物」「`not_reproducible` 缺 `missing`」三条可失败对照） |
 | 论文口径收口 | 可引用 | worker → reviewer | `docs/paper-plan.md`：代价按「触主干 / 旁路」分组，定律 8–11 归为「用表前必须过的口径与前置条件」，方法一页只做 router | 与 `docs/playbook.md`、`docs/cost-table.md` 无重复数字（只有指针）；fresh 复核者只按文件本身即可判断其自洽 | 45 分钟 | 未开始 |
 | 树分诊 | 推进 | worker | `docs/triage.md`：每个在途 / 空白格的「能否改变判断」评分、覆盖度、所需算力与时间 | 每格一行，评分有可核对的理由；在途格标注它离「可交付」还缺什么 | 60 分钟 | 未开始 |
 | 研究批次一 | 推进 | worker（按格隔离，逐格取 GPU 锁） | 分诊排序后的前 2–3 格，各自按预登记契约跑到判词 | 各自 `project.yaml` 的 `status` / `conclusion` 可被 `summary.py --check` 接受；证据落盘并有 fresh 复核 | 按格定 | 未开始 |
