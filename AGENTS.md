@@ -24,7 +24,7 @@
 | 项目是什么 | `README.md` |
 | 设计 / 方法 / 已测定律 | `docs/design.md` / `docs/methodology.md` / `docs/playbook.md` |
 | 计划：里程碑 / 工作包 / owner / 验收 / 状态 / 预算 / **测试计数**（`pytest` 的 passed / failed 与预存失败登记） | `docs/plan.md` |
-| 研究优先级：46 个研究项按「能否改变判断」的排序判据、逐格打分与前三名工作包草案 | `docs/triage.md`（改排序或判据请改它；每格的结论仍在各自的 `project.yaml`） |
+| 研究优先级：46 个研究项按「能否改变判断」的排序判据、逐格打分与第一批工作包草案 | `docs/triage.md`（改排序或判据请改它；每格的结论仍在各自的 `project.yaml`） |
 | 把定律写成论文的 claim / 结构 / 验收（**计划**，不是结果） | `docs/paper-plan.md`（改它的 claim 或验收要同时对齐计划层；它不持有新数字，数字的家是 `docs/playbook.md` / `docs/cost-table.md`） |
 | 定律 ↔ 证据 ↔ 观测代价 ↔ 边界的对照表 | `docs/cost-table.md`（**生成物，禁止手改**：由 `tools/build_cost_table.py` 从 `axes/**/project.yaml` 的 `laws` / `cost_rows` 生成，`--check` 与手改副本逐字节比对；改事实请改 `project.yaml` 后重跑生成器） |
 | 复现清单：每个实验的 run / 已入库产物 / 重跑命令 / 声明墙钟 / **能否字节级复现**（三态带依据） | `docs/repro.md`（**生成物，禁止手改**：由 `tools/inventory_runs.py` 从已入库路径生成，`--check` 与手改副本逐字节比对 + 校验每条路径存在 + 校验每条 `not_reproducible` 写明缺什么；本机权重字节数/sha256 用 `--local`，不入库） |
