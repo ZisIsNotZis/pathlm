@@ -21,10 +21,10 @@
 
 ## 汇总（生成时统计）
 
-- 规模：实验 **130** 个（`axes/**/experiments/*`），run 条目 **434** 个（339 个是 run 子目录或前缀组，95 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 100 个）。
+- 规模：实验 **131** 个（`axes/**/experiments/*`），run 条目 **447** 个（350 个是 run 子目录或前缀组，97 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 102 个）。
 
-- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**95** 个、`not_reproducible`（不可重建）**35** 个。
-- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 96 个。
+- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**97** 个、`not_reproducible`（不可重建）**34** 个。
+- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 98 个。
 
 ## 这个克隆重建不了什么
 
@@ -58,7 +58,7 @@
 | [2662-hard-window-anchor-13m](../axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `liveness.win16a_s0.train_wall_minutes` = 13.07 | `rebuildable_only` | `make_config.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2679-anchor-eval-ablation-13m](../axes/1-time/1.1.1-hard-window/experiments/2679-anchor-eval-ablation-13m/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.1-hard-window/experiments/2679-anchor-eval-ablation-13m --require`（README.md 的复现小节） | `budget.gpu_wall_budget_min` = 20 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2681-anchor-recall-seeds23-13m](../axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m --require`（README.md 的复现小节） | `liveness.win16a_s0.train_wall_minutes` = 13.07 | `rebuildable_only` | `make_config.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
-| [2682-window-kcurve-13m](../axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | — | — | 0 | — | `python3 tools/prereg_bind.py axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m --require`（README.md 的复现小节） | — | `not_reproducible` | 有入口脚本 `run.py`，但仓内无 `results*.json` |
+| [2682-window-kcurve-13m](../axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | ✓ | ✓ | 9 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m --require`（README.md 的复现小节） | `cost.wall_seconds` = 60.1 | `rebuildable_only` | `realtext_probe.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2507-x1-x3-distance-penalty](../axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty/) | [1.1.2-soft-decay](../axes/1-time/1.1.2-soft-decay/project.yaml) | ✓ | — | — | 0 | — | `命令未在仓内声明` | — | `not_reproducible` | 仓内无入口脚本（只有 README.md） |
 | [2503-engine-m1-extensions](../axes/1-time/1.1.4.1-explicit-memory/experiments/2503-engine-m1-extensions/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | — | — | 0 | — | `命令未在仓内声明` | — | `not_reproducible` | 仓内无入口脚本（只有 README.md） |
 | [2616-window192-trained-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2616-window192-trained-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | ✓ | ✓ | 8 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `config.trained_checkpoint.train_wall_minutes` = 8.23 | `rebuildable_only` | `mutate.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
@@ -87,6 +87,7 @@
 | [2639-carry-perlayer-frontier-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | ✓ | ✓ | 8 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `liveness.win16_s0.train_wall_minutes` = 11.94 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2680-quant-overlay-frontier-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2680-quant-overlay-frontier-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.4.1-explicit-memory/experiments/2680-quant-overlay-frontier-13m --require`（README.md 的复现小节） | `budget.gpu_wall_budget_min` = 25 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2681-int8-equalbytes-frontier-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m --require`（README.md 的复现小节） | `budget.gpu_wall_budget_min` = 39 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
+| [2684-recall-across-budget-points-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | — | — | 0 | — | `python3 tools/prereg_bind.py axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m --require`（README.md 的复现小节） | — | `not_reproducible` | 有入口脚本 `run.py`，但仓内无 `results*.json` |
 | [2614-kv-ablation-retention-13m](../axes/1-time/1.1.4.2-compression/experiments/2614-kv-ablation-retention-13m/) | [1.1.4.2-compression](../axes/1-time/1.1.4.2-compression/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_minutes` = 0.724 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2615-retention-retrieval-leg-13m](../axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/) | [1.1.4.2-compression](../axes/1-time/1.1.4.2-compression/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_minutes` = 0.95 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2615-priority-shootout-13m](../axes/1-time/1.1.4.3-compression-trigger/experiments/2615-priority-shootout-13m/) | [1.1.4.3-compression-trigger](../axes/1-time/1.1.4.3-compression-trigger/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_minutes` = 1.693 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
@@ -97,7 +98,7 @@
 | [2616-linear-attention-13m](../axes/1-time/1.2.2-block-sparse/experiments/2616-linear-attention-13m/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.full.wall_min` = 5.75 | `rebuildable_only` | `paired_eval.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2637-linear-attn-quality](../axes/1-time/1.2.2-block-sparse/experiments/2637-linear-attn-quality/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.full-256-lin.wall_min` = 3.67 | `rebuildable_only` | `linear_driver.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2677-local-global-vs-band-13m](../axes/1-time/1.2.2-block-sparse/experiments/2677-local-global-vs-band-13m/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `bash train_arms.sh`（README.md 的复现小节） | `train_declaration.win16a8_s0.wall_minutes` = 13.07 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
-| [2683-block-stripe-vs-band-13m](../axes/1-time/1.2.2-block-sparse/experiments/2683-block-stripe-vs-band-13m/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | — | — | 0 | — | `bash train_arms.sh`（README.md 的复现小节） | — | `not_reproducible` | 有入口脚本 `run.py`，但仓内无 `results*.json` |
+| [2683-block-stripe-vs-band-13m](../axes/1-time/1.2.2-block-sparse/experiments/2683-block-stripe-vs-band-13m/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `bash train_arms.sh`（README.md 的复现小节） | `train_declaration.win24a0_s0.wall_minutes` = 7.68 | `rebuildable_only` | `attribution.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2614-topk-sparse-attn-13m](../axes/1-time/1.2.3-content-topk/experiments/2614-topk-sparse-attn-13m/) | [1.2.3-content-topk](../axes/1-time/1.2.3-content-topk/project.yaml) | ✓ | ✓ | ✓ | 8 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.full.wall_min` = 6.34 | `rebuildable_only` | `paired_eval.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2676-content-vs-window-13m](../axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/) | [1.2.3-content-topk](../axes/1-time/1.2.3-content-topk/project.yaml) | ✓ | ✓ | ✓ | 6 | 否（`*.pt` 不入库） | `bash train_arms.sh`（README.md 的复现小节） | `train_declaration.full.wall_minutes` = 5.95 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2518-exit-retry-law](../axes/2-depth/2.1.1-early-exit/experiments/2518-exit-retry-law/) | [2.1.1-early-exit](../axes/2-depth/2.1.1-early-exit/project.yaml) | ✓ | — | — | 0 | — | `命令未在仓内声明` | — | `not_reproducible` | 仓内无入口脚本（只有 README.md） |
@@ -183,12 +184,11 @@
 |---|---|---|
 | [2505-m1-followups](../axes/1-time/1.1.1-hard-window/experiments/2505-m1-followups/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2625-longT-stability](../axes/1-time/1.1.1-hard-window/experiments/2625-longT-stability/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `run.py`，但仓内无 `results*.json` |
-| [2682-window-kcurve-13m](../axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `run.py`，但仓内无 `results*.json` |
 | [2507-x1-x3-distance-penalty](../axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2503-engine-m1-extensions](../axes/1-time/1.1.4.1-explicit-memory/experiments/2503-engine-m1-extensions/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2617-design-rightcarry](../axes/1-time/1.1.4.1-explicit-memory/experiments/2617-design-rightcarry/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 DESIGN.md） |
 | [2617-prior-art-memory](../axes/1-time/1.1.4.1-explicit-memory/experiments/2617-prior-art-memory/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 PRIOR_ART.md） |
-| [2683-block-stripe-vs-band-13m](../axes/1-time/1.2.2-block-sparse/experiments/2683-block-stripe-vs-band-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `run.py`，但仓内无 `results*.json` |
+| [2684-recall-across-budget-points-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `run.py`，但仓内无 `results*.json` |
 | [2518-exit-retry-law](../axes/2-depth/2.1.1-early-exit/experiments/2518-exit-retry-law/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2523-depth-ar-first](../axes/2-depth/2.1.1-early-exit/experiments/2523-depth-ar-first/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2523c-three-ablations](../axes/2-depth/2.1.1-early-exit/experiments/2523c-three-ablations/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
@@ -284,7 +284,15 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2681-anchor-recall-seeds23-13m | train/win16_s3 | ✓ | ✓ | 11999 | — | — |
 | 2681-anchor-recall-seeds23-13m | train/win16a_s2 | ✓ | ✓ | 11999 | — | — |
 | 2681-anchor-recall-seeds23-13m | train/win16a_s3 | ✓ | ✓ | 11999 | — | — |
-| [2682-window-kcurve-13m](../axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/) | — | — | — | — | — | 仓内没有 run 产物 |
+| 2682-window-kcurve-13m | . | ✓ | — | — | — | — |
+| 2682-window-kcurve-13m | train/win128_s0 | ✓ | ✓ | 11999 | — | — |
+| 2682-window-kcurve-13m | train/win128_s1 | ✓ | ✓ | 11999 | — | — |
+| 2682-window-kcurve-13m | train/win192_s0 | ✓ | ✓ | 11999 | — | — |
+| 2682-window-kcurve-13m | train/win192_s1 | ✓ | ✓ | 11999 | — | — |
+| 2682-window-kcurve-13m | train/win32_s0 | ✓ | ✓ | 11999 | — | — |
+| 2682-window-kcurve-13m | train/win32_s1 | ✓ | ✓ | 11999 | — | — |
+| 2682-window-kcurve-13m | train/win64_s0 | ✓ | ✓ | 11999 | — | — |
+| 2682-window-kcurve-13m | train/win64_s1 | ✓ | ✓ | 11999 | — | — |
 | [2507-x1-x3-distance-penalty](../axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty/) | — | — | — | — | — | 仓内没有 run 产物 |
 | [2503-engine-m1-extensions](../axes/1-time/1.1.4.1-explicit-memory/experiments/2503-engine-m1-extensions/) | — | — | — | — | — | 仓内没有 run 产物 |
 | 2616-window192-trained-13m | . | ✓ | — | — | — | — |
@@ -443,6 +451,7 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2681-int8-equalbytes-frontier-13m | train/win60 | ✓ | ✓ | 11999 | — | — |
 | 2681-int8-equalbytes-frontier-13m | train/win60-retrain-aborted | — | ✓ | 200 | — | — |
 | 2681-int8-equalbytes-frontier-13m | train/win64 | ✓ | ✓ | 11999 | — | — |
+| [2684-recall-across-budget-points-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m/) | — | — | — | — | — | 仓内没有 run 产物 |
 | 2614-kv-ablation-retention-13m | . | ✓ | — | — | — | — |
 | 2614-kv-ablation-retention-13m | smoke | ✓ | — | — | — | — |
 | 2615-retention-retrieval-leg-13m | . | ✓ | — | — | — | — |
@@ -485,7 +494,10 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2677-local-global-vs-band-13m | smoke/smk24 | ✓ | ✓ | 299 | — | — |
 | 2677-local-global-vs-band-13m | train/win24a0_s0 | ✓ | ✓ | 11999 | — | — |
 | 2677-local-global-vs-band-13m | train/win24a0_s1 | ✓ | ✓ | 11999 | — | — |
-| [2683-block-stripe-vs-band-13m](../axes/1-time/1.2.2-block-sparse/experiments/2683-block-stripe-vs-band-13m/) | — | — | — | — | — | 仓内没有 run 产物 |
+| 2683-block-stripe-vs-band-13m | . | ✓ | — | — | — | — |
+| 2683-block-stripe-vs-band-13m | smoke/smkblk | ✓ | ✓ | 299 | — | — |
+| 2683-block-stripe-vs-band-13m | train/block8l4_s0 | ✓ | ✓ | 11999 | — | — |
+| 2683-block-stripe-vs-band-13m | train/block8l4_s1 | ✓ | ✓ | 11999 | — | — |
 | 2614-topk-sparse-attn-13m | . | ✓ | — | — | — | — |
 | 2614-topk-sparse-attn-13m | full-12k-s0 | — | ✓ | 11999 | — | — |
 | 2614-topk-sparse-attn-13m | full-12k-s0-r2 | — | ✓ | 11999 | — | — |
