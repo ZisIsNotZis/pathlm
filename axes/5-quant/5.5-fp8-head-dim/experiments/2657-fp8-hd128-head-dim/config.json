@@ -1,0 +1,469 @@
+{
+ "experiment": "2657-fp8-hd128-head-dim",
+ "line": "轴 5 研究项 5.5（fp8 / 大 head_dim）WP2 —— `head_dim=128` 的实测腿（第三点，字节轴往外推一格）",
+ "contract": "axes/5-quant/5.5-fp8-head-dim/experiments/2657-fp8-hd128-head-dim/README.md（运行前预登记；判据线写在本文件 criterion）",
+ "contract_copy": "README.md（同目录，判据线**运行前**写入；本文件 mtime 必须早于 results.json）",
+ "parent_wp1": "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m（WP1 = fp8 vs int8+块标尺同字节判决；WP2 的 `head_dim=32` G 扫描与解析亦在那里）｜前置实测腿 = axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim（`head_dim=64`）",
+ "scope": "单轴单格、单因素：固定数据/评测窗口/任务/判据，只改**模型侧注意力头数**（`--heads 8 → 4 → 2`，⇒ `head_dim = 256/n_heads = 128`）与**块标尺的组大小 G**（G ∈ {32,64,128}）。纯推理评测、不训练附属物、不新增参数（除训练该 checkpoint 本身）；不做组合实验（组合留白是显式声明，`harness/SCHEMA.md` §4）。本实验只补 5.5 的 WP2 第三点（`head_dim=128`），不改 WP1 与 `2655` 的任何读数。",
+ "axis_definition": {
+  "quantity": "deployment_bytes_per_position",
+  "formula": "2(K,V) * n_layers * n_kv_heads_eff * head_dim * (value_bytes + scale_bytes_per_value) * (positions_kept / T)",
+  "unit": "字节 / 上下文位置",
+  "seq_len_T": 256,
+  "values_per_position": 6144,
+  "values_per_position_derivation": "2 * L * n_kv_heads * head_dim * (kept/T) = 2*12*2*128*1 = 6144（与 head_dim=32 的 2*12*8*32、head_dim=64 的 2*12*4*64 同值，只要 n_kv_heads*head_dim = d_model = 256）",
+  "per_position_bytes_fp16_full": 12288,
+  "to_fp16_multiple": "deployment_bytes_per_position / 12288",
+  "caveats": [
+   "块标尺沿 `head_dim`（非 token 轴）⇒ 标尺只由当前 token 自己的值决定 ⇒ 严格前缀确定（判据 gate）。",
+   "`head_dim=128` ⇒ 沿 head_dim 的块可整除到 G ∈ {8,16,32,64,128}；G=128 时每值 1 + 2/128 = 1.015625 B、每位置 6240 B、省幅 **49.21875%**（比 `head_dim=64` 的 48.4375%、`head_dim=32` 的 46.875% 更接近 50%）。",
+   "G 变大 ⇒ 一把标尺罩住的值变多（尺度更粗）⇒ 字节腿变好与质量腿是**同一动作的两个后果**，必须同框读。",
+   "本列是解析（部署口径）KV 占用；评测实现把 K/V 立刻反量化 ⇒ 实测峰值不随档下降，两者分列。",
+   "训练腿（`--heads 2`）只改 `head_dim`；d_model/mlp/步数/批大小/seed 与 `2616` mha 臂逐字段一致。"
+  ]
+ },
+ "reuse": {
+  "fp8_arms": {
+   "path": "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/fp8_arms.py",
+   "sha256": "3c14e513a99830ae79447e921adf6828008d0692fd1a5d5e8e873a8df2e0f5d0",
+   "use": "**只读 import**：`deployment_ledger` / `head_dim_ladder` / `head_dim_cap` / `make_logits_fn` / `kv_logits` / `activity_of`。不复制改写。"
+  },
+  "kv_quant": {
+   "path": "tools/evalkit/kv_quant.py",
+   "sha256": "bc71c232356af88a3e162ea81b608f2558c489419c1d28e238cf99bc6ecf13a2",
+   "use": "int8 块标尺算子 `quantize_kv(scheme=\"block\", G)` 的唯一来源（经由 `fp8_arms` 间接 import）。"
+  },
+  "harness_2621": {
+   "path": "axes/5-quant/5.1-kv-quant/experiments/2621-kv-budget-rest/run.py",
+   "use": "`b21.b19.bpc_of` / `masked_bpc` / `build_tasks` / `pooled_accuracy` / `floor_threshold`（经 `2653/run.py` 间接 import，只读）。"
+  },
+  "wrapper_2653": {
+   "path": "axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/run.py",
+   "sha256": "77d19f52b48be0bfe0389b716c8058534289fba7ef7e06fe3fcf7ea0be6c0fc0",
+   "use": "**只读 import** 其 `eval_arm` / `paired_deltas` / `build_tasks`（评测电池本体）；2655 自写 `load_ckpt` / 仪器自检 / 落盘与表格（因为 2653 的 `dump/render_table` 把标题与代码哈希写死为 2653 自己的文件）。"
+  },
+  "lock_2632": {
+   "path": "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/run.py",
+   "sha256": "e1d82b80904d8e55123b8a01974eccbdf29247e34a46b337bb502d7d98d200e5",
+   "use": "训练驱动 `hp64_train_driver.py` 只读 import 其 `GpuLock`（`harness/SCHEMA.md` §20 锁协议），未复制改写。"
+  },
+  "no_new_quant_ops": "本实验不新增任何量化算子；新代码只有配置、训练驱动、评测编排与表格。"
+ },
+ "harness": {
+  "parent_config": "axes/5-quant/5.1-kv-quant/experiments/2621-kv-budget-rest/config.json",
+  "parent_fields": [
+   "data"
+  ],
+  "task_recipe_copied_from": "2653/config.json::tasks|tokens（逐字段一致 ⇒ 与 WP1 同批同任务同 seed）",
+  "seed_role": "cfg.seed = 7 只喂合成任务的 `torch.Generator`（与 2653 同值 ⇒ 任务批逐位相同）"
+ },
+ "model": {
+  "d_model": 256,
+  "n_layers": 12,
+  "n_heads": 2,
+  "seq_len": 256,
+  "mlp_mult": 6,
+  "dense": true
+ },
+ "head_dim": 128,
+ "head_dim_derivation": "d_model / n_heads = 256 / 2 = 128（`pathlm` 引擎无需改动：`head_dim` 恒 = d_model/n_heads，MHA 下 `n_kv_heads == n_heads`，见 `harness/engine_capability.md`）",
+ "checkpoints": {
+  "trunk": {
+   "path": "axes/5-quant/5.5-fp8-head-dim/experiments/2657-fp8-hd128-head-dim/runs/hd128-s0/model.pt",
+   "sha256": null,
+   "sha256_note": "预登记时该 checkpoint 尚未训练 ⇒ 期望哈希**声明缺失（null），不臆造**（`AGENTS.md` absent）。评测时由 `hp64_arms.py` 现算并写入 `results.json::checkpoint.sha256`（`sha256_source = \"computed_at_eval\"`）；训练驱动另把它记进 `train_driver_state.json` 供交叉核对。",
+   "size_bytes": null,
+   "role": "被测模型：13.5M dense decoder-only，12 层 d256 **2 头**（head_dim=128）、mlp6、seq256、tied 读出、12k 步、seed 0",
+   "train_ref": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/MODEL.md（mha 臂配方，唯一改动 `--heads 8 → 2`）",
+   "train_run": "runs/hd128-s0（见 hd128_train_driver.py；命令落 runs/hd128-s0/cmd.txt）"
+  },
+  "second_seed": {
+   "path": "axes/5-quant/5.5-fp8-head-dim/experiments/2657-fp8-hd128-head-dim/runs/hd128-s1/model.pt",
+   "sha256": null,
+   "role": "n≥2 的第二 seed（seed 1）；预算紧时可在评测前砍掉并如实登记（STOP_AFTER_FIRST_ARM）"
+  }
+ },
+ "data": "见 harness.parent_config::data（path/vocab_size 单一来源，本文件不重述）",
+ "tokens": {
+  "sym_vocab": 64,
+  "filler_token": 64,
+  "cue_token": 205,
+  "local_k": 8
+ },
+ "tasks": {
+  "copy": {
+   "copy_len": 32,
+   "src_positions": [
+    0,
+    96,
+    191
+   ],
+   "batch_size": 16,
+   "n_batches": 1,
+   "role": "合成长程召回主腿（与 2619/2621/2632/2653 同任务同 seed）；每臂 n = 3 位置 × 1 批 × 16 请求 × 32 答案 = 1536 个答案（chance = 1/64 = 0.0156，地板阈值由 pool 后算）"
+  },
+  "induction": {
+   "prefix_len": 192,
+   "copy_len": 32,
+   "src_starts": [
+    0
+   ],
+   "batch_size": 16,
+   "n_batches": 1,
+   "role": "副腿：末尾重复段之后的那一项（induction）"
+  },
+  "var_recall": {
+   "distances": [
+    64
+   ],
+   "batch_size": 16,
+   "n_batches": 1,
+   "role": "副腿：单 (key,value) 变距离回忆；同时提供前缀不变性的探针 token（本主干该腿预期落在地板）"
+  }
+ },
+ "arms": {
+  "fp16": {
+   "family": "hd128",
+   "kind": "quant",
+   "mode": "fp16",
+   "value_bytes": 2.0,
+   "value": 2.0,
+   "role": "基线（KV 存 fp16）＝ 配对 Δ 的基准",
+   "bytes_per_value": 2.0,
+   "bytes_per_position": 12288.0,
+   "reduction_vs_fp16": 0.0
+  },
+  "int8_block_g128": {
+   "family": "hd128",
+   "kind": "quant",
+   "mode": "int8",
+   "scheme": "block",
+   "group": 128,
+   "value_bytes": 1.0,
+   "role": "WP2 主臂：`head_dim=128` ⇒ G=128 合法（每 token 沿 head_dim 一把标尺罩满 128 个值）⇒ 省幅 49.21875%（本实验要实测的那个点，也是「摊薄到 G=head_dim」第一次被验质量）",
+   "bytes_per_value": 1.015625,
+   "bytes_per_position": 6240.0,
+   "reduction_vs_fp16": 0.492188
+  },
+  "fp8_e4m3": {
+   "family": "hd128",
+   "kind": "quant",
+   "mode": "fp8_e4m3",
+   "scale_mode": "none",
+   "value_bytes": 1.0,
+   "role": "免标尺臂（动态范围 ±448）：与 G=128 在**同一「每位置字节」轴**上比较（hd32 见 `2653`、hd64 见 `2655`，本实验补 hd128）",
+   "bytes_per_value": 1.0,
+   "bytes_per_position": 6144.0,
+   "reduction_vs_fp16": 0.5
+  }
+ },
+ "side_arms": {
+  "int8_block_g64": {
+   "family": "hd128",
+   "kind": "quant",
+   "mode": "int8",
+   "scheme": "block",
+   "group": 64,
+   "value_bytes": 1.0,
+   "role": "辅助 G 扫描：G=64 在 `head_dim=128` 下与 `2655` 的主臂**同字节**（6336 B/位置）⇒ 跨 head_dim 的同字节对照点",
+   "bytes_per_value": 1.03125,
+   "bytes_per_position": 6336.0,
+   "reduction_vs_fp16": 0.484375
+  },
+  "int8_block_g32": {
+   "family": "hd128",
+   "kind": "quant",
+   "mode": "int8",
+   "scheme": "block",
+   "group": 32,
+   "value_bytes": 1.0,
+   "role": "辅助 G 扫描：G=32 与 `5.1`/`2632` 的 hd32 封顶点**同字节**（6528 B/位置）⇒ 跨 head_dim 的同字节对照点",
+   "bytes_per_value": 1.0625,
+   "bytes_per_position": 6528.0,
+   "reduction_vs_fp16": 0.46875
+  }
+ },
+ "analytic": {
+  "source": "由只读复用的 `2653/fp8_arms.py::head_dim_ladder` / `head_dim_cap` / `bytes_per_value_with_scale` 生成；`hd128_arms.py` 在运行时重算并断言与本块逐位相同（不手抄数字）",
+  "bytes_per_value_rule": "block 标尺：value_bytes + scale_bytes/G（scale = fp16 = 2 B）；fp8 免标尺：1.0 B/值",
+  "head_dim_ladder": [
+   {
+    "head_dim": 32,
+    "group": 16,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.125,
+    "bytes_per_value": 1.125,
+    "bytes_per_position": 6912.0,
+    "ratio_vs_fp16": 0.5625,
+    "reduction_vs_fp16": 0.4375,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 32,
+    "group": 32,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.0625,
+    "bytes_per_value": 1.0625,
+    "bytes_per_position": 6528.0,
+    "ratio_vs_fp16": 0.53125,
+    "reduction_vs_fp16": 0.46875,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 32,
+    "group": 64,
+    "legal": false,
+    "reason": "G=64 不整除 head_dim=32",
+    "scale_bytes_per_value": 0.03125,
+    "bytes_per_value": 1.03125,
+    "bytes_per_position": 6336.0,
+    "ratio_vs_fp16": 0.515625,
+    "reduction_vs_fp16": 0.484375,
+    "prefix_invariant": false
+   },
+   {
+    "head_dim": 32,
+    "group": 128,
+    "legal": false,
+    "reason": "G=128 不整除 head_dim=32",
+    "scale_bytes_per_value": 0.015625,
+    "bytes_per_value": 1.015625,
+    "bytes_per_position": 6240.0,
+    "ratio_vs_fp16": 0.507812,
+    "reduction_vs_fp16": 0.492188,
+    "prefix_invariant": false
+   },
+   {
+    "head_dim": 64,
+    "group": 16,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.125,
+    "bytes_per_value": 1.125,
+    "bytes_per_position": 6912.0,
+    "ratio_vs_fp16": 0.5625,
+    "reduction_vs_fp16": 0.4375,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 64,
+    "group": 32,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.0625,
+    "bytes_per_value": 1.0625,
+    "bytes_per_position": 6528.0,
+    "ratio_vs_fp16": 0.53125,
+    "reduction_vs_fp16": 0.46875,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 64,
+    "group": 64,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.03125,
+    "bytes_per_value": 1.03125,
+    "bytes_per_position": 6336.0,
+    "ratio_vs_fp16": 0.515625,
+    "reduction_vs_fp16": 0.484375,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 64,
+    "group": 128,
+    "legal": false,
+    "reason": "G=128 不整除 head_dim=64",
+    "scale_bytes_per_value": 0.015625,
+    "bytes_per_value": 1.015625,
+    "bytes_per_position": 6240.0,
+    "ratio_vs_fp16": 0.507812,
+    "reduction_vs_fp16": 0.492188,
+    "prefix_invariant": false
+   },
+   {
+    "head_dim": 128,
+    "group": 16,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.125,
+    "bytes_per_value": 1.125,
+    "bytes_per_position": 6912.0,
+    "ratio_vs_fp16": 0.5625,
+    "reduction_vs_fp16": 0.4375,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 128,
+    "group": 32,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.0625,
+    "bytes_per_value": 1.0625,
+    "bytes_per_position": 6528.0,
+    "ratio_vs_fp16": 0.53125,
+    "reduction_vs_fp16": 0.46875,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 128,
+    "group": 64,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.03125,
+    "bytes_per_value": 1.03125,
+    "bytes_per_position": 6336.0,
+    "ratio_vs_fp16": 0.515625,
+    "reduction_vs_fp16": 0.484375,
+    "prefix_invariant": true
+   },
+   {
+    "head_dim": 128,
+    "group": 128,
+    "legal": true,
+    "reason": "",
+    "scale_bytes_per_value": 0.015625,
+    "bytes_per_value": 1.015625,
+    "bytes_per_position": 6240.0,
+    "ratio_vs_fp16": 0.507812,
+    "reduction_vs_fp16": 0.492188,
+    "prefix_invariant": true
+   }
+  ],
+  "head_dim_cap": {
+   "32": {
+    "head_dim": 32,
+    "max_group": 32,
+    "bytes_per_value": 1.0625,
+    "bytes_per_position": 6528.0,
+    "reduction_vs_fp16": 0.46875
+   },
+   "64": {
+    "head_dim": 64,
+    "max_group": 64,
+    "bytes_per_value": 1.03125,
+    "bytes_per_position": 6336.0,
+    "reduction_vs_fp16": 0.484375
+   },
+   "128": {
+    "head_dim": 128,
+    "max_group": 128,
+    "bytes_per_value": 1.015625,
+    "bytes_per_position": 6240.0,
+    "reduction_vs_fp16": 0.492188
+   }
+  },
+  "head_dim_cap_32": "head_dim=32 ⇒ G ≤ 32 ⇒ 每值 1.0625 B、每位置 6528 B、省幅 **46.875%**（封顶，`2653`/`2632`）",
+  "head_dim_cap_64": "head_dim=64 ⇒ G=64 ⇒ 每值 1.03125 B、每位置 6336 B、省幅 **48.4375%**（`2655` 实测）",
+  "head_dim_cap_128": "head_dim=128 ⇒ G=128 ⇒ 每值 1.015625 B、每位置 6240 B、省幅 **49.21875%**（本实验实测点）",
+  "fp8_point": "fp8 E4M3 免标尺 ⇒ 1.0 B/值 ⇒ 6144 B/位置、省幅 **50%**（与 head_dim 无关）",
+  "fp8_advantage_convergence": [
+   {
+    "head_dim": 32,
+    "max_group": 32,
+    "int8_block_bytes_per_position": 6528.0,
+    "fp8_bytes_per_position": 6144.0,
+    "fp8_advantage_bytes_per_position": 384.0,
+    "fp8_advantage_frac_of_int8": 0.058824,
+    "source": "解析价签；hd32/hd64 的实测腿见 2653/2655，hd128 由本实验实测"
+   },
+   {
+    "head_dim": 64,
+    "max_group": 64,
+    "int8_block_bytes_per_position": 6336.0,
+    "fp8_bytes_per_position": 6144.0,
+    "fp8_advantage_bytes_per_position": 192.0,
+    "fp8_advantage_frac_of_int8": 0.030303,
+    "source": "解析价签；hd32/hd64 的实测腿见 2653/2655，hd128 由本实验实测"
+   },
+   {
+    "head_dim": 128,
+    "max_group": 128,
+    "int8_block_bytes_per_position": 6240.0,
+    "fp8_bytes_per_position": 6144.0,
+    "fp8_advantage_bytes_per_position": 96.0,
+    "fp8_advantage_frac_of_int8": 0.015385,
+    "source": "解析价签；hd32/hd64 的实测腿见 2653/2655，hd128 由本实验实测"
+   }
+  ],
+  "fp8_advantage_note": "fp8 免标尺相对 int8 块标尺封顶点的解析字节优势随 `head_dim` 单调缩小：384 B/位置（hd32）→ 192 B（hd64）→ 96 B（hd128），极限为 0；本实验判这条收敛在**质量腿**上是否仍无代价。"
+ },
+ "eval": {
+  "bpc_method": "`2653/run.py::eval_arm` → `b21.b19.bpc_of`（因果移位 CE 的 token 平均；与 2619/2621/2632/2653 同一路径）",
+  "bpc_cross_path_check": "`tools.evalkit.retention.masked_bpc`（独立第二路径；fp32 恒等臂须与 `bpc_of` **逐位相等**）",
+  "n_batches": 24,
+  "batch_size": 16,
+  "window_seed": 2,
+  "pairing_seeds": [
+   2,
+   3,
+   4,
+   5,
+   6
+  ],
+  "pairing_n_batches": 2,
+  "scan_n_batches": 6,
+  "device": "cpu",
+  "all_arms_same_device": true,
+  "cross_device_rule": "跨设备/跨 checkpoint 不构成判据：GPU 历史锚 1.483569、`2653` 的 CPU fp16 读数 1.4835687（head_dim=32）、`2655` 的 1.483031（head_dim=64）都**不是**本实验的被测权重 ⇒ 只并列报告，不宣称作判据，也不声称逐位相等。判据一律用**同设备（CPU）、同窗口序**的**配对 Δ**。",
+  "side_arm_note": "辅助臂 `int8_block_g64/g32` 只跑 `scan` 口径（6×16, seed=2），与主表 24×16 口径不同 ⇒ 只用于 G 阶梯内部的解析对账，不与其他臂混比、不进配对表。",
+  "note": "主表 = `window_seed=2` + 24×16（与 2610/2614/2619/2621/2632/2653 同一窗口序）。配对腿 = **均匀口径**：5 个窗口 seed {2,3,4,5,6} 各 `n_batches=2`、同 batch_size、同设备（CPU）⇒ 满足「配对 Δ、≥5 窗口」。"
+ },
+ "criterion": {
+  "verbatim_contract": [
+   "该跌：每位置部署字节（`G=128` ⇒ 6240 B/位置；fp8 免标尺 ⇒ 6144 B/位置）；该不跌/可排序：clean bpc（配对 Δ 须越 0.014 带才算可分辨）；必须不变：严格前缀不变性两条、非量化臂逐位不变；必须报：fp8 是否需分组标尺、`head_dim=128` 下的 G 与省幅。",
+   "Q1（摊薄质量腿）：`int8_block_g128` 相对同 checkpoint 的 `fp16`，5 窗口配对 Δ 的 max|Δ| ≤ 0.014 ⇒ 判「G=128 的摊薄在本尺度仍近无损」；> 0.014 ⇒ 判「摊薄到 G=128 有可分辨的质量代价」（省幅趋近 50% 不是免费的）。",
+   "Q2（fp8 vs int8 同轴腿）：`fp8_e4m3 − int8_block_g128` 的 5 窗口配对 Δ max|Δ| ≤ 0.014 ⇒ 判「head_dim=128 上两者质量不可分辨」（fp8 的 96 B/位置优势站得住）；> 0.014 ⇒ 判「该字节水平上两者质量可分辨」，方向按 Δ 符号报。",
+   "若大 head_dim 下标尺摊薄不改变每位置字节（实测标尺密度偏离 1/G、与解析不符）⇒ 判「实测与解析口径不一致、须查明」；若 fp8 同样需要分组标尺 ⇒ 判其『免标尺』前提失败。",
+   "WP2 第三点验收（本实验补的那条）：每位置字节随 head_dim/G 的**实测**（标尺密度 n_scales/n_values → 2/G）与**解析**一致；质量两腿（Q1/Q2）各自二选一明确；对账差异有解释。"
+  ],
+  "sign_convention": "SCHEMA §17.3：Δ = bpc_实验臂 − bpc_对照臂（正 = 实验臂更差）；对照 = 同 checkpoint、同设备、同窗口序的 `fp16` 臂。",
+  "band_primary_bpc": 0.014,
+  "band_primary_caliber": "跨格 0.014 bpc 带，**限配对 Δ、≥5 窗口**（本 run 主臂满足：5 个窗口 seed {2,3,4,5,6}）",
+  "band_secondary": "本格自测在力带 = 单臂跨窗口 bpc 极差（如实给数值，只作辅助描述）",
+  "bands_not_mixed": "两带不混用：主判用 0.014（配对 Δ），自测带只作辅助描述。",
+  "band_aggregation": "越带判定用逐窗配对 Δ 的 max|Δ| > 带（`2653/run.py::paired_deltas` 的实现，最保守取法），与 harness/research-schema.md §12.1「限配对 Δ、≥5 窗口」一致。",
+  "c1_declaration": "本格引用带 = **跨格 0.014 bpc（限配对 Δ、≥5 窗口）**；本格无自测在力带；率类指标（召回）走 Wilson 95% CI、**不跨量纲借用** 0.014（harness/research-schema.md §12.1）。",
+  "recall_ci": "Wilson 95%",
+  "recall_at_floor_rule": "recall <= chance + 2*sigma_wilson(chance) ⇒ at_floor = true（读作「在该任务上不可分辨」，不得写成「机制无效」，SCHEMA §19）",
+  "gate": "① 前缀不变性两条（改未来 token / 改同批邻居）任一为 False ⇒ 该臂不得出数，本次实验作废；② fp32 恒等臂与独立第二路径不逐位相等 / int8 块标尺 G=128 **或** G=64 与 2632 前向不逐位相等 ⇒ 仪器红、须先修。",
+  "no_single_point_extrapolation": "SCHEMA §17.11：head_dim=128 的实测只描述该点；不外推到 head_dim=256、别的行宽或更长的 T。",
+  "fp8_scale_claim_rule": "「fp8 免标尺」只在实测 `n_scales = 0` **且**质量不越带时成立；否则如实报 1 + 2/G 并宣布该前提失败。",
+  "n_ge_2": "两腿：`hd128-s0`（seed 0）与 `hd128-s1`（seed 1）；各腿只判自己的配对 Δ；任一腿越带的负结论须两腿同向。",
+  "q1_q2_verdicts": {
+   "Q1": "G=128 vs fp16（摊薄质量腿）",
+   "Q2": "fp8_e4m3 vs int8_block_g128（同轴质量腿）"
+  }
+ },
+ "cost": {
+  "caliber": "**成本只用等效理论量**（每位置部署字节 = 值数 × 每值字节）；墙钟**不进判据**，只作预算记账。",
+  "train": {
+   "device": "cuda",
+   "gpu_minutes_per_arm_measured_history": 8.0,
+   "source": "axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/runs/*/results.json::wall_minutes（7.77 / 8.15 min）",
+   "arms": [
+    "hd128-s0（主臂）",
+    "hd128-s1（n≥2 第二 seed，可砍）"
+   ],
+   "lock": "SCHEMA §20：每臂取一次 `/tmp/pathlm_gpu.lock`，等锁上限 600 s，跑完即放；等不到即重试"
+  },
+  "eval": {
+   "device": "cpu",
+   "measured_batch_seconds": 3.4,
+   "measured_batch_source": ".scratch/66-axis5-quant/evidence/cpu_eval_timing.py（16×256 一批，经 2653 记账）",
+   "batches_estimate": "3 主臂 × (24 + 5×2 + 6) + 2 辅助 × 6 + 仪器 ≈ 135 批",
+   "wall_estimate_minutes": 8,
+   "gpu_lock": "不取（纯 CPU 推理；SCHEMA §20 不适用）"
+  },
+  "budget_cut_rule": "先砍辅助 G 扫描臂 → 再砍配对腿 `n_batches`（2→1）→ 再砍第二 seed；**不砍判据线**、不砍 `int8_block_g128` 与 `fp8_e4m3` 两臂（SCHEMA §8/§17.7）。"
+ },
+ "seed": 7,
+ "delta_directions": {
+  "delta_bytes_per_position": "arm_minus_comparator",
+  "paired_delta": "arm_minus_comparator",
+  "delta_by_window": "arm_minus_comparator",
+  "paired_delta_arm_vs_arm": "arm_minus_comparator"
+ }
+}
