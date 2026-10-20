@@ -60,7 +60,8 @@
 
 | 结论 | 出处 | 状态 |
 | --- | --- | --- |
-| `5.5` fp8 / 大 head_dim：在同一「每位置部署字节」轴上，免标尺的 **fp8 E4M3 比 int8+块标尺更省且质量不可分辨**，`head_dim`=32 与 64 两个点上同向复现；`head_dim` 抬高只把标尺摊薄（省幅趋近 50%）、不省值，因此 fp8 相对 int8 的字节优势随 `head_dim` 变大而缩小。`head_dim`=64 的省幅与解析逐位一致（实测 = 解析） | `axes/5-quant/5.5-fp8-head-dim/project.yaml::conclusion`、`::status` | 成立（13M 冻结 trunk / 纯推理 / CPU / 5 窗口配对；不外推 `head_dim`=128 与更长 T） |
+| `5.5` fp8 / 大 head_dim：在同一「每位置部署字节」轴上，免标尺的 **fp8 E4M3 比 int8+块标尺更省且质量不可分辨**，`head_dim`=32 / 64 / 128 三个点上同向复现；`head_dim` 抬高只把标尺摊薄（省幅趋近 50%）、不省值，因此 fp8 相对 int8 的字节优势随 `head_dim` 变大而对折收敛；到 `head_dim`=128 时它已小到按实现与内核便利选即可，而 int8 把标尺摊到 `G=head_dim` 也没有可分辨的质量代价。三个点的省幅与标尺密度都与解析逐位一致（实测 = 解析） | `axes/5-quant/5.5-fp8-head-dim/project.yaml::conclusion`、`::status` | 成立（13M 冻结 trunk / 纯推理 / CPU / 5 窗口配对；不外推 `head_dim`=256 与更长 T） |
+| `5.5` 的 `head_dim` 是「标尺摊薄」的免费杠杆：头维度每翻一倍只多买一次递减的省幅，且质量代价始终在噪声带内 ⇒ 「大 `head_dim` 让 int8 逼近 fp8 且不付质量」 | `axes/5-quant/5.5-fp8-head-dim/project.yaml::conclusion`（WP2 / WP3）、`axes/5-quant/5.5-fp8-head-dim/experiments/2657-fp8-hd128-head-dim/analysis.md` | 成立（`head_dim`=32/64/128 三点；单尺度、T=256） |
 | `5.5` 的 `fp8 E5M2` 相对 int8 块标尺**越带更差** ⇒ 「用哪个 fp8 格式」有取舍，不是「fp8 一律免费」 | `axes/5-quant/5.5-fp8-head-dim/project.yaml::conclusion` | 成立（只在 `head_dim`=32 上测过） |
 | `3.1.5` 通道稀疏激活：总参数不变、每 token 只算部分 FFN 通道，在本尺度**是真实但很贵的旋钮**——三个稀疏臂都省下实打实的每 token 算力却全部越出噪声带；把「哪些通道」交给逐 token 按内容选比固定砍一半**更差且更费算力**，坍缩门未命中（选择确实逐 token 变化）；保参数换计算与「直接减半 FFN 参数」的同算力位点对比**本项无配对读数、只作参考线、不下判词**。`status: 被否证` | `axes/3-width/3.1.5-channel-sparsity/project.yaml::conclusion`、`::status` | 成立（主判 n=2 同向、`K25` n=1；matched-step 快照；否证只覆盖「无参数、按 `|pre-activation|` 选」这一形态） |
 

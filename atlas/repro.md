@@ -21,10 +21,10 @@
 
 ## 汇总（生成时统计）
 
-- 规模：实验 **128** 个（`axes/**/experiments/*`），run 条目 **424** 个（332 个是 run 子目录或前缀组，92 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 98 个）。
+- 规模：实验 **128** 个（`axes/**/experiments/*`），run 条目 **426** 个（333 个是 run 子目录或前缀组，93 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 99 个）。
 
-- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**92** 个、`not_reproducible`（不可重建）**36** 个。
-- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 93 个。
+- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**93** 个、`not_reproducible`（不可重建）**35** 个。
+- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 94 个。
 
 ## 这个克隆重建不了什么
 
@@ -139,7 +139,7 @@
 | [2656-lowrank-vs-headshare-13m](../axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/) | [5.4-low-rank](../axes/5-quant/5.4-low-rank/project.yaml) | ✓ | — | — | 5 | — | `python3 .../run_arms.py --include-optional`（README.md 的复现小节） | — | `not_reproducible` | 有入口脚本 `gpu_lock.py`，但仓内无 `results*.json` |
 | [2653-fp8-vs-int8-13m](../axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/) | [5.5-fp8-head-dim](../axes/5-quant/5.5-fp8-head-dim/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_seconds` = 341.72 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2655-fp8-hd64-head-dim](../axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/) | [5.5-fp8-head-dim](../axes/5-quant/5.5-fp8-head-dim/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 f5_anchor_2653_precision.py`（入口脚本 `f5_anchor_2653_precision.py`，README 未给复现小节） | `cost.wall_seconds` = 663.23 | `rebuildable_only` | `f5_anchor_2653_precision.py` 触训练 / 语料 / CUDA（命中 `load_enwik8`） |
-| [2657-fp8-hd128-head-dim](../axes/5-quant/5.5-fp8-head-dim/experiments/2657-fp8-hd128-head-dim/) | [5.5-fp8-head-dim](../axes/5-quant/5.5-fp8-head-dim/project.yaml) | ✓ | — | — | 0 | — | `python3 hd128_arms.py`（入口脚本 `hd128_arms.py`，README 未给复现小节） | — | `not_reproducible` | 有入口脚本 `hd128_arms.py`，但仓内无 `results*.json` |
+| [2657-fp8-hd128-head-dim](../axes/5-quant/5.5-fp8-head-dim/experiments/2657-fp8-hd128-head-dim/) | [5.5-fp8-head-dim](../axes/5-quant/5.5-fp8-head-dim/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 hd128_arms.py`（入口脚本 `hd128_arms.py`，README 未给复现小节） | `cost.wall_seconds` = 242.02 | `rebuildable_only` | `hd128_arms.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | 2617-prior-art-hybrid-kv | [5.6-window-quant-retrieval](../axes/5-quant/5.6-window-quant-retrieval/project.yaml) | — | — | — | 0 | — | `命令未在仓内声明` | — | `not_reproducible` | 仓内无入口脚本（只有 PRIOR_ART.md） |
 | [2654-window-retention-frontier-13m](../axes/5-quant/5.6-window-quant-retrieval/experiments/2654-window-retention-frontier-13m/) | [5.6-window-quant-retrieval](../axes/5-quant/5.6-window-quant-retrieval/project.yaml) | ✓ | — | ✓ | 1 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_seconds` = 205.94 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2510-gap-sweep-b2-c1m](../axes/6-predict/6.2-speculative-decoding/experiments/2510-gap-sweep-b2-c1m/) | [6.2-speculative-decoding](../axes/6-predict/6.2-speculative-decoding/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `命令未在仓内声明` | `arms.C1M.wall_minutes` = 5.3 | `not_reproducible` | 仓内无入口脚本（只有 MODEL.md, README.md, analysis.md, controls/README.md, prereg_binding.json, results.json） |
@@ -196,7 +196,6 @@
 | [2509-m3-composition-law](../axes/2-depth/2.1.2-skipping/experiments/2509-m3-composition-law/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2525-tax-attribution](../axes/3-width/3.1.1-uniform-narrowing/experiments/2525-tax-attribution/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2656-lowrank-vs-headshare-13m](../axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `gpu_lock.py`，但仓内无 `results*.json` |
-| [2657-fp8-hd128-head-dim](../axes/5-quant/5.5-fp8-head-dim/experiments/2657-fp8-hd128-head-dim/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `hd128_arms.py`，但仓内无 `results*.json` |
 | [2617-prior-art-hybrid-kv](../axes/5-quant/5.6-window-quant-retrieval/experiments/2617-prior-art-hybrid-kv/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 PRIOR_ART.md） |
 | [2510-gap-sweep-b2-c1m](../axes/6-predict/6.2-speculative-decoding/experiments/2510-gap-sweep-b2-c1m/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 MODEL.md, README.md, analysis.md, controls/README.md, prereg_binding.json, results.json） |
 | [2512-overnight-causal-chain](../axes/6-predict/6.2-speculative-decoding/experiments/2512-overnight-causal-chain/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
@@ -627,7 +626,8 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2655-fp8-hd64-head-dim | f5-anchor-2653-rerun | ✓ | — | — | — | — |
 | 2655-fp8-hd64-head-dim | hd64-s1 | ✓ | — | — | — | — |
 | 2655-fp8-hd64-head-dim | smoke-plumbing-2610trunk | ✓ | — | — | — | — |
-| [2657-fp8-hd128-head-dim](../axes/5-quant/5.5-fp8-head-dim/experiments/2657-fp8-hd128-head-dim/) | — | — | — | — | — | 仓内没有 run 产物 |
+| 2657-fp8-hd128-head-dim | . | ✓ | — | — | — | — |
+| 2657-fp8-hd128-head-dim | hd128-s1 | ✓ | — | — | — | — |
 | [2617-prior-art-hybrid-kv](../axes/5-quant/5.6-window-quant-retrieval/experiments/2617-prior-art-hybrid-kv/) | — | — | — | — | — | 仓内没有 run 产物 |
 | 2654-window-retention-frontier-13m | . | ✓ | — | — | — | — |
 | 2510-gap-sweep-b2-c1m | . | ✓ | — | — | — | — |
