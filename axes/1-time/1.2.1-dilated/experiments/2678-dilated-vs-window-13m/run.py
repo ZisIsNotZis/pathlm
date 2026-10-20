@@ -455,6 +455,11 @@ def synth_summary() -> dict | None:
             if not os.path.exists(p):
                 return None
             rec[(arm, seed)] = json.load(open(p))
+    run_steps = sorted({int(rec[(arm, seed)]["steps"])
+                        for seed in seeds for arm in ("win32", "dil32")})
+    if len(run_steps) != 1:
+        raise SystemExit(f"合成臂落盘的训练步数不一致：{run_steps}——本读数以各 run 的 results.json 为准"
+                         "（`config.json::synth_recall.steps` 只是训练入口的默认值）")
     thr = float(sc["power_ratio_threshold"])
     per_seed = {}
     for seed in seeds:
@@ -494,7 +499,7 @@ def synth_summary() -> dict | None:
     else:
         verdict = ("仪器有分辨力但两臂无可分差（Δ = acc_win − acc_dil 的 CI 含 0，或可分却不利于"
                    "空洞）⇒ 该任务上空洞不占优")
-    return {"rule": sc["rule"], "task": synth_task(), "steps": sc["steps"],
+    return {"rule": sc["rule"], "task": synth_task(), "steps": run_steps[0],
             "seeds": seeds, "per_seed": per_seed,
             "n_seed_supporting": len(supported),
             "supports_dilated": n2,
