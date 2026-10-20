@@ -21,10 +21,10 @@
 
 ## 汇总（生成时统计）
 
-- 规模：实验 **123** 个（`axes/**/experiments/*`），run 条目 **410** 个（321 个是 run 子目录或前缀组，89 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 94 个）。
+- 规模：实验 **123** 个（`axes/**/experiments/*`），run 条目 **417** 个（327 个是 run 子目录或前缀组，90 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 95 个）。
 
-- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**89** 个、`not_reproducible`（不可重建）**34** 个。
-- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 90 个。
+- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**90** 个、`not_reproducible`（不可重建）**33** 个。
+- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 91 个。
 
 ## 这个克隆重建不了什么
 
@@ -88,7 +88,7 @@
 | [2615-window-trained-retention-13m](../axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2615-window-trained-retention-13m/) | [1.1.4.5-implicit-vs-explicit](../axes/1-time/1.1.4.5-implicit-vs-explicit/project.yaml) | ✓ | ✓ | ✓ | 7 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `config.trained_checkpoint.train_wall_minutes` = 7.62 | `rebuildable_only` | `reconcile_numbers.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2623-window-on-longrange-13m](../axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2623-window-on-longrange-13m/) | [1.1.4.5-implicit-vs-explicit](../axes/1-time/1.1.4.5-implicit-vs-explicit/project.yaml) | ✓ | ✓ | ✓ | 6 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `train_results.full.wall_minutes` = 13.01 | `rebuildable_only` | `reconcile_numbers.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2661-implicit-vs-explicit-recall-13m](../axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/) | [1.1.4.5-implicit-vs-explicit](../axes/1-time/1.1.4.5-implicit-vs-explicit/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `train_meta.win16_s0.wall_minutes` = 11.94 | `rebuildable_only` | `realtext_probe.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`）；代码引用不入库的产物：`2639/train/pl16d/results.json`（克隆里不存在，需先重训/自取） |
-| [2678-dilated-vs-window-13m](../axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m/) | [1.2.1-dilated](../axes/1-time/1.2.1-dilated/project.yaml) | ✓ | ✓ | — | 0 | — | `python3 tools/prereg_bind.py axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m`（README.md 的复现小节） | — | `not_reproducible` | 有入口脚本 `run.py`，但仓内无 `results*.json` |
+| [2678-dilated-vs-window-13m](../axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m/) | [1.2.1-dilated](../axes/1-time/1.2.1-dilated/project.yaml) | ✓ | ✓ | ✓ | 3 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m`（README.md 的复现小节） | `train_declaration.full.wall_minutes` = 5.95 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2616-linear-attention-13m](../axes/1-time/1.2.2-block-sparse/experiments/2616-linear-attention-13m/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.full.wall_min` = 5.75 | `rebuildable_only` | `paired_eval.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2637-linear-attn-quality](../axes/1-time/1.2.2-block-sparse/experiments/2637-linear-attn-quality/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.full-256-lin.wall_min` = 3.67 | `rebuildable_only` | `linear_driver.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2677-local-global-vs-band-13m](../axes/1-time/1.2.2-block-sparse/experiments/2677-local-global-vs-band-13m/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `bash train_arms.sh`（README.md 的复现小节） | `train_declaration.win16a8_s0.wall_minutes` = 13.07 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
@@ -120,7 +120,7 @@
 | [2612-gated-readout-24k-13m](../axes/3-width/3.2.1-readout-reparam/experiments/2612-gated-readout-24k-13m/) | [3.2.1-readout-reparam](../axes/3-width/3.2.1-readout-reparam/project.yaml) | ✓ | ✓ | ✓ | 3 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `A_arm.wall_min` = 21.03 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2613-readout-reparam-dense-13m](../axes/3-width/3.2.1-readout-reparam/experiments/2613-readout-reparam-dense-13m/) | [3.2.1-readout-reparam](../axes/3-width/3.2.1-readout-reparam/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `train.baseline.wall_min` = 6.42 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2621-per-depth-readout-13m](../axes/3-width/3.2.1-readout-reparam/experiments/2621-per-depth-readout-13m/) | [3.2.1-readout-reparam](../axes/3-width/3.2.1-readout-reparam/project.yaml) | ✓ | ✓ | ✓ | 3 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.perdepth.wall_min` = 29.08 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
-| [2645-per-exit-readout-13m](../axes/3-width/3.2.2-per-exit-readout/experiments/2645-per-exit-readout-13m/) | [3.2.2-per-exit-readout](../axes/3-width/3.2.2-per-exit-readout/project.yaml) | ✓ | ✓ | ✓ | 10 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | — | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
+| [2645-per-exit-readout-13m](../axes/3-width/3.2.2-per-exit-readout/experiments/2645-per-exit-readout-13m/) | [3.2.2-per-exit-readout](../axes/3-width/3.2.2-per-exit-readout/project.yaml) | ✓ | ✓ | ✓ | 14 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | — | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2643-tied-untied-13m](../axes/3-width/3.2.3-tied-untied/experiments/2643-tied-untied-13m/) | [3.2.3-tied-untied](../axes/3-width/3.2.3-tied-untied/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | — | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2610-moe-arm-ledger-13m](../axes/4-moe/4.1-sparse-experts/experiments/2610-moe-arm-ledger-13m/) | [4.1-sparse-experts](../axes/4-moe/4.1-sparse-experts/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `analysis.md`「…墙钟，仅记录、不入判据）：探针 19:29:03 启动、19:52:23 完成（…」 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2614-kv-quant-eval-13m](../axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/) | [5.1-kv-quant](../axes/5-quant/5.1-kv-quant/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_minutes` = 0.885 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
@@ -180,7 +180,6 @@
 | [2503-engine-m1-extensions](../axes/1-time/1.1.4.1-explicit-memory/experiments/2503-engine-m1-extensions/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2617-design-rightcarry](../axes/1-time/1.1.4.1-explicit-memory/experiments/2617-design-rightcarry/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 DESIGN.md） |
 | [2617-prior-art-memory](../axes/1-time/1.1.4.1-explicit-memory/experiments/2617-prior-art-memory/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 PRIOR_ART.md） |
-| [2678-dilated-vs-window-13m](../axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `run.py`，但仓内无 `results*.json` |
 | [2518-exit-retry-law](../axes/2-depth/2.1.1-early-exit/experiments/2518-exit-retry-law/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2523-depth-ar-first](../axes/2-depth/2.1.1-early-exit/experiments/2523-depth-ar-first/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2523c-three-ablations](../axes/2-depth/2.1.1-early-exit/experiments/2523c-three-ablations/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
@@ -444,7 +443,9 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2623-window-on-longrange-13m | train/win16_rep | ✓ | ✓ | 11999 | — | — |
 | 2661-implicit-vs-explicit-recall-13m | . | ✓ | — | — | — | — |
 | 2661-implicit-vs-explicit-recall-13m | smoke/eval | ✓ | — | — | — | — |
-| [2678-dilated-vs-window-13m](../axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m/) | — | — | — | — | — | 仓内没有 run 产物 |
+| 2678-dilated-vs-window-13m | . | ✓ | — | — | — | — |
+| 2678-dilated-vs-window-13m | runs/dil32-s0 | ✓ | ✓ | 11999 | — | — |
+| 2678-dilated-vs-window-13m | runs/dil32-s1 | ✓ | ✓ | 11999 | — | — |
 | 2616-linear-attention-13m | . | ✓ | — | — | — | — |
 | 2616-linear-attention-13m | full-12k-s0 | — | ✓ | 11999 | — | — |
 | 2616-linear-attention-13m | linear-12k-s0-attempt3 | — | — | 400 | — | — |
@@ -570,8 +571,12 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2645-per-exit-readout-13m | IND_s0_0k | ✓ | — | — | — | — |
 | 2645-per-exit-readout-13m | PE_s0_0k | ✓ | — | — | — | — |
 | 2645-per-exit-readout-13m | PE_s0_12k | ✓ | — | — | — | — |
+| 2645-per-exit-readout-13m | PE_s1_12k | ✓ | — | — | — | — |
 | 2645-per-exit-readout-13m | T_s0_0k | ✓ | — | — | — | — |
 | 2645-per-exit-readout-13m | T_s0_12k | ✓ | — | — | — | — |
+| 2645-per-exit-readout-13m | T_s1_12k | ✓ | — | — | — | — |
+| 2645-per-exit-readout-13m | runs/PE-s1-12k | ✓ | ✓ | 11999 | — | — |
+| 2645-per-exit-readout-13m | runs/T-s1-12k | ✓ | ✓ | 11999 | — | — |
 | 2645-per-exit-readout-13m | smoke/IND-s0-0k | ✓ | ✓ | 59 | — | — |
 | 2645-per-exit-readout-13m | smoke/LR-s0-0k | ✓ | ✓ | 59 | — | — |
 | 2645-per-exit-readout-13m | smoke/PE-s0-0k | ✓ | ✓ | 59 | — | — |
