@@ -5,9 +5,11 @@
 或漂到邻行的另一个字段上，读者只能选择相信。本工具把它们变成机检：
 
   扫描范围（**只扫这些**）：
-    - 仓库根 `*.md`
-    - `docs/**/*.md`
-    - `axes/**/*.md`
+    - 仓库根 `*.md`（元级）
+    - `docs/**/*.md`（元级）
+    - `atlas/**/*.md`（研究级跨格汇总）
+    - `harness/**/*.md`（工级：格式契约 / 测量纪律 / 引擎能力面）
+    - `axes/**/*.md`（研究级：研究项与实验）
   **不扫** `archive/` 与 `.scratch/`：前者是旧项目只读资产，后者是日志与原始证据
   （`AGENTS.md` §2.2 / §2.3）——它们不在 SSOT 义务内，不要求引用自洽。作为**目标**它们仍可被引用，
   只要目标真实存在即通过。
@@ -26,8 +28,10 @@
     ④ 标题锚点（`.md`）必须命中**唯一**一条标题：目标文件里要有一条标题的文本包含该串
        （仓内两种写法都收：`路径#标题` 与 `路径::标题`——同一件事，同一条规矩）。
     ⑤ 裸路径（`*.md` / `*.yaml` / `*.json` / `*.py`）：文件必须存在。
-    ⑥ 文档地图完整性：每个事实文档（`docs/*.md` + 仓库根 `*.md`）必须在 `AGENTS.md` §2.1 与
-       `docs/design.md` §4 的地图里**各有一行**（新事实文档不接进地图 = 读者找不到它）。
+    ⑥ 文档地图完整性，按层各认一份索引：仓库根 `*.md` 与 `docs/*.md` 必须在 `AGENTS.md` §2.1
+       的地图里有一行；`atlas/**/*.md` 必须在 `atlas/README.md` 的索引里有一行；
+       `harness/**/*.md` 必须在 `harness/README.md` 的索引里有一行（新文档不接进本层索引
+       = 读者找不到它）。`axes/**` 的实验级文件由 `AGENTS.md` §2.1「单个实验」那一行统一覆盖。
 
   解析基准（按序，先命中先用）：仓库根 → 本文件所在目录 → 仓库内任意以该路径结尾的文件
   （仓内引用常把实验目录写在路径里、把上层省略，如 `2634-.../analysis.md`、`2619/run.py`）。
@@ -83,8 +87,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
-#: 扫描源文件：仓库根 `*.md`、`docs/**/*.md`、`axes/**/*.md`（`archive/`、`.scratch/` 不扫）。
-SOURCE_GLOBS = ("*.md", "docs/**/*.md", "axes/**/*.md")
+#: 扫描源文件：仓库根 `*.md`、`docs/**/*.md`、`atlas/**/*.md`、`harness/**/*.md`、`axes/**/*.md`
+#: （`archive/`、`.scratch/` 不扫）。层的落位见 `docs/plan.md` §2.2。
+SOURCE_GLOBS = ("*.md", "docs/**/*.md", "atlas/**/*.md", "harness/**/*.md", "axes/**/*.md")
 
 #: 后缀索引 `os.walk` 时要剪掉的目录：与仓库内容无关的缓存/产物（`runs/`、`checkpoints/` 不入库）。
 INDEX_PRUNE = frozenset({
@@ -92,7 +97,7 @@ INDEX_PRUNE = frozenset({
     ".tmp", ".pytest_cache", ".ruff_cache", ".mypy_cache", ".cache", "data",
 })
 
-#: 裸路径**要**检查的扩展名（`docs/research-schema.md` §1 之外的文件如 `.pt`/`.npz` 不检）。
+#: 裸路径**要**检查的扩展名（`harness/research-schema.md` §1 之外的文件如 `.pt`/`.npz` 不检）。
 BARE_EXTS = (".md", ".yaml", ".json", ".py")
 
 #: 不入库目录 / 第三方源码根：指向它们的引用不检（干净 clone 里不存在，且不属本仓事实）。
@@ -123,29 +128,33 @@ KEY_INDEX_RE = re.compile(r"\[(\d+)\]")
 KEY_ANCHOR_EXTS = (".yaml", ".json")
 HEAD_ANCHOR_EXTS = (".md",)
 
-#: 文档地图必须覆盖的文件：`docs/*.md` 事实文档 + 仓库根的事实文档。
+#: 文档地图按层各认一份索引：(本层扫描面, 索引文件, 起点标题, 下一节标题)。
+#: 一个事实文档只在**它自己那一层**的索引里要一行，不跨层重复登记。
 #: `axes/**` 的实验级文件由 `AGENTS.md` §2.1「单个实验」那一行统一覆盖，不逐个进图。
-DOC_MAP_GLOBS = ("docs/*.md", "*.md")
-
-#: 两张地图（文件，起点标题，下一节标题）：每个事实文档必须在两处**各有一行**。
-DOC_MAP_SECTIONS = (
-    ("AGENTS.md", "## 2. 文档地图", "## 3. 编排制度"),
-    ("docs/design.md", "## 4. 仓库布局", "## 5. 代码布局"),
+DOC_MAP_LAYERS = (
+    (("*.md", "docs/*.md"), "AGENTS.md", "## 2. 文档地图", "## 3. 编排制度"),
+    (("atlas/**/*.md",), "atlas/README.md", "## 索引", "## 边界"),
+    (("harness/**/*.md",), "harness/README.md", "## 索引", "## 边界"),
 )
 
 #: 围栏代码块开头。
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
 
-#: `docs/plan.md` §2 点名而**尚未落盘**的工作包交付物：声明「缺失」而不是假装存在。
+#: `docs/plan.md` §3 点名而**尚未落盘**的工作包交付物：声明「缺失」而不是假装存在。
 #: 它们是计划层的未来路径，落盘后必须从这里删除（`@migrate_on_touch`：碰到就清）。
-PENDING_TARGETS = (
-)
+#: 空 = 计划里点名的交付物**全部已落盘**。每落盘一条就从本表删一条（`@migrate_on_touch`：
+#: 声明「待建」是一种临时状态，不是常设豁免）。
+PENDING_TARGETS: tuple[str, ...] = ()
 
 #: 「已声明缺失」标记：引用所在行出现这些词，即文档自己声明了目标不存在或将才写出。
 #: 命中时不计违规、只计数（`@absent`：缺失是一种状态；本检不替文档发明一个路径）。
 ABSENT_MARKERS = (
     "尚未", "不存在", "未产出", "未生成", "未落盘", "未出现", "未跑",
     "可补", "则写", "会写", "即写",
+    # 迁移台账上的「已删除 / 已迁到」也是缺失声明（`@absent`：缺失是一种状态，不是待补的坑）：
+    # 计划层说「`STATUS.md` 删除」「残留在 `atlas/playbook.md` 这类旧路径」时，它指的是一个
+    # **已经不在**的路径，写成悬空指针是那句话本身的意思。
+    "删除", "迁到",
 )
 
 #: 已声明的悬空**键锚点**：锚点指向的字段在目标文件里根本不存在，属开工前的既有状态。
@@ -513,10 +522,10 @@ def _section_text(rel: str, start_marker: str, end_marker: str) -> str:
     return text[i:] if j < 0 else text[i:j]
 
 
-def doc_map_files() -> list[str]:
-    """必须进图的事实文档（仓库相对路径，排序）。"""
+def doc_map_files(globs: tuple[str, ...]) -> list[str]:
+    """本层必须进索引的文档（仓库相对路径，排序）。"""
     files: set[str] = set()
-    for pattern in DOC_MAP_GLOBS:
+    for pattern in globs:
         for p in ROOT.glob(pattern):
             if p.is_file():
                 files.add(p.relative_to(ROOT).as_posix())
@@ -524,18 +533,16 @@ def doc_map_files() -> list[str]:
 
 
 def check_doc_map() -> list[str]:
-    """每个事实文档都要在两张文档地图里各有一行（否则 `AGENTS.md` §2.1 的地图会静默漏文件）。"""
+    """每层的文档都要在**它自己那一层**的索引里有一行（否则该层索引会静默漏文件）。"""
     problems: list[str] = []
-    sections = []
-    for rel, start_marker, end_marker in DOC_MAP_SECTIONS:
-        body = _section_text(rel, start_marker, end_marker)
+    for globs, map_rel, start_marker, end_marker in DOC_MAP_LAYERS:
+        body = _section_text(map_rel, start_marker, end_marker)
         if not body:
-            problems.append(f"文档地图：`{rel}` 里找不到「{start_marker}」这一节")
-        sections.append((rel, body))
-    for rel in doc_map_files():
-        name = rel.split("/")[-1]
-        for map_rel, body in sections:
-            if body and name not in body:
+            problems.append(f"文档地图：`{map_rel}` 里找不到「{start_marker}」这一节")
+            continue
+        for rel in doc_map_files(globs):
+            name = rel.split("/")[-1]
+            if name not in body:
                 problems.append(f"文档地图：`{rel}` 不在 `{map_rel}` 的地图里（存在的事实文档必须有一行）")
     return problems
 
@@ -623,7 +630,7 @@ def main(argv: list[str]) -> int:      # `--check` 与默认同一行为，只�
           f"{len(bare_refs)} 处 裸路径）："
           f"{len(problems) + len(map_problems)} 处违规；"
           f"{len(declared_absent)} 处已声明缺失（文档自述不存在/未产出，不计违规）；"
-          f"待建交付物不检：{', '.join(PENDING_TARGETS)}。")
+          f"待建交付物：{', '.join(PENDING_TARGETS) or '无（全部已落盘）'}。")
     stale = [k for k in UNRESOLVED_KEY_ANCHORS if k not in set(declared_anchor)]
     print(f"锚点：键锚点 {len(key_refs)} 处（`.yaml` / `.json`，键必须存在且唯一），"
           f"其中 {len(pattern_refs)} 处为模式锚点（通配 / 占位，不判）；"
@@ -639,8 +646,8 @@ def main(argv: list[str]) -> int:      # `--check` 与默认同一行为，只�
     breakdown = " / ".join(f"{ext} {n} 处" for ext, n in sorted(by_ext.items()))
     print(f"仍保留的 路径:行 引用 {len(line_refs)} 处：{breakdown or '无'}"
           f"（行号只留给「某个具体叙事行」，不用于指向字段）。")
-    print(f"文档地图：{len(doc_map_files())} 个事实文档在 "
-          f"{' 与 '.join(rel + ' 的「' + start + '」' for rel, start, _ in DOC_MAP_SECTIONS)} "
+    print(f"文档地图：{sum(len(doc_map_files(g)) for g, *_ in DOC_MAP_LAYERS)} 个文档在 "
+          f"{' / '.join(rel + ' 的「' + start + '」' for _, rel, start, _ in DOC_MAP_LAYERS)} "
           f"里各有一行；地图缺项 {len(map_problems)} 个。")
     return 1 if (problems or map_problems) else 0
 

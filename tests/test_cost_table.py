@@ -1,10 +1,10 @@
-"""代价表（`docs/cost-table.md`）与其事实源（`axes/**/project.yaml` 的 `laws` / `cost_rows`）。
+"""代价表（`atlas/cost-table.md`）与其事实源（`axes/**/project.yaml` 的 `laws` / `cost_rows`）。
 
 钉住四件事，每件都可失败：
-1. **生成物被手改必须被抓红**：把 `docs/cost-table.md` 复制到临时目录、改一个字符，
+1. **生成物被手改必须被抓红**：把 `atlas/cost-table.md` 复制到临时目录、改一个字符，
    `build_cost_table.py --check` 必须非零退出并打印差异摘要（真仓库文件不动）。
 2. **字段校验**：未知定律编号、`source` 指向不存在的路径必须报错（`check_tree` 侧）。
-3. **宪法级一致性**：`docs/cost-table.md` 与当前 `project.yaml` 逐字节一致（生成物不过期），
+3. **宪法级一致性**：`atlas/cost-table.md` 与当前 `project.yaml` 逐字节一致（生成物不过期），
    且定律 1..11 每条都有 `cost_rows` 覆盖（没有覆盖就没法引用）。
 4. **数字与落盘逐位一致**：每条 `cost_rows` 的 `delta` 必须真的出现在它 `source` 指的文件里
    ——这是「不许新算、不许换算口径」的机械检查（Unicode 减号归一为 ASCII `-`）。
@@ -88,7 +88,7 @@ def test_generated_table_is_up_to_date_with_project_yaml():
     assert not errors, errors
     text = build_cost_table.render(rows, build_cost_table.law_titles())
     assert text == build_cost_table.OUT.read_text(encoding="utf-8"), (
-        "docs/cost-table.md 与 axes/**/project.yaml 不一致；改完事实请运行 "
+        "atlas/cost-table.md 与 axes/**/project.yaml 不一致；改完事实请运行 "
         "python3 tools/build_cost_table.py")
 
 
@@ -115,5 +115,5 @@ def test_every_delta_literally_appears_in_its_source():
 
 @pytest.mark.parametrize("law", range(1, check_tree.LAWS_TOTAL + 1))
 def test_playbook_defines_every_law(law):
-    """定律正文（标题）必须能在 `docs/playbook.md` 找到——表只指回它，不复制它。"""
-    assert law in build_cost_table.law_titles(), f"docs/playbook.md 缺「定律 {law}」"
+    """定律正文（标题）必须能在 `atlas/playbook.md` 找到——表只指回它，不复制它。"""
+    assert law in build_cost_table.law_titles(), f"atlas/playbook.md 缺「定律 {law}」"

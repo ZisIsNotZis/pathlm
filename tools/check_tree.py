@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """check_tree.py — 研究树（`axes/**/project.yaml`）的格式与证据校验（可失败）。
 
-新结构下 `axes/**/project.yaml` 是研究项的 SSOT（契约见 `docs/research-schema.md`，
+新结构下 `axes/**/project.yaml` 是研究项的 SSOT（契约见 `harness/research-schema.md`，
 布局见 `docs/structure.md` §12）。旧生成式 wiki（catalog / build_wiki / INDEX）已退役，
 `tools/check_schema.py` 转调本模块。
 
 校验项：
-  1. 字段齐全：`docs/research-schema.md` §2 列出的字段一个都不能少。
+  1. 字段齐全：`harness/research-schema.md` §2 列出的字段一个都不能少。
   2. 关键字段非空：`purpose` / `innovation` / `validation` / `objective_criteria` /
      `falsification` 不得为空串/空列表。
   3. `milestone` 单数：必须是 map 且有 `output` + `acceptance`（不是 list）。
@@ -16,12 +16,12 @@
   7. `cost_model` 禁墙钟/日期（只许等效理论量：FLOPs / layer-passes / tokens-per-forward）。
   8. `status ∈ {已完成, 被否证}` ⇒ 必须有 `conclusion` + 非空且存在的 `experiments`；
      `status = 被否证` ⇒ 还必须有非空 `failure_analysis`（失败归因：设计 / 结构 / innovation，
-     见 `docs/research-schema.md` §7）。
+     见 `harness/research-schema.md` §7）。
   9. `validation` 必须含「对照/基线/stock/SOTA」之一 + 「判据/该涨/该跌」之一 +
      「口径/bpc/...」之一。
  10. `id` 全局唯一；`dir` 必须等于文件实际所在目录。
  11. 证据锚点：`experiments` 路径存在；WP `evidence` 允许未来路径（只校锚点 `@<sha>` 可达）。
- 12. `laws` / `cost_rows`（`docs/research-schema.md` §2.1 / §2.2）：定律编号限 1–11 且不重复，
+ 12. `laws` / `cost_rows`（`harness/research-schema.md` §2.1 / §2.2）：定律编号限 1–11 且不重复，
      `cost_rows[].law` 必须是本项 `laws` 的成员，`touches_trunk` 必须是 bool，`delta` 必须是数字，
      `source` 指向的路径必须存在。
  13. 文档引用可解析：转调 `tools/check_docs.py`（文档里的裸路径必须存在，`::键` / `#标题` 锚点
@@ -31,7 +31,7 @@
      `prereg_binding.json`；契约文件当前 sha256 必须与绑定时的相同；`bound_at` 必须严格早于读数
      的产物时间；两文件都已入库时，绑定的提交必须早于读数的提交；`bound_at` 必须落在绑定文件那次
      提交的 ±`BIND_WINDOW_MINUTES` 分钟窗内。`bound_at = "unbound"`（历史产物，无定序证据）只计数、
-     不判失败，但实验名打进汇总行（见 `docs/methodology.md` §8）。
+     不判失败，但实验名打进汇总行（见 `harness/methodology.md` §8）。
 
 用法：python3 tools/check_tree.py   （退出码 0 = 全过；1 = 有错）
 """
@@ -72,7 +72,7 @@ RETIRED_KEYS = ("change_log", "actor")
 PROCESS_REF_RE = re.compile(r"ticket\s*\d+|\d{2}-review|WP-[A-Za-z0-9]+")
 #: 过程史的家（错误信息里指过去的那一条路径）。
 DOC_LOG = ".scratch/doc-log/axes/<轴>/<格子>/CHANGELOG.md"
-#: 「必填」= 必须**非空**的字符串字段（不允许空串/空列表蒙混，见 docs/research-schema.md §2）。
+#: 「必填」= 必须**非空**的字符串字段（不允许空串/空列表蒙混，见 harness/research-schema.md §2）。
 NONEMPTY = ("purpose", "innovation", "validation", "objective_criteria", "falsification")
 WP_REQUIRED = ("id", "what", "goal", "means", "acceptance", "evidence", "review", "status")
 ROLE_REQUIRED = ("owner", "writer", "reviewer", "integrator")
@@ -88,20 +88,20 @@ ANCHOR_RE = re.compile(r"@([0-9a-f]{7,40})")
 #: evidence 里任何 `@` 之后到空白为止的片段（抓 `@FINAL` 这类非法锚点）。
 AT_TOKEN_RE = re.compile(r"@(\S*)")
 
-#: `laws` 的编号域 = `docs/playbook.md` 的「定律 1..11」（见 `docs/research-schema.md` §2.1）。
+#: `laws` 的编号域 = `atlas/playbook.md` 的「定律 1..11」（见 `harness/research-schema.md` §2.1）。
 LAWS_TOTAL = 11
-#: `cost_rows` 一条必须齐备的键（见 `docs/research-schema.md` §2.2）。
+#: `cost_rows` 一条必须齐备的键（见 `harness/research-schema.md` §2.2）。
 COST_ROW_FIELDS = ("law", "change", "touches_trunk", "metric", "delta",
                    "comparator", "scale", "boundary", "source")
 #: `delta` 必须是带符号数字（含千分位/小数；单位与方向由 `delta_direction` + `metric` 共同声明）。
 NUMBER_RE = re.compile(r"[+-]?\d+(?:[\d,]*)?(?:\.\d+)?")
 
-#: Δ 方向的**唯一枚举**（`docs/research-schema.md` §2.3）：名字即算式，读表的人不可能读反。
+#: Δ 方向的**唯一枚举**（`harness/research-schema.md` §2.3）：名字即算式，读表的人不可能读反。
 #: `undeclared` 是**声明「缺失」本身**——它不进自洽校验，但必须被统计打印，缺口不许静默通过。
 DELTA_DIRECTIONS = ("comparator_minus_arm", "arm_minus_comparator", "undeclared")
 #: `cost_rows` 是一条必填事实，不存在「没方向」这种状态 ⇒ 那里只许两个真方向。
 COST_ROW_DIRECTIONS = ("comparator_minus_arm", "arm_minus_comparator")
-#: 枚举 → 展示层中文短语（`docs/cost-table.md` 的「Δ 方向」列用这一份，不另抄）。
+#: 枚举 → 展示层中文短语（`atlas/cost-table.md` 的「Δ 方向」列用这一份，不另抄）。
 DELTA_DIRECTION_LABELS = {
     "comparator_minus_arm": "正 = 改善",
     "arm_minus_comparator": "正 = 更差",
@@ -377,7 +377,7 @@ def _has_number(obj) -> bool:
 def delta_nodes(data) -> list[tuple[str, str]]:
     """本 `results.json` 的全部 Δ 读数：[(dotted path, 末位键名)]。
 
-    口径（`docs/research-schema.md` §2.3）：键名含 `delta` / `Δ`、且值里带数字；
+    口径（`harness/research-schema.md` §2.3）：键名含 `delta` / `Δ`、且值里带数字；
     声明字段自己（`delta_directions` / `delta_direction_note`）不算读数。
     同一个键名在同一文件里出现多次（如逐臂 `delta_bpc`）就是一个待声明项，
     要按路径分开时就写路径键。
@@ -450,7 +450,7 @@ def criterion_block_claims(data, path: str) -> tuple[set[str], list[str]]:
 def check_results_delta_directions(rel: str, data) -> list[str]:
     """`results.json` 的 `delta_directions`：映射形状 + 枚举 + 字段全覆盖 + 与判据串不矛盾。
 
-    口径见 `docs/research-schema.md` §2.3：文件里每个 `delta*` 读数都必须出现（路径或键名），
+    口径见 `harness/research-schema.md` §2.3：文件里每个 `delta*` 读数都必须出现（路径或键名），
     同一文件的不同字段可以不同方向；`undeclared` 声明「缺失」本身，它不参与自洽校验，
     但必须配一句 `delta_direction_note` 并被统计打印。
     """
@@ -561,7 +561,7 @@ def collect_results_files() -> list[Path]:
 
 
 def check_laws_and_costs(doc: dict, rel: str) -> list[str]:
-    """校验 `laws` / `cost_rows`（`docs/research-schema.md` §2.1 / §2.2）。"""
+    """校验 `laws` / `cost_rows`（`harness/research-schema.md` §2.1 / §2.2）。"""
     errors: list[str] = []
     laws = doc.get("laws")
     if not isinstance(laws, list):
@@ -574,7 +574,7 @@ def check_laws_and_costs(doc: dict, rel: str) -> list[str]:
             continue
         if not 1 <= law <= LAWS_TOTAL:
             errors.append(f"{rel}: laws[{i}]={law} 是未知定律编号"
-                          f"（合法值 1–{LAWS_TOTAL}，见 docs/playbook.md）")
+                          f"（合法值 1–{LAWS_TOTAL}，见 atlas/playbook.md）")
         if law in seen:
             errors.append(f"{rel}: laws 里定律 {law} 重复")
         seen.add(law)
@@ -599,7 +599,7 @@ def check_laws_and_costs(doc: dict, rel: str) -> list[str]:
         else:
             if not 1 <= law <= LAWS_TOTAL:
                 errors.append(f"{where}.law={law} 是未知定律编号（合法值 1–{LAWS_TOTAL}，"
-                              f"见 docs/playbook.md）")
+                              f"见 atlas/playbook.md）")
             elif isinstance(doc.get("laws"), list) and law not in doc["laws"]:
                 errors.append(f"{where}.law={law} 不在本项 laws={doc['laws']} 里"
                               f"（代价事实必须归到本项自己声明的定律）")
@@ -723,7 +723,7 @@ def validate_file(path: Path) -> tuple[list[str], dict[str, list[str]], dict[str
     # 变更叙事与内部工单号（AGENTS.md §2.1：事实文档只写当前状态）
     errors.extend(check_no_change_narrative(doc, rel))
 
-    # laws / cost_rows（docs/research-schema.md §2.1 / §2.2）
+    # laws / cost_rows（harness/research-schema.md §2.1 / §2.2）
     errors.extend(check_laws_and_costs(doc, rel))
 
     # 已完成/被否证 ⇒ conclusion + experiments；被否证 ⇒ failure_analysis 非空
@@ -813,7 +813,7 @@ def unjudged_notes() -> list[str]:
 
 
 def validate_results_files() -> list[str]:
-    """校验全部 `axes/**/results.json` 的 Δ 方向声明（`docs/research-schema.md` §2.3）。"""
+    """校验全部 `axes/**/results.json` 的 Δ 方向声明（`harness/research-schema.md` §2.3）。"""
     errors: list[str] = []
     for path in collect_results_files():
         rel = path.relative_to(ROOT).as_posix()
@@ -839,7 +839,7 @@ def main() -> int:
         for e in errors:
             print("  -", e)
         return 1
-    print(f"OK：{len(entries)} 个 project.yaml 全部符合 docs/research-schema.md。")
+    print(f"OK：{len(entries)} 个 project.yaml 全部符合 harness/research-schema.md。")
     # 文档引用（`tools/check_docs.py` 是唯一实现，这里只转调）
     return check_docs.main([])
 

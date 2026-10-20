@@ -1,15 +1,16 @@
-name: wiki
+name: meta-layer checks
 
-# Research Wiki 的格式闸门：目录完备 / 模板完备 / 证据锚点 / 生成物一致。
-# 只依赖 PyYAML（不装 torch，保证秒级反馈）。
+# 元级闸门：研究目录与研究的对应 / 元级文档不含研究级读数 / 迁移台账 / 引用与三层索引。
+# 只依赖 PyYAML 与 git（不装 torch，保证秒级反馈）。研究级检查（summary / check_tree /
+# build_cost_table / inventory_runs / pytest）由研究级 Agent 自己跑，见 `docs/plan.md` §2.3。
 on:
   push:
-    paths: ["catalog.yaml", "axes/**", "tools/**", "archive/legacy-experiments.yaml", "INDEX.md", "SCHEMA.md"]
+    paths: ["*.md", "*.yaml", "docs/**", "atlas/**", "harness/**", "axes/**", "tools/**", "tests/**"]
   pull_request:
-    paths: ["catalog.yaml", "axes/**", "tools/**", "archive/legacy-experiments.yaml", "INDEX.md", "SCHEMA.md"]
+    paths: ["*.md", "*.yaml", "docs/**", "atlas/**", "harness/**", "axes/**", "tools/**", "tests/**"]
 
 jobs:
-  schema:
+  meta:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,9 +18,11 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pyyaml
-      - name: 目录生成物与 catalog 一致
-        run: python3 tools/build_wiki.py --check
-      - name: 历史实验映射一致
-        run: python3 tools/backfill_legacy.py --check
-      - name: SCHEMA 校验（完备/模板/证据）
-        run: python3 tools/check_schema.py
+      - name: 研究目录与研究的对应（一条一行、状态与 SSOT 一致、指针可解析）
+        run: python3 tools/build_catalog.py --check
+      - name: 元级文档不含研究级读数
+        run: python3 tools/check_meta_layer.py --check
+      - name: 迁移台账无遗漏（一源文件一行：原文 → 新家 / 删除理由）
+        run: python3 tools/check_ledger.py --check
+      - name: 引用可解析 + 三层索引完整
+        run: python3 tools/check_docs.py --check

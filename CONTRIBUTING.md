@@ -7,8 +7,8 @@
 
 | 类型 | 怎么做 | 需要注意 |
 |---|---|---|
-| **推进一个研究项** | 编辑 `axes/<轴>/<研究项>/project.yaml`（字段见 `docs/research-schema.md`） | 目的/创新/SOTA 基线/端到端验证/单一 milestone 齐全 |
-| **加一次实验** | 在该研究项的 `experiments/` 下建目录（见 `SCHEMA.md` §3） | 必须含判据线、对照、方差界、混杂声明、复现命令 |
+| **推进一个研究项** | 编辑 `axes/<轴>/<研究项>/project.yaml`（字段见 `harness/research-schema.md`） | 目的/创新/SOTA 基线/端到端验证/单一 milestone 齐全 |
+| **加一次实验** | 在该研究项的 `experiments/` 下建目录（见 `harness/SCHEMA.md` §3） | 必须含判据线、对照、方差界、混杂声明、复现命令 |
 | **加一个研究项** | 按 `docs/structure.md` §12 的布局新增 `axes/<轴>/<id>-<slug>/project.yaml` | 必须来自树上的节点，不能是孤立灵感；一个研究项一个 milestone |
 | **修正一个结论** | 改对应 `project.yaml` 的 `conclusion` 与实验，并给出反证数据 | 只改结论不改证据 = 不合并 |
 | **加一条参照线** | `axes/7-references/README.md` 下新增 | 参照线必须附判据线（我们要打败它什么） |
@@ -22,11 +22,11 @@
 3. 新开关必须有可失败单测；实验前先 20 步冒烟。
 4. **新实验必须在训练前绑定契约**：`python3 tools/prereg_bind.py <实验目录>`（判据代码在实验自己的 `run.py` 里
    就写 `--contract README.md run.py`）；绑定完就提交，训练器与两个入口都在缺绑定时拒绝启动。
-   见 `docs/methodology.md` §8。
+   见 `harness/methodology.md` §8。
 5. 数字必须**带口径**（1.1-epoch 快照 / 4.4-epoch 渐近 / matched-step / 墙钟 / FLOPs）；
    单货币记账的结论会被要求双报。
 6. `Δ < 0.014` 的差异**不可排序**（种子散布 ≤0.0138）。n=1 的负结果必须复现后入账。
-7. 不做组合实验（见 `SCHEMA.md` §4）。
+7. 不做组合实验（见 `harness/SCHEMA.md` §4）。
 
 ## 三种可复用的审计模板（失败路径写法）
 

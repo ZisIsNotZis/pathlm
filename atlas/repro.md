@@ -21,9 +21,9 @@
 
 ## 汇总（生成时统计）
 
-- 规模：实验 **125** 个（`axes/**/experiments/*`），run 条目 **423** 个（331 个是 run 子目录或前缀组，92 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 97 个）。
+- 规模：实验 **128** 个（`axes/**/experiments/*`），run 条目 **423** 个（331 个是 run 子目录或前缀组，92 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 97 个）。
 
-- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**92** 个、`not_reproducible`（不可重建）**33** 个。
+- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**92** 个、`not_reproducible`（不可重建）**36** 个。
 - 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 93 个。
 
 ## 这个克隆重建不了什么
@@ -57,6 +57,7 @@
 | [2636-longT-unified](../axes/1-time/1.1.1-hard-window/experiments/2636-longT-unified/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | ✓ | ✓ | 9 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.full-256-s6k.wall_min` = 3.34 | `rebuildable_only` | `clean_driver.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2662-hard-window-anchor-13m](../axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `liveness.win16a_s0.train_wall_minutes` = 13.07 | `rebuildable_only` | `make_config.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2679-anchor-eval-ablation-13m](../axes/1-time/1.1.1-hard-window/experiments/2679-anchor-eval-ablation-13m/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.1-hard-window/experiments/2679-anchor-eval-ablation-13m --require`（README.md 的复现小节） | `budget.gpu_wall_budget_min` = 20 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
+| [2681-anchor-recall-seeds23-13m](../axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | — | — | 0 | — | `python3 tools/prereg_bind.py axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m --require`（README.md 的复现小节） | — | `not_reproducible` | 有入口脚本 `run.py`，但仓内无 `results*.json` |
 | [2507-x1-x3-distance-penalty](../axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty/) | [1.1.2-soft-decay](../axes/1-time/1.1.2-soft-decay/project.yaml) | ✓ | — | — | 0 | — | `命令未在仓内声明` | — | `not_reproducible` | 仓内无入口脚本（只有 README.md） |
 | [2503-engine-m1-extensions](../axes/1-time/1.1.4.1-explicit-memory/experiments/2503-engine-m1-extensions/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | — | — | 0 | — | `命令未在仓内声明` | — | `not_reproducible` | 仓内无入口脚本（只有 README.md） |
 | [2616-window192-trained-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2616-window192-trained-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | ✓ | ✓ | 8 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `config.trained_checkpoint.train_wall_minutes` = 8.23 | `rebuildable_only` | `mutate.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
@@ -84,6 +85,7 @@
 | [2638-carry-frontier-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | ✓ | ✓ | 7 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `liveness.win16_s0.train_wall_minutes` = 11.94 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2639-carry-perlayer-frontier-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | ✓ | ✓ | 8 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `liveness.win16_s0.train_wall_minutes` = 11.94 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2680-quant-overlay-frontier-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2680-quant-overlay-frontier-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.4.1-explicit-memory/experiments/2680-quant-overlay-frontier-13m --require`（README.md 的复现小节） | `budget.gpu_wall_budget_min` = 25 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
+| [2681-int8-equalbytes-frontier-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | — | — | 0 | — | `python3 tools/prereg_bind.py axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m --require`（README.md 的复现小节） | — | `not_reproducible` | 有入口脚本 `run.py`，但仓内无 `results*.json` |
 | [2614-kv-ablation-retention-13m](../axes/1-time/1.1.4.2-compression/experiments/2614-kv-ablation-retention-13m/) | [1.1.4.2-compression](../axes/1-time/1.1.4.2-compression/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_minutes` = 0.724 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2615-retention-retrieval-leg-13m](../axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/) | [1.1.4.2-compression](../axes/1-time/1.1.4.2-compression/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_minutes` = 0.95 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2615-priority-shootout-13m](../axes/1-time/1.1.4.3-compression-trigger/experiments/2615-priority-shootout-13m/) | [1.1.4.3-compression-trigger](../axes/1-time/1.1.4.3-compression-trigger/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_minutes` = 1.693 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
@@ -137,6 +139,7 @@
 | [2656-lowrank-vs-headshare-13m](../axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/) | [5.4-low-rank](../axes/5-quant/5.4-low-rank/project.yaml) | ✓ | — | — | 5 | — | `python3 .../run_arms.py --include-optional`（README.md 的复现小节） | — | `not_reproducible` | 有入口脚本 `gpu_lock.py`，但仓内无 `results*.json` |
 | [2653-fp8-vs-int8-13m](../axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/) | [5.5-fp8-head-dim](../axes/5-quant/5.5-fp8-head-dim/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_seconds` = 341.72 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2655-fp8-hd64-head-dim](../axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/) | [5.5-fp8-head-dim](../axes/5-quant/5.5-fp8-head-dim/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 f5_anchor_2653_precision.py`（入口脚本 `f5_anchor_2653_precision.py`，README 未给复现小节） | `cost.wall_seconds` = 663.23 | `rebuildable_only` | `f5_anchor_2653_precision.py` 触训练 / 语料 / CUDA（命中 `load_enwik8`） |
+| [2657-fp8-hd128-head-dim](../axes/5-quant/5.5-fp8-head-dim/experiments/2657-fp8-hd128-head-dim/) | [5.5-fp8-head-dim](../axes/5-quant/5.5-fp8-head-dim/project.yaml) | ✓ | — | — | 0 | — | `python3 hd128_arms.py`（入口脚本 `hd128_arms.py`，README 未给复现小节） | — | `not_reproducible` | 有入口脚本 `hd128_arms.py`，但仓内无 `results*.json` |
 | 2617-prior-art-hybrid-kv | [5.6-window-quant-retrieval](../axes/5-quant/5.6-window-quant-retrieval/project.yaml) | — | — | — | 0 | — | `命令未在仓内声明` | — | `not_reproducible` | 仓内无入口脚本（只有 PRIOR_ART.md） |
 | [2654-window-retention-frontier-13m](../axes/5-quant/5.6-window-quant-retrieval/experiments/2654-window-retention-frontier-13m/) | [5.6-window-quant-retrieval](../axes/5-quant/5.6-window-quant-retrieval/project.yaml) | ✓ | — | ✓ | 1 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_seconds` = 205.94 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2510-gap-sweep-b2-c1m](../axes/6-predict/6.2-speculative-decoding/experiments/2510-gap-sweep-b2-c1m/) | [6.2-speculative-decoding](../axes/6-predict/6.2-speculative-decoding/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `命令未在仓内声明` | `arms.C1M.wall_minutes` = 5.3 | `not_reproducible` | 仓内无入口脚本（只有 MODEL.md, README.md, analysis.md, controls/README.md, prereg_binding.json, results.json） |
@@ -178,10 +181,12 @@
 |---|---|---|
 | [2505-m1-followups](../axes/1-time/1.1.1-hard-window/experiments/2505-m1-followups/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2625-longT-stability](../axes/1-time/1.1.1-hard-window/experiments/2625-longT-stability/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `run.py`，但仓内无 `results*.json` |
+| [2681-anchor-recall-seeds23-13m](../axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `run.py`，但仓内无 `results*.json` |
 | [2507-x1-x3-distance-penalty](../axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2503-engine-m1-extensions](../axes/1-time/1.1.4.1-explicit-memory/experiments/2503-engine-m1-extensions/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2617-design-rightcarry](../axes/1-time/1.1.4.1-explicit-memory/experiments/2617-design-rightcarry/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 DESIGN.md） |
 | [2617-prior-art-memory](../axes/1-time/1.1.4.1-explicit-memory/experiments/2617-prior-art-memory/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 PRIOR_ART.md） |
+| [2681-int8-equalbytes-frontier-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `run.py`，但仓内无 `results*.json` |
 | [2518-exit-retry-law](../axes/2-depth/2.1.1-early-exit/experiments/2518-exit-retry-law/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2523-depth-ar-first](../axes/2-depth/2.1.1-early-exit/experiments/2523-depth-ar-first/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2523c-three-ablations](../axes/2-depth/2.1.1-early-exit/experiments/2523c-three-ablations/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
@@ -191,6 +196,7 @@
 | [2509-m3-composition-law](../axes/2-depth/2.1.2-skipping/experiments/2509-m3-composition-law/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2525-tax-attribution](../axes/3-width/3.1.1-uniform-narrowing/experiments/2525-tax-attribution/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2656-lowrank-vs-headshare-13m](../axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `gpu_lock.py`，但仓内无 `results*.json` |
+| [2657-fp8-hd128-head-dim](../axes/5-quant/5.5-fp8-head-dim/experiments/2657-fp8-hd128-head-dim/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `hd128_arms.py`，但仓内无 `results*.json` |
 | [2617-prior-art-hybrid-kv](../axes/5-quant/5.6-window-quant-retrieval/experiments/2617-prior-art-hybrid-kv/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 PRIOR_ART.md） |
 | [2510-gap-sweep-b2-c1m](../axes/6-predict/6.2-speculative-decoding/experiments/2510-gap-sweep-b2-c1m/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 MODEL.md, README.md, analysis.md, controls/README.md, prereg_binding.json, results.json） |
 | [2512-overnight-causal-chain](../axes/6-predict/6.2-speculative-decoding/experiments/2512-overnight-causal-chain/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
@@ -272,6 +278,7 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2662-hard-window-anchor-13m | train/win16a_s0 | ✓ | ✓ | 11999 | — | — |
 | 2662-hard-window-anchor-13m | train/win16a_s1 | ✓ | ✓ | 11999 | — | — |
 | 2679-anchor-eval-ablation-13m | . | ✓ | — | — | — | — |
+| [2681-anchor-recall-seeds23-13m](../axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/) | — | — | — | — | — | 仓内没有 run 产物 |
 | [2507-x1-x3-distance-penalty](../axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty/) | — | — | — | — | — | 仓内没有 run 产物 |
 | [2503-engine-m1-extensions](../axes/1-time/1.1.4.1-explicit-memory/experiments/2503-engine-m1-extensions/) | — | — | — | — | — | 仓内没有 run 产物 |
 | 2616-window192-trained-13m | . | ✓ | — | — | — | — |
@@ -426,6 +433,7 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2639-carry-perlayer-frontier-13m | train/pl16 | ✓ | ✓ | 11999 | — | — |
 | 2639-carry-perlayer-frontier-13m | train/pl16d | ✓ | ✓ | 11999 | — | — |
 | 2680-quant-overlay-frontier-13m | . | ✓ | — | — | — | — |
+| [2681-int8-equalbytes-frontier-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/) | — | — | — | — | — | 仓内没有 run 产物 |
 | 2614-kv-ablation-retention-13m | . | ✓ | — | — | — | — |
 | 2614-kv-ablation-retention-13m | smoke | ✓ | — | — | — | — |
 | 2615-retention-retrieval-leg-13m | . | ✓ | — | — | — | — |
@@ -619,6 +627,7 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2655-fp8-hd64-head-dim | f5-anchor-2653-rerun | ✓ | — | — | — | — |
 | 2655-fp8-hd64-head-dim | hd64-s1 | ✓ | — | — | — | — |
 | 2655-fp8-hd64-head-dim | smoke-plumbing-2610trunk | ✓ | — | — | — | — |
+| [2657-fp8-hd128-head-dim](../axes/5-quant/5.5-fp8-head-dim/experiments/2657-fp8-hd128-head-dim/) | — | — | — | — | — | 仓内没有 run 产物 |
 | [2617-prior-art-hybrid-kv](../axes/5-quant/5.6-window-quant-retrieval/experiments/2617-prior-art-hybrid-kv/) | — | — | — | — | — | 仓内没有 run 产物 |
 | 2654-window-retention-frontier-13m | . | ✓ | — | — | — | — |
 | 2510-gap-sweep-b2-c1m | . | ✓ | — | — | — | — |

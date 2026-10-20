@@ -1,4 +1,4 @@
-"""F_CLOSURE：引擎能力面事实表（`docs/engine_capability.md`）的机器核对。
+"""F_CLOSURE：引擎能力面事实表（`harness/engine_capability.md`）的机器核对。
 
 复核 B9 指出：收口文称「ENG2 已解锁 `carry × GQA × 非稠密`」，而 `pathlm/depth_ar.py`
 的校验仍拒绝该组合。本文件把「哪些组合构造得起来 / 哪些明确拒绝 / 拒绝在哪一行」
@@ -22,7 +22,7 @@ sys.path.insert(0, ROOT)
 from pathlm.depth_ar import (DepthARConfig, DepthARDecoder,  # noqa: E402
                              DepthARModel)
 
-DOC = os.path.join(ROOT, "docs", "engine_capability.md")
+DOC = os.path.join(ROOT, "harness", "engine_capability.md")
 
 _BASE = dict(d_model=64, n_layers=2, n_heads=4, seq_len=256, mlp_mult=4)
 

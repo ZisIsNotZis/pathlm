@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 有界 supervisor 重试驱动 —— 树内唯一的实现（各实验只写薄包装，见 `docs/methodology.md` §18.1）。
+# 有界 supervisor 重试驱动 —— 树内唯一的实现（各实验只写薄包装，见 `harness/methodology.md` §18.1）。
 #
 # 治什么形态的病：旧 `axes/**/supervise*.sh` 是**无界重试循环**（没有尝试上限），于是「训练完、写结果时崩」
 # 会无限循环（`2653` 实测白跑 781 次 ≈124 GPU 小时），并且一直攥着 GPU 从不礼让，把 `2651`
@@ -20,7 +20,7 @@
 #                      也不写 `lock-busy`；`--lock-wait-s` 此时不起作用（仍要求给值，CLI 只有一个形状）。
 #
 # 锁的语义（重要）：本脚本**不持有** GPU 锁，只在启动命令前**探测**锁是否空闲
-# （`SCHEMA.md` §20 的 `/tmp/pathlm_gpu.lock`，可用环境变量 `PATHLM_GPU_LOCK` 改路径，测试用）。
+# （`harness/SCHEMA.md` §20 的 `/tmp/pathlm_gpu.lock`，可用环境变量 `PATHLM_GPU_LOCK` 改路径，测试用）。
 # 原因：被包的驱动自己取锁（如 `2651`/`2653` 的 `run.py` 用 `gpu_lock.py` 的上下文管理器），
 # 若 supervisor 抢先持锁，命令会等自己永远等不到的锁 ⇒ 死锁。探测式礼让的保证是：
 # 「锁被活着的持有者占着就不启动命令」+「两次尝试之间至少间隔 --gap-s」，绝不删别人的锁目录。
@@ -46,7 +46,7 @@ set -u
 PROG=$(basename "$0")
 LOCK=${PATHLM_GPU_LOCK:-/tmp/pathlm_gpu.lock}
 POLL_S=5            # 取锁窗口内的轮询间隔
-STALE_AGE=900       # 无 holder_pid 时锁龄上限（`SCHEMA.md` §20）
+STALE_AGE=900       # 无 holder_pid 时锁龄上限（`harness/SCHEMA.md` §20）
 
 usage() {   # $1 = 输出 fd（--help 用 1 = stdout 且退出 0；用法错误用 2 = stderr 且退出 2）
   local fd="${1:-2}"

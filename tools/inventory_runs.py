@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """inventory_runs.py — 复现清单：每个实验有哪些 run、权重与日志还在不在、能复跑到什么程度。
 
-本文件是**生成物**（render）：`docs/repro.md` 由它从**已入库路径**（`git ls-files`）算出，
+本文件是**生成物**（render）：`atlas/repro.md` 由它从**已入库路径**（`git ls-files`）算出，
 禁止手改。它回答论文与外部读者问的一个问题——「这个数字能不能重跑出来」——用的不是散文，
 而是逐个实验的 run 目录、已入库产物、重跑命令与三态判定。
 
 用法：
-    python3 tools/inventory_runs.py                 # 写 docs/repro.md
+    python3 tools/inventory_runs.py                 # 写 atlas/repro.md
     python3 tools/inventory_runs.py --check         # 与磁盘逐字节比对 + 每条路径存在 + 每条 not_reproducible 写明缺什么
     python3 tools/inventory_runs.py --json          # 把同一份清单打到 stdout（供机器读）
     python3 tools/inventory_runs.py --local         # 追加「本机视图」：本机存在但未入库的权重（字节数 + sha256）与 runs/ 目录
@@ -37,7 +37,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = ROOT / "docs" / "repro.md"
+OUT = ROOT / "atlas" / "repro.md"
 
 BANNER = (
     "<!-- 本文件由 `tools/inventory_runs.py` 从已入库路径（`git ls-files`）生成，禁止手改；"
@@ -71,7 +71,7 @@ TRAIN_TOKENS = (
 TRAIN_TOKEN_RE = re.compile("|".join(re.escape(t) for t in TRAIN_TOKENS))
 
 #: 代码里出现的路径类 token（判定 R3 用）。只认**带文件扩展名**的写法：散文里
-#: `docs/methodology`、`tools/evalkit/retention.masked_logits`、`runs/hd64-sN` 这类截断 /
+#: `harness/methodology`、`tools/evalkit/retention.masked_logits`、`runs/hd64-sN` 这类截断 /
 #: 符号引用不算路径，否则会把「转述」当成「悬空依赖」。相对写法（`../<另一实验>/train/…`）
 #: 也认：跨实验复用别人的权重正是最常见的不可复现来源。
 PATH_TOKEN_RE = re.compile(
@@ -350,7 +350,7 @@ def _train_evidence(root: Path, exp: str, exp_files: list[str]) -> tuple[str, st
 def _code_paths(root: Path, exp: str, exp_files: list[str], tree: "Tree") -> tuple[list[str], list[str]]:
     """代码（`.py` / `.sh`）里引用的路径 token，分成 (仓内悬空, 要自产/自取)。
 
-    只扫代码、不扫 Markdown：散文里的 `docs/methodology`、`retention.masked_logits`、
+    只扫代码、不扫 Markdown：散文里的 `harness/methodology`、`retention.masked_logits`、
     `runs/hd64-sN` 是转述或占位，不是依赖。分类：
       * `.gitignore` 排除的输入前缀（`runs/` `data/` …）、任何 `.pt` 权重、**本机存在但未入库**的
         路径 ⇒ 「要自产/自取」（可重训）；
@@ -726,13 +726,13 @@ def _disp(path: Path) -> str:
 
 def main(argv: list[str], root: Path | None = None) -> int:
     root = Path(root) if root else ROOT
-    out = OUT if root == ROOT else root / "docs" / "repro.md"
+    out = OUT if root == ROOT else root / "atlas" / "repro.md"
     check = "--check" in argv
     want_json = "--json" in argv
     want_local = "--local" in argv
     if "--root" in argv:
         root = Path(argv[argv.index("--root") + 1])
-        out = root / "docs" / "repro.md"
+        out = root / "atlas" / "repro.md"
 
     exps = collect(root)
     tracked = tracked_files(root)

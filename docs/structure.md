@@ -142,9 +142,9 @@ started:       # 时间
 ended:         # 时间
 ```
 
-> 上表是**最小字段集**；**完整、权威**的字段/取值/纪律（含复核与收口纪律 `docs/research-schema.md` §11：
+> 上表是**最小字段集**；**完整、权威**的字段/取值/纪律（含复核与收口纪律 `harness/research-schema.md` §11：
 > `conclusion_review` 只写当前判词、返回前兄弟字段一致性扫描、复核累计 ≤2 轮、按被改对象定验证门）
-> 见 `docs/research-schema.md`。
+> 见 `harness/research-schema.md`。
 
 ## 11 汇总脚本
 小脚本扫所有 `project.yaml` → 输出表：`id / 轴 / 起 / 止 / 完成? / 状态 / 结论 / 结论对不对 / 实验 / 论证 / 遗漏`。
@@ -267,7 +267,7 @@ ended:         # 时间
 | CALM/LayerSkip/MoD | `axes/7-references/README.md`（既有早退实现） |
 | 自回归（一次一个位置） | `6.1` |
 
-> 轴 7 是**参照台账**（`README.md`）：它们拿来当跑分线，不立项、不写 `project.yaml`。归到本轴的实验目录直接挂在轴下（`axes/7-references/experiments/`），是**辅助实验**：同样不写 `project.yaml`、因此不进 `tools/summary.py` 的研究项表，覆盖声明见 §16。
+> 轴 7 是**参照台账**（`README.md`）：它们拿来当跑分线，不立项、不写 `project.yaml`。归到本轴的实验目录直接挂在轴下（`axes/7-references/` 的 `experiments/`），是**辅助实验**：同样不写 `project.yaml`、因此不进 `tools/summary.py` 的研究项表，覆盖声明见 §16。
 
 ### 轴 8 · 工程纪律（不是研究）（目录 `axes/8-engineering/`）
 
@@ -279,7 +279,7 @@ ended:         # 时间
 | 损失权重 | 同上 |
 | 数据构造 | 同上 |
 
-> 轴 8 是**工程纪律台账**（`README.md`）：不是研究，不写 `project.yaml`。归到本轴的实验目录直接挂在轴下（`axes/8-engineering/experiments/`），是**辅助实验**：同样不写 `project.yaml`、不进研究项表，覆盖声明见 §16。
+> 轴 8 是**工程纪律台账**（`README.md`）：不是研究，不写 `project.yaml`。归到本轴的实验目录直接挂在轴下（`axes/8-engineering/` 的 `experiments/`），是**辅助实验**：同样不写 `project.yaml`、不进研究项表，覆盖声明见 §16。
 
 ### 轴 9 · Backlog（不删，移出主线）（目录 `axes/9-backlog/`）
 
@@ -314,7 +314,7 @@ ended:         # 时间
 
 ## 15 退役与去留（冻结）
 
-- **研究项 SSOT = `axes/**/project.yaml`**（格式见 `docs/research-schema.md`）。
+- **研究项 SSOT = `axes/**/project.yaml`**（格式见 `harness/research-schema.md`）。
 - **已退役并归档**（不再维护、不再是 SSOT、不再生成网页）——旧 wiki 资产只读保留于
   `archive/wiki-legacy/`，证据不删：
   - `catalog.yaml`（旧「目录完备」枚举）→ `archive/wiki-legacy/catalog.yaml`。
@@ -335,19 +335,15 @@ ended:         # 时间
 
 轴 7（参照）与轴 8（工程纪律）**不立项**（§13.4 / §13.5），但它们各自的实验目录留在这两轴的轴目录下、
 **直接挂在轴下**，没有研究项目录。它们是**辅助实验**：不写 `project.yaml`、不参与 `status` 枚举、
-也不进 `tools/summary.py` 的研究项表——「表里没有」不是漏了：
+也不进 `tools/summary.py` 的研究项表——「表里没有」不是漏了。
 
-| 辅助实验目录 | 它是什么 | 谁的数字会引它 |
-|---|---|---|
-| `axes/7-references/experiments/A2-full-attention/` | 全注意力基线的跑分与规模点（13M / 100M 的 B0 分母） | `axes/7-references/README.md` |
-| `axes/7-references/experiments/A8-positional-semantics/` | 位置语义族（RoPE / 插值 / 无位置），本仓零经验、只有前提登记 | 同上 |
-| `axes/7-references/experiments/R7-existing-early-exit/` | CALM / LayerSkip / MoD 三种既有早退实现 | 同上（同时是 `2.1.1` 与 `6.2` 的对照） |
-| `axes/7-references/experiments/W3-kv-head-sharing/` | GQA / MQA，KV 预算的同字节对手 | 同上 |
-| `axes/8-engineering/experiments/2523b-shallow-weight-sweep/` | 损失权重（浅层降权与退火）的扫描 | `axes/8-engineering/README.md` |
+逐个辅助实验**是什么、证据落在哪、谁的数字会引它**，写在它自己那一轴的台账里
+（轴 7：`axes/7-references/README.md`；轴 8：`axes/8-engineering/README.md`）。
+本文件不复制这份清单：它是研究级的逐格事实，复制一份必然与事实源脱节。
 
 覆盖声明：`python3 tools/summary.py` 在表尾打印这一组的条数（一行「另有 N 个辅助实验不在研究项表内」），
-所以研究项表看不见它们时，读者不会被误导成「它们不存在」。它们的数字可以进 `docs/playbook.md` 的定律与
-`docs/cost-table.md`（经某个研究项的 `cost_rows` 引用），引用时的落点是上表「台账」列与实验目录本身。
+所以研究项表看不见它们时，读者不会被误导成「它们不存在」。它们的数字可以进 `atlas/playbook.md` 的定律与
+`atlas/cost-table.md`（经某个研究项的 `cost_rows` 引用），引用时的落点是各轴台账「证据落点」列与实验目录本身。
 
 判据：一个实验目录**该不该**升成研究项，按 §13.1 判（能独立推进、可独立否证、有独立 `purpose` +
-`innovation` + `validation` + 单一 `milestone`）；不能就不写 `project.yaml`，留在本节的账上。
+`innovation` + `validation` + 单一 `milestone`）；不能就不写 `project.yaml`，留在各轴台账的账上。

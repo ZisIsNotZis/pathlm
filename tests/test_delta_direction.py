@@ -1,4 +1,4 @@
-"""Δ 方向是机器可读字段（`docs/research-schema.md` §2.3）——五件事必须能红。
+"""Δ 方向是机器可读字段（`harness/research-schema.md` §2.3）——五件事必须能红。
 
 1. **同一文件两种方向合法且逐字段校验**：`delta_directions` 是**字段级映射**，
    逐臂质量腿与代价腿可以各用一套方向；把某个字段的方向写成与它所在判据块相反，必须 fail。
@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 
 import check_tree  # noqa: E402
 
-COST_TABLE = os.path.join(ROOT, "docs", "cost-table.md")
+COST_TABLE = os.path.join(ROOT, "atlas", "cost-table.md")
 CMP = "comparator_minus_arm"
 ARM = "arm_minus_comparator"
 

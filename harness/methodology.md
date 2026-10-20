@@ -31,7 +31,7 @@
 条件下作参考门槛——它是「13M 跨 run 的 bpc 漂移界」，不是通用可排序门槛。据此：
 
 - **不得跨量纲借用**：概率 / 接受率 / 准确率等类指标**单独定门**——以**按 prompt 聚类的
-  bootstrap 或 Wilson 95% CI 不含 0** 为主判，0.014 只能作参考线（纪律见 `docs/research-schema.md` §12.1）。
+  bootstrap 或 Wilson 95% CI 不含 0** 为主判，0.014 只能作参考线（纪律见 `harness/research-schema.md` §12.1）。
 - **单格自测带优先于跨格 0.014**：某格若有自测的「在力带」（如单臂跨窗口极差），该格以本格带为准；
   两带**不得混用**。
 - **声明义务**：每个研究项的 `falsification` 必须显式写明「**用哪个带**」（跨格 0.014 / 本格自测带 /
@@ -137,15 +137,15 @@
 > 其他情况下，永远在**主流标准 Decoder-Only Transformer** 上改。
 
 - **默认基底 = 主流标准 decoder-only transformer**（RAP 保留的三条必要 shared-substrate
-  偏离见 `docs/design.md` §2——它们是「传统设计根本不够用」的部分）。
+  偏离见 `atlas/design.md` §2——它们是「传统设计根本不够用」的部分）。
 - **必要性例外必须写明**：为什么单因素无法独立生效、引入了哪个非标准因素、
   它对结论的影响是什么（否则违反拆混杂纪律）。
 - **禁止**为了好看而叠加第二个机制；**deps 字段只记录依赖，不构成组合实验授权**。
 
 ## 10. 规模纪律
 
-单卡 4090 共享卡的规模与预算要求见 `SCHEMA.md` §7（规模）与 §8（成本预算的唯一数字）；
-锁协议见 `SCHEMA.md` §20。
+单卡 4090 共享卡的规模与预算要求见 `harness/SCHEMA.md` §7（规模）与 §8（成本预算的唯一数字）；
+锁协议见 `harness/SCHEMA.md` §20。
 
 ## 11. 指标必须是多维的、可量化的
 
@@ -168,7 +168,7 @@
 每个实验目录必须留下：数据集（名称/来源/规模/切分/下载或生成命令，**用小数据集**）、
 入口脚本 + resolved config（含 seed、超参、路径）、原始产出（`results.json` / 日志 / 探针 json
 入库；权重不入库、写 `MODEL.md` 哈希）、判读（`analysis.md` 逐指标表格，含失败）。
-目录与契约字段的规范见 `SCHEMA.md` §3 / §6。
+目录与契约字段的规范见 `harness/SCHEMA.md` §3 / §6。
 
 ## 13. Scope 可控与「立竿见影」
 
@@ -195,26 +195,26 @@
 
 主 Agent 只编排、sub-agent 执行；**一个 cwd 同一时刻只允许一个写入者**；GPU 任务**串行**提交。
 sub-agent 的产出必须落成实验目录内的规定文件，**口头汇报不算交付**。
-编排职责与派发纪律见 `AGENTS.md` §3 与 `SCHEMA.md` §22 / §14b。
+编排职责与派发纪律见 `AGENTS.md` §3 与 `harness/SCHEMA.md` §22 / §14b。
 
 ## 16. 判据取向
 
-**与自循环比，不与 oracle 比**——oracle 只是上界，对手必须同成本或更低成本。详见 `SCHEMA.md` §11。
+**与自循环比，不与 oracle 比**——oracle 只是上界，对手必须同成本或更低成本。详见 `harness/SCHEMA.md` §11。
 
 ## 17. 防自欺三件套（每份报告必过）
 
-1. **对账**（`SCHEMA.md` §12）：算术上下界、任务同一性、口径一致性；
-2. **可比**（`SCHEMA.md` §13）：对照臂三要素（输入分布 / 预测什么 / 部署对应）；
-3. **复核**（`SCHEMA.md` §14）：fresh-context 只读复核者独立检查，fail 不计入状态灯。
+1. **对账**（`harness/SCHEMA.md` §12）：算术上下界、任务同一性、口径一致性；
+2. **可比**（`harness/SCHEMA.md` §13）：对照臂三要素（输入分布 / 预测什么 / 部署对应）；
+3. **复核**（`harness/SCHEMA.md` §14）：fresh-context 只读复核者独立检查，fail 不计入状态灯。
 
 主 Agent 的义务：**宁可报「数字可疑、待重测」，也不报一个漂亮的假数字。**
 
 ### 17.1 Δ 方向必须声明，且只声明在枚举字段里
 
-`Δ` 的正负号在不同落盘文件里方向不一，靠散文声明读一次就会读反，所以方向是**机器可读字段**（`delta_direction`，契约见 `docs/research-schema.md` §2.3）：
+`Δ` 的正负号在不同落盘文件里方向不一，靠散文声明读一次就会读反，所以方向是**机器可读字段**（`delta_direction`，契约见 `harness/research-schema.md` §2.3）：
 
-- **新实验必须声明方向**：`results.json` 的判据串里出现 `正 = …` / `负 = …` / `>1 = …` / `Δ = A − B` 时，顶层 `delta_direction` 必填；`cost_rows` 每行必填。规范方向是 `comparator_minus_arm`（`Δ = 对照 − 实验`，正 = 改善，见 `SCHEMA.md` §17）。
-- **原始数字不动**：规范化只在**展示层**做（`docs/cost-table.md` 的「Δ 方向」列），手写落盘的 `delta` 与 `results.json` 里的数一个都不翻转；标签与源头不符时改标签、不改数字。
+- **新实验必须声明方向**：`results.json` 的判据串里出现 `正 = …` / `负 = …` / `>1 = …` / `Δ = A − B` 时，顶层 `delta_direction` 必填；`cost_rows` 每行必填。规范方向是 `comparator_minus_arm`（`Δ = 对照 − 实验`，正 = 改善，见 `harness/SCHEMA.md` §17）。
+- **原始数字不动**：规范化只在**展示层**做（`atlas/cost-table.md` 的「Δ 方向」列），手写落盘的 `delta` 与 `results.json` 里的数一个都不翻转；标签与源头不符时改标签、不改数字。
 - **机检能判的判，判不了的写清**：`tools/check_tree.py` 校枚举、校 `metric` 方向短语与算式次序、校判据串与 `delta_direction` 一致；没有方向短语的行、以及一个文件里两条判据方向相反的情形，列为「不判」清单（stderr），不替它们选一个。
 
 ### 17.2 引用必须可解析（锚点 / 裸路径；行号不用于指字段）
@@ -239,7 +239,7 @@ python3 tools/check_docs.py --check   # 有悬空引用、悬空/歧义锚点、
 用户长期不在时，主 Agent 全权推进，但必须：
 
 - 每个实验**预登记判据 + 事后复核**，判据线一律不得事后调整；
-- 每个结论写进对应研究项的 `project.yaml`（`axes/**/project.yaml`，见 `docs/research-schema.md`）时**带口径与证据锚点**；
+- 每个结论写进对应研究项的 `project.yaml`（`axes/**/project.yaml`，见 `harness/research-schema.md`）时**带口径与证据锚点**；
 - 每批结束写 ticket 的 `evidence/SUMMARY.md`（第一段人话摘要）；
 - 遇到「契约有缺陷 / 数字可疑 / 干预是死的」→ **停下记录并改用保守解释**，
   绝不为了推进而放宽判据；
@@ -269,9 +269,9 @@ exec bash "$ROOT/tools/supervise.sh" --attempts-max 40 --fail-max 3 \
 = 一次尝试；`[sup] DONE rc=0 <iso>` = 成功收口（退出 0）；`[sup] FUSED reason=<attempts|consecutive> at=<iso>`
 = 熔断（退出 3，此后**不再取锁、不再重试**）。判活看这三种横幅，不看进程名。
 
-**锁语义**：supervisor **不替命令持锁**——它只在启动命令前探测 `SCHEMA.md` §20 的 GPU 锁是否
+**锁语义**：supervisor **不替命令持锁**——它只在启动命令前探测 `harness/SCHEMA.md` §20 的 GPU 锁是否
 空闲（路径可用 `PATHLM_GPU_LOCK` 覆盖，供测试用），取/放锁仍由命令里的 `gpu_lock` 负责：
-两边抢同一把锁的持有权会互相等死。锁粒度与「按臂释放 + ≥60 秒窗口」见 `SCHEMA.md` §20.1。
+两边抢同一把锁的持有权会互相等死。锁粒度与「按臂释放 + ≥60 秒窗口」见 `harness/SCHEMA.md` §20.1。
 
 **两种锁分工，判据是「谁承担长等锁」**：
 

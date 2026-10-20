@@ -1,90 +1,113 @@
-# 计划（plan 层 · 里程碑、工作包、验收证据）
+# 计划（元级 · 唯一里程碑与工作包）
 
-> 本文件是**计划层的唯一权威**：里程碑状态、工作包（owner / 交付物 / 验收 / 预算 / 状态）、全树机检口径
-> 与 **`pytest` 的测试计数**都写在这里，别处只放指针。文档地图与事实文档的规矩见 `AGENTS.md` §2。
-> 谁在哪一轮复核里抓到几条、哪个 agent 说过什么，属于过程史，留在 git 与非事实文档里，本文件不记。
+> 本文件是**元级计划的唯一权威**：唯一里程碑、工作包（owner / 交付物 / 验收 / 预算 / 状态）与
+> 元级证据指针写在这里。元级只持有**研究目录与契约**，不持有任何研究级事实——实验读数、判据推导、
+> 逐格分析、代价事实、复现三态计数都在研究级（`axes/**`、`atlas/**`）与工级（`harness/**`）。
+> 分层归属见 `AGENTS.md`；研究目录见 `docs/catalog.md`；迁移台账见 `docs/ledger.md`。
 
 ## 0 这一版计划在治什么
 
-**类：仓库对局外读者不自证**——它断言的事实，读者无法在两三个工具调用内核对。按「能不能机检」分成六支，
-每支都写了现有对策；对策的选择顺序是**能生成的就生成，能机检的就机检，最后才写规矩**：
+**类：层混淆**——元级文档里写着研究级细节（实验读数、判据推导、逐格 analysis、逐条代价事实、复现清单、
+分诊打分），元级主 Agent 读状态要穿过几百行读数，才能判断「哪条研究该被派发、它现在到哪一步」。
+治法是**把层切开**，不是把细节写短：细节整体下沉到它本来就属于的那一层，元级只留一张生成的目录。
 
-| 支 | 形态 | 现有对策 |
-|---|---|---|
-| 引用悬空 | `文件:行` / `文件::键` 指不到东西；指向 `.yaml` / `.json` 的行号还会随增行漂到邻行 | **已机检**：`tools/check_docs.py`（引用可解析 + 文档地图完整性），把指向 `.yaml` / `.json` 的行号引用列为禁止项 |
-| 研究项自身不自洽 | 缺字段、无证据锚点、口径里混进墙钟、Δ 方向读反 | **已机检**：`tools/check_tree.py`（`summary.py --check` 转调它）；其中「Δ 方向全树声明」这一半**未做完**，见 §2 |
-| 数字被转录成第二份 | 定律的代价数字能被手抄进一张汇总表，抄错没人发现 | **生成物**：`docs/cost-table.md` 由 `tools/build_cost_table.py` 从 `axes/**/project.yaml` 生成，`--check` 与手改副本逐字节比对 |
-| 无界重试 | supervisor 是 `while :`，写结果阶段崩一次就无限重跑，并且一直攥着 GPU 锁 | **单一实现**：`tools/supervise.sh`（总尝试上限 + 连续失败熔断 + 取锁礼让）是树内唯一的重试驱动；`while :` 只剩取锁等待里那一个，带 `deadline` 上限 |
-| 一份事实文档转述另一份的当前内容 | 转述一旧，读者看到的两个事实就打起来 | **判据靠人**（机检只查得到悬空，查不到「转述」）：规矩 = 引用别的文档只放指针，不复述其内容（`AGENTS.md` §2.1） |
-| 过程编号进了事实文档 | `project.yaml` 正文里写着 `ticket NN` / `NN-review XX` 这类读者打不开的编号，而它要判断的实质就在同一句里 | **已机检**：`tools/check_tree.py` 拒绝 `change_log` / `actor` 键与 `ticket NN` / `NN-review` / `WP-xxxx` 串，错误信息指向 `.scratch/doc-log/**`（过程史的家） |
-| 同一事实在多处写数字 | 研究项数、测试计数、里程碑状态各写一份 | **判据靠人 + 单一落点**：每类数字只留一处主读数（`AGENTS.md` §2.1 指明哪份文档持有哪类事实），其余文档只放指针；本文件的 §1 是里程碑状态的落点、§3 是测试计数的落点 |
+判据从「能不能机检」出发：能生成的就生成（目录），能机检的就机检（元级零读数、引用可解析、
+台账无遗漏），只有机检不了的才写成规矩。
 
 ## 1 里程碑
 
-`自证` → `可引用` → `推进`。状态即下表，别处（`STATUS.md`）只指过来。
+**唯一里程碑 = 七条验收全部满足**（「完成」不是别的意思）：
 
-| 里程碑 | 交付物 | 验收（可观测） | 状态 |
+| # | 验收（可观测） |
+|---|---|
+| 1 | `docs/catalog.md` 是**生成物**，一行一个研究，只有七列：id / 标题 / 目的 / 验收 / 期望产出 / 状态 / 指针；行数 = 现有研究项数；状态与各研究自己的 SSOT 一致；指针可解析；`tools/build_catalog.py --check` 手改即红 |
+| 2 | 每个研究目录下有 `RESEARCH.md`（目标 / 目的 / **唯一里程碑** / 工作包（owner / 验收 / 预算 / 状态）/ 证据指针），由**研究级** Agent 按 `harness/research-schema.md` 的契约写；`docs/catalog.md` 的七列取自 `project.yaml`（研究项事实的家），不由 `RESEARCH.md` 转发；`project.yaml` 与 `experiments/**` 原样留在研究级 |
+| 3 | 元级零研究级读数：`docs/**` 与根级事实文档里不出现实验读数（bpc / Δ / 显存 / 墙钟 / 逐格判词）、不出现逐实验目录路径、不出现逐条代价事实与复现三态计数；`tools/check_meta_layer.py --check` 把这类模式判红，白名单只留定义性说明 |
+| 4 | `AGENTS.md` 写成**三层契约**（元级 / 研究级 / 工级：各层拥有什么事实、谁可以改、派发契约给什么、什么不许下沉 / 上浮）+ 一份可复制的派发模板；`README.md` 按元级重写（这是什么元仓、目录怎么读、一个研究怎么被派发与验收） |
+| 5 | 迁移无损：现有元级文档按归属迁到研究级或工级，留下**迁移台账**（一源文件一行：原文 → 新家 → 或「删除并说明理由」），`tools/check_ledger.py --check` 证明无遗漏、新家存在、删除有理由 |
+| 6 | 机检按层分工：元级只查元级事实（目录与研究的对应、目录 / 指针可解析、元级文档不含研究级读数）；研究级检查留在研究级且仍由研究级 Agent 自己跑；原六条机检一条不弱、迁走的检查在新层仍生效 |
+| 7 | 全绿：元级检查与测试通过（唯一允许的失败是已登记的预存失败），工作区干净并推送 |
+
+状态：**元级四条机检与测试已落地**（工作包见 §3）。
+
+## 2 分层决定（元级自定，执行方不自选）
+
+### 2.1 三层各拥有什么
+
+| 层 | 拥有的事实 | 谁可以改 | 不拥有 |
 |---|---|---|---|
-| **自证** | 局外读者只拿仓库就能核实：它是什么、最硬的几条结论连同口径、代价表在哪、怎么验一个数、许可与报问题的地方 | 派一个**没读过本仓**的 fresh reviewer，只给仓库与 8 个问题的清单：必须在 ≤20 次工具调用内答完，答案与 `axes/**` 的落盘事实一致、无一处悬空引用或自相矛盾；§3 的六条机检全过（唯一允许的失败是已登记的预存失败） | **已完成**：两轮陌生阅读测试都已跑完（第一轮「有条件的 PASS」、**第二轮 PASS**，≤20 次工具调用内答完 8 问，答案与 `axes/**` 落盘事实一致、无悬空引用）；两轮的原始报告、做题口径与「第一轮 10 条发现各自的下场」都在 `.scratch/self-verification/evidence/README.md`；§3 的六条机检全过，唯一失败为已登记的预存失败 |
-| **可引用** | 一张**生成**的代价表（定律 × 是否触主干 × 观测代价 × 边界 × 出处）、一份复现清单（哪些 run 的权重与日志还在、能复跑到什么程度）、把定律写成论文的口径 | 代价表由 `tools/build_cost_table.py` 生成，`--check` 与手改过的副本逐字节比对必须失败；复现清单里每条 run 都指向真实存在的路径，缺失项显式标「不可重建」 | **进行中：三件交付物已全部落盘，整体关闭待两件非执行方事项**——代价表已生成并被 `--check` 钉住；复现清单已落盘（`docs/repro.md`，120 个实验 / 393 个 run，三态分布见 `docs/repro.md` 的汇总一节，每条带依据）；论文口径已重写（`docs/paper-plan.md`，见 §2 那一行）。**未关闭的两件**：`docs/paper-plan.md` 的 fresh 复核（§2 的验收项，执行方不自评）、文档与论文许可的**用户裁决**（§5，对外暴露事项） |
-| **推进** | 恢复研究：先一份廉价分诊（每个在途 / 空白格：它能否改变我们对「某种算力路径值不值」的判断、所需成本），再按排序派发第一批实验 | 分诊表落盘并给出排序理由；第一批工作包各自有预登记判据与验收，且都跑到「可交付、结论清晰、过程可验证、边界明确」 | **进行中**：分诊表已落盘（`docs/triage.md`，46 项逐行打分 + 判决后新出现的候选单列），四个批次各两件都已跑到「结论清晰、边界明确」（判词见各自 `project.yaml`，派活理由与实耗见 `docs/triage.md` §3）；**未闭** = 各批的 fresh 独立复核（§2 各「研究批次 N」那一行的未闭项）与「下一批的派活线」——批次四之后 `docs/triage.md` 里已没有 ≥4.5 的格 |
+| **元级**（仓库根 + `docs/`） | 这是什么元仓、研究目录、层契约与派发模板、元级里程碑与工作包、迁移台账 | 元级主 Agent 派发的 worker；元级主 Agent 自写本文件 | 任何实验读数、判据、逐格分析、代价事实、复现状态、引擎能力 |
+| **研究级**（`axes/**`、`atlas/**`） | 每项研究的目标 / 目的 / 唯一里程碑 / 工作包 / 证据指针（`axes/**/RESEARCH.md`）；研究项事实（`project.yaml`）；跨格汇总（定律正文、代价表、复现清单、排序打分、论文口径、结论索引） | 研究级主 Agent 与它派发的 worker / reviewer；元级只读 | 元级目录与层契约 |
+| **工级**（`harness/**`、`tools/**`、`tests/**`） | 格式契约与分析纪律、测量纪律、引擎能力面、机检实现与共享底座 | 底座维护者；研究级与元级只调用 | 任何一项研究的结论 |
 
-## 2 工作包
+### 2.2 目录落位（迁移目标）
 
-只列**未完成**的；已完成的工作包从本表删除，历史在 git 里，不写进事实文档。
-
-| 工作包 | 归属 | owner | 交付物 | 验收 | 预算 | 状态 |
-|---|---|---|---|---|---|---|
-| Δ 方向全树声明 | 自证 | worker | 每个报了 Δ 读数的 `results.json` 逐字段声明 `delta_directions`；把 `cost_rows[].metric` 里机判不了方向的写法改成可机判 | `tools/check_tree.py` 的 Δ 方向汇总行：`undeclared` 计数为 0、「不判」条目为 0（现存条目逐条补声明或改 `metric` 措辞） | 60 分钟 | 进行中 |
-| 复现清单 | 可引用 | worker | `tools/inventory_runs.py` + `docs/repro.md`：每个实验的 run 目录、权重是否在库、日志、重跑命令、实测墙钟、能否字节级复现 | 每条路径的存在性由脚本校验；不可重建的项显式写「不可重建」而不是留空；脚本进 `tests/` | 60 分钟 | **已完成**：`python3 tools/inventory_runs.py --check` 0 违规；120 个实验 / 393 个 run 的判定全带依据；`tests/test_repro_inventory.py` 六条（含「多一个 run 目录」「手改生成物」「`not_reproducible` 缺 `missing`」三条可失败对照）；三态判定的抽检（5/5 成立，规则未改）见 `.scratch/self-verification/evidence/repro-verdict-audit.md` |
-| 论文口径收口 | 可引用 | worker → reviewer | `docs/paper-plan.md`：代价按「触主干 / 旁路」分组，定律 8–11 归为「用表前必须过的口径与前置条件」，方法一页只做 router | 与 `docs/playbook.md`、`docs/cost-table.md` 无重复数字（只有指针）；fresh 复核者只按文件本身即可判断其自洽 | 45 分钟 | **执行完成，待 fresh 复核**：`docs/paper-plan.md` 已重写——11 条定律按「1–7 = 代价 / 8–11 = 用表前必须过的口径与前置条件」两段落位并逐条给指针，正文不复制定律、不写读数；`grep -nE "[0-9]+\.[0-9]+" docs/paper-plan.md` 只剩计划性数字（页数、规模 `13M` / `100M`、`1.1-epoch`、研究项编号、`AGPL-3.0`）；`python3 tools/check_docs.py --check` 0 违规；成本表 / 复现清单 / 自证三处证据来源与四条本轮新判决（`2.2.2` / `2.2.3` / `2.2.4` / `6.3.1`）都以指针接入；许可写成「待用户裁决」 |
-| 研究批次二 | 推进 | worker（按格隔离，逐格取 GPU 锁、臂间 ≥61 s） | `docs/triage.md` §2 的次批两件：`1.2.3` 的 WP2 位置对照（2 臂：`win32`/`win64`，复用 3 条已训臂）、`1.2.2` 的 WP1 局部+全局对条带（2 臂：`win24a0` seed 0/1，复用 4 条已训臂） | 两格各自的预登记判据在实验目录 `README.md` 里先落盘再跑；判据六项（该涨 / 该跌 / 必须不变 / 对照臂 / 方差带 / 指标口径）齐备；`summary.py --check` 接受两格的 `status` / `conclusion`；对齐与等值门有落盘列 | 按格定：`1.2.3` 2 臂 ≈ 14 min GPU、`1.2.2` 2 臂 ≈ 16 min GPU（合计 ≈ 30 min，均在各自 20 / 30 min 预算内） | **已完成（fresh 复核 PASS；复核指出的「预登记不可判」缺口已由预登记绑定机制治类）**：`1.2.3` 判「内容选择在同等可见键数下可排序占优（+0.07799 / +0.03701，20/20 同向），但每位置缓存字节结构性 −0%（质量杠杆、不是成本杠杆）」，主判 k=32 那一对已按该实验契约预登记的升格路径补上 seed 1 ⇒ 两 seed 同向且各自越带（+0.07799 / +0.07677，两 seed 差 0.00122），**判词从「临时结果（n=1）」升至 n=2**；`1.2.2` 判「紧预算下把 24 键切给全局槽比全给最近位置差 0.023 bpc（两 seed 同向且各自越带，n=2）」。两格的逐批核对门都落盘：可见键数逐行相等、参数量逐位相等、模型前向与显式掩码前向逐位相同、复用臂读数逐位复现旧实验。**未闭的项**（都不属本工作包）= `1.2.3` 的毁源对照（随机选 32 键）、长程召回腿与长 T，`1.2.2` 的 BigBird 式块稀疏掩码臂组 —— 见各格 `gaps` 与 `docs/triage.md`。（`1.2.2` 的定序不可判披露见本表「预登记绑定」那一行） |
-| 研究批次三 | 推进 | worker（按格隔离，逐格取 GPU 锁、臂间 ≥61 s） | `docs/triage.md` §2 的次批两件：`1.2.1` 空洞 vs 连续窗口（新写实验 `2678`：空洞掩码 + 训练/评测，2 支新臂 `dil32` seed 0/1，复用 `2676` 的 `win32`/`win32_s1` 与 `2614` 的 `full`）、`3.2.2` 逐出口读出（`2645`：2 支新臂 `T:1`/`PE:1`，复用已训的 `T:0`/`PE:0`，加 `--aggregate-all` 两 seed 汇总） | 两格各自的预登记判据与判据常数落盘在实验 `README.md` / `config.json`（应用判据的 `run.py` 一起绑，缺绑定入口拒绝启动），**定序按 `prereg_binding.json` 的记录判——本批两格的「契约先于读数」不可判**（见状态列）；六项判据齐备（该涨 / 该跌 / 必须不变 / 对照臂 / 方差带 / 指标口径）；`summary.py --check` 接受两格的 `status` / `conclusion`；对齐与等值门有落盘列；`0.014` 带只用于配对读数、跨 seed 只作参考线 | 按格定：`1.2.1` 2 臂 ≈ 14 min + 评测 ≈ 4 min（实际 6.85 min/臂）、`3.2.2` 2 臂 ≈ 20 min + 评测（实际 ≈ 10 min/臂） | **已完成（第一轮独立复核判 BLOCK，已按它的清单逐条修正；修正后的版本待再复核）**：`1.2.1` 判**已完成**（两半结论）——真实文本上同 32 键「摊开可见位置」相对「取最近 32 个」的 clean bpc 差 +0.01195 / +0.00696（两 seed 同向、都落 0.014 带内）⇒ **无质量增量**（这一半被否证）；**需要远处信息时机制可用**——合成关联回忆（`win32`/`dil32` × 两 seed）里空洞臂远高于 chance、窗口臂贴 chance（n=2）⇒ 先前「本设计下无信号」收窄为「真实文本不需要」，两条限定（那对合成臂是「能不能覆盖到」而非「同等覆盖下谁更省」；召回电池在本尺度无分辨力）写在 `axes/1-time/1.2.1-dilated/project.yaml::conclusion`。`3.2.2` 判**被否证**——末层 bpc −0.0857 / −0.0811（更好，n=2）且 `PE` 的 4 层优于共享表用满 8 层，但浅出口的**相对**接受率 `tf@2..4` 两 seed 同向下降 ⇒ 被否证的是「浅出口相对接受率该涨」，不是「早退不可用」。两格的对齐门/等值门落盘（逐行可见键数相等、参数量逐位相等、复用臂逐批 bpc 逐位复现 `2676`/`2614` 的落盘值）。**已披露的不可判项**：两格的读数都入库早于各自的契约绑定（`prereg_binding.json::readings_existing_at_bind` 记录绑定那一刻实验根 `results.json` 与臂读数就已存在）⇒ **「契约先于读数」对两格不可判**，与 `1.2.2` 同款；本轮只在读到数字之后加了两条追补读数（召回电池样本加密、合成关联回忆两臂 × 两 seed），它们的定序从本轮绑定起算。**未闭** = 修正后的版本待 fresh 复核、`3.2.2` 的等参数对照臂与 `IND`/`LR`、`1.2.1` 的长 T 与逐层递增 dilation |
-| 研究批次四 | 推进 | worker（逐格隔离，0 训练 token；GPU 前向逐次取 §20 锁） | `docs/triage.md` 的前两名：`1.1.1` 的评测期锚点消融（新实验 `2679`：同一 checkpoint × 2 个评测掩码 × 2 seed = 8 格）、`1.1.4.1` 的量化档叠图（新实验 `2680`：11 个已训 checkpoint × fp16/int8 两档 = 18 格） | 两格各自的预登记判据与判据常数落盘（`README.md` + `config.json`），判据的**应用**代码一起绑进契约（`--contract README.md config.json run.py`）；`summary.py --check` 接受两格；`0.014` 带只用于配对读数、跨 seed 只作参考线 | 0 训练 token（`2679` ≈12 s、`2680` ≈49 s 前向） | **已完成**：`1.1.1` 判「评测期消融**拆不开**归因，但锚点通道确实被用起来」——关锚点掉 +0.024600 / +0.016607 bpc，反向白加锚点掉 +1.304632 / +1.058869 ⇒ 「训练时多见键」与「推理期可见」是同一根杠杆（判词见 `axes/1-time/1.1.1-hard-window/experiments/2679-anchor-eval-ablation-13m/analysis.md`）；`1.1.4.1` 判「量化档在纯窗族本尺度无质量增量、纯窗前沿左移 46.875% 字节，显式状态点仍不被支配（差 0.057936 / 0.068262），但同字节的决定性格（int8 下 k≈60）不在盘上」（判词见 `axes/1-time/1.1.4.1-explicit-memory/experiments/2680-quant-overlay-frontier-13m/analysis.md`）。两件都走了预登记绑定（判据的应用代码 `run.py` 一起绑进契约，读数晚于绑定，见各自的 `prereg_binding.json`）。**未闭** = 两件的 fresh 独立复核、`1.1.1` 的等键数 24 键对照臂、`1.1.4.1` 的 `win64` 纯窗臂 + int8 评测与 carry 族 int8 档 |
-| 预登记绑定（治「契约先于读数」不可判这一类） | 自证 | worker | `tools/prereg_bind.py`：契约文件 `sha256` + `bound_at` 落 `prereg_binding.json`；`--require` 供训练 / 评测入口（含共享训练器 `train_depth_ar.py`：out-root 归属 `axes/**` 的某个实验就必须先绑定）；`--backfill-unbound` 只给「读数入库早于本工具引入提交」的历史产物写显式缺失；`tools/check_tree.py` 第 14 项转调同一实现 | 机检五项（有读数的实验必须有绑定、契约当前 `sha256` 与绑定一致、`bound_at` 严格早于读数产物时间、绑定与读数分属两个提交、`bound_at` 落在绑定文件那次提交的 ±10 分钟窗内）；`tests/test_prereg_bind.py` 十条可失败对照（含「绑定与读数同一提交 ⇒ 抓红」「事后补一条带旧 `bound_at` 的绑定 ⇒ 抓红」「强行回填本轮新实验 ⇒ 拒绝且非零退出」）；三处入口（`train_arms.sh` / `run.py` / 共享训练器）在缺绑定时退出码非零 | 45 分钟 | **已完成**：94 个有读数的实验全部有绑定记录（93 条 `unbound` 历史产物、1 条真实绑定）；`1.2.3` 的 seed-1 两臂在绑定之后训练与出读数，绑定与读数分属两个提交（仓内定序可判）。**已披露的不可判项**：`1.2.2` 的读数入库（`92d8e84`）早于本机制引入（`b5e8a7f`）⇒ 它的定序按真实历史无法补建，只能标 `unbound`；它成立与否不靠定序，但「契约先于读数」对它不可判 |
-| 树分诊 | 推进 | worker | `docs/triage.md`：每个在途 / 空白格的「能否改变判断」评分、覆盖度、所需算力与时间 | 每格一行，评分有可核对的理由；在途格标注它离「可交付」还缺什么 | 60 分钟 | **已完成**：`docs/triage.md` 落盘——判据写成 `分 = 判决增量 × 缺口紧迫度 ÷ 成本`（D / U / C 各三级，逐级给判据与成本换算），46 个研究项逐行打分（与 `python3 tools/summary.py` 的 id 列表逐个核对齐），三个格演示打分过程，第一批两件与次批首选各给一份工作包草案，另写「建议删除」与「明确不排序」两节；「推进」里程碑的优先级从本表自选、用户指定的方向优先（§4） |
-| 研究批次一 | 推进 | worker（按格隔离，逐格取 GPU 锁） | `docs/triage.md` 的第一批两件：`5.5` 的 `head_dim`=64 实测腿（1 臂 + CPU 三臂）、`3.1.5` 的四臂最小判决（3 臂，契约与实现已落盘）；`1.2.3` 因 U=2 落到 3.0，草案留在 `docs/triage.md` §3.3 当次批首选，不进本批 | 各自 `project.yaml` 的 `status` / `conclusion` 可被 `summary.py --check` 接受；证据落盘并有 fresh 复核 | 按格定（第一批两件 = 9 min 训练 + 4 min CPU 评测 + 24 min 训练，合计 37 min） | **执行侧已完成、待 fresh 复核**：`summary.py --check` 0 违规，两格的判词与读数分别落在 `axes/5-quant/5.5-fp8-head-dim/project.yaml`（已完成：hd64 实测腿 6336 B/位置、48.4375%、实测=解析，fp8 E4M3 在同字节轴仍省 192 B 且质量不可分辨）与 `axes/3-width/3.1.5-channel-sparsity/project.yaml`（被否证：按内容选通道比固定砍一半差 +0.0617、且三臂都不如 dense）；`3.1.5` 的评测装置在跑前修好了一处阻断出数的问题（探针在 `no_grad` 下调 `backward()`），判据线未改。**未闭的一项** = 两件的 fresh 独立复核（执行方不自评），以及 `5.5` 的 hd64 腿（含 seed 1 腿）尚无复核。`3.1.5` 的主判两臂已补 seed 1（Δ(K50−F50) = +0.0638 同向、越带，见 `axes/3-width/3.1.5-channel-sparsity/experiments/2644-channel-sparsity-13m/results.json::cross_seed`），`5.5` 的 `hd64-s1` 已出受认可读数（见 `axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/hd64-s1/results.json`）⇒ 两件的 `n≥2` 缺口都已闭合；仍 n=1 的只有 `3.1.5` 的 `K25` |
-
-## 3 验收证据：全树机检与测试计数
-
-里程碑与每个工作包的验收都跑这六条命令；前四条只需 PyYAML（依赖门见 `tools/bootstrap.sh`），第五条只要标准库与 `git`：
-
-```bash
-python3 tools/summary.py --check           # 研究项字段 / 证据 / 口径
-python3 tools/check_docs.py --check        # 文档引用可解析 + 文档地图完整性
-python3 tools/check_tree.py                # 同上，纯校验入口（含 check_docs）
-python3 tools/build_cost_table.py --check  # docs/cost-table.md 与 project.yaml 逐字节一致
-python3 tools/inventory_runs.py --check    # docs/repro.md 与磁盘一致 + 每条路径存在 + 每条不可重建写明缺什么
-python3 -m pytest tests/ -q                # 需要 requirements-dev.txt（torch 为 GB 级下载）
+```
+元级：README.md  AGENTS.md  CONTRIBUTING.md  LICENSE.md
+      docs/catalog.md（生成物）  docs/plan.md（本文件）  docs/structure.md（目录 / 命名 / 粒度约定）
+      docs/ledger.md（迁移台账）
+研究级：axes/<轴>/<格子>/{RESEARCH.md, project.yaml, experiments/**}
+        atlas/{README.md, playbook.md, cost-table.md*, repro.md*, triage.md, paper-plan.md,
+               design.md, atlas/FINDINGS.md}       （* = 生成物）
+工级：  harness/{README.md, harness/SCHEMA.md, research-schema.md, methodology.md, engine_capability.md}
+        tools/**  tests/**
 ```
 
-当前读数——**`pytest` 那一行是本仓测试计数的唯一家**，`README.md` 与 `STATUS.md` 只放指针：
+### 2.3 机检按层分工
 
-- `python3 -m pytest tests/ -q` ⇒ `1 failed, 933 passed`（约 2.6 分钟，单机 CPU，不占 GPU）。
-- 唯一的失败是**预存失败**，与本计划任何工作包无关，登记在此、不修：
-  `tests/test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`。它断言树内每个
-  `mutate.py` 都 `from tools.evalkit import mutation`，而下面 4 个还没接入（都在 `axes/6-predict/` 下）：
-  `2674-mdiffusion-13m`、`2671-padfill-13m`、`2660-latentreg-vs-disc-13m`、`2670-freerun-bpc-13m`。
-  修它要改这 4 个实验的变异脚本，是独立的一件工作，不是本计划的工作包；在它被修好之前，任何工作包的
-  红线都是「除这一条外 0 failed」。
-- 其余五条命令：0 违规、非零退出即失败。
+- **元级**：`tools/build_catalog.py --check`（目录与研究的对应）、`tools/check_meta_layer.py --check`
+  （元级文档不含研究级读数）、`tools/check_ledger.py --check`（迁移台账）、`tools/check_docs.py --check`
+  （引用可解析 + 每层索引完整性）。
+- **研究级**（由研究级 Agent 自己跑，元级不代跑）：`tools/summary.py --check` /
+  `tools/check_tree.py`、`tools/build_cost_table.py --check`、`tools/inventory_runs.py --check`、
+  `python3 -m pytest tests/ -q`。
+- 元级 CI 只跑元级那几条；研究级检查在迁到新家之后仍以同样口径生效，不降级。
 
-## 4 已定的取舍（执行方不自选）
+## 3 工作包
 
-- 代价表是**生成物**，事实仍只住在 `axes/**/project.yaml`；手写汇总表一律不建。
-- `project.yaml` 带 `laws: []` 与 `cost_rows`：每个研究项自己声明「我的证据支持哪几条定律、代价是多少」，
-  代价表按它分组，避免再出现「定律与证据的映射」的第二份家。
-- Δ 方向统一回 `SCHEMA.md` 的默认（`Δ = 对照 − 实验`，正 = 改善）；已被预登记冻结的实验文字保留，
-  但它的 `results.json` 必须带机器可读方向，读表的人不会读反。
-- 一律用 `tools/supervise.sh` 驱动重试：「无界重试」这种形态不允许再被复制。
-- 检查绑定「本次改动新增的内容」，不要求全树一次性合规；全树迁移只在明确要求时做。
-- 测试计数、里程碑状态、工作包状态只写在本文件；`README.md` 与 `STATUS.md` 只放指针。
-- 轴 7（参照台账）与轴 8（工程纪律）**不立项**：它们随附的实验没有 `project.yaml`，因此不进
-  `tools/summary.py` 的研究项表；覆盖由 `docs/structure.md` 的辅助实验一节与 `summary.py` 表尾那行声明承接。
-- 「推进」里程碑的研究优先级由分诊排序自选；用户指定的方向优先。
-- 主 Agent 只做派发、树管理、守边界、汇报；不亲手改文件。
+owner 一律是元级主 Agent 派发的 worker；每个包另配一名 fresh reviewer 复核（执行方不自评）。
 
-## 5 需要用户裁决（未裁决前按默认走）
+| 工作包 | 交付物 | 验收（可观测） | 预算 | 状态 |
+|---|---|---|---|---|
+| **WP1 分层搬迁与指针重写** | 新建 `harness/`（`harness/SCHEMA.md` / `research-schema.md` / `methodology.md` / `engine_capability.md` / `README.md`）与 `atlas/`（`playbook.md` / `cost-table.md` / `repro.md` / `triage.md` / `paper-plan.md` / `design.md` / `atlas/FINDINGS.md` / `README.md`）；`STATUS.md` 删除；`docs/` 只留 `catalog.md` / `plan.md` / `structure.md` / `ledger.md`；全仓指针（`*.md` / `tools/**` / `tests/**` / CI）改到新家 | 原六条机检命令在新路径下 0 违规；`pytest` 只剩已登记的预存失败；`grep` 全仓无旧路径残留（`atlas/playbook.md` 这类）且旧文件确实不在原位；生成物生成器写出新家路径 | 60 min | 已完成（搬迁提交 `2d68eb4` 里 12 个文件是 `R100` 纯移动；`tools/check_docs.py --check` 的文档地图三份齐全）。**未闭环**：研究级 Agent 仍在产出的实验目录会让 `check_docs` 报悬空引用，逐条归属见 §6 |
+| **WP2 研究级 SSOT 与生成目录** | `tools/build_catalog.py`（生成 + `--check`）；`docs/catalog.md`；`tests/test_catalog.py`；`harness/research-schema.md` 的 `RESEARCH.md` 契约节；46 × `axes/**/RESEARCH.md`（研究级 Agent 写） | `docs/catalog.md` 行数 = 46 且恰七列；每条状态与 `project.yaml::status` 一致；指针逐条可解析；手改目录副本（含改一行状态、加一行、删一行）`--check` 必红；测试里至少一条可失败对照 | 60 min | **元级一半已完成**（生成器 / 目录 / 测试，10 条用例含手改·删行·加行三条反向对照）；**研究级一半**（逐项 `RESEARCH.md`）owner = 研究级 Agent，已落盘的研究项各一份，未落盘的不由元级代造（`@absent`：缺失是一种状态） |
+| **WP3 元级隔离机检与层契约文档** | `tools/check_meta_layer.py` + `tests/test_meta_layer_isolation.py`（元级文档禁实验读数 / 逐实验目录路径 / 逐条代价事实 / 复现三态计数，白名单只留定义性说明）；`AGENTS.md` 三层契约 + 可复制派发模板；`README.md` 元级重写；`docs/structure.md` 收瘦到「约定」 | 注入一条 `bpc` / 一条实验 run 目录路径 ⇒ 机检变红，移除后恢复绿；`grep` 元级文档零命中（白名单外）；`AGENTS.md` 有三层表与派发模板；`pytest` 全绿（除预存失败） | 55 min | 已完成（`check_meta_layer.py --check` 零命中；注入探针两条在 `tests/test_meta_layer_isolation.py` 里；白名单为空——仓库里没有一条必须留在元级的读数） |
+| **WP4 迁移台账与无损证明** | `docs/ledger.md`（一源文件一行：原文 → 新家 → 或「删除并说明理由」，含与旧规则冲突的处置）；`tools/check_ledger.py` + `tests/test_ledger.py` | 台账覆盖迁移前时点全部元级文档（`docs/**` + 根级事实文档）与本次全部新增文档；每行新家存在（或删除理由非空且新家为空）；删掉一行 / 指向不存在的新家 ⇒ `--check` 必红 | 35 min | 已完成（18 个原文：17 迁到新家 + 1 删除带理由；本次新增 10 个各有登记；`tests/test_ledger.py` 覆盖漏行·悬空新家·无理由删除·未登记新增四条反向对照） |
+| **WP5 最终 fresh 复核** | 逐条复核 §1 七条验收的可观测证据 | 每条给 PASS / FAIL + 复现命令；FAIL 项必须点名文件与行 | 30 min | todo |
 
-- 许可：`LICENSE.md` 是 AGPL-3.0，而 `docs/paper-plan.md` 的目标是公开可引用；文档 / 论文通常用 CC BY。
-  发布前需要这个决定（属对外暴露，需同意）。
+## 4 证据指针
+
+- 元级机检（元级自己的红线）：
+  ```bash
+  python3 tools/build_catalog.py --check
+  python3 tools/check_meta_layer.py --check
+  python3 tools/check_ledger.py --check
+  python3 tools/check_docs.py --check
+  ```
+- 研究级机检（迁走后仍生效，由研究级 Agent 跑）：`tools/summary.py --check` / `tools/check_tree.py` /
+  `tools/build_cost_table.py --check` / `tools/inventory_runs.py --check` / `python3 -m pytest tests/ -q`。
+- 目录与台账：`docs/catalog.md`、`docs/ledger.md`。
+- 每条工作包的原始证据（命令输出、注入探针、复核结论）落在提交信息与该提交的 diff 里，
+  本文件只留指针，不转述读数。
+
+## 5 需要元级裁决（未裁决前按默认走）
+
+- 许可（`LICENSE.md` = AGPL-3.0，而研究级 `atlas/paper-plan.md` 目标是公开可引用）仍待用户裁决，
+  与本次分层无关，不挡里程碑。
+- `CONTRIBUTING.md` 不在本轮元级重写的写域内，所以它仍带着研究级细节；要不要按同一口径收瘦，
+  等下一轮元级裁决。
+
+## 6 本轮未闭环项（逐条点名，归属写清）
+
+**研究级的逐项 `RESEARCH.md`**：`axes/1-time/1.1.1-hard-window/RESEARCH.md` 与
+`axes/1-time/1.1.4.1-explicit-memory/RESEARCH.md` 已由研究级 Agent 落盘，其余研究项尚未写。
+元级目录不依赖它（七列取自 `project.yaml`），所以这一项不挡元级里程碑；owner = 研究级 Agent。
+
+**悬空引用只来自研究级尚未产出的证据路径**（`tools/check_docs.py --check` 逐条列出，元级无法代造）：
+
+- `axes/1-time/1.1.1-hard-window/RESEARCH.md` → 本轮的锚点召回实验目录（分析未出）
+- `axes/1-time/1.1.4.1-explicit-memory/RESEARCH.md` 与同项实验的 `README.md` → 本轮的 int8 前沿实验（分析与上游键锚点未出）
+- `axes/5-quant/5.5-fp8-head-dim/**` → 本轮 `head_dim=128` 腿的 run 产物（未出）
+
+这些路径的存在与否由那三个研究级单元决定；它们一落盘，`check_docs` 即自动转绿。
+`tests/test_docs_refs.py::test_all_doc_references_resolve` 的失败就是上表的三项，非元级引入。

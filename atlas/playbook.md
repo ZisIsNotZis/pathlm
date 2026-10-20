@@ -3,7 +3,7 @@
 这些不是观点，是本仓库的实测结论。每一条都给了**适用边界**——边界比结论更重要：
 本项目反复出现「方向随规模翻转」，但**必须先排除口径与刻度差**（见定律 8 的边界）；
 **动手前先过定律 10（变化空间前门）**。每条定律的证据锚点收在对应研究项 `project.yaml`
-（`axes/**/project.yaml`，见 `docs/research-schema.md`）的 `experiments` / `evidence` 字段
+（`axes/**/project.yaml`，见 `harness/research-schema.md`）的 `experiments` / `evidence` 字段
 （本文件只写定律本身，不重复锚点）。
 
 ## 定律 1 · 元素税分割
@@ -37,7 +37,7 @@
 - **共享同一台机器 ⇒ 次可加**（损坏 × 修复：+0.087 < 0.277 之和）；
 - **一方破坏另一方所需结构 ⇒ 拮抗**（shuffle × everything；整形 × retry）。
 
-**边界**：组合**默认留白**（见 `SCHEMA.md` §4）；本定律只用于**解释**已观测到的耦合方向，
+**边界**：组合**默认留白**（见 `harness/SCHEMA.md` §4）；本定律只用于**解释**已观测到的耦合方向，
 并写进各格子的 `deps` 字段。
 
 ## 定律 4 · 辅助输出是 fallback，不是 voter

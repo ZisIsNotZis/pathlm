@@ -1,9 +1,9 @@
-"""复现清单（`docs/repro.md` + `tools/inventory_runs.py`）的三条红线。
+"""复现清单（`atlas/repro.md` + `tools/inventory_runs.py`）的三条红线。
 
 每件都可失败：
 1. **清单与磁盘不一致必须抓红**：在一份只含入库文件的临时副本里多造一个 run 目录，
    `--check` 必须非零退出；同一份副本**不动**时必须通过（反向对照，否则上面的红是假的）。
-2. **生成物被手改必须抓红**：改 `docs/repro.md` 里的一个字，`--check` 必须失败。
+2. **生成物被手改必须抓红**：改 `atlas/repro.md` 里的一个字，`--check` 必须失败。
 3. **`not_reproducible` 必须写明缺什么**：缺 `missing` 即判失败（构造行 + 现行清单各一遍）。
 
 临时副本只放 `git ls-files` 列出的文件，并在副本里 `git init && git add`，
@@ -31,8 +31,8 @@ def _clone_of_tracked_files(dest):
     tracked = subprocess.run(["git", "-C", ROOT, "ls-files", "-z"],
                              capture_output=True, text=True, check=True).stdout
     rels = [r for r in tracked.split("\0") if r]
-    # `docs/repro.md` 可能尚未提交（本工作包第一次生成它时），但它是被检查的对象，必须一起带过去。
-    rels.append("docs/repro.md")
+    # `atlas/repro.md` 可能尚未提交（本工作包第一次生成它时），但它是被检查的对象，必须一起带过去。
+    rels.append("atlas/repro.md")
     for rel in rels:
         src = os.path.join(ROOT, rel)
         if not os.path.isfile(src):
@@ -68,7 +68,7 @@ def test_hand_edited_render_fails_check(tmp_path):
     """生成物被手改 ⇒ `--check` 必须失败（逐字节比对）。"""
     tree = tmp_path / "tree"
     _clone_of_tracked_files(tree)
-    render = tree / "docs" / "repro.md"
+    render = tree / "atlas" / "repro.md"
     text = render.read_text(encoding="utf-8")
     assert text, "生成物不得为空"
     render.write_text(text.replace("rebuildable_only", "rebuildable-only", 1), encoding="utf-8")
@@ -105,7 +105,7 @@ def test_render_is_up_to_date_with_disk():
     """生成物过期（实验目录变了但没重新生成）⇒ 失败。"""
     text = inv.render(inv.collect())
     assert text == inv.OUT.read_text(encoding="utf-8"), (
-        "docs/repro.md 与磁盘上的实验目录不一致；改完请运行 python3 tools/inventory_runs.py")
+        "atlas/repro.md 与磁盘上的实验目录不一致；改完请运行 python3 tools/inventory_runs.py")
 
 
 def test_every_listed_path_exists():

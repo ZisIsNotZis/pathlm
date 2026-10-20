@@ -1,8 +1,8 @@
 # 核心设计（RAP）与仓库布局
 
 > 「RAP」是用户对本仓库核心设计的简称（沿用对话原文）。本文只写**设计契约**与
-> **共享底座**；每一条轴上的实验研究在 `axes/` 下，方法学在 `docs/methodology.md`，
-> 已验证定律在 `docs/playbook.md`。
+> **共享底座**；每一条轴上的实验研究在 `axes/` 下，方法学在 `harness/methodology.md`，
+> 已验证定律在 `atlas/playbook.md`。
 
 ## 1. RAP：同空间逐层精化 + 变深度提交
 
@@ -20,7 +20,7 @@
 3. **全深度并行监督**：每个深度都有读出与监督 ⇒ 出口资产（浅层截断质量）
    只能由此产生。纯 dense trunk 没有浅层截断资产（实测 tf@4 0.12 vs 0.97）。
 4. **主干不动，判断头可动**：挂在主干外的头（MTP / probe 式判断头）实测零税；
-   **当前证据支持的倾向**是：「侵入主干本体」的结构会付结构性税（见 `docs/playbook.md`
+   **当前证据支持的倾向**是：「侵入主干本体」的结构会付结构性税（见 `atlas/playbook.md`
    定律 7）——这是**倾向**，不是普遍禁令（同仓已有反证方向：读出改动有 −0.0812/−0.0888
    快照改善）。
 
@@ -37,7 +37,7 @@
 **引擎能力**：`KVHeadProjectionMixin`（KV 头投影从 block 类解耦）+ 窗口掩码作为
 **正交装饰层** + `ComposableBlock` 承载 `GQA × carry` ⇒ `GQA × carry × window`
 **可组合**，缺省（全关）与 stock `Block` 逐位相同。**完整的接受/拒绝矩阵与拒绝点见
-`docs/engine_capability.md`**（由 `tests/test_engine_capability.py` 机器核对）。
+`harness/engine_capability.md`**（由 `tests/test_engine_capability.py` 机器核对）。
 
 ## 3. 评测套件（eval kit，唯一不解耦的东西）
 
@@ -50,7 +50,7 @@
 | needle 电池 | 保留/检索（v2 构造） | `pathlm/eval.py` + `probe_*.py` |
 | 三信号监测栈 | prob0 / 路径分歧 js / distinct-2 | `pathlm/gen_quality.py` |
 | Slider 分配器 | 校准 → 双货币成本模型 → 求解器 → 验证解码 | `pathlm/slider.py` |
-| 天平方法学 | 三列账本 / 方差界 / 双货币 / 冒烟+变异 | `docs/methodology.md` |
+| 天平方法学 | 三列账本 / 方差界 / 双货币 / 冒烟+变异 | `harness/methodology.md` |
 
 **新研究线必须先接上这套天平**，否则结果不可与历史对照。
 
@@ -58,11 +58,10 @@
 
 ```
 README.md            门面（本仓库是什么、最硬的几条结论、怎么跑起来、许可）
-STATUS.md            当前进展与下一步（路由，不拥有事实；事实见 docs/plan.md 与 axes/**）
-FINDINGS.md          已确立结论的索引（路由，不拥有事实；数字见 docs/cost-table.md）
-SCHEMA.md            实验与旧课题页的格式契约与分析纪律（§6–§24 仍生效）
+atlas/FINDINGS.md          已确立结论的索引（路由，不拥有事实；数字见 atlas/cost-table.md）
+harness/SCHEMA.md            实验与旧课题页的格式契约与分析纪律（§6–§24 仍生效）
 docs/structure.md    研究树布局 / 用词 / 粒度 / 目录命名（SSOT）
-docs/research-schema.md  研究项 project.yaml 的格式契约（SSOT）
+harness/research-schema.md  研究项 project.yaml 的格式契约（SSOT）
 AGENTS.md            协作制度与文档地图（写给 agent）
 CONTRIBUTING.md      贡献流程与硬性规则
 LICENSE.md           许可（AGPL-3.0 全文）
@@ -87,7 +86,7 @@ tools/summary.py     扫描 project.yaml 出状态全表
 tools/check_tree.py  研究树校验（字段/证据/口径）
 tools/check_schema.py 兼容入口（转调 check_tree.py）
 tools/check_docs.py  文档引用可解析 + 文档地图完整性（AGENTS.md §2.1 / 本文 §4）
-tools/build_cost_table.py  生成 docs/cost-table.md；--check 与手改副本逐字节比对
+tools/build_cost_table.py  生成 atlas/cost-table.md；--check 与手改副本逐字节比对
 tools/bootstrap.sh   干净克隆后重建机检环境（版本门 + 依赖门，见 requirements.txt）
 requirements.txt     机检四件套的依赖（PyYAML）
 requirements-dev.txt tests/ 的额外依赖（pytest / numpy / torch）

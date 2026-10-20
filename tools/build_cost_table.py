@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""build_cost_table.py — 从 `axes/**/project.yaml` 生成 `docs/cost-table.md`（代价表）。
+"""build_cost_table.py — 从 `axes/**/project.yaml` 生成 `atlas/cost-table.md`（代价表）。
 
 本文件是**生成物**（render）：定律 ↔ 证据 ↔ 代价数字的映射写在每个研究项的
-`laws` / `cost_rows` 字段里（契约见 `docs/research-schema.md` §2.1 / §2.2），
-定律正文只有 `docs/playbook.md` 一个家。本脚本只把它们拼成一张可引用的表，
+`laws` / `cost_rows` 字段里（契约见 `harness/research-schema.md` §2.1 / §2.2），
+定律正文只有 `atlas/playbook.md` 一个家。本脚本只把它们拼成一张可引用的表，
 **不重算任何数字、不改口径**。
 
 用法：
-    python3 tools/build_cost_table.py          # 写 docs/cost-table.md；未覆盖的定律打到 stderr
+    python3 tools/build_cost_table.py          # 写 atlas/cost-table.md；未覆盖的定律打到 stderr
     python3 tools/build_cost_table.py --check  # 与磁盘逐字节比对；不一致 ⇒ 非零退出 + 差异摘要
                                                # 定律 1..11 里有定律无 cost_rows 覆盖 ⇒ 非零退出
 """
@@ -21,14 +21,14 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 AXES = ROOT / "axes"
-OUT = ROOT / "docs" / "cost-table.md"
-PLAYBOOK = ROOT / "docs" / "playbook.md"
+OUT = ROOT / "atlas" / "cost-table.md"
+PLAYBOOK = ROOT / "atlas" / "playbook.md"
 
 sys.path.insert(0, str(ROOT / "tools"))
 
 import check_tree  # noqa: E402
 
-#: 定律总数（编号域 = `docs/playbook.md` 的「定律 1..11」）。
+#: 定律总数（编号域 = `atlas/playbook.md` 的「定律 1..11」）。
 LAWS_TOTAL = check_tree.LAWS_TOTAL
 #: 定律 8–11 不是「代价」，而是**用表前必须过的口径与前置条件**。
 CALIBER_LAWS = (8, 9, 10, 11)
@@ -43,16 +43,16 @@ INTRO = [
     "# 代价表：定律 × 是否触主干 × 观测代价 × 边界 × 出处",
     "",
     "> 本文件由 `tools/build_cost_table.py` 从 `axes/**/project.yaml` 的 `laws` / `cost_rows` 生成，"
-    "禁止手改；改事实请改 `project.yaml`（契约见 `docs/research-schema.md` §2.1 / §2.2）。",
-    "> 定律正文与适用边界只有 `docs/playbook.md` 一个家；本表只把「定律 ↔ 证据 ↔ 代价数字」的对应写出来。",
+    "禁止手改；改事实请改 `project.yaml`（契约见 `harness/research-schema.md` §2.1 / §2.2）。",
+    "> 定律正文与适用边界只有 `atlas/playbook.md` 一个家；本表只把「定律 ↔ 证据 ↔ 代价数字」的对应写出来。",
     "> 每个数字都逐位照抄「出处」那一栏指向的文件，**未重算、未换算口径、未翻转符号**；"
     "指标的单位写在「观测代价」里，**方向写在它右侧的「Δ 方向」列**。",
     "> **每条行自带方向**：`delta_direction` 是 `project.yaml` 里的必填字段，本表把它翻成"
     "「Δ 方向」列——`正 = 改善` / `正 = 更差`。任何一行单独摘出来都不会被读反；"
-    "同一张表里两种方向并存，**不许**把列里的符号跨行比较（契约见 `docs/research-schema.md` §2.3）。",
+    "同一张表里两种方向并存，**不许**把列里的符号跨行比较（契约见 `harness/research-schema.md` §2.3）。",
     "> 列义：**改动类型** = 改了什么（人话）；**触主干** = 是否改主干前向 / 残差 / 层间聚合"
     "（旁路判断头、读出、训练配方一律为「否」）；**观测代价** = 实测 `delta` + 指标 + 对照；"
-    "**Δ 方向** = 该行 `delta` 的符号约定（每行自带，见 `docs/research-schema.md` §2.3）；"
+    "**Δ 方向** = 该行 `delta` 的符号约定（每行自带，见 `harness/research-schema.md` §2.3）；"
     "**规模与配方** = 这个数字所处的规模与训练配方；**适用边界** = 它不能被读成什么；"
     "**研究项** = 事实源所在的 `project.yaml`。",
     "",
@@ -62,7 +62,7 @@ LAW_HEADING_RE = re.compile(r"^##\s*定律\s*(\d+)\s*·\s*(.+?)\s*$")
 
 
 def law_titles() -> dict[int, str]:
-    """从 `docs/playbook.md` 的二级标题取定律编号 → 标题（只取标题，不搬正文）。"""
+    """从 `atlas/playbook.md` 的二级标题取定律编号 → 标题（只取标题，不搬正文）。"""
     titles: dict[int, str] = {}
     for line in PLAYBOOK.read_text(encoding="utf-8").splitlines():
         m = LAW_HEADING_RE.match(line)
@@ -158,7 +158,7 @@ def render(rows: list[dict], titles: dict[int, str]) -> str:
         title = titles.get(law, "")
         body.append(f"### 定律 {law}" + (f" · {title}" if title else ""))
         body.append("")
-        body.append(f"> 定律正文与适用边界见 `docs/playbook.md` 的「定律 {law}」；本节只列证据与数字。")
+        body.append(f"> 定律正文与适用边界见 `atlas/playbook.md` 的「定律 {law}」；本节只列证据与数字。")
         body.append("")
         if by_law.get(law):
             body.extend(_table(by_law[law]))
@@ -171,14 +171,14 @@ def render(rows: list[dict], titles: dict[int, str]) -> str:
     body.append(
         "这四条不是代价行，而是**引用上面任何数字之前必须先过的口径与前置条件**："
         "该不该报「翻转」、判据怎么设计、机制有没有变化空间、算力与内存按什么口径算。"
-        "正文、适用边界与判定条件都在 `docs/playbook.md`，本节**不复述**，只指回它，"
+        "正文、适用边界与判定条件都在 `atlas/playbook.md`，本节**不复述**，只指回它，"
         "并列出这些口径之下已经测到的具体事实。")
     body.append("")
     for law in CALIBER_LAWS:
         title = titles.get(law, "")
         body.append(f"### 定律 {law}" + (f" · {title}" if title else ""))
         body.append("")
-        body.append(f"- 指回：`docs/playbook.md` 的「定律 {law}」（正文与边界不在本文件重复）。")
+        body.append(f"- 指回：`atlas/playbook.md` 的「定律 {law}」（正文与边界不在本文件重复）。")
         body.append("")
         if by_law.get(law):
             body.extend(_table(by_law[law]))
@@ -228,7 +228,7 @@ def main(argv: list[str]) -> int:
     titles = law_titles()
     missing_titles = [lw for lw in range(1, LAWS_TOTAL + 1) if lw not in titles]
     if missing_titles:
-        print(f"FAIL：docs/playbook.md 里找不到定律标题：{missing_titles}", file=sys.stderr)
+        print(f"FAIL：atlas/playbook.md 里找不到定律标题：{missing_titles}", file=sys.stderr)
         return 1
 
     text = render(rows, titles)
@@ -237,7 +237,7 @@ def main(argv: list[str]) -> int:
         print(f"警告：同一条代价事实写了两行 —— {dup}", file=sys.stderr)
     if uncovered:
         print(f"未覆盖的定律（没有任何 cost_rows 支撑）：{uncovered}"
-              f"；定律正文见 docs/playbook.md", file=sys.stderr)
+              f"；定律正文见 atlas/playbook.md", file=sys.stderr)
 
     if check:
         disk = OUT.read_text(encoding="utf-8") if OUT.exists() else None
