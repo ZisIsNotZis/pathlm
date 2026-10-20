@@ -542,10 +542,11 @@ def render(exps: list[Experiment], local: dict[str, list[str]] | None = None,
     body.append("## 汇总（生成时统计）")
     body.append("")
     aggregates = sum(1 for e in exps for r in e.runs if r.name == ".")
-    body.append(f"- 实验 **{len(exps)}** 个（`axes/**/experiments/*`），run **{runs_total}** 个"
-                f"（其中 {aggregates} 个是实验根的汇总行「.」，{runs_total - aggregates} 个是子目录或前缀组；"
-                f"有 run 产物的实验 {sum(1 for e in exps if e.runs)} 个）。")
-    body.append("- 三态分布：" + "、".join(
+    body.append(f"- 规模：实验 **{len(exps)}** 个（`axes/**/experiments/*`），run 条目 **{runs_total}** 个"
+                f"（{runs_total - aggregates} 个是 run 子目录或前缀组，{aggregates} 个是**实验级汇总（不是 run 目录）**，"
+                f"即实验自己那一行「.」；有 run 产物的实验 {sum(1 for e in exps if e.runs)} 个）。")
+    body.append("")
+    body.append("- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：" + "、".join(
         f"`{v}`（{VERDICT_LABELS[v]}）**{counts[v]}** 个" for v in VERDICTS) + "。")
     body.append(f"- 入库权重：**{len(weights_in_repo)}** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；"
                 f"有落盘 `results*.json` 的实验 {sum(1 for e in exps if e.has_results)} 个。")

@@ -1,7 +1,7 @@
 # 把定律写成一篇论文
 
 类型：计划；所有者：接手本仓的 agent；意图与验收，不是结果。
-本文件**不拥有任何读数**：每条结论只写一句结论句 + 一个指针，数字住在指针指向的家（`docs/cost-table.md`、`axes/**/project.yaml`、各实验 `analysis.md`、`docs/repro.md`）。唯一的例外是 §3.2 那组复现等级计数——它是引用，家写在同段。数字更新时本文件不改。
+本文件**不拥有任何读数**：每条结论只写一句结论句 + 一个指针，数字住在指针指向的家（`docs/cost-table.md`、`axes/**/project.yaml`、各实验 `analysis.md`、`docs/repro.md`）。纪律：本文件**零读数、无例外**——正文里只出现计划性数字（页数、规模、小节号、研究项编号、许可名），任何读数都不抄进来。数字更新时本文件不改。
 
 ## 1 一句话 claim，和它**不**声称的事
 
@@ -30,7 +30,7 @@
 | 定律 2 · TTA 增益 ∝ 训练路径多样性 | §5 主结果 C | 确定性路径上的集成恒为 0；增益只来自练进去的多样性——「免费增益」这条路的否定证据 | [代价表定律 2](docs/cost-table.md#定律-2--tta-增益--训练路径多样性)、`docs/playbook.md` |
 | 定律 3 · 组合有选择性 | §6 主结果 D | 组合的默认答案是留白：次可加只在共用同一台机器时成立，破坏对方所需结构就是拮抗 | [代价表定律 3](docs/cost-table.md#定律-3--组合有选择性)、`docs/playbook.md` |
 | 定律 4 · 辅助输出是 fallback，不是 voter | §5 主结果 C | 辅助输出的用法边界：混进预测就退化——与定律 2 合成「旁路免费但不可当投票器」 | [代价表定律 4](docs/cost-table.md#定律-4--辅助输出是-fallback不是-voter)、`docs/playbook.md` |
-| 定律 5 · 稳定性工程 | §2 方法（一页 router）+ 附录 A | 数值纪律是复现前提，不是结果：bf16 下的负向 / reward 类损失必须走 float32 + 更新前门控 | [代价表定律 5](docs/cost-table.md#定律-5--稳定性工程)、`docs/playbook.md` |
+| 定律 5 · 稳定性工程 | §2 方法（一页 router）+ 附录 A | 数值纪律是复现前提，不是结果：bf16 下的负向 / reward 类损失必须走 float32 + 更新前门控（该行在代价表里有事实行，但本文不把它当结论用） | [代价表定律 5](docs/cost-table.md#定律-5--稳定性工程)、`docs/playbook.md` |
 | 定律 6 · 整形 vs 自适应是同一梯度的两面 | §3 主结果 A | 形态税的机制解释：「两全」被证伪，只能按 profile 选，且剂量响应随规模变化 | [代价表定律 6](docs/cost-table.md#定律-6--整形-vs-自适应是同一梯度的两面)、`docs/playbook.md` |
 | 定律 7 · 主干被改，税就来；旁路判断头可以免费 | §4 主结果 B | 全文的主轴：同引擎同配方下，触主干的四个独立设计都付税，不触主干的读了零税 | [代价表定律 7](docs/cost-table.md#定律-7--主干被改税就来旁路判断头可以免费)、`docs/playbook.md` |
 | 定律 8 · 规模会翻转方向 | §7 口径与前置条件 | 读表第一条：斜率符号按轴相反，报「翻转」前先排除口径与刻度差；小模型只做机制判决，不做量级判决 | [代价表定律 8](docs/cost-table.md#定律-8--规模会翻转方向必须单独列一条)、`docs/playbook.md` |
@@ -50,7 +50,7 @@
 
 `docs/repro.md` 是**生成物**：`python3 tools/inventory_runs.py` 从已入库路径生成，`--check` 校验副本一致 + 每条路径存在 + 每条不可重建写明缺什么；三态定义与判定规则在同一文件的「三态定义」一节，汇总读数住在同一文件的汇总一节，本文件只引用它、不拥有它。
 
-三态结论：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**86** 个、`not_reproducible`（连同类结果都拿不到）**34** 个——这三个数是**引用**，不是本文件的事实：它们由 `python3 tools/inventory_runs.py` 生成、家是 `docs/repro.md` 的汇总一节，树一变就该重跑生成器，本文件不跟着改。
+三态结论与各档计数住在 `docs/repro.md` 的汇总一节；对本文件的唯一后果是——本文没有一张表能标 `reproducible`，只能是 `rebuildable_only` 或 `not_reproducible`。
 
 **这意味着论文必须给每张表标复现等级**：读者要能一眼看出「这个数字我能不能自己重跑出来」，以及「重跑出来的是同样的字节还是一个同类模型」。复现等级不是免责声明，是结论的一部分；一张标不出等级的表格不得进正文。
 
@@ -64,8 +64,8 @@
 
 1. **层间 causal attention 在本尺度无净增量**：scalar 臂落进不可排序带、并伴随层退化，qkv 臂越带且方向更差 ⇒ 多付的参数与逐 token 乘加不值；这是「无净增量 ≠ 机制无效」的实例。指针：`axes/2-depth/2.2.2-attention-residual/project.yaml::conclusion`、`axes/2-depth/2.2.2-attention-residual/experiments/2653-interlayer-attn-13m/analysis.md#人话摘要`。
 2. **层间学习加权和（DenseFormer 形态）在 L=8 上无净增量**：按预登记 falsification 判否，判词同时写明两件事——它**不是**「DenseFormer 普遍无效」，且该机制要缓解的层间串联信息瓶颈在本尺度**结构条件不成立**；更大规模点仍列在该项的缺口里 ⇒ 按定律 10 只能记「本设计下无信号」。指针：`axes/2-depth/2.2.3-learned-layer-sum/project.yaml::conclusion`、`axes/2-depth/2.2.3-learned-layer-sum/project.yaml::status`、`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md#人话摘要`。
-3. **并行子层：有可排序的质量代价，但代价面有真实收益**：质量代价越带且两 seed 同号，同框的代价面（层内串行链、每 token 串行步数）给出真实收益、算力几乎不变 ⇒ 结论是**场景依赖的权衡**而不是「不划算」；这是本轮唯一一条「付了可排序的税、同时在同框代价面上换到真实收益」的判决——同批的掩码扩散也报了代价面收益，但质量代价远大于它，方向相反。指针：`axes/2-depth/2.2.4-parallel-sublayer/project.yaml::conclusion`、`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md#代价面同框表`。
-4. **掩码扩散极贵**：K 步去噪把顺序前向次数压下来，但同批位置上的质量差远越参考带、提高 K 拉不回 ⇒ 契约的否证条件整体触发；它是定律 11「纸面省的不等于实测省」的最佳反例。指针：`axes/6-predict/6.3.1-diffusion/project.yaml::conclusion`、`axes/6-predict/6.3.1-diffusion/project.yaml::status`、`axes/6-predict/6.3.1-diffusion/experiments/2674-mdiffusion-13m/analysis.md#代价轴`。
+3. **并行子层：有可排序的质量代价，但代价面有真实收益**：质量代价越带且两 seed 同号，同框的代价面（层内串行链、每 token 串行步数）给出真实收益、算力几乎不变 ⇒ 结论是**场景依赖的权衡**而不是「不划算」；这是本轮唯一一条「付了可排序的税、同时在同框代价面上换到真实收益」的判决——同批的掩码扩散也报了代价面收益，但质量代价比它大约两个数量级 ⇒ 判决不同（一项判不成立，一项判场景权衡）。指针：`axes/2-depth/2.2.4-parallel-sublayer/project.yaml::conclusion`、`axes/2-depth/2.2.3-learned-layer-sum/experiments/2651-inter-layer-topology-s1-13m/analysis.md#代价面同框表`。
+4. **掩码扩散极贵**：K 步去噪把顺序前向次数压下来，但同批位置上的质量差远越参考带、提高 K 拉不回 ⇒ 契约的否证条件整体触发；它是定律 11 的最佳反例，但反的是另一面：顺序前向确实由 T 降到 K，省下来的算力换不回质量（「纸面省的不兑现」那条的读数是同节的线性注意力行）。指针：`axes/6-predict/6.3.1-diffusion/project.yaml::conclusion`、`axes/6-predict/6.3.1-diffusion/project.yaml::status`、`axes/6-predict/6.3.1-diffusion/experiments/2674-mdiffusion-13m/analysis.md#代价轴`。
 
 ## 5 结构（8–10 页，单栏）
 

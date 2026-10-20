@@ -112,7 +112,7 @@ python3 -m pytest tests/ -q               # 需要 requirements-dev.txt（torch 
 - **研究树**：46 个研究项 —— ✅ 已完成 13 / ❌ 被否证 5 / 🔄 进行中 14 / ⬜ 未开始 14（`python3 tools/summary.py`
   的末行与逐行状态；数随 `axes/**/project.yaml` 变，以命令的实时输出为准）。
 - **代价表**：`docs/cost-table.md` 是**生成物**（`tools/build_cost_table.py` 从 `axes/**/project.yaml` 生成），
-  当前 `--check` 通过；条数与覆盖的研究项由生成器打在表头，本节不另记。
+  当前 `--check` 通过；条数与覆盖的研究项由生成器打在表尾的「覆盖情况」一节，本节不另记。
 - **引用与文档地图**：`tools/check_docs.py --check` 扫描全树文档与引用，当前 0 处违规，并把每个事实文档逐个
   对到 `AGENTS.md` §2.1 与 `docs/design.md` §4 的地图行。
 - **测试**：`python3 -m pytest tests/ -q`（约 2 分钟）当前有一条**预存失败**（不在任何在办工作包里，修它
