@@ -40,17 +40,16 @@ import math
 import os
 import sys
 import time
+from pathlib import Path
 
 import torch
 import torch.nn as nn
-
-from tools.prereg_bind import require as require_prereg
-from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
 sys.path.insert(0, ROOT)
 
+from tools.prereg_bind import require as require_prereg         # noqa: E402
 import train_depth_ar as TDA                                    # noqa: E402
 from pathlm.depth_ar import (DepthARConfig, DepthARModel, depth_curve,  # noqa: E402
                              tf_acceptance)
