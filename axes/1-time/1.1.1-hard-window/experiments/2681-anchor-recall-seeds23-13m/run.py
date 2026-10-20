@@ -76,8 +76,14 @@ REF_2662 = {
 #: `config.json`（训练后由 `make_config.py` 生成）必须与契约一致的字段。
 #: 判据线与口径的家是 `README.md` + 本文件；`config.json` 只是检查点 sha256 的落盘面，
 #: 它不参与绑定（见 `prereg_binding.json::contract_files`），所以每项都在这里核对一遍。
-CONTRACT_ARMS = ["win16a_s0", "win16a_s1", "win16a_s2", "win16a_s3",
-                 "win16_s0", "win16_s1", "win16_s2", "win16_s3", "full"]
+CONTRACT_ARMS_REQUIRED = ["win16a_s0", "win16a_s1", "win16a_s2", "win16a_s3",
+                          "win16_s0", "win16_s1", "full"]
+#: 可选臂（README §3b 的显式登记）：**只服务质量腿的配对**，不进召回腿的任何判据。
+#: 外部 GPU 占用导致它们未训完时，本实验照常出判，质量腿的 n 如实回落到可用的 seed 数。
+CONTRACT_ARMS_OPTIONAL = ["win16_s2", "win16_s3"]
+CONTRACT_ARMS = [a for a in ("win16a_s0", "win16a_s1", "win16a_s2", "win16a_s3",
+                             "win16_s0", "win16_s1", "win16_s2", "win16_s3", "full")
+                 if a in CONTRACT_ARMS_REQUIRED or a in CONTRACT_ARMS_OPTIONAL]
 CONTRACT_SEEDS = [0, 1, 2, 3]
 CONTRACT_EVAL = {"bpc": {"n_batches": 96, "batch_size": 16, "window_seed": 2},
                  "probe": {"n_batches": 96, "batch_size": 16, "window_seed": 2,
@@ -96,8 +102,12 @@ def _check_config_against_contract(cfg: dict) -> None:
     改动（换臂、换批数、换针参数）必须在这里红掉，而不是默默跑。
     """
     got = [a["name"] for a in cfg["arms"]]
-    if got != CONTRACT_ARMS:
-        raise SystemExit(f"config.json 的臂清单与契约不一致：\n want {CONTRACT_ARMS}\n got  {got}")
+    missing_req = [a for a in CONTRACT_ARMS_REQUIRED if a not in got]
+    extra = [a for a in got if a not in CONTRACT_ARMS]
+    want_order = [a for a in CONTRACT_ARMS if a in got]
+    if missing_req or extra or got != want_order:
+        raise SystemExit(f"config.json 的臂清单与契约不一致：缺必到臂 {missing_req}、"
+                         f"多出 {extra}；或缺/多之外顺序不对：\n want {want_order}\n got  {got}")
     if [int(s) for s in cfg["seeds"]] != CONTRACT_SEEDS:
         raise SystemExit(f"config.json 的 seeds 与契约不一致：{cfg['seeds']} != {CONTRACT_SEEDS}")
     for block, want in CONTRACT_EVAL.items():
@@ -568,6 +578,9 @@ def main():
         cross = {}
         for s in cfg["seeds"]:
             a, w = f"win16a_s{s}", f"win16_s{s}"
+            if a not in planted_by_arm or w not in planted_by_arm:
+                cross[f"{a}_minus_{w}"] = {"note": "该 seed 的纯窗臂未训（README §3b）⇒ 跳过"}
+                continue
             cross[f"{a}_minus_{w}"] = {}
             for set_name in ("intersection", "union"):
                 idx = idx_sets[set_name]
@@ -584,8 +597,8 @@ def main():
     def _passes(arm, b, key="passes_both"):
         return bool(per_arm_bucket[arm][b].get(key, False)) if per_arm_bucket[arm][b].get("n") else False
 
-    anchor_arms = [f"win16a_s{s}" for s in cfg["seeds"]]
-    floor_arms = [f"win16_s{s}" for s in cfg["seeds"]]
+    anchor_arms = [f"win16a_s{s}" for s in cfg["seeds"] if f"win16a_s{s}" in arm_names]
+    floor_arms = [f"win16_s{s}" for s in cfg["seeds"] if f"win16_s{s}" in arm_names]
     # 判据①：复用臂（seed 0/1）的 anchor / beyond 桶逐位复现 2662
     needle_repro = {}
     for bucket, refs in (("anchor", REF_2662["anchor_bucket"]),

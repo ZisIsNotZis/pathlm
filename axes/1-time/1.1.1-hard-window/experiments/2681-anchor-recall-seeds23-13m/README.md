@@ -89,6 +89,21 @@ python3 train_depth_ar.py <arm> --d 256 --layers 12 --heads 8 --mlp-mult 6 \
   --eval-batches 4 --out-root axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/train
 ```
 
+### 3b 臂清单的可选位（**在读数产生之前**登记的资源性收口）
+
+本实验的 4 个新臂（`win16a_s2/s3`、`win16_s2/s3`）都要占一次 GPU 训练窗口，而本机上的
+更高优先级作业随时会把卡占住。因此把**臂清单**分成两档，写死在 `run.py::CONTRACT_ARMS_*`：
+
+- **必到（7 臂）**：`win16a_s0/s1/s2/s3`（召回到判据的 4 个被干预臂）、`win16_s0/s1`（seed 0/1 的
+  配对价格 + 判据①的复现门）、`full`（全因果参照）。
+- **可选（2 臂）**：`win16_s2/s3`——它们**只**服务质量腿（判据⑦）的同 seed 配对，**不进召回腿的
+  任何判据**（判据②③ 的地板来自同一 generator 的 `plant=False` 控制臂，与纯窗臂无关）。
+
+若可选臂因外部 GPU 占用未训完：`make_config.py` 把它们记入 `missing_new_arms`，本实验**照常出判**，
+判据⑦ 的 n 如实回落到可用的 seed 数并在 `analysis.md` 与 `project.yaml::gaps` 里登记。
+**判据线 ①–⑥ 的常数、阈值、CI 实现、方差带一字不改**；能变的只有判据⑦ 的样本量，且样本量只能变小
+（= 只能让结论更弱，不会更强）。
+
 ## 5 判据线（**预登记：写下后不得改**）
 
 | # | 判据 | 判定线 | 该涨 / 该跌 / 必须不变 |
