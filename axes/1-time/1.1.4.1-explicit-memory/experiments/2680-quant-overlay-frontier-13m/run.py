@@ -35,6 +35,8 @@ P2662 = ROOT / "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-ancho
 LOCK = Path("/tmp/pathlm_gpu.lock")
 LOCK_WAIT_S = 20 * 60
 LN2 = 0.6931471805599453
+#: 复现门的舍入门限：bpc 两侧都已 round 到 1e-6 ⇒ 「相等」只在此精度下成立。
+GATE_TOL_BPC = 1e-6
 
 
 def _load_module(path: Path, name: str):
@@ -222,12 +224,13 @@ def main() -> int:
     out["cost"] = {**peaks, "wall_minutes_total": round((time.time() - t0) / 60, 2),
                    "n_training_tokens": 0, "note": "墙钟与显存峰值只作过程指标，不进判据"}
 
-    # 判据①：复现门（fp16 逐位）
+    # 判据①：复现门（1e-6 下相等：两侧 bpc 都已 round 到 1e-6，不是全精度逐位）
     gate = {}
     for name, want in crit["equality_gate"].items():
         got = rows[name]["bpc_fp16"]
-        gate[name] = {"bpc_fp16": got, "bpc_2639": want, "equal": abs(got - want) == 0.0}
+        gate[name] = {"bpc_fp16": got, "bpc_2639": want, "equal": abs(got - want) <= GATE_TOL_BPC}
     out["equality_gate"] = {"arms": gate, "all_equal": all(v["equal"] for v in gate.values()),
+                            "tolerance_bpc": GATE_TOL_BPC,
                             "consequence": "不等 ⇒ 本实验作废（仪器/权重不一致），判据线不改"}
     if not out["equality_gate"]["all_equal"]:
         (EXP / "results.json").write_text(json.dumps(out, ensure_ascii=False, indent=1))
@@ -242,8 +245,17 @@ def main() -> int:
         bytes_ok &= abs(ratio - crit["bytes_ratio_int8_vs_fp16"]) == 0.0
         d_bits = [a - b for a, b in zip(bits[(name, "int8")][0], bits[(name, "fp16")][0])]
         n_tok = sum(bits[(name, "int8")][1])
-        delta = sum(d_bits) / n_tok / LN2
-        ci = [round(v / LN2, 6) for v in rp.paired_cluster_bootstrap_ci(
+        # `bpc_of(per_window=True)` 的逐窗值是**比特**、`paired_cluster_bootstrap_ci` 也收/返回
+        # 比特/token ⇒ `sum(d_bits)/n_tok` 已是两档 bpc 之差，**不得再除 LN2**（会放大 1.4427 倍）。
+        # 与两档聚合 bpc 的差做 fail-loud 对账：对不上即单位或窗口配对出错。
+        delta = sum(d_bits) / n_tok
+        expect = r["bpc_int8"] - r["bpc_fp16"]
+        if abs(delta - expect) >= 2e-6:
+            raise SystemExit(
+                f"{name}: Δ_int8 与两档 bpc 差对不上：delta={delta:.9f} "
+                f"bpc_int8−bpc_fp16={expect:.9f} 差={delta - expect:.3e}"
+                "（逐窗比特/token 已是 bpc；再除一次 LN2 会把 Δ 放大 1.4427 倍）")
+        ci = [round(v, 6) for v in rp.paired_cluster_bootstrap_ci(
             d_bits, bits[(name, "int8")][1], n_boot=crit["n_boot"],
             seed=crit["boot_seed"], alpha=crit["alpha"])]
         quant[name] = {"delta_int8_minus_fp16_bpc": round(delta, 6),
