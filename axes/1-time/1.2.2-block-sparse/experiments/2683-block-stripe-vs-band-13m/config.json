@@ -1,0 +1,50 @@
+{
+  "experiment": "2683-block-stripe-vs-band-13m",
+  "owner_project": "axes/1-time/1.2.2-block-sparse",
+  "work_package": "WP1",
+  "question": "同样花 24 个可见键，固定的块条带模式（最近 16 + 一块对齐的 8 键远块）比均匀条带（最近 24）更值吗？",
+  "variable": "24 个可见键怎么分配（唯一变量）",
+  "judgement": {
+    "metric": "clean bpc（每字符比特数，越低越好）",
+    "pairing": "逐评测窗口配对（96 批 × bs16、window_seed=2）",
+    "band_bpc": 0.014,
+    "band_scope": "只用于配对 Δ（harness/methodology.md §2）；率类指标不借用",
+    "delta_direction": "Δ = bpc_对照 − bpc_实验（对照 = 均匀条带，实验 = 块条带；正 = 块条带更好）",
+    "three_way": {"delta_ge_+0.014": "块条带占优", "abs_delta_lt_0.014": "无质量增量", "delta_le_-0.014": "块条带更差"},
+    "n_seed": 2
+  },
+  "pattern": {
+    "name": "块条带（block stripe）",
+    "formula": "keep[i,j] = (j<=i) & ((i-j) < LOCAL | j in [START, START+BLOCK))，START = max(0, floor(i/BLOCK) - LAG) * BLOCK",
+    "local": 16,
+    "block": 8,
+    "lag_blocks": 4,
+    "k_eff": 24,
+    "far_distance_range": "远块落在距离 [25 + r, 32 + r]（r = i mod 8，0–7）",
+    "implementation": "block_sparse.py（BlockStripeModel 覆写 DepthARModel._window_mask）"
+  },
+  "recipe": {
+    "d_model": 256, "n_layers": 12, "n_heads": 8, "seq_len": 256, "mlp_mult": 6,
+    "dense": true, "topology": "sequential", "exit_mode": "uniform",
+    "steps": 12000, "batch_size": 32, "lr": 1e-3, "dropout": 0, "norm_cap": 1,
+    "train_window": 24, "train_anchors": 0,
+    "tokens": "98.3M（enwik8 前 90M 训练 / 末 10M 评测，vocab 206）",
+    "trainer": "train_depth_ar.train()（共享训练器原样；本目录只换模型类的 _window_mask）"
+  },
+  "arms": [
+    {"name": "full", "mode": "full", "k_eff": 256, "seed": 0, "source": "reuse: 2610-frozen-trunk-jumphead-13m/trunk.pt", "role": "全因果上界参照"},
+    {"name": "win24a0_s0", "mode": "band", "window": 24, "anchors": 0, "k_eff": 24, "seed": 0, "source": "reuse: 2677-local-global-vs-band-13m/train/win24a0_s0", "role": "主判对照（均匀条带）"},
+    {"name": "win24a0_s1", "mode": "band", "window": 24, "anchors": 0, "k_eff": 24, "seed": 1, "source": "reuse: 2677-local-global-vs-band-13m/train/win24a0_s1", "role": "主判对照（第二 seed）"},
+    {"name": "block8l4_s0", "mode": "block_stripe", "k_eff": 24, "seed": 0, "source": "new: train/block8l4_s0", "role": "主判实验臂（块条带）"},
+    {"name": "block8l4_s1", "mode": "block_stripe", "k_eff": 24, "seed": 1, "source": "new: train/block8l4_s1", "role": "主判实验臂（第二 seed）"},
+    {"name": "win16a8_s0", "mode": "local+global", "window": 16, "anchors": 8, "k_eff": 24, "seed": 0, "source": "reuse: 2662-hard-window-anchor-13m/train/win16a_s0", "role": "同一字节轴上的第三个模式（参照）"},
+    {"name": "win16a8_s1", "mode": "local+global", "window": 16, "anchors": 8, "k_eff": 24, "seed": 1, "source": "reuse: 2662-hard-window-anchor-13m/train/win16a_s1", "role": "同上（第二 seed）"}
+  ],
+  "eval": {"n_batches": 96, "batch_size": 16, "window_seed": 2, "device": "cuda"},
+  "budget": {
+    "gpu_minutes": "2 支新臂 × ≈9 min + 冒烟 ≈1 min + 评测 <4 min ≈ 23 min（自报上限 30 min）",
+    "per_arm_timeout_minutes": 20,
+    "peak_mem_gib_note": "逐臂实测落盘；礼貌线 5GB net（harness/SCHEMA.md §20.2）"
+  },
+  "declaration_only": ["wall_minutes", "peak_gpu_mem_mb", "median_ms（一步耗时）"]
+}
