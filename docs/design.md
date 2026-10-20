@@ -57,17 +57,25 @@
 ## 4. 仓库布局
 
 ```
-README.md            门面（本仓库是什么、怎么用）
+README.md            门面（本仓库是什么、最硬的几条结论、怎么跑起来、许可）
+STATUS.md            当前进展与下一步（路由，不拥有事实；事实见 docs/plan.md 与 axes/**）
+FINDINGS.md          已确立结论的索引（路由，不拥有事实；数字见 docs/cost-table.md）
 SCHEMA.md            实验与旧课题页的格式契约与分析纪律（§6–§24 仍生效）
 docs/structure.md    研究树布局 / 用词 / 粒度 / 目录命名（SSOT）
 docs/research-schema.md  研究项 project.yaml 的格式契约（SSOT）
 AGENTS.md            协作制度与文档地图（写给 agent）
 CONTRIBUTING.md      贡献流程与硬性规则
+LICENSE.md           许可（AGPL-3.0 全文）
 （已退役）旧生成式 wiki；已归档于 archive/wiki-legacy/（见 docs/structure.md §15）
-docs/                设计 / 方法学 / 定律 / 引擎能力（不随课题变）
+docs/                设计 / 方法学 / 定律 / 计划 / 引擎能力
   design.md          本文
   methodology.md     天平
-  playbook.md        已测定律
+  playbook.md        已测定律（正文与适用边界的唯一家）
+  plan.md            计划层：里程碑 / 工作包 / owner / 验收 / 状态（SSOT）
+  paper-plan.md      把定律写成论文的计划：claim / 结构 / 验收（不是结果）
+  cost-table.md      代价表（**生成物**：tools/build_cost_table.py 从 axes/**/project.yaml 生成，禁止手改）
+  structure.md       研究树布局（见上）
+  research-schema.md 研究项格式契约（见上）
   engine_capability.md 引擎能力面事实表
 axes/                大类 = 轴；小类 = 研究项；研究项内 = 实验目录
   1-time/1.1.1-hard-window/project.yaml
@@ -76,6 +84,11 @@ axes/                大类 = 轴；小类 = 研究项；研究项内 = 实验�
 tools/summary.py     扫描 project.yaml 出状态全表
 tools/check_tree.py  研究树校验（字段/证据/口径）
 tools/check_schema.py 兼容入口（转调 check_tree.py）
+tools/check_docs.py  文档引用可解析 + 文档地图完整性（AGENTS.md §2.1 / 本文 §4）
+tools/build_cost_table.py  生成 docs/cost-table.md；--check 与手改副本逐字节比对
+tools/bootstrap.sh   干净克隆后重建机检环境（版本门 + 依赖门，见 requirements.txt）
+requirements.txt     机检四件套的依赖（PyYAML）
+requirements-dev.txt tests/ 的额外依赖（pytest / numpy / torch）
 archive/             旧项目（只读）：legacy-docs/ 与说明
 .scratch/            历史工单与原始证据（只读，见其 README）
 pathlm/ tests/ configs/ train_*.py probe_*.py slider.py

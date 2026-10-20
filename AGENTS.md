@@ -24,7 +24,13 @@
 | 项目是什么 | `README.md` |
 | 设计 / 方法 / 已测定律 | `docs/design.md` / `docs/methodology.md` / `docs/playbook.md` |
 | 计划：里程碑 / 工作包 / owner / 验收 / 状态 / 预算 | `docs/plan.md` |
+| 把定律写成论文的 claim / 结构 / 验收（**计划**，不是结果） | `docs/paper-plan.md`（改它的 claim 或验收要同时对齐计划层；它不持有新数字，数字的家是 `docs/playbook.md` / `docs/cost-table.md`） |
+| 定律 ↔ 证据 ↔ 观测代价 ↔ 边界的对照表 | `docs/cost-table.md`（**生成物，禁止手改**：由 `tools/build_cost_table.py` 从 `axes/**/project.yaml` 的 `laws` / `cost_rows` 生成，`--check` 与手改副本逐字节比对；改事实请改 `project.yaml` 后重跑生成器） |
 | 引擎能力面：哪些组合真跑得起来、哪些明确拒绝、拒绝在哪一行 | `docs/engine_capability.md` |
+| 当前进展与下一步（**路由器**，不拥有事实） | `STATUS.md`（**只许指向**：计划看 `docs/plan.md`、逐项事实看 `axes/**/project.yaml`、数字看 `docs/cost-table.md` / `docs/playbook.md`；不得在此新写结论或重算数字） |
+| 已确立结论的索引（**路由器**，不拥有事实） | `FINDINGS.md`（**只许指向**：结论正文的家是 `docs/playbook.md`，数字的家是 `docs/cost-table.md` 与 `axes/**`；改数字必须改它指向的家，且它现存的转录数字按 `docs/plan.md` §4 的默认处置逐步换成指针） |
+| 怎么贡献 / 硬性规则 | `CONTRIBUTING.md`（与 `SCHEMA.md` 冲突时以 `SCHEMA.md` 为准；改流程本身由维护者决定） |
+| 许可 | `LICENSE.md`（AGPL-3.0 全文；改许可属对外暴露，需用户同意） |
 | 单个实验 | 实验目录内 `README.md`（预登记契约）· `analysis.md`（**当前**结论与证据）· `results.json`（原始数字）· `MODEL.md`（权重清单） |
 | 旧索引（已退役） | `archive/wiki-legacy/catalog.yaml` / `archive/wiki-legacy/INDEX.md`（只读归档，不是当前 SSOT） |
 

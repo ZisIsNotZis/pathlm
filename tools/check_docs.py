@@ -12,9 +12,11 @@
   （`AGENTS.md` §2.2 / §2.3）——它们不在 SSOT 义务内，不要求引用自洽。作为**目标**它们仍可被引用，
   只要目标真实存在即通过。
 
-  检查两类引用：
+  检查三类问题：
     ① `路径:行` 与 `路径:起始行-结束行`：文件必须存在，行号必须在 `1..行数` 内且 `起始 ≤ 结束`。
     ② 裸路径（`*.md` / `*.yaml` / `*.json` / `*.py`）：文件必须存在。
+    ③ 文档地图完整性：每个事实文档（`docs/*.md` + 仓库根 `*.md`）必须在 `AGENTS.md` §2.1 与
+       `docs/design.md` §4 的地图里**各有一行**（新事实文档不接进地图 = 读者找不到它）。
 
   解析基准（按序，先命中先用）：仓库根 → 本文件所在目录 → 仓库内任意以该路径结尾的文件
   （仓内引用常把实验目录写在路径里、把上层省略，如 `2634-.../analysis.md`、`2619/run.py`）。
@@ -41,7 +43,8 @@
     5. `见上一节` / `本文件` 这类不带路径的指代；
     6. 跨行断开的路径（上一行以 `/` 结尾、路径接在下一行）只看得到后半句；
     7. 引用所在行自述「不存在 / 未产出 / 将来才写」时，本检**信这句声明**、不计违规：它只证明「文档说了
-       它不在」，不证明那个文件应该存在。
+       它不在」，不证明那个文件应该存在；
+    8. 文档地图只校「文件名在地图里出现过」，校不了那一行说的是不是它、与别处是否重复——那是复核的活。
 
 用法：
     python3 tools/check_docs.py            # 打印全部违规；有违规即非零退出
@@ -83,6 +86,16 @@ REF_RE = re.compile(r"(?<![\w/.\-])([\w][\w./\-]*\.[A-Za-z0-9]+)(?::(\d+)(?:-(\d
 
 #: 引用可带的自造锚点后缀（只做剥离，不判语义）：`::§N`、`#§标题`。
 ANCHOR_RE = re.compile(r"(?:::§[^`\s）)]*|#§[^`\s）)]*)$")
+
+#: 文档地图必须覆盖的文件：`docs/*.md` 事实文档 + 仓库根的事实文档。
+#: `axes/**` 的实验级文件由 `AGENTS.md` §2.1「单个实验」那一行统一覆盖，不逐个进图。
+DOC_MAP_GLOBS = ("docs/*.md", "*.md")
+
+#: 两张地图（文件，起点标题，下一节标题）：每个事实文档必须在两处**各有一行**。
+DOC_MAP_SECTIONS = (
+    ("AGENTS.md", "## 2. 文档地图", "## 3. 编排制度"),
+    ("docs/design.md", "## 4. 仓库布局", "## 5. 代码布局"),
+)
 
 #: 围栏代码块开头。
 FENCE_RE = re.compile(r"^\s*(```|~~~)")
@@ -225,6 +238,43 @@ def _line_count(rel: str) -> int:
         return 0
 
 
+def _section_text(rel: str, start_marker: str, end_marker: str) -> str:
+    """取一个 Markdown 文件里从 `start_marker` 到此后第一个 `end_marker` 的正文（找不到起点返回空）。"""
+    text = (ROOT / rel).read_text(encoding="utf-8")
+    i = text.find(start_marker)
+    if i < 0:
+        return ""
+    j = text.find(end_marker, i + len(start_marker))
+    return text[i:] if j < 0 else text[i:j]
+
+
+def doc_map_files() -> list[str]:
+    """必须进图的事实文档（仓库相对路径，排序）。"""
+    files: set[str] = set()
+    for pattern in DOC_MAP_GLOBS:
+        for p in ROOT.glob(pattern):
+            if p.is_file():
+                files.add(p.relative_to(ROOT).as_posix())
+    return sorted(files)
+
+
+def check_doc_map() -> list[str]:
+    """每个事实文档都要在两张文档地图里各有一行（否则 `AGENTS.md` §2.1 的地图会静默漏文件）。"""
+    problems: list[str] = []
+    sections = []
+    for rel, start_marker, end_marker in DOC_MAP_SECTIONS:
+        body = _section_text(rel, start_marker, end_marker)
+        if not body:
+            problems.append(f"文档地图：`{rel}` 里找不到「{start_marker}」这一节")
+        sections.append((rel, body))
+    for rel in doc_map_files():
+        name = rel.split("/")[-1]
+        for map_rel, body in sections:
+            if body and name not in body:
+                problems.append(f"文档地图：`{rel}` 不在 `{map_rel}` 的地图里（存在的事实文档必须有一行）")
+    return problems
+
+
 def check(refs: list[Reference], suffix_index: dict[str, list[str]]
           ) -> tuple[list[str], list[str]]:
     """返回 (违规描述列表, 已声明缺失的引用列表)，形如 `本文件:行号 → 目标`。"""
@@ -262,14 +312,18 @@ def main(argv: list[str]) -> int:      # `--check` 与默认同一行为，只�
         refs.extend(extract(path))
     line_refs = sum(1 for r in refs if r.start is not None)
     problems, declared_absent = check(refs, suffix_index)
-    for p in problems:
+    map_problems = check_doc_map()
+    for p in problems + map_problems:
         print(p)
     print(f"扫描 {len(files)} 个文档，检查 {len(refs)} 处引用"
           f"（{line_refs} 处 路径:行 / {len(refs) - line_refs} 处 裸路径）："
-          f"{len(problems)} 处违规；"
+          f"{len(problems) + len(map_problems)} 处违规；"
           f"{len(declared_absent)} 处已声明缺失（文档自述不存在/未产出，不计违规）；"
           f"待建交付物不检：{', '.join(PENDING_TARGETS)}。")
-    return 1 if problems else 0
+    print(f"文档地图：{len(doc_map_files())} 个事实文档在 "
+          f"{' 与 '.join(rel + ' 的「' + start + '」' for rel, start, _ in DOC_MAP_SECTIONS)} "
+          f"里各有一行；地图缺项 {len(map_problems)} 个。")
+    return 1 if (problems or map_problems) else 0
 
 
 if __name__ == "__main__":

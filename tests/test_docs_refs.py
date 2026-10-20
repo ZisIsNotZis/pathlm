@@ -1,9 +1,10 @@
 """文档引用必须可解析（`tools/check_docs.py` 的入口绑定）。
 
-钉住三件事：
+钉住四件事：
 1. 全树（仓库根 `*.md` / `docs/**` / `axes/**`）的 `文件:行` 与裸路径引用**零违规**——不经提示就跑；
 2. 注入一条悬空引用（`docs/不存在.md:3`）时检查**必须变红**，删掉后恢复绿（gate probe：证明它抓得住）；
-3. 行号越界也算违规（引用对、行号错的形态）。
+3. 行号越界也算违规（引用对、行号错的形态）；
+4. 新增一个事实文档但**不接进文档地图**（`AGENTS.md` §2.1 / `docs/design.md` §4）时检查**必须变红**。
 """
 
 import os
@@ -66,3 +67,17 @@ def test_absent_marker_is_declared_not_silent(tmp_path):
     problems, declared_absent = check_docs.check([ref], suffix_index)
     assert problems == []
     assert declared_absent == [str(ref)]
+
+
+def test_unmapped_fact_doc_turns_red(capsys):
+    """新增事实文档却不接进文档地图 ⇒ 非零退出并点名漏了谁；删掉后恢复绿。"""
+    probe = ROOT / "docs" / "未入地图的事实文档.md"
+    try:
+        probe.write_text("# 未入地图的临时文档\n", encoding="utf-8")
+        rc = check_docs.main(["--check"])
+        out = capsys.readouterr().out
+        assert rc == 1, out
+        assert "文档地图：`docs/未入地图的事实文档.md`" in out, out
+    finally:
+        probe.unlink()
+    assert check_docs.main(["--check"]) == 0, capsys.readouterr().out

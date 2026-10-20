@@ -5,7 +5,7 @@
 
 ## 它是什么
 
-不是"一个模型"，而是一张**LM 算力路径设计空间的目录**：按轴切开（时间 / 深度 / 宽度 / MoE / 量化 / 预测 / 对照 / 工程 / backlog），每格一份 `axes/**/project.yaml` 记录目的、创新、基线、端到端验证、单一 milestone、work packages 与状态，并附失败路径账本；代码与实验产物在各格 `experiments/` 下。（`README.md:3-6`、`README.md:12-16`、`README.md:36-44`）
+不是"一个模型"，而是一张**LM 算力路径设计空间的目录**：按轴切开（时间 / 深度 / 宽度 / MoE / 量化 / 预测 / 对照 / 工程 / backlog），每格一份 `axes/**/project.yaml` 记录目的、创新、基线、端到端验证、单一 milestone、work packages 与状态，并附失败路径账本；代码与实验产物在各格 `experiments/` 下。（`README.md` 的一句话定位，以及它的「这是什么 / 不是什么」与「五条最硬的结论」两节）
 
 ## 当前状态
 
