@@ -104,6 +104,12 @@
 - 每个结论必须能回溯到 **run 目录 + resolved config + commit**。
 - 权重是派生物，**不入库**（`*.pt` gitignored）；证据 json/log/md 入库。
 - 失败结论与成功结论**同等入账**：写清「试了什么 → 为什么失败 → 排除了什么」。
+- **新实验必须在训练之前绑定契约**：`python3 tools/prereg_bind.py <实验目录>` 把契约文件（`README.md`、有则 `config.json`）
+  的 `sha256` 与 `bound_at` 写进该实验的 `prereg_binding.json`；绑定缺失时 `train_arms.sh` / `run.py` 拒绝启动。
+  `tools/check_tree.py` 机检三件事：有 `results.json` 的实验必须有绑定、契约文件当前 `sha256` 与绑定相同
+  （不同即「契约在绑定后被改过」）、`bound_at` 严格早于读数的产物时间，且两文件入库后绑定与读数必须分属两个提交。
+  理由：契约与 `results.json` 落在同一个提交里时，「契约先于读数」**不可判**。历史产物记 `bound_at: "unbound"`
+  （显式缺失，只计数不判失败），不伪造一个看起来真的时间。
 
 ## 9. 单因素铁律（含唯一的例外）
 

@@ -22,6 +22,7 @@ import os
 import statistics
 import sys
 import time
+from pathlib import Path
 
 import torch
 import torch.nn.functional as F
@@ -33,6 +34,7 @@ sys.path.insert(0, ROOT)
 from pathlm.depth_ar import DepthARConfig, DepthARModel, window_anchor_keep_mask
 from pathlm.data import load_enwik8_full, batch
 from tools.evalkit.retention import masked_logits
+from tools.prereg_bind import require as require_prereg
 
 DATA = "data/enwik8_full.npz"
 DEVICE = "cuda"
@@ -219,6 +221,11 @@ def main() -> None:
     ap.add_argument("--check-only", action="store_true")
     args = ap.parse_args()
     os.chdir(ROOT)
+
+    # 预登记门：契约必须在训练之前绑定，绑定必须早于读数（docs/methodology.md §8）。
+    if require_prereg(Path(HERE)) != 0:
+        raise SystemExit("预登记未绑定：先跑 python3 tools/prereg_bind.py "
+                         "axes/1-time/1.2.2-block-sparse/experiments/2677-local-global-vs-band-13m")
 
     _, eval_arr, vocab = load_enwik8_full(".tmp/enwik8", DATA)
 

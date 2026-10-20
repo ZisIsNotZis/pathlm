@@ -5,11 +5,13 @@
 # 既有多臂驱动。**绝不杀别人的进程**。
 # 配方与 2614 的 full/topk 臂**逐字段一致**，唯一差别 = 可见键的选择规则（位置 vs 内容）：
 #   --d 256 --layers 8 --heads 8 --mlp-mult 4 --seq-len 256 --dense --topology sequential
-#   --steps 12000 --batch-size 32 --lr 1e-3 --seed 0 --exit-mode uniform
-#   --train-window {32,64} --train-anchors 0 --eval-batches 20 --out-root .../runs
-# （不开 --attn-sparse-k：窗口臂与内容 top-k 臂是同一研究项的并列臂。）
+#   --steps 12000 --batch-size 32 --lr 1e-3 --exit-mode uniform --eval-batches 20 --out-root .../runs
+# 每臂唯一的干预：`--train-window {32,64} --train-anchors 0`（位置臂）或 `--attn-sparse-k 32`（内容臂）；
+# 升格对（topk32_s1 / win32_s1）与同名 seed 0 臂逐字段相同，只换 `--seed 1`。
+# （不开 --attn-sparse-k 与 --train-window 的组合：两臂是同一研究项的并列臂。）
 #
-# 用法： bash train_arms.sh                 # 两臂全跑（12000 步）
+# 用法： bash train_arms.sh                 # 两臂全跑（12000 步，seed 0）
+#        ARMS="topk32_s1 win32_s1" bash train_arms.sh   # 主判 k=32 的升格对（seed 1）
 #        MODE=smoke bash train_arms.sh     # 单臂 40 步冒烟（量步时，不写正式 run 目录）
 set -uo pipefail
 cd "$(dirname "$0")/../../../../.."
@@ -19,6 +21,11 @@ MODE="${MODE:-full}"
 LOCK=/tmp/pathlm_gpu.lock
 MAX_WAIT_S=$(( 20 * 60 ))
 ARM_TIMEOUT=20m
+
+# 预登记绑定必须先于训练（tools/check_tree.py 机检定序）；缺绑定即拒绝启动。
+if ! python3 tools/prereg_bind.py "$EXP" --require; then
+  echo "先绑定契约：python3 tools/prereg_bind.py $EXP"; exit 3
+fi
 
 acquire() {
   local n=0 waited=0
@@ -51,14 +58,14 @@ release() {
   echo "[$(date -Iseconds)] lock released"
 }
 
-run_arm() {   # $1 = 臂名, $2 = window, $3 = steps, $4 = out-root
-  local name="$1" win="$2" steps="$3" root="$4"
+run_arm() {   # $1 = 臂名, $2 = seed, $3 = steps, $4 = out-root, $5.. = 本臂额外开关
+  local name="$1" seed="$2" steps="$3" root="$4"; shift 4
   acquire || return 9
-  echo "[$(date -Iseconds)] TRAIN START $name win=$win steps=$steps gpu_free=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader)"
+  echo "[$(date -Iseconds)] TRAIN START $name seed=$seed steps=$steps gpu_free=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader)"
   timeout "$ARM_TIMEOUT" python3 train_depth_ar.py "$name" \
     --d 256 --layers 8 --heads 8 --mlp-mult 4 \
     --seq-len 256 --dense --topology sequential --steps "$steps" --batch-size 32 \
-    --lr 1e-3 --seed 0 --exit-mode uniform --train-window "$win" --train-anchors 0 \
+    --lr 1e-3 --seed "$seed" --exit-mode uniform "$@" \
     --eval-batches 20 --out-root "$root" \
     > "$EXP/train_${name}.log" 2>&1
   local rc=$?
@@ -70,15 +77,17 @@ run_arm() {   # $1 = 臂名, $2 = window, $3 = steps, $4 = out-root
 }
 
 if [ "$MODE" = "smoke" ]; then
-  run_arm "smk32" 32 40 "$EXP/smoke"
+  run_arm "smk32" 0 40 "$EXP/smoke" --train-window 32 --train-anchors 0
   echo "[$(date -Iseconds)] smoke done"
   exit $?
 fi
 
 for A in $ARMS; do
   case "$A" in
-    win32) run_arm win32 32 12000 "$EXP/runs" || exit $? ;;
-    win64) run_arm win64 64 12000 "$EXP/runs" || exit $? ;;
+    win32)     run_arm win32     0 12000 "$EXP/runs" --train-window 32 --train-anchors 0 || exit $? ;;
+    win64)     run_arm win64     0 12000 "$EXP/runs" --train-window 64 --train-anchors 0 || exit $? ;;
+    topk32_s1) run_arm topk32_s1 1 12000 "$EXP/runs" --attn-sparse-k 32 || exit $? ;;
+    win32_s1)  run_arm win32_s1  1 12000 "$EXP/runs" --train-window 32 --train-anchors 0 || exit $? ;;
     *) echo "unknown arm $A"; exit 2 ;;
   esac
 done

@@ -19,6 +19,11 @@ LOCK=/tmp/pathlm_gpu.lock
 MAX_WAIT_S=$(( 20 * 60 ))
 ARM_TIMEOUT=20m
 
+# 预登记绑定必须先于训练（tools/check_tree.py 机检定序）；缺绑定即拒绝启动。
+if ! python3 tools/prereg_bind.py "$EXP" --require; then
+  echo "先绑定契约：python3 tools/prereg_bind.py $EXP"; exit 3
+fi
+
 acquire() {
   local n=0 waited=0
   while ! mkdir "$LOCK" 2>/dev/null; do

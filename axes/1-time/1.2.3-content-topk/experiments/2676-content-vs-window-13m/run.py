@@ -1,14 +1,16 @@
 """2676-content-vs-window-13m · 评测与对账（`1.2.3` 的 WP2 判决腿）。
 
-预登记判据见 `README.md` §3；本脚本只做三件事：
+预登记判据见 `README.md` §3；本脚本做四件事：
 
 1. **对齐核查**（判据④⑤⑥）：两条掩码路径（按内容 / 按位置）的逐行可见键数逐行相等、
-   掩码恒为因果子集、五臂参数量逐位相等；
+   掩码恒为因果子集、七臂参数量逐位相等；
 2. **配对质量读数**（判据①②）：20 批 × batch_size 16、`window_seed=2` 的逐批 clean bpc，
-   与 `2614` 的 `paired_eval.py` 同一批位置、同一 batch 顺序 ⇒ 臂间差是配对差；
-3. **申报量**（判据⑦）：逐臂一步耗时与峰值显存（**不进判据**，只申报）。
+   与 `2614` 的 `paired_eval.py` 同一批位置、同一 batch 顺序 ⇒ 臂间差是**配对差**；
+   主判 k=32 另出 seed 1 的同对读数（§3 预登记的**升格对**，`cross_seed`）；
+3. **申报量**（判据⑦）：逐臂一步耗时与峰值显存（**不进判据**，只申报）；
+4. **预登记门**：`prereg_binding.json` 缺失 ⇒ 拒绝出读数（判据「契约先于读数」靠它定序）。
 
-用法（GPU 串行，<2 min）：
+用法（GPU 串行，<3 min）：
     python3 run.py                 # 写 results.json
     python3 run.py --check-only    # 只跑对齐核查与等值门，不写盘
 
@@ -24,6 +26,7 @@ import os
 import statistics
 import sys
 import time
+from pathlib import Path
 
 import torch
 import torch.nn.functional as F
@@ -36,6 +39,7 @@ from pathlm.depth_ar import (DepthARConfig, DepthARModel, causal_topk_keep_mask,
                              window_anchor_keep_mask)
 from pathlm.data import load_enwik8_full, batch
 from tools.evalkit.retention import masked_logits
+from tools.prereg_bind import require as require_prereg
 
 DATA = "data/enwik8_full.npz"
 DEVICE = "cuda"
@@ -46,25 +50,39 @@ LN2 = 0.6931471805599453
 EXP_2614 = os.path.join(ROOT, "axes/1-time/1.2.3-content-topk/experiments/"
                         "2614-topk-sparse-attn-13m")
 
-#: 五臂：前三条复用 2614 的 checkpoint（判据里的「少看键」参照与内容选择基线），
-#: 后两条是本实验训练的按位置选择臂。`pick` 决定可见集由谁决定。
+#: 七臂：前三条复用 2614 的 checkpoint（判据里的「少看键」参照与内容选择基线），
+#: `win32`/`win64` 是本实验训练的按位置选择臂，`topk32_s1`/`win32_s1` 是主判 k=32 的
+#: **升格对**（同配方只换 seed 1，见 README §3）。`kind` 决定可见集由谁决定。
 ARMS = [
-    {"name": "full", "kind": "full", "k": 0, "window": 0,
+    {"name": "full", "kind": "full", "k": 0, "window": 0, "seed": 0,
      "ckpt": os.path.join(EXP_2614, "runs/full-12k-s0/model.pt"),
      "role": "基线：全因果（每行可见 i+1 个键）"},
-    {"name": "topk32", "kind": "topk", "k": 32, "window": 0,
+    {"name": "topk32", "kind": "topk", "k": 32, "window": 0, "seed": 0,
      "ckpt": os.path.join(EXP_2614, "runs/topk32-12k-s0/model.pt"),
      "role": "内容选择 k=32（因果内按 q·kᵀ 取前 32）"},
-    {"name": "topk64", "kind": "topk", "k": 64, "window": 0,
+    {"name": "topk64", "kind": "topk", "k": 64, "window": 0, "seed": 0,
      "ckpt": os.path.join(EXP_2614, "runs/topk64-12k-s0/model.pt"),
      "role": "内容选择 k=64"},
-    {"name": "win32", "kind": "window", "k": 32, "window": 32,
+    {"name": "win32", "kind": "window", "k": 32, "window": 32, "seed": 0,
      "ckpt": os.path.join(HERE, "runs/win32/model.pt"),
      "role": "位置选择 k=32（最近的 32 个位置）"},
-    {"name": "win64", "kind": "window", "k": 64, "window": 64,
+    {"name": "win64", "kind": "window", "k": 64, "window": 64, "seed": 0,
      "ckpt": os.path.join(HERE, "runs/win64/model.pt"),
      "role": "位置选择 k=64"},
+    {"name": "topk32_s1", "kind": "topk", "k": 32, "window": 0, "seed": 1,
+     "ckpt": os.path.join(HERE, "runs/topk32_s1/model.pt"),
+     "role": "内容选择 k=32，seed 1（主判升格对）"},
+    {"name": "win32_s1", "kind": "window", "k": 32, "window": 32, "seed": 1,
+     "ckpt": os.path.join(HERE, "runs/win32_s1/model.pt"),
+     "role": "位置选择 k=32，seed 1（主判升格对）"},
 ]
+
+#: 主判的 seed 对：k=32 的两臂 × {seed 0, seed 1}。跨 seed 的同一臂读数只作**种子散布**，
+#: 不能与 seed 0 的 `full` 配对（那是两个随机变量之差，破配对）。
+SEED_PAIRS = {"s0": ("win32", "topk32"), "s1": ("win32_s1", "topk32_s1")}
+BAND = 0.014
+#: 只对 seed 0 的五臂：seed 1 的两臂跨 seed 无法与 `full` 配对，故不进 `paired_vs_full`。
+SEED0_ARMS = ("topk32", "topk64", "win32", "win64")
 
 
 def cfg_for(arm: dict) -> DepthARConfig:
@@ -199,6 +217,11 @@ def main() -> None:
     args = ap.parse_args()
     os.chdir(ROOT)
 
+    # 预登记门：契约必须在训练之前绑定，绑定必须早于读数（docs/methodology.md §8）。
+    if require_prereg(Path(HERE)) != 0:
+        raise SystemExit("预登记未绑定：先跑 python3 tools/prereg_bind.py "
+                         "axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m")
+
     _, eval_arr, vocab = load_enwik8_full(".tmp/enwik8", DATA)
 
     align = alignment_checks()
@@ -234,22 +257,57 @@ def main() -> None:
 
     # Δ = 对照 − 实验（正 = 实验更好）；主判的对照 = 位置窗口、实验 = 内容 top-k
     vs_full = {name: paired_stats(per_batch["full"], per_batch[name])
-               for name in ("topk32", "topk64", "win32", "win64")}
+               for name in SEED0_ARMS}
     content_vs_window = {f"k{k}": paired_stats(per_batch[f"win{k}"], per_batch[f"topk{k}"])
                          for k in (32, 64)}
+    # 升格对：同 seed、同批位置的配对差（k=64 无升格对，本轮预登记只覆盖 k=32）
+    by_seed = {seed: paired_stats(per_batch[win], per_batch[topk])
+               for seed, (win, topk) in SEED_PAIRS.items()}
+    d0, d1 = by_seed["s0"]["delta_bpc"], by_seed["s1"]["delta_bpc"]
+    same_sign = (d0 > 0) == (d1 > 0)
+    both_beyond_band = abs(d0) >= BAND and abs(d1) >= BAND
+    # 同一臂跨 seed 的差 = 种子散布（不是配对差：两个独立训练 run 之差）
+    seed_spread = {arm: round(abs(mean_bpc[f"{arm}_s1"] - mean_bpc[arm]), 5)
+                   for arm in ("topk32", "win32")}
+    cross_seed = {
+        "delta_by_seed": {"s0": d0, "s1": d1},
+        "paired_stats_by_seed": by_seed,
+        "arm_mean_bpc_by_seed": {arm: {"s0": mean_bpc[arm], "s1": mean_bpc[f"{arm}_s1"]}
+                                 for arm in ("topk32", "win32")},
+        "seed_spread_bpc": seed_spread,
+        "seeds_with_both_arms": sorted(SEED_PAIRS),
+        "same_direction": bool(same_sign),
+        "both_beyond_band": bool(both_beyond_band),
+        "n_batches_per_seed": N_BATCHES,
+        "note": ("同 seed 内两臂是配对差（同批位置、同 batch 顺序）；跨 seed 的 "
+                 "`seed_spread_bpc` 是两个独立训练 run 之差，只作种子散布、不是配对差。"
+                 "单格 n=2 只给一致性，不给跨 seed 方差的合并显著性检验（同 "
+                 "2644-channel-sparsity-13m/results.json::cross_seed 的口径）。"),
+    }
 
     def verdict(block: dict) -> str:
         d = block["delta_bpc"]
-        if d >= 0.014:
+        if d >= BAND:
             return "内容选择占优（Δ ≥ +0.014，越带）"
-        if d <= -0.014:
+        if d <= -BAND:
             return "内容选择更差（Δ ≤ -0.014，越带）"
         return "无质量增量（|Δ| < 0.014，落带内）"
+
+    def n2_verdict() -> str:
+        """两 seed 的判词：只有同向且各自越带才升格成 n=2；否则按预登记判「不可排序」。"""
+        if same_sign and both_beyond_band and d0 > 0:
+            return "内容选择占优（两 seed 同向且各自越带 ⇒ n=2）"
+        if same_sign and both_beyond_band and d0 < 0:
+            return "内容选择更差（两 seed 同向且各自越带 ⇒ n=2）"
+        if not same_sign:
+            return "两 seed 不同向 ⇒ 本 n 下不可排序（不解释成噪声、不取平均掩盖）"
+        return "两 seed 同向但至少一 seed 未越带 ⇒ 本 n 下不可排序"
 
     out = {
         "experiment": "2676-content-vs-window-13m",
         "delta_directions": {
             "delta_bpc": "comparator_minus_arm",
+            "delta_by_seed": "comparator_minus_arm",
             "sd_of_paired_delta": "comparator_minus_arm",
             "frac_batches_delta_gt_0": "comparator_minus_arm",
             "min_delta": "comparator_minus_arm",
@@ -257,19 +315,21 @@ def main() -> None:
         },
         "delta_direction_note": (
             "所有 Δ 读数一律 Δ = bpc_对照 − bpc_实验，正 = 实验更好。"
-            "`vs_full` 的对照 = full、实验 = 该臂；`content_vs_window` 的对照 = "
+            "`vs_full` 的对照 = full、实验 = 该臂；`content_vs_window` / `cross_seed` 的对照 = "
             "同 k 的位置窗口、实验 = 内容 top-k（README §3 的 Δ 方向）。"),
         "config": {
             "d_model": D, "n_layers": L, "n_heads": H, "seq_len": SEQ, "mlp_mult": MLP,
             "steps": 12000, "batch_size": 32, "lr": 1e-3, "seed": 0,
+            "seed_note": ("主表 = seed 0；主判 k=32 另有 seed 1 的升格对（`topk32_s1` / "
+                          "`win32_s1`），逐臂 seed 见 arms[].seed"),
             "data": DATA, "data_split": "前 90M 训练 / 末 10M 评测（enwik8，vocab 206）",
             "eval": {"n_batches": N_BATCHES, "batch_size": BATCH_SIZE,
                      "window_seed": DATA_SEED, "paired": True},
             "variable": "可见键的选择规则（内容 vs 位置），每行可见键数逐行相等",
         },
         "arms": [{"name": a["name"], "kind": a["kind"], "k": a["k"],
-                  "window": a["window"], "role": a["role"], "ckpt": a["ckpt"],
-                  "params": params[a["name"]]} for a in ARMS],
+                  "window": a["window"], "seed": a["seed"], "role": a["role"],
+                  "ckpt": a["ckpt"], "params": params[a["name"]]} for a in ARMS],
         "visible_keys_per_row": align,
         "params_all_equal": len(set(params.values())) == 1,
         "params_value": params["full"],
@@ -277,16 +337,18 @@ def main() -> None:
         "per_batch_bpc": per_batch,
         "paired_vs_full": vs_full,
         "paired_content_vs_window": content_vs_window,
+        "cross_seed": cross_seed,
         "main_verdict": {
             "criterion": ("主判：Δ = bpc_win − bpc_topk（对照 = 位置窗口，实验 = 内容 top-k）；"
                           "Δ ≥ +0.014 ⇒ 内容选择占优；|Δ| < 0.014 ⇒ 无质量增量；"
                           "Δ ≤ -0.014 ⇒ 内容选择更差"),
-            "band_bpc": 0.014,
-            "k32": verdict(content_vs_window["k32"]),
+            "band_bpc": BAND,
+            "k32": n2_verdict(),
             "k64": verdict(content_vs_window["k64"]),
-            "n_seed": 1,
-            "n_note": ("五臂都是 seed 0 单 run ⇒ 越带只能报「临时结果（n=1）」，"
-                       "不越带则「同质量」这一读法对标量差本就成立"),
+            "n_seed": {"k32": len(SEED_PAIRS), "k64": 1},
+            "n_note": ("k=32 有 seed 0 与 seed 1 两对（升格对，见 cross_seed）⇒ 判词按 "
+                       "README §3 的升格规则出；k=64 仍是 seed 0 单 run ⇒ 越带只能报"
+                       "「临时结果（n=1）」，不越带则「同质量」这一读法对标量差本就成立"),
         },
         "cost_theory": {
             "kv_bytes_per_position_fp16": {
