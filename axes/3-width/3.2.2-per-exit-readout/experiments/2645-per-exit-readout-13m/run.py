@@ -56,6 +56,10 @@ from pathlm.depth_ar import (DepthARConfig, DepthARModel, depth_curve,  # noqa: 
 from pathlm.data import load_enwik8_full, batch                 # noqa: E402
 from pathlm.metrics import ece                                  # noqa: E402
 
+#: 判据常数（`config.json` 与 `run.py` 一起被 `tools/prereg_bind.py --contract` 绑住）：
+#: 下面所有判定都读这一份，不留第二份硬编码副本。
+CFG = json.load(open(os.path.join(HERE, "config.json"), encoding="utf-8"))
+
 DEVICE = "cuda"
 LN2 = math.log(2.0)
 
@@ -66,8 +70,8 @@ VOCAB = 206
 EXITS = N_LAYERS + 1                     # 出口数 = 9（深度 0..L）
 LR_RANK = 16                             # LR 臂的低秩 r
 ARMS = ("T", "PE", "IND", "LR")
-VARIANCE_BOUND = 0.014                   # clean bpc 带（限配对 Δ、≥5 窗口）
-ECE_TOLERANCE = 0.003                    # prob0 ECE 容差（承自 2610 判据线，§README P3）
+VARIANCE_BOUND = float(CFG["band_bpc"])     # clean bpc 带（限配对 Δ、≥5 窗口）：常数住在 config.json
+ECE_TOLERANCE = float(CFG["ece_tolerance"])  # prob0 ECE 容差（承自 2610 判据线，§README P3）
 
 # 锚（复用：`.scratch/23-depth-ar/evidence/23c-H2-w0-12k`，SCHEMA §9 三道门）
 ANCHOR_DIR = os.path.join(ROOT, ".scratch", "23-depth-ar", "evidence",
@@ -766,10 +770,6 @@ def aggregate(args, write: bool = True) -> dict:
             json.dump(out, f, indent=2, ensure_ascii=False)
     print(json.dumps(verdict, indent=2, ensure_ascii=False), flush=True)
     return out
-
-
-#: 判据常数（`config.json` 与 `run.py` 一起被 `tools/prereg_bind.py --contract` 绑住）。
-CFG = json.load(open(os.path.join(HERE, "config.json"), encoding="utf-8"))
 
 
 def _depth_rows(block: dict, arm: str) -> dict:

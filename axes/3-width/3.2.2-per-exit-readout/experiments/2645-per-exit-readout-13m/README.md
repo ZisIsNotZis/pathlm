@@ -94,11 +94,11 @@
 ## 5. 口径与锚复用（SCHEMA §9 三道门）
 
 1. **开关关闭逐位同前向单测**：`T` 臂 = stock `readout`（单测 `T1`）；
-2. **逐字段 config 对照**：`--stage anchor` 输出 `anchor_recheck.json`（**本次未产出**，见 §9）的
+2. **逐字段 config 对照**：`--stage anchor` 输出 `anchor_recheck.json`（**本轮未跑该 stage**，见 §9）的
    `config_equivalence`（17 个字段，含 `final_weight` 的代码谱系标注），并含一个**能变红**的变异用例（单测 `T7`）；
 3. **口径标注**：用**本文件自己的**电池重测 23c 锚 checkpoint，与 2610 用当前代码重测的
    `results.json::A_arm`（clean bpc 1.8582、tf@4 0.9694、tf@6 0.9938、ECE 0.0066）
-   **逐位对照**（`anchor_recheck.json` 的 `tf_matches_2610_bitwise`；该文件**本次未产出**，见 §9）。
+   **逐位对照**（`anchor_recheck.json` 的 `tf_matches_2610_bitwise`；该文件**本轮未产出**，见 §9）。
    ⇒ 本实验的 `tf@k` / bpc / ECE 与 2610、与锚同口径可比。
 
 **与 3.2.1 的关系（须在复核里核）**：`3.2.1` 的 `2621-per-depth-readout-13m` 已有
@@ -113,7 +113,8 @@
 
 主干 = L·(4d² + 2Td) + L·2·mlp_mult·d²；出口读出每出口 = d·V（tied 表）+ 校正项
 （`PE` +d²、`IND` +0 但参数 V·d、`LR` +d·r+r·V）。训练期每 token 在 9 个出口算 logits、
-推理期只 1 个出口 —— 两列分开报（`results.json::arm_rows[*].cost`）。出口读出**不重跑主干**，
+推理期只 1 个出口 —— 两列分开报（`results_PE_s0_12k.json::cost` 与 `results_T_s0_12k.json::cost`；
+聚合 `results.json` 的 `arm_rows` 只有 bpc / tf / 参数，不带 cost 段）。出口读出**不重跑主干**，
 layer-passes 每 token 不增加；tokens-per-forward = 1。
 
 ## 7. 单测门（`test_2645_per_exit_readout.py`，17 项）
@@ -144,6 +145,14 @@ python3 run.py --aggregate-all                       # 两 seed 汇总 P1–P4 �
   住在 `config.json`，判据的**应用代码**（`VARIANCE_BOUND` 判定、配对 bootstrap）在 `run.py`
   ⇒ 绑定必须同时覆盖两者：
   `python3 tools/prereg_bind.py . --contract README.md config.json run.py`（`docs/methodology.md` §8）。
+  `run.py` 的 `VARIANCE_BOUND` / `ECE_TOLERANCE` 直接读 `config.json::band_bpc` / `::ece_tolerance`，
+  所以改判据常数只有一处家。
+
+**第③道门未行使（`anchor_recheck.json` 本轮未产出）**：`--stage anchor` 本轮没跑，故 §5 的第 2、3 条
+只有单测 `T7`（锚逐字段对照 + 能变红的变异用例）顶着，**没有**落盘的 23c 锚重测列。影响：本实验的
+`tf@k` / bpc / ECE 与 `2610`、与锚「同口径可比」目前靠**内部**证据（`tf_acceptance_engine_agrees`
+＋ 单测 `T8`），跨实验的同口径对照缺一列落盘读数；跨格引用本项数字时应写明这一点。重跑该门是 CPU
+评测（无需重训）：`python3 run.py --stage anchor`。
 
 ## 10. 边界与未测项（预登记）
 

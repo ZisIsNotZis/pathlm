@@ -60,10 +60,10 @@
 | # | 判据 | 判定线 | 该涨 / 该跌 / 必须不变 |
 |---|---|---|---|
 | ① **主判（质量）** | `Δ = bpc_win32 − bpc_dil32`（20 批配对） | **0.014 bpc 带**（`config.json::band_bpc`，仅配对 Δ）：`≥ +0.014` = 空洞占优、`|Δ| < 0.014` = 无质量增量、`≤ −0.014` = 空洞更差 | 该涨或如实报无增量 |
-| ② **主判（长程召回）** | 变距离回忆（`tools/evalkit/longrange_tasks.var_recall_batch`）在**远档** `d ∈ {64,128,192,240}` 上的 top-1 准确率差 `Δ = acc_dil − acc_win` | **率类指标**：按批聚类的配对 bootstrap 95% CI（`config.json::recall_*`）；CI 不含 0 才算可分。**不跨量纲借用 0.014** | 该涨（空洞该更能取回远处信息） |
-| ③ **近档对照** | 同任务 `d ∈ {16,32}`（两臂都够得着）的准确率差 | 同 ② 的 CI 口径；只作「两臂在可达距离上本该一样」的对照 | 必须不跌（若这里就跌，说明差异不是「够得着」造成的） |
+| ② **主判（长程召回）** | 变距离回忆（`tools/evalkit/longrange_tasks.var_recall_batch`）在**远档** `d ∈ {64,128,192,240}` 上的 top-1 准确率差 `Δ = acc_win − acc_dil`（对照 − 实验，同本节开头的 Δ 方向） | **率类指标**：按批聚类的配对 bootstrap 95% CI（`config.json::recall_*`）；CI 不含 0 才算可分。**不跨量纲借用 0.014** | 该涨（空洞该更能取回远处信息） |
+| ③ **近档对照** | 同任务 `d ∈ {16,32}` 的准确率差（`d = 16` 两臂都够得着；`d = 32` **超出 `win32` 的可达上界 31**（`results.json::alignment_checks.reach.win32_max`）⇒ 该档只作噪声参考，不构成「两臂都够得着却跌了」的对照） | 同 ② 的 CI 口径；对照只对 `d = 16` 成立 | 必须不跌（若 `d = 16` 就跌，说明差异不是「够得着」造成的） |
 | ④ **必须不变**：可见键数逐行相等 | `kept_per_row` 逐行相等且 `= min(32, i+1)`；两臂 `mismatch_rows == 0`；`dil ⊆ causal`、`mask_offending_future_pairs == 0` | 机检，落盘 | 必须不变 |
-| ⑤ **必须不变**：参数量与配方 | 四臂参数量逐位相等；dil 臂的初始权重与 `win32` 臂同 seed 逐位相同（只换掩码） | 机检，落盘 | 必须不变 |
+| ⑤ **必须不变**：参数量与配方 | 四臂参数量逐位相等（`results.json::params_all_equal`）；dil 臂与 `win32` 臂**构造路径同源**（同一个训练函数、同 seed 构造主干，转换后各参数逐位不变：`runs/dil32-s*/results.json::conversion_check`）。**未**把 dil 的初始权重与 `win32` 的 checkpoint 逐位比过（两个 run 各自训练，checkpoint 必然不同；比的是同 seed 的构造初值，落盘列只有「转换前后逐位相同」） | 机检，落盘 | 必须不变 |
 | ⑥ **参照线**：相对 `full` 的配对 Δ | 同 0.014 带；**只作「少看键的代价」参照线，不与 ① 混用** | 该跌（少看必掉质量） | — |
 | ⑦ **申报不进判据** | 墙钟、峰值显存、步时、掩码最远距离列 | 逐臂申报 | — |
 
@@ -76,6 +76,37 @@
 **否证线（预登记）**：② 的远档 CI 含 0（含全部远档）**且** ① 两 seed 都落带内 ⇒ 判
 **「空洞采样在本尺度无净增量、不成立」**；若 ① 越带为负（空洞更差）⇒ 判「按位置最近仍占优」；
 若 ② 的近档对照（③）就可分 ⇒ 判「差异不是感受野造成的」，① 不作机制判据。
+
+### 4.1 追补读数（判词落定之后加的，两条都不改上面的判定线）
+
+两条都是**同一条主判的边界读数**：它们回答「召回这条仪器有没有分辨力」与「训练信号能不能迫使
+模型用远处信息」，不新增判定线、不换判定量。两条的常数都住在 `config.json::recall` /
+`config.json::synth_recall`，应用代码在 `run.py`，与 ①–⑦ 一起被绑定。
+
+**A · 仪器分辨力（`config.json::recall.n_batches`）**：在现有四臂 checkpoint 上把召回电池从
+**8 批 × 32 样本/档**加密到 **64 批 × 32 样本/档**（`batch_size` 与 `task_seed` 不变，只加样本数）。
+读法只有两条：
+
+* 若 seed 0 的 `d64` / `d128` 两档在 8 倍样本下**仍在**（CI 不含 0），且某档的
+  `best_over_chance` 越过 `config.json::recall.power_ratio_threshold`（5×）⇒ **仪器有分辨力**，
+  ② 可以按「可分但不支持空洞」读，判词须回到 ① 与 ③ 的机制读法；
+* 若 8 倍样本下可分档消失、四臂仍贴 chance（`best_over_chance` ≤ 2×）⇒ **仪器在本尺度仍无分辨力**，
+  ② 给不出正向证据这一条**不变**，判词维持「本设计下无信号」。
+
+**B · 合成关联回忆对撞（`config.json::synth_recall`）**：`win32` 与 `dil32` 各一支，在
+**必须用远处信息**的任务（多查询关联回忆：key 全在序列最前 16 个位置，查询行只看最近 32 个键
+根本看不到 key）上同构造、同 seed、同 6000 步训练，再在**同一批**保留任务上按批配对比较答案
+准确率（chance = 1/64）。判定规则（`config.json::synth_recall.rule`）：
+
+* `dil32` 准确率 ≥ 5× chance **且** `dil32 − win32` 的配对 95% CI 不含 0 且为正 ⇒ 训练信号确实
+  迫使使用远处信息、且空洞路径能把它搬回来 ⇒ 判词须重读（不再停在「本任务不需要」）；
+* 两臂都 < 5× chance ⇒ 该合成任务对两条掩码都没有可用路径（`dil32` 的 16 个空洞点按行均匀铺满
+  前缀，碰不到 key–value 对的概率很高）⇒ 这条读数**不能**区分「机制无效」与「本任务不需要」，
+  判词维持「本设计下无信号」并把该缺口写进 `gaps`。
+
+**披露**：A 的样本数是在读到 8 批那一版之后加密的（同一估计量、同一判定线，只是样本变多），
+B 是本轮新加的同任务对撞。两格的**契约都没有先于旧读数**（见 `docs/plan.md` 的批次三行与
+`prereg_binding.json::readings_existing_at_bind`），所以这两条读数的定序只从本次绑定起算。
 
 ## 5 失败决策树
 
@@ -95,12 +126,14 @@
 | 单臂 timeout | 20 min（`train_arms.sh`） |
 | 显存 | 逐臂实测 `peak_gpu_mem_mb`；礼貌线 5GB net（`SCHEMA.md` §20.2） |
 | 可中断性 | 每 200 步落 `train_log.jsonl`；断点即重取锁重跑该臂 |
+| §4.1 的 B | `win32` / `dil32` 各 6000 步 ≈ 5 min/臂（同一条训练路径，逐臂取/放锁）；A 不训练，只是同一条召回电池的样本数 8 → 64 |
 
 ## 7 产出
 
 本目录：`README.md`（本文件）/ `config.json`（判据常数）/ `run.py`（训练 + 评测 + 判词）/
 `train_arms.sh`（取锁驱动）/ `results.json` / `analysis.md` / `prereg_binding.json` /
-`runs/dil32-s{0,1}/{model.pt,train_log.jsonl,gate_log.jsonl,results.json}`。
+`runs/dil32-s{0,1}/{model.pt,train_log.jsonl,gate_log.jsonl,results.json}` /
+`runs/synth-{win32,dil32}/{model.pt,train_log.jsonl,gate_log.jsonl,results.json}`（§4.1 的 B）。
 
 ## 8 复现 / 重跑
 
@@ -109,4 +142,7 @@ python3 tools/prereg_bind.py axes/1-time/1.2.1-dilated/experiments/2678-dilated-
   --contract README.md config.json run.py          # 训练之前绑定（缺绑定两处入口拒绝启动）
 bash train_arms.sh                                  # 2 臂（逐臂取/放 GPU 锁，臂间 61 s）
 python3 run.py --stage eval                         # 对齐核查 + 配对评测 + 召回电池 → results.json
+python3 run.py --stage synth --arm win32 --seed 0   # §4.1 B：合成关联回忆，窗口臂
+python3 run.py --stage synth --arm dil32 --seed 0   # §4.1 B：合成关联回忆，空洞臂
+python3 run.py --stage eval                         # 再跑一次：把两条 synth 读数汇入 results.json::synth_recall
 ```

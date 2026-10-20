@@ -40,7 +40,8 @@ from pathlm.config import ModelConfig                          # noqa: E402
 from pathlm.depth_ar import (DepthARConfig, DepthARModel,      # noqa: E402
                              window_anchor_keep_mask)
 from pathlm.data import load_enwik8_full, batch                # noqa: E402  (batch 用于 bpc 采样)
-from tools.evalkit.longrange_tasks import var_recall_batch     # noqa: E402
+from tools.evalkit.longrange_tasks import (assoc_recall_multi_batch,
+                                           var_recall_batch)             # noqa: E402
 from tools.evalkit.retention import masked_logits              # noqa: E402
 from tools.prereg_bind import require as require_prereg        # noqa: E402
 
@@ -333,7 +334,157 @@ def boot_ci_paired(a: list[float], b: list[float], n_boot: int, seed: int) -> di
             "n_boot": n_boot}
 
 
+# --------------------------------------- 追补读数 B：合成关联回忆对撞（README §4.1）
+
+def synth_task() -> dict:
+    sc = CFG["synth_recall"]
+    return {"task": sc["task"], "pairs": sc["pairs"], "queries": sc["queries"],
+            "gap": sc["gap"], "sym_vocab": sc["sym_vocab"],
+            "filler_token": sc["filler_token"], "cue_token": sc["cue_token"]}
+
+
+def synth_keep_mask(arm: str):
+    """合成任务上两臂各自的可见集（与主判的 `keep_mask_for` 同一套掩码）。"""
+    if arm == "win32":
+        return window_anchor_keep_mask(SEQ, K, 0, device=DEVICE)
+    if arm == "dil32":
+        return dilated_keep_mask(SEQ, LOCAL, N_DIL, device=DEVICE)
+    raise SystemExit(f"未知合成臂：{arm}（只允许 win32 / dil32）")
+
+
+def build_synth_model(arm: str, seed: int) -> tuple[DepthARModel, dict]:
+    """两臂只差可见集：`win32` 走既有训练窗（`train_window = k`），`dil32` 换静态空洞掩码。"""
+    torch.manual_seed(seed)                                    # 与 train_depth_ar.main 同序
+    cfg = DepthARConfig(d_model=D, n_layers=L, n_heads=H, seq_len=SEQ, mlp_mult=MLP,
+                        dropout=RECIPE["dropout"], norm_cap=RECIPE["norm_cap"],
+                        dense=True, topology="sequential",
+                        train_window=(K if arm == "win32" else 0), train_anchors=0)
+    model = DepthARModel(cfg, CFG["synth_recall"]["vocab"])
+    info = {"converted": None}
+    if arm == "dil32":
+        info["converted"] = convert_to_dilated(model,
+                                               dilated_keep_mask(SEQ, LOCAL, N_DIL))
+        assert info["converted"]["params_identical_to_stock"], "转换后参数不一致"
+    return model.cuda(), info
+
+
+def synth_accuracy(model: DepthARModel, keep, sc: dict) -> dict:
+    """保留任务上的答案准确率（每批 = `eval_batch_size` 行 × `queries` 条查询）。"""
+    gen = torch.Generator().manual_seed(sc["eval_task_seed"])
+    per_batch, dists = [], []
+    with torch.no_grad():
+        for _ in range(sc["eval_n_batches"]):
+            task = assoc_recall_multi_batch(
+                sc["eval_batch_size"], SEQ, sc["pairs"], sc["queries"],
+                sym_vocab=sc["sym_vocab"], filler_token=sc["filler_token"],
+                cue_token=sc["cue_token"], gap=sc["gap"], generator=gen)
+            logits = masked_logits(model, task.tokens.to(DEVICE), keep)
+            pred = logits.argmax(-1)
+            sel = torch.gather(pred, 1, task.rows.to(DEVICE))
+            hit = (sel == task.answers.to(DEVICE)).float()
+            per_batch.append([float(hit.sum()), float(hit.numel())])
+            dists.append(task.dists)
+    hits = sum(h for h, _ in per_batch)
+    ns = sum(n for _, n in per_batch)
+    d = torch.stack(dists).float()
+    return {"per_batch": per_batch, "accuracy": round(hits / ns, 5),
+            "chance": round(1.0 / sc["sym_vocab"], 5), "n": int(ns),
+            "distance": {"min": int(d.min()), "max": int(d.max()),
+                         "mean": round(float(d.mean()), 2)}}
+
+
+def synth_eval_model(arm: str, ckpt: str) -> DepthARModel:
+    """把训练后的权重载到无内建窗口的评测模型（掩码由 `synth_keep_mask` 显式给）。"""
+    torch.manual_seed(0)
+    model = DepthARModel(cfg_for_eval(), CFG["synth_recall"]["vocab"])
+    if arm == "dil32":
+        info = convert_to_dilated(model, dilated_keep_mask(SEQ, LOCAL, N_DIL))
+        assert info["params_identical_to_stock"] and info["masked_blocks"] == L
+    model = model.to(DEVICE)
+    model.load_state_dict(torch.load(ckpt, map_location=DEVICE))
+    model.eval()
+    return model
+
+
+def train_synth(arm: str, seed: int) -> None:
+    sc = CFG["synth_recall"]
+    name = f"synth-{arm}"
+    run_dir = os.path.join(HERE, "runs", name)
+    os.makedirs(run_dir, exist_ok=True)
+    model, info = build_synth_model(arm, seed)
+    n_params = sum(p.numel() for p in model.parameters())
+    print(f"{name}: {n_params/1e6:.2f}M params  synth={synth_task()}  steps {sc['steps']}",
+          flush=True)
+    tcfg = {"steps": sc["steps"], "batch_size": sc["batch_size"],
+            "lr": sc["lr"], "seed": seed}
+    torch.cuda.reset_peak_memory_stats()
+    wall, _, _, stats = tdt.train(
+        model, None, tcfg,
+        os.path.join(run_dir, "train_log.jsonl"),
+        os.path.join(run_dir, "gate_log.jsonl"),
+        exit_mode="uniform", synth=synth_task())
+    ckpt = os.path.join(run_dir, "model.pt")
+    torch.save(model.state_dict(), ckpt)
+    peak = round(torch.cuda.max_memory_allocated() / 2 ** 20, 1)
+    del model
+    torch.cuda.empty_cache()
+    reading = synth_accuracy(synth_eval_model(arm, ckpt), synth_keep_mask(arm), sc)
+    out = {"run": name, "arm": arm, "seed": seed, "steps": sc["steps"],
+           "synth_task": synth_task(), "n_params": n_params,
+           "wall_minutes": round(wall / 60, 2), "peak_gpu_mem_mb": peak,
+           "conversion_check": info["converted"],
+           "train_stats": {k: v for k, v in stats.items()
+                           if k in ("gnorm_max", "gnorm_mean", "grad_skips",
+                                    "synth_answer_ce_mean", "synth_chance_ce")},
+           "eval": reading}
+    json.dump(out, open(os.path.join(run_dir, "results.json"), "w"), indent=2,
+              ensure_ascii=False)
+    print(f"{name}: wall {out['wall_minutes']} min  peak {peak} MiB  "
+          f"acc {reading['accuracy']} (chance {reading['chance']})", flush=True)
+
+
+def synth_summary() -> dict | None:
+    """两臂的合成读数若都已落盘，按 `config.json::synth_recall.rule` 给出对撞读数。"""
+    sc = CFG["synth_recall"]
+    paths = {arm: os.path.join(HERE, "runs", f"synth-{arm}", "results.json")
+             for arm in ("win32", "dil32")}
+    if not all(os.path.exists(p) for p in paths.values()):
+        return None
+    rec = {arm: json.load(open(p)) for arm, p in paths.items()}
+    acc = {arm: [h / n for h, n in rec[arm]["eval"]["per_batch"]] for arm in rec}
+    delta = boot_ci_paired(acc["win32"], acc["dil32"],
+                           CFG["recall"]["n_boot"], CFG["recall"]["boot_seed"])
+    thr = float(sc["power_ratio_threshold"])
+    chance = rec["win32"]["eval"]["chance"]
+    over = {arm: rec[arm]["eval"]["accuracy"] / chance for arm in rec}
+    has_power = max(over.values()) >= thr
+    supports = bool(has_power and delta["excludes_zero"] and delta["delta_acc"] < 0)
+    if supports:
+        verdict = ("合成任务上训练信号确实迫使使用远处信息，且空洞路径能把它搬回来（dil32 更高、"
+                   f"Δ 的 CI 不含 0 且越 {thr}× chance）⇒ 判词须重读")
+    elif not has_power:
+        verdict = (f"两臂都贴 chance（最高 = chance 的 {round(max(over.values()), 2)}×，门槛 "
+                   f"{thr}×）⇒ 该合成任务对两条掩码都没有可用路径；本条读数不能区分「机制无效」"
+                   "与「本任务不需要」")
+    else:
+        verdict = ("仪器有分辨力但两臂无可分差（Δ = acc_win − acc_dil 的 CI 含 0，或可分却不利于"
+                   "空洞）⇒ 该任务上空洞不占优")
+    return {"rule": sc["rule"], "task": synth_task(), "steps": sc["steps"],
+            "seed": sc["seed"],
+            "arms": {arm: {"accuracy": rec[arm]["eval"]["accuracy"],
+                           "chance": chance,
+                           "over_chance": round(over[arm], 2),
+                           "n": rec[arm]["eval"]["n"],
+                           "distance": rec[arm]["eval"]["distance"],
+                           "wall_minutes": rec[arm]["wall_minutes"],
+                           "peak_gpu_mem_mb": rec[arm]["peak_gpu_mem_mb"]}
+                     for arm in ("win32", "dil32")},
+            "delta_win_minus_dil": delta, "instrument_has_power": has_power,
+            "supports_dilated": supports, "verdict": verdict}
+
+
 def alignment_checks() -> dict:
+    """判据④：两臂逐行可见键数相等、掩码恒为因果子集、最远可达距离列。"""
     """判据④：两臂逐行可见键数相等、掩码恒为因果子集、最远可达距离列。"""
     causal = torch.tril(torch.ones(SEQ, SEQ, dtype=torch.bool))
     win = window_anchor_keep_mask(SEQ, K, 0)
@@ -359,7 +510,7 @@ def alignment_checks() -> dict:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--stage", choices=("train", "eval"), required=True)
+    ap.add_argument("--stage", choices=("train", "eval", "synth"), required=True)
     ap.add_argument("--arm", default="dil32")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--steps", type=int, default=RECIPE["steps"])
@@ -373,6 +524,10 @@ def main() -> None:
 
     if args.stage == "train":
         train_arm(args.arm, args.seed, args.steps)
+        return
+
+    if args.stage == "synth":
+        train_synth(args.arm, args.seed)
         return
 
     # ---- eval ----
@@ -499,7 +654,6 @@ def main() -> None:
             "min_delta": "comparator_minus_arm",
             "max_delta": "comparator_minus_arm",
             "frac_batches_delta_gt_0": "comparator_minus_arm",
-            "delta_acc": "comparator_minus_arm",
             "recall_delta_window_minus_dilated": "comparator_minus_arm",
         },
         "delta_direction_note": (
@@ -509,6 +663,7 @@ def main() -> None:
         "band_note": CFG["band_note"],
         "config": {"recipe": RECIPE, "k": K, "mask": CFG["mask"],
                    "eval": CFG["eval"], "recall": rc,
+                   "synth_recall": CFG["synth_recall"],
                    "seeds": CFG["seeds"]},
         "arms": [{"name": a["name"], "kind": a["kind"], "seed": a["seed"],
                   "role": a["role"], "ckpt": os.path.relpath(a["ckpt"], ROOT),
@@ -543,6 +698,7 @@ def main() -> None:
             "n_seed": len(PAIRS),
             "falsified": bool(falsified),
         },
+        "synth_recall": synth_summary(),
         "wall_reference": {"wall_in_criterion": False,
                            "note": "训练墙钟与峰值显存逐臂申报（train_declaration），不进判据（docs/methodology.md §3）"},
         "reuse_equivalence": reuse_ref,

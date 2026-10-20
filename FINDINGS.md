@@ -64,7 +64,7 @@
 | `5.5` 的 `fp8 E5M2` 相对 int8 块标尺**越带更差** ⇒ 「用哪个 fp8 格式」有取舍，不是「fp8 一律免费」 | `axes/5-quant/5.5-fp8-head-dim/project.yaml::conclusion` | 成立（只在 `head_dim`=32 上测过） |
 | `3.1.5` 通道稀疏激活：总参数不变、每 token 只算部分 FFN 通道，在本尺度**是真实但很贵的旋钮**——三个稀疏臂都省下实打实的每 token 算力却全部越出噪声带；把「哪些通道」交给逐 token 按内容选比固定砍一半**更差且更费算力**，坍缩门未命中（选择确实逐 token 变化）；保参数换计算与「直接减半 FFN 参数」的同算力位点对比**本项无配对读数、只作参考线、不下判词**。`status: 被否证` | `axes/3-width/3.1.5-channel-sparsity/project.yaml::conclusion`、`::status` | 成立（主判 n=2 同向、`K25` n=1；matched-step 快照；否证只覆盖「无参数、按 `|pre-activation|` 选」这一形态） |
 
-| `3.2.2` 逐出口读出：多出口模型里「每个出口各自映射到词表」**不是早退可用性的杠杆**——共享 tied 表 + 每出口 256×256 变换让末层 clean bpc **更好**（Δ = 逐出口读出 − 共享表 = −0.0857 / −0.0811，两 seed 同向、各自越带），但浅出口的接受率 `tf@2..4` **两 seed 同向下降**（−0.0468/−0.0159、−0.0278/−0.0207、−0.0204/−0.0219），代价是读出参数 +589,824（占总参数 +8.5%）。读的时候必须带一个口径：`tf@k` 是**相对**全深度出口的接受率，给末层加固会机械压低它——绝对质量几乎每层都更好，但相对收益落在末层，早退这笔交易的账变差；它买到的是「多给读出容量」，不是「出口→词表形态」的好处| `axes/3-width/3.2.2-per-exit-readout/project.yaml::conclusion`、`axes/3-width/3.2.2-per-exit-readout/experiments/2645-per-exit-readout-13m/analysis.md` | 成立（n=2；13M / 8L / 9 出口 / V=206；等参数对照臂与 `IND`/`LR` 未跑，真词表不可判） |
+| `3.2.2` 逐出口读出：多出口模型里「每个出口各自映射到词表」**不是相对接受率（`tf@k`）的杠杆，而且绝对层数—质量前沿更好**——共享 tied 表 + 每出口 256×256 变换让末层 clean bpc 更好，且它的 4 层就已优于共享表用满 8 层；浅出口的相对接受率两 seed 同向下降，但 `tf@k` 是**相对**全深度出口的量，给末层加固会机械压低它。它买到的是「多给读出容量」，不是「出口→词表形态」的好处。代价与全部读数见出处的 `analysis.md` 与 `docs/cost-table.md`（本文件不写数字） | `axes/3-width/3.2.2-per-exit-readout/project.yaml::conclusion`、`axes/3-width/3.2.2-per-exit-readout/experiments/2645-per-exit-readout-13m/analysis.md` | 成立（n=2；13M / 8L / 9 出口 / V=206；等参数对照臂与 `IND`/`LR` 未跑，真词表不可判） |
 
 ## 三之三、时间轴（轴 1）的两条判词
 
