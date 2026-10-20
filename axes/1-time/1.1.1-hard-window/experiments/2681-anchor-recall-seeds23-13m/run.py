@@ -776,8 +776,13 @@ def main():
             "delta_pp": "arm_minus_comparator",        # 植入 − 配对地板（正 = 埋针后召回更高）
             "mean_delta_pp": "arm_minus_comparator",   # 跨 seed 均值（同 delta_pp 的方向）
             "delta_bpc_far": "arm_minus_comparator",   # 毁源 − 干净（正 = 对远处源敏感）
-            "price_bpc": "arm_minus_comparator",       # 锚点臂 − 纯窗臂（正 = 质量更差）
+            # `realtext_probe.paired_cluster_bootstrap_ci` 输出的区间端点（上下界各一个数），
+            # 符号不可机判 ⇒ 声明 undeclared 并在下面写清为什么。
+            "delta_ci95_clustered": "undeclared",
         },
+        "delta_direction_note": ("`delta_ci95_clustered` 是毁源探针的**区间端点对**（[下界, 上界]），"
+                                 "两个端点的符号意义相反，不能给单一方向 ⇒ undeclared；"
+                                 "它只作诊断列，不进任何判据"),
         "config": cfg, "checkpoints": ck, "selfchecks": selfchecks,
         "quality_leg": {"bpc": quality, "price": price, "price_cross_seed": price_cross,
                         "bands": {"sigma_cell_frozen": sigma_cell,
