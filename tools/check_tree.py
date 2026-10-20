@@ -76,12 +76,24 @@ COST_ROW_FIELDS = ("law", "change", "touches_trunk", "metric", "delta",
 NUMBER_RE = re.compile(r"[+-]?\d+(?:[\d,]*)?(?:\.\d+)?")
 
 #: Δ 方向的**唯一枚举**（`docs/research-schema.md` §2.3）：名字即算式，读表的人不可能读反。
-DELTA_DIRECTIONS = ("comparator_minus_arm", "arm_minus_comparator")
+#: `undeclared` 是**声明「缺失」本身**——它不进自洽校验，但必须被统计打印，缺口不许静默通过。
+DELTA_DIRECTIONS = ("comparator_minus_arm", "arm_minus_comparator", "undeclared")
+#: `cost_rows` 是一条必填事实，不存在「没方向」这种状态 ⇒ 那里只许两个真方向。
+COST_ROW_DIRECTIONS = ("comparator_minus_arm", "arm_minus_comparator")
 #: 枚举 → 展示层中文短语（`docs/cost-table.md` 的「Δ 方向」列用这一份，不另抄）。
 DELTA_DIRECTION_LABELS = {
     "comparator_minus_arm": "正 = 改善",
     "arm_minus_comparator": "正 = 更差",
 }
+#: `results.json` 的方向声明：**字段级映射**（一个文件的不同 Δ 字段可以有不同方向）。
+DELTA_DIRECTIONS_KEY = "delta_directions"
+#: 出现 `undeclared` 时必须写下的一句话原因（可选键，别处不写）。
+DELTA_DIRECTION_NOTE_KEY = "delta_direction_note"
+#: 旧的**文件级单值**字段：新形状下必须消失，留着即 fail（防止两种形状并存）。
+LEGACY_DELTA_DIRECTION_KEY = "delta_direction"
+#: 这些键是声明本身，不是 Δ 读数，不能被当成待声明字段。
+DELTA_META_KEYS = (DELTA_DIRECTIONS_KEY, DELTA_DIRECTION_NOTE_KEY,
+                   LEGACY_DELTA_DIRECTION_KEY)
 #: 方向短语里的「更好 / 更差」词表（`metric` 与 `results.json` 的判据串共用）。
 _BETTER_WORDS = ("更好", "改善", "变好", "更可读", "更优", "有收益")
 _WORSE_WORDS = ("更差", "变差", "损伤", "税", "失效", "更费", "更慢", "恶化",
@@ -97,9 +109,9 @@ _FORMULA_RE = re.compile(
 _COMPARATOR_MARKS = ("对照", "基线", "stock", "B0", "b0", "全因果", "fp16", "sequential",
                      "base", "同形态基线", "窗口", "纯窗")
 _ARM_MARKS = ("实验", "本臂", "该臂", "臂", "改动", "窄", "量化")
-#: `results.json` 里出现这些键名即视为「本文件报了 Δ 读数」（`workspace.delta` 这类配置项不算）。
-RESULTS_DELTA_KEY_RE = re.compile(
-    r"(?i)(^|_)(delta_(?:bpc|pp|vs_|mean|halves|window_se|min_pp)|_delta_bpc)(_|$|\.)|Δ")
+#: `results.json` 里一个 Δ 读数 = 键名含 `delta` / `Δ` 且**值里有数字**的节点（标量或它的整棵子树）。
+#: 只看键名、不看后代路径：`delta_spread: {min, max}` 是**一个**读数（整棵子树的统计），不是十几个。
+DELTA_NODE_RE = re.compile(r"(?i)delta|Δ")
 #: 「本行报的是绝对值/比值，符号不可判」的标记（只校验枚举合法，不校验符号自洽）。
 _UNSIGNED_METRIC_MARKS = ("非负", "|Δ|", "绝对值")
 #: `source` 可带的定位后缀：`:12` / `:12-14` / `#§标题`。
@@ -195,8 +207,12 @@ def _claim_direction(text: str) -> tuple[str | None, str]:
     return "arm_minus_comparator", t
 
 
-def direction_claims(text: str) -> list[tuple[str, str]]:
-    """把一段文字里所有的方向声明抽成 [(方向, 原词)]；`负 = 更好` 一类的反向说法已翻转。"""
+def direction_claims(text: str, ratios: bool = True) -> list[tuple[str, str]]:
+    """把一段文字里所有的方向声明抽成 [(方向, 原词)]；`负 = 更好` 一类的反向说法已翻转。
+
+    `ratios=False` 时丢掉 `>1 = …` 这一类：它描述的是一个比值字段的符号，
+    不是 Δ 字段的朝向，拿它去判同块里的 Δ 字段会把方向判反。
+    """
     out: list[tuple[str, str]] = []
     s = " ".join(str(text).split())
     for m in _POS_CLAIM_RE.finditer(s):
@@ -208,10 +224,11 @@ def direction_claims(text: str) -> list[tuple[str, str]]:
         if d:  # 「负 = 更好」⇒ 正 = 更差 ⇒ arm − comparator
             out.append(("arm_minus_comparator" if d == "comparator_minus_arm"
                         else "comparator_minus_arm", m.group(0)))
-    for m in _RATIO_CLAIM_RE.finditer(s):
-        d, _ = _claim_direction(m.group(1))
-        if d:
-            out.append((d, m.group(0)))
+    if ratios:
+        for m in _RATIO_CLAIM_RE.finditer(s):
+            d, _ = _claim_direction(m.group(1))
+            if d:
+                out.append((d, m.group(0)))
     return out
 
 
@@ -249,9 +266,9 @@ def check_cost_row_direction(row: dict, where: str) -> list[str]:
     errors: list[str] = []
     declared = row.get("delta_direction")
     if declared is None:
-        return [f"{where} 缺 delta_direction（合法值：{DELTA_DIRECTIONS}）"]
-    if declared not in DELTA_DIRECTIONS:
-        return [f"{where}.delta_direction={declared!r} 非法（合法值：{DELTA_DIRECTIONS}）"]
+        return [f"{where} 缺 delta_direction（合法值：{COST_ROW_DIRECTIONS}）"]
+    if declared not in COST_ROW_DIRECTIONS:
+        return [f"{where}.delta_direction={declared!r} 非法（合法值：{COST_ROW_DIRECTIONS}）"]
     metric = str(row.get("metric") or "")
     if any(w in metric for w in _UNSIGNED_METRIC_MARKS):
         return errors  # 本行报的是绝对值/记号本身非负 ⇒ 符号不可机判
@@ -286,91 +303,197 @@ def _walk_strings(obj, path: tuple[str, ...] = ()) -> list[tuple[str, str]]:
     return out
 
 
-def results_delta_scope(data) -> bool:
-    """本 `results.json` 是否报出 Δ（= 需要 `delta_direction` 的机械入口）。"""
-    if "Δ" in json.dumps(data, ensure_ascii=False):
+def _is_number(x) -> bool:
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def _has_number(obj) -> bool:
+    """子树里有没有数字（决定一个 `delta*` 键是「读数」还是「一句话解释」）。"""
+    if _is_number(obj):
         return True
-    return any(RESULTS_DELTA_KEY_RE.search(k) for k, _ in _all_keys(data))
-
-
-def _all_keys(obj, path: tuple[str, ...] = ()) -> list[tuple[str, str]]:
-    out: list[tuple[str, str]] = []
     if isinstance(obj, dict):
-        for k, v in obj.items():
-            out.append(("".join(path) + str(k), str(k)))
-            out.extend(_all_keys(v, path + (str(k), ".")))
-    elif isinstance(obj, list):
-        for i, v in enumerate(obj):
-            out.extend(_all_keys(v, path + (str(i), ".")))
+        return any(_has_number(v) for v in obj.values())
+    if isinstance(obj, list):
+        return any(_has_number(v) for v in obj)
+    return False
+
+
+def delta_nodes(data) -> list[tuple[str, str]]:
+    """本 `results.json` 的全部 Δ 读数：[(dotted path, 末位键名)]。
+
+    口径（`docs/research-schema.md` §2.3）：键名含 `delta` / `Δ`、且值里带数字；
+    声明字段自己（`delta_directions` / `delta_direction_note`）不算读数。
+    同一个键名在同一文件里出现多次（如逐臂 `delta_bpc`）就是一个待声明项，
+    要按路径分开时就写路径键。
+    """
+    out: list[tuple[str, str]] = []
+
+    def walk(obj, path: tuple[str, ...]) -> None:
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                p = path + (str(k),)
+                if (k not in DELTA_META_KEYS and DELTA_NODE_RE.search(str(k))
+                        and _has_number(v)):
+                    out.append((".".join(p), str(k)))
+                walk(v, p)
+        elif isinstance(obj, list):
+            for i, v in enumerate(obj):
+                walk(v, path + (str(i),))
+
+    if isinstance(data, dict):
+        walk(data, ())
     return out
+
+
+def resolve_delta_direction(mapping, path: str, leaf: str):
+    """字段的方向：先看完整路径、再看末位键名；两处都没有返回 `None`（= 漏声明）。"""
+    if not isinstance(mapping, dict):
+        return None
+    if path in mapping:
+        return mapping[path]
+    return mapping.get(leaf)
 
 
 CRITERION_KEY_RE = re.compile(r"(?i)criteri(on|a)")
 
 
-def criterion_strings(obj, path: tuple[str, ...] = ()) -> list[tuple[str, str]]:
-    """只取「预登记判据」那一类字符串（键名含 criterion/criteria）——方向的权威处。
+#: 「声明了缺失」的字段，供 `main()` 统计与打印（不等于 fail，但不许静默）。
 
-    别的散文（判词、边界、结论）不参与方向机检：它们常混着别的量纲的读数，
-    拿它们投票只会把方向判错。这条边界在 `docs/research-schema.md` §2.3 写明。
+
+#: 「声明了缺失」的字段，供 `main()` 统计与打印（不等于 fail，但不许静默）。
+UNDECLARED_FIELDS: list[tuple[str, str]] = []
+
+
+def criterion_block_claims(data, path: str) -> tuple[set[str], list[str]]:
+    """该字段所隶的最近一个判据块（键名含 criterion/criteria）里的方向声明。
+
+    返回 (`声明到的方向集合`, `原词列表`)。字段不在任何判据块里 ⇒ 空集。
     """
-    out: list[tuple[str, str]] = []
-    if isinstance(obj, dict):
-        for k, v in obj.items():
-            if CRITERION_KEY_RE.search(str(k)):
-                out.extend(_walk_strings(v, path + (str(k),)))
-            else:
-                out.extend(criterion_strings(v, path + (str(k),)))
-    elif isinstance(obj, list):
-        for i, v in enumerate(obj):
-            out.extend(criterion_strings(v, path + (str(i),)))
-    return out
+    segs = path.split(".")
+    for cut in range(len(segs) - 1, -1, -1):  # 从最近的一个判据键往根走
+        if CRITERION_KEY_RE.search(segs[cut]):
+            prefix = segs[:cut]
+            node = data
+            for s in prefix:
+                node = node[int(s)] if isinstance(node, list) else node[s]
+            block = node.get(segs[cut]) if isinstance(node, dict) else None
+            dirs: set[str] = set()
+            raws: list[str] = []
+            for _w, s in _walk_strings(block):
+                for d, raw in direction_claims(s, ratios=False):
+                    dirs.add(d)
+                    raws.append(raw)
+                fd, raw = formula_direction(s)
+                if fd:
+                    dirs.add(fd)
+                    raws.append(f"算式「{raw}」")
+            return dirs, raws
+    return set(), []
 
 
-def results_scope_claims(data) -> list[tuple[str, str, str]]:
-    """`results.json` 里可机检的方向声明：[(路径, 方向, 原词)]。
+def check_results_delta_directions(rel: str, data) -> list[str]:
+    """`results.json` 的 `delta_directions`：映射形状 + 枚举 + 字段全覆盖 + 与判据串不矛盾。
 
-    口径：判据串（键名含 criterion/criteria）里的 `正/负/>1 = …` 与 `Δ = A − B`；
-    判据串里没有时退回全文件的算式声明。两处都没有 ⇒ 无可检的声明。
+    口径见 `docs/research-schema.md` §2.3：文件里每个 `delta*` 读数都必须出现（路径或键名），
+    同一文件的不同字段可以不同方向；`undeclared` 声明「缺失」本身，它不参与自洽校验，
+    但必须配一句 `delta_direction_note` 并被统计打印。
     """
-    out: list[tuple[str, str, str]] = []
-    for where, s in criterion_strings(data):
-        for d, raw in direction_claims(s):
-            out.append((where, d, raw))
-        fd, raw = formula_direction(s)
-        if fd:
-            out.append((where, fd, f"算式「{raw}」"))
-    if out:
-        return out
-    for where, s in _walk_strings(data):
-        fd, raw = formula_direction(s)
-        if fd:
-            out.append((where, fd, f"算式「{raw}」"))
-    return out
-
-
-def check_results_delta_direction(rel: str, data) -> list[str]:
-    """`results.json` 的 `delta_direction`：有可检的方向声明就必须声明，且必须一致。"""
     if not isinstance(data, dict):
         return []
     errors: list[str] = []
-    declared = data.get("delta_direction")
-    claims = results_scope_claims(data)
-    dirs = {d for _w, d, _r in claims}
-    if len(dirs) > 1:
-        UNJUDGED.append(f"{rel}: 文件里两条判据的 Δ 方向相反，一条 delta_direction 表达不了"
-                        f"（待人裁决，不猜）：{sorted(dirs)}")
+    if LEGACY_DELTA_DIRECTION_KEY in data:
+        errors.append(f"{rel}: 顶部 delta_direction 单值已废弃，换成字段级映射 "
+                      f"{DELTA_DIRECTIONS_KEY}（§2.3）")
+    nodes = delta_nodes(data)
+    mapping = data.get(DELTA_DIRECTIONS_KEY)
+    if mapping is None:
+        if nodes:
+            errors.append(f"{rel}: 报了 {len(nodes)} 个 Δ 读数却缺 {DELTA_DIRECTIONS_KEY}"
+                          f"（每个 delta 字段都要声明，判不了就写 undeclared）")
         return errors
-    if claims and declared is None:
-        errors.append(f"{rel}: 判据串声明了 Δ 方向却缺 delta_direction"
-                      f"（合法值：{DELTA_DIRECTIONS}）")
-    if declared is not None and declared not in DELTA_DIRECTIONS:
-        return errors + [f"{rel}: delta_direction={declared!r} 非法（合法值：{DELTA_DIRECTIONS}）"]
-    for where, d, raw in claims:
-        if declared is not None and d != declared:
-            errors.append(f"{rel}:{where}: 判据串的方向「{raw}」与 delta_direction="
-                          f"{declared!r} 矛盾（按该串应为 {d!r}）")
+    if not isinstance(mapping, dict):
+        return errors + [f"{rel}: {DELTA_DIRECTIONS_KEY} 必须是映射"
+                         f"（字段名/路径 → 枚举），现在是 {type(mapping).__name__}"]
+    bad_shape = [k for k in mapping if not isinstance(k, str)]
+    if bad_shape:
+        errors.append(f"{rel}: {DELTA_DIRECTIONS_KEY} 的键必须是字段名或路径：{bad_shape}")
+    for key, val in mapping.items():
+        if val not in DELTA_DIRECTIONS:
+            errors.append(f"{rel}: {DELTA_DIRECTIONS_KEY}[{key!r}]={val!r} 非法"
+                          f"（合法值：{DELTA_DIRECTIONS}）")
+    covered: set[str] = set()
+    undeclared_here: list[str] = []
+    for path, leaf in nodes:
+        if path in mapping:
+            covered.add(path)
+        elif leaf in mapping:
+            covered.add(leaf)
+        else:
+            errors.append(f"{rel}:{path}: 是 Δ 读数但 {DELTA_DIRECTIONS_KEY} 里没有声明"
+                          f"（写字段名 {leaf!r} 或完整路径）")
+            continue
+        declared = resolve_delta_direction(mapping, path, leaf)
+        if declared == "undeclared":
+            undeclared_here.append(path)
+            continue
+        if declared not in DELTA_DIRECTIONS:
+            continue  # 已在上面报过非法值
+        dirs, raws = criterion_block_claims(data, path)
+        if not dirs:
+            continue
+        if len(dirs) > 1:
+            UNJUDGED.append(f"{rel}:{path}: 所在判据块同时声明了 {sorted(dirs)} 两种方向，"
+                            f"该字段的方向机判不了（待人裁决）")
+            continue
+        only = next(iter(dirs))
+        if only != declared:
+            errors.append(f"{rel}:{path}: 判据串的方向「{raws[0]}」与 "
+                          f"{DELTA_DIRECTIONS_KEY} 声明的 {declared!r} 矛盾"
+                          f"（按该串应为 {only!r}）")
+    dangling = [k for k in mapping if k not in covered]
+    if dangling:
+        errors.append(f"{rel}: {DELTA_DIRECTIONS_KEY} 里有对不上任何 Δ 字段的键：{dangling}"
+                      f"（写错名字就等于没声明）")
+    if undeclared_here:
+        UNDECLARED_FIELDS.extend((rel, p) for p in undeclared_here)
+        note = data.get(DELTA_DIRECTION_NOTE_KEY)
+        if not isinstance(note, str) or not note.strip():
+            errors.append(f"{rel}: {len(undeclared_here)} 个字段标了 undeclared，却缺 "
+                          f"{DELTA_DIRECTION_NOTE_KEY}（为什么判不了，一句话）")
     return errors
+
+
+def delta_direction_summary() -> str:
+    """一行统计：多少文件报 Δ、多少已全字段声明、多少 undeclared（缺口要看得见）。"""
+    files = declared_files = undeclared_files = 0
+    declared_readings = 0
+    undeclared_keys: set[tuple[str, str]] = set()
+    undeclared_readings = 0
+    for path in collect_results_files():
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001 —— 解析失败由 validate_results_files 报
+            continue
+        nodes = delta_nodes(data)
+        if not nodes:
+            continue
+        files += 1
+        mapping = data.get(DELTA_DIRECTIONS_KEY) if isinstance(data, dict) else None
+        dirs = [resolve_delta_direction(mapping, p, l) for p, l in nodes]
+        if not isinstance(mapping, dict) or "undeclared" in dirs:
+            undeclared_files += 1
+            for (p, l), d in zip(nodes, dirs):
+                if d != "undeclared":
+                    continue
+                undeclared_readings += 1
+                undeclared_keys.add((path.relative_to(ROOT).as_posix(),
+                                     p if isinstance(mapping, dict) and p in mapping else l))
+        else:
+            declared_files += 1
+            declared_readings += len(nodes)
+    return (f"Δ 方向：{files} 个 results.json 报了 Δ 读数；{declared_files} 个文件全字段已声明"
+            f"（{declared_readings} 个读数）；{undeclared_files} 个文件含 undeclared"
+            f"（{len(undeclared_keys)} 条声明 / {undeclared_readings} 个读数）。")
 
 
 RESULTS_FILES = "results.json"
@@ -635,14 +758,15 @@ def validate_results_files() -> list[str]:
         except Exception as e:  # noqa: BLE001 —— 解析失败要如实报出
             errors.append(f"{rel}: JSON 解析失败：{e}")
             continue
-        errors.extend(check_results_delta_direction(rel, data))
+        errors.extend(check_results_delta_directions(rel, data))
     return errors
 
 
 def main() -> int:
     errors, entries = validate_all()
     for note in unjudged_notes():
-        print(f"不判（符号无法机判）：{note}", file=sys.stderr)
+        print(f"不判：{note}", file=sys.stderr)
+    print(delta_direction_summary(), file=sys.stderr)
     if errors:
         print(f"FAIL：{len(errors)} 项")
         for e in errors:
