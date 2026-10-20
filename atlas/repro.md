@@ -21,10 +21,10 @@
 
 ## 汇总（生成时统计）
 
-- 规模：实验 **131** 个（`axes/**/experiments/*`），run 条目 **449** 个（352 个是 run 子目录或前缀组，97 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 102 个）。
+- 规模：实验 **131** 个（`axes/**/experiments/*`），run 条目 **450** 个（352 个是 run 子目录或前缀组，98 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 103 个）。
 
-- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**97** 个、`not_reproducible`（不可重建）**34** 个。
-- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 98 个。
+- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**98** 个、`not_reproducible`（不可重建）**33** 个。
+- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 99 个。
 
 ## 这个克隆重建不了什么
 
@@ -87,7 +87,7 @@
 | [2639-carry-perlayer-frontier-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | ✓ | ✓ | 8 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `liveness.win16_s0.train_wall_minutes` = 11.94 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2680-quant-overlay-frontier-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2680-quant-overlay-frontier-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.4.1-explicit-memory/experiments/2680-quant-overlay-frontier-13m --require`（README.md 的复现小节） | `budget.gpu_wall_budget_min` = 25 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2681-int8-equalbytes-frontier-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m --require`（README.md 的复现小节） | `budget.gpu_wall_budget_min` = 39 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
-| [2684-recall-across-budget-points-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | — | — | 0 | — | `python3 tools/prereg_bind.py axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m --require`（README.md 的复现小节） | — | `not_reproducible` | 有入口脚本 `run.py`，但仓内无 `results*.json` |
+| [2684-recall-across-budget-points-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m --require`（README.md 的复现小节） | `config.budget.gpu_wall_budget_min` = 20 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2614-kv-ablation-retention-13m](../axes/1-time/1.1.4.2-compression/experiments/2614-kv-ablation-retention-13m/) | [1.1.4.2-compression](../axes/1-time/1.1.4.2-compression/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_minutes` = 0.724 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2615-retention-retrieval-leg-13m](../axes/1-time/1.1.4.2-compression/experiments/2615-retention-retrieval-leg-13m/) | [1.1.4.2-compression](../axes/1-time/1.1.4.2-compression/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_minutes` = 0.95 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2615-priority-shootout-13m](../axes/1-time/1.1.4.3-compression-trigger/experiments/2615-priority-shootout-13m/) | [1.1.4.3-compression-trigger](../axes/1-time/1.1.4.3-compression-trigger/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_minutes` = 1.693 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
@@ -188,7 +188,6 @@
 | [2503-engine-m1-extensions](../axes/1-time/1.1.4.1-explicit-memory/experiments/2503-engine-m1-extensions/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2617-design-rightcarry](../axes/1-time/1.1.4.1-explicit-memory/experiments/2617-design-rightcarry/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 DESIGN.md） |
 | [2617-prior-art-memory](../axes/1-time/1.1.4.1-explicit-memory/experiments/2617-prior-art-memory/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 PRIOR_ART.md） |
-| [2684-recall-across-budget-points-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `run.py`，但仓内无 `results*.json` |
 | [2518-exit-retry-law](../axes/2-depth/2.1.1-early-exit/experiments/2518-exit-retry-law/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2523-depth-ar-first](../axes/2-depth/2.1.1-early-exit/experiments/2523-depth-ar-first/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2523c-three-ablations](../axes/2-depth/2.1.1-early-exit/experiments/2523c-three-ablations/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
@@ -453,7 +452,7 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2681-int8-equalbytes-frontier-13m | train/win60 | ✓ | ✓ | 11999 | — | — |
 | 2681-int8-equalbytes-frontier-13m | train/win60-retrain-aborted | — | ✓ | 200 | — | — |
 | 2681-int8-equalbytes-frontier-13m | train/win64 | ✓ | ✓ | 11999 | — | — |
-| [2684-recall-across-budget-points-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m/) | — | — | — | — | — | 仓内没有 run 产物 |
+| 2684-recall-across-budget-points-13m | . | ✓ | — | — | — | — |
 | 2614-kv-ablation-retention-13m | . | ✓ | — | — | — | — |
 | 2614-kv-ablation-retention-13m | smoke | ✓ | — | — | — | — |
 | 2615-retention-retrieval-leg-13m | . | ✓ | — | — | — | — |
