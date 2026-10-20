@@ -31,7 +31,7 @@ status: judged
 - 三道对账 + 禁外推；数字与 `results.json`/日志逐一对应 + 自带 `reconcile_numbers.py`。
 - 结束前 `pytest tests/ -q` 全绿（基线 **431**）；权重不入库；只写授权文件。
 
-**相关规范**：`SCHEMA.md` §14/§14b、§17.11（禁外推）、§17.14（判据基准唯一）、§17.16（两点同刻度
+**相关规范**：`harness/SCHEMA.md` §14/§14b、§17.11（禁外推）、§17.14（判据基准唯一）、§17.16（两点同刻度
 非退化）、§17.17（净和不可排序给分量）、§18、§19、§20+§20.1+§20.2+§20.3、§21、§22+§22.8、§23。
 
 ## 1. 命题（一句话、可证伪）
@@ -85,7 +85,7 @@ status: judged
 | **主判据（Z1 ①）** | `gnorm_max` 复现判定（R1 绝对量级 / R2 相对量级） | seed0 的 1740.92 vs 7.35 |
 | 质量（Z1 ③） | Δbpc（native 工作点：窗口臂用自身训练掩码，full 臂全因果） | 本点自己的 full（§17.14 基准唯一） |
 | 代价（质量·并列） | release 口径 Δ（窗口臂在全可见下评测） | 同上 |
-| 有效性 | Δ + 方差界（Δ < 0.014 不可排序，`docs/methodology.md §2`） | SCHEMA §12 判据线 |
+| 有效性 | Δ + 方差界（Δ < 0.014 不可排序，`harness/methodology.md §2`） | SCHEMA §12 判据线 |
 | **判据损失斜率（Z1 ③）** | 训练日志 loss 的末窗/晚第三窗/早窗斜率（nats/1k 步，§17.15/§20.3） | 各臂自己 |
 | 显存（Z1 ③） | 训练峰值（`torch.cuda.max_memory_allocated` + `nvidia-smi` 子进程峰值） | 5GB net 礼貌线 |
 | 种子活性（§10） | 同配置 seed0/seed1 的初始参数是否不同（`smoke/cpu_smoke.json`） | 0（死因子） |
@@ -125,7 +125,7 @@ status: judged
 ### 4.2 符号与带宽
 
 `Δ = bpc_full − bpc_window`（SCHEMA §17.3：正 = 窗口更好），全篇统一。
-方差界：|Δ| < 0.014 ⇒ 该点「不亏（噪声带内）」（`docs/methodology.md §2`）。
+方差界：|Δ| < 0.014 ⇒ 该点「不亏（噪声带内）」（`harness/methodology.md §2`）。
 
 ## 5. 既有做法（prior art，SCHEMA §18）
 

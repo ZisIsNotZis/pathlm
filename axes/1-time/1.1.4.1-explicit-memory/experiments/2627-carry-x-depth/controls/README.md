@@ -23,7 +23,7 @@
 
 ## 3. 方差界与口径
 
-- **方差带**：`0.014 bpc`（`docs/methodology.md`）——Δ < 0.014 不可排序；
+- **方差带**：`0.014 bpc`（`harness/methodology.md`）——Δ < 0.014 不可排序；
   召回判据用 **1.4pp** 作参考带，正式用 **Wilson 95% CI** + `two_proportion` 差值 CI。
 - **chance** = `1/sym_vocab` = 1/64 = 0.015625；**局部先验地板** = `local_prior_accuracy(k=8)`。
 - **主判据腿在训练分布内**（§17.18）：训练型多查询 `assoc-mqar`，查询-键距离 ≤240；

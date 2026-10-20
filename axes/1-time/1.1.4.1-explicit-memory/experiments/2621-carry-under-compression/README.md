@@ -134,7 +134,7 @@ KV cache compression interaction`。
   2618 已单独回答「有无通道」。并报 `fp32`（释放版）作实现等值锚。
 - **chance** = `1/词表子集大小`（sym_vocab = 64）；**局部先验地板** = `local_prior_accuracy(k=8)`；
   **逐 arm 毁源对照**。
-- **方差带** = `0.014 bpc`（`docs/methodology.md`）：`|Δbpc| < 0.014` 标「⚠不可排序」；
+- **方差带** = `0.014 bpc`（`harness/methodology.md`）：`|Δbpc| < 0.014` 标「⚠不可排序」；
   召回判据用 Wilson 95% CI（`1.4pp` 的召回方差带仅作参考）。
 - **纯推理、无随机采样**：同 seed 重跑应逐位相同（`results.json::reproducibility`）。
 - **逐字段对照表**（唯一变量 = KV 精度）：

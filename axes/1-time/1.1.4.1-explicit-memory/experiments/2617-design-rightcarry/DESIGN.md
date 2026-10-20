@@ -2,8 +2,8 @@
 
 > 轴：**M 状态载体** ｜ 格子：`M1-carrier-type` ｜ 实验：`2617-design-rightcarry`
 > 角色：design（只读仓库 + 写本文件）｜ 本批**不跑训练/评测**
-> 依据：`SCHEMA.md` §15（等参数对照）/ §18（既有做法）/ §19（局部先验抗性）；
-> `docs/design.md`（三条共享底座）；`docs/playbook.md`（已测定律）。
+> 依据：`harness/SCHEMA.md` §15（等参数对照）/ §18（既有做法）/ §19（局部先验抗性）；
+> `atlas/design.md`（三条共享底座）；`atlas/playbook.md`（已测定律）。
 
 ---
 
@@ -44,7 +44,7 @@
 
 ### 1.2 容量侧：残差流是**无地址**的共享空间，远处信息没有专属写入位置
 
-现架构只有一个残差流 + 无 final LayerNorm 的 tied 读出（`docs/design.md` 共享底座 #1）。
+现架构只有一个残差流 + 无 final LayerNorm 的 tied 读出（`atlas/design.md` 共享底座 #1）。
 「往右搬」要求把某条具体的远处信息**存到一个不会立刻被冲掉的位置**；但残差流没有写地址，
 新 token 的表示会把旧信息推走。两条读数刻画这个容量约束：
 
@@ -193,9 +193,9 @@ $$
 
 ---
 
-## 3. 哪些结构会**破坏 `docs/design.md` 的三条共享底座**
+## 3. 哪些结构会**破坏 `atlas/design.md` 的三条共享底座**
 
-三条共享底座（`docs/design.md` §2）：① tied 读出 + 无 final LayerNorm（同空间几何）；
+三条共享底座（`atlas/design.md` §2）：① tied 读出 + 无 final LayerNorm（同空间几何）；
 ② 变深度增量解码的填充语义；③ 全深度重打分的定稿不变量。逐条给风险：
 
 | 设计 | 是否触碰共享底座 | 机制 |
@@ -297,7 +297,7 @@ $$
   — 窗口 192 税 −0.0028；整段窗外 494 根差恰 0.000；训练侧噪声 ≥~0.0156 bpc。
 - `axes/1-time/1.1.4.1-explicit-memory/experiments/2617-prior-art-memory/PRIOR_ART.md`
   — 情报（其外部内容全部「记忆·未核」）。
-- `docs/playbook.md` 定律 5/6/7/9；`docs/design.md` §2；`SCHEMA.md` §15/§16/§17/§18/§19。
+- `atlas/playbook.md` 定律 5/6/7/9；`atlas/design.md` §2；`harness/SCHEMA.md` §15/§16/§17/§18/§19。
 
 **记忆（未核，只可用于设计方向，不得当判据）**
 - DeltaNet / Gated DeltaNet / DeltaProduct；Mamba / Mamba-2 / RWKV / RetNet / Griffin·Hawk；

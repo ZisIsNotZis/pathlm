@@ -21,7 +21,7 @@
 
 from __future__ import annotations
 
-#: 方差带（`docs/methodology.md`）：Δ < 该值的准确率差不可排序（pp）。
+#: 方差带（`harness/methodology.md`）：Δ < 该值的准确率差不可排序（pp）。
 PP_BAND = 1.4
 #: bpc 方差带。
 BPC_BAND = 0.014

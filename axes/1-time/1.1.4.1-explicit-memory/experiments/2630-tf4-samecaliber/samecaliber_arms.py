@@ -57,7 +57,7 @@ TOPOLOGY = "sequential"
 #: 训练数据 = enwik8（`--synth-task none`，即 `train_depth_ar.py` 的缺省）。**两臂同款**。
 DATA_SOURCE = "enwik8"
 
-#: 方差带（pp）：`docs/methodology.md` 的 Δ < 0.014 不可排序 ⇒ 1.4pp。
+#: 方差带（pp）：`harness/methodology.md` 的 Δ < 0.014 不可排序 ⇒ 1.4pp。
 VARIANCE_BAND_PP = 1.4
 
 

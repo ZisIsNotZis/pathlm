@@ -129,7 +129,7 @@ carry 参数只在目标臂 ⇒ 单因素对照成立，§9/§15）；目标臂�
 - **基准 = `projfill` 臂**（随机退出 + proj-fill，**无 carry**；本仓「基准 = 同配方但关掉
   被检验的那一个因子」口径）。判据是**单因素对照**（目标 − 基准），**不与裸 stock 比**
   （那会把形态件的代价算进 carry 的账）。
-- **方差带 = 0.014 bpc / 1.4pp 召回**（`docs/methodology.md`）；召回判据用 **Wilson 95% CI**
+- **方差带 = 0.014 bpc / 1.4pp 召回**（`harness/methodology.md`）；召回判据用 **Wilson 95% CI**
   与 `two_proportion` 的差值 CI、`ci_overlap`。
 - **局部先验地板** = `local_prior_accuracy(k=8)`（§19：合成任务上局部先验必须 ≈ chance）；
   **chance** = `1/sym_vocab` = 1/64 = 0.015625。

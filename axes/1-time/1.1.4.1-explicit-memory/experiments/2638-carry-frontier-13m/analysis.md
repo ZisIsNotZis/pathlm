@@ -67,7 +67,7 @@ enwik8）下，「显式状态在同等内存下改善质量-代价前沿」**�
 
 - **本格自测 σ_cell**（同配置换种子极差，2 样本 ⇒ 描述量）：`win16` = **0.000983**、
   `carry16` = **0.001661**。
-- **项目 0.014 跨 run bpc 带宽**（`docs/methodology.md:19`）。
+- **项目 0.014 跨 run bpc 带宽**（`harness/methodology.md:19`）。
 - **两种读法**：
   - 按 **σ_cell**：win17 支配 carry16_s0 的 0.000875 落在一个 σ_cell 内（**边缘**）；
     但插值差 0.002259 超过 σ_cell(0.00166)，win18 对 carry16_s0 的差 **0.005026** 远超 σ_cell ⇒ 「前沿上不占优」成立。
@@ -121,7 +121,7 @@ enwik8）下，「显式状态在同等内存下改善质量-代价前沿」**�
   臂间 ≥61 s（`train_arms.sh`）；逐臂 `wall_minutes` 见 `train/win{17,18,24,32,128}/results.json`。
   峰值显存 2015.1 MB/臂（`nvidia-smi` 前后空闲读数见 `gpu_free_before.txt` / `gpu_free_after.txt`）。
 - 评测：`run.py` **整程持锁**（实测 0.30 min ≪ 10 min），峰值 627.7 MB。
-- **本节数字只作过程记录，不进判据**（`docs/research-schema.md` §3 禁墙钟入判据）。
+- **本节数字只作过程记录，不进判据**（`harness/research-schema.md` §3 禁墙钟入判据）。
 
 ## 7. 未测项与下一步最小实验 + 成本（§23 七问第 6 条）
 

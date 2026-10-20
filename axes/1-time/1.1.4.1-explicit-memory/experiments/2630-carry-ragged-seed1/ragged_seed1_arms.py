@@ -19,7 +19,7 @@
      ⇒ 证据类型 = **统计检验**（每 seed 的 `two_proportion` 95% 差值 CI 下界 > 0）
      ＋ **同号**（每 seed 效应 > 0）。**只此一腿**，不外推到召回。
    - `indist_redundancy_stable`：分布内召回（随机退出，多查询）的 carry 效应**跨 seed
-     都不超过方差带**（`Δ < 0.014` 不可排序，`docs/methodology.md`）⇒ 「冗余」结论稳定。
+     都不超过方差带**（`Δ < 0.014` 不可排序，`harness/methodology.md`）⇒ 「冗余」结论稳定。
 
 **禁外推**（W2 判据④、SCHEMA §17.11）：本模块只描述本次两点（seed=0/1）的统计，
 不推断其它 seed、其它尺度、其它退出模式。
@@ -52,14 +52,14 @@ BASE_TO_S1 = {BASELINE_ARM: "projfill_s1", TARGET_ARM: "projfill_carry_s1"}
 #: 反向映射。
 S1_TO_BASE = {v: k for k, v in BASE_TO_S1.items()}
 
-#: 本仓方差带（`docs/methodology.md`）；不足 1.4pp 的差不可排序。
+#: 本仓方差带（`harness/methodology.md`）；不足 1.4pp 的差不可排序。
 VARIANCE_BAND_PP = 1.4
 
 #: W2 判据②/③ 的强断言证据类型（写进报告，用词不得超出它）。
 OOD_ROBUST_EVIDENCE = ("statistical_test: per-seed two_proportion 95% diff CI lower bound > 0 "
                        "+ same-sign-positive across seeds")
 INDIST_STABLE_EVIDENCE = ("magnitude: |carry effect| <= variance band 1.4pp in every seed "
-                          "(SCHEMA §12 / docs/methodology.md: Δ<0.014 不可排序)")
+                          "(SCHEMA §12 / harness/methodology.md: Δ<0.014 不可排序)")
 
 
 def seed0_to_seed1(name: str) -> str:

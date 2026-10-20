@@ -68,7 +68,7 @@
 
 ### 4a. 执行时的操作性定义（不改判据，只把口径落定）
 
-- **分母与方差带**：准确率差用 **pp**，方差带 **1.4pp**（`docs/methodology.md`）；bpc 用
+- **分母与方差带**：准确率差用 **pp**，方差带 **1.4pp**（`harness/methodology.md`）；bpc 用
   **0.014**。Wilson 95% CI 与 `two_proportion` 的差值 CI 逐列报。
 - **基准恒为 `stock`**（SCHEMA §15/§17.14）；① 的「基准」另有一个显式定义：
   **插值到 GQA 参数量处的 MHA**（口径已写死在 `run.py` 的 `interp_at_target`，且**禁外推**）。

@@ -13,7 +13,7 @@
 #   ③ 取锁 → `python3 run.py` → 放锁。
 # 取/放锁写法照抄 `run_all.sh`（每段取、跑完即放）；**不启用**「无 holder_pid 且锁龄 >15min ⇒ 回收」
 # 那条 stale 规则——本仓有他线作业只写 `name` 不写 `holder_pid`，按锁龄回收会打断正在跑的作业
-# （`SCHEMA.md` §20 互斥）。只回收「holder_pid 存在且该进程已死」的锁。**不杀任何进程**。
+# （`harness/SCHEMA.md` §20 互斥）。只回收「holder_pid 存在且该进程已死」的锁。**不杀任何进程**。
 # 墙钟只作过程指标，不进判据。
 # 用法：setsid nohup bash run_all_missing.sh > /dev/null 2>&1 < /dev/null &
 set -uo pipefail

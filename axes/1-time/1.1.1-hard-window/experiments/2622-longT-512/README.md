@@ -47,7 +47,7 @@ status: judged
    **实测 +65,536 = +0.94%**。
 
 源契约行（供回溯，逐字）：`archive/wiki-legacy/axes/A-mixing/PRIOR_ART_LENGTH.md`（K10）；
-`SCHEMA.md §17.16`、`.scratch/39-close-gaps/issues/01-close-gaps.md`。
+`harness/SCHEMA.md §17.16`、`.scratch/39-close-gaps/issues/01-close-gaps.md`。
 
 ## 1. 命题（一句话、可证伪）
 
@@ -81,7 +81,7 @@ status: judged
 | 解决什么问题 | A6 的「T=256 净亏」结论在 T>256 是否仍成立；稀疏/窗口算子的**长 T 端质量与算力** | A6 的 T=256 下界 |
 | 代价（质量） | Δ clean bpc（native 工作点：窗口臂 = 自身训练掩码；full 臂 = 全因果） | 各点自己的 full |
 | 代价（质量·并列） | release 口径 Δ（窗口臂在全可见下评测） | 同上 |
-| 有效性 | Δ + 方差界（Δ < 0.014 不可排序，`docs/methodology.md §2`） | SCHEMA §12 判据线 |
+| 有效性 | Δ + 方差界（Δ < 0.014 不可排序，`harness/methodology.md §2`） | SCHEMA §12 判据线 |
 | **收益 1（等效 FLOPs）** | 理论：窗口保留的因果对占比（`visible_frac`）、注意力子层 MACs 下降、整层 MACs 下降 | full 注意力 |
 | **收益 2（墙钟）** | 实测：整模型步时比 `r_time = ms(窗口)/ms(full)`、峰值显存比（**如实报可能 >1**） | full 注意力（同机同时刻） |
 | **算力占比（判据②）** | 实测：注意力孤岛 fwd+bwd 步时 / 整模型步时，随 T；与公式 `512T/(512T+786432)` 对照 | 公式外推值（对照，非判据） |
@@ -108,7 +108,7 @@ status: judged
   窗口算子交叉点出现的首个观测点」；否则记「T=512 仍亏」。**单点结论，不外推。**
 
 Δ 符号（SCHEMA §17.3，全篇统一）：`Δ = bpc_对照 − bpc_实验 = bpc_full − bpc_window`（正 = 窗口更好）。
-方差界：Δ < 0.014 不可排序（`docs/methodology.md §2`）。
+方差界：Δ < 0.014 不可排序（`harness/methodology.md §2`）。
 
 ## 5. 既有做法（prior art，SCHEMA §18）
 

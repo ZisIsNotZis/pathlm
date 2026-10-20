@@ -57,7 +57,7 @@ seed0，lr1e-3，`exit-mode uniform`）。**唯一变量 = 训练期可见窗口
 
 ## 2. 判据① 质量：两点（只描述、禁外推）
 
-`Δ = bpc_full − bpc_window`（正 = 窗口更好）；方差界 0.014（`docs/methodology.md §2`）。
+`Δ = bpc_full − bpc_window`（正 = 窗口更好）；方差界 0.014（`harness/methodology.md §2`）。
 
 | 点 | 口径 | bpc(full) | bpc(window) | **Δ** | 带宽分类 |
 |---|---|---|---|---|---|

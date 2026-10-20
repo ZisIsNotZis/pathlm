@@ -185,7 +185,7 @@ carry 臂在**每一层**都比 base 低 ⇒ bpc 改善不是某一层的偶然�
 | 「两臂主干参数**逐位相同**」 | **结构性断言** | `capability_probe.trunk_bit_identical` / `trunk_diff_keys=[]`；单测逐键 `torch.equal` |
 | 「run.py 与训练入口的 tf@4 **逐位一致**」 | **数值 golden 对照** | base 臂：`0.9711`（run.py）== `0.9711`（`train/base/results.json::tf_acceptance[4]`）；clean bpc `2.0923` == `2.0923`（对账脚本 `task.base.*_run==train`，容差 1e-9） |
 | 「**首次**把 carry 臂放到 enwik8 原生训练」 | **可核对的检索**（非统计） | 本仓 M1 既有 carry 实验（2618/2623/2624/2627/2629）**均训在合成 assoc-mqar**（各 `config.json::data`）；本目录是本仓第一个 `--synth-task none` + `--carry-write delta` 的实验；旁证 = 由此首次触发解码器拒绝（§7） |
-| 「carry **不弄坏**出口资产（同口径）」 | **数值 + 预登记阈值** | `Δtf@4 = −0.76pp`（`tf4_decision.delta_pp`）与预登记预登记阈值带 `1.4pp`（`docs/methodology.md`）；判定函数 `tf4_holds` |
+| 「carry **不弄坏**出口资产（同口径）」 | **数值 + 预登记阈值** | `Δtf@4 = −0.76pp`（`tf4_decision.delta_pp`）与预登记预登记阈值带 `1.4pp`（`harness/methodology.md`）；判定函数 `tf4_holds` |
 | 「跨分布下 Δ 更负（恶化）」 | **数值**（非统计检验；单 seed） | `Δtf@4(反向诊断) = −28.89pp` vs 同口径 `−0.76pp`；**未做 CI** ⇒ 用词限于「本读数」，不外推 |
 | 「clean bpc 改善 −0.0825」 | **数值（快照）** | `increments.bpc_samecaliber.carry_effect=0.0825`；**已按 §16 标为快照、疑为收敛加速**（base 斜率仍陡） |
 

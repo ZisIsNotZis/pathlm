@@ -162,7 +162,7 @@ Z3 明文只列了「carry + MHA / +GQA / +GQA+int8」三个因素，**没有列
 
 - **基准 = `carry_mha_fp16`**（W3 的载体形态 + 工业默认 KV 精度；本仓「基底恒为 stock
   对照」口径的等价落地）。
-- **方差带 = 1.4pp**（`docs/methodology.md`）；召回判据用 **Wilson 95% CI** 与
+- **方差带 = 1.4pp**（`harness/methodology.md`）；召回判据用 **Wilson 95% CI** 与
   `two_proportion` 差值 CI。
 - **局部先验地板** = `local_prior_accuracy(k=8)`（§19：合成任务上必须 ≈ chance）；
   **chance** = `1/sym_vocab` = 1/64 = 0.015625。

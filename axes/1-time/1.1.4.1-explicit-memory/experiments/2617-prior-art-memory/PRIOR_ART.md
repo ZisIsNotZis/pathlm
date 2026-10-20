@@ -2,7 +2,7 @@
 
 > 轴：**M 状态载体** ｜ 格子：`M1-carrier-type` ｜ 实验：`2617-prior-art-memory`
 > 角色：researcher（只读 + 本文件）｜ 本批**不跑训练/长评测**
-> 依据：`SCHEMA.md` §18（既有做法节）与 §19（局部先验抗性）
+> 依据：`harness/SCHEMA.md` §18（既有做法节）与 §19（局部先验抗性）
 
 ---
 
@@ -149,7 +149,7 @@
 - **一致结论：重建/充分性类的辅助损失是「激进压缩能成立」的必要条件之一**；
   在只报质量的作品里，去掉它通常显著掉点（尤其高压比）。
 - **代价**：需要额外解码路径（算力/显存），且**辅助损失会与主任务抢容量**
-  （与我们 `docs/playbook.md` 定律 6「整形 vs 自适应是同一梯度的两面」同构）。
+  （与我们 `atlas/playbook.md` 定律 6「整形 vs 自适应是同一梯度的两面」同构）。
 - **`不确定`**：在**小模型 / 合成任务 / 同 seed 受控**条件下，「有 vs 无 sufficiency loss」
   的净效应，我没有找到可直接引用的公开对照。
 
@@ -249,7 +249,7 @@
     —— 与业界 sink 描述**独立吻合**（我们的模型是 char-enwik8 的 13M，也出现了 sink）。
 - **张力记录**：我们的 `A4` 软距离惩罚**「改变使用率，不改变依赖是否为零」**（`本地实测`）
   ——sink 属于「使用率」侧。对 clean bpc 的效应 −0.0068 落在 Δ<0.014 的不可排序带内
-  （`docs/methodology.md`）⇒ 只能称「**未观察到超带损伤**」，不可据此排序为「改善」。
+  （`harness/methodology.md`）⇒ 只能称「**未观察到超带损伤**」，不可据此排序为「改善」。
 
 ### 与我们的关系
 
@@ -297,7 +297,7 @@
   重对齐后 lru −0.0170；位置 0 mass 9.374 = 第 25 百分位 12.7×。
 - `archive/wiki-legacy/axes/F-iteration/F4-training-signal/README.md` — consistency loss 中性。
 - `archive/wiki-legacy/axes/M-carrier/M1-carrier-type/README.md`、`M2-carrier-compression/README.md` — 格子盘点。
-- `docs/playbook.md` 定律 7、9；`SCHEMA.md` §17.10/§17.11/§17.12。
+- `atlas/playbook.md` 定律 7、9；`harness/SCHEMA.md` §17.10/§17.11/§17.12。
 
 **记忆（未核，只可用于设计方向，不得当判据）**
 - Compressive Transformer / Memorizing Transformer / RMT / Unlimiformer / Block-Recurrent /

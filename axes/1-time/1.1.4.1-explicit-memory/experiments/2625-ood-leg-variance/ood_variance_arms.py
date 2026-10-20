@@ -69,7 +69,7 @@ ALL_ARMS = PRIMARY_ARMS + REFERENCE_ARMS
 
 #: 预登记判据 ② 的结论效应阈值（pp）。
 EFFECT_THRESHOLD_PP = 3.0
-#: 本仓方差带（`docs/methodology.md`）；不足 1.4pp 的差不可排序。
+#: 本仓方差带（`harness/methodology.md`）；不足 1.4pp 的差不可排序。
 VARIANCE_BAND_PP = 1.4
 
 ALL_ARMS_SPECS = TRAINED_ARMS + REUSED_ARMS

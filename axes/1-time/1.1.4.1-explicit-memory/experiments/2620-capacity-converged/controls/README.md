@@ -54,7 +54,7 @@
 - **不重训无通道基线**：ticket 35（`../2618-carry-channel-13m/`）已实测无通道臂在该任务上
   ≈ chance（0.0137 vs chance 0.015625）。本实验的对照是 **chance 线 + 毁源臂 + 局部先验 +
   重跑臂**（四者都对同一读数施压），不重复花 GPU。
-- **方差界**：本仓方法学（`docs/methodology.md`）规定 Δ < 0.014 不可排序。
+- **方差界**：本仓方法学（`harness/methodology.md`）规定 Δ < 0.014 不可排序。
   本实验所有方向判断同时满足「Wilson 95% CI 不重叠」。
 - **复现性**：主腿格（`S128/K=8`）前 8 个批同 seed 整批重跑，逐位一致
   （`../results.json::reproducibility::same_seed_rerun_max_abs_diff = 0.0`）。

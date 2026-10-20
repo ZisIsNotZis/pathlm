@@ -23,7 +23,7 @@
 
 | 量 | 带 | 来源 |
 |---|---|---|
-| 准确率差（pp） | **1.4pp** | `docs/methodology.md`；本线 `points.PP_BAND` |
+| 准确率差（pp） | **1.4pp** | `harness/methodology.md`；本线 `points.PP_BAND` |
 | clean bpc | **0.014** | 同上；本线 `points.BPC_BAND` |
 | 逐臂二项 CI | Wilson 95% | `tools/evalkit/carry_channel.py::wilson_ci` |
 | 两臂比较 | `two_proportion`（pooled z + Newcombe 差值 CI） | 同上 |

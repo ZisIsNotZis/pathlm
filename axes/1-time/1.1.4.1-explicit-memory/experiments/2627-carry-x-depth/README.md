@@ -157,7 +157,7 @@ exit_depths；随机退出 ⇒ 非 dense ⇒ 拒绝 carry）。ENG1 解除的是
   每个因子分解项都相对**自己的对照格子**：`carry@depth_off = carry − base`、
   `depth@carry_off = depth − base`、`carry@depth_on = both − depth`、
   `depth@carry_on = both − carry`、`interaction = (both − carry) − (depth − base)`。
-- **方差带 = 0.014 bpc / 1.4pp 召回**（`docs/methodology.md`）；召回判据用 **Wilson 95% CI**
+- **方差带 = 0.014 bpc / 1.4pp 召回**（`harness/methodology.md`）；召回判据用 **Wilson 95% CI**
   与 `two_proportion` 的差值 CI。
 - **局部先验地板** = `local_prior_accuracy(k=8)`（§19：合成任务上局部先验必须 ≈ chance）；
   **chance** = `1/sym_vocab` = 1/64 = 0.015625。

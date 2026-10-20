@@ -7,7 +7,7 @@
 # 臂集不缩：`config.json` 由 `make_config.py` 逐臂生成（本格盘上 = 4 臂 = `win16a_s0` + 3 复用臂，
 # 缺的新臂记在 `missing_new_arms`）。取/放锁写法照抄同目录 `run_all.sh`，一处不同：
 # **不启用**「无 holder_pid 且锁龄 >15min ⇒ 回收」这条 stale 规则——本仓有他线作业只写 `name`
-# 不写 `holder_pid`，按锁龄回收会打断正在跑的作业（`SCHEMA.md` §20 互斥）。只回收
+# 不写 `holder_pid`，按锁龄回收会打断正在跑的作业（`harness/SCHEMA.md` §20 互斥）。只回收
 # 「holder_pid 存在且该进程已死」的锁。墙钟只作过程指标，不进判据。
 # 用法：setsid nohup bash run_eval_only.sh > /dev/null 2>&1 < /dev/null &
 set -uo pipefail

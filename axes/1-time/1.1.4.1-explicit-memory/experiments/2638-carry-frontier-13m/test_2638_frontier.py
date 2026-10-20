@@ -7,7 +7,7 @@
 1. `frontier()` 的支配关系定义（两轴皆越小越好）；
 2. `interp_window_at()` 的线性插值；
 3. **符号约定**：`carry_minus_interp_window = bpc_interp − bpc_carry`
-   ⇒ **< 0 = carry 被同预算纯窗口支配**（与 `SCHEMA.md` §17.3「Δ = 对照 − 实验，正 = 改善」一致）。
+   ⇒ **< 0 = carry 被同预算纯窗口支配**（与 `harness/SCHEMA.md` §17.3「Δ = 对照 − 实验，正 = 改善」一致）。
 """
 import os
 import sys

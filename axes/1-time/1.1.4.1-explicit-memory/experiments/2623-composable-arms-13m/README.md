@@ -156,7 +156,7 @@ long-range retrieval`、`delta rule fast weight memory MQAR`、`GQA delta net co
 
 - **基准 = `stock` 臂**（无任何叠加的 stock decoder-only trunk；本仓的「基底恒为 stock 对照」口径）。
   阶梯的每一列都相对**相邻前一臂**，净和相对 `stock`。
-- **方差带 = 0.014 bpc**（`docs/methodology.md`）；召回判据用 **Wilson 95% CI** 与
+- **方差带 = 0.014 bpc**（`harness/methodology.md`）；召回判据用 **Wilson 95% CI** 与
   `two_proportion` 的差值 CI（1.4pp 召回方差带仅作参考）。
 - **局部先验地板** = `local_prior_accuracy(k=8)`（§19：合成任务上局部先验必须 ≈ chance）；
   **chance** = `1/sym_vocab` = 1/64 = 0.015625。
