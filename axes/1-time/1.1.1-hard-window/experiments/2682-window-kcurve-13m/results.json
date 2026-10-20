@@ -1,0 +1,1917 @@
+{
+ "sign_convention": "所有 `*delta_bpc*` 读数 = bpc(被测配置) − bpc(该臂的释放版)；数值越大说明掩码造成的损伤越大。训练期累计预算列的 delta_bpc 是 bpc(win-k) − bpc(full)，数值越大说明窗口税越大。",
+ "config": {
+  "contract": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/README.md",
+  "scope": "只做单轴单格实验，基底恒为 stock dense 全因果；本实验只改训练期窗口宽度 k，并报两条评测期掩码曲线。",
+  "model": {
+   "d_model": 256,
+   "n_layers": 12,
+   "n_heads": 8,
+   "seq_len": 256,
+   "mlp_mult": 6,
+   "dense": true,
+   "topology": "sequential"
+  },
+  "data": {
+   "name": "enwik8_full",
+   "path": "data/enwik8_full.npz",
+   "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）",
+   "vocab_size": 206,
+   "n_real_tokens": 205,
+   "mask_token": 205
+  },
+  "eval": {
+   "bpc": {
+    "n_batches": 96,
+    "batch_size": 16,
+    "window_seed": 2,
+    "note": "与 2662 / 2681 同一函数、同一批数、同一窗口序；bpc token 数 = 96×16×255 = 391,680"
+   }
+  },
+  "arms": [
+   {
+    "name": "full",
+    "kind": "full",
+    "window": 256,
+    "anchors": 0,
+    "seed": 0,
+    "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+    "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+    "reused_from": "2610",
+    "train_seconds": null,
+    "train_rc": null
+   },
+   {
+    "name": "win16_s0",
+    "kind": "window",
+    "window": 16,
+    "anchors": 0,
+    "seed": 0,
+    "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+    "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+    "reused_from": "2634（跨项复本）",
+    "train_seconds": null,
+    "train_rc": null
+   },
+   {
+    "name": "win16_s1",
+    "kind": "window",
+    "window": 16,
+    "anchors": 0,
+    "seed": 1,
+    "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+    "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+    "reused_from": "2634（跨项复本）",
+    "train_seconds": null,
+    "train_rc": null
+   },
+   {
+    "name": "win16_s2",
+    "kind": "window",
+    "window": 16,
+    "anchors": 0,
+    "seed": 2,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/train/win16_s2/model.pt",
+    "sha256": "88b06d5455497689cc2947aad93cc9e8dcd7a638f5caed9839f4947dea704a3a",
+    "reused_from": "2681（本项）",
+    "train_seconds": null,
+    "train_rc": null
+   },
+   {
+    "name": "win16_s3",
+    "kind": "window",
+    "window": 16,
+    "anchors": 0,
+    "seed": 3,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/train/win16_s3/model.pt",
+    "sha256": "42e89ec259f7af683f42f1978cfc3ddeed6e2397661ad8ce7a2a2a9d74438485",
+    "reused_from": "2681（本项）",
+    "train_seconds": null,
+    "train_rc": null
+   },
+   {
+    "name": "win16a_s0",
+    "kind": "window",
+    "window": 16,
+    "anchors": 8,
+    "seed": 0,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s0/model.pt",
+    "sha256": "5a41ed069ee0ba784187b8d2adc054d334ed418c57ba5ff05fbf6347141cdb2d",
+    "reused_from": "2662（本项）",
+    "train_seconds": null,
+    "train_rc": null
+   },
+   {
+    "name": "win16a_s1",
+    "kind": "window",
+    "window": 16,
+    "anchors": 8,
+    "seed": 1,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s1/model.pt",
+    "sha256": "eb6c9d4a8693c45848d55c672f466aa42f92e4c8586011862ca2f2cdf0a55ffb",
+    "reused_from": "2662（本项）",
+    "train_seconds": null,
+    "train_rc": null
+   },
+   {
+    "name": "win16a_s2",
+    "kind": "window",
+    "window": 16,
+    "anchors": 8,
+    "seed": 2,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/train/win16a_s2/model.pt",
+    "sha256": "0e04cb7134e2b7b81d1ff5fb2e7e835cc7aeb348d8de6f462f9b09fd7a265c0f",
+    "reused_from": "2681（本项）",
+    "train_seconds": null,
+    "train_rc": null
+   },
+   {
+    "name": "win16a_s3",
+    "kind": "window",
+    "window": 16,
+    "anchors": 8,
+    "seed": 3,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/train/win16a_s3/model.pt",
+    "sha256": "218508da1f6fda7c7432f6d59ed96a374b9f492bf0fbd072c902c702116faa7f",
+    "reused_from": "2681（本项）",
+    "train_seconds": null,
+    "train_rc": null
+   },
+   {
+    "name": "win32_s0",
+    "kind": "window",
+    "window": 32,
+    "anchors": 0,
+    "seed": 0,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win32_s0/model.pt",
+    "sha256": "e2f250c7068ee7d54602d3c77ae4f2691df6937a438a31f840aaee0a8a15d780",
+    "reused_from": null,
+    "train_seconds": 600.0,
+    "train_rc": 0
+   },
+   {
+    "name": "win32_s1",
+    "kind": "window",
+    "window": 32,
+    "anchors": 0,
+    "seed": 1,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win32_s1/model.pt",
+    "sha256": "159a86cce0091662c5ddbec419cb496f3462f8a180d4f6e0d0c64ed8eacb277f",
+    "reused_from": null,
+    "train_seconds": 499.0,
+    "train_rc": 0
+   },
+   {
+    "name": "win64_s0",
+    "kind": "window",
+    "window": 64,
+    "anchors": 0,
+    "seed": 0,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64_s0/model.pt",
+    "sha256": "5333d57a5d48ec7c09b380d5827b5138c1a5b121f5845c3bff71ddcbe34911d6",
+    "reused_from": null,
+    "train_seconds": 559.0,
+    "train_rc": 0
+   },
+   {
+    "name": "win64_s1",
+    "kind": "window",
+    "window": 64,
+    "anchors": 0,
+    "seed": 1,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64_s1/model.pt",
+    "sha256": "3eb43db676a642a4309d081e34e3f4c8be2ea1178573a492176326fb20509425",
+    "reused_from": null,
+    "train_seconds": 537.0,
+    "train_rc": 0
+   },
+   {
+    "name": "win128_s0",
+    "kind": "window",
+    "window": 128,
+    "anchors": 0,
+    "seed": 0,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win128_s0/model.pt",
+    "sha256": "73a4530aa4e0f1b006110ca8c30f018298a1f3437bd821baf595a27f253cde80",
+    "reused_from": null,
+    "train_seconds": 533.0,
+    "train_rc": 0
+   },
+   {
+    "name": "win128_s1",
+    "kind": "window",
+    "window": 128,
+    "anchors": 0,
+    "seed": 1,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win128_s1/model.pt",
+    "sha256": "e9d727998699ccf10ef11677be3a75c91a4d4ec75117628fa97a7a95bd43018e",
+    "reused_from": null,
+    "train_seconds": 506.0,
+    "train_rc": 0
+   },
+   {
+    "name": "win192_s0",
+    "kind": "window",
+    "window": 192,
+    "anchors": 0,
+    "seed": 0,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win192_s0/model.pt",
+    "sha256": "f345ede8da04be640b0a6d3d239ea72e5cf99c681764521f69dd0495d76e8cf7",
+    "reused_from": null,
+    "train_seconds": 527.0,
+    "train_rc": 0
+   },
+   {
+    "name": "win192_s1",
+    "kind": "window",
+    "window": 192,
+    "anchors": 0,
+    "seed": 1,
+    "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win192_s1/model.pt",
+    "sha256": "d54a4c2055268dc220e064c6797457d41f4d82205fd9f7f50b2b0c0ae85253e4",
+    "reused_from": null,
+    "train_seconds": 507.0,
+    "train_rc": 0
+   }
+  ],
+  "seeds": [
+   0,
+   1,
+   2,
+   3
+  ],
+  "curves": {
+   "recent_ds": [
+    16,
+    32,
+    64,
+    128,
+    192,
+    240
+   ],
+   "distance_ds": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    32,
+    64,
+    128,
+    255
+   ],
+   "arms": [
+    "full",
+    "win16_s0",
+    "win64_s0",
+    "win192_s0"
+   ],
+   "note": "recent = 累计预算列（直接测）；distance = 单距离列（只描述形状）"
+  }
+ },
+ "checkpoints": {
+  "full": {
+   "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+   "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "full",
+   "window": 256,
+   "anchors": 0,
+   "seed": 0,
+   "n_params": 13536768
+  },
+  "win16_s0": {
+   "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s0/model.pt",
+   "sha256": "c3f6f08a4fd1dfe9b5c72cb433fe20a2390052b1eda11b8ab9a6d0fe468deca7",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 16,
+   "anchors": 0,
+   "seed": 0,
+   "n_params": 13536768
+  },
+  "win16_s1": {
+   "path": "axes/1-time/1.1.4.1-explicit-memory/experiments/2634-carry-realtext-13m/train/rt_none_s1/model.pt",
+   "sha256": "2bfe167c133c496f42864a191f2fc8833f20ba4ec8f9f4f1dceba43dd84fb162",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 16,
+   "anchors": 0,
+   "seed": 1,
+   "n_params": 13536768
+  },
+  "win16_s2": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/train/win16_s2/model.pt",
+   "sha256": "88b06d5455497689cc2947aad93cc9e8dcd7a638f5caed9839f4947dea704a3a",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 16,
+   "anchors": 0,
+   "seed": 2,
+   "n_params": 13536768
+  },
+  "win16_s3": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/train/win16_s3/model.pt",
+   "sha256": "42e89ec259f7af683f42f1978cfc3ddeed6e2397661ad8ce7a2a2a9d74438485",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 16,
+   "anchors": 0,
+   "seed": 3,
+   "n_params": 13536768
+  },
+  "win16a_s0": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s0/model.pt",
+   "sha256": "5a41ed069ee0ba784187b8d2adc054d334ed418c57ba5ff05fbf6347141cdb2d",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 16,
+   "anchors": 8,
+   "seed": 0,
+   "n_params": 13536768
+  },
+  "win16a_s1": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s1/model.pt",
+   "sha256": "eb6c9d4a8693c45848d55c672f466aa42f92e4c8586011862ca2f2cdf0a55ffb",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 16,
+   "anchors": 8,
+   "seed": 1,
+   "n_params": 13536768
+  },
+  "win16a_s2": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/train/win16a_s2/model.pt",
+   "sha256": "0e04cb7134e2b7b81d1ff5fb2e7e835cc7aeb348d8de6f462f9b09fd7a265c0f",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 16,
+   "anchors": 8,
+   "seed": 2,
+   "n_params": 13536768
+  },
+  "win16a_s3": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/train/win16a_s3/model.pt",
+   "sha256": "218508da1f6fda7c7432f6d59ed96a374b9f492bf0fbd072c902c702116faa7f",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 16,
+   "anchors": 8,
+   "seed": 3,
+   "n_params": 13536768
+  },
+  "win32_s0": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win32_s0/model.pt",
+   "sha256": "e2f250c7068ee7d54602d3c77ae4f2691df6937a438a31f840aaee0a8a15d780",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 32,
+   "anchors": 0,
+   "seed": 0,
+   "n_params": 13536768
+  },
+  "win32_s1": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win32_s1/model.pt",
+   "sha256": "159a86cce0091662c5ddbec419cb496f3462f8a180d4f6e0d0c64ed8eacb277f",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 32,
+   "anchors": 0,
+   "seed": 1,
+   "n_params": 13536768
+  },
+  "win64_s0": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64_s0/model.pt",
+   "sha256": "5333d57a5d48ec7c09b380d5827b5138c1a5b121f5845c3bff71ddcbe34911d6",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 64,
+   "anchors": 0,
+   "seed": 0,
+   "n_params": 13536768
+  },
+  "win64_s1": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64_s1/model.pt",
+   "sha256": "3eb43db676a642a4309d081e34e3f4c8be2ea1178573a492176326fb20509425",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 64,
+   "anchors": 0,
+   "seed": 1,
+   "n_params": 13536768
+  },
+  "win128_s0": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win128_s0/model.pt",
+   "sha256": "73a4530aa4e0f1b006110ca8c30f018298a1f3437bd821baf595a27f253cde80",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 128,
+   "anchors": 0,
+   "seed": 0,
+   "n_params": 13536768
+  },
+  "win128_s1": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win128_s1/model.pt",
+   "sha256": "e9d727998699ccf10ef11677be3a75c91a4d4ec75117628fa97a7a95bd43018e",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 128,
+   "anchors": 0,
+   "seed": 1,
+   "n_params": 13536768
+  },
+  "win192_s0": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win192_s0/model.pt",
+   "sha256": "f345ede8da04be640b0a6d3d239ea72e5cf99c681764521f69dd0495d76e8cf7",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 192,
+   "anchors": 0,
+   "seed": 0,
+   "n_params": 13536768
+  },
+  "win192_s1": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win192_s1/model.pt",
+   "sha256": "d54a4c2055268dc220e064c6797457d41f4d82205fd9f7f50b2b0c0ae85253e4",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 192,
+   "anchors": 0,
+   "seed": 1,
+   "n_params": 13536768
+  }
+ },
+ "selfchecks": {
+  "full": {
+   "causality": {
+    "max_abs_logit_diff_prefix": 0.0,
+    "max_abs_logit_diff_suffix": 31.6846714,
+    "note": "前半段必须逐位为 0；后半段必然 >0（否则探针无效）"
+   },
+   "n_params": 13536768
+  },
+  "win16_s0": {
+   "causality": {
+    "max_abs_logit_diff_prefix": 0.0,
+    "max_abs_logit_diff_suffix": 32.59209824,
+    "note": "前半段必须逐位为 0；后半段必然 >0（否则探针无效）"
+   },
+   "n_params": 13536768
+  },
+  "win64_s0": {
+   "causality": {
+    "max_abs_logit_diff_prefix": 0.0,
+    "max_abs_logit_diff_suffix": 37.16109848,
+    "note": "前半段必须逐位为 0；后半段必然 >0（否则探针无效）"
+   },
+   "n_params": 13536768
+  },
+  "win192_s0": {
+   "causality": {
+    "max_abs_logit_diff_prefix": 0.0,
+    "max_abs_logit_diff_suffix": 30.86938477,
+    "note": "前半段必须逐位为 0；后半段必然 >0（否则探针无效）"
+   },
+   "n_params": 13536768
+  },
+  "win16a_s0": {
+   "causality": {
+    "max_abs_logit_diff_prefix": 0.0,
+    "max_abs_logit_diff_suffix": 35.23613358,
+    "note": "前半段必须逐位为 0；后半段必然 >0（否则探针无效）"
+   },
+   "n_params": 13536768
+  },
+  "mask_identity": {
+   "recent_keep_mask_T_equals_causal": true,
+   "note": "recent_keep_mask(T) 必须与精确因果掩码逐位相同（否则累计预算列的 released 参照错）"
+  },
+  "mask_matches_recent_clip": {
+   "k=16": true,
+   "k=32": true,
+   "k=64": true,
+   "k=128": true,
+   "k=192": true
+  }
+ },
+ "visible_pairs": {
+  "(16,0)": {
+   "visible_pairs": 3976,
+   "expected": 3976,
+   "expected_hardcoded": 3976,
+   "equal": true
+  },
+  "(16,8)": {
+   "visible_pairs": 5868,
+   "expected": 5868,
+   "expected_hardcoded": 5868,
+   "equal": true
+  },
+  "(32,0)": {
+   "visible_pairs": 7696,
+   "expected": 7696,
+   "equal": true
+  },
+  "(64,0)": {
+   "visible_pairs": 14368,
+   "expected": 14368,
+   "equal": true
+  },
+  "(128,0)": {
+   "visible_pairs": 24640,
+   "expected": 24640,
+   "equal": true
+  },
+  "(192,0)": {
+   "visible_pairs": 30816,
+   "expected": 30816,
+   "equal": true
+  }
+ },
+ "criteria": {
+  "c1_reproduction_gate": {
+   "repro": {
+    "full": {
+     "got": 1.502689,
+     "want": 1.502689,
+     "equal": true
+    },
+    "win16_s0": {
+     "got": 1.62811,
+     "want": 1.62811,
+     "equal": true
+    },
+    "win16_s1": {
+     "got": 1.629093,
+     "want": 1.629093,
+     "equal": true
+    },
+    "win16_s2": {
+     "got": 1.624611,
+     "want": 1.624611,
+     "equal": true
+    },
+    "win16_s3": {
+     "got": 1.625184,
+     "want": 1.625184,
+     "equal": true
+    },
+    "win16a_s0": {
+     "got": 1.622527,
+     "want": 1.622527,
+     "equal": true
+    },
+    "win16a_s1": {
+     "got": 1.621799,
+     "want": 1.621799,
+     "equal": true
+    },
+    "win16a_s2": {
+     "got": 1.618953,
+     "want": 1.618953,
+     "equal": true
+    },
+    "win16a_s3": {
+     "got": 1.615477,
+     "want": 1.615477,
+     "equal": true
+    }
+   },
+   "all_equal": true,
+   "note": "1.1.1 目录内已有 9 条 checkpoint 用本入口的仪器重评，必须与 2662 / 2681 落盘值逐位相同；不等即本实验作废"
+  },
+  "c2_train_budget_column": {
+   "k_grid": [
+    16,
+    32,
+    64,
+    128,
+    192
+   ],
+   "per_k": {
+    "k16": {
+     "k": 16,
+     "n_seeds": 4,
+     "per_seed": {
+      "0": {
+       "arm": "win16_s0",
+       "bpc": 1.62811,
+       "delta_bpc": 0.125421
+      },
+      "1": {
+       "arm": "win16_s1",
+       "bpc": 1.629093,
+       "delta_bpc": 0.126404
+      },
+      "2": {
+       "arm": "win16_s2",
+       "bpc": 1.624611,
+       "delta_bpc": 0.121922
+      },
+      "3": {
+       "arm": "win16_s3",
+       "bpc": 1.625184,
+       "delta_bpc": 0.122495
+      }
+     },
+     "cross_seed": {
+      "n_seeds": 4,
+      "mean": 0.124061,
+      "values": [
+       0.125421,
+       0.126404,
+       0.121922,
+       0.122495
+      ],
+      "same_sign": true,
+      "unit_note": "每 seed 一个窗口税（同 seed 配对：bpc(win-k) − bpc(full)）",
+      "sd": 0.002188,
+      "t_crit": 3.182,
+      "t_interval_95": [
+       0.120579,
+       0.127542
+      ]
+     },
+     "classification": {
+      "verdict": "above_band",
+      "n": 4,
+      "mean_minus_band": 0.123078,
+      "interval_95": [
+       0.12058,
+       0.127542
+      ],
+      "band": 0.000983,
+      "n_req": 1,
+      "n_req_note": "",
+      "n_req_rule": "n_req = ceil((2.9·sd/|mean − band|)²)（双侧 α=0.05、功效 0.8 的近似式）",
+      "note": "above_band = 区间下界越带（税确定存在）；below_band = 区间上界低于带（税确定不越带）；undecidable = 区间跨带（不许写成任何一方）"
+     },
+     "seed_range_observed": 0.004482,
+     "seed_range_note": "本 n 的种子极差只是描述量，不得回填成新带（带冻结在 0.000983）"
+    },
+    "k32": {
+     "k": 32,
+     "n_seeds": 2,
+     "per_seed": {
+      "0": {
+       "arm": "win32_s0",
+       "bpc": 1.586422,
+       "delta_bpc": 0.083733
+      },
+      "1": {
+       "arm": "win32_s1",
+       "bpc": 1.583349,
+       "delta_bpc": 0.08066
+      }
+     },
+     "cross_seed": {
+      "n_seeds": 2,
+      "mean": 0.082197,
+      "values": [
+       0.083733,
+       0.08066
+      ],
+      "same_sign": true,
+      "unit_note": "每 seed 一个窗口税（同 seed 配对：bpc(win-k) − bpc(full)）",
+      "sd": 0.002173,
+      "t_crit": 12.706,
+      "t_interval_95": [
+       0.062674,
+       0.101719
+      ]
+     },
+     "classification": {
+      "verdict": "above_band",
+      "n": 2,
+      "mean_minus_band": 0.081214,
+      "interval_95": [
+       0.062674,
+       0.10172
+      ],
+      "band": 0.000983,
+      "n_req": 1,
+      "n_req_note": "",
+      "n_req_rule": "n_req = ceil((2.9·sd/|mean − band|)²)（双侧 α=0.05、功效 0.8 的近似式）",
+      "note": "above_band = 区间下界越带（税确定存在）；below_band = 区间上界低于带（税确定不越带）；undecidable = 区间跨带（不许写成任何一方）"
+     },
+     "seed_range_observed": 0.003073,
+     "seed_range_note": "本 n 的种子极差只是描述量，不得回填成新带（带冻结在 0.000983）"
+    },
+    "k64": {
+     "k": 64,
+     "n_seeds": 2,
+     "per_seed": {
+      "0": {
+       "arm": "win64_s0",
+       "bpc": 1.555204,
+       "delta_bpc": 0.052515
+      },
+      "1": {
+       "arm": "win64_s1",
+       "bpc": 1.555988,
+       "delta_bpc": 0.053299
+      }
+     },
+     "cross_seed": {
+      "n_seeds": 2,
+      "mean": 0.052907,
+      "values": [
+       0.052515,
+       0.053299
+      ],
+      "same_sign": true,
+      "unit_note": "每 seed 一个窗口税（同 seed 配对：bpc(win-k) − bpc(full)）",
+      "sd": 0.000554,
+      "t_crit": 12.706,
+      "t_interval_95": [
+       0.047926,
+       0.057888
+      ]
+     },
+     "classification": {
+      "verdict": "above_band",
+      "n": 2,
+      "mean_minus_band": 0.051924,
+      "interval_95": [
+       0.04793,
+       0.057884
+      ],
+      "band": 0.000983,
+      "n_req": 1,
+      "n_req_note": "",
+      "n_req_rule": "n_req = ceil((2.9·sd/|mean − band|)²)（双侧 α=0.05、功效 0.8 的近似式）",
+      "note": "above_band = 区间下界越带（税确定存在）；below_band = 区间上界低于带（税确定不越带）；undecidable = 区间跨带（不许写成任何一方）"
+     },
+     "seed_range_observed": 0.000784,
+     "seed_range_note": "本 n 的种子极差只是描述量，不得回填成新带（带冻结在 0.000983）"
+    },
+    "k128": {
+     "k": 128,
+     "n_seeds": 2,
+     "per_seed": {
+      "0": {
+       "arm": "win128_s0",
+       "bpc": 1.515296,
+       "delta_bpc": 0.012607
+      },
+      "1": {
+       "arm": "win128_s1",
+       "bpc": 1.512497,
+       "delta_bpc": 0.009808
+      }
+     },
+     "cross_seed": {
+      "n_seeds": 2,
+      "mean": 0.011208,
+      "values": [
+       0.012607,
+       0.009808
+      ],
+      "same_sign": true,
+      "unit_note": "每 seed 一个窗口税（同 seed 配对：bpc(win-k) − bpc(full)）",
+      "sd": 0.001979,
+      "t_crit": 12.706,
+      "t_interval_95": [
+       -0.006575,
+       0.02899
+      ]
+     },
+     "classification": {
+      "verdict": "undecidable",
+      "n": 2,
+      "mean_minus_band": 0.010225,
+      "interval_95": [
+       -0.006572,
+       0.028988
+      ],
+      "band": 0.000983,
+      "n_req": 1,
+      "n_req_note": "",
+      "n_req_rule": "n_req = ceil((2.9·sd/|mean − band|)²)（双侧 α=0.05、功效 0.8 的近似式）",
+      "note": "above_band = 区间下界越带（税确定存在）；below_band = 区间上界低于带（税确定不越带）；undecidable = 区间跨带（不许写成任何一方）"
+     },
+     "seed_range_observed": 0.002799,
+     "seed_range_note": "本 n 的种子极差只是描述量，不得回填成新带（带冻结在 0.000983）"
+    },
+    "k192": {
+     "k": 192,
+     "n_seeds": 2,
+     "per_seed": {
+      "0": {
+       "arm": "win192_s0",
+       "bpc": 1.504167,
+       "delta_bpc": 0.001478
+      },
+      "1": {
+       "arm": "win192_s1",
+       "bpc": 1.500436,
+       "delta_bpc": -0.002253
+      }
+     },
+     "cross_seed": {
+      "n_seeds": 2,
+      "mean": -0.000387,
+      "values": [
+       0.001478,
+       -0.002253
+      ],
+      "same_sign": false,
+      "unit_note": "每 seed 一个窗口税（同 seed 配对：bpc(win-k) − bpc(full)）",
+      "sd": 0.002638,
+      "t_crit": 12.706,
+      "t_interval_95": [
+       -0.024091,
+       0.023316
+      ]
+     },
+     "classification": {
+      "verdict": "undecidable",
+      "n": 2,
+      "mean_minus_band": -0.00137,
+      "interval_95": [
+       -0.024088,
+       0.023314
+      ],
+      "band": 0.000983,
+      "n_req": 32,
+      "n_req_note": "",
+      "n_req_rule": "n_req = ceil((2.9·sd/|mean − band|)²)（双侧 α=0.05、功效 0.8 的近似式）",
+      "note": "above_band = 区间下界越带（税确定存在）；below_band = 区间上界低于带（税确定不越带）；undecidable = 区间跨带（不许写成任何一方）"
+     },
+     "seed_range_observed": 0.003731,
+     "seed_range_note": "本 n 的种子极差只是描述量，不得回填成新带（带冻结在 0.000983）"
+    }
+   },
+   "band": {
+    "sigma_cell_frozen": 0.000983,
+    "source": "2662/results.json::quality_leg.bands.sigma_cell",
+    "cross_cell_band": 0.014,
+    "note": "两带并列报、不混用（C1 裁决）；本实验不重算 sigma_cell"
+   },
+   "monotone_pairs": [
+    {
+     "k_from": 16,
+     "k_to": 32,
+     "mean_from": 0.124061,
+     "mean_to": 0.082197,
+     "decreasing": true
+    },
+    {
+     "k_from": 32,
+     "k_to": 64,
+     "mean_from": 0.082197,
+     "mean_to": 0.052907,
+     "decreasing": true
+    },
+    {
+     "k_from": 64,
+     "k_to": 128,
+     "mean_from": 0.052907,
+     "mean_to": 0.011208,
+     "decreasing": true
+    },
+    {
+     "k_from": 128,
+     "k_to": 192,
+     "mean_from": 0.011208,
+     "mean_to": -0.000387,
+     "decreasing": true
+    }
+   ],
+   "band_edge": {
+    "smallest_k_below_band": null,
+    "below_band_k": [],
+    "note": "below_band = 该 k 的税**确定**不越本格带；本 n 下不可判的 k 不算进来，也不许当成 below_band 读"
+   },
+   "classification_rule": "above_band / below_band / undecidable（README §5a）",
+   "note": "主判。三分类不许压成布尔：undecidable 的 k 只能写「本 n 下不可判」，并附 n_req"
+  },
+  "c3_eval_budget_column": {
+   "D_grid": [
+    16,
+    32,
+    64,
+    128,
+    192,
+    240
+   ],
+   "by_arm": {
+    "full": {
+     "released_bpc": 1.502689,
+     "released_budget": 256,
+     "rows": {
+      "16": {
+       "D": 16,
+       "bpc": 2.096196,
+       "delta_bpc": 0.593507,
+       "relation_to_arm_budget": "released_causal",
+       "mask": {
+        "n_dropped_pairs": 28920,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.87913424,
+        "n_dropped_keys": 240,
+        "diagonal_kept": true
+       }
+      },
+      "32": {
+       "D": 32,
+       "bpc": 1.714368,
+       "delta_bpc": 0.211679,
+       "relation_to_arm_budget": "released_causal",
+       "mask": {
+        "n_dropped_pairs": 25200,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.76605058,
+        "n_dropped_keys": 224,
+        "diagonal_kept": true
+       }
+      },
+      "64": {
+       "D": 64,
+       "bpc": 1.588016,
+       "delta_bpc": 0.085327,
+       "relation_to_arm_budget": "released_causal",
+       "mask": {
+        "n_dropped_pairs": 18528,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.56322957,
+        "n_dropped_keys": 192,
+        "diagonal_kept": true
+       }
+      },
+      "128": {
+       "D": 128,
+       "bpc": 1.520667,
+       "delta_bpc": 0.017978,
+       "relation_to_arm_budget": "released_causal",
+       "mask": {
+        "n_dropped_pairs": 8256,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.25097276,
+        "n_dropped_keys": 128,
+        "diagonal_kept": true
+       }
+      },
+      "192": {
+       "D": 192,
+       "bpc": 1.50554,
+       "delta_bpc": 0.002851,
+       "relation_to_arm_budget": "released_causal",
+       "mask": {
+        "n_dropped_pairs": 2080,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.06322957,
+        "n_dropped_keys": 64,
+        "diagonal_kept": true
+       }
+      },
+      "240": {
+       "D": 240,
+       "bpc": 1.50278,
+       "delta_bpc": 9.1e-05,
+       "relation_to_arm_budget": "released_causal",
+       "mask": {
+        "n_dropped_pairs": 136,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00413424,
+        "n_dropped_keys": 16,
+        "diagonal_kept": true
+       }
+      }
+     },
+     "x_axis_unit": "位置（最近 D 个 key 可见）",
+     "drops_what": "所有距离 ≥ D 的 key（累计配置，直接测，不是单点求和）",
+     "additivity": "direct_cumulative",
+     "relation_note": "relation_to_arm_budget：identity = D 等于该臂的训练窗口（掩码恒等，Δ 必须逐位为 0）；narrower = 比训练更窄（对窗口臂是真正的「丢前缀」）；wider_than_training = 比训练更宽（OOD 放行，不是预算收紧）"
+    },
+    "win16_s0": {
+     "released_bpc": 1.62811,
+     "released_budget": 16,
+     "rows": {
+      "16": {
+       "D": 16,
+       "bpc": 1.62811,
+       "delta_bpc": 0.0,
+       "relation_to_arm_budget": "identity",
+       "mask": {
+        "n_dropped_pairs": 28920,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.87913424,
+        "n_dropped_keys": 240,
+        "diagonal_kept": true
+       }
+      },
+      "32": {
+       "D": 32,
+       "bpc": 3.937197,
+       "delta_bpc": 2.309087,
+       "relation_to_arm_budget": "wider_than_training",
+       "mask": {
+        "n_dropped_pairs": 25200,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.76605058,
+        "n_dropped_keys": 224,
+        "diagonal_kept": true
+       }
+      },
+      "64": {
+       "D": 64,
+       "bpc": 4.33513,
+       "delta_bpc": 2.70702,
+       "relation_to_arm_budget": "wider_than_training",
+       "mask": {
+        "n_dropped_pairs": 18528,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.56322957,
+        "n_dropped_keys": 192,
+        "diagonal_kept": true
+       }
+      },
+      "128": {
+       "D": 128,
+       "bpc": 4.512991,
+       "delta_bpc": 2.884881,
+       "relation_to_arm_budget": "wider_than_training",
+       "mask": {
+        "n_dropped_pairs": 8256,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.25097276,
+        "n_dropped_keys": 128,
+        "diagonal_kept": true
+       }
+      },
+      "192": {
+       "D": 192,
+       "bpc": 4.55219,
+       "delta_bpc": 2.92408,
+       "relation_to_arm_budget": "wider_than_training",
+       "mask": {
+        "n_dropped_pairs": 2080,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.06322957,
+        "n_dropped_keys": 64,
+        "diagonal_kept": true
+       }
+      },
+      "240": {
+       "D": 240,
+       "bpc": 4.555928,
+       "delta_bpc": 2.927818,
+       "relation_to_arm_budget": "wider_than_training",
+       "mask": {
+        "n_dropped_pairs": 136,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00413424,
+        "n_dropped_keys": 16,
+        "diagonal_kept": true
+       }
+      }
+     },
+     "x_axis_unit": "位置（最近 D 个 key 可见）",
+     "drops_what": "所有距离 ≥ D 的 key（累计配置，直接测，不是单点求和）",
+     "additivity": "direct_cumulative",
+     "relation_note": "relation_to_arm_budget：identity = D 等于该臂的训练窗口（掩码恒等，Δ 必须逐位为 0）；narrower = 比训练更窄（对窗口臂是真正的「丢前缀」）；wider_than_training = 比训练更宽（OOD 放行，不是预算收紧）"
+    },
+    "win64_s0": {
+     "released_bpc": 1.555204,
+     "released_budget": 64,
+     "rows": {
+      "16": {
+       "D": 16,
+       "bpc": 1.850161,
+       "delta_bpc": 0.294957,
+       "relation_to_arm_budget": "narrower",
+       "mask": {
+        "n_dropped_pairs": 28920,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.87913424,
+        "n_dropped_keys": 240,
+        "diagonal_kept": true
+       }
+      },
+      "32": {
+       "D": 32,
+       "bpc": 1.646937,
+       "delta_bpc": 0.091733,
+       "relation_to_arm_budget": "narrower",
+       "mask": {
+        "n_dropped_pairs": 25200,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.76605058,
+        "n_dropped_keys": 224,
+        "diagonal_kept": true
+       }
+      },
+      "64": {
+       "D": 64,
+       "bpc": 1.555204,
+       "delta_bpc": 0.0,
+       "relation_to_arm_budget": "identity",
+       "mask": {
+        "n_dropped_pairs": 18528,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.56322957,
+        "n_dropped_keys": 192,
+        "diagonal_kept": true
+       }
+      },
+      "128": {
+       "D": 128,
+       "bpc": 1.618915,
+       "delta_bpc": 0.063711,
+       "relation_to_arm_budget": "wider_than_training",
+       "mask": {
+        "n_dropped_pairs": 8256,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.25097276,
+        "n_dropped_keys": 128,
+        "diagonal_kept": true
+       }
+      },
+      "192": {
+       "D": 192,
+       "bpc": 1.946317,
+       "delta_bpc": 0.391113,
+       "relation_to_arm_budget": "wider_than_training",
+       "mask": {
+        "n_dropped_pairs": 2080,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.06322957,
+        "n_dropped_keys": 64,
+        "diagonal_kept": true
+       }
+      },
+      "240": {
+       "D": 240,
+       "bpc": 2.384792,
+       "delta_bpc": 0.829588,
+       "relation_to_arm_budget": "wider_than_training",
+       "mask": {
+        "n_dropped_pairs": 136,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00413424,
+        "n_dropped_keys": 16,
+        "diagonal_kept": true
+       }
+      }
+     },
+     "x_axis_unit": "位置（最近 D 个 key 可见）",
+     "drops_what": "所有距离 ≥ D 的 key（累计配置，直接测，不是单点求和）",
+     "additivity": "direct_cumulative",
+     "relation_note": "relation_to_arm_budget：identity = D 等于该臂的训练窗口（掩码恒等，Δ 必须逐位为 0）；narrower = 比训练更窄（对窗口臂是真正的「丢前缀」）；wider_than_training = 比训练更宽（OOD 放行，不是预算收紧）"
+    },
+    "win192_s0": {
+     "released_bpc": 1.504167,
+     "released_budget": 192,
+     "rows": {
+      "16": {
+       "D": 16,
+       "bpc": 2.073283,
+       "delta_bpc": 0.569116,
+       "relation_to_arm_budget": "narrower",
+       "mask": {
+        "n_dropped_pairs": 28920,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.87913424,
+        "n_dropped_keys": 240,
+        "diagonal_kept": true
+       }
+      },
+      "32": {
+       "D": 32,
+       "bpc": 1.69152,
+       "delta_bpc": 0.187353,
+       "relation_to_arm_budget": "narrower",
+       "mask": {
+        "n_dropped_pairs": 25200,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.76605058,
+        "n_dropped_keys": 224,
+        "diagonal_kept": true
+       }
+      },
+      "64": {
+       "D": 64,
+       "bpc": 1.573382,
+       "delta_bpc": 0.069215,
+       "relation_to_arm_budget": "narrower",
+       "mask": {
+        "n_dropped_pairs": 18528,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.56322957,
+        "n_dropped_keys": 192,
+        "diagonal_kept": true
+       }
+      },
+      "128": {
+       "D": 128,
+       "bpc": 1.515473,
+       "delta_bpc": 0.011306,
+       "relation_to_arm_budget": "narrower",
+       "mask": {
+        "n_dropped_pairs": 8256,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.25097276,
+        "n_dropped_keys": 128,
+        "diagonal_kept": true
+       }
+      },
+      "192": {
+       "D": 192,
+       "bpc": 1.504167,
+       "delta_bpc": 0.0,
+       "relation_to_arm_budget": "identity",
+       "mask": {
+        "n_dropped_pairs": 2080,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.06322957,
+        "n_dropped_keys": 64,
+        "diagonal_kept": true
+       }
+      },
+      "240": {
+       "D": 240,
+       "bpc": 1.502505,
+       "delta_bpc": -0.001662,
+       "relation_to_arm_budget": "wider_than_training",
+       "mask": {
+        "n_dropped_pairs": 136,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00413424,
+        "n_dropped_keys": 16,
+        "diagonal_kept": true
+       }
+      }
+     },
+     "x_axis_unit": "位置（最近 D 个 key 可见）",
+     "drops_what": "所有距离 ≥ D 的 key（累计配置，直接测，不是单点求和）",
+     "additivity": "direct_cumulative",
+     "relation_note": "relation_to_arm_budget：identity = D 等于该臂的训练窗口（掩码恒等，Δ 必须逐位为 0）；narrower = 比训练更窄（对窗口臂是真正的「丢前缀」）；wider_than_training = 比训练更宽（OOD 放行，不是预算收紧）"
+    }
+   },
+   "identity_check": {
+    "win16_s0|D=16": {
+     "delta_bpc": 0.0,
+     "equal_zero": true,
+     "why": "D == 训练窗口 16 且无锚点 ⇒ 掩码恒等"
+    },
+    "win64_s0|D=64": {
+     "delta_bpc": 0.0,
+     "equal_zero": true,
+     "why": "D == 训练窗口 64 且无锚点 ⇒ 掩码恒等"
+    },
+    "win192_s0|D=192": {
+     "delta_bpc": 0.0,
+     "equal_zero": true,
+     "why": "D == 训练窗口 192 且无锚点 ⇒ 掩码恒等"
+    }
+   },
+   "note": "评测期丢前缀：同一条已训权重、只改掩码、0 训练 token。与判据②的训练期税并列成两列表，口径不许互换"
+  },
+  "c4_single_distance_column": {
+   "d_grid": [
+    1,
+    2,
+    4,
+    8,
+    16,
+    32,
+    64,
+    128,
+    255
+   ],
+   "by_arm": {
+    "full": {
+     "released_bpc": 1.502689,
+     "rows": {
+      "1": {
+       "d": 1,
+       "bpc": 4.720334,
+       "delta_bpc": 3.217645,
+       "mask": {
+        "n_dropped_pairs": 255,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.0077517,
+        "n_dropped_keys": 255,
+        "diagonal_kept": true
+       }
+      },
+      "2": {
+       "d": 2,
+       "bpc": 3.489443,
+       "delta_bpc": 1.986754,
+       "mask": {
+        "n_dropped_pairs": 254,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.0077213,
+        "n_dropped_keys": 254,
+        "diagonal_kept": true
+       }
+      },
+      "4": {
+       "d": 4,
+       "bpc": 2.252735,
+       "delta_bpc": 0.750046,
+       "mask": {
+        "n_dropped_pairs": 252,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00766051,
+        "n_dropped_keys": 252,
+        "diagonal_kept": true
+       }
+      },
+      "8": {
+       "d": 8,
+       "bpc": 1.592943,
+       "delta_bpc": 0.090254,
+       "mask": {
+        "n_dropped_pairs": 248,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00753891,
+        "n_dropped_keys": 248,
+        "diagonal_kept": true
+       }
+      },
+      "16": {
+       "d": 16,
+       "bpc": 1.517599,
+       "delta_bpc": 0.01491,
+       "mask": {
+        "n_dropped_pairs": 240,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00729572,
+        "n_dropped_keys": 240,
+        "diagonal_kept": true
+       }
+      },
+      "32": {
+       "d": 32,
+       "bpc": 1.505928,
+       "delta_bpc": 0.003239,
+       "mask": {
+        "n_dropped_pairs": 224,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00680934,
+        "n_dropped_keys": 224,
+        "diagonal_kept": true
+       }
+      },
+      "64": {
+       "d": 64,
+       "bpc": 1.503718,
+       "delta_bpc": 0.001029,
+       "mask": {
+        "n_dropped_pairs": 192,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00583658,
+        "n_dropped_keys": 192,
+        "diagonal_kept": true
+       }
+      },
+      "128": {
+       "d": 128,
+       "bpc": 1.503141,
+       "delta_bpc": 0.000452,
+       "mask": {
+        "n_dropped_pairs": 128,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00389105,
+        "n_dropped_keys": 128,
+        "diagonal_kept": true
+       }
+      },
+      "255": {
+       "d": 255,
+       "bpc": 1.502689,
+       "delta_bpc": 0.0,
+       "mask": {
+        "n_dropped_pairs": 1,
+        "causal_pairs": 32896,
+        "dropped_frac": 3.04e-05,
+        "n_dropped_keys": 1,
+        "diagonal_kept": true
+       }
+      }
+     },
+     "x_axis_unit": "位置（与查询距离恰为 d 的 1 个 key 被删）",
+     "drops_what": "距离恰为 d 的那一个 key（每 query 删 1 对可见性）",
+     "additivity": "shape_only",
+     "note": "单点曲线只描述形状；不得累加、不得外推到别的预算（SCHEMA §17.11）"
+    },
+    "win16_s0": {
+     "released_bpc": 1.62811,
+     "rows": {
+      "1": {
+       "d": 1,
+       "bpc": 4.82543,
+       "delta_bpc": 3.19732,
+       "mask": {
+        "n_dropped_pairs": 255,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.0077517,
+        "n_dropped_keys": 255,
+        "diagonal_kept": true
+       }
+      },
+      "2": {
+       "d": 2,
+       "bpc": 4.591155,
+       "delta_bpc": 2.963045,
+       "mask": {
+        "n_dropped_pairs": 254,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.0077213,
+        "n_dropped_keys": 254,
+        "diagonal_kept": true
+       }
+      },
+      "4": {
+       "d": 4,
+       "bpc": 4.556213,
+       "delta_bpc": 2.928103,
+       "mask": {
+        "n_dropped_pairs": 252,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00766051,
+        "n_dropped_keys": 252,
+        "diagonal_kept": true
+       }
+      },
+      "8": {
+       "d": 8,
+       "bpc": 4.556588,
+       "delta_bpc": 2.928478,
+       "mask": {
+        "n_dropped_pairs": 248,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00753891,
+        "n_dropped_keys": 248,
+        "diagonal_kept": true
+       }
+      },
+      "16": {
+       "d": 16,
+       "bpc": 4.561689,
+       "delta_bpc": 2.933579,
+       "mask": {
+        "n_dropped_pairs": 240,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00729572,
+        "n_dropped_keys": 240,
+        "diagonal_kept": true
+       }
+      },
+      "32": {
+       "d": 32,
+       "bpc": 4.556838,
+       "delta_bpc": 2.928728,
+       "mask": {
+        "n_dropped_pairs": 224,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00680934,
+        "n_dropped_keys": 224,
+        "diagonal_kept": true
+       }
+      },
+      "64": {
+       "d": 64,
+       "bpc": 4.555119,
+       "delta_bpc": 2.927009,
+       "mask": {
+        "n_dropped_pairs": 192,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00583658,
+        "n_dropped_keys": 192,
+        "diagonal_kept": true
+       }
+      },
+      "128": {
+       "d": 128,
+       "bpc": 4.555266,
+       "delta_bpc": 2.927156,
+       "mask": {
+        "n_dropped_pairs": 128,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00389105,
+        "n_dropped_keys": 128,
+        "diagonal_kept": true
+       }
+      },
+      "255": {
+       "d": 255,
+       "bpc": 4.55557,
+       "delta_bpc": 2.92746,
+       "mask": {
+        "n_dropped_pairs": 1,
+        "causal_pairs": 32896,
+        "dropped_frac": 3.04e-05,
+        "n_dropped_keys": 1,
+        "diagonal_kept": true
+       }
+      }
+     },
+     "x_axis_unit": "位置（与查询距离恰为 d 的 1 个 key 被删）",
+     "drops_what": "距离恰为 d 的那一个 key（每 query 删 1 对可见性）",
+     "additivity": "shape_only",
+     "note": "单点曲线只描述形状；不得累加、不得外推到别的预算（SCHEMA §17.11）"
+    },
+    "win64_s0": {
+     "released_bpc": 1.555204,
+     "rows": {
+      "1": {
+       "d": 1,
+       "bpc": 4.726924,
+       "delta_bpc": 3.17172,
+       "mask": {
+        "n_dropped_pairs": 255,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.0077517,
+        "n_dropped_keys": 255,
+        "diagonal_kept": true
+       }
+      },
+      "2": {
+       "d": 2,
+       "bpc": 3.809902,
+       "delta_bpc": 2.254698,
+       "mask": {
+        "n_dropped_pairs": 254,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.0077213,
+        "n_dropped_keys": 254,
+        "diagonal_kept": true
+       }
+      },
+      "4": {
+       "d": 4,
+       "bpc": 3.020944,
+       "delta_bpc": 1.46574,
+       "mask": {
+        "n_dropped_pairs": 252,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00766051,
+        "n_dropped_keys": 252,
+        "diagonal_kept": true
+       }
+      },
+      "8": {
+       "d": 8,
+       "bpc": 2.555124,
+       "delta_bpc": 0.99992,
+       "mask": {
+        "n_dropped_pairs": 248,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00753891,
+        "n_dropped_keys": 248,
+        "diagonal_kept": true
+       }
+      },
+      "16": {
+       "d": 16,
+       "bpc": 2.463033,
+       "delta_bpc": 0.907829,
+       "mask": {
+        "n_dropped_pairs": 240,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00729572,
+        "n_dropped_keys": 240,
+        "diagonal_kept": true
+       }
+      },
+      "32": {
+       "d": 32,
+       "bpc": 2.439587,
+       "delta_bpc": 0.884383,
+       "mask": {
+        "n_dropped_pairs": 224,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00680934,
+        "n_dropped_keys": 224,
+        "diagonal_kept": true
+       }
+      },
+      "64": {
+       "d": 64,
+       "bpc": 2.4436,
+       "delta_bpc": 0.888396,
+       "mask": {
+        "n_dropped_pairs": 192,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00583658,
+        "n_dropped_keys": 192,
+        "diagonal_kept": true
+       }
+      },
+      "128": {
+       "d": 128,
+       "bpc": 2.440973,
+       "delta_bpc": 0.885769,
+       "mask": {
+        "n_dropped_pairs": 128,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00389105,
+        "n_dropped_keys": 128,
+        "diagonal_kept": true
+       }
+      },
+      "255": {
+       "d": 255,
+       "bpc": 2.435087,
+       "delta_bpc": 0.879883,
+       "mask": {
+        "n_dropped_pairs": 1,
+        "causal_pairs": 32896,
+        "dropped_frac": 3.04e-05,
+        "n_dropped_keys": 1,
+        "diagonal_kept": true
+       }
+      }
+     },
+     "x_axis_unit": "位置（与查询距离恰为 d 的 1 个 key 被删）",
+     "drops_what": "距离恰为 d 的那一个 key（每 query 删 1 对可见性）",
+     "additivity": "shape_only",
+     "note": "单点曲线只描述形状；不得累加、不得外推到别的预算（SCHEMA §17.11）"
+    },
+    "win192_s0": {
+     "released_bpc": 1.504167,
+     "rows": {
+      "1": {
+       "d": 1,
+       "bpc": 4.795911,
+       "delta_bpc": 3.291744,
+       "mask": {
+        "n_dropped_pairs": 255,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.0077517,
+        "n_dropped_keys": 255,
+        "diagonal_kept": true
+       }
+      },
+      "2": {
+       "d": 2,
+       "bpc": 3.446182,
+       "delta_bpc": 1.942015,
+       "mask": {
+        "n_dropped_pairs": 254,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.0077213,
+        "n_dropped_keys": 254,
+        "diagonal_kept": true
+       }
+      },
+      "4": {
+       "d": 4,
+       "bpc": 2.218478,
+       "delta_bpc": 0.714311,
+       "mask": {
+        "n_dropped_pairs": 252,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00766051,
+        "n_dropped_keys": 252,
+        "diagonal_kept": true
+       }
+      },
+      "8": {
+       "d": 8,
+       "bpc": 1.589493,
+       "delta_bpc": 0.085326,
+       "mask": {
+        "n_dropped_pairs": 248,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00753891,
+        "n_dropped_keys": 248,
+        "diagonal_kept": true
+       }
+      },
+      "16": {
+       "d": 16,
+       "bpc": 1.518201,
+       "delta_bpc": 0.014034,
+       "mask": {
+        "n_dropped_pairs": 240,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00729572,
+        "n_dropped_keys": 240,
+        "diagonal_kept": true
+       }
+      },
+      "32": {
+       "d": 32,
+       "bpc": 1.505697,
+       "delta_bpc": 0.00153,
+       "mask": {
+        "n_dropped_pairs": 224,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00680934,
+        "n_dropped_keys": 224,
+        "diagonal_kept": true
+       }
+      },
+      "64": {
+       "d": 64,
+       "bpc": 1.503448,
+       "delta_bpc": -0.000719,
+       "mask": {
+        "n_dropped_pairs": 192,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00583658,
+        "n_dropped_keys": 192,
+        "diagonal_kept": true
+       }
+      },
+      "128": {
+       "d": 128,
+       "bpc": 1.502894,
+       "delta_bpc": -0.001273,
+       "mask": {
+        "n_dropped_pairs": 128,
+        "causal_pairs": 32896,
+        "dropped_frac": 0.00389105,
+        "n_dropped_keys": 128,
+        "diagonal_kept": true
+       }
+      },
+      "255": {
+       "d": 255,
+       "bpc": 1.502559,
+       "delta_bpc": -0.001608,
+       "mask": {
+        "n_dropped_pairs": 1,
+        "causal_pairs": 32896,
+        "dropped_frac": 3.04e-05,
+        "n_dropped_keys": 1,
+        "diagonal_kept": true
+       }
+      }
+     },
+     "x_axis_unit": "位置（与查询距离恰为 d 的 1 个 key 被删）",
+     "drops_what": "距离恰为 d 的那一个 key（每 query 删 1 对可见性）",
+     "additivity": "shape_only",
+     "note": "单点曲线只描述形状；不得累加、不得外推到别的预算（SCHEMA §17.11）"
+    }
+   },
+   "note": "单距离列只描述形状，不得求和或外推到别的预算（SCHEMA §17.11）"
+  },
+  "c5_columns_not_interchangeable": {
+   "demo_D": 32,
+   "demo_single_ds": [
+    32,
+    64,
+    128,
+    255
+   ],
+   "by_arm": {
+    "full": {
+     "cum_delta_bpc": 0.211679,
+     "sum_single_delta_bpc": 0.00472,
+     "single_parts": {
+      "32": 0.003239,
+      "64": 0.001029,
+      "128": 0.000452,
+      "255": 0.0
+     },
+     "ratio_cum_over_sum_single": 44.847246,
+     "cum_above_frozen_band": true,
+     "participates_in_prediction": true,
+     "prediction_holds": true,
+     "prediction": "cum(32) / Σ_{d∈{32,64,128,255}} single(d) > 1 且 cum 越本格带",
+     "note": null
+    },
+    "win16_s0": {
+     "cum_delta_bpc": 2.309087,
+     "sum_single_delta_bpc": 11.710353,
+     "single_parts": {
+      "32": 2.928728,
+      "64": 2.927009,
+      "128": 2.927156,
+      "255": 2.92746
+     },
+     "ratio_cum_over_sum_single": 0.197183,
+     "cum_above_frozen_band": true,
+     "participates_in_prediction": false,
+     "prediction_holds": null,
+     "prediction": "cum(32) / Σ_{d∈{32,64,128,255}} single(d) > 1 且 cum 越本格带",
+     "note": "窗口臂的释放版本来就是窄的（D=32 比训练窗口更宽）⇒ 这里不是预算收紧，比率不作预测判定，只作描述量"
+    },
+    "win64_s0": {
+     "cum_delta_bpc": 0.091733,
+     "sum_single_delta_bpc": 3.538431,
+     "single_parts": {
+      "32": 0.884383,
+      "64": 0.888396,
+      "128": 0.885769,
+      "255": 0.879883
+     },
+     "ratio_cum_over_sum_single": 0.025925,
+     "cum_above_frozen_band": true,
+     "participates_in_prediction": false,
+     "prediction_holds": null,
+     "prediction": "cum(32) / Σ_{d∈{32,64,128,255}} single(d) > 1 且 cum 越本格带",
+     "note": "窗口臂的释放版本来就是窄的（D=32 比训练窗口更宽）⇒ 这里不是预算收紧，比率不作预测判定，只作描述量"
+    },
+    "win192_s0": {
+     "cum_delta_bpc": 0.187353,
+     "sum_single_delta_bpc": -0.00207,
+     "single_parts": {
+      "32": 0.00153,
+      "64": -0.000719,
+      "128": -0.001273,
+      "255": -0.001608
+     },
+     "ratio_cum_over_sum_single": -90.508696,
+     "cum_above_frozen_band": true,
+     "participates_in_prediction": false,
+     "prediction_holds": null,
+     "prediction": "cum(32) / Σ_{d∈{32,64,128,255}} single(d) > 1 且 cum 越本格带",
+     "note": "窗口臂的释放版本来就是窄的（D=32 比训练窗口更宽）⇒ 这里不是预算收紧，比率不作预测判定，只作描述量"
+    }
+   },
+   "note": "预登记预测：cum(32) / Σ_{d≥32} single(d) > 1 且 cum 越本格带。不成立必须写清原因，不得默默只报一条曲线"
+  },
+  "c6_anchor_lever_at_k64": {
+   "verdict": "not_produced",
+   "note": "可选臂 win64a_s0/s1 未训完（README §4b 已预登记该回落）"
+  }
+ },
+ "cost": {
+  "gpu_seconds": 60.1,
+  "wall_seconds": 60.1,
+  "kv_bytes_per_position_unit": 12288,
+  "k_eff_by_arm": {
+   "full": 256,
+   "win16_s0": 16,
+   "win16_s1": 16,
+   "win16_s2": 16,
+   "win16_s3": 16,
+   "win16a_s0": 24,
+   "win16a_s1": 24,
+   "win16a_s2": 24,
+   "win16a_s3": 24,
+   "win32_s0": 32,
+   "win32_s1": 32,
+   "win64_s0": 64,
+   "win64_s1": 64,
+   "win128_s0": 128,
+   "win128_s1": 128,
+   "win192_s0": 192,
+   "win192_s1": 192
+  },
+  "kv_bytes_by_arm": {
+   "full": 3145728,
+   "win16_s0": 196608,
+   "win16_s1": 196608,
+   "win16_s2": 196608,
+   "win16_s3": 196608,
+   "win16a_s0": 294912,
+   "win16a_s1": 294912,
+   "win16a_s2": 294912,
+   "win16a_s3": 294912,
+   "win32_s0": 393216,
+   "win32_s1": 393216,
+   "win64_s0": 786432,
+   "win64_s1": 786432,
+   "win128_s0": 1572864,
+   "win128_s1": 1572864,
+   "win192_s0": 2359296,
+   "win192_s1": 2359296
+  },
+  "note": "KV 字节按 fp16（每位置 = 层数 × 2(K,V) × d_model × 2 B × k_eff）"
+ },
+ "code_hashes": {
+  "run.py": "324c387fdb549869f11e74ac9df6b5a0a6f0ac90ad4ccfd02be2cd305df04616",
+  "make_config.py": "e4e1ac9fbff5de67c114e18de1d95237f84c5c50e6a8a85e178c8fbec2a5f450",
+  "realtext_probe.py": "dbddeb5f8dc3a7bebe6eda6e2d977ce6581fade2b5db7231bc3f0116addd6402",
+  "train_arms.sh": "0028be616b7841f818f4790ee2e510efc02ce8456ae31b620037183dabd8f25c",
+  "config.json": "85074a084e4c4c97d08714cdd1c79218c7a993b944067cc0115a239e6731b582",
+  "pathlm/depth_ar.py": "42844306990aebc5a4a4d0df2f115b872e52bb4b36d8b8a1831c3490d1af8de5",
+  "train_depth_ar.py": "0f6536fae2369d962434293b37ec8b26287fc180a9c657669f150531601f4764",
+  "tools/evalkit/retention.py": "9ef983b70d666460de5d63d5d81c23c685ce708a55dfe1af66fc23187fd12f9a",
+  "pathlm/data.py": "48e23520122a0b4591e71d0e3780dd1f34dc4a82744e14ca3414da8f43ba448a"
+ },
+ "delta_directions": {
+  "delta_bpc": "arm_minus_comparator",
+  "cum_delta_bpc": "arm_minus_comparator",
+  "sum_single_delta_bpc": "arm_minus_comparator"
+ },
+ "readings_units": {
+  "bpc": "bits/byte（越低越好），96×16 窗口序、window_seed=2",
+  "delta_bpc": "bpc 差，正 = 该配置比释放版更差"
+ }
+}
