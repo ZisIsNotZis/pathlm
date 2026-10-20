@@ -1,6 +1,6 @@
 """最小 top-k 稀疏激活专家（MoE）FFN —— 轴 4 实验用，**不动共享 `pathlm/**`**。
 
-设计约束（`SCHEMA.md` §10 / §22.7 / §15）：
+设计约束（`harness/SCHEMA.md` §10 / §22.7 / §15）：
 
 - `TopKMoEFFN` 与 stock `pathlm.model.Block.mlp`（`nn.Sequential(Linear(d,H),GELU,
   Linear(H,d),Dropout(0))`）**接口相同**：`[B,T,d] → [B,T,d]`，因此可以**透明替换**
@@ -58,7 +58,7 @@ class TopKMoEFFN(nn.Module):
         ])
         self.router = nn.Linear(d, n_experts, bias=False)
         nn.init.normal_(self.router.weight, std=0.02)
-        # 最近一次前向的活性量（`SCHEMA.md` §10；评测/训练日志用）
+        # 最近一次前向的活性量（`harness/SCHEMA.md` §10；评测/训练日志用）
         self.last_stats: dict | None = None
 
     # ---- 干预活性量（§10） ----

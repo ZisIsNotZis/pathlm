@@ -187,7 +187,7 @@
 
 - 入口：`python3 run.py --device cpu`（全臂同设备）。`--smoke` 估时、`--table-only` 纯 CPU 重画表。
 - GPU 锁：本 run **未取 GPU 锁**（`results.json::gpu_lock.lock_mode = "cpu_no_lock"`）——
-  纯 CPU 工作，`SCHEMA.md` §20 不适用。此前 `attempt 1`（GPU 口径）等锁 600 s 超时，
+  纯 CPU 工作，`harness/SCHEMA.md` §20 不适用。此前 `attempt 1`（GPU 口径）等锁 600 s 超时，
   落 `lock_blocked.json` 作证据；**未杀任何别的进程、未动 `/tmp/pathlm_gpu.lock`**。
 - 逐臂持久化：每跑完一臂即写 `results.json`（带 `partial` / `arms_completed` / `arms_pending`）。
 - 代码指纹与 `code` 哈希见 `results.json::code`；trunk sha256 运行时断言

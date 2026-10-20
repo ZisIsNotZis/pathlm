@@ -25,7 +25,7 @@
 
 ## 3. 方差界
 
-- **bpc**：`docs/methodology.md` 的排序门槛 **0.014**。本实验所有 bpc 都是
+- **bpc**：`harness/methodology.md` 的排序门槛 **0.014**。本实验所有 bpc 都是
   **同进程同路径**重测，且与来源实验**逐位一致**（14/14，见
   `results.json::cross_check_vs_source`）⇒ 跨实验口径差为 0。
 - **召回**：Wilson 95% CI（`results.json::points[*].recall_copy.wilson95`）。

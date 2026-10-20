@@ -141,7 +141,7 @@ U3 的统一 KV 预算图（`2619`）在同一横轴「每位置 KV 字节」上
 
 - **chance** = `1/64`；**局部先验地板** = `local_prior_accuracy(k=8)`（copy / induction /
   var_recall 各一）；**毁源对照**逐臂。
-- **方差带** = `0.014`（`docs/methodology.md`）：`|damage_bpc| < 0.014` 标「⚠不可排序」。
+- **方差带** = `0.014`（`harness/methodology.md`）：`|damage_bpc| < 0.014` 标「⚠不可排序」。
 - **召回判据** = Wilson 95% CI；`at_floor` = `chance + 2σ_wilson`。
 - 纯推理、无随机采样；同 seed 重跑应逐位相同。参考臂与 `2619` 的对照是**跨 run 可控性**
   的直接证据（`results.json::reproducibility_vs_2619`）。

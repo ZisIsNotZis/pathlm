@@ -1,4 +1,4 @@
-# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+# 研究项 SSOT：契约见 harness/research-schema.md，布局见 docs/structure.md §12。
 id: "5.4"
 axis: "5 量化轴"
 title: "低秩压缩（MLA 式）"
@@ -15,14 +15,14 @@ objective_criteria: "该跌：每位置 KV 部署字节（潜维 + RoPE 分量�
 falsification: "若 MLA 式低秩压缩在等参数对照下相对同字节头共享臂的 clean bpc 不占优（越噪声带变差或持平）⇒ 判低秩压缩在本尺度不产生新知识；若「从零训练」的收敛代价吃掉全部 KV 收益（等字节下不占优）⇒ 判该路线在本尺度不划算；若上投影额外计算使每 token 等效 FLOPs 显著上升且未被 KV 收益补偿 ⇒ 判代价记账不利。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）为主判；长程召回等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014。"
 failure_analysis: ""
 conclusion: ""
-conclusion_review: "本项无旧格、本仓零经验，无本地判决，故 `status: 未开始`。判据按 `docs/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），横轴统一为「每位置 KV 字节」、纵轴两腿（clean bpc + 长程召回），并给等参数对照与头共享同字节对照（`SCHEMA.md` §15/§17.12）。与 `5.1`（量化）、`7-references`（GQA/MQA 参照）的边界写进 `gap`。独立复核未做。"
+conclusion_review: "本项无旧格、本仓零经验，无本地判决，故 `status: 未开始`。判据按 `harness/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），横轴统一为「每位置 KV 字节」、纵轴两腿（clean bpc + 长程召回），并给等参数对照与头共享同字节对照（`harness/SCHEMA.md` §15/§17.12）。与 `5.1`（量化）、`7-references`（GQA/MQA 参照）的边界写进 `gap`。独立复核未做。"
 laws: []
 cost_rows: []
 experiments: []
-argument: "低秩压缩与头共享（GQA/MQA）是两种不同的省 KV 机制，必须放在**同一「每位置字节」横轴**上比较才公平（`SCHEMA.md` §17.12；`2617` §3 记业界缺统一字节轴）。MLA 的独有代价是「须从零训练 + 上投影计算」，必须以每 token 等效解码 FLOPs 入账（不用时间量），否则会把「省内存」记成「免费」。低秩不改变可见位置集合，故可见性对数必须不变（与窗口/驱逐类不同，二者是两条账）。"
+argument: "低秩压缩与头共享（GQA/MQA）是两种不同的省 KV 机制，必须放在**同一「每位置字节」横轴**上比较才公平（`harness/SCHEMA.md` §17.12；`2617` §3 记业界缺统一字节轴）。MLA 的独有代价是「须从零训练 + 上投影计算」，必须以每 token 等效解码 FLOPs 入账（不用时间量），否则会把「省内存」记成「免费」。低秩不改变可见位置集合，故可见性对数必须不变（与窗口/驱逐类不同，二者是两条账）。"
 gaps:
   - "本仓零经验：需先做最小判决（13M、从零训练，{MHA, GQA/MQA, MLA 式潜维扫描} 三臂 + 等参数/同字节对照，报 clean bpc + 每位置字节 + 长程召回 + 上投影等效 FLOPs）"
-  - "与 5.1（KV 量化）是否可叠加（低秩 + 量化）未测（组合默认留白，`SCHEMA.md` §4）"
+  - "与 5.1（KV 量化）是否可叠加（低秩 + 量化）未测（组合默认留白，`harness/SCHEMA.md` §4）"
   - "造轮子风险最高项：须明确「相对 DeepSeek-V2 MLA 的增量」是什么（本仓只做 13M 受控同字节前沿）"
   - "MLA 的确切质量/KV 公开数字 `记忆·未核`（`2617` §2），不作判据"
   - "等参数臂归属（66-F4 裁决）：与 `5.1` 共用同一 WP（`5.1` 的 `WP3`，同一臂服务两格，不重复建格）——本项 WP1 的「低秩 vs 头共享同字节判决」用之"
@@ -45,7 +45,7 @@ work_packages:
     means: "13M、从零训练，{MHA, GQA/MQA, MLA 式低秩潜维扫描} 三臂，报 clean bpc + 每位置字节 + 长程召回 + 上投影等效 FLOPs，含等参数对照"
     acceptance: "三臂在同一字节轴上可比；低秩 vs 头共享有/无越噪声带差异，二选一明确；等参数对照齐备"
     evidence: "axes/5-quant/5.4-low-rank/experiments/"
-    review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b，核对同字节轴与等参数对照）"
+    review: "跑完另派 fresh 复核（`harness/SCHEMA.md` §14/§14b，核对同字节轴与等参数对照）"
     status: "未开始"
 
 roadmap:

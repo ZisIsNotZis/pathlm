@@ -1,6 +1,6 @@
 """2654 · WP1 自检 + 变异（可失败单测）：掩码因子、块标尺因子、同字节水平、配对带。
 
-契约：`SCHEMA` §9（实现层 equality）+ `docs/methodology.md` §5（冒烟/单测/变异纪律）。
+契约：`SCHEMA` §9（实现层 equality）+ `harness/methodology.md` §5（冒烟/单测/变异纪律）。
 本文件是**自测**，不是独立验收（复核由 axis5-lead 另派 fresh reviewer）。
 
 跑法：

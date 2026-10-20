@@ -1,4 +1,4 @@
-# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+# 研究项 SSOT：契约见 harness/research-schema.md，布局见 docs/structure.md §12。
 id: "5.1"
 axis: "5 量化轴"
 title: "KV 量化"
@@ -49,7 +49,7 @@ experiments:
   - "axes/5-quant/5.1-kv-quant/experiments/2631-kv-budget-causal/analysis.md @bb82652"
   - "axes/5-quant/5.1-kv-quant/experiments/2632-kv-block-scale/analysis.md @a8b47d1"
   - "axes/5-quant/5.1-kv-quant/experiments/2642-kv-same-byte-frontier"
-argument: "判定「KV 量化值不值」的判据形态必须是「每位置部署字节 → 序列级质量」的**前沿**，而不是单点 Δbpc 对一个绝对门槛。横轴必须统一为**每位置解析 KV 字节（含标尺与 staging）**，禁止用「比特数 / 压缩率」直接互比（`SCHEMA.md` §17.12）；跨家族比较须在同一字节轴上，且**头共享族的旧数字已随逐值标尺口径作废，不得引用「同 −75% 档 GQA 便宜 3.2×」**。严格前缀不变性是流式部署可用的硬前提：沿 `head_dim` 分块可保持严格因果且把标尺开销摊到 2/G B/值；沿 token 轴分块做不到，须 staging。逻辑链：标尺粒度决定每位置字节（逐值 = 值字节 ×1 + 每值一个 fp16 标尺 ⇒ 反占内存；块标尺 = 值字节 + 2/G）⇒ int8 块标尺每位置 6528 B（×0.53）且近无损，故成为参照线；int4 越噪声带，故有损。"
+argument: "判定「KV 量化值不值」的判据形态必须是「每位置部署字节 → 序列级质量」的**前沿**，而不是单点 Δbpc 对一个绝对门槛。横轴必须统一为**每位置解析 KV 字节（含标尺与 staging）**，禁止用「比特数 / 压缩率」直接互比（`harness/SCHEMA.md` §17.12）；跨家族比较须在同一字节轴上，且**头共享族的旧数字已随逐值标尺口径作废，不得引用「同 −75% 档 GQA 便宜 3.2×」**。严格前缀不变性是流式部署可用的硬前提：沿 `head_dim` 分块可保持严格因果且把标尺开销摊到 2/G B/值；沿 token 轴分块做不到，须 staging。逻辑链：标尺粒度决定每位置字节（逐值 = 值字节 ×1 + 每值一个 fp16 标尺 ⇒ 反占内存；块标尺 = 值字节 + 2/G）⇒ int8 块标尺每位置 6528 B（×0.53）且近无损，故成为参照线；int4 越噪声带，故有损。"
 gaps:
   - "int4 分组 / 按 token 方案（group-wise、per-token K 侧）未测"
   - "fp8 KV 质量未测（归 `5.5`）"
@@ -95,7 +95,7 @@ work_packages:
     means: "13M、纯推理（复用 `2632`/`2642` 的 checkpoint 与口径），构造与头共享臂同参数量、同每位置字节的对照（Δparams 还给 FFN/宽度），报 clean bpc + 每位置部署字节；同一臂同时服务 `5.1`（KV 量化/头共享同字节前沿）与 `5.4`（低秩 vs 头共享同字节判决）"
     acceptance: "等参数臂与头共享臂参数逐位对齐、每位置字节不变；「同字节纯机制」读数可分或明确不可分"
     evidence: "axes/5-quant/5.1-kv-quant/experiments/"
-    review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b，核对等参数对齐与同字节口径）"
+    review: "跑完另派 fresh 复核（`harness/SCHEMA.md` §14/§14b，核对等参数对齐与同字节口径）"
     status: "未开始"
 
 roadmap:

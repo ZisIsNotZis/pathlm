@@ -32,7 +32,7 @@ budget: "本阶段 0 GPU 判决训练（无对照质量实验）；仅含一条�
 - `4.1` 的臂 `aux_weight = 0`（**朴素 top-k，无均衡机制**——均衡属 `4.2`）；
   专家**均匀同宽**（细粒度 / 共享专家属 `4.3`）。
 - 实现方式：`moe.py:MoEDepthARModel` 在 `super().__init__()` 之后把每层 `blk.mlp` 换成
-  `TopKMoEFFN`——**不改共享 `pathlm/**`**（新模块 + 最少接线，`SCHEMA.md` §22.7）。
+  `TopKMoEFFN`——**不改共享 `pathlm/**`**（新模块 + 最少接线，`harness/SCHEMA.md` §22.7）。
   透明性由 `preflight` 的 **E=1,top-1 + 灌入 stock mlp 权重 ⇒ 与 dense 逐位一致**断言钉住。
 
 ## 3. 指标表（多维，逐项分析）
@@ -65,7 +65,7 @@ budget: "本阶段 0 GPU 判决训练（无对照质量实验）；仅含一条�
 ## 5. 对照与方差
 
 - 对照臂 = `dense-B0`（同尺寸 stock dense，归一为 100%）；等参数对照 = `dense-eqparam-*`。
-- 方差带 = **0.014 bpc**（`docs/methodology.md` §2：nondeterminism 0.0019、种子散布 ≤0.0138）。
+- 方差带 = **0.014 bpc**（`harness/methodology.md` §2：nondeterminism 0.0019、种子散布 ≤0.0138）。
 - seed 数：判决需 n≥2；本阶段探针单臂不报质量对照（只报活性）。
 
 ## 6. 成本（等效理论量；墙钟仅作过程指标，禁入 `cost_model`/判据）
@@ -75,7 +75,7 @@ budget: "本阶段 0 GPU 判决训练（无对照质量实验）；仅含一条�
 - **layer-passes**：三臂每 token 均 L=12（专家路由是同一前向内的稀疏 gather，不增顺序依赖）。
 - **tokens-per-forward**：每步 1。
 - **全实验等效训练算力**（下一阶段）：3 臂 × 98.3M token ×（每 token 与 dense-B0 同量级的前向+反向）
-  ≈ 3× dense-B0 的一次训练；n≥2 ⇒ ×2。**实测步时须开跑前先测 20 步再定预算**（`SCHEMA.md` §17.8）；
+  ≈ 3× dense-B0 的一次训练；n≥2 ⇒ ×2。**实测步时须开跑前先测 20 步再定预算**（`harness/SCHEMA.md` §17.8）；
   本阶段 20 步实测（争用下）见 `timing_20.json` 的 `timing_process_metric`。
 - **本阶段实际**：CPU pre-flight（秒级）+ 单臂 1200 步坍缩探针（§20 串行取锁）。
 
@@ -91,7 +91,7 @@ budget: "本阶段 0 GPU 判决训练（无对照质量实验）；仅含一条�
 
 1. **测量**：`preflight` 的 E=1 等值断言失败 ⇒ 实现问题（不是机制问题），先修接线。
 2. **实现**：等 FLOPs / 等参数对照不齐 ⇒ 记账错，回 `ledger` 重算，不得开跑。
-3. **规模**：13M 上场间差异 ≤ 噪声带 ⇒ 报「该尺度不可分」，不外推（`SCHEMA.md` §17.11 禁外推）。
+3. **规模**：13M 上场间差异 ≤ 噪声带 ⇒ 报「该尺度不可分」，不外推（`harness/SCHEMA.md` §17.11 禁外推）。
 4. **设计**：若等 FLOPs 下 MoE 一致劣且使用率分布健康（非坍缩）⇒ 判该尺度稀疏激活不产生新知识
    （`failure_analysis` 区分：结构问题 vs innovation 本身失败）。
 

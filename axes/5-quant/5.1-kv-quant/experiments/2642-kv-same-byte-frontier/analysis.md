@@ -142,7 +142,7 @@
    `Δparams` 还给 FFN 或宽度）才能读「头共享 / 量化 / 窗口在等参数下的同字节序」。**下一步最小实验 +
    等效算力成本**：训练 1 个等参数 GQA 臂（宽度/FFN 补偿 1184256 参数）⇒ 每 token 训练 FLOPs ≈ 同
    trunk 基线 × (1 + Δparams/params) ≈ ×1.09；token 预算、步数、seed 数（n≥2）与 `2616` 对齐 ⇒
-   约 2 个 run × 12k 步 × 98.3M token 量级的等效算力（GPU 按 `SCHEMA.md` §20 串行）。
+   约 2 个 run × 12k 步 × 98.3M token 量级的等效算力（GPU 按 `harness/SCHEMA.md` §20 串行）。
 3. **fp8 质量未测**（`5.5` WP1）：本实验只能给它的解析价签。
 4. **单尺度**：T=256、`head_dim`=32；窗口臂的 `kept/T` 与 T 有关，`head_dim` 更大时刻标尺摊得更薄
    （归 `5.5` WP2）。禁外推。

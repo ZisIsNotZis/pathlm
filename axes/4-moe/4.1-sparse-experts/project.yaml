@@ -1,4 +1,4 @@
-# 研究项 SSOT：契约见 docs/research-schema.md，布局见 docs/structure.md §12。
+# 研究项 SSOT：契约见 harness/research-schema.md，布局见 docs/structure.md §12。
 id: "4.1"
 axis: "4 专家轴（MoE）"
 title: "稀疏激活专家（top-k 路由）"
@@ -15,19 +15,19 @@ objective_criteria: "该涨：同 FLOPs 下的有效容量/参数量；该不跌
 falsification: "若在等参数对照下，MoE 相对同 FLOPs dense 的 clean bpc 不占优（越噪声带变差或持平）且无法由使用率分布解释 ⇒ 判本尺度稀疏激活专家不产生新知识；若专家使用率坍缩（少数专家吃掉绝大多数 token）且无法用均衡机制修复 ⇒ 判该机制在本尺度失效。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）；使用率 / 路由类指标走配对 CI、不借用 0.014。"
 failure_analysis: ""
 conclusion: "本项命题的本地判决尚未做（无 13M 三臂 matched-step 读数）。当前已有本地工作（WP0，`2610-moe-arm-ledger-13m`）：① 等 FLOPs / 等参数臂的记账已钉死——13M 基底 dense-B0 = 13,602,304 参数、FFN 9,437,184 MACs/token；等 FLOPs 臂 moe-top1-E8（E=8,k=1,h_e=1536）= 79,837,696 参数、专家 MACs/token 与 dense 逐位相等（另加路由器 E·d 的 +0.26% 路由税）、tokens-per-param 1.23（dense 为 7.23）；moe-top2-E8（E=8,k=2,h_e=768）= 42,015,232 参数、同样等专家 MACs、tokens-per-param 2.34；等参数 dense 对照 mlp_mult=48/24，总参数相对差 <0.2%；② MoE 作为 `Block.mlp` 的透明替换已被断言钉住（E=1,top-1 灌入 stock mlp 权重 ⇒ 与 dense 逐位一致，`bitwise_equal=true`）、路由器梯度非零（干预活着）。质量-代价前沿本身（clean bpc 三臂）尚未测。附：同实验目录另跑了一个**坍缩可观测性探针**（4.2 前提，单臂 13M/top-1/1200 步，见 `analysis.md` §4），结论属 4.2，不计入本项。"
-conclusion_review: "本项无本地质量判决（`status: 未开始`，65-F1 降为 Backlog），故无终局结论可复核。当前自评 + 独立复核的对象 = WP0（记账 + pre-flight）；复核由独立 fresh 复核者出具，判词见 `.scratch/65-axis4-moe/REVIEW-1.md`，结论落点在本文件的 `conclusion` 与 `gaps`。把「造轮子」风险写进 `gap`，增量已声明；按 W-13 不再保留「todo 待补做」与「prior_art 检索不可用」的自相矛盾口径；按 W-17 成本口径改为等效理论量。判据按 `docs/research-schema.md` 预登记（等 FLOPs/等参数双对照 + 客观判据 + 口径 + 否证条件），「专家使用率分布」为必须报的活性对照列。"
+conclusion_review: "本项无本地质量判决（`status: 未开始`，65-F1 降为 Backlog），故无终局结论可复核。当前自评 + 独立复核的对象 = WP0（记账 + pre-flight）；复核由独立 fresh 复核者出具，判词见 `.scratch/65-axis4-moe/REVIEW-1.md`，结论落点在本文件的 `conclusion` 与 `gaps`。把「造轮子」风险写进 `gap`，增量已声明；按 W-13 不再保留「todo 待补做」与「prior_art 检索不可用」的自相矛盾口径；按 W-17 成本口径改为等效理论量。判据按 `harness/research-schema.md` 预登记（等 FLOPs/等参数双对照 + 客观判据 + 口径 + 否证条件），「专家使用率分布」为必须报的活性对照列。"
 laws: [10]
 cost_rows: []
 experiments:
   - "axes/4-moe/4.1-sparse-experts/experiments/2610-moe-arm-ledger-13m"
-argument: "「稀疏激活专家」是「保容量减计算」的专家粒度版：总参数（容量）按 E 放大、每 token 只激活 top-k 个专家 ⇒ 每 token FLOPs 与 dense 同级而容量更大。判定它值不值必须给等 FLOPs 与等参数双对照（`SCHEMA.md` §15），否则无法把「容量增益」与「参数/算力记账」分开。活性（专家使用率）是必须报的对照列，否则无法区分「真扩容」与「路由坍缩」。与 `3.1.5` 通道极化 / 稀疏激活的边界：`3.1.5` 是通道粒度、本项是专家（FFN 块）粒度。"
+argument: "「稀疏激活专家」是「保容量减计算」的专家粒度版：总参数（容量）按 E 放大、每 token 只激活 top-k 个专家 ⇒ 每 token FLOPs 与 dense 同级而容量更大。判定它值不值必须给等 FLOPs 与等参数双对照（`harness/SCHEMA.md` §15），否则无法把「容量增益」与「参数/算力记账」分开。活性（专家使用率）是必须报的对照列，否则无法区分「真扩容」与「路由坍缩」。与 `3.1.5` 通道极化 / 稀疏激活的边界：`3.1.5` 是通道粒度、本项是专家（FFN 块）粒度。"
 gaps:
   - "本仓零经验：需先做最小判决（13M、{dense, top-1, top-2} 三臂 + 等 FLOPs/等参数双对照，matched-step，报 clean bpc + 每 token 等效 FLOPs + 专家使用率分布）"
   - "与 4.2（路由与负载均衡）/ 4.3（专家粒度/异构）的边界未整合（由 integrator 核不重复）"
   - "造轮子风险最高项：须在最小判决里明确「相对 Switch/Mixtral/DeepSeekMoE 的增量」是什么，否则结论无新知识"
   - "13M 尺度的 MoE 意义存疑（SCHEMA §7）：专家数少，须先证明该尺度仍能改变「某种算力路径值不值」的判断"
   - "65-F1 裁决：本项降为 **Backlog**（不在 13M 花算力做 MoE 判决），保留本仓等效代价口径记录（WP0 记账）；业界标准 MoE（Switch / GShard / DeepSeekMoE）的跑分线登记在 `axes/7-references/README.md`，将来做大 token 预算时以它为外部基线"
-  - "65-F2 裁决：GPU 协调事项——取锁期间卡曾被未持锁外部进程占用（12.9GB / 90%），后续训练判决（若重启）须按 `SCHEMA.md` §20 排队协调"
+  - "65-F2 裁决：GPU 协调事项——取锁期间卡曾被未持锁外部进程占用（12.9GB / 90%），后续训练判决（若重启）须按 `harness/SCHEMA.md` §20 排队协调"
 cost_model: "等效理论量：dense FFN 每 token 过 1 个 FFN（FLOPs ≈ 2·d·h_ff/层）；top-k 专家（E 个）每 token 只过 k 个 ⇒ 每 token FFN 等效 FLOPs ≈ k·2·d·h_ff（与 dense 同形），但总参数 ≈ E·2·d·h_ff（容量约 ×E/k 当激活算力固定）。layer-passes 每 token 仍为 L（层数不变）；tokens-per-forward 每步 1。路由器是 d×E 的极小头（计入每 token 计算）。考虑 pipelining：专家路由是同一前向内按 token 的稀疏 gather，不引入额外顺序依赖，但负载不均会使某些专家成为并行气泡（按期望负载报，不用时间量）。"
 
 role_map:
@@ -47,7 +47,7 @@ work_packages:
     means: "`experiments/2610-moe-arm-ledger-13m/run.py ledger|preflight`：实测参数量 + 解析 MACs 记账；E=1,top-1 + 灌入 stock mlp 权重 ⇒ 与 dense 逐位一致的断言；路由器梯度非零断言"
     acceptance: "等 FLOPs 臂专家 MACs 相对 dense 逐位相等（比值 1.0）；等参数 dense 对照总参数相对差 <0.2%；透明替换 bitwise_equal=true；router_alive=true"
     evidence: "axes/4-moe/4.1-sparse-experts/experiments/2610-moe-arm-ledger-13m/{ledger.json,preflight.json,results.json}"
-    review: "已另派 fresh 复核（`SCHEMA.md` §14/§14b，复核排在执行之后）"
+    review: "已另派 fresh 复核（`harness/SCHEMA.md` §14/§14b，复核排在执行之后）"
     status: "已完成"
   - id: "WP1"
     what: "稀疏激活专家最小判决（含等 FLOPs/等参数双对照）"
@@ -55,12 +55,12 @@ work_packages:
     means: "13M、matched-step，{dense-B0, moe-top1-E8, moe-top2-E8} 三臂 + {dense-eqparam-top1, dense-eqparam-top2} 等参数对照，报 clean bpc + 每 token 等效 FLOPs + 参数量 + 专家使用率分布，n≥2 seed"
     acceptance: "三臂预算对齐；MoE 相对同 FLOPs dense 有/无越噪声带差异，二选一明确；使用率分布齐备且非坍缩"
     evidence: "axes/4-moe/4.1-sparse-experts/experiments/2610-moe-arm-ledger-13m/"
-    review: "跑完另派 fresh 复核（`SCHEMA.md` §14/§14b，复核排在执行之后）"
+    review: "跑完另派 fresh 复核（`harness/SCHEMA.md` §14/§14b，复核排在执行之后）"
     status: "未开始"
 
 roadmap:
   - "WP0：等 FLOPs/等参数臂记账 + MoE 接线 pre-flight（已完成；`2610` 的 ledger/preflight）"
-  - "WP1：13M {dense-B0, moe-top1-E8, moe-top2-E8} 三臂 + 等参数对照 matched-step 判决（下一阶段；开跑前先测 20 步定预算，`SCHEMA.md` §17.8）"
+  - "WP1：13M {dense-B0, moe-top1-E8, moe-top2-E8} 三臂 + 等参数对照 matched-step 判决（下一阶段；开跑前先测 20 步定预算，`harness/SCHEMA.md` §17.8）"
   - "复核通过与 4.2/4.3 边界整合后写 conclusion，更新 status"
 
 status: "未开始"

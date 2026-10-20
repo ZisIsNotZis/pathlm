@@ -63,7 +63,7 @@
 （本实验 GPU 全量只要 ~20–30s，但抢不到）。**未杀任何别人的进程、未动 `/tmp/pathlm_gpu.lock`**，
 只停本实验自己起的等锁循环（pid 2409135/2409138 等）。
 
-按主 Agent 裁令改用 **CPU 口径**（纯 CPU 工作，`SCHEMA.md` §20 不适用 ⇒ 不取 GPU 锁）：
+按主 Agent 裁令改用 **CPU 口径**（纯 CPU 工作，`harness/SCHEMA.md` §20 不适用 ⇒ 不取 GPU 锁）：
 `python3 run.py --device cpu`。实测 CPU **6.0 s/批**（`cpu_eval_timing.py`，负载均值 27–30 / 12 核；
 主 Agent 先前测得 3.4 s/批）⇒ 原预登记 4 臂全量 ≈ 28 min，超出 20 min 预算。
 依 README §7 的**预算裁剪条款**（「预算不够时先砍额外 seed 的 n_batches，再砍副腿，

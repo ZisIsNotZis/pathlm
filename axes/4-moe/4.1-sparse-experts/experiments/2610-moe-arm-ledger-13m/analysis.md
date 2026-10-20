@@ -2,7 +2,7 @@
 
 > **当前结论**（事实文档一律陈述式、当前状态）。契约见同目录 `README.md`。
 > 口径：clean bpc（越低越好）、MACs（乘加，FLOPs = 2×MACs）、每 token 等效算力、tokens-per-param。
-> 噪声带 = **0.014 bpc**（`docs/methodology.md` §2）。
+> 噪声带 = **0.014 bpc**（`harness/methodology.md` §2）。
 
 ## 0. 人话摘要
 
@@ -109,7 +109,7 @@ toy 配置（d=64, L=2, seq=64, 40 步 / 5 步）：dense 臂与 MoE 臂都能�
 - **4.1-WP1**（判决）：13M、matched-step，`{dense-B0, moe-top1-E8, moe-top2-E8}` 三臂 +
   `{dense-eqparam-top1, dense-eqparam-top2}` 等参数对照，n≥2 seed，报 clean bpc + 专家 MACs/token +
   参数量 + 使用率分布。**等效训练算力** = 3 臂 × 98.3M token ×（与 dense-B0 同量级的前向+反向）
-  （等参数对照臂若纳入则自带 8×/4× 每 token 算力，须单列）。**开跑前先测 20 步定预算**（`SCHEMA.md` §17.8）。
+  （等参数对照臂若纳入则自带 8×/4× 每 token 算力，须单列）。**开跑前先测 20 步定预算**（`harness/SCHEMA.md` §17.8）。
   本阶段已实得 20 步过程墙钟（`timing_20.json`，争用下 ~0.75 s/步；墙钟只作过程指标、不进 `cost_model`）。
 - **4.2-WP1**：均衡四臂 `{朴素 top-k, aux loss λ 扫描, capacity factor, expert-choice}`，
   每 token 激活专家数 k 与总参数逐位对齐，报使用率分布 + 跨 seed 翻转率。

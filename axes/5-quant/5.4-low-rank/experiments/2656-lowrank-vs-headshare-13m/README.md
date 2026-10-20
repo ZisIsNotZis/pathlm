@@ -2,7 +2,7 @@
 
 研究项：`axes/5-quant/5.4-low-rank`（WP1）。事实文档（研究项 SSOT）是
 `../../project.yaml`，本文件是**本实验的运行前预登记契约**（判据线逐字抄自 SSOT，
-未改）。契约格式见 `docs/research-schema.md`；布局见 `docs/structure.md`。
+未改）。契约格式见 `harness/research-schema.md`；布局见 `docs/structure.md`。
 
 ---
 
@@ -214,7 +214,7 @@ python3 .../mla_arms.py
 | `mla_c128` 优于 `gqa2` 但劣于 `gqa2_eq`（等参数） | 归因 = 「GQA 省下的参数还给 FFN 更划算」，结论停在参数分配层，不宣称低秩机制优势 |
 | 上投影 FLOPs 显著上升且未被字节收益补偿 | 判代价记账不利；报每 token 等效 FLOPs 与 FFN 的比值（`mla_c128` = 8.33%） |
 | 长程召回第二腿塌（与 `gqa2` 的 Wilson 95% CI 不重叠且更低） | 记「低秩压缩伤长程召回」，不采纳该潜维 |
-| 训练未收敛（loss 斜率未走平、与 `mha_rep` 斜率差可排序） | 先记「未收敛」（`SCHEMA.md` §19），不得在未收敛上判机制 |
+| 训练未收敛（loss 斜率未走平、与 `mha_rep` 斜率差可排序） | 先记「未收敛」（`harness/SCHEMA.md` §19），不得在未收敛上判机制 |
 | 引擎-副本等价性不成立 | 停在实现层：先修 patch 并重跑冒烟，**不得**用不等价的训练器出的数字作判据 |
 
 ## 9. 产出
@@ -222,7 +222,7 @@ python3 .../mla_arms.py
 - 判决包：`{mha, gqa2, mla_c128(±c256)}` 的每位置字节 + clean bpc + 合成长程召回 +
   上投影等效 FLOPs，含 `gqa2_eq` 等参数对照与 n≥2；
 - 结论停在「该尺度该字节值不值」，不外推；
-- 跑完另派 fresh 复核（`SCHEMA.md` §14/§14b：核对同字节轴、等参数对照、两腿齐备）。
+- 跑完另派 fresh 复核（`harness/SCHEMA.md` §14/§14b：核对同字节轴、等参数对照、两腿齐备）。
 
 ## 10. Phase 1 状态（本文件的运行前结论，数字以 `runs/` 与 `smoke/` 落盘为准）
 

@@ -1,7 +1,7 @@
 # 4 专家轴（MoE）
 
 > 轴：**4 专家轴（MoE）**（目录 `axes/4-moe/`）。用词、编号、目录以 `docs/structure.md` §12 为准，
-> 每个研究项的字段契约见 `docs/research-schema.md`。
+> 每个研究项的字段契约见 `harness/research-schema.md`。
 
 专家轴问「FFN 的容量与每 token 计算怎么解耦」：普通 decoder-only transformer 的 FFN 是 dense 的——
 每个 token 都要过全部 FFN 参数，于是「模型容量（参数量）」与「每 token 计算量」被绑死，想扩容量就得

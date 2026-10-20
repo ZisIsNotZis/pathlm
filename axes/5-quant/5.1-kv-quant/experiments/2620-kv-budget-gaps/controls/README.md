@@ -26,7 +26,7 @@
 
 ## 4. 方差与可控性
 
-- bpc 方差带 = `0.014`（`docs/methodology.md`）：`|damage_bpc| < 0.014` 标「⚠不可排序」。
+- bpc 方差带 = `0.014`（`harness/methodology.md`）：`|damage_bpc| < 0.014` 标「⚠不可排序」。
 - 纯推理、无随机采样；同 seed 重跑逐位相同。
 - **跨 run 可控性**：8 个参考臂与 `2619` 同任务同 seed 逐位对照
   （`results.json::reproducibility_vs_2619`，阈值 1e-5）。

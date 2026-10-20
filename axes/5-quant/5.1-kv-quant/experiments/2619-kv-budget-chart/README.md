@@ -95,7 +95,7 @@
   - `local_prior` = 只看最近 8 个 token 的最强预测器（答案在窗口外只能退化为 chance）；
   - `corrupt_source` = 把 copy 任务的源片段整段换随机符号（其余逐位不变）——
     测的是「读数真的来自那段被搬运的信息吗」。
-- **方差界**：bpc 的排序门槛 = 0.014（`docs/methodology.md`）；召回用 **Wilson 95% CI**，
+- **方差界**：bpc 的排序门槛 = 0.014（`harness/methodology.md`）；召回用 **Wilson 95% CI**，
   两点 CI 重叠 ⇒ 不可排序。
 - 复现性：同 seed 重测全部臂（`reproducibility.rerun`），报最大绝对差。
 
