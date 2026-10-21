@@ -386,9 +386,14 @@ def usage_stats(model: nn.Module) -> dict | None:
 
 
 def accumulate_usage(acc: list[torch.Tensor], model: nn.Module) -> None:
+    """把这一批的逐层专家使用数累加进 CPU 侧累加器。
+
+    累加器是 CPU 的 float64（评测期要跨 20 批精确累加），而 `last_usage` 跟着模型在 CUDA 上
+    ⇒ 必须在**写进累加器的那一刻**搬到 CPU，否则 `acc[i] += …cuda…` 直接 RuntimeError。
+    """
     for i, m in enumerate(model.moe_modules()):
         if m.last_usage is not None:
-            acc[i] += m.last_usage.double()
+            acc[i] += m.last_usage.double().cpu()
 
 
 def train_arm(name: str, steps: int | None = None, out_root: str = "runs") -> dict:
@@ -468,7 +473,8 @@ def eval_arm(arm: dict, eval_arr, vocab: int) -> dict:
         per_batch.append(round(nats / tgt.numel() / LN2, 5))
         if isinstance(model, MoEDepthARModel):
             if acc is None:
-                acc = [torch.zeros(m.n_experts, dtype=torch.float64) for m in model.moe_modules()]
+                acc = [torch.zeros(m.n_experts, dtype=torch.float64, device="cpu")
+                       for m in model.moe_modules()]
             accumulate_usage(acc, model)
     out = {"bpc_by_batch": per_batch,
            "bpc": round(statistics.mean(per_batch), 5),
@@ -538,6 +544,22 @@ def group_verdict(classes: list[str], kind: str) -> str:
                 "expert_count": "两 seed 都落带内 ⇒ 专家数买不到质量",
                 "attr": "两 seed 都落带内 ⇒ 质量差异可由参数容量解释（路由/稀疏无独立贡献，SCHEMA §15）"}[kind]
     return "两 seed 不同向或未同时越带 ⇒ 本 n 下不可排序（不解释成噪声、不取平均掩盖）"
+
+
+def crit_verdicts(crit: dict) -> dict:
+    """`crit` 的逐条判词（打印用）：有 `verdict` 的直接取，主判那种按专家数分档的展开一层。
+
+    主判 `c1_main_equal_macs` 没有单一 `verdict`（它按 `E4` / `E8` 各给一个 verdict），所以不能
+    对 `crit` 整体取 `v["verdict"]`——那样在 eval 的最后一行 print 处 KeyError（本实验踩过）。
+    """
+    flat = {}
+    for name, v in crit.items():
+        if "verdict" in v:
+            flat[name] = v["verdict"]
+        else:
+            flat[name] = {k: sub["verdict"] for k, sub in v.items()
+                          if isinstance(sub, dict) and "verdict" in sub}
+    return flat
 
 
 def evaluate() -> dict:
@@ -683,7 +705,7 @@ def evaluate() -> dict:
         raise SystemExit(f"Δ 与两端 bpc 对不上（> {CHECKS['delta_consistency_abs_max']}）：{bad}")
     write_results(os.path.join(HERE, "results.json"), out, source=__file__)
     print(json.dumps(out["main_verdict"], indent=2, ensure_ascii=False))
-    print(json.dumps({k: v["verdict"] for k, v in crit.items()}, indent=2, ensure_ascii=False))
+    print(json.dumps(crit_verdicts(crit), indent=2, ensure_ascii=False))
     return out
 
 

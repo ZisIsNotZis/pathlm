@@ -1,11 +1,11 @@
-"""2611 的**键面对账测试**：`eval` 段从 `ledger()` 取的每一个键，`ledger()` 都必须真的产出。
+"""2611 的**键面对账测试**：`eval` 段从 `ledger()` / `crit` 取的每一个键，`ledger()` / `crit` 都必须真的产出。
 
 存在的理由是一条真实缺陷：专家数第二点从 E=16 换成 E=8 之后，`run.py` 的 `eval` 段仍写着
 `led["checks"]["router_tax_e16_pct"]`，而 `ledger()` 只产出 `router_tax_e4_pct` / `router_tax_e8_pct`
 ⇒ 8 臂全部训完、`--stage eval` 才在构造 `c4_cost` 时 KeyError，实验根 `results.json` 写不出来。
-更早一次同类漏网是写死的臂名 `moe-top1-E16-s0`（`ledger` 当场 KeyError）。两处都是「字面量键 vs
-生成物键」的对账缺失，所以这里对 `eval` 段里所有**字面量**取值做静态提取，再与 `ledger()` 的实际
-输出求差：
+更早一次同类漏网是写死的臂名 `moe-top1-E16-s0`（`ledger` 当场 KeyError），而收尾 print 处对 `crit`
+整体取 `v["verdict"]` 又撞了一次（`c1_main_equal_macs` 只有 `E4` / `E8` 两档）——同一类漏网在这一格
+犯了三次，所以这里把它们都变成机检：
 
     led["checks"]["<键>"]          必须出现在 ledger()["checks"]
     led["arms"]["<臂名>"]          必须出现在 ledger()["arms"]
@@ -55,3 +55,20 @@ def test_literal_arm_names_exist_in_ledger():
     assert used, "静态提取不到任何臂名字面量 ⇒ 提取规则与源码脱节，测试失效"
     produced = set(run2611.ledger()["arms"])
     assert used <= produced, f"run.py 写死的臂名不在 ledger() 里：{sorted(used - produced)}"
+
+
+def test_crit_verdicts_flattens_both_shapes():
+    """`crit` 的两种形态都能取到判词：带单一 `verdict` 的照取，主判那种按 `E4`/`E8` 分档的展开一层。
+
+    这就是收尾 print 处那个 `KeyError: 'verdict'` 的守门：`c1_main_equal_macs` 只有 `note` / `E4` /
+    `E8`，对它整体取 `v["verdict"]` 必崩，而它崩在 `write_results` 之后 ⇒ 读数落盘了、命令却非零退出。
+    """
+    crit = {
+        "c1_main_equal_macs": {"note": "主判",
+                               "E4": {"verdict": "v4", "pairs": {}},
+                               "E8": {"verdict": "v8", "pairs": {}}},
+        "c2_expert_count": {"kind": "expert_count", "band_classes": [], "verdict": "vc", "pairs": {}},
+    }
+    flat = run2611.crit_verdicts(crit)
+    assert flat["c1_main_equal_macs"] == {"E4": "v4", "E8": "v8"}
+    assert flat["c2_expert_count"] == "vc"

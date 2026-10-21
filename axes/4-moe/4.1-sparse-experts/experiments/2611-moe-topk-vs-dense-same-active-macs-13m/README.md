@@ -78,6 +78,12 @@
   同段出现：13.6M / 42.0M / 79.8M，2.34 → 1.23 token/param，E8 的欠拟合风险更大）、**路由是否坍缩**（⑥）。
 - 负结论同样要 n=2：两个 seed 都越负带才算「同算力下 MoE 更差」；否则只能说「不可排序」。
 
+**自洽门（不是判据线，不进任何判词分支）**：`results.json` 里的 `delta_consistency_abs` 比的是「报出的
+Δ」与「两个报出的 bpc 均值之差」。逐批 bpc 落盘取 5 位小数 ⇒ 每个均值相对未舍入值的偏差 ≤5e-6（20 批
+舍入误差取均值仍 ≤5e-6），两端相加 1e-5；报出的 Δ 自身再舍入一次 ≤5e-6 ⇒ 合法读数的偏差上界 =
+**1.5e-05**，即 `config.json::checks.delta_consistency_abs_max`。这个数原先写成 2e-6（按未舍入值定），
+与 5 位小数的落盘口径不兼容：正确读数会被判死（实测 1.0e-05）。真正的算错会在 1e-3 量级，这道门照样拦得住。
+
 **否证线（预登记）**：① 两 seed 都落带内或越负带 ⇒ 在 13M / 98.3M token 这个尺度上，
 **「同激活算力 + 成倍参数」不产生可测质量增益**；届时不写「MoE 无效」，只写「本尺度、本 token
 预算下买不到」，并把欠拟合（token/param）与路由状态列为解释候选。
@@ -140,7 +146,9 @@
 ```bash
 python3 tools/prereg_bind.py axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m \
   --contract README.md config.json run.py train_arms.sh
-python3 -m pytest axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/test_moe_forward_equivalence.py -q
+python3 -m pytest axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/test_moe_forward_equivalence.py \
+  axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/test_eval_ledger_keys.py \
+  axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/test_eval_routing_accumulate.py -q
 bash axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/train_arms.sh \
   dense-B0-s0 moe-top1-E4-s0 moe-top1-E8-s0 dense-eqparam-E4-s0 \
   dense-B0-s1 moe-top1-E4-s1 moe-top1-E8-s1 dense-eqparam-E4-s1
@@ -160,7 +168,7 @@ python3 axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-ac
   `max_abs_diff == 0`（k=1；fp32 与 bf16 autocast 两条路径）、`E=1/top-1` 灌 stock `mlp` 权重后与
   dense 臂逐位相等，并含一条**反恒真断言**（故意扰动被用到的专家权重 1e-3，逐位相等必须不成立）。
   k>1 不是位级一致（同一 token 的 k 份贡献由 `index_add` 原子累加，顺序不保证）——本实验的臂全部 k=1。
-- **重绑披露（两次，第二次即当前绑定）**：
+- **重绑披露（六次，⑥那次即当前绑定，⑤⑥ 见本节末尾）**：
   ① 首个绑定（`2026-10-21T17:24:56+08:00`）绑的是旧实现（逐专家布尔索引）；旧实现实测 E=16 臂
   0.403–0.414 s/step ⇒ 40 min/臂，撞 20 min 单臂 timeout。经元级裁决后只换实现（判据与科学设定未动），
   第二次绑定（`2026-10-21T17:3x`）用分组前向。
@@ -175,5 +183,20 @@ python3 axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-ac
   ④ 8 臂开跑后发现 `eval` 的 Δ 对账写成「舍入后的 Δ vs 未舍入的均值差」再卡 2e-6，而 5 位小数的
   舍入误差本身可达 5e-6 ⇒ 正确读数会报假红并让 eval 直接 `SystemExit`。改成「报出的 Δ vs 两端报出的
   bpc 均值之差」后重绑一次（判据线、带、臂、口径全未动；训练段一行未动）。4 份 `smoke/` 读数随这次
-  重绑删除并在训练结束后重跑；8 臂的训练读数全部落在这次绑定之后。当前绑定是最终版。
+  重绑删除并在训练结束后重跑；8 臂的训练读数全部落在那次绑定之后。
+  ⑤ 8 臂开跑后（④绑定下）发现 `eval` 段仍写着 E=16 时代的 `led["checks"]["router_tax_e16_pct"]`，而 `ledger()` 只产出 `router_tax_e4_pct` / `router_tax_e8_pct` ⇒ 8 臂训完、`--stage eval` 必在构造 `c4_cost` 时 `KeyError`。改这一个**申报列**的键名后重绑（`2026-10-21T17:44:31+08:00`）；上一轮已训完的 `runs/dense-B0-s0` 按元级裁决停跑，整轮 8 臂在⑤绑定后重训。
+  ⑥（当前绑定）按⑤绑定跑完的 8 臂交回后，`--stage eval` 连撞三处缺陷，**一次修完再重绑**：
+  (a) **设备不一致**：`accumulate_usage` 把 CUDA 上的 `last_usage` 加进 CPU 的 float64 累加器
+  （`RuntimeError: Expected all tensors to be on the same device`），第一个 MoE 臂就炸；修法是写进累加器
+  那一刻 `.cpu()`，并把累加器显式建在 CPU 上。
+  (b) **自洽门容差**：2e-6 与 5 位小数的落盘口径不兼容（正确读数实测 1.0e-05 被判死），改为按舍入误差
+  推出的 1.5e-05，推导写在 §4「自洽门」一段。
+  (c) **收尾 print**：对 `crit` 整体取 `v["verdict"]`，而主判 `c1_main_equal_macs` 只有 `E4` / `E8` 两档
+  ⇒ `KeyError`（晚于 `write_results`：读数落盘了但命令非零退出）。抽成纯函数 `crit_verdicts()`。
+  配两条回归测试：`test_eval_ledger_keys.py`（`led["checks"]` / 臂名字面量 / `crit` 两种形态的对账）与
+  `test_eval_routing_accumulate.py`（CUDA 上的累加器设备对齐，CPU 上跳过）。
+  代价：⑤绑定下跑完的 8 臂（训练全部 exit 0、8/8 过稳定性门、训练合计 63.5 min）在⑥绑定后作废重训
+  （披露与代价见 `analysis.md` §3 / §6）。
+  六次重绑共同的口径：判据线、0.014 带、臂清单、配对规则、评测口径、token 预算与步数**一字未动**，
+  动的只是 harness 侧的接线与自洽门；当前 `runs/` 与实验根 `results.json` 都由⑥绑定代码产出。
 
