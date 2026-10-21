@@ -79,13 +79,53 @@ class TopKMoEFFN(nn.Module):
         nn.init.normal_(self.router.weight, std=0.02)
         self.last_usage: torch.Tensor | None = None
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        B, T, d = x.shape
-        flat = x.reshape(B * T, d)
+    def route(self, flat: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """路由：[N, d] → (top-k 权重 [N, k]（归一到和为 1）、top-k 专家号 [N, k]）。"""
         probs = self.router(flat).softmax(-1)                 # [N, E]
         topv, topi = probs.topk(self.top_k, dim=-1)           # [N, k]
         if self.renorm:
             topv = topv / topv.sum(-1, keepdim=True).clamp_min(1e-9)
+        return topv, topi
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """按专家分组的前向（绑定后版本）：整层一次排序 + 一次 gather + 一次 index_add。
+
+        每专家的 GEMM 仍是**同一批行、同一形状**（同 `forward_naive`），只是把「每专家一次布尔索引
+        + 一次掩码拷贝」换成「整层一次 gather + 连续切片 + 一次 scatter」——后者把每层 3E 次
+        host 同步/掩码核降到 1 次，逐位结果不变（`test_moe_forward_equivalence.py` 钉住
+        max_abs_diff == 0）。k>1 时同一 token 的 k 份贡献由 `index_add` 累加，累加顺序不保证
+        位级一致；本实验的臂全是 k=1（`config.json::arms`），那里 `index_add` 等于逐行写入。
+        """
+        B, T, d = x.shape
+        flat = x.reshape(B * T, d)
+        topv, topi = self.route(flat)
+        tok, val = topi.reshape(-1), topv.reshape(-1)          # [N·k]
+        order = torch.argsort(tok, stable=True)                # 按专家分组，组内保持原序
+        # (token, slot) 行 → 它属于哪个 token（k=1 时两者相同）
+        token_of = order.div(self.top_k, rounding_mode="floor")
+        counts = torch.bincount(tok, minlength=self.n_experts).tolist()
+        flat_s = flat.index_select(0, token_of)
+        val_s = val.gather(0, order).unsqueeze(-1)
+        ys, off = [], 0
+        for e, expert in enumerate(self.experts):
+            n = counts[e]
+            if n:
+                ys.append(expert(flat_s.narrow(0, off, n)))
+                off += n
+        y = torch.cat(ys, 0) if len(ys) > 1 else ys[0]
+        out = torch.zeros_like(flat).index_add(0, token_of, val_s * y)
+        self.last_usage = torch.bincount(tok, minlength=self.n_experts).detach()
+        return out.reshape(B, T, d)
+
+    def forward_naive(self, x: torch.Tensor) -> torch.Tensor:
+        """**参照实现（重绑前那一版）**：逐专家布尔索引 + 掩码拷贝，每层 3E 次 host 同步。
+
+        只用于等价性测试（`test_moe_forward_equivalence.py`），不参与训练：160M 级臂上它每步
+        ≈0.40 s（20 min 单臂 timeout 撑不住），换成 `forward` 后同臂 ≈0.165 s。
+        """
+        B, T, d = x.shape
+        flat = x.reshape(B * T, d)
+        topv, topi = self.route(flat)
         out = torch.zeros_like(flat)
         for e, expert in enumerate(self.experts):
             sel = topi == e

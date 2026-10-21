@@ -93,11 +93,23 @@
 | 项 | 值 |
 |---|---|
 | `gpu_wall_budget` | **120 min**（8 臂 × 6000 步 + 冒烟 + 评测的总和；单臂 timeout 20 min，`train_arms.sh`） |
-| 预计 | dense-B0 ≈5 min/臂、`dense-eqparam-E4` ≈7 min/臂、E=4 ≈9 min/臂、E=16 ≈15 min/臂 ⇒ ≈72 min |
-| 显存 | 4090 24GB 共享卡；E=16 臂参数量 156M（bf16 权重 + AdamW 状态 ≈ 1.9GB）⇒ 预计 < 8GB，逐臂申报实测峰值 |
+| 显存 | 4090 24GB 共享卡；E=16 臂参数量 156M（bf16 权重 + AdamW 状态）⇒ 实测峰值 5.8GB，逐臂申报 |
 | 外部占用 | 卡上另有更高优先级项目（`local_lm_research` / `nomos` 的训练与常驻 `llama-server`）：每臂开跑前查空闲显存，< 8GB 即排队；不抢不杀 |
-| 预算不够时砍什么 | 砍 seed（另一 seed 登记「未跑」）> 砍 E=16 档；**不砍判据线、不砍等算力对照、不砍等参数对照** |
+| 预算不够时砍什么 | 砍 seed（另一 seed 登记「未跑」）> 砍 E=16 档；**不砍判据线、不砍等算力对照、不砍等参数对照**（本预算下不需要砍，见下表） |
 | 可中断性 | 每臂独立取/放锁；单臂失败即停，不重试循环 |
+
+### 6.1 步时表（实测，100 步 / GPU 空闲 / 单臂独占）
+
+| 臂型 | 旧实现（逐专家布尔索引）s/step | 现实现（分组前向）s/step | 6000 步预计 |
+|---|---|---|---|
+| `dense-B0`（13.6M） | —（无 MoE 路径） | 0.037 | 3.7 min |
+| `dense-eqparam-E4`（42M 稠密） | — | 0.062 | 6.2 min |
+| `moe-top1-E4`（42M） | 0.116–0.125 | 0.066–0.069 | 6.9 min |
+| `moe-top1-E16`（156M） | 0.403–0.414 | 0.165 | 16.5 min |
+
+8 臂（4 型 × 2 seed）合计 ≈ **67 min** + 评测 ≈5 min ⇒ 落进 120 min 预算，且每臂 < 20 min。
+旧实现的 E=16 臂 0.40 s/step ⇒ 40 min/臂，撞单臂 timeout，所以**换实现**（判据与科学设定未动，披露见 §10）。
+
 
 ## 7 数据与脚本清单
 
@@ -123,6 +135,7 @@
 ```bash
 python3 tools/prereg_bind.py axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m \
   --contract README.md config.json run.py train_arms.sh
+python3 -m pytest axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/test_moe_forward_equivalence.py -q
 bash axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/train_arms.sh \
   dense-B0-s0 moe-top1-E4-s0 moe-top1-E16-s0 dense-eqparam-E4-s0 \
   dense-B0-s1 moe-top1-E4-s1 moe-top1-E16-s1 dense-eqparam-E4-s1
@@ -131,3 +144,19 @@ python3 axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-ac
 
 判词落 `analysis.md`（人话在前、六问齐全）与 `project.yaml::conclusion`；本节命令在跑通后原样保留，
 未跑通的命令不得留在契约里。
+
+## 10 实现与等价性（换实现不换科学设定的证据）
+
+- **前向形态**：`TopKMoEFFN.forward` 用「按专家号排序 + 整层一次 `index_select` + 逐专家 `narrow`
+  连续切片 + 一次 `index_add` 写回」。每专家的 GEMM 仍是**同一批行、同一形状**，只是把「每专家一次
+  布尔索引 + 一次掩码拷贝 + 一次 host 同步」换成每层 1 次；实测步时见 §6.1。
+- **重绑前那一版**原样保留为 `TopKMoEFFN.forward_naive`（只作参照，不参与训练）。
+- **等价性测试**：`test_moe_forward_equivalence.py` 断言两条前向在同权重同输入下
+  `max_abs_diff == 0`（k=1；fp32 与 bf16 autocast 两条路径）、`E=1/top-1` 灌 stock `mlp` 权重后与
+  dense 臂逐位相等，并含一条**反恒真断言**（故意扰动被用到的专家权重 1e-3，逐位相等必须不成立）。
+  k>1 不是位级一致（同一 token 的 k 份贡献由 `index_add` 原子累加，顺序不保证）——本实验的臂全部 k=1。
+- **重绑披露**：首个绑定（`2026-10-21T17:24:56+08:00`）绑的是旧实现；旧实现实测 E=16 臂 0.40 s/step
+  ⇒ 40 min/臂，撞 20 min 单臂 timeout。经元级裁决后只换实现、重绑一次；**臂清单、步数、token 预算、
+  判据线、0.014 带、种子、评测口径一字未动**。重绑前的 20/100 步冒烟读数已删除，重绑后重跑
+  （`smoke/` 下的读数全部由最终绑定代码产出）。
+
