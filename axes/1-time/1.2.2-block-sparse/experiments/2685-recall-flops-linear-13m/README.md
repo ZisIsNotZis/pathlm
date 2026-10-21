@@ -84,7 +84,7 @@ fp32/bf16 里舍入回 1 ⇒ φ 下溢为 0（分母塌陷、guard `1e-6` 生效
   三个 24 键模式用各自的显式掩码。
 - **配对统计**：逐窗口 `bits` 的配对 Δ 的均值 / 标准差 / 标准误 / t 值 / 同向窗口数。
 - **召回**：needle v3（真实 enwik8 短语针，`phrase_len=6`，答案 = 短语下一字节，top-1 命中）；
-  配置与 `2662/config.json::needle` 逐字段相同（64 批 × 16 行 × 8 针/行，`seed=3`，归属桶一律
+  配置与 `axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/config.json::needle` 逐字段相同（64 批 × 16 行 × 8 针/行，`seed=3`，归属桶一律
   `anchors=8`）。**植入 / 配对控制用同一批次、同一针位**（`meta` 逐位相同，程序断言）。逐臂用它
   **自己训练时那张掩码**评测（分布内，不换掩码）。
 - **每 token 等效 MAC**：`flops_count.count_attention`——用模块前置钩子取每个注意力块**实际收到**的

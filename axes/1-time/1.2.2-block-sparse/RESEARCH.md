@@ -40,11 +40,12 @@ owner = `axis1-lead`（轴 1 时间轴 lead）；writer = `axis1-w1.2.2`（单�
 
 | WP | 交付物 | 验收（可观测） | 预算 | 状态 |
 |---|---|---|---|---|
-| **WP1-a** local+global 对均匀条带（同 24 键） | `experiments/2677-local-global-vs-band-13m/`（4 条读数 + 1 个宽剂量点） | 两臂逐行可见键数逐行相等；两 seed 各自越 0.014 带且同向；复用臂等值门；参数量逐位相等 | 2 臂 ≈16 min GPU + 评测 ≈3 min | 已完成（n=2，判「非均匀更差」） |
-| **WP1-b** 块条带对均匀条带（同 24 键）＝**本项 `gaps` 第一条与分诊表的单一动作** | `experiments/2683-block-stripe-vs-band-13m/`（2 条新臂 + 4 条复用臂 + 1 条 `full`） | 逐行等键 `mismatch_rows == 0`；训练/评测掩码同源三道；两 seed 同向且都越带（或都落带内）；复用臂逐位复现 `2677` | 2 臂 ≈18 min GPU + 评测 <4 min（单臂 timeout 20 min） | 已完成（n=2，判「无质量增量」；判词见 `project.yaml::conclusion`，读数与归因见该实验 `analysis.md` §3 / §7） |
-| **WP2** 线性核无伤质量点 | `experiments/2616` / `2637` 的读数只作负观测 | 线性臂 `gnorm` 健康、跳步 0、`den` 不触 clamp；给出无伤 Δbpc 或明确记为未取得 | 2 臂 × n≥2 ≈40 min GPU | 未开始 |
+| **WP1**（子项一）local+global 对均匀条带（同 24 键） | `experiments/2677-local-global-vs-band-13m/`（4 条读数 + 1 个宽剂量点） | 两臂逐行可见键数逐行相等；两 seed 各自越 0.014 带且同向；复用臂等值门；参数量逐位相等 | 2 臂 ≈16 min GPU + 评测 ≈3 min | 已完成（n=2，判「非均匀更差」） |
+| **WP1**（子项二）块条带对均匀条带（同 24 键）＝**本项 `gaps` 第一条与分诊表的单一动作** | `experiments/2683-block-stripe-vs-band-13m/`（2 条新臂 + 4 条复用臂 + 1 条 `full`） | 逐行等键 `mismatch_rows == 0`；训练/评测掩码同源三道；两 seed 同向且都越带（或都落带内）；复用臂逐位复现 `2677` | 2 臂 ≈18 min GPU + 评测 <4 min（单臂 timeout 20 min） | 已完成（n=2，判「无质量增量」；判词见 `project.yaml::conclusion`，读数与归因见该实验 `analysis.md` §3 / §7） |
+| **WP1**（子项三）率类召回腿 + 每 token 等效 FLOPs 腿 | `experiments/2685-recall-flops-linear-13m/`（十臂：四条新臂 + 六个复用臂） | 与 `2662` 同一台针仪器、同一判据（两比例差 CI 下界 > 0）；`far_slot` 远块专桶 + 均匀条带臂在该桶贴地板的负对照；FLOPs 在同一次前向里计数、equiv/executed 两列 + 两条结构关系 | 评测 ≈5 min GPU（复用已训 checkpoint） | 见该实验 `analysis.md`（判词与读数在 `results.json`） |
+| **WP2** 线性核无伤质量点 | `experiments/2685-recall-flops-linear-13m/`：线性臂 × 2 seed + 同配方全因果臂 × 2 seed；`2616` / `2637` 的读数只作负观测 | 健康门四条（`grad_skips == 0`、`gnorm_max ≤ 12`、评测前向 `den ≥ 1e-30`、φ 零占比 ≤ 1e-3）；过门后给 Δbpc 三态，不过门则记「未取得」及原因与所需成本 | 4 臂 ≈53 min GPU | 见该实验 `analysis.md`（健康门与质量腿读数在 `axes/1-time/1.2.2-block-sparse/experiments/2685-recall-flops-linear-13m/results.json::linear_health` / `::main_verdict`） |
 
-**WP1-b 为什么就是分诊表那一条动作**：`atlas/triage.md` §2 给本格的建议动作是「补一条最小实验：
+**WP1 子项二为什么就是分诊表那一条动作**：`atlas/triage.md` §2 给本格的建议动作是「补一条最小实验：
 只做块稀疏掩码那一臂组；条带 / 局部+全局不必重跑」——本实验正是它：一条新臂组（块条带 × 2 seed）
 对同字节的条带臂（复用 `2677`）与稠密臂（复用 `2610` 的 `full`）。**没有任何替换**：动作、判据形态
 （同每位置字节、配对 Δ、0.014 带只用于配对读数、n≥2）与分诊表的描述一致。
@@ -52,13 +53,16 @@ owner = `axis1-lead`（轴 1 时间轴 lead）；writer = `axis1-w1.2.2`（单�
 ## 4 证据指针
 
 - 研究项事实与判据线：`project.yaml`（`milestone` / `work_packages` / `conclusion` / `cost_rows` / `gaps`）。
-- WP1-a：`experiments/2677-local-global-vs-band-13m/{README.md,analysis.md,results.json}`（预登记绑定
+- WP1 子项一：`experiments/2677-local-global-vs-band-13m/{README.md,analysis.md,results.json}`（预登记绑定
   `prereg_binding.json` 为历史 `unbound`：该实验的读数入库早于 `tools/prereg_bind.py` 引入）。
-- WP1-b：`experiments/2683-block-stripe-vs-band-13m/{README.md,config.json,analysis.md,results.json}`（判词与门、六问都在 `analysis.md`；契约外归因读数 `attribution.json`，不参与判词）；
+- WP1 子项二：`experiments/2683-block-stripe-vs-band-13m/{README.md,config.json,analysis.md,results.json}`（判词与门、六问都在 `analysis.md`；契约外归因读数 `attribution.json`，不参与判词）；
   掩码实现与自证 `block_sparse.py`（`python3 block_sparse.py` 打印逐行等键与指纹）；
   契约与定序证据 `prereg_binding.json`（绑定早于读数，6 份契约文件含掩码与判据实现）。
-- WP2：`experiments/2616-linear-attention-13m/analysis.md`、`experiments/2637-linear-attn-quality/analysis.md`
-  （带伤 / 核已改的负观测，不是规范质量点）。
+- 子项三 + WP2（`2685`）：`experiments/2685-recall-flops-linear-13m/{README.md,config.json,analysis.md,results.json}`
+  （判据原文在 `README.md` §3；召回 / FLOPs / 健康门 / 质量腿读数在 `results.json`；线性档的数值实现在
+  `stable_linear.py`，`tests/test_stable_linear_phi.py` 钉住「同一函数、只换求值方式」）。
+- WP2 的历史负观测：`experiments/2616-linear-attention-13m/analysis.md`、`experiments/2637-linear-attn-quality/analysis.md`
+  （带伤 / 核已改，不是规范质量点）。
 - 跨格汇总：代价事实见 `atlas/cost-table.md`（由 `project.yaml::cost_rows` 生成）；复现三态见
   `atlas/repro.md`（由 `tools/inventory_runs.py` 生成）；结论索引见 `atlas/FINDINGS.md`；
   本格在下一次分诊里的位置见 `atlas/triage.md`。
@@ -68,6 +72,7 @@ owner = `axis1-lead`（轴 1 时间轴 lead）；writer = `axis1-w1.2.2`（单�
 - 状态字的家是 `project.yaml::status`；本文件不重述。
 - 三个固定模式的**质量腿**已齐：局部+全局（`2677`，判更差）、块条带（`2683`，判词见
   `project.yaml::conclusion`）、均匀条带（同键对照）。同一字节水平（294,912 B/位置）上三者可比。
-- 残留缺口（原文在 `project.yaml::gaps`）：线性核无伤质量点（WP2）；率类长程召回腿（两轮实验都只
-  指针引用 `2662` 的落盘，不重跑）；真稀疏核把纸面 FLOPs 兑现为等效节省；T≥2048 的第二规模点；
-  更远滞后 / 随机块的块稀疏变体（本实验只测 `LAG=4`，是最有利于非均匀性的设定）。
+- 残留缺口（原文在 `project.yaml::gaps`）：真稀疏核把纸面 FLOPs 兑现为等效节省；T≥2048 的第二规模点；
+  更远滞后 / 随机块的块稀疏变体（只测 `LAG=4`，是最有利于非均匀性的设定）；「远键是否承载可用信息」
+  的可区分对照（只删同形本地键、保留远块）。率类召回腿与每 token 等效 FLOPs 已由 `2685` 交付，
+  线性核无伤质量点由 `2685` 判（见该实验 `analysis.md`）。
