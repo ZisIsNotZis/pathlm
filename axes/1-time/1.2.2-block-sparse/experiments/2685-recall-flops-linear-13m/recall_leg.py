@@ -130,7 +130,7 @@ def paired_reading(planted_hits: list[int], control_hits: list[int]) -> dict:
     lo = float(tp["diff_ci_95"][0])
     return {"n": n, "planted_hits": kp, "control_hits": kc,
             "planted_recall": round(kp / n, 6), "control_recall": round(kc / n, 6),
-            "delta_pp": round(100 * (kp - kc) / n, 3),
+            "pp_diff": round(100 * (kp - kc) / n, 3),
             "newcombe_diff_ci95": tp["diff_ci_95"],
             "newcombe_diff_ci95_pp": [round(100 * v, 3) for v in tp["diff_ci_95"]],
             "paired_bootstrap_pp": pb["diff_ci_95_pp"],
@@ -138,18 +138,18 @@ def paired_reading(planted_hits: list[int], control_hits: list[int]) -> dict:
             "passes_paired_bootstrap": bool(pb["passes_lower_gt_0"]),
             "passes_both": bool(lo > 0 and pb["passes_lower_gt_0"]),
             "direction_note": "正 = 植入高于地板",
-            "required_n_for_observed_delta": required_n(kp / n, kc / n),
+            "required_n_for_observed_effect": required_n(kp / n, kc / n),
             "required_n_for_5pp_target": required_n(min(1.0, kc / n + 0.05), kc / n)}
 
 
 def required_n(p1: float, p0: float, alpha_z: float = Z_975, power_z: float = Z_80) -> dict:
-    """两比例差的规划式样本量（逐针 n）：报观测 Δ 与 +5pp 目标各一次。"""
+    """两比例差的规划式样本量（逐针 n）：报观测差与 +5pp 目标各一次。"""
     d = p1 - p0
     if d <= 0:
-        return {"p1": round(p1, 6), "p0": round(p0, 6), "delta_pp": round(100 * d, 3),
+        return {"p1": round(p1, 6), "p0": round(p0, 6), "pp_diff": round(100 * d, 3),
                 "n_per_arm": None, "note": "观测效应 ≤ 0 ⇒ 样本量不存在（先要一个正效应）"}
     n = (alpha_z + power_z) ** 2 * (p1 * (1 - p1) + p0 * (1 - p0)) / (d * d)
-    return {"p1": round(p1, 6), "p0": round(p0, 6), "delta_pp": round(100 * d, 3),
+    return {"p1": round(p1, 6), "p0": round(p0, 6), "pp_diff": round(100 * d, 3),
             "n_per_arm": int(math.ceil(n)),
             "formula": ("n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，"
                         "z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）")}

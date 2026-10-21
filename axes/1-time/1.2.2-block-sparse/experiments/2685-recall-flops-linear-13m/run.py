@@ -287,12 +287,11 @@ def main() -> None:
             "frac_windows_delta_gt_0": "comparator_minus_arm",
             "min_delta": "comparator_minus_arm",
             "max_delta": "comparator_minus_arm",
-            "recall_delta_pp": "planted_minus_floor",
         },
         "delta_direction_note": (
             "所有 bpc 读数一律 Δ = bpc_对照 − bpc_实验，正 = 实验更好；本实验主判的对照 = 同 seed 的"
-            "`full`、实验 = `linear`（README §3 判据 Q）。召回读数是率类：`delta_pp` = 植入 − 地板"
-            "（正 = 植入更好），不借用 0.014 带。"),
+            "`full`、实验 = `linear`（README §3 判据 Q）。召回读数是率类：`pp_diff` = 植入 − 地板"
+            "（正 = 植入更好），不借用 0.014 带，因此不作为 Δ 字段声明。"),
         "config": {
             "d_model": D, "n_layers": L, "n_heads": H, "seq_len": SEQ, "mlp_mult": MLP,
             "steps": 12000, "batch_size": 32, "lr": 1e-3, "seeds": [0, 1], "data": DATA,
@@ -317,7 +316,7 @@ def main() -> None:
         "reuse_gate": reuse_gate,
         "full_vs_trunk_sanity": {
             "full_s0_bpc": bpc["full_s0"], "trunk_full_bpc": TRUNK_FULL_BPC,
-            "delta": round(bpc["full_s0"] - TRUNK_FULL_BPC, 6),
+            "bpc_diff_arm_minus_comparator": round(bpc["full_s0"] - TRUNK_FULL_BPC, 6),
             "note": ("本实验的 `full` 是新训的两条臂（同配方、seed 0/1）；与 `2683` 复用 2610 trunk 的"
                      "`full`（1.502689）只作 sanity 参照，不作等值门（不同 seed、不同训练目录）。")},
         "linear_health": health,
