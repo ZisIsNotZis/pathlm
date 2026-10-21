@@ -59,21 +59,27 @@ clean bpc（末 10M 留出、fp32、无 autocast、同 `window_seed` ⇒ 全臂�
 **换实现、换专家数第二点的披露**：`README.md` §10 写全了三次绑定的理由（旧实现 0.40 s/step → 分组前向
 0.2075 → 专家数第二点 E=16 → E=8）。三次都**没有动**判据线、0.014 带、种子、评测口径、token 预算与步数。
 
-**第四次与第五次重绑（本文件记，`README.md` §10 冻结在第三次、不能改正文）**：
+**第四次到第六次重绑（本文件记，`README.md` §10 有逐条披露）**：
 
 - 第四次（`2026-10-21T17:38:50+08:00`）：`eval` 的 Δ 对账写成「舍入后的 Δ vs 未舍入的均值差」再卡 2e-6，
   5 位小数的舍入误差本身可达 5e-6 ⇒ 正确读数会报假红。改成「报出的 Δ vs 两端报出的 bpc 均值之差」。
-- 第五次（`2026-10-21T17:44:31+08:00`，**当前生效**）：第四次绑定下的 8 臂开跑后，发现 `eval` 段仍写着
-  E=16 时代的 `led["checks"]["router_tax_e16_pct"]`，而 `ledger()` 只产出 `router_tax_e4_pct` /
-  `router_tax_e8_pct` ⇒ 8 臂训完后 `--stage eval` **必在构造 `c4_cost` 时 KeyError**、实验根
-  `results.json` 写不出来。修法是只改这一个**申报列**的键名；同时补 `test_eval_ledger_keys.py`
-  把「`eval` 取用的 `led["checks"]` / 臂名字面量必须真在 `ledger()` 的产出里」变成机检（E16→E8 与
-  更早写死 `moe-top1-E16-s0` 这两次漏网都属这一类）。判据线、0.014 带、臂清单、评测口径、步数、
-  种子**一字未动**。
-  代价是第四次绑定下已产出的读数作废：`runs/dense-B0-s0`（6000 步、4.08 min、峰值 2992.3 MiB、
-  `gnorm_max` 9.88、`grad_skips` 0、13,602,304 参数）训完即被停跑，按元级裁决整轮 8 臂在第五次绑定后重训；
-  该份读数记进 `prereg_binding.json::readings_existing_at_bind`，重跑覆盖后才给定序。
-  逐臂读数全部由第五次绑定的 `run.py`（sha256 `dc5df62f…7425c35`）产出、且产物时间晚于 `bound_at`。
+- 第五次（`2026-10-21T17:44:31+08:00`）：`eval` 段仍写着 E=16 时代的
+  `led["checks"]["router_tax_e16_pct"]`，而 `ledger()` 只产出 `router_tax_e4_pct` / `router_tax_e8_pct`
+  ⇒ 8 臂训完、`--stage eval` 必在构造 `c4_cost` 时 `KeyError`。改这一个**申报列**的键名；补
+  `test_eval_ledger_keys.py` 把「`eval` 取用的键必须真在 `ledger()` 的产出里」变成机检。代价：第四次绑定下
+  已训完的 `runs/dense-B0-s0`（6000 步、4.08 min、峰值 2992.3 MiB、`gnorm_max` 9.88、`grad_skips` 0、
+  13,602,304 参数）按元级裁决停跑，整轮 8 臂重训。
+- 第六次（`2026-10-21T18:59:24+08:00`，**当前生效**）：第五次绑定下跑完的 8 臂（全部 exit 0、8/8 过稳定性门、
+  训练合计 63.5 min）交回后，`--stage eval` **连撞三处**——① `accumulate_usage` 把 CUDA 上的 `last_usage`
+  加进 CPU 的 float64 累加器（`RuntimeError: Expected all tensors to be on the same device`）；
+  ② 自洽门容差 2e-6 与 5 位小数的落盘口径不兼容（正确读数实测 1.0e-05，被判死）；③ 收尾 print 对 `crit`
+  整体取 `v["verdict"]`，而主判只有 `E4`/`E8` 两档 ⇒ `KeyError`（晚于 `write_results`）。三处一次修完再重绑：
+  ①`.cpu()` + 累加器显式建在 CPU 上，②按舍入误差推出 1.5e-05（推导见 `README.md` §4「自洽门」），
+  ③抽成纯函数 `crit_verdicts()`；回归测试为 `test_eval_ledger_keys.py` 与
+  `test_eval_routing_accumulate.py`。代价：第五次绑定下的 8 臂读数作废、第三次重训。
+- 六次重绑共同的口径：**判据线（①–⑦）、0.014 带、臂清单、配对规则、评测口径、token 预算、步数、
+  种子一字未动**；动的只是 harness 侧的接线、自洽门与披露文字。当前 `runs/` 与实验根 `results.json`
+  全部由第六次绑定的 `run.py`（sha256 `7cf7c702…f9ddc0c`）产出，且产物时间晚于 `bound_at`。
 
 ## 4 读数与判词
 
