@@ -68,13 +68,20 @@ owner 一律是轴 1 lead 派发的 worker，另配 fresh 复核者（`harness/S
 
 | 检查 | 结果 | 说明 |
 |---|---|---|
-| `python3 tools/summary.py --check` | 本项 0 违规（rc=0） | 46 个 `project.yaml` 全部符合 `harness/research-schema.md`；本项字段 / 证据锚点 / Δ 方向均齐（`2684` 的 11 个 Δ 读数已在 `results.json::delta_directions` 逐字段声明） |
-| `python3 tools/check_tree.py` | 0 违规（rc=0） | 预登记绑定：已绑定 11（读数晚于绑定 8、定序不可判 3）、unbound 92（历史产物，只计数）、缺绑定 0。本项的 `2684` 属「读数晚于绑定」：最终绑定 `bound_at` 2026-10-21T07:55:54 早于最后一次读数的落盘，且那次读数与重跑前逐位相同（`analysis.md` §4/§6 记全过程） |
-| `python3 tools/check_docs.py --check` | 全树 0 处违规（472 个文档 / 8899 处引用） | 本单元目录 0 处；文档地图缺项 0 个 |
-| `python3 tools/build_cost_table.py --check` | 绿 | 生成物与 `project.yaml::cost_rows` 逐字节一致（59 条代价事实） |
-| `python3 tools/inventory_runs.py --check` | 绿 | 重新生成后 131 个实验 / 449 个 run 与磁盘一致；本项 `2684` 的实验级汇总行已收进（0 run 子目录、`rebuildable_only`），`2681` 的「声明墙钟」列取到 `budget.gpu_wall_budget_min` = 39 |
-| `python3 -m pytest tests/ -q` | **969 passed / 1 failed**（215 s） | 唯一失败是已登记的预存失败 `test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`（4 个 `mutate.py` 未接入统一框架，全在 6-predict 轴，与本项无关）。此前几轮在同一棵树上出现过 `test_docs_refs` / `test_repro_inventory` 的间歇变红，那是**同树内其它研究级 owner 在跑的训练**持续新增 run 目录、以及它们注入式用例（断言「注入后必须变红」）的竞态；本轮实测已全绿，故按实测写 |
-| `python3 -m pytest axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/test_2681_frontier.py -q` | 6 passed | 本目录单测（纯 CPU）：字节账、k=60 那一格的选取、支配定义与阈值算术 |
+| `python3 tools/build_catalog.py --check` | 绿（rc=0） | `docs/catalog.md` 与 46 个研究项的 `project.yaml` 逐字节一致（七列：id / 标题 / 目的 / 验收 / 期望产出 / 状态 / 指针） |
+| `python3 tools/check_ledger.py --check` | 绿（rc=0） | 迁移台账 18 个原文（删除 1 个）+ 本次新增 10 个，0 处违规 |
+| `python3 tools/check_meta_layer.py --check` | 绿（rc=0） | 元级 6 个文档 0 处研究级读数 |
+| `python3 tools/summary.py --check` | 本项 0 违规；全树的红不在本项 | 46 个 `project.yaml` 全部符合 `harness/research-schema.md`；本项字段 / 证据锚点 / Δ 方向均齐（`2684` 的 11 个 Δ 读数已在 `results.json::delta_directions` 逐字段声明）。全树的红都是 `check_docs` 的引用违规，归属见下表与本节末段 |
+| `python3 tools/prereg_bind.py --check` | 绿（rc=0，「OK：预登记绑定全部可判」） | 已绑定 14（读数晚于绑定 11、读数早于绑定即定序不可判 3）、unbound 92（历史产物，只计数）、缺绑定 0。本项 `2684`（`bound_at` 2026-10-21T07:55:54+08:00，契约 = `README.md` / `config.json` / `run.py`）与 `2685`（08:11:30+08:00，契约另含同目录 `carry_quant.py`）都在「读数晚于绑定」里，契约文件在绑定后未被改过 |
+| `python3 tools/check_docs.py --check`（主工作树） | 本项 0 处；别的格的红按名字列出 | 工作树里有别的格的在飞改动，扫描数与违规数随它们变，所以这一行只记**归属**：`1.2.2` 的 `RESEARCH.md:46` 键锚点 `linear_health` 不存在、`2683` 的 `analysis.md` 指向 `2685` 一个尚未产出的键；`1.1.1` 的 `RESEARCH.md` 曾指向 `2686` 未产出的 `analysis.md`（该格在处理中）。本项目录一次都没进过违规名单 |
+| `python3 tools/check_docs.py --check`（`HEAD` = `1f907a1` 的干净副本） | 本项 0 处；全树 1 处 | 清洁副本的数是可复核的定值：扫描 477 个文档 / 9062 处引用，唯一违规是 `1.2.2` 的 `linear_health` 键锚点 |
+| `python3 tools/build_cost_table.py --check` | 干净副本绿；主工作树红 | 干净副本（`HEAD`）上 62 条代价事实 / 30 个研究项与生成物逐字节一致；主工作树的红来自 `1.2.2` 的 `project.yaml` 未提交改动（生成物滞后 2 行），不属本项 |
+| `python3 tools/inventory_runs.py --check` | 绿（rc=0） | 生成物与磁盘一致（主工作树 134 个实验 / 451 个 run；干净副本 134 / 455，生成物两边逐字节相同）；本项 `2684` 的实验级汇总行已收进（0 run 子目录、`rebuildable_only`），`2681` 的「声明墙钟」列取到 `budget.gpu_wall_budget_min` = 39 |
+| `python3 -m pytest axes/1-time/1.1.4.1-explicit-memory -q` | **54 passed**（4.2 s） | 本项六个实验目录的全部单测，**一次会话**跑完：2620 的 16、2631 的 14、2638 / 2639 / 2681 / 2685 各 6。2638 / 2639 / 2681 的单测原来用 `import run as R` 取本目录的 `run.py`，而同一次 pytest 会话里 `sys.modules` 只保留其中一个 ⇒ 整个目录一起跑时 4 个用例拿到别的实验的 `run` 而红（单个文件跑全绿）；改成按文件路径以唯一模块名加载后，批量跑也全绿 |
+| `python3 -m pytest tests/test_carry_*.py tests/test_composable_*.py tests/test_eng1_composable.py tests/test_recursive_carrier_13m.py tests/test_tf4_samecaliber_13m.py tests/test_ood_leg_variance.py tests/test_engine_capability.py -q` | **192 passed**（86 s） | 本项在仓级单测目录 `tests/**` 里的那部分（14 个文件）全绿 |
+| `python3 -m pytest tests/ -q` | **未跑完**（900 s 超时被杀） | 机器上同时有别的格的训练在跑（load average ≈21 / 12 核 ⇒ 套件从 215 s 涨到 >900 s），这一轮没拿到完整计数。按文件名点名跑出的红全部属别的格：`test_docs_refs.py` 5 个（4 处 `check_docs` 违规的基线断言 + 三个注入式用例的「注入后必须变红」）、`test_cost_table.py` 2 个（`1.2.2` 的 `project.yaml` 未提交改动）、`test_attribution_direction.py` 1 个（`1.2.2` 的 `attribution.py`） |
+
+**全树红的归属（本项不修，越界）**：`check_docs` 的引用违规与 `test_attribution_direction.py` 的失败分别属 `1.1.1`（`RESEARCH.md` 指向 `2686` 未产出的分析，归该格在处理）与 `1.2.2`（`linear_health` 键锚点、`2683` 的分析指向 `2685` 一个尚未产出的键、`attribution.py`）；主工作树的 `build_cost_table` 红属 `1.2.2` 的未提交 `project.yaml`。
 
 ## 7 边界（non-goals）
 
