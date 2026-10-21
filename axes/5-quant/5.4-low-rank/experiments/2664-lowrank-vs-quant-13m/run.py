@@ -273,6 +273,17 @@ def decode_cost(arm: dict) -> dict:
 
 
 # --------------------------------------------------------------- 召回 / 配对
+def pooled_task(task_or_dict):
+    """把「按距离/起点分组」的 `{key: TaskBatch}` 拼成一个批（与 `2619.pooled_accuracy` 同序）。
+
+    `2619.build_tasks` 里 `*_by_*` 是 dict；本实验的逐项命中与地板参照都在**拼接后**的批上算，
+    这样两侧臂的每一项逐位对齐（同一次任务构造 ⇒ 逐项同答案）。
+    """
+    if isinstance(task_or_dict, dict):
+        return B19.concat([task_or_dict[k] for k in sorted(task_or_dict)])
+    return task_or_dict
+
+
 def item_hits(fn, task, dev: str, max_chunk: int = 64) -> torch.Tensor:
     """逐任务项的命中矩阵 `[B, M]`（与 `b19.synth_accuracy` 同算法）；同批任务 ⇒ 跨臂逐项对齐。"""
     hits = torch.zeros(task.B, task.M, dtype=torch.long)
@@ -350,9 +361,10 @@ def eval_arm(arm: dict, run: dict, mode: dict | None, tasks: dict, eval_arr, dev
 
     hits = {}
     for key in ("copy_by_pos", "induction_by_start", "var_recall_by_d"):
-        h = item_hits(fn, tasks[key], dev)
+        task = pooled_task(tasks[key])
+        h = item_hits(fn, task, dev)
         hits[key] = h
-        rec["recall_" + key] = recall_block(h, tasks[key])
+        rec["recall_" + key] = recall_block(h, task)
     return rec, hits
 
 
@@ -438,9 +450,11 @@ def compare_same_byte(groups: list, per_arm: dict) -> dict:
         comp_label, comp_mode = (comp.split("@") + [None])[:2] if "@" in comp else (comp, None)
         lo = per_arm.get(lo_arm) or {}
         co = per_arm.get(comp_label) or {}
-        lo_runs = [r for r in lo.get("runs", []) if r["mode"] == "latent_fp16"]
-        co_runs = [r for r in co.get("runs", []) if (r["mode"] == comp_mode if comp_mode
-                                                     else True)]
+        # `checkpoint_missing` 的 run 条目只有 `status`、没有 `mode`/`bpc` ⇒ 用 `.get` 滤掉
+        lo_runs = [r for r in lo.get("runs", []) if r.get("mode") == "latent_fp16"]
+        co_runs = [r for r in co.get("runs", [])
+                   if r.get("mode") is not None
+                   and (r["mode"] == comp_mode if comp_mode else True)]
         # 配对：按 seed 对齐；对不上的（格 C 的头共享一侧是两次 seed 0）如实标注
         pairs = []
         for i, r in enumerate(lo_runs):
@@ -567,6 +581,11 @@ def main() -> int:
         rec["recall_paired"] = recall_pairs(CFG["same_byte_groups"], per_arm, hits_store)
         rec["recall_floor_reference"] = recall_floors(tasks)
         rec["answer"] = answer_brief(rec)
+        rec["delta_directions"] = {
+            "delta_bpc": "arm_minus_comparator",
+            "delta_bpc_mean": "arm_minus_comparator",
+            "delta_bpc_pairs": "arm_minus_comparator",
+            "delta": "arm_minus_comparator"}
         rec["gpu_lock"] = lock.ev if lock else {"lock_path": None, "note": "--no-lock（调试）"}
         rec["cost"] = {"gpu_wall_min_budget": CFG["cost"]["gpu_wall_budget_min"],
                        "wall_minutes_this_run": round((time.time() - t0) / 60.0, 2)}
@@ -603,7 +622,7 @@ def damage_table(per_arm: dict) -> dict:
     for label in ("mla_c272", "mla_c272_eq", "mla_c144", "mla_c128"):
         rows = []
         for r in per_arm.get(label, {}).get("runs", []):
-            if r["mode"] != "latent_fp16":
+            if r.get("mode") != "latent_fp16":
                 continue
             base = mha_runs.get((r["run"], r["seed"])) or next(
                 (v for (run, seed), v in mha_runs.items() if seed == r["seed"]), None)
@@ -614,7 +633,7 @@ def damage_table(per_arm: dict) -> dict:
             lowrank[label] = {"pairs": rows,
                               "delta_bpc_mean": round(float(np.mean([x["delta_bpc"] for x in rows])), 6)}
     out["lowrank_vs_mha_fp16"] = lowrank
-    out["delta_direction"] = "arm_minus_comparator"
+    out["sign_convention"] = "delta = 臂 − 对照（正 = 该臂更差）"
     return out
 
 
@@ -646,7 +665,7 @@ def recall_floors(tasks: dict) -> dict:
     from tools.evalkit.longrange_tasks import local_prior_accuracy
     out = {}
     for key in ("copy_by_pos", "induction_by_start", "var_recall_by_d"):
-        task = tasks[key]
+        task = pooled_task(tasks[key])
         lp = local_prior_accuracy(task, CFG["tokens"]["local_k"])
         out[key] = {"n": int(task.B * task.M), "chance": round(task.chance(), 6),
                     "local_prior_accuracy": round(float(lp["accuracy"]), 6),
@@ -700,7 +719,7 @@ def render_table(rec: dict) -> str:
                      f"对齐={p['seed_aligned']}）")
     L.append("\n## 3. 族内失效模式\n")
     for k, v in rec.get("damage", {}).items():
-        if k == "delta_direction":
+        if k == "sign_convention":
             continue
         for name, row in v.items():
             L.append(f"- `{k}` / `{name}`：Δbpc 均值 {row['delta_bpc_mean']}（"
