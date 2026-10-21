@@ -1,0 +1,3038 @@
+{
+  "experiment": "2685-recall-flops-linear-13m",
+  "delta_directions": {
+    "delta_bpc": "comparator_minus_arm",
+    "sd_of_paired_delta": "comparator_minus_arm",
+    "frac_windows_delta_gt_0": "comparator_minus_arm",
+    "min_delta": "comparator_minus_arm",
+    "max_delta": "comparator_minus_arm"
+  },
+  "delta_direction_note": "所有 bpc 读数一律 Δ = bpc_对照 − bpc_实验，正 = 实验更好；本实验主判的对照 = 同 seed 的`full`、实验 = `linear`（README §3 判据 Q）。召回读数是率类：`pp_diff` = 植入 − 地板（正 = 植入更好），不借用 0.014 带，因此不作为 Δ 字段声明。",
+  "config": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seeds": [
+      0,
+      1
+    ],
+    "data": "data/enwik8_full.npz",
+    "linear": {
+      "phi": "elu(x)+1",
+      "phi_evaluation": "stable (exp(min(x,0)) + relu(x))",
+      "linear_chunk": 32,
+      "linear_attn_eps_declared": 1e-30,
+      "kernel_changed": false
+    },
+    "eval": {
+      "n_batches": 96,
+      "batch_size": 16,
+      "window_seed": 2,
+      "paired": true
+    }
+  },
+  "arms": [
+    {
+      "name": "full_s0",
+      "mode": "full",
+      "seed": 0,
+      "role": "全因果（主判对照臂，本实验训练）",
+      "ckpt": "axes/1-time/1.2.2-block-sparse/experiments/2685-recall-flops-linear-13m/train/full_s0/model.pt",
+      "params": 13536768,
+      "k_eff": {
+        "mean": 256.0,
+        "asymptotic": 256
+      }
+    },
+    {
+      "name": "full_s1",
+      "mode": "full",
+      "seed": 1,
+      "role": "全因果（第二 seed）",
+      "ckpt": "axes/1-time/1.2.2-block-sparse/experiments/2685-recall-flops-linear-13m/train/full_s1/model.pt",
+      "params": 13536768,
+      "k_eff": {
+        "mean": 256.0,
+        "asymptotic": 256
+      }
+    },
+    {
+      "name": "linear_s0",
+      "mode": "linear",
+      "seed": 0,
+      "role": "线性核 φ=elu+1（主判实验臂，无归一化、无 QK-Norm）",
+      "ckpt": "axes/1-time/1.2.2-block-sparse/experiments/2685-recall-flops-linear-13m/train/linear_s0/model.pt",
+      "params": 13536768,
+      "k_eff": {
+        "mean": null,
+        "asymptotic": null
+      }
+    },
+    {
+      "name": "linear_s1",
+      "mode": "linear",
+      "seed": 1,
+      "role": "线性核（第二 seed）",
+      "ckpt": "axes/1-time/1.2.2-block-sparse/experiments/2685-recall-flops-linear-13m/train/linear_s1/model.pt",
+      "params": 13536768,
+      "k_eff": {
+        "mean": null,
+        "asymptotic": null
+      }
+    },
+    {
+      "name": "win24a0_s0",
+      "mode": "band",
+      "seed": 0,
+      "role": "均匀条带最近 24（复用 `2677`；同字节参照）",
+      "ckpt": "axes/1-time/1.2.2-block-sparse/experiments/2677-local-global-vs-band-13m/train/win24a0_s0/model.pt",
+      "params": 13536768,
+      "k_eff": {
+        "mean": 22.922,
+        "asymptotic": 24
+      }
+    },
+    {
+      "name": "win24a0_s1",
+      "mode": "band",
+      "seed": 1,
+      "role": "同上，第二 seed",
+      "ckpt": "axes/1-time/1.2.2-block-sparse/experiments/2677-local-global-vs-band-13m/train/win24a0_s1/model.pt",
+      "params": 13536768,
+      "k_eff": {
+        "mean": 22.922,
+        "asymptotic": 24
+      }
+    },
+    {
+      "name": "block8l4_s0",
+      "mode": "block_stripe",
+      "seed": 0,
+      "role": "块条带（复用 `2683`；远块专桶的臂）",
+      "ckpt": "axes/1-time/1.2.2-block-sparse/experiments/2683-block-stripe-vs-band-13m/train/block8l4_s0/model.pt",
+      "params": 13536768,
+      "k_eff": {
+        "mean": 22.922,
+        "asymptotic": 24
+      }
+    },
+    {
+      "name": "block8l4_s1",
+      "mode": "block_stripe",
+      "seed": 1,
+      "role": "同上，第二 seed",
+      "ckpt": "axes/1-time/1.2.2-block-sparse/experiments/2683-block-stripe-vs-band-13m/train/block8l4_s1/model.pt",
+      "params": 13536768,
+      "k_eff": {
+        "mean": 22.922,
+        "asymptotic": 24
+      }
+    },
+    {
+      "name": "win16a8_s0",
+      "mode": "local+global",
+      "seed": 0,
+      "role": "局部+全局（复用 `2662`；同字节轴上的第三个模式）",
+      "ckpt": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s0/model.pt",
+      "params": 13536768,
+      "k_eff": {
+        "mean": 22.922,
+        "asymptotic": 24
+      }
+    },
+    {
+      "name": "win16a8_s1",
+      "mode": "local+global",
+      "seed": 1,
+      "role": "同上，第二 seed",
+      "ckpt": "axes/1-time/1.1.1-hard-window/experiments/2662-hard-window-anchor-13m/train/win16a_s1/model.pt",
+      "params": 13536768,
+      "k_eff": {
+        "mean": 22.922,
+        "asymptotic": 24
+      }
+    }
+  ],
+  "params_all_equal": true,
+  "params_value": 13536768,
+  "bpc_by_arm": {
+    "full_s0": 1.498863,
+    "full_s1": 1.50003,
+    "linear_s0": 1.574922,
+    "linear_s1": 1.571304,
+    "win24a0_s0": 1.59927,
+    "win24a0_s1": 1.598631,
+    "block8l4_s0": 1.610822,
+    "block8l4_s1": 1.609415,
+    "win16a8_s0": 1.622527,
+    "win16a8_s1": 1.621799
+  },
+  "reuse_gate": {
+    "win24a0_s0": {
+      "reproduced": true,
+      "bpc": 1.59927,
+      "ref_bpc": 1.59927,
+      "ref": "2683/results.json::bpc_by_arm"
+    },
+    "win24a0_s1": {
+      "reproduced": true,
+      "bpc": 1.598631,
+      "ref_bpc": 1.598631,
+      "ref": "2683/results.json::bpc_by_arm"
+    },
+    "block8l4_s0": {
+      "reproduced": true,
+      "bpc": 1.610822,
+      "ref_bpc": 1.610822,
+      "ref": "2683/results.json::bpc_by_arm"
+    },
+    "block8l4_s1": {
+      "reproduced": true,
+      "bpc": 1.609415,
+      "ref_bpc": 1.609415,
+      "ref": "2683/results.json::bpc_by_arm"
+    },
+    "win16a8_s0": {
+      "reproduced": true,
+      "bpc": 1.622527,
+      "ref_bpc": 1.622527,
+      "ref": "2683/results.json::bpc_by_arm"
+    },
+    "win16a8_s1": {
+      "reproduced": true,
+      "bpc": 1.621799,
+      "ref_bpc": 1.621799,
+      "ref": "2683/results.json::bpc_by_arm"
+    }
+  },
+  "full_vs_trunk_sanity": {
+    "full_s0_bpc": 1.498863,
+    "trunk_full_bpc": 1.502689,
+    "bpc_diff_arm_minus_comparator": -0.003826,
+    "note": "本实验的 `full` 是新训的两条臂（同配方、seed 0/1）；与 `2683` 复用 2610 trunk 的`full`（1.502689）只作 sanity 参照，不作等值门（不同 seed、不同训练目录）。"
+  },
+  "linear_health": {
+    "linear_s0": {
+      "healthy": true,
+      "checks": {
+        "grad_skips_zero": {
+          "value": 0,
+          "pass": true
+        },
+        "gnorm_in_healthy_band": {
+          "value": 9.87,
+          "max_allowed": 12.0,
+          "pass": true
+        },
+        "den_guard_never_binds_at_eval": {
+          "value": 0.0,
+          "max_allowed": 0.0,
+          "pass": true
+        },
+        "phi_zero_fraction_small": {
+          "value": 0.0,
+          "max_allowed": 0.001,
+          "pass": true
+        }
+      },
+      "audit": {
+        "batch": 8,
+        "seq_len": 256,
+        "layers": 12,
+        "aggregate": {
+          "phi_zero_frac_engine": 0.07431952158333333,
+          "phi_zero_frac_stable": 0.0,
+          "den_below_eps_frac": 0.0,
+          "den_min": 5.586574784342767e-18,
+          "min_phi_stable": 4.712164376307277e-24,
+          "qk_abs_max": 53.71189498901367,
+          "phi_zero_frac_max_any_layer": 0.0,
+          "phi_zero_frac_engine_max_any_layer": 0.22018528,
+          "thresholds": {
+            "phi_zero_fraction_max": 0.001,
+            "linear_attn_eps_declared": 1e-30
+          }
+        },
+        "per_layer": [
+          {
+            "layer": 0,
+            "fp32": {
+              "phi_zero_frac_engine": 0.0,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 7.318544703593943e-08,
+              "qk_abs_max": 18.586214065551758,
+              "den_min": 0.9884743094444275,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.019609451,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 7.729977369308472e-08,
+              "qk_abs_max": 18.625
+            }
+          },
+          {
+            "layer": 1,
+            "fp32": {
+              "phi_zero_frac_engine": 0.05742836,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 9.702649252490213e-17,
+              "qk_abs_max": 36.87154769897461,
+              "den_min": 1.5709518130790912e-09,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.576645851,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 1.0972125985553305e-16,
+              "qk_abs_max": 36.75
+            }
+          },
+          {
+            "layer": 2,
+            "fp32": {
+              "phi_zero_frac_engine": 0.214129448,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 6.686183715350284e-23,
+              "qk_abs_max": 51.05941390991211,
+              "den_min": 4.045048530073453e-14,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.728193283,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 7.113753267956038e-23,
+              "qk_abs_max": 51.0
+            }
+          },
+          {
+            "layer": 3,
+            "fp32": {
+              "phi_zero_frac_engine": 0.194264412,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 4.712164376307277e-24,
+              "qk_abs_max": 53.71189498901367,
+              "den_min": 2.1987426828614938e-17,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.687670708,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 4.52364397489937e-24,
+              "qk_abs_max": 53.75
+            }
+          },
+          {
+            "layer": 4,
+            "fp32": {
+              "phi_zero_frac_engine": 0.22018528,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 2.317994437482194e-22,
+              "qk_abs_max": 49.81616973876953,
+              "den_min": 5.586574784342767e-18,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.694256783,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 2.481541837659083e-22,
+              "qk_abs_max": 49.75
+            }
+          },
+          {
+            "layer": 5,
+            "fp32": {
+              "phi_zero_frac_engine": 0.126182556,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 1.5792140171252054e-17,
+              "qk_abs_max": 38.68701934814453,
+              "den_min": 2.7592196512630715e-14,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.672138214,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 1.485356976305141e-17,
+              "qk_abs_max": 38.75
+            }
+          },
+          {
+            "layer": 6,
+            "fp32": {
+              "phi_zero_frac_engine": 0.079382896,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 4.9149785732048384e-18,
+              "qk_abs_max": 39.854244232177734,
+              "den_min": 4.923977349989561e-13,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.649974823,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 5.44811591673966e-18,
+              "qk_abs_max": 39.75
+            }
+          },
+          {
+            "layer": 7,
+            "fp32": {
+              "phi_zero_frac_engine": 0.000246048,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 7.802230528319853e-10,
+              "qk_abs_max": 20.9714412689209,
+              "den_min": 3.6514127714326605e-05,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.426474571,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 7.566995918750763e-10,
+              "qk_abs_max": 21.0
+            }
+          },
+          {
+            "layer": 8,
+            "fp32": {
+              "phi_zero_frac_engine": 2.861e-06,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 1.8755040187556915e-08,
+              "qk_abs_max": 17.79180335998535,
+              "den_min": 0.2415442168712616,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.275596619,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 1.955777406692505e-08,
+              "qk_abs_max": 17.75
+            }
+          },
+          {
+            "layer": 9,
+            "fp32": {
+              "phi_zero_frac_engine": 5.722e-06,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 3.083648891788471e-08,
+              "qk_abs_max": 17.294567108154297,
+              "den_min": 0.21368451416492462,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.191906929,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 3.213062882423401e-08,
+              "qk_abs_max": 17.25
+            }
+          },
+          {
+            "layer": 10,
+            "fp32": {
+              "phi_zero_frac_engine": 6.676e-06,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 2.3437698004613594e-08,
+              "qk_abs_max": 17.568920135498047,
+              "den_min": 0.16603821516036987,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.295048714,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 2.2118911147117615e-08,
+              "qk_abs_max": 17.625
+            }
+          },
+          {
+            "layer": 11,
+            "fp32": {
+              "phi_zero_frac_engine": 0.0,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 6.734293833687843e-08,
+              "qk_abs_max": 16.51346778869629,
+              "den_min": 0.5024367570877075,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.146876335,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 6.845220923423767e-08,
+              "qk_abs_max": 16.5
+            }
+          }
+        ],
+        "note": "fp32 = 评测前向实际精度；bf16 = 训练前向的 autocast 精度。φ 零占比与`den < eps` 的行占比是健康门 H3/H4 的落盘量（README §3）。"
+      },
+      "train_source": "axes/1-time/1.2.2-block-sparse/experiments/2685-recall-flops-linear-13m/train/linear_s0/results.json",
+      "phi_numeric": {
+        "phi": "stable evaluation of elu(x)+1: exp(min(x,0)) + relu(x)",
+        "phi_engine_default": "F.elu(x) + 1",
+        "linear_attn_eps_declared": 1e-30,
+        "linear_attn_eps_engine_default": 1e-06,
+        "kernel_changed": false,
+        "note": "只改 φ 的求值方式与分母 guard 的生效阈值；φ 的数学形式、归一化式、参数量、配方不变（`stable_linear.py` 的模块文档给了为什么这不是换核）。",
+        "liveness_at_train": {
+          "phi_min": 0.0,
+          "phi_max": 50.25,
+          "den_min": 0.0,
+          "inter_mass_frac": 0.432385,
+          "state_norm": 158.883653
+        },
+        "grad_skips": 0,
+        "gnorm_max": 9.87,
+        "den_never_below_declared_eps": false,
+        "source": "axes/1-time/1.2.2-block-sparse/experiments/2685-recall-flops-linear-13m/stable_linear.py"
+      },
+      "criterion": "glossary: grad_skips == 0 ∧ gnorm_max ≤ 12.0（已训纯注意力臂 9.4–10.8 的 1.2× 上界）∧ 评测前向 den < 1e-30 的行占比 == 0 ∧ φ 零占比 ≤ 0.001"
+    },
+    "linear_s1": {
+      "healthy": true,
+      "checks": {
+        "grad_skips_zero": {
+          "value": 0,
+          "pass": true
+        },
+        "gnorm_in_healthy_band": {
+          "value": 10.73,
+          "max_allowed": 12.0,
+          "pass": true
+        },
+        "den_guard_never_binds_at_eval": {
+          "value": 0.0,
+          "max_allowed": 0.0,
+          "pass": true
+        },
+        "phi_zero_fraction_small": {
+          "value": 0.0,
+          "max_allowed": 0.001,
+          "pass": true
+        }
+      },
+      "audit": {
+        "batch": 8,
+        "seq_len": 256,
+        "layers": 12,
+        "aggregate": {
+          "phi_zero_frac_engine": 0.07702088358333332,
+          "phi_zero_frac_stable": 0.0,
+          "den_below_eps_frac": 0.0,
+          "den_min": 1.1682202307914955e-17,
+          "min_phi_stable": 1.7351009477031754e-26,
+          "qk_abs_max": 59.31614685058594,
+          "phi_zero_frac_max_any_layer": 0.0,
+          "phi_zero_frac_engine_max_any_layer": 0.244748116,
+          "thresholds": {
+            "phi_zero_fraction_max": 0.001,
+            "linear_attn_eps_declared": 1e-30
+          }
+        },
+        "per_layer": [
+          {
+            "layer": 0,
+            "fp32": {
+              "phi_zero_frac_engine": 0.0,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 7.931083132461936e-07,
+              "qk_abs_max": 16.93429183959961,
+              "den_min": 1.2227166891098022,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.028974533,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 7.82310962677002e-07,
+              "qk_abs_max": 16.875
+            }
+          },
+          {
+            "layer": 1,
+            "fp32": {
+              "phi_zero_frac_engine": 0.086274147,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 1.5699981084075377e-19,
+              "qk_abs_max": 43.29804229736328,
+              "den_min": 3.6369926514900897e-10,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.6148386,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 1.6432439176733427e-19,
+              "qk_abs_max": 43.25
+            }
+          },
+          {
+            "layer": 2,
+            "fp32": {
+              "phi_zero_frac_engine": 0.209118843,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 8.762601854170318e-25,
+              "qk_abs_max": 55.394134521484375,
+              "den_min": 1.1682202307914955e-17,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.70715332,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 7.884065213396045e-25,
+              "qk_abs_max": 55.5
+            }
+          },
+          {
+            "layer": 3,
+            "fp32": {
+              "phi_zero_frac_engine": 0.244748116,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 2.2744775251799647e-23,
+              "qk_abs_max": 52.1377067565918,
+              "den_min": 2.46039860489386e-17,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.766555786,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 2.0369322584118306e-23,
+              "qk_abs_max": 52.25
+            }
+          },
+          {
+            "layer": 4,
+            "fp32": {
+              "phi_zero_frac_engine": 0.231646538,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 1.7351009477031754e-26,
+              "qk_abs_max": 59.31614685058594,
+              "den_min": 1.7180006964050676e-17,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.719164848,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 1.857925203976527e-26,
+              "qk_abs_max": 59.25
+            }
+          },
+          {
+            "layer": 5,
+            "fp32": {
+              "phi_zero_frac_engine": 0.134112358,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 5.178833554895677e-17,
+              "qk_abs_max": 37.499366760253906,
+              "den_min": 1.9877319462711235e-13,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.687527657,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 5.182486384480711e-17,
+              "qk_abs_max": 37.5
+            }
+          },
+          {
+            "layer": 6,
+            "fp32": {
+              "phi_zero_frac_engine": 0.018333435,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 2.6504657843484658e-11,
+              "qk_abs_max": 24.353700637817383,
+              "den_min": 4.425757893500304e-08,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.541100502,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 2.5920599000528455e-11,
+              "qk_abs_max": 24.375
+            }
+          },
+          {
+            "layer": 7,
+            "fp32": {
+              "phi_zero_frac_engine": 5.722e-06,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 2.0239657061438265e-08,
+              "qk_abs_max": 17.715621948242188,
+              "den_min": 0.0005483418353833258,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.388969421,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 1.955777406692505e-08,
+              "qk_abs_max": 17.75
+            }
+          },
+          {
+            "layer": 8,
+            "fp32": {
+              "phi_zero_frac_engine": 1.049e-05,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 1.3946815258236711e-08,
+              "qk_abs_max": 18.088014602661133,
+              "den_min": 0.07229572534561157,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.325665474,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 1.3445969671010971e-08,
+              "qk_abs_max": 18.125
+            }
+          },
+          {
+            "layer": 9,
+            "fp32": {
+              "phi_zero_frac_engine": 9.54e-07,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 4.126496477852015e-08,
+              "qk_abs_max": 17.003252029418945,
+              "den_min": 0.35719069838523865,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.284373283,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 4.1443854570388794e-08,
+              "qk_abs_max": 17.0
+            }
+          },
+          {
+            "layer": 10,
+            "fp32": {
+              "phi_zero_frac_engine": 0.0,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 7.010174840615946e-08,
+              "qk_abs_max": 16.473318099975586,
+              "den_min": 0.06394382566213608,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.250736237,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 6.845220923423767e-08,
+              "qk_abs_max": 16.5
+            }
+          },
+          {
+            "layer": 11,
+            "fp32": {
+              "phi_zero_frac_engine": 0.0,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 2.0163587066690525e-07,
+              "qk_abs_max": 15.416802406311035,
+              "den_min": 0.15365518629550934,
+              "den_below_eps_frac": 0.0
+            },
+            "bf16": {
+              "phi_zero_frac_engine": 0.144636154,
+              "phi_zero_frac_stable": 0.0,
+              "min_phi_stable": 1.9744038581848145e-07,
+              "qk_abs_max": 15.4375
+            }
+          }
+        ],
+        "note": "fp32 = 评测前向实际精度；bf16 = 训练前向的 autocast 精度。φ 零占比与`den < eps` 的行占比是健康门 H3/H4 的落盘量（README §3）。"
+      },
+      "train_source": "axes/1-time/1.2.2-block-sparse/experiments/2685-recall-flops-linear-13m/train/linear_s1/results.json",
+      "phi_numeric": {
+        "phi": "stable evaluation of elu(x)+1: exp(min(x,0)) + relu(x)",
+        "phi_engine_default": "F.elu(x) + 1",
+        "linear_attn_eps_declared": 1e-30,
+        "linear_attn_eps_engine_default": 1e-06,
+        "kernel_changed": false,
+        "note": "只改 φ 的求值方式与分母 guard 的生效阈值；φ 的数学形式、归一化式、参数量、配方不变（`stable_linear.py` 的模块文档给了为什么这不是换核）。",
+        "liveness_at_train": {
+          "phi_min": 0.0,
+          "phi_max": 47.0,
+          "den_min": 0.0,
+          "inter_mass_frac": 0.437774,
+          "state_norm": 150.435403
+        },
+        "grad_skips": 0,
+        "gnorm_max": 10.73,
+        "den_never_below_declared_eps": false,
+        "source": "axes/1-time/1.2.2-block-sparse/experiments/2685-recall-flops-linear-13m/stable_linear.py"
+      },
+      "criterion": "glossary: grad_skips == 0 ∧ gnorm_max ≤ 12.0（已训纯注意力臂 9.4–10.8 的 1.2× 上界）∧ 评测前向 den < 1e-30 的行占比 == 0 ∧ φ 零占比 ≤ 0.001"
+    }
+  },
+  "quality_linear_vs_full": {
+    "0": {
+      "n_windows": 1536,
+      "delta_bpc": -0.076059,
+      "sd_of_paired_delta": 0.087321,
+      "se_of_mean": 0.002228,
+      "t_stat": -34.14,
+      "frac_windows_delta_gt_0": 0.12,
+      "min_delta": -0.789805,
+      "max_delta": 0.118384
+    },
+    "1": {
+      "n_windows": 1536,
+      "delta_bpc": -0.071275,
+      "sd_of_paired_delta": 0.084231,
+      "se_of_mean": 0.002149,
+      "t_stat": -33.16,
+      "frac_windows_delta_gt_0": 0.128,
+      "min_delta": -0.784954,
+      "max_delta": 0.102985
+    }
+  },
+  "main_verdict": {
+    "criterion": "Δ = bpc_full − bpc_linear（同 seed 配对；正 = 线性更好），对 0.014 带三态；两 seed 各自判一次，同向且都越带才算可排序；健康门未过 ⇒ 记「未取得」",
+    "band_bpc": 0.014,
+    "seed0": "线性更差（Δ ≤ −0.014，越带）",
+    "seed1": "线性更差（Δ ≤ −0.014，越带）",
+    "both_within_band": false,
+    "seeds_same_sign": true,
+    "n_seed": 2,
+    "healthy_both_seeds": true,
+    "verdict": "线性更差（两 seed 越带、同向）"
+  },
+  "recall_leg": {
+    "instrument": "needle v3：`tools/evalkit/retention.py::phrase_needle_batch` + `needle_recall`；统计层复用 `2662/needle_stats.py`（`paired_bootstrap_diff_pp`）与 `tools/evalkit/carry_channel.py`（`two_proportion`）",
+    "config": {
+      "n_needles": 8,
+      "phrase_len": 6,
+      "anchors": 8,
+      "anchor_frac": 0.25,
+      "n_batches": 64,
+      "batch_size": 16,
+      "seed": 3,
+      "bucket_anchors": 8
+    },
+    "n_real_tokens": 205,
+    "mask_token": 205,
+    "criteria": "逐臂：`beyond`（与全保留臂的 `overall`）与 `far_slot` 的「植入 vs 配对地板」两比例差 —— Newcombe 95% CI 下界 > 0 **且** 按针配对 bootstrap CI 下界 > 0 ⇒ 该臂在该桶上「高于地板」；否则记「不高于地板」并按观测比例报所需针数。率类不借用 0.014 bpc 带。",
+    "far_slot_definition": "短语在块条带掩码下 7 个位置全可见、且在均匀条带（最近 24）掩码下至少一个位置不可见 ⇒ 只可能经远块被看见；该子集按掩码定义、与臂无关，各臂在同一索引集上可比",
+    "n_far_slot_needles": 33,
+    "per_arm": {
+      "full_s0": {
+        "n_needles": 8192,
+        "overall": {
+          "n": 8192,
+          "planted_hits": 5524,
+          "control_hits": 3530,
+          "planted_recall": 0.674316,
+          "control_recall": 0.430908,
+          "pp_diff": 24.341,
+          "newcombe_diff_ci95": [
+            0.228644,
+            0.258173
+          ],
+          "newcombe_diff_ci95_pp": [
+            22.864,
+            25.817
+          ],
+          "paired_bootstrap_pp": [
+            23.315,
+            25.281
+          ],
+          "passes_newcombe": true,
+          "passes_paired_bootstrap": true,
+          "passes_both": true,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.674316,
+            "p0": 0.430908,
+            "pp_diff": 24.341,
+            "n_per_arm": 62,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.480908,
+            "p0": 0.430908,
+            "pp_diff": 5.0,
+            "n_per_arm": 1554,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "beyond": {
+          "n": 0,
+          "note": "该臂的掩码不产生 beyond 桶（全保留 ⇒ 所有针都可见）",
+          "no_beyond_bucket_by_construction": true
+        },
+        "far_slot": {
+          "n": 33,
+          "planted_hits": 28,
+          "control_hits": 15,
+          "planted_recall": 0.848485,
+          "control_recall": 0.454545,
+          "pp_diff": 39.394,
+          "newcombe_diff_ci95": [
+            0.184587,
+            0.603291
+          ],
+          "newcombe_diff_ci95_pp": [
+            18.459,
+            60.329
+          ],
+          "paired_bootstrap_pp": [
+            21.212,
+            57.576
+          ],
+          "passes_newcombe": true,
+          "passes_paired_bootstrap": true,
+          "passes_both": true,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.848485,
+            "p0": 0.454545,
+            "pp_diff": 39.394,
+            "n_per_arm": 20,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.504545,
+            "p0": 0.454545,
+            "pp_diff": 5.0,
+            "n_per_arm": 1564,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "per_bucket_planted": {
+          "window": {
+            "recall": 0.678676,
+            "n": 7189
+          },
+          "anchor": {
+            "recall": 0.643071,
+            "n": 1003
+          }
+        },
+        "by_distance_band": {}
+      },
+      "full_s1": {
+        "n_needles": 8192,
+        "overall": {
+          "n": 8192,
+          "planted_hits": 5644,
+          "control_hits": 3522,
+          "planted_recall": 0.688965,
+          "control_recall": 0.429932,
+          "pp_diff": 25.903,
+          "newcombe_diff_ci95": [
+            0.244356,
+            0.273711
+          ],
+          "newcombe_diff_ci95_pp": [
+            24.436,
+            27.371
+          ],
+          "paired_bootstrap_pp": [
+            24.829,
+            26.868
+          ],
+          "passes_newcombe": true,
+          "passes_paired_bootstrap": true,
+          "passes_both": true,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.688965,
+            "p0": 0.429932,
+            "pp_diff": 25.903,
+            "n_per_arm": 54,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.479932,
+            "p0": 0.429932,
+            "pp_diff": 5.0,
+            "n_per_arm": 1554,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "beyond": {
+          "n": 0,
+          "note": "该臂的掩码不产生 beyond 桶（全保留 ⇒ 所有针都可见）",
+          "no_beyond_bucket_by_construction": true
+        },
+        "far_slot": {
+          "n": 33,
+          "planted_hits": 27,
+          "control_hits": 15,
+          "planted_recall": 0.818182,
+          "control_recall": 0.454545,
+          "pp_diff": 36.364,
+          "newcombe_diff_ci95": [
+            0.148741,
+            0.578532
+          ],
+          "newcombe_diff_ci95_pp": [
+            14.874,
+            57.853
+          ],
+          "paired_bootstrap_pp": [
+            21.212,
+            54.545
+          ],
+          "passes_newcombe": true,
+          "passes_paired_bootstrap": true,
+          "passes_both": true,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.818182,
+            "p0": 0.454545,
+            "pp_diff": 36.364,
+            "n_per_arm": 24,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.504545,
+            "p0": 0.454545,
+            "pp_diff": 5.0,
+            "n_per_arm": 1564,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "per_bucket_planted": {
+          "window": {
+            "recall": 0.691612,
+            "n": 7189
+          },
+          "anchor": {
+            "recall": 0.66999,
+            "n": 1003
+          }
+        },
+        "by_distance_band": {}
+      },
+      "linear_s0": {
+        "n_needles": 8192,
+        "overall": {
+          "n": 8192,
+          "planted_hits": 4502,
+          "control_hits": 3770,
+          "planted_recall": 0.549561,
+          "control_recall": 0.460205,
+          "pp_diff": 8.936,
+          "newcombe_diff_ci95": [
+            0.074105,
+            0.104606
+          ],
+          "newcombe_diff_ci95_pp": [
+            7.411,
+            10.461
+          ],
+          "paired_bootstrap_pp": [
+            8.166,
+            9.68
+          ],
+          "passes_newcombe": true,
+          "passes_paired_bootstrap": true,
+          "passes_both": true,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.549561,
+            "p0": 0.460205,
+            "pp_diff": 8.936,
+            "n_per_arm": 488,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.510205,
+            "p0": 0.460205,
+            "pp_diff": 5.0,
+            "n_per_arm": 1565,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "beyond": {
+          "n": 0,
+          "note": "该臂的掩码不产生 beyond 桶（全保留 ⇒ 所有针都可见）",
+          "no_beyond_bucket_by_construction": true
+        },
+        "far_slot": {
+          "n": 33,
+          "planted_hits": 20,
+          "control_hits": 16,
+          "planted_recall": 0.606061,
+          "control_recall": 0.484848,
+          "pp_diff": 12.121,
+          "newcombe_diff_ci95": [
+            -0.117262,
+            0.359686
+          ],
+          "newcombe_diff_ci95_pp": [
+            -11.726,
+            35.969
+          ],
+          "paired_bootstrap_pp": [
+            -3.03,
+            27.273
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.606061,
+            "p0": 0.484848,
+            "pp_diff": 12.121,
+            "n_per_arm": 261,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.534848,
+            "p0": 0.484848,
+            "pp_diff": 5.0,
+            "n_per_arm": 1566,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "per_bucket_planted": {
+          "window": {
+            "recall": 0.551815,
+            "n": 7189
+          },
+          "anchor": {
+            "recall": 0.5334,
+            "n": 1003
+          }
+        },
+        "by_distance_band": {}
+      },
+      "linear_s1": {
+        "n_needles": 8192,
+        "overall": {
+          "n": 8192,
+          "planted_hits": 4292,
+          "control_hits": 3540,
+          "planted_recall": 0.523926,
+          "control_recall": 0.432129,
+          "pp_diff": 9.18,
+          "newcombe_diff_ci95": [
+            0.076564,
+            0.10703
+          ],
+          "newcombe_diff_ci95_pp": [
+            7.656,
+            10.703
+          ],
+          "paired_bootstrap_pp": [
+            8.374,
+            9.973
+          ],
+          "passes_newcombe": true,
+          "passes_paired_bootstrap": true,
+          "passes_both": true,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.523926,
+            "p0": 0.432129,
+            "pp_diff": 9.18,
+            "n_per_arm": 461,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.482129,
+            "p0": 0.432129,
+            "pp_diff": 5.0,
+            "n_per_arm": 1555,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "beyond": {
+          "n": 0,
+          "note": "该臂的掩码不产生 beyond 桶（全保留 ⇒ 所有针都可见）",
+          "no_beyond_bucket_by_construction": true
+        },
+        "far_slot": {
+          "n": 33,
+          "planted_hits": 22,
+          "control_hits": 16,
+          "planted_recall": 0.666667,
+          "control_recall": 0.484848,
+          "pp_diff": 18.182,
+          "newcombe_diff_ci95": [
+            -0.052587,
+            0.416223
+          ],
+          "newcombe_diff_ci95_pp": [
+            -5.259,
+            41.622
+          ],
+          "paired_bootstrap_pp": [
+            3.03,
+            33.333
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": true,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.666667,
+            "p0": 0.484848,
+            "pp_diff": 18.182,
+            "n_per_arm": 113,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.534848,
+            "p0": 0.484848,
+            "pp_diff": 5.0,
+            "n_per_arm": 1566,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "per_bucket_planted": {
+          "window": {
+            "recall": 0.527612,
+            "n": 7189
+          },
+          "anchor": {
+            "recall": 0.497507,
+            "n": 1003
+          }
+        },
+        "by_distance_band": {}
+      },
+      "win24a0_s0": {
+        "n_needles": 8192,
+        "overall": {
+          "n": 8192,
+          "planted_hits": 3807,
+          "control_hits": 3784,
+          "planted_recall": 0.464722,
+          "control_recall": 0.461914,
+          "pp_diff": 0.281,
+          "newcombe_diff_ci95": [
+            -0.012464,
+            0.018079
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.246,
+            1.808
+          ],
+          "paired_bootstrap_pp": [
+            -0.171,
+            0.757
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.464722,
+            "p0": 0.461914,
+            "pp_diff": 0.281,
+            "n_per_arm": 495171,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.511914,
+            "p0": 0.461914,
+            "pp_diff": 5.0,
+            "n_per_arm": 1565,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "beyond": {
+          "n": 7118,
+          "planted_hits": 3282,
+          "control_hits": 3274,
+          "planted_recall": 0.461085,
+          "control_recall": 0.459961,
+          "pp_diff": 0.112,
+          "newcombe_diff_ci95": [
+            -0.015252,
+            0.0175
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.525,
+            1.75
+          ],
+          "paired_bootstrap_pp": [
+            -0.379,
+            0.562
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.461085,
+            "p0": 0.459961,
+            "pp_diff": 0.112,
+            "n_per_arm": 3087431,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.509961,
+            "p0": 0.459961,
+            "pp_diff": 5.0,
+            "n_per_arm": 1565,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "far_slot": {
+          "n": 33,
+          "planted_hits": 14,
+          "control_hits": 18,
+          "planted_recall": 0.424242,
+          "control_recall": 0.545455,
+          "pp_diff": -12.121,
+          "newcombe_diff_ci95": [
+            -0.360581,
+            0.118157
+          ],
+          "newcombe_diff_ci95_pp": [
+            -36.058,
+            11.816
+          ],
+          "paired_bootstrap_pp": [
+            -24.242,
+            -3.03
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.424242,
+            "p0": 0.545455,
+            "pp_diff": -12.121,
+            "n_per_arm": null,
+            "note": "观测效应 ≤ 0 ⇒ 样本量不存在（先要一个正效应）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.595455,
+            "p0": 0.545455,
+            "pp_diff": 5.0,
+            "n_per_arm": 1535,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "per_bucket_planted": {
+          "beyond": {
+            "recall": 0.461085,
+            "n": 7118
+          },
+          "anchor": {
+            "recall": 0.473579,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.704225,
+            "n": 71
+          }
+        },
+        "by_distance_band": {
+          "[0,32)": {
+            "n": 211,
+            "recall": 0.540284
+          },
+          "[32,64)": {
+            "n": 992,
+            "recall": 0.433468
+          },
+          "[64,128)": {
+            "n": 2468,
+            "recall": 0.46637
+          },
+          "[128,256)": {
+            "n": 3447,
+            "recall": 0.4604
+          }
+        }
+      },
+      "win24a0_s1": {
+        "n_needles": 8192,
+        "overall": {
+          "n": 8192,
+          "planted_hits": 3455,
+          "control_hits": 3459,
+          "planted_recall": 0.421753,
+          "control_recall": 0.422241,
+          "pp_diff": -0.049,
+          "newcombe_diff_ci95": [
+            -0.015613,
+            0.014637
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.561,
+            1.464
+          ],
+          "paired_bootstrap_pp": [
+            -0.452,
+            0.366
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.421753,
+            "p0": 0.422241,
+            "pp_diff": -0.049,
+            "n_per_arm": null,
+            "note": "观测效应 ≤ 0 ⇒ 样本量不存在（先要一个正效应）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.472241,
+            "p0": 0.422241,
+            "pp_diff": 5.0,
+            "n_per_arm": 1549,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "beyond": {
+          "n": 7118,
+          "planted_hits": 3000,
+          "control_hits": 2998,
+          "planted_recall": 0.421467,
+          "control_recall": 0.421186,
+          "pp_diff": 0.028,
+          "newcombe_diff_ci95": [
+            -0.015942,
+            0.016503
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.594,
+            1.65
+          ],
+          "paired_bootstrap_pp": [
+            -0.379,
+            0.436
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.421467,
+            "p0": 0.421186,
+            "pp_diff": 0.028,
+            "n_per_arm": 48478128,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.471186,
+            "p0": 0.421186,
+            "pp_diff": 5.0,
+            "n_per_arm": 1548,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "far_slot": {
+          "n": 33,
+          "planted_hits": 11,
+          "control_hits": 11,
+          "planted_recall": 0.333333,
+          "control_recall": 0.333333,
+          "pp_diff": 0.0,
+          "newcombe_diff_ci95": [
+            -0.227461,
+            0.227461
+          ],
+          "newcombe_diff_ci95_pp": [
+            -22.746,
+            22.746
+          ],
+          "paired_bootstrap_pp": [
+            -9.091,
+            9.091
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.333333,
+            "p0": 0.333333,
+            "pp_diff": 0.0,
+            "n_per_arm": null,
+            "note": "观测效应 ≤ 0 ⇒ 样本量不存在（先要一个正效应）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.383333,
+            "p0": 0.333333,
+            "pp_diff": 5.0,
+            "n_per_arm": 1440,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "per_bucket_planted": {
+          "beyond": {
+            "recall": 0.421467,
+            "n": 7118
+          },
+          "anchor": {
+            "recall": 0.408774,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.633803,
+            "n": 71
+          }
+        },
+        "by_distance_band": {
+          "[0,32)": {
+            "n": 211,
+            "recall": 0.483412
+          },
+          "[32,64)": {
+            "n": 992,
+            "recall": 0.413306
+          },
+          "[64,128)": {
+            "n": 2468,
+            "recall": 0.410859
+          },
+          "[128,256)": {
+            "n": 3447,
+            "recall": 0.427618
+          }
+        }
+      },
+      "block8l4_s0": {
+        "n_needles": 8192,
+        "overall": {
+          "n": 8192,
+          "planted_hits": 3756,
+          "control_hits": 3706,
+          "planted_recall": 0.458496,
+          "control_recall": 0.452393,
+          "pp_diff": 0.61,
+          "newcombe_diff_ci95": [
+            -0.009148,
+            0.021355
+          ],
+          "newcombe_diff_ci95_pp": [
+            -0.915,
+            2.135
+          ],
+          "paired_bootstrap_pp": [
+            0.171,
+            1.05
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": true,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.458496,
+            "p0": 0.452393,
+            "pp_diff": 0.61,
+            "n_per_arm": 104506,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.502393,
+            "p0": 0.452393,
+            "pp_diff": 5.0,
+            "n_per_arm": 1563,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "beyond": {
+          "n": 7142,
+          "planted_hits": 3263,
+          "control_hits": 3222,
+          "planted_recall": 0.456875,
+          "control_recall": 0.451134,
+          "pp_diff": 0.574,
+          "newcombe_diff_ci95": [
+            -0.010589,
+            0.02207
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.059,
+            2.207
+          ],
+          "paired_bootstrap_pp": [
+            0.154,
+            1.008
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": true,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.456875,
+            "p0": 0.451134,
+            "pp_diff": 0.574,
+            "n_per_arm": 118072,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.501134,
+            "p0": 0.451134,
+            "pp_diff": 5.0,
+            "n_per_arm": 1563,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "far_slot": {
+          "n": 33,
+          "planted_hits": 24,
+          "control_hits": 15,
+          "planted_recall": 0.727273,
+          "control_recall": 0.454545,
+          "pp_diff": 27.273,
+          "newcombe_diff_ci95": [
+            0.044796,
+            0.500658
+          ],
+          "newcombe_diff_ci95_pp": [
+            4.48,
+            50.066
+          ],
+          "paired_bootstrap_pp": [
+            9.091,
+            45.455
+          ],
+          "passes_newcombe": true,
+          "passes_paired_bootstrap": true,
+          "passes_both": true,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.727273,
+            "p0": 0.454545,
+            "pp_diff": 27.273,
+            "n_per_arm": 48,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.504545,
+            "p0": 0.454545,
+            "pp_diff": 5.0,
+            "n_per_arm": 1564,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "per_bucket_planted": {
+          "beyond": {
+            "recall": 0.456875,
+            "n": 7142
+          },
+          "anchor": {
+            "recall": 0.458624,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.702128,
+            "n": 47
+          }
+        },
+        "by_distance_band": {
+          "[0,32)": {
+            "n": 240,
+            "recall": 0.541667
+          },
+          "[32,64)": {
+            "n": 987,
+            "recall": 0.478217
+          },
+          "[64,128)": {
+            "n": 2468,
+            "recall": 0.452188
+          },
+          "[128,256)": {
+            "n": 3447,
+            "recall": 0.448216
+          }
+        }
+      },
+      "block8l4_s1": {
+        "n_needles": 8192,
+        "overall": {
+          "n": 8192,
+          "planted_hits": 3730,
+          "control_hits": 3720,
+          "planted_recall": 0.455322,
+          "control_recall": 0.454102,
+          "pp_diff": 0.122,
+          "newcombe_diff_ci95": [
+            -0.014029,
+            0.01647
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.403,
+            1.647
+          ],
+          "paired_bootstrap_pp": [
+            -0.33,
+            0.562
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.455322,
+            "p0": 0.454102,
+            "pp_diff": 0.122,
+            "n_per_arm": 2612037,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.504102,
+            "p0": 0.454102,
+            "pp_diff": 5.0,
+            "n_per_arm": 1564,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "beyond": {
+          "n": 7142,
+          "planted_hits": 3228,
+          "control_hits": 3220,
+          "planted_recall": 0.451974,
+          "control_recall": 0.450854,
+          "pp_diff": 0.112,
+          "newcombe_diff_ci95": [
+            -0.015202,
+            0.017442
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.52,
+            1.744
+          ],
+          "paired_bootstrap_pp": [
+            -0.35,
+            0.56
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.451974,
+            "p0": 0.450854,
+            "pp_diff": 0.112,
+            "n_per_arm": 3098251,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.500854,
+            "p0": 0.450854,
+            "pp_diff": 5.0,
+            "n_per_arm": 1563,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "far_slot": {
+          "n": 33,
+          "planted_hits": 21,
+          "control_hits": 14,
+          "planted_recall": 0.636364,
+          "control_recall": 0.424242,
+          "pp_diff": 21.212,
+          "newcombe_diff_ci95": [
+            -0.023194,
+            0.447436
+          ],
+          "newcombe_diff_ci95_pp": [
+            -2.319,
+            44.744
+          ],
+          "paired_bootstrap_pp": [
+            3.03,
+            39.394
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": true,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.636364,
+            "p0": 0.424242,
+            "pp_diff": 21.212,
+            "n_per_arm": 83,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.474242,
+            "p0": 0.424242,
+            "pp_diff": 5.0,
+            "n_per_arm": 1550,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "per_bucket_planted": {
+          "beyond": {
+            "recall": 0.451974,
+            "n": 7142
+          },
+          "anchor": {
+            "recall": 0.471585,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.617021,
+            "n": 47
+          }
+        },
+        "by_distance_band": {
+          "[0,32)": {
+            "n": 240,
+            "recall": 0.554167
+          },
+          "[32,64)": {
+            "n": 987,
+            "recall": 0.465046
+          },
+          "[64,128)": {
+            "n": 2468,
+            "recall": 0.449352
+          },
+          "[128,256)": {
+            "n": 3447,
+            "recall": 0.442994
+          }
+        }
+      },
+      "win16a8_s0": {
+        "n_needles": 8192,
+        "overall": {
+          "n": 8192,
+          "planted_hits": 3839,
+          "control_hits": 3802,
+          "planted_recall": 0.468628,
+          "control_recall": 0.464111,
+          "pp_diff": 0.452,
+          "newcombe_diff_ci95": [
+            -0.010761,
+            0.019794
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.076,
+            1.979
+          ],
+          "paired_bootstrap_pp": [
+            0.049,
+            0.879
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": true,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.468628,
+            "p0": 0.464111,
+            "pp_diff": 0.452,
+            "n_per_arm": 191504,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.514111,
+            "p0": 0.464111,
+            "pp_diff": 5.0,
+            "n_per_arm": 1566,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "beyond": {
+          "n": 7175,
+          "planted_hits": 3347,
+          "control_hits": 3340,
+          "planted_recall": 0.466481,
+          "control_recall": 0.465505,
+          "pp_diff": 0.098,
+          "newcombe_diff_ci95": [
+            -0.015348,
+            0.017299
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.535,
+            1.73
+          ],
+          "paired_bootstrap_pp": [
+            -0.334,
+            0.502
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.466481,
+            "p0": 0.465505,
+            "pp_diff": 0.098,
+            "n_per_arm": 4104037,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.515505,
+            "p0": 0.465505,
+            "pp_diff": 5.0,
+            "n_per_arm": 1566,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "far_slot": {
+          "n": 33,
+          "planted_hits": 16,
+          "control_hits": 16,
+          "planted_recall": 0.484848,
+          "control_recall": 0.484848,
+          "pp_diff": 0.0,
+          "newcombe_diff_ci95": [
+            -0.241149,
+            0.241149
+          ],
+          "newcombe_diff_ci95_pp": [
+            -24.115,
+            24.115
+          ],
+          "paired_bootstrap_pp": [
+            -9.091,
+            9.091
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.484848,
+            "p0": 0.484848,
+            "pp_diff": 0.0,
+            "n_per_arm": null,
+            "note": "观测效应 ≤ 0 ⇒ 样本量不存在（先要一个正效应）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.534848,
+            "p0": 0.484848,
+            "pp_diff": 5.0,
+            "n_per_arm": 1566,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "per_bucket_planted": {
+          "beyond": {
+            "recall": 0.466481,
+            "n": 7175
+          },
+          "anchor": {
+            "recall": 0.481555,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.642857,
+            "n": 14
+          }
+        },
+        "by_distance_band": {
+          "[0,32)": {
+            "n": 268,
+            "recall": 0.544776
+          },
+          "[32,64)": {
+            "n": 992,
+            "recall": 0.450605
+          },
+          "[64,128)": {
+            "n": 2468,
+            "recall": 0.46799
+          },
+          "[128,256)": {
+            "n": 3447,
+            "recall": 0.463882
+          }
+        }
+      },
+      "win16a8_s1": {
+        "n_needles": 8192,
+        "overall": {
+          "n": 8192,
+          "planted_hits": 3845,
+          "control_hits": 3837,
+          "planted_recall": 0.46936,
+          "control_recall": 0.468384,
+          "pp_diff": 0.098,
+          "newcombe_diff_ci95": [
+            -0.014306,
+            0.016259
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.431,
+            1.626
+          ],
+          "paired_bootstrap_pp": [
+            -0.342,
+            0.5
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.46936,
+            "p0": 0.468384,
+            "pp_diff": 0.098,
+            "n_per_arm": 4099120,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.518384,
+            "p0": 0.468384,
+            "pp_diff": 5.0,
+            "n_per_arm": 1566,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "beyond": {
+          "n": 7175,
+          "planted_hits": 3352,
+          "control_hits": 3356,
+          "planted_recall": 0.467178,
+          "control_recall": 0.467735,
+          "pp_diff": -0.056,
+          "newcombe_diff_ci95": [
+            -0.016885,
+            0.01577
+          ],
+          "newcombe_diff_ci95_pp": [
+            -1.689,
+            1.577
+          ],
+          "paired_bootstrap_pp": [
+            -0.474,
+            0.348
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.467178,
+            "p0": 0.467735,
+            "pp_diff": -0.056,
+            "n_per_arm": null,
+            "note": "观测效应 ≤ 0 ⇒ 样本量不存在（先要一个正效应）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.517735,
+            "p0": 0.467735,
+            "pp_diff": 5.0,
+            "n_per_arm": 1566,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "far_slot": {
+          "n": 33,
+          "planted_hits": 13,
+          "control_hits": 14,
+          "planted_recall": 0.393939,
+          "control_recall": 0.424242,
+          "pp_diff": -3.03,
+          "newcombe_diff_ci95": [
+            -0.267428,
+            0.206822
+          ],
+          "newcombe_diff_ci95_pp": [
+            -26.743,
+            20.682
+          ],
+          "paired_bootstrap_pp": [
+            -12.121,
+            6.061
+          ],
+          "passes_newcombe": false,
+          "passes_paired_bootstrap": false,
+          "passes_both": false,
+          "direction_note": "正 = 植入高于地板",
+          "required_n_for_observed_effect": {
+            "p1": 0.393939,
+            "p0": 0.424242,
+            "pp_diff": -3.03,
+            "n_per_arm": null,
+            "note": "观测效应 ≤ 0 ⇒ 样本量不存在（先要一个正效应）"
+          },
+          "required_n_for_5pp_target": {
+            "p1": 0.474242,
+            "p0": 0.424242,
+            "pp_diff": 5.0,
+            "n_per_arm": 1550,
+            "formula": "n = ceil((z0.975 + z0.80)² · (p1(1−p1) + p0(1−p0)) / (p1−p0)²)，z = 1.959964 / 0.841621，双侧 0.05、把握度 0.8（两比例差的常用规划式）"
+          }
+        },
+        "per_bucket_planted": {
+          "beyond": {
+            "recall": 0.467178,
+            "n": 7175
+          },
+          "anchor": {
+            "recall": 0.482552,
+            "n": 1003
+          },
+          "window": {
+            "recall": 0.642857,
+            "n": 14
+          }
+        },
+        "by_distance_band": {
+          "[0,32)": {
+            "n": 268,
+            "recall": 0.55597
+          },
+          "[32,64)": {
+            "n": 992,
+            "recall": 0.44254
+          },
+          "[64,128)": {
+            "n": 2468,
+            "recall": 0.469206
+          },
+          "[128,256)": {
+            "n": 3447,
+            "recall": 0.465912
+          }
+        }
+      }
+    }
+  },
+  "flops_leg": {
+    "criteria": "逐臂在同一次前向里计数：`equiv_macs_per_token`（按实际可见键数）与 `executed_macs_per_token`（本条实装真正算掉的）分开报；两条结构关系必须成立：(a) 两个 24 键掩码模式（`win24a0` / `block8l4`）的 equiv 计数逐位相等；(b) 24 键臂 / `full` 的 equiv 比值 = 解析预期 22.922/128.5；线性臂按 `linear_attn_chunked` 的算式计数，对 T 线性（T=256 的绝对值如实报，不外推）。",
+    "per_arm": {
+      "full_s0": {
+        "n_layers": 12,
+        "n_heads": 8,
+        "d_head": 32,
+        "T": 256,
+        "batch": 4,
+        "equiv_macs_per_token": 65792.0,
+        "executed_macs_per_token": 65792.0,
+        "equiv_flops_per_token": 131584.0,
+        "executed_flops_per_token": 131584.0,
+        "kept_keys_per_row_mean": 128.5,
+        "per_layer": [
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          }
+        ],
+        "formula": {
+          "softmax_masked": "macs = 2 · kept_pairs · d_head（kept_pairs = 该前向实际掩码的非零数；None 掩码 ⇒ 因果 T(T+1)/2 每行）",
+          "linear_attn_chunked": "macs = B·H·(2·T·dh² + 2·T·C·dh + 2·T·dh)（逐项对应 linear_attn_chunked 的 einsum；C = min(linear_chunk, T)）",
+          "per_token": "每层 macs / (B·T) 后对层求和；FLOPs = 2·MACs",
+          "executed_vs_equiv": "executed = 本条实装真正算掉的量：稠密 bool 掩码下掩码臂仍算整张因果矩阵 ⇒ executed 与全因果相同；equiv = 真稀疏核上应花的量"
+        }
+      },
+      "full_s1": {
+        "n_layers": 12,
+        "n_heads": 8,
+        "d_head": 32,
+        "T": 256,
+        "batch": 4,
+        "equiv_macs_per_token": 65792.0,
+        "executed_macs_per_token": 65792.0,
+        "equiv_flops_per_token": 131584.0,
+        "executed_flops_per_token": 131584.0,
+        "kept_keys_per_row_mean": 128.5,
+        "per_layer": [
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 67371008,
+            "kept_pairs": 1052672
+          }
+        ],
+        "formula": {
+          "softmax_masked": "macs = 2 · kept_pairs · d_head（kept_pairs = 该前向实际掩码的非零数；None 掩码 ⇒ 因果 T(T+1)/2 每行）",
+          "linear_attn_chunked": "macs = B·H·(2·T·dh² + 2·T·C·dh + 2·T·dh)（逐项对应 linear_attn_chunked 的 einsum；C = min(linear_chunk, T)）",
+          "per_token": "每层 macs / (B·T) 后对层求和；FLOPs = 2·MACs",
+          "executed_vs_equiv": "executed = 本条实装真正算掉的量：稠密 bool 掩码下掩码臂仍算整张因果矩阵 ⇒ executed 与全因果相同；equiv = 真稀疏核上应花的量"
+        }
+      },
+      "linear_s0": {
+        "n_layers": 12,
+        "n_heads": 8,
+        "d_head": 32,
+        "T": 256,
+        "batch": 4,
+        "equiv_macs_per_token": 33280.0,
+        "executed_macs_per_token": 33280.0,
+        "equiv_flops_per_token": 66560.0,
+        "executed_flops_per_token": 66560.0,
+        "kept_keys_per_row_mean": null,
+        "per_layer": [
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          }
+        ],
+        "formula": {
+          "softmax_masked": "macs = 2 · kept_pairs · d_head（kept_pairs = 该前向实际掩码的非零数；None 掩码 ⇒ 因果 T(T+1)/2 每行）",
+          "linear_attn_chunked": "macs = B·H·(2·T·dh² + 2·T·C·dh + 2·T·dh)（逐项对应 linear_attn_chunked 的 einsum；C = min(linear_chunk, T)）",
+          "per_token": "每层 macs / (B·T) 后对层求和；FLOPs = 2·MACs",
+          "executed_vs_equiv": "executed = 本条实装真正算掉的量：稠密 bool 掩码下掩码臂仍算整张因果矩阵 ⇒ executed 与全因果相同；equiv = 真稀疏核上应花的量"
+        }
+      },
+      "linear_s1": {
+        "n_layers": 12,
+        "n_heads": 8,
+        "d_head": 32,
+        "T": 256,
+        "batch": 4,
+        "equiv_macs_per_token": 33280.0,
+        "executed_macs_per_token": 33280.0,
+        "equiv_flops_per_token": 66560.0,
+        "executed_flops_per_token": 66560.0,
+        "kept_keys_per_row_mean": null,
+        "per_layer": [
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          },
+          {
+            "class": "LinearAttnBlock",
+            "method": "linear_attn_chunked",
+            "macs": 34078720,
+            "kept_pairs": null
+          }
+        ],
+        "formula": {
+          "softmax_masked": "macs = 2 · kept_pairs · d_head（kept_pairs = 该前向实际掩码的非零数；None 掩码 ⇒ 因果 T(T+1)/2 每行）",
+          "linear_attn_chunked": "macs = B·H·(2·T·dh² + 2·T·C·dh + 2·T·dh)（逐项对应 linear_attn_chunked 的 einsum；C = min(linear_chunk, T)）",
+          "per_token": "每层 macs / (B·T) 后对层求和；FLOPs = 2·MACs",
+          "executed_vs_equiv": "executed = 本条实装真正算掉的量：稠密 bool 掩码下掩码臂仍算整张因果矩阵 ⇒ executed 与全因果相同；equiv = 真稀疏核上应花的量"
+        }
+      },
+      "win24a0_s0": {
+        "n_layers": 12,
+        "n_heads": 8,
+        "d_head": 32,
+        "T": 256,
+        "batch": 4,
+        "equiv_macs_per_token": 11736.0,
+        "executed_macs_per_token": 65792.0,
+        "equiv_flops_per_token": 23472.0,
+        "executed_flops_per_token": 131584.0,
+        "kept_keys_per_row_mean": 22.922,
+        "per_layer": [
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          }
+        ],
+        "formula": {
+          "softmax_masked": "macs = 2 · kept_pairs · d_head（kept_pairs = 该前向实际掩码的非零数；None 掩码 ⇒ 因果 T(T+1)/2 每行）",
+          "linear_attn_chunked": "macs = B·H·(2·T·dh² + 2·T·C·dh + 2·T·dh)（逐项对应 linear_attn_chunked 的 einsum；C = min(linear_chunk, T)）",
+          "per_token": "每层 macs / (B·T) 后对层求和；FLOPs = 2·MACs",
+          "executed_vs_equiv": "executed = 本条实装真正算掉的量：稠密 bool 掩码下掩码臂仍算整张因果矩阵 ⇒ executed 与全因果相同；equiv = 真稀疏核上应花的量"
+        }
+      },
+      "win24a0_s1": {
+        "n_layers": 12,
+        "n_heads": 8,
+        "d_head": 32,
+        "T": 256,
+        "batch": 4,
+        "equiv_macs_per_token": 11736.0,
+        "executed_macs_per_token": 65792.0,
+        "equiv_flops_per_token": 23472.0,
+        "executed_flops_per_token": 131584.0,
+        "kept_keys_per_row_mean": 22.922,
+        "per_layer": [
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          }
+        ],
+        "formula": {
+          "softmax_masked": "macs = 2 · kept_pairs · d_head（kept_pairs = 该前向实际掩码的非零数；None 掩码 ⇒ 因果 T(T+1)/2 每行）",
+          "linear_attn_chunked": "macs = B·H·(2·T·dh² + 2·T·C·dh + 2·T·dh)（逐项对应 linear_attn_chunked 的 einsum；C = min(linear_chunk, T)）",
+          "per_token": "每层 macs / (B·T) 后对层求和；FLOPs = 2·MACs",
+          "executed_vs_equiv": "executed = 本条实装真正算掉的量：稠密 bool 掩码下掩码臂仍算整张因果矩阵 ⇒ executed 与全因果相同；equiv = 真稀疏核上应花的量"
+        }
+      },
+      "block8l4_s0": {
+        "n_layers": 12,
+        "n_heads": 8,
+        "d_head": 32,
+        "T": 256,
+        "batch": 4,
+        "equiv_macs_per_token": 11736.0,
+        "executed_macs_per_token": 65792.0,
+        "equiv_flops_per_token": 23472.0,
+        "executed_flops_per_token": 131584.0,
+        "kept_keys_per_row_mean": 22.922,
+        "per_layer": [
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          }
+        ],
+        "formula": {
+          "softmax_masked": "macs = 2 · kept_pairs · d_head（kept_pairs = 该前向实际掩码的非零数；None 掩码 ⇒ 因果 T(T+1)/2 每行）",
+          "linear_attn_chunked": "macs = B·H·(2·T·dh² + 2·T·C·dh + 2·T·dh)（逐项对应 linear_attn_chunked 的 einsum；C = min(linear_chunk, T)）",
+          "per_token": "每层 macs / (B·T) 后对层求和；FLOPs = 2·MACs",
+          "executed_vs_equiv": "executed = 本条实装真正算掉的量：稠密 bool 掩码下掩码臂仍算整张因果矩阵 ⇒ executed 与全因果相同；equiv = 真稀疏核上应花的量"
+        }
+      },
+      "block8l4_s1": {
+        "n_layers": 12,
+        "n_heads": 8,
+        "d_head": 32,
+        "T": 256,
+        "batch": 4,
+        "equiv_macs_per_token": 11736.0,
+        "executed_macs_per_token": 65792.0,
+        "equiv_flops_per_token": 23472.0,
+        "executed_flops_per_token": 131584.0,
+        "kept_keys_per_row_mean": 22.922,
+        "per_layer": [
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          }
+        ],
+        "formula": {
+          "softmax_masked": "macs = 2 · kept_pairs · d_head（kept_pairs = 该前向实际掩码的非零数；None 掩码 ⇒ 因果 T(T+1)/2 每行）",
+          "linear_attn_chunked": "macs = B·H·(2·T·dh² + 2·T·C·dh + 2·T·dh)（逐项对应 linear_attn_chunked 的 einsum；C = min(linear_chunk, T)）",
+          "per_token": "每层 macs / (B·T) 后对层求和；FLOPs = 2·MACs",
+          "executed_vs_equiv": "executed = 本条实装真正算掉的量：稠密 bool 掩码下掩码臂仍算整张因果矩阵 ⇒ executed 与全因果相同；equiv = 真稀疏核上应花的量"
+        }
+      },
+      "win16a8_s0": {
+        "n_layers": 12,
+        "n_heads": 8,
+        "d_head": 32,
+        "T": 256,
+        "batch": 4,
+        "equiv_macs_per_token": 11736.0,
+        "executed_macs_per_token": 65792.0,
+        "equiv_flops_per_token": 23472.0,
+        "executed_flops_per_token": 131584.0,
+        "kept_keys_per_row_mean": 22.922,
+        "per_layer": [
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          }
+        ],
+        "formula": {
+          "softmax_masked": "macs = 2 · kept_pairs · d_head（kept_pairs = 该前向实际掩码的非零数；None 掩码 ⇒ 因果 T(T+1)/2 每行）",
+          "linear_attn_chunked": "macs = B·H·(2·T·dh² + 2·T·C·dh + 2·T·dh)（逐项对应 linear_attn_chunked 的 einsum；C = min(linear_chunk, T)）",
+          "per_token": "每层 macs / (B·T) 后对层求和；FLOPs = 2·MACs",
+          "executed_vs_equiv": "executed = 本条实装真正算掉的量：稠密 bool 掩码下掩码臂仍算整张因果矩阵 ⇒ executed 与全因果相同；equiv = 真稀疏核上应花的量"
+        }
+      },
+      "win16a8_s1": {
+        "n_layers": 12,
+        "n_heads": 8,
+        "d_head": 32,
+        "T": 256,
+        "batch": 4,
+        "equiv_macs_per_token": 11736.0,
+        "executed_macs_per_token": 65792.0,
+        "equiv_flops_per_token": 23472.0,
+        "executed_flops_per_token": 131584.0,
+        "kept_keys_per_row_mean": 22.922,
+        "per_layer": [
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          },
+          {
+            "class": "Block",
+            "method": "softmax_masked",
+            "macs": 12017664,
+            "kept_pairs": 187776
+          }
+        ],
+        "formula": {
+          "softmax_masked": "macs = 2 · kept_pairs · d_head（kept_pairs = 该前向实际掩码的非零数；None 掩码 ⇒ 因果 T(T+1)/2 每行）",
+          "linear_attn_chunked": "macs = B·H·(2·T·dh² + 2·T·C·dh + 2·T·dh)（逐项对应 linear_attn_chunked 的 einsum；C = min(linear_chunk, T)）",
+          "per_token": "每层 macs / (B·T) 后对层求和；FLOPs = 2·MACs",
+          "executed_vs_equiv": "executed = 本条实装真正算掉的量：稠密 bool 掩码下掩码臂仍算整张因果矩阵 ⇒ executed 与全因果相同；equiv = 真稀疏核上应花的量"
+        }
+      }
+    }
+  },
+  "byte_axis_per_position": {
+    "formula": "12288 B/键 × k_eff（fp16、MHA、d=256 / L=12）",
+    "full": {
+      "k_eff": 256,
+      "bytes": 3145728
+    },
+    "win24a0": {
+      "k_eff": 24,
+      "bytes": 294912
+    },
+    "block8l4": {
+      "k_eff": 24,
+      "bytes": 294912
+    },
+    "win16a8": {
+      "k_eff": 24,
+      "bytes": 294912
+    },
+    "linear": {
+      "state_bytes_per_position": null,
+      "note": "线性核不保留 KV：流式推理每层每头一个 dh×dh 状态 + dh 归一化向量 ⇒ 每位置字节是**常数**（与 T 无关）。本实验不实测这项，不填数。"
+    }
+  }
+}
