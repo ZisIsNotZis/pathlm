@@ -1,0 +1,83 @@
+{
+  "experiment": "2690-dilated-density-k144-13m",
+  "cell": "axes/1-time/1.2.1-dilated",
+  "question": "T=2048 上把远处点的**数目**从 16 提到 128（近端窗口 16 不变，每行可见键数 32 → 144）能不能买到 0.014 bpc：远处信息在长 T 上「不值钱」还是「32 键太稀抓不住」",
+  "band_bpc": 0.014,
+  "band_note": "0.014 bpc 带只用于配对 bpc 读数且仅在「配对 Δ、≥5 窗口」下作参考门槛（harness/methodology.md §2）；跨 seed 同臂之差只作参考线，不与本带混用",
+  "mask": {
+    "local": 16,
+    "n_dilated": 128,
+    "rule": "keep[i,j] = (j <= i) ∧ ((i-j) < local ∨ j ∈ {round(t·(P-1)/(n_dil-1)) : t = 0..n_dil-1})，P = i-local+1；i+1 <= 144 的行退化为全因果 ⇒ 逐行可见键数 = min(144, i+1)（与 2689 的 dil32 是同一条规则，只是 n_dil 从 16 换成 128）",
+    "per_row_count": "min(144, i+1)",
+    "coverage_note": "T=2048 上远处点摊在前缀上 ⇒ 间距 ≈ 16；整行可见 144/2048 = 7.0%（对照臂 dil32 是 32/2048 = 1.6%）"
+  },
+  "recipe": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "mlp_mult": 4,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "dense": true,
+    "topology": "sequential",
+    "lr": 0.001,
+    "data": "data/enwik8_full.npz",
+    "seq_len": 2048,
+    "batch_size": 8,
+    "steps": 6000,
+    "tokens_per_arm": 98304000,
+    "tokens_note": "8×2048×6000 = 98,304,000 token/臂，与 2689 的 T=2048 点逐位相同 ⇒ 只差可见集与远处点数"
+  },
+  "arms": [
+    {
+      "name": "dil144-t2048-s0",
+      "kind": "dilated",
+      "seed": 0,
+      "trained": true,
+      "ckpt": "axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/runs/dil144-t2048-s0/model.pt",
+      "role": "实验臂：近端 16 + 128 个摊满前缀的远处点"
+    },
+    {
+      "name": "dil144-t2048-s1",
+      "kind": "dilated",
+      "seed": 1,
+      "trained": true,
+      "ckpt": "axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/runs/dil144-t2048-s1/model.pt",
+      "role": "实验臂的 seed 1"
+    },
+    {
+      "name": "dil32-t2048-s0",
+      "kind": "dilated",
+      "seed": 0,
+      "trained": false,
+      "ckpt": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/dil32-t2048-s0/model.pt",
+      "role": "对照：16 个远处点的同一族掩码（复用 2689，0 训练 token）"
+    },
+    {
+      "name": "dil32-t2048-s1",
+      "kind": "dilated",
+      "seed": 1,
+      "trained": false,
+      "ckpt": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/dil32-t2048-s1/model.pt",
+      "role": "对照的 seed 1（复用 2689）"
+    }
+  ],
+  "pairs": {
+    "s0": {"comparator": "dil32-t2048-s0", "arm": "dil144-t2048-s0"},
+    "s1": {"comparator": "dil32-t2048-s1", "arm": "dil144-t2048-s1"}
+  },
+  "eval": {
+    "n_batches": 20,
+    "batch_size": 16,
+    "window_seed": 2,
+    "paired": true,
+    "note": "与 2689 逐字段相同的配对 clean bpc 口径（20 批 × bs16、window_seed=2）；对照臂的读数是本实验在自己的仪器上重算的，不是抄 2689 的数字"
+  },
+  "verdict_rules": {
+    "main": "两 seed 的配对 Δ = bpc(16 个远处点) − bpc(128 个远处点) 同向且各自 >= band_bpc ⇒ 远处点数买得到质量（⇒ 2689 的固定 k 答案是『本 k 分辨不出』）；两 seed 同向且各自 <= −band ⇒ 加远处点反而更差；其余（含两 seed 都落带内）⇒ 加远处点买不到质量（⇒ 长 T 上远处信息在本尺度不值钱）",
+    "n_rule": "两个 seed 都跑；同向且都越带才按 n=2 入词，否则按该条规则如实报不可排序",
+    "stability": "gnorm_max < 100 且 grad_skips == 0 才入场，破门该臂作废（不硬判）"
+  },
+  "cost_note": "本臂每行可见键数是对照的 4.5 倍（144 vs 32）——这是**成本列**，不是判据：判据只问『多付这些键能不能买到超过 0.014 band 的质量』",
+  "seeds": [0, 1]
+}
