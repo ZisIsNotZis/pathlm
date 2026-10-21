@@ -31,12 +31,12 @@
 | 1 | 至少一个预算点（393,216 B）上，显式状态点与**同字节**纯窗口直接点比（不插值），差距与其判据带一并报出 | **PASS**（`2639`）：`experiments/2639-carry-perlayer-frontier-13m/results.json::key_readings.pl_minus_win32` 逐字段 `bpc_carrypl16_s0` 1.527595 / `bpc_win32_s0` 1.595823 / `same_bytes` true / `bytes` 393,216 / 差 +0.068228（41 σ_cell、4.9× 0.014 带）；同文件 `frontier.dominated_by.carrypl16_s0` = 空，`frontier.lower_envelope` = win16→win17→win18→win24→win32→**carrypl16_s0**→win128→full；`location.carrypl16_s0.recovery_ratio_r` = 0.8014（补回窗口 16→全量差距的 80.1%）；换评测窗口序（seed 7）`robustness_alt_window_seed.pl_minus_win32_alt_seed` = 0.071912 同号同量级 |
 | 2 | 该点的可检索性（质量之外的第二轴）有读数，且相对同窗口无通道臂的差及其 CI 报出 | **PASS**（`1.1.4.5` 的 `2661`）：`experiments/2661-implicit-vs-explicit-recall-13m/results.json::needle_leg.primary_hard_subset`（同索引硬子集 n=2699，`carrypl16_s0` 276 hits = 10.226%，Wilson [0.091389, 0.114262]；对 `win16_s0` +9.522pp，两比例差 CI [8.336, 10.708]）；同文件 `far_source_probe.carrypl16_s0.delta_bpc_far` = **+0.032965**，逐簇配对 CI [0.026986, 0.038727]（γ=0.99 版只剩 +0.007906、CI [0.00638, 0.009463]）；**并已扩到整条网格**：`experiments/2684-recall-across-budget-points-13m/results.json::per_arm`（固定远端集 n=1206，完备机制 6.4677%、九个纯窗臂 0.33%~0.91%，`contrasts` 九条差 +5.556~+6.136pp 且 CI 全不含 0） |
 | 3 | 「不被支配」的结论带**明确网格限定**（列出在这张网格上、禁止外推到未测档） | **PASS**（`2680` 报网格缺口；`2681` 把网格扩到 int8 下 k=60/k=64）：`2681-int8-equalbytes-frontier-13m/results.json::frontier.points`（22 点 / 13 臂）+ `frontier.dominating_points` = 空；最弱的同字节挑战者 `win60_s0@int8` 391,680 B（比 carry 少 1,536 B）/ 1.558523，差 **+0.030928**（18.6 σ_cell、2.2× 0.014 带）；多给纯窗 6.25% 字节（`win64_s0@int8` 417,792 B）仍差 +0.026280；禁外推面写在 `experiments/2681-int8-equalbytes-frontier-13m/analysis.md` §3 与 `experiments/2681-int8-equalbytes-frontier-13m/README.md` §9（carry 族 int8 档、int4 档、T ≫ 256） |
-| 4 | 量化档（int8 块标尺）与前沿同图；int4 档、carry 族 int8 档仍未叠 | **部分**：int8 档已叠两轮（`2680`：7 条纯窗臂 Δ +0.000010 ~ +0.000050，字节精确 ×0.53125；`2681`：两条新臂 Δ +0.000079 / +0.000066，CI95 不含 0 但 ≪ 0.014 带）；**int4 档未叠**，**carry 族 int8 档未叠**（`CarryChannelBlock` 不在量化前向的支持范围 ⇒ 要给 `CarryChannelBlock` 写量化前向，属新代码 > 1 个开关）。状态与读数以 `project.yaml::conclusion` 的「量化档叠图」段为唯一权威 |
+| 4 | 量化档（块标尺，G=32）与前沿同图：int8 与 **int4** 两档、纯窗族与 **carry 族**两族都在同一条「每位置部署字节」轴上 | **PASS**（`experiments/2685-quant-tiers-frontier-13m`）：给 `CarryChannelBlock` 新写一条只做推理期、不改训练的量化前向（KV 精度 × 状态精度两轴分开），47 点 = 9 纯窗臂 × {fp16,int8,int4} + 4 carry 臂 × {fp16, 只KV int8, int8 全档, 只KV int4, int4 全档}，0 训练 token。① 两道复现门 `results.json::equality_gate` 13/13（两轴都不量化时对上 `2681` 的 bpc_fp16，1e-6）+ 9/9（纯窗臂 int8 对上 bpc_int8）⇒ 新前向是已入库仪器的忠实复刻；② `byte_ledger` 用 `config.json::analytic` 的 G=32 与位宽解析出 12,288 / 6,528 / 3,456 B/位置/键，int8 = ×0.53125、int4 = ×0.28125；③ carry 的 int8 全档 393,216 → **208,896 B**、bpc 1.527616（只换 KV +0.000021 / 再换状态 −0.000001），同字节纯窗最强点 `win32@int8` 差 **+0.068241**，`dominated_by` = 空；④ carry 的 int4 全档 **110,592 B** / 1.532460（+0.004864，带内），同字节 `win32@int4` 差 **+0.093485**，`dominated_by` 亦为空；⑤ int4 档在纯窗 k=32/60/64/128 上越带（+0.0301 / +0.0371 / +0.0359 / +0.0198），已如实登记为代价行。状态与读数以 `project.yaml::conclusion` 的「量化档四腿齐」段为唯一权威 |
 | 5 | 与真实 DeltaNet / GLA 实现对齐 | **阻塞**：本仓无外部实现（`project.yaml::gaps` 第三条 F4），要补就得把外部代码 / 依赖引入本仓或新环境——那是依赖变更与外部执行，**需上一层裁决**；本轮未自选 |
 | 6 | `milestone.acceptance` 的字面第 1 条：前沿图上**每个**预算点有质量与可检索性两轴数字 | **PASS**（`2684`）：九个窗口预算点（16/17/18/24/32/60/64/128）+ 四个 carry 臂在**同一组**对每个臂都在窗外的固定子集上都有召回数字——`experiments/2684-recall-across-budget-points-13m/results.json::per_arm`（n=1206；完备机制 78 hits = 6.4677%、Wilson [5.21%, 8.00%]；纯窗臂 4–11 hits = 0.33%~0.91%），`contrasts` 九条差 +5.556~+6.136pp（pp = 百分点）且 95% CI 全不含 0，退化实现（单共享槽）0.83%/0.91% ⇒ 召回轴可归因到机制完备度。质量轴各自的家仍是 `2638` / `2639` / `2681`（本实验 0 个 bpc 读数） |
 
 **结论强度边界**：验收 1–3 都成立，但它们共同限定在 enwik8 / T=256 / 13M / 12k 步 / seed 0 这一格；
-「不被支配」只在这张（含 int8 同字节格的）网格上成立，不外推到 carry 族自己的 int8 档、int4 档与 T ≫ 256。
+「不被支配」只在这张（含 int8 / int4 两档、两族都在场的 47 点）网格上成立，不外推到 T ≫ 256、G≠32 的标尺方案与多 seed（除 `win16` / `carry16` 各两 seed 外均 n=1）。
 
 ## 4 工作包
 
@@ -44,7 +44,7 @@ owner 一律是轴 1 lead 派发的 worker，另配 fresh 复核者（`harness/S
 
 | 工作包 | 它要交付什么 | 验收 | 预算 | 状态 |
 |---|---|---|---|---|
-| **WP1 把状态放进质量-代价前沿** | 每位置等效字节 × clean bpc（+ 一个点的召回轴）的前沿图；显式状态点与同字节纯窗口直接点比 | 见 §3 验收 1–3 | 已被 `2638`/`2639`/`2680`/`2681` 消化；残余见 `gaps` | 已完成（残余项已转成 `gaps` 里的独立最小实验） |
+| **WP1 把状态放进质量-代价前沿** | 每位置等效字节 × clean bpc（+ 召回轴）的前沿图；显式状态点与同字节纯窗口直接点比 | 见 §3 验收 1–4 | 已被 `2638`/`2639`/`2680`/`2681`/`2684`/`2685` 消化；残余见 `gaps` | 已完成（残余项已转成 `gaps` 里的独立最小实验） |
 | **WP2 完整机制（逐层独立状态 + 内容写门 + 可选 γ）** | 把被单共享槽降级的机制修回与业界同量级，并给出质量读数 | 实现不发散 + 有质量读数；与业界基线对照未做 ⇒ 仍未完全达标 | 引擎改动已交付（E1），质量读数已交付（`2639`）；余项 = 归因拆分（2 臂 ≈60 min GPU） | 进行中 |
 | **WP3 撤销两处错误归因并重设任务需求** | 结论表述与证据强度匹配；任务侧「必须丢掉前缀才有区分力」作为判据前置写明 | 结论不再引用零样本 OOD 与「+0.2% 说明有用」这两处误读 | 写作 + 现有证据重读，无 GPU | 未开始 |
 
@@ -54,7 +54,8 @@ owner 一律是轴 1 lead 派发的 worker，另配 fresh 复核者（`harness/S
 - **前沿与量化叠图**：`axes/1-time/1.1.4.1-explicit-memory/experiments/2638-carry-frontier-13m/analysis.md`、
   `axes/1-time/1.1.4.1-explicit-memory/experiments/2639-carry-perlayer-frontier-13m/analysis.md`、
   `axes/1-time/1.1.4.1-explicit-memory/experiments/2680-quant-overlay-frontier-13m/analysis.md`、
-  `axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/analysis.md`。
+  `axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/analysis.md`、
+  `axes/1-time/1.1.4.1-explicit-memory/experiments/2685-quant-tiers-frontier-13m/analysis.md`（int4 档 + carry 族的 int8/int4 档）。
 - **召回轴**：`axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/analysis.md`（一个预算点）与 `axes/1-time/1.1.4.1-explicit-memory/experiments/2684-recall-across-budget-points-13m/analysis.md`（整条窗口网格）。
 - **机制实现（引擎侧）**：`.scratch/67-engine-changes/E1-CARRYCHANNEL.md`、`.scratch/67-engine-changes/REVIEW-E1.md`。
 - **实验索引**：`axes/1-time/1.1.4.1-explicit-memory/experiments/README.md`；权重清单见各实验目录 `MODEL.md`（权重不入库）。

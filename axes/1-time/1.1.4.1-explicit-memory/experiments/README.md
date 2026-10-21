@@ -34,6 +34,7 @@
 | [`2680-quant-overlay-frontier-13m`](2680-quant-overlay-frontier-13m/README.md) | 目录内 README | 把 KV 的 int8 块标尺档叠到同一张字节图上（0 训练 token） |
 | [`2681-int8-equalbytes-frontier-13m`](2681-int8-equalbytes-frontier-13m/README.md) | 目录内 README | 补 int8 下 k=60 / k=64 两条纯窗格，把支配判定扩到含该档的网格 |
 | [`2684-recall-across-budget-points-13m`](2684-recall-across-budget-points-13m/README.md) | 目录内 README | 窗外召回轴扩到整条窗口预算网格（13 臂、0 训练 token，完备机制 6.4677% 对九个纯窗臂 +5.56~+6.14pp） |
+| [`2685-quant-tiers-frontier-13m`](2685-quant-tiers-frontier-13m/README.md) | 目录内 README | int4 档 + carry 族的 int8 / int4 档叠进同一条每位置部署字节轴（47 格、0 训练 token；新写 `CarryChannelBlock` 的推理期量化前向，两道复现门 13/13 + 9/9） |
 
 > 旧格 M1-carrier-type 全部 23 个实验目录整目录迁入本目录（MAPPING §1；MAPPING §3 记 22 个判决目录，本目录含 README 与 23 个子目录，逐一可核）。
 > 本条与编号不唯一问题（2617×3、2624×2、2630×2）见 55-review M-16，作为缺口保留、未重命名（避免破坏既有复现锚点）。
