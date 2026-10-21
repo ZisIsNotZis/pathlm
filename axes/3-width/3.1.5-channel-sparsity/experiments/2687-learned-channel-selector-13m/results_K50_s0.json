@@ -1,0 +1,206 @@
+{
+  "arm": "K50",
+  "seed": 0,
+  "steps": 12000,
+  "keep_frac": 0.5,
+  "eval": {
+    "metric": "clean bpc（最终深度、无退出、序列级、越低越好）",
+    "n_batches": 20,
+    "batch_size": 16,
+    "eval_generator_seed": 2,
+    "bpc_by_depth": [
+      {
+        "depth": 0,
+        "bpc": 7.4389,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "bpc": 4.6301,
+        "acc": 0.1988
+      },
+      {
+        "depth": 2,
+        "bpc": 4.0791,
+        "acc": 0.2387
+      },
+      {
+        "depth": 3,
+        "bpc": 3.6067,
+        "acc": 0.3136
+      },
+      {
+        "depth": 4,
+        "bpc": 3.1208,
+        "acc": 0.3994
+      },
+      {
+        "depth": 5,
+        "bpc": 2.6203,
+        "acc": 0.4883
+      },
+      {
+        "depth": 6,
+        "bpc": 2.2753,
+        "acc": 0.5491
+      },
+      {
+        "depth": 7,
+        "bpc": 1.8166,
+        "acc": 0.6369
+      },
+      {
+        "depth": 8,
+        "bpc": 1.6295,
+        "acc": 0.6696
+      }
+    ],
+    "clean_bpc": 1.6295
+  },
+  "params": {
+    "params_total": 7044608,
+    "params_ffn": 4204544,
+    "params_selector": 81920,
+    "params_attn_and_rest": 2758144,
+    "params_trainable": 6962688
+  },
+  "cost": {
+    "d_model": 256,
+    "hidden": 1024,
+    "seq_len": 256,
+    "n_layers": 8,
+    "vocab": 206,
+    "k_active_channels": 512,
+    "ffn_macs_impl": 3145728,
+    "ffn_macs_contract": 2097152.0,
+    "selector_macs_per_token": 81920,
+    "params_total": 7044608,
+    "macs_per_token": {
+      "attention": 3145728,
+      "ffn": 3145728,
+      "selector": 81920,
+      "readout_tied": 52736,
+      "total": 6426112
+    },
+    "macs_total_rel_to_D": 0.859716,
+    "ffn_macs_rel_to_D": 0.75,
+    "note": "等效理论量：MACs/token（乘加），不含时间量。实现口径（primary）= lin1 全算 + lin2 按 k（K50/L50）/ 前缀切片（F50）；四臂同额选择器预算（D/K50/F50 不花但记账）；契约口径 = 按激活比例缩放 FFN 项。"
+  },
+  "selector_profile": {
+    "k_active_channels": 512,
+    "hidden": 1024,
+    "n_batches": 20,
+    "batch_size": 16,
+    "n_tokens_per_layer": [
+      81920,
+      81920,
+      81920,
+      81920,
+      81920,
+      81920,
+      81920,
+      81920
+    ],
+    "by_layer": [
+      {
+        "entropy_nats": 6.791673,
+        "entropy_over_logH": 0.979831,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1024
+      },
+      {
+        "entropy_nats": 6.805609,
+        "entropy_over_logH": 0.981842,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1018
+      },
+      {
+        "entropy_nats": 6.833485,
+        "entropy_over_logH": 0.985864,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1023
+      },
+      {
+        "entropy_nats": 6.833782,
+        "entropy_over_logH": 0.985906,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1019
+      },
+      {
+        "entropy_nats": 6.835761,
+        "entropy_over_logH": 0.986192,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1023
+      },
+      {
+        "entropy_nats": 6.840923,
+        "entropy_over_logH": 0.986937,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1024
+      },
+      {
+        "entropy_nats": 6.856658,
+        "entropy_over_logH": 0.989207,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1023
+      },
+      {
+        "entropy_nats": 6.873893,
+        "entropy_over_logH": 0.991693,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1024
+      }
+    ],
+    "mode_set_share": 0.0,
+    "mode_set_share_wilson_95ci": [
+      0.0,
+      6e-06
+    ],
+    "mode_set_share_cluster_bootstrap_95ci": [
+      0.0,
+      0.0
+    ],
+    "note": "entropy_over_logH 两端：完全坍缩 = log(k)/log(H)（k=512 时 0.9）、均匀随机 = 1.0；F50 构造性地落在坍缩端且 mode_set_share = 1.0。"
+  },
+  "load_balance": {
+    "aux_lb": null,
+    "note": "本臂无负载均衡项（aux_weight = 0）"
+  },
+  "causal": {
+    "max_abs_diff_before_j": 0.0,
+    "bitwise_equal_before_j": true
+  },
+  "reeval_bitwise_identical": true,
+  "checkpoint": {
+    "path": "axes/3-width/3.1.5-channel-sparsity/experiments/2644-channel-sparsity-13m/runs/K50-s0-12k/model.pt",
+    "sha256": "7c7fcd571f614de8e052d67f9780e0bded29c6ee4a5e426bc84ec0c48a4f4317",
+    "missing_keys": [
+      "blocks.0.mlp.score_a",
+      "blocks.0.mlp.score_b",
+      "blocks.1.mlp.score_a",
+      "blocks.1.mlp.score_b",
+      "blocks.2.mlp.score_a",
+      "blocks.2.mlp.score_b",
+      "blocks.3.mlp.score_a",
+      "blocks.3.mlp.score_b",
+      "blocks.4.mlp.score_a",
+      "blocks.4.mlp.score_b",
+      "blocks.5.mlp.score_a",
+      "blocks.5.mlp.score_b",
+      "blocks.6.mlp.score_a",
+      "blocks.6.mlp.score_b",
+      "blocks.7.mlp.score_a",
+      "blocks.7.mlp.score_b"
+    ],
+    "unexpected_keys": []
+  },
+  "code_hash_run_py": "1c30bb6e53910dabd3e9615df3b840d828b0ef678c19abb4d3baa854c95c570b"
+}
