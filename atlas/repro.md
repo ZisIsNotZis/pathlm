@@ -21,10 +21,10 @@
 
 ## 汇总（生成时统计）
 
-- 规模：实验 **134** 个（`axes/**/experiments/*`），run 条目 **451** 个（352 个是 run 子目录或前缀组，99 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 104 个）。
+- 规模：实验 **134** 个（`axes/**/experiments/*`），run 条目 **455** 个（355 个是 run 子目录或前缀组，100 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 105 个）。
 
-- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**99** 个、`not_reproducible`（不可重建）**35** 个。
-- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 100 个。
+- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**100** 个、`not_reproducible`（不可重建）**34** 个。
+- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 101 个。
 
 ## 这个克隆重建不了什么
 
@@ -59,7 +59,7 @@
 | [2679-anchor-eval-ablation-13m](../axes/1-time/1.1.1-hard-window/experiments/2679-anchor-eval-ablation-13m/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.1-hard-window/experiments/2679-anchor-eval-ablation-13m --require`（README.md 的复现小节） | `budget.gpu_wall_budget_min` = 20 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2681-anchor-recall-seeds23-13m](../axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.1-hard-window/experiments/2681-anchor-recall-seeds23-13m --require`（README.md 的复现小节） | `liveness.win16a_s0.train_wall_minutes` = 13.07 | `rebuildable_only` | `make_config.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2682-window-kcurve-13m](../axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | ✓ | ✓ | 11 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m --require`（README.md 的复现小节） | `cost.wall_seconds` = 79.1 | `rebuildable_only` | `realtext_probe.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
-| [2686-window-kcurve-seed2-13m](../axes/1-time/1.1.1-hard-window/experiments/2686-window-kcurve-seed2-13m/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | — | — | 0 | — | `python3 tools/prereg_bind.py axes/1-time/1.1.1-hard-window/experiments/2686-window-kcurve-seed2-13m`（README.md 的复现小节） | — | `not_reproducible` | 有入口脚本 `run.py`，但仓内无 `results*.json` |
+| [2686-window-kcurve-seed2-13m](../axes/1-time/1.1.1-hard-window/experiments/2686-window-kcurve-seed2-13m/) | [1.1.1-hard-window](../axes/1-time/1.1.1-hard-window/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.1.1-hard-window/experiments/2686-window-kcurve-seed2-13m`（README.md 的复现小节） | `cost.wall_seconds` = 25.4 | `rebuildable_only` | `realtext_probe.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2507-x1-x3-distance-penalty](../axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty/) | [1.1.2-soft-decay](../axes/1-time/1.1.2-soft-decay/project.yaml) | ✓ | — | — | 0 | — | `命令未在仓内声明` | — | `not_reproducible` | 仓内无入口脚本（只有 README.md） |
 | [2503-engine-m1-extensions](../axes/1-time/1.1.4.1-explicit-memory/experiments/2503-engine-m1-extensions/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | — | — | 0 | — | `命令未在仓内声明` | — | `not_reproducible` | 仓内无入口脚本（只有 README.md） |
 | [2616-window192-trained-13m](../axes/1-time/1.1.4.1-explicit-memory/experiments/2616-window192-trained-13m/) | [1.1.4.1-explicit-memory](../axes/1-time/1.1.4.1-explicit-memory/project.yaml) | ✓ | ✓ | ✓ | 8 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `config.trained_checkpoint.train_wall_minutes` = 8.23 | `rebuildable_only` | `mutate.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
@@ -187,7 +187,6 @@
 |---|---|---|
 | [2505-m1-followups](../axes/1-time/1.1.1-hard-window/experiments/2505-m1-followups/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2625-longT-stability](../axes/1-time/1.1.1-hard-window/experiments/2625-longT-stability/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `run.py`，但仓内无 `results*.json` |
-| [2686-window-kcurve-seed2-13m](../axes/1-time/1.1.1-hard-window/experiments/2686-window-kcurve-seed2-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `run.py`，但仓内无 `results*.json` |
 | [2507-x1-x3-distance-penalty](../axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2503-engine-m1-extensions](../axes/1-time/1.1.4.1-explicit-memory/experiments/2503-engine-m1-extensions/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2617-design-rightcarry](../axes/1-time/1.1.4.1-explicit-memory/experiments/2617-design-rightcarry/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 DESIGN.md） |
@@ -299,7 +298,10 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2682-window-kcurve-13m | train/win64_s1 | ✓ | ✓ | 11999 | — | — |
 | 2682-window-kcurve-13m | train/win64a_s0 | ✓ | ✓ | 11999 | — | — |
 | 2682-window-kcurve-13m | train/win64a_s1 | ✓ | ✓ | 11999 | — | — |
-| [2686-window-kcurve-seed2-13m](../axes/1-time/1.1.1-hard-window/experiments/2686-window-kcurve-seed2-13m/) | — | — | — | — | — | 仓内没有 run 产物 |
+| 2686-window-kcurve-seed2-13m | . | ✓ | — | — | — | — |
+| 2686-window-kcurve-seed2-13m | train/win128_s2 | ✓ | ✓ | 11999 | — | — |
+| 2686-window-kcurve-seed2-13m | train/win64_s2 | ✓ | ✓ | 11999 | — | — |
+| 2686-window-kcurve-seed2-13m | train/win64a_s2 | ✓ | ✓ | 11999 | — | — |
 | [2507-x1-x3-distance-penalty](../axes/1-time/1.1.2-soft-decay/experiments/2507-x1-x3-distance-penalty/) | — | — | — | — | — | 仓内没有 run 产物 |
 | [2503-engine-m1-extensions](../axes/1-time/1.1.4.1-explicit-memory/experiments/2503-engine-m1-extensions/) | — | — | — | — | — | 仓内没有 run 产物 |
 | 2616-window192-trained-13m | . | ✓ | — | — | — | — |
