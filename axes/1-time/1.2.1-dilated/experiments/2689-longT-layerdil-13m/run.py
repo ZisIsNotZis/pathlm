@@ -496,7 +496,7 @@ def main() -> None:
     by_T = {"256": per_T("c1_t256"), "1024": per_T("c1_t1024"), "2048": per_T("c1_t2048")}
 
     # 「分辨不出（仪器侧）」出口：Δ 落带内但 1.96·SE > 带
-    instrument_limited = {T: (all(v["band_class"] == "in_band" for v in by_T[T].get("band_classes", {}).values())
+    instrument_limited = {T: (all(c == "in_band" for c in by_T[T].get("band_classes", {}).values())
                               and by_T[T].get("max_two_se", 0) > BAND)
                           for T in by_T if by_T[T].get("deltas")}
 
