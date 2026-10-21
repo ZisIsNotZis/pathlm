@@ -873,6 +873,9 @@ def aggregate(args, write: bool = True) -> dict:
         "verdict": verdict,
         "arms_declared": list(ARMS),
         "code_hash_run_py": sha256_file(os.path.join(HERE, "run.py")),
+        # 代码哈希也在**实验根的汇总读数**里记一份（3.1.5 起的约定）：
+        # `tools/prereg_bind.py --check` 对每份 `results*.json` 都核这一项。
+        "code": {"run.py": sha256_file(os.path.join(HERE, "run.py"))},
     }
     if write:
         with open(os.path.join(HERE, "results.json"), "w") as f:
@@ -1088,6 +1091,8 @@ def aggregate_all(args) -> dict:
                          "reference_arm": b["reference_arm"]}
                      for s, b in per_seed.items()},
         "cross_seed": cross,
+        "code_hash_run_py": sha256_file(os.path.join(HERE, "run.py")),
+        "code": {"run.py": sha256_file(os.path.join(HERE, "run.py"))},
     }
     with open(os.path.join(HERE, "results.json"), "w") as f:
         json.dump(out, f, indent=2, ensure_ascii=False)
