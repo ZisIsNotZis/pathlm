@@ -7,8 +7,6 @@
     "delta_bpc": "comparator_minus_arm",
     "deltas": "comparator_minus_arm",
     "sd_of_paired_delta": "comparator_minus_arm",
-    "min_delta": "comparator_minus_arm",
-    "max_delta": "comparator_minus_arm",
     "frac_batches_delta_gt_0": "comparator_minus_arm"
   },
   "delta_direction_note": "Δ = bpc(16 个远处点) − bpc(128 个远处点)（对照 − 实验）⇒ 正 = 远处点多的那臂更好",
@@ -50,48 +48,48 @@
   },
   "per_batch_bpc": {
     "dil144-t2048-s0": [
-      1.82384,
-      1.78544,
-      1.82169,
-      1.83462,
-      1.89172,
-      1.81342,
-      1.74204,
-      1.80783,
-      1.88399,
-      1.78768,
-      1.83417,
-      1.78501,
-      1.82264,
-      1.89972,
-      1.86393,
-      1.7589,
-      1.86128,
-      1.83511,
-      1.73117,
-      1.81593
+      1.71437,
+      1.68286,
+      1.68828,
+      1.71593,
+      1.77662,
+      1.70679,
+      1.61693,
+      1.6935,
+      1.7742,
+      1.68324,
+      1.73113,
+      1.65081,
+      1.71578,
+      1.78577,
+      1.75323,
+      1.6485,
+      1.73104,
+      1.72086,
+      1.59905,
+      1.69215
     ],
     "dil144-t2048-s1": [
-      1.85532,
-      1.81015,
-      1.84933,
-      1.85888,
-      1.91559,
-      1.8472,
-      1.7603,
-      1.84818,
-      1.92983,
-      1.82122,
-      1.87085,
-      1.82034,
-      1.85452,
-      1.93469,
-      1.89444,
-      1.79799,
-      1.88003,
-      1.85348,
-      1.74651,
-      1.82393
+      1.85724,
+      1.81016,
+      1.84079,
+      1.85576,
+      1.91544,
+      1.84006,
+      1.76952,
+      1.83903,
+      1.9174,
+      1.82026,
+      1.86268,
+      1.79997,
+      1.85339,
+      1.93217,
+      1.89231,
+      1.78294,
+      1.88326,
+      1.85081,
+      1.73985,
+      1.82746
     ],
     "dil32-t2048-s0": [
       1.73298,
@@ -139,8 +137,8 @@
     ]
   },
   "mean_bpc": {
-    "dil144-t2048-s0": 1.82001,
-    "dil144-t2048-s1": 1.84864,
+    "dil144-t2048-s0": 1.70405,
+    "dil144-t2048-s1": 1.84452,
     "dil32-t2048-s0": 1.72753,
     "dil32-t2048-s1": 1.733
   },
@@ -154,33 +152,33 @@
   "criteria": {
     "c1_density": {
       "note": "Δ = bpc(16 个远处点的臂) − bpc(128 个远处点的臂)，正 = 远处点多更好；0.014 配对带；每行可见键数 32 → 144 是成本列、不进判词",
-      "verdict": "加远处点反而更差（两 seed 同向且各自越负带）",
+      "verdict": "两 seed 不同向 ⇒ 本 n 下不可排序（不解释成噪声、不取平均掩盖）",
       "pairs": {
         "s0": {
           "comparator": "dil32-t2048-s0",
           "arm": "dil144-t2048-s0",
           "n_batches": 20,
-          "delta_bpc": -0.09248,
-          "sd_of_paired_delta": 0.01929,
-          "se_of_mean": 0.00431,
-          "two_se": 0.00845,
-          "t_stat": -21.44,
-          "frac_batches_delta_gt_0": 0.0,
-          "n_req_for_band": 8,
-          "band_class": "beyond_negative",
+          "delta_bpc": 0.02347,
+          "sd_of_paired_delta": 0.021,
+          "se_of_mean": 0.0047,
+          "two_se": 0.0092,
+          "t_stat": 5.0,
+          "frac_batches_delta_gt_0": 0.95,
+          "n_req_for_band": 9,
+          "band_class": "beyond_positive",
           "params_equal": true
         },
         "s1": {
           "comparator": "dil32-t2048-s1",
           "arm": "dil144-t2048-s1",
           "n_batches": 20,
-          "delta_bpc": -0.11563,
-          "sd_of_paired_delta": 0.02457,
-          "se_of_mean": 0.00549,
-          "two_se": 0.01077,
-          "t_stat": -21.05,
+          "delta_bpc": -0.11152,
+          "sd_of_paired_delta": 0.02151,
+          "se_of_mean": 0.00481,
+          "two_se": 0.00943,
+          "t_stat": -23.19,
           "frac_batches_delta_gt_0": 0.0,
-          "n_req_for_band": 12,
+          "n_req_for_band": 10,
           "band_class": "beyond_negative",
           "params_equal": true
         }
@@ -215,34 +213,34 @@
     "c4_stability_gate": {
       "threshold": 100,
       "arms_over_threshold": [
-        "dil144-t2048-s0"
+        "dil144-t2048-s1"
       ],
       "note": "gnorm_max < 100 且 grad_skips == 0 才入场"
     }
   },
   "main_verdict": {
-    "density": "加远处点反而更差（两 seed 同向且各自越负带）",
+    "density": "两 seed 不同向 ⇒ 本 n 下不可排序（不解释成噪声、不取平均掩盖）",
     "n_seed": 2,
     "band_classes": [
-      "beyond_negative",
+      "beyond_positive",
       "beyond_negative"
     ],
     "deltas": [
-      -0.09248,
-      -0.11563
+      0.02347,
+      -0.11152
     ]
   },
   "train_declaration": {
     "dil144-t2048-s0": {
-      "wall_minutes": 4.21,
+      "wall_minutes": 4.2,
       "peak_gpu_mem_mb": 5871.7,
-      "gnorm_max": 495.5,
+      "gnorm_max": 23.5,
       "source": "axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/runs/dil144-t2048-s0/results.json"
     },
     "dil144-t2048-s1": {
-      "wall_minutes": 4.21,
+      "wall_minutes": 4.43,
       "peak_gpu_mem_mb": 5871.7,
-      "gnorm_max": 74.64,
+      "gnorm_max": 524.79,
       "source": "axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/runs/dil144-t2048-s1/results.json"
     },
     "dil32-t2048-s0": {
@@ -263,9 +261,9 @@
     "note": "训练墙钟与峰值显存逐臂申报，不进判据（harness/methodology.md §3）"
   },
   "code_hashes": {
-    "axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/run.py": "da209d1a449e64af3a306f0989c58104b1e3e0df81a8b7e9e4db79e680b00903",
+    "axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/run.py": "69a3ee8552b67b211c3b8ad066920ed307b8ef6c22222d61743518821952c6ff",
     "axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/config.json": "119e4bf8a8badf2b31b0bf43e29bc1673025bf065de43a0ea22bebdc6085dbe6",
     "axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/train_arms.sh": "531012c6670ddd4b0571070318320fccb8f6a8f3dbaa512d2cc764578f03e6b6"
   },
-  "code_hash_run_py": "da209d1a449e64af3a306f0989c58104b1e3e0df81a8b7e9e4db79e680b00903"
+  "code_hash_run_py": "69a3ee8552b67b211c3b8ad066920ed307b8ef6c22222d61743518821952c6ff"
 }

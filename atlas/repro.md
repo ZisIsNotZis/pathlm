@@ -21,10 +21,10 @@
 
 ## 汇总（生成时统计）
 
-- 规模：实验 **136** 个（`axes/**/experiments/*`），run 条目 **480** 个（377 个是 run 子目录或前缀组，103 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 108 个）。
+- 规模：实验 **138** 个（`axes/**/experiments/*`），run 条目 **491** 个（386 个是 run 子目录或前缀组，105 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 110 个）。
 
-- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**103** 个、`not_reproducible`（不可重建）**33** 个。
-- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 104 个。
+- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**105** 个、`not_reproducible`（不可重建）**33** 个。
+- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 106 个。
 
 ## 这个克隆重建不了什么
 
@@ -98,6 +98,8 @@
 | [2623-window-on-longrange-13m](../axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2623-window-on-longrange-13m/) | [1.1.4.5-implicit-vs-explicit](../axes/1-time/1.1.4.5-implicit-vs-explicit/project.yaml) | ✓ | ✓ | ✓ | 6 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `train_results.full.wall_minutes` = 13.01 | `rebuildable_only` | `reconcile_numbers.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2661-implicit-vs-explicit-recall-13m](../axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/) | [1.1.4.5-implicit-vs-explicit](../axes/1-time/1.1.4.5-implicit-vs-explicit/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `train_meta.win16_s0.wall_minutes` = 11.94 | `rebuildable_only` | `realtext_probe.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`）；代码引用不入库的产物：`2639/train/pl16d/results.json`（克隆里不存在，需先重训/自取） |
 | [2678-dilated-vs-window-13m](../axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m/) | [1.2.1-dilated](../axes/1-time/1.2.1-dilated/project.yaml) | ✓ | ✓ | ✓ | 7 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m`（README.md 的复现小节） | `synth_recall.per_seed.s0.arms.win32.wall_minutes` = 6.48 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
+| [2689-longT-layerdil-13m](../axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/) | [1.2.1-dilated](../axes/1-time/1.2.1-dilated/project.yaml) | ✓ | — | ✓ | 8 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m`（README.md 的复现小节） | `train_declaration.win32.wall_minutes` = 7.14 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
+| [2690-dilated-density-k144-13m](../axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/) | [1.2.1-dilated](../axes/1-time/1.2.1-dilated/project.yaml) | ✓ | — | ✓ | 3 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m`（README.md 的复现小节） | `train_declaration.dil144-t2048-s0.wall_minutes` = 4.2 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2616-linear-attention-13m](../axes/1-time/1.2.2-block-sparse/experiments/2616-linear-attention-13m/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.full.wall_min` = 5.75 | `rebuildable_only` | `paired_eval.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2637-linear-attn-quality](../axes/1-time/1.2.2-block-sparse/experiments/2637-linear-attn-quality/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.full-256-lin.wall_min` = 3.67 | `rebuildable_only` | `linear_driver.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2677-local-global-vs-band-13m](../axes/1-time/1.2.2-block-sparse/experiments/2677-local-global-vs-band-13m/) | [1.2.2-block-sparse](../axes/1-time/1.2.2-block-sparse/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `bash train_arms.sh`（README.md 的复现小节） | `train_declaration.win16a8_s0.wall_minutes` = 13.07 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
@@ -496,6 +498,17 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2678-dilated-vs-window-13m | runs/synth-dil32-s1 | ✓ | ✓ | 11999 | — | — |
 | 2678-dilated-vs-window-13m | runs/synth-win32-s0 | ✓ | ✓ | 11999 | — | — |
 | 2678-dilated-vs-window-13m | runs/synth-win32-s1 | ✓ | ✓ | 11999 | — | — |
+| 2689-longT-layerdil-13m | . | ✓ | — | — | — | — |
+| 2689-longT-layerdil-13m | runs/dil32-t1024-s0 | ✓ | ✓ | 5999 | — | — |
+| 2689-longT-layerdil-13m | runs/dil32-t2048-s0 | ✓ | ✓ | 5999 | — | — |
+| 2689-longT-layerdil-13m | runs/dil32-t2048-s1 | ✓ | ✓ | 5999 | — | — |
+| 2689-longT-layerdil-13m | runs/lad32-t2048-s0 | ✓ | ✓ | 5999 | — | — |
+| 2689-longT-layerdil-13m | runs/win32-t1024-s0 | ✓ | ✓ | 5999 | — | — |
+| 2689-longT-layerdil-13m | runs/win32-t2048-s0 | ✓ | ✓ | 5999 | — | — |
+| 2689-longT-layerdil-13m | runs/win32-t2048-s1 | ✓ | ✓ | 5999 | — | — |
+| 2690-dilated-density-k144-13m | . | ✓ | — | — | — | — |
+| 2690-dilated-density-k144-13m | runs/dil144-t2048-s0 | ✓ | ✓ | 5999 | — | — |
+| 2690-dilated-density-k144-13m | runs/dil144-t2048-s1 | ✓ | ✓ | 5999 | — | — |
 | 2616-linear-attention-13m | . | ✓ | — | — | — | — |
 | 2616-linear-attention-13m | full-12k-s0 | — | ✓ | 11999 | — | — |
 | 2616-linear-attention-13m | linear-12k-s0-attempt3 | — | — | 400 | — | — |

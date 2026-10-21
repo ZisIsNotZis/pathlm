@@ -23,11 +23,14 @@
 含 n≥2；三臂的每 token 可见键数严格相等；dilated 相对同宽硬窗口的长程召回可排序提升或无提升，
 二选一明确；结论不越尺度外推；口径按 matched-step 报。
 
-**当前状态**：唯一之家是 `project.yaml::status` 与 `::milestone.acceptance` 的逐条证据，本文件不复制。
-里程碑的两条腿（真实文本的质量腿、需要远处信息时的机制腿）在 T=256 上已各有落盘证据（`2678`）；
-本轮把质量腿推到长 T（`2689`）并加了逐层递增 dilation（同实验的机制腿）与远处点密度的支持读数
-（`2690`）。**独立复核**：本格的复核人 `axis1-reviewer`（fresh 上下文，非本项 writer）排在执行之后，
-按 `harness/SCHEMA.md` §14/§14b 只看落盘产物。
+**当前状态**：唯一之家是 `project.yaml::status` 与 `::milestone.acceptance_evidence` 的逐条证据，本文件不复制。
+里程碑的两条腿（真实文本的质量腿、需要远处信息时的机制腿）在 T=256 上已各有落盘证据（`2678`）；本轮把质量腿推到长 T
+（`2689`）并加了逐层递增 dilation（同实验的机制腿）与远处点密度的支持读数（`2690`）。三条已交付、一条**没答**：
+长 T 腿判出「效应随 T 变号」（T=2048 上摊开更差，n=2）、逐层递增腿判出「分布方式值钱」（n=1）、
+密度腿（`2690`）坐在稳定边缘上（三次训练-评测六个臂次里只有两次过预登记入场门，且这两次过门分属不同 seed、方向相反）⇒ **未取得可用读数**，
+该岔口仍开着、登记在 `project.yaml::gaps`。判词的方向与「与 `2678` 是尺度依赖不是矛盾」的写法见 `project.yaml::conclusion`。
+**独立复核**：本格的复核人 `axis1-reviewer`（fresh 上下文，非本项 writer）排在执行之后，按 `harness/SCHEMA.md` §14/§14b
+只看落盘产物；本轮尚未复核。
 
 ## 3 工作包（owner / 验收 / 预算 / 状态）
 
@@ -75,14 +78,16 @@
 | **长 T 上有没有质量增量（本轮核心）** | `experiments/2689-longT-layerdil-13m/analysis.md` §1；键路径 `results.json::criteria.c1_quality_by_T`、`::main_verdict` |
 | **逐层递增 dilation 相对平铺** | 同上 `analysis.md` §2；键路径 `results.json::criteria.c2_layered_arm` |
 | **远处键的边际价值随 T 的走向** | 同上 `analysis.md` §3；键路径 `results.json::criteria.c3_far_key_dependence` |
-| **远处点加密到 128 能不能买到质量** | `experiments/2690-dilated-density-k144-13m/analysis.md` §1；键路径 `results.json::criteria.c1_density` |
+| **远处点加密到 128 能不能买到质量（本轮未答）** | `experiments/2690-dilated-density-k144-13m/analysis.md` §0/§2；键路径 `results.json::criteria.c1_density`（机械判词，**不作结论**）、`::criteria.c4_stability_gate.arms_over_threshold`（破门名单） |
 | **结构 / 参数量 / 等值门 / 稳定性前置** | `2689` 与 `2690` 的 `results.json::structure_checks`、`::criteria.c4_must_not_change`、`::criteria.c5_reuse_equivalence`、`::criteria.c6_stability_gate` |
 | 可引用的代价事实（进 `atlas/cost-table.md` 的那几行） | `project.yaml::cost_rows` |
 
 ## 6 派发与收口纪律（本轮的检查单）
 
-- 判据线与常数在**训练之前**绑定：`2690` 的绑定在 `2689` 的任何读数之前，`2689` 的绑定在它自己的
-  任何读数之前（两份 `prereg_binding.json::readings_existing_at_bind` 都为空）。
+- 判据线与常数在**训练之前**绑定：`2690` 的绑定在 `2689` 的任何读数之前，`2689` 的第一次绑定
+  （14:02:34）在它自己的任何读数之前。此后为修三处**汇总阶段**缺陷（`run.py` 是契约文件）各自重绑过一次，
+  重绑把当时已存在的读数记进 `readings_existing_at_bind`（定序不可判），并要求**全部读数重产出**才进判据；
+  现存读数因此全部由最终绑定代码产出（`prereg_bind --check`：与绑定不符 0）。
 - 每一份 `results*.json` 都过 `tools/run_provenance.write_results`（自带 `code_hash_run_py` /
   `code_hashes`），且落盘时间晚于绑定时间。
 - 单臂 timeout 20 min、逐臂取/放 GPU 锁、臂间 ≥60 s；掉臂如实登记「未跑」，不当负结论。
