@@ -421,7 +421,7 @@ def scorer_move(model: SelectorModel) -> dict:
         d = 0.0
         for name in ("score_a", "score_b"):
             cur = getattr(f, name).detach().float()
-            init = f._init_ref[name].float()
+            init = f._init_ref[name].float().to(cur.device)   # 快照是构造时刻的 CPU 张量
             d += float(((cur - init) ** 2).sum())
             den += float((init ** 2).sum())
         num += d
