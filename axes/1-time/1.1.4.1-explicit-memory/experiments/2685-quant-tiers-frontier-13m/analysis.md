@@ -119,7 +119,7 @@
 | `python3 tools/inventory_runs.py --check`（干净工作树） | rc=0 | 本项收进实验级汇总行（0 run 子目录 ⇒ 无独立 run 行） |
 | `python3 tools/build_catalog.py --check` / `check_meta_layer.py --check` / `check_ledger.py --check`（干净工作树） | 三条全 rc=0 | 本项没动元级文档 |
 | `python3 -m pytest tests/ -q`（干净工作树） | 977 passed / 10 failed / 2 xfailed | 失败逐条归因：**已登记的预存失败 1 条**（`test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`，6-predict 轴的 4 个 `mutate.py`）；**1.2.2 owner 的已入库未完成状态 9 条**（`test_attribution_direction.py` 3 条——HEAD 的 `attribution.py` 还缺该 owner 正在写的符号；`test_docs_refs.py` 5 条——同一处悬空键锚点让「全树零违规」那一条变红，另有 4 条注入式用例跟着级联）。**没有一条属本项** |
-| `python3 -m pytest tests/ -q`（主工作树） | 980 passed / 9 failed | 与上一行同一批 owner 的差异：主工作树上他们的未提交 `attribution.py` 修好了那 3 条，未提交的 `1.2.2/project.yaml` 又让 `test_cost_table.py` 2 条变红；本项自有单测 6 passed |
+| `python3 -m pytest tests/ -q`（主工作树） | 980 passed / 9 failed | 与上一行同一批 owner 的差异：主工作树上他们的未提交 `attribution.py` 修好了那 3 条，1.2.2 未提交的 `project.yaml` 又让 `test_cost_table.py` 2 条变红；本项自有单测 6 passed |
 
 **判据线「绑定后未改」的机检证据**：`prereg_binding.json::contract_files` 四件 sha256 与当前文件
 逐个相同（`README.md` `a04d2cdd…`、`config.json` `42a86cc0…`、`run.py` `ad2b0d80…`、
