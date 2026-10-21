@@ -1,0 +1,193 @@
+{
+  "experiment": "2689-longT-layerdil-13m",
+  "cell": "axes/1-time/1.2.1-dilated",
+  "question": "「真实文本上把同 k 个可见位置摊开（空洞）不换质量」这条判决在长 T 上还成立吗（长 T 腿）；若摊开的位置**逐层**推到更远（逐层递增 dilation），长 T 上会不会开始换到质量（机制腿）",
+  "k": 32,
+  "band_bpc": 0.014,
+  "band_note": "0.014 bpc 带只用于配对 bpc 读数且仅在「配对 Δ、≥5 窗口」下作参考门槛（harness/methodology.md §2）；本实验不用率类指标、不跨量纲借用；跨 seed 同臂之差只作参考线，不与本带混用",
+  "mask": {
+    "local": 16,
+    "n_dilated": 16,
+    "rule_flat": "keep[i,j] = (j <= i) ∧ ((i-j) < local ∨ j ∈ {round(t·(P-1)/(n_dil-1)) : t = 0..n_dil-1})，P = i-local+1；i+1 <= k 的行退化为全因果（与 2678 的 dil32 同一条规则，逐行计数 = min(k, i+1)）",
+    "rule_layered": "layer ℓ：span_ℓ = min(P-1, s_ℓ·(n_dil-1))，far 位置 = {i-local-round(t·span_ℓ/(n_dil-1)) : t = 0..n_dil-1}，s_ℓ = 2^ℓ；i+1 <= k 的行退化为全因果 ⇒ far 点与本地窗口合起来仍是 min(k, i+1) 个键",
+    "rule_layered_note": "s_ℓ = 1 的那一层（第 0 层）其 far 点 = 紧邻本地窗口外的 15 个连续位置 ⇒ 该层掩码与 win32 **逐位相同**；s_ℓ 越大，far 点摊得越远 ⇒ 每层的可达距离沿深度单调不减（结构性判据 c5b）",
+    "layer_strides": [1, 2, 4, 8, 16, 32, 64, 128],
+    "per_row_count": "min(32, i+1)（三族掩码逐行相等，且 ⊆ 因果）"
+  },
+  "recipe": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "mlp_mult": 4,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "dense": true,
+    "topology": "sequential",
+    "lr": 0.001,
+    "data": "data/enwik8_full.npz",
+    "tokens_per_arm": 98304000,
+    "tokens_note": "每个 T 点都跑 98,304,000 token/臂（T=256 是 32×256×12000、T=1024 是 16×1024×6000、T=2048 是 8×2048×6000）⇒ 跨 T 的 token 预算相等，T 与步数是同一个旋钮的两面"
+  },
+  "points": {
+    "256": {
+      "seq_len": 256,
+      "batch_size": 32,
+      "steps": 12000,
+      "source": "reuse",
+      "source_note": "两臂的 checkpoint 复用 2676（win32 / win32_s1）与 2678（dil32 / dil32_s1）；本实验在该 T 上只跑评测，并做等值门（c6）复现 2678 的逐批 bpc"
+    },
+    "1024": {
+      "seq_len": 1024,
+      "batch_size": 16,
+      "steps": 6000,
+      "source": "train"
+    },
+    "2048": {
+      "seq_len": 2048,
+      "batch_size": 8,
+      "steps": 6000,
+      "source": "train"
+    }
+  },
+  "arms": [
+    {
+      "name": "win32",
+      "kind": "window",
+      "seq": 256,
+      "seed": 0,
+      "trained": false,
+      "ckpt": "axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/win32/model.pt",
+      "role": "T=256 对照（连续窗口 32，复用 2676）"
+    },
+    {
+      "name": "win32_s1",
+      "kind": "window",
+      "seq": 256,
+      "seed": 1,
+      "trained": false,
+      "ckpt": "axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/win32_s1/model.pt",
+      "role": "T=256 对照的 seed 1（复用 2676）"
+    },
+    {
+      "name": "dil32",
+      "kind": "dilated",
+      "seq": 256,
+      "seed": 0,
+      "trained": false,
+      "ckpt": "axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m/runs/dil32-s0/model.pt",
+      "role": "T=256 实验臂（近端 16 + 16 个摊满前缀的空洞点，复用 2678）"
+    },
+    {
+      "name": "dil32_s1",
+      "kind": "dilated",
+      "seq": 256,
+      "seed": 1,
+      "trained": false,
+      "ckpt": "axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m/runs/dil32-s1/model.pt",
+      "role": "T=256 实验臂的 seed 1（复用 2678）"
+    },
+    {
+      "name": "win32-t1024-s0",
+      "kind": "window",
+      "seq": 1024,
+      "seed": 0,
+      "trained": true,
+      "ckpt": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/win32-t1024-s0/model.pt",
+      "role": "T=1024 对照（连续窗口 32）"
+    },
+    {
+      "name": "dil32-t1024-s0",
+      "kind": "dilated",
+      "seq": 1024,
+      "seed": 0,
+      "trained": true,
+      "ckpt": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/dil32-t1024-s0/model.pt",
+      "role": "T=1024 实验臂（同 32 键，摊满前缀）"
+    },
+    {
+      "name": "win32-t2048-s0",
+      "kind": "window",
+      "seq": 2048,
+      "seed": 0,
+      "trained": true,
+      "ckpt": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/win32-t2048-s0/model.pt",
+      "role": "T=2048 对照（连续窗口 32）· 核心判据"
+    },
+    {
+      "name": "dil32-t2048-s0",
+      "kind": "dilated",
+      "seq": 2048,
+      "seed": 0,
+      "trained": true,
+      "ckpt": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/dil32-t2048-s0/model.pt",
+      "role": "T=2048 实验臂（同 32 键，摊满前缀）· 核心判据"
+    },
+    {
+      "name": "win32-t2048-s1",
+      "kind": "window",
+      "seq": 2048,
+      "seed": 1,
+      "trained": true,
+      "ckpt": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/win32-t2048-s1/model.pt",
+      "role": "T=2048 对照的 seed 1 · 核心判据"
+    },
+    {
+      "name": "dil32-t2048-s1",
+      "kind": "dilated",
+      "seq": 2048,
+      "seed": 1,
+      "trained": true,
+      "ckpt": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/dil32-t2048-s1/model.pt",
+      "role": "T=2048 实验臂的 seed 1 · 核心判据"
+    },
+    {
+      "name": "lad32-t2048-s0",
+      "kind": "layered",
+      "seq": 2048,
+      "seed": 0,
+      "trained": true,
+      "ckpt": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/lad32-t2048-s0/model.pt",
+      "role": "T=2048 机制腿：逐层递增 dilation（第 ℓ 层 stride 2^ℓ，其余同 dil32）"
+    }
+  ],
+  "pairs": {
+    "c1_t256_s0": {"seq": 256, "comparator": "win32", "arm": "dil32", "n_seed": 2},
+    "c1_t256_s1": {"seq": 256, "comparator": "win32_s1", "arm": "dil32_s1", "n_seed": 2},
+    "c1_t1024_s0": {"seq": 1024, "comparator": "win32-t1024-s0", "arm": "dil32-t1024-s0", "n_seed": 1},
+    "c1_t2048_s0": {"seq": 2048, "comparator": "win32-t2048-s0", "arm": "dil32-t2048-s0", "n_seed": 2},
+    "c1_t2048_s1": {"seq": 2048, "comparator": "win32-t2048-s1", "arm": "dil32-t2048-s1", "n_seed": 2},
+    "c3_ladder_s0": {"seq": 2048, "comparator": "dil32-t2048-s0", "arm": "lad32-t2048-s0", "n_seed": 1}
+  },
+  "eval": {
+    "n_batches": 20,
+    "batch_size": 16,
+    "window_seed": 2,
+    "paired": true,
+    "note": "20 批 × bs16 的配对 clean bpc，评窗由 window_seed=2 的同一个生成器抽（每 T 各自一套位置，臂间逐批配对）"
+  },
+  "ablation": {
+    "name": "far_key_dependence",
+    "rule": "D(T) = bpc(空洞臂去掉全部 far 点、只留近端 local=16 的窗口) − bpc(该臂原掩码)，同批配对；D > 0 = far 点对该 checkpoint 有价值",
+    "note": "这不是判据①的替代，而是「远处键到底有没有被用」的描述量：D 随 T 变大 ⇒ 长 T 上模型更吃远处信息；D 不随 T 变大 ⇒ 长 T 上模型也不用它读到的那几个远处位置"
+  },
+  "train_priority": [
+    "dil32-t2048-s0",
+    "win32-t2048-s0",
+    "win32-t2048-s1",
+    "dil32-t2048-s1",
+    "win32-t1024-s0",
+    "dil32-t1024-s0",
+    "lad32-t2048-s0"
+  ],
+  "train_priority_note": "顺序即槽位：GPU 预算不够时从队尾丢臂（丢掉的臂如实登记为『未跑』，不进判据、不当负结论）；核心判据（T=2048 两 seed）在最前面",
+  "verdict_rules": {
+    "c1_main": "同一 T 上两 seed 的配对 Δ = bpc_win − bpc_dil 同向且各自 |Δ| >= band_bpc ⇒ 按该方向入账（n=2）；同向但至少一个落带内、或两个 seed 不同向 ⇒ 该 T 判『本 n 下不可排序』，不解释成噪声、不取平均掩盖",
+    "c1_single_seed": "只有一个 seed 的点（T=1024）按该 seed 的配对 Δ 与带分类出词，但**不作 n=2 结论**，只作趋势点",
+    "c3_ladder": "T=2048 上 Δ = bpc_dil − bpc_lad 与带比较：>= +band ⇒ 逐层递增更强；<= −band ⇒ 平铺更强；带内 ⇒ 不可排序（n=1 单 seed，只见一次）",
+    "c4_dependence": "D(T) 逐 T 报，并报 D(2048) − D(256)；差值 >= band 记『远处键的边际价值随 T 上升』，< band 记『未随 T 上升』。这是跨 run 的描述量（不是配对判据），带只作参照线",
+    "falsification": "若 T=2048 两个 seed 的配对 Δ 都落 0.014 带内 且 D(2048) − D(256) < 0.014 ⇒ 『长 T 上把同 k 个位置摊开也不换质量，且模型没有变得更需要远处位置』⇒ 上一轮否证在长 T 上保持",
+    "resolution": "若某 T 的配对 Δ 全部落带内，但该 T 的 2·SE(Δ)（= 本 T 实测解析力）> band ⇒ 该 T 的『带内』是仪器侧结论，须报解析所需的批数 n_req = ceil((1.96·sd/0.014)^2)，不得读成『无质量增量』"
+  },
+  "single_factor_note": "唯一变量 = 可见集（同 k 的位置挑法）。T 是第二个维度但每个点上两臂之间只差掩码；跨 T 只作趋势描述、禁外推（harness/SCHEMA.md §17.11）",
+  "seeds": [0, 1]
+}
