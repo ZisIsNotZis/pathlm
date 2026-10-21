@@ -1,0 +1,103 @@
+{
+  "experiment": "2685-recall-flops-linear-13m",
+  "belongs_to": "axes/1-time/1.2.2-block-sparse (work_packages[WP1] 的率类腿 + [WP2])",
+  "device": "cuda",
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M 字符训练 / 末 10M 字符评测",
+    "vocab_size": 206,
+    "n_real_tokens": 205,
+    "mask_token": 205
+  },
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true,
+    "topology": "sequential"
+  },
+  "recipe": {
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 1e-3,
+    "seeds": [0, 1],
+    "exit_mode": "uniform",
+    "note": "与本格 2677 / 2683 的臂逐字段一致；`full_s{0,1}` 与 `linear_s{0,1}` 是本实验新训的四条臂，四个臂同一配方 ⇒ 单因素（只改注意力算子）"
+  },
+  "linear_arm": {
+    "engine_flag": "--attn-linear",
+    "phi": "elu(x) + 1",
+    "phi_evaluation": "stable: exp(min(x,0)) + relu(x)（与 elu(x)+1 逐值相同，只避开 exp(x)-1 的消去）",
+    "linear_chunk": 64,
+    "linear_attn_eps_declared": 1e-30,
+    "kernel_changed": false,
+    "note": "不改核形式 / 归一化式 / 参数量 / 配方；只改 φ 的求值方式与分母 guard 的生效阈值（`stable_linear.py`）"
+  },
+  "judgement": {
+    "band_bpc": 0.014,
+    "band_source": "harness/methodology.md §2（仅限配对 Δ、≥5 窗口；率类不借用）",
+    "quality_three_way": {
+      "delta": "comparator_minus_arm：Δ = bpc_full − bpc_linear（正 = 线性更好）",
+      "win": "Δ ≥ +0.014（两 seed 同向且都越带）",
+      "tie": "|Δ| < 0.014（两 seed 都落带内）",
+      "loss": "Δ ≤ −0.014（两 seed 同向且都越带）",
+      "undecidable": "两 seed 不同向或只有一个越带 ⇒ 报「不可判」"
+    },
+    "health_gate": {
+      "grad_skips": 0,
+      "gnorm_max": 12.0,
+      "gnorm_max_source": "已训纯注意力臂实测 9.39–10.80（2677 / 2683 / 2662 的六条臂）的 1.2× 上界",
+      "den_below_eps_frac": 0.0,
+      "phi_zero_fraction_max": 0.001,
+      "on_failure": "线性臂记「未取得（数值腿带伤）」并给原因与所需成本，不给 Δ 判词"
+    },
+    "recall": {
+      "instrument": "needle v3（tools/evalkit/retention.py）+ 2662 的统计层（needle_stats.py）",
+      "newcombe_ci": 0.95,
+      "paired_bootstrap_draws": 2000,
+      "rule": "两比例差 CI 下界 > 0 且配对 bootstrap CI 下界 > 0 ⇒ 该臂该桶「高于地板」；否则「不高于地板」+ 所需针数",
+      "buckets": ["beyond", "far_slot", "overall"]
+    },
+    "flops": {
+      "unit": "MAC（FLOPs = 2×MAC）",
+      "per_token": "每层 macs / (B·T) 后对层求和",
+      "relations": [
+        "win24a0 与 block8l4 的 equiv 计数逐位相等（同可见键数）",
+        "24 键臂 / full 的 equiv 比值 = 22.922/128.5（解析预期）",
+        "线性臂按 linear_attn_chunked 的算式计数，对 T 线性、T=256 的绝对值如实报"
+      ]
+    }
+  },
+  "needle_config": {
+    "n_needles": 8,
+    "phrase_len": 6,
+    "anchors": 8,
+    "anchor_frac": 0.25,
+    "n_batches": 64,
+    "batch_size": 16,
+    "seed": 3,
+    "bucket_anchors": 8,
+    "note": "与 2662/config.json::needle 逐字段相同（同入口的证明）"
+  },
+  "arms": [
+    {"name": "full_s0", "role": "全因果，主判对照臂", "source": "本实验训练"},
+    {"name": "full_s1", "role": "全因果，第二 seed", "source": "本实验训练"},
+    {"name": "linear_s0", "role": "线性核 φ=elu+1，主判实验臂", "source": "本实验训练"},
+    {"name": "linear_s1", "role": "线性核，第二 seed", "source": "本实验训练"},
+    {"name": "win24a0_s0", "role": "均匀条带 24（同字节参照）", "source": "复用 2677"},
+    {"name": "win24a0_s1", "role": "同上，第二 seed", "source": "复用 2677"},
+    {"name": "block8l4_s0", "role": "块条带（远块专桶的臂）", "source": "复用 2683"},
+    {"name": "block8l4_s1", "role": "同上，第二 seed", "source": "复用 2683"},
+    {"name": "win16a8_s0", "role": "局部+全局（同字节轴第三个模式）", "source": "复用 2662"},
+    {"name": "win16a8_s1", "role": "同上，第二 seed", "source": "复用 2662"}
+  ],
+  "budget": {
+    "gpu_wall_minutes": 120,
+    "arm_timeout_minutes": 20,
+    "estimated": "四条新臂训练 ≈9.5 + 9.5 + 17 + 17 min + 冒烟 ≈1 min + 评测 ≈5 min",
+    "peak_mem_mib_polite_line": 5120
+  }
+}
