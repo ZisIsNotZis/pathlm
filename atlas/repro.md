@@ -21,10 +21,10 @@
 
 ## 汇总（生成时统计）
 
-- 规模：实验 **139** 个（`axes/**/experiments/*`），run 条目 **491** 个（386 个是 run 子目录或前缀组，105 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 110 个）。
+- 规模：实验 **139** 个（`axes/**/experiments/*`），run 条目 **492** 个（386 个是 run 子目录或前缀组，106 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 111 个）。
 
-- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**105** 个、`not_reproducible`（不可重建）**34** 个。
-- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 106 个。
+- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**106** 个、`not_reproducible`（不可重建）**33** 个。
+- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 107 个。
 
 ## 这个克隆重建不了什么
 
@@ -137,7 +137,7 @@
 | [2645-per-exit-readout-13m](../axes/3-width/3.2.2-per-exit-readout/experiments/2645-per-exit-readout-13m/) | [3.2.2-per-exit-readout](../axes/3-width/3.2.2-per-exit-readout/project.yaml) | ✓ | ✓ | ✓ | 19 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | — | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2643-tied-untied-13m](../axes/3-width/3.2.3-tied-untied/experiments/2643-tied-untied-13m/) | [3.2.3-tied-untied](../axes/3-width/3.2.3-tied-untied/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | — | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2610-moe-arm-ledger-13m](../axes/4-moe/4.1-sparse-experts/experiments/2610-moe-arm-ledger-13m/) | [4.1-sparse-experts](../axes/4-moe/4.1-sparse-experts/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `analysis.md`「…墙钟，仅记录、不入判据）：探针 19:29:03 启动、19:52:23 完成（…」 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
-| [2611-moe-topk-vs-dense-same-active-macs-13m](../axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/) | [4.1-sparse-experts](../axes/4-moe/4.1-sparse-experts/project.yaml) | ✓ | ✓ | — | 0 | — | `python3 tools/prereg_bind.py axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m`（README.md 的复现小节） | `analysis.md`「…墙钟 4.03 → 8.24 / 12.66 min…」 | `not_reproducible` | 有入口脚本 `run.py`，但仓内无 `results*.json` |
+| [2611-moe-topk-vs-dense-same-active-macs-13m](../axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/) | [4.1-sparse-experts](../axes/4-moe/4.1-sparse-experts/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 tools/prereg_bind.py axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m`（README.md 的复现小节） | `arm_table.dense-B0-s0.wall_minutes` = 4.03 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2614-kv-quant-eval-13m](../axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/) | [5.1-kv-quant](../axes/5-quant/5.1-kv-quant/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_minutes` = 0.885 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2619-kv-budget-chart](../axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/) | [5.1-kv-quant](../axes/5-quant/5.1-kv-quant/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `config.cost.gpu_wall_budget_min` = 20 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2620-kv-budget-gaps](../axes/5-quant/5.1-kv-quant/experiments/2620-kv-budget-gaps/) | [5.1-kv-quant](../axes/5-quant/5.1-kv-quant/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 run.py # 全跑`（README.md 的复现小节） | `config.cost.gpu_wall_budget_min` = 20 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
@@ -204,7 +204,6 @@
 | [2506-m2-element-tax-law](../axes/2-depth/2.1.2-skipping/experiments/2506-m2-element-tax-law/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2509-m3-composition-law](../axes/2-depth/2.1.2-skipping/experiments/2509-m3-composition-law/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
 | [2525-tax-attribution](../axes/3-width/3.1.1-uniform-narrowing/experiments/2525-tax-attribution/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 README.md） |
-| [2611-moe-topk-vs-dense-same-active-macs-13m](../axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `run.py`，但仓内无 `results*.json` |
 | [2656-lowrank-vs-headshare-13m](../axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/) | 落盘数字：仓内没有 `results.json` / `results_*.json`，没有可重跑的对照基准 | 有入口脚本 `gpu_lock.py`，但仓内无 `results*.json` |
 | [2617-prior-art-hybrid-kv](../axes/5-quant/5.6-window-quant-retrieval/experiments/2617-prior-art-hybrid-kv/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 PRIOR_ART.md） |
 | [2510-gap-sweep-b2-c1m](../axes/6-predict/6.2-speculative-decoding/experiments/2510-gap-sweep-b2-c1m/) | 入口脚本：仓内没有任何 `.py` / `.sh` 入口，无法重跑 | 仓内无入口脚本（只有 MODEL.md, README.md, analysis.md, controls/README.md, prereg_binding.json, results.json） |
@@ -675,7 +674,7 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2643-tied-untied-13m | T_s0 | ✓ | — | — | — | — |
 | 2643-tied-untied-13m | U_s0 | ✓ | — | — | — | — |
 | 2610-moe-arm-ledger-13m | . | ✓ | — | — | — | — |
-| [2611-moe-topk-vs-dense-same-active-macs-13m](../axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/) | — | — | — | — | — | 仓内没有 run 产物 |
+| 2611-moe-topk-vs-dense-same-active-macs-13m | . | ✓ | — | — | — | — |
 | 2614-kv-quant-eval-13m | . | ✓ | — | — | — | — |
 | 2614-kv-quant-eval-13m | smoke | ✓ | — | — | — | — |
 | 2619-kv-budget-chart | . | ✓ | — | — | — | — |
