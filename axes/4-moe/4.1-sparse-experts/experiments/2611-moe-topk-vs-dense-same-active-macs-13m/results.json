@@ -1,0 +1,1688 @@
+{
+  "experiment": "2611-moe-topk-vs-dense-same-active-macs-13m",
+  "cell": "axes/4-moe/4.1-sparse-experts",
+  "question": "同每 token 激活 MACs 下，把每层 FFN 换成 E 个同宽专家、每 token 只走 top-1，相对同算力的 stock dense 能不能买到 ≥0.014 bpc 的质量；E 取 4 / 8 两档（低端两点）",
+  "band_bpc": 0.014,
+  "delta_directions": {
+    "delta_bpc": "comparator_minus_arm",
+    "sd_of_paired_delta": "comparator_minus_arm",
+    "frac_batches_delta_gt_0": "comparator_minus_arm",
+    "delta_consistency_abs": "comparator_minus_arm",
+    "delta_vs_dense_bpc": "comparator_minus_arm"
+  },
+  "delta_direction_note": "全部配对 Δ = bpc(对照) − bpc(实验) ⇒ 正 = 实验臂更好",
+  "recipe": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "base_mlp_mult": 6,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "dense": true,
+    "topology": "sequential",
+    "lr": 0.001,
+    "weight_decay": 0.01,
+    "data": "data/enwik8_full.npz",
+    "seq_len": 512,
+    "batch_size": 32,
+    "steps": 6000,
+    "tokens_per_arm": 98304000,
+    "tokens_note": "32×512×6000 = 98,304,000 token/臂（= configs/B0.json 的同一预算；全臂逐位相同）"
+  },
+  "gating": {
+    "renorm": true,
+    "renorm_note": "top-k 权重归一到和为 1（top-1 ⇒ 权重恒 1.0）。不归一时 top-1 的权重是 p_max<1，等于把 FFN 输出整体缩小，那是第二个混杂；归一后 E=1/top-1 逐位等于 dense（preflight 机检）",
+    "aux_weight": 0.0,
+    "aux_weight_note": "路由器无负载均衡辅助损失：均衡属 4.2，本格只判 top-k 本体（单因素）"
+  },
+  "ledger": {
+    "base_config": {
+      "d_model": 256,
+      "n_layers": 12,
+      "n_heads": 8,
+      "base_mlp_mult": 6,
+      "dropout": 0.0,
+      "norm_cap": 1.0,
+      "dense": true,
+      "topology": "sequential",
+      "lr": 0.001,
+      "weight_decay": 0.01,
+      "data": "data/enwik8_full.npz",
+      "seq_len": 512,
+      "batch_size": 32,
+      "steps": 6000,
+      "tokens_per_arm": 98304000,
+      "tokens_note": "32×512×6000 = 98,304,000 token/臂（= configs/B0.json 的同一预算；全臂逐位相同）",
+      "vocab_size": 206
+    },
+    "arms": {
+      "dense-B0-s0": {
+        "kind": "dense",
+        "n_experts": 1,
+        "top_k": 1,
+        "expert_hidden": 1536,
+        "total_params": 13602304,
+        "ffn_params": 9458688,
+        "router_params": 0,
+        "expert_macs_per_token": 9437184,
+        "router_macs_per_token": 0,
+        "ffn_macs_per_token": 9437184,
+        "tokens_per_arm": 98304000,
+        "tokens_per_param": 7.227,
+        "expert_macs_ratio_vs_dense": 1.0,
+        "ffn_macs_ratio_vs_dense": 1.0,
+        "params_x_dense": 1.0
+      },
+      "moe-top1-E4-s0": {
+        "kind": "moe",
+        "n_experts": 4,
+        "top_k": 1,
+        "expert_hidden": 1536,
+        "total_params": 41990656,
+        "ffn_params": 37847040,
+        "router_params": 12288,
+        "expert_macs_per_token": 9437184,
+        "router_macs_per_token": 12288,
+        "ffn_macs_per_token": 9449472,
+        "tokens_per_arm": 98304000,
+        "tokens_per_param": 2.3411,
+        "expert_macs_ratio_vs_dense": 1.0,
+        "ffn_macs_ratio_vs_dense": 1.001302,
+        "params_x_dense": 3.087
+      },
+      "moe-top1-E8-s0": {
+        "kind": "moe",
+        "n_experts": 8,
+        "top_k": 1,
+        "expert_hidden": 1536,
+        "total_params": 79837696,
+        "ffn_params": 75694080,
+        "router_params": 24576,
+        "expert_macs_per_token": 9437184,
+        "router_macs_per_token": 24576,
+        "ffn_macs_per_token": 9461760,
+        "tokens_per_arm": 98304000,
+        "tokens_per_param": 1.2313,
+        "expert_macs_ratio_vs_dense": 1.0,
+        "ffn_macs_ratio_vs_dense": 1.002604,
+        "params_x_dense": 5.869
+      },
+      "dense-eqparam-E4-s0": {
+        "kind": "dense",
+        "n_experts": 1,
+        "top_k": 1,
+        "expert_hidden": 6144,
+        "total_params": 41969152,
+        "ffn_params": 37825536,
+        "router_params": 0,
+        "expert_macs_per_token": 37748736,
+        "router_macs_per_token": 0,
+        "ffn_macs_per_token": 37748736,
+        "tokens_per_arm": 98304000,
+        "tokens_per_param": 2.3423,
+        "expert_macs_ratio_vs_dense": 4.0,
+        "ffn_macs_ratio_vs_dense": 4.0,
+        "params_x_dense": 3.085
+      },
+      "dense-B0-s1": {
+        "kind": "dense",
+        "n_experts": 1,
+        "top_k": 1,
+        "expert_hidden": 1536,
+        "total_params": 13602304,
+        "ffn_params": 9458688,
+        "router_params": 0,
+        "expert_macs_per_token": 9437184,
+        "router_macs_per_token": 0,
+        "ffn_macs_per_token": 9437184,
+        "tokens_per_arm": 98304000,
+        "tokens_per_param": 7.227,
+        "expert_macs_ratio_vs_dense": 1.0,
+        "ffn_macs_ratio_vs_dense": 1.0,
+        "params_x_dense": 1.0
+      },
+      "moe-top1-E4-s1": {
+        "kind": "moe",
+        "n_experts": 4,
+        "top_k": 1,
+        "expert_hidden": 1536,
+        "total_params": 41990656,
+        "ffn_params": 37847040,
+        "router_params": 12288,
+        "expert_macs_per_token": 9437184,
+        "router_macs_per_token": 12288,
+        "ffn_macs_per_token": 9449472,
+        "tokens_per_arm": 98304000,
+        "tokens_per_param": 2.3411,
+        "expert_macs_ratio_vs_dense": 1.0,
+        "ffn_macs_ratio_vs_dense": 1.001302,
+        "params_x_dense": 3.087
+      },
+      "moe-top1-E8-s1": {
+        "kind": "moe",
+        "n_experts": 8,
+        "top_k": 1,
+        "expert_hidden": 1536,
+        "total_params": 79837696,
+        "ffn_params": 75694080,
+        "router_params": 24576,
+        "expert_macs_per_token": 9437184,
+        "router_macs_per_token": 24576,
+        "ffn_macs_per_token": 9461760,
+        "tokens_per_arm": 98304000,
+        "tokens_per_param": 1.2313,
+        "expert_macs_ratio_vs_dense": 1.0,
+        "ffn_macs_ratio_vs_dense": 1.002604,
+        "params_x_dense": 5.869
+      },
+      "dense-eqparam-E4-s1": {
+        "kind": "dense",
+        "n_experts": 1,
+        "top_k": 1,
+        "expert_hidden": 6144,
+        "total_params": 41969152,
+        "ffn_params": 37825536,
+        "router_params": 0,
+        "expert_macs_per_token": 37748736,
+        "router_macs_per_token": 0,
+        "ffn_macs_per_token": 37748736,
+        "tokens_per_arm": 98304000,
+        "tokens_per_param": 2.3423,
+        "expert_macs_ratio_vs_dense": 4.0,
+        "ffn_macs_ratio_vs_dense": 4.0,
+        "params_x_dense": 3.085
+      }
+    },
+    "checks": {
+      "expert_macs_ratio_vs_dense": {
+        "moe-top1-E4-s0": 1.0,
+        "moe-top1-E8-s0": 1.0,
+        "moe-top1-E4-s1": 1.0,
+        "moe-top1-E8-s1": 1.0
+      },
+      "expert_macs_equal_all_main_arms": true,
+      "eqparam_e4_rel_gap": 0.00051,
+      "eqparam_e4_within_0p2pct": true,
+      "router_tax_e4_pct": 0.13,
+      "router_tax_e8_pct": 0.26
+    },
+    "notes": [
+      "MACs = 乘加，FLOPs = 2×MACs；注意力 / LN / embedding / 读出各臂逐位相同，未重复计。",
+      "等激活算力：moe-top1-E{4,16} 的 expert_macs_ratio_vs_dense 必须恰为 1.0；ffn_macs_ratio_vs_dense 多出的部分 = 路由器 E·d 的『路由税』，单列申报。",
+      "等参数对照 dense-eqparam-E4（mlp_mult=24）与 moe-top1-E4 参数相对差见 checks；它的每 token 激活算力是 4×，只用于归因（SCHEMA §15），不是等算力对照。",
+      "moe 的每 token 专家 MACs 绝对值 = 9437184（与 dense-B0 相同）。"
+    ]
+  },
+  "per_batch_bpc": {
+    "dense-B0-s0": [
+      1.57433,
+      1.639,
+      1.57857,
+      1.55818,
+      1.59561,
+      1.51522,
+      1.52716,
+      1.48975,
+      1.56877,
+      1.66393,
+      1.34205,
+      1.53317,
+      1.49913,
+      1.5128,
+      1.5159,
+      1.43163,
+      1.45095,
+      1.48745,
+      1.45303,
+      1.50719
+    ],
+    "moe-top1-E4-s0": [
+      1.58176,
+      1.64081,
+      1.58576,
+      1.57823,
+      1.61205,
+      1.5266,
+      1.52675,
+      1.5066,
+      1.58675,
+      1.67504,
+      1.34653,
+      1.52516,
+      1.51391,
+      1.51365,
+      1.52634,
+      1.44618,
+      1.47127,
+      1.49307,
+      1.47869,
+      1.52015
+    ],
+    "moe-top1-E8-s0": [
+      1.57705,
+      1.66241,
+      1.59809,
+      1.5839,
+      1.62866,
+      1.54361,
+      1.54452,
+      1.51094,
+      1.59373,
+      1.69894,
+      1.36292,
+      1.53681,
+      1.52469,
+      1.52341,
+      1.53818,
+      1.4649,
+      1.47489,
+      1.50904,
+      1.48524,
+      1.53798
+    ],
+    "dense-eqparam-E4-s0": [
+      1.56387,
+      1.63042,
+      1.57082,
+      1.56173,
+      1.57655,
+      1.50732,
+      1.51486,
+      1.48192,
+      1.57057,
+      1.67219,
+      1.33925,
+      1.51706,
+      1.47866,
+      1.49848,
+      1.50972,
+      1.42881,
+      1.43662,
+      1.47158,
+      1.44455,
+      1.51908
+    ],
+    "dense-B0-s1": [
+      1.57711,
+      1.65049,
+      1.58379,
+      1.57048,
+      1.59866,
+      1.51547,
+      1.52451,
+      1.50678,
+      1.58463,
+      1.68618,
+      1.34199,
+      1.52858,
+      1.51141,
+      1.51254,
+      1.52387,
+      1.44782,
+      1.45725,
+      1.48464,
+      1.44769,
+      1.52324
+    ],
+    "moe-top1-E4-s1": [
+      1.572,
+      1.64631,
+      1.59286,
+      1.57017,
+      1.60271,
+      1.52581,
+      1.52442,
+      1.51581,
+      1.58729,
+      1.68658,
+      1.34617,
+      1.53091,
+      1.52074,
+      1.51736,
+      1.51772,
+      1.44899,
+      1.45421,
+      1.48537,
+      1.44627,
+      1.52268
+    ],
+    "moe-top1-E8-s1": [
+      1.58896,
+      1.64504,
+      1.59702,
+      1.59551,
+      1.59398,
+      1.53914,
+      1.55079,
+      1.52182,
+      1.59663,
+      1.69483,
+      1.35394,
+      1.53997,
+      1.5209,
+      1.52113,
+      1.53085,
+      1.46599,
+      1.46965,
+      1.50059,
+      1.46383,
+      1.54948
+    ],
+    "dense-eqparam-E4-s1": [
+      1.55813,
+      1.63353,
+      1.56346,
+      1.55082,
+      1.56661,
+      1.52138,
+      1.50517,
+      1.47513,
+      1.57537,
+      1.66095,
+      1.3377,
+      1.51757,
+      1.49539,
+      1.50435,
+      1.51366,
+      1.43304,
+      1.43258,
+      1.47021,
+      1.45396,
+      1.5108
+    ]
+  },
+  "mean_bpc": {
+    "dense-B0-s0": 1.52219,
+    "moe-top1-E4-s0": 1.53276,
+    "moe-top1-E8-s0": 1.545,
+    "dense-eqparam-E4-s0": 1.5147,
+    "dense-B0-s1": 1.52886,
+    "moe-top1-E4-s1": 1.53072,
+    "moe-top1-E8-s1": 1.542,
+    "dense-eqparam-E4-s1": 1.51399
+  },
+  "arm_table": {
+    "dense-B0-s0": {
+      "bpc": 1.52219,
+      "n_params_total": 13602304,
+      "tokens_per_param": 7.227,
+      "wall_minutes": 4.03,
+      "peak_gpu_mem_mb": 2992.3,
+      "gnorm_max": 9.88,
+      "grad_skips": 0,
+      "stability_valid": true,
+      "routing": null
+    },
+    "moe-top1-E4-s0": {
+      "bpc": 1.53276,
+      "n_params_total": 41990656,
+      "tokens_per_param": 2.3411,
+      "wall_minutes": 8.24,
+      "peak_gpu_mem_mb": 3930.7,
+      "gnorm_max": 5.04,
+      "grad_skips": 0,
+      "stability_valid": true,
+      "routing": {
+        "per_layer": [
+          {
+            "usage": [
+              7582,
+              96157,
+              47313,
+              12788
+            ],
+            "entropy_norm": 0.730528,
+            "max_frac": 0.586896
+          },
+          {
+            "usage": [
+              90548,
+              57379,
+              15709,
+              204
+            ],
+            "entropy_norm": 0.669638,
+            "max_frac": 0.552661
+          },
+          {
+            "usage": [
+              15640,
+              63966,
+              551,
+              83683
+            ],
+            "entropy_norm": 0.687985,
+            "max_frac": 0.51076
+          },
+          {
+            "usage": [
+              40943,
+              6526,
+              92858,
+              23513
+            ],
+            "entropy_norm": 0.775691,
+            "max_frac": 0.56676
+          },
+          {
+            "usage": [
+              35377,
+              27597,
+              33623,
+              67243
+            ],
+            "entropy_norm": 0.953264,
+            "max_frac": 0.410419
+          },
+          {
+            "usage": [
+              38185,
+              21167,
+              46866,
+              57622
+            ],
+            "entropy_norm": 0.958934,
+            "max_frac": 0.351697
+          },
+          {
+            "usage": [
+              30169,
+              43906,
+              53710,
+              36055
+            ],
+            "entropy_norm": 0.983353,
+            "max_frac": 0.32782
+          },
+          {
+            "usage": [
+              50506,
+              59087,
+              32570,
+              21677
+            ],
+            "entropy_norm": 0.951693,
+            "max_frac": 0.360638
+          },
+          {
+            "usage": [
+              45893,
+              13779,
+              59219,
+              44949
+            ],
+            "entropy_norm": 0.928608,
+            "max_frac": 0.361444
+          },
+          {
+            "usage": [
+              54206,
+              44982,
+              39631,
+              25021
+            ],
+            "entropy_norm": 0.974631,
+            "max_frac": 0.330847
+          },
+          {
+            "usage": [
+              21510,
+              13689,
+              64803,
+              63838
+            ],
+            "entropy_norm": 0.871441,
+            "max_frac": 0.395526
+          },
+          {
+            "usage": [
+              38212,
+              71432,
+              39166,
+              15030
+            ],
+            "entropy_norm": 0.910841,
+            "max_frac": 0.435986
+          }
+        ],
+        "global": {
+          "usage": [
+            468771,
+            519667,
+            526019,
+            451623
+          ],
+          "entropy_norm": 0.998469,
+          "max_frac": 0.267547,
+          "n_experts": 4
+        },
+        "entropy_norm_min_layer": 0.669638,
+        "max_frac_worst_layer": 0.586896,
+        "collapse_flagged": true,
+        "windows_note": "使用率累计全部 20 个评测批（不是只看最后一批）"
+      },
+      "delta_vs_dense_bpc": -0.01057
+    },
+    "moe-top1-E8-s0": {
+      "bpc": 1.545,
+      "n_params_total": 79837696,
+      "tokens_per_param": 1.2313,
+      "wall_minutes": 12.66,
+      "peak_gpu_mem_mb": 4645.6,
+      "gnorm_max": 3.87,
+      "grad_skips": 0,
+      "stability_valid": true,
+      "routing": {
+        "per_layer": [
+          {
+            "usage": [
+              2264,
+              23233,
+              4456,
+              11308,
+              7960,
+              108969,
+              1055,
+              4595
+            ],
+            "entropy_norm": 0.562462,
+            "max_frac": 0.665094
+          },
+          {
+            "usage": [
+              6714,
+              4392,
+              25327,
+              8084,
+              6719,
+              1353,
+              63237,
+              48014
+            ],
+            "entropy_norm": 0.751518,
+            "max_frac": 0.385968
+          },
+          {
+            "usage": [
+              36056,
+              76321,
+              13478,
+              7720,
+              27328,
+              455,
+              5,
+              2477
+            ],
+            "entropy_norm": 0.681533,
+            "max_frac": 0.465826
+          },
+          {
+            "usage": [
+              17132,
+              8061,
+              51993,
+              287,
+              17310,
+              31293,
+              27106,
+              10658
+            ],
+            "entropy_norm": 0.860188,
+            "max_frac": 0.31734
+          },
+          {
+            "usage": [
+              22952,
+              38420,
+              1217,
+              15735,
+              18520,
+              13703,
+              27544,
+              25749
+            ],
+            "entropy_norm": 0.924003,
+            "max_frac": 0.234497
+          },
+          {
+            "usage": [
+              21194,
+              12969,
+              2818,
+              9069,
+              11528,
+              64114,
+              41004,
+              1144
+            ],
+            "entropy_norm": 0.784169,
+            "max_frac": 0.391321
+          },
+          {
+            "usage": [
+              9662,
+              1161,
+              48598,
+              56405,
+              26807,
+              3010,
+              11902,
+              6295
+            ],
+            "entropy_norm": 0.77661,
+            "max_frac": 0.344269
+          },
+          {
+            "usage": [
+              11370,
+              16123,
+              25023,
+              7673,
+              8595,
+              5675,
+              69530,
+              19851
+            ],
+            "entropy_norm": 0.834002,
+            "max_frac": 0.424377
+          },
+          {
+            "usage": [
+              11383,
+              44340,
+              3846,
+              18864,
+              34636,
+              17271,
+              9955,
+              23545
+            ],
+            "entropy_norm": 0.909185,
+            "max_frac": 0.27063
+          },
+          {
+            "usage": [
+              29186,
+              7735,
+              35534,
+              3922,
+              21235,
+              25399,
+              17384,
+              23445
+            ],
+            "entropy_norm": 0.934069,
+            "max_frac": 0.216882
+          },
+          {
+            "usage": [
+              17037,
+              11696,
+              24889,
+              5320,
+              32131,
+              20485,
+              22866,
+              29416
+            ],
+            "entropy_norm": 0.954092,
+            "max_frac": 0.196112
+          },
+          {
+            "usage": [
+              14576,
+              27581,
+              28780,
+              21632,
+              25447,
+              8443,
+              29840,
+              7541
+            ],
+            "entropy_norm": 0.953122,
+            "max_frac": 0.182129
+          }
+        ],
+        "global": {
+          "usage": [
+            199526,
+            272032,
+            265959,
+            166019,
+            238216,
+            300170,
+            321428,
+            202730
+          ],
+          "entropy_norm": 0.989778,
+          "max_frac": 0.163487,
+          "n_experts": 8
+        },
+        "entropy_norm_min_layer": 0.562462,
+        "max_frac_worst_layer": 0.665094,
+        "collapse_flagged": true,
+        "windows_note": "使用率累计全部 20 个评测批（不是只看最后一批）"
+      },
+      "delta_vs_dense_bpc": -0.02281
+    },
+    "dense-eqparam-E4-s0": {
+      "bpc": 1.5147,
+      "n_params_total": 41969152,
+      "tokens_per_param": 2.3423,
+      "wall_minutes": 6.13,
+      "peak_gpu_mem_mb": 6945.5,
+      "gnorm_max": 18.66,
+      "grad_skips": 0,
+      "stability_valid": true,
+      "routing": null,
+      "delta_vs_dense_bpc": 0.00749
+    },
+    "dense-B0-s1": {
+      "bpc": 1.52886,
+      "n_params_total": 13602304,
+      "tokens_per_param": 7.227,
+      "wall_minutes": 3.84,
+      "peak_gpu_mem_mb": 2992.3,
+      "gnorm_max": 9.45,
+      "grad_skips": 0,
+      "stability_valid": true,
+      "routing": null
+    },
+    "moe-top1-E4-s1": {
+      "bpc": 1.53072,
+      "n_params_total": 41990656,
+      "tokens_per_param": 2.3411,
+      "wall_minutes": 8.48,
+      "peak_gpu_mem_mb": 3932.9,
+      "gnorm_max": 5.93,
+      "grad_skips": 0,
+      "stability_valid": true,
+      "routing": {
+        "per_layer": [
+          {
+            "usage": [
+              17552,
+              17819,
+              126176,
+              2293
+            ],
+            "entropy_norm": 0.53488,
+            "max_frac": 0.770117
+          },
+          {
+            "usage": [
+              17685,
+              9156,
+              136606,
+              393
+            ],
+            "entropy_norm": 0.409389,
+            "max_frac": 0.833777
+          },
+          {
+            "usage": [
+              41386,
+              9260,
+              19784,
+              93410
+            ],
+            "entropy_norm": 0.783077,
+            "max_frac": 0.570129
+          },
+          {
+            "usage": [
+              13418,
+              78624,
+              3210,
+              68588
+            ],
+            "entropy_norm": 0.720515,
+            "max_frac": 0.479883
+          },
+          {
+            "usage": [
+              14685,
+              25804,
+              43555,
+              79796
+            ],
+            "entropy_norm": 0.872747,
+            "max_frac": 0.487036
+          },
+          {
+            "usage": [
+              41491,
+              54685,
+              21872,
+              45792
+            ],
+            "entropy_norm": 0.966001,
+            "max_frac": 0.333771
+          },
+          {
+            "usage": [
+              40366,
+              34577,
+              50876,
+              38021
+            ],
+            "entropy_norm": 0.992289,
+            "max_frac": 0.310522
+          },
+          {
+            "usage": [
+              30559,
+              76197,
+              19376,
+              37708
+            ],
+            "entropy_norm": 0.908765,
+            "max_frac": 0.46507
+          },
+          {
+            "usage": [
+              32008,
+              52911,
+              45405,
+              33516
+            ],
+            "entropy_norm": 0.984115,
+            "max_frac": 0.322943
+          },
+          {
+            "usage": [
+              48661,
+              44124,
+              45872,
+              25183
+            ],
+            "entropy_norm": 0.979693,
+            "max_frac": 0.297003
+          },
+          {
+            "usage": [
+              37794,
+              25596,
+              75316,
+              25134
+            ],
+            "entropy_norm": 0.918437,
+            "max_frac": 0.459692
+          },
+          {
+            "usage": [
+              52943,
+              33432,
+              61452,
+              16013
+            ],
+            "entropy_norm": 0.926535,
+            "max_frac": 0.375073
+          }
+        ],
+        "global": {
+          "usage": [
+            388548,
+            462185,
+            649500,
+            465847
+          ],
+          "entropy_norm": 0.986703,
+          "max_frac": 0.330353,
+          "n_experts": 4
+        },
+        "entropy_norm_min_layer": 0.409389,
+        "max_frac_worst_layer": 0.833777,
+        "collapse_flagged": true,
+        "windows_note": "使用率累计全部 20 个评测批（不是只看最后一批）"
+      }
+    },
+    "moe-top1-E8-s1": {
+      "bpc": 1.542,
+      "n_params_total": 79837696,
+      "tokens_per_param": 1.2313,
+      "wall_minutes": 12.41,
+      "peak_gpu_mem_mb": 4643.2,
+      "gnorm_max": 5.32,
+      "grad_skips": 0,
+      "stability_valid": true,
+      "routing": {
+        "per_layer": [
+          {
+            "usage": [
+              11377,
+              32431,
+              52871,
+              10221,
+              5607,
+              1825,
+              47314,
+              2194
+            ],
+            "entropy_norm": 0.781915,
+            "max_frac": 0.322699
+          },
+          {
+            "usage": [
+              1037,
+              10,
+              1325,
+              252,
+              1359,
+              86539,
+              30581,
+              42737
+            ],
+            "entropy_norm": 0.539701,
+            "max_frac": 0.528192
+          },
+          {
+            "usage": [
+              79706,
+              18540,
+              152,
+              676,
+              58893,
+              3608,
+              432,
+              1833
+            ],
+            "entropy_norm": 0.550133,
+            "max_frac": 0.486487
+          },
+          {
+            "usage": [
+              12,
+              53996,
+              2291,
+              248,
+              2106,
+              79586,
+              10879,
+              14722
+            ],
+            "entropy_norm": 0.595999,
+            "max_frac": 0.485754
+          },
+          {
+            "usage": [
+              56277,
+              31886,
+              6487,
+              7195,
+              22929,
+              11261,
+              19404,
+              8401
+            ],
+            "entropy_norm": 0.872788,
+            "max_frac": 0.343488
+          },
+          {
+            "usage": [
+              36146,
+              33417,
+              9210,
+              11442,
+              10857,
+              10717,
+              42574,
+              9477
+            ],
+            "entropy_norm": 0.903441,
+            "max_frac": 0.259851
+          },
+          {
+            "usage": [
+              27866,
+              17985,
+              45879,
+              36448,
+              6089,
+              2262,
+              15753,
+              11558
+            ],
+            "entropy_norm": 0.879235,
+            "max_frac": 0.280023
+          },
+          {
+            "usage": [
+              22357,
+              28047,
+              28929,
+              5384,
+              35030,
+              21979,
+              5206,
+              16908
+            ],
+            "entropy_norm": 0.93084,
+            "max_frac": 0.213806
+          },
+          {
+            "usage": [
+              5878,
+              13175,
+              11834,
+              43326,
+              29983,
+              16839,
+              41613,
+              1192
+            ],
+            "entropy_norm": 0.861842,
+            "max_frac": 0.264441
+          },
+          {
+            "usage": [
+              39198,
+              26332,
+              6163,
+              33528,
+              9567,
+              9437,
+              21673,
+              17942
+            ],
+            "entropy_norm": 0.925299,
+            "max_frac": 0.239246
+          },
+          {
+            "usage": [
+              17610,
+              17721,
+              36083,
+              971,
+              4964,
+              65849,
+              13890,
+              6752
+            ],
+            "entropy_norm": 0.796773,
+            "max_frac": 0.40191
+          },
+          {
+            "usage": [
+              20237,
+              9158,
+              26546,
+              7840,
+              16345,
+              23727,
+              15265,
+              44722
+            ],
+            "entropy_norm": 0.935442,
+            "max_frac": 0.272961
+          }
+        ],
+        "global": {
+          "usage": [
+            317701,
+            282698,
+            227770,
+            157531,
+            203729,
+            333629,
+            264584,
+            178438
+          ],
+          "entropy_norm": 0.985334,
+          "max_frac": 0.169692,
+          "n_experts": 8
+        },
+        "entropy_norm_min_layer": 0.539701,
+        "max_frac_worst_layer": 0.528192,
+        "collapse_flagged": true,
+        "windows_note": "使用率累计全部 20 个评测批（不是只看最后一批）"
+      }
+    },
+    "dense-eqparam-E4-s1": {
+      "bpc": 1.51399,
+      "n_params_total": 41969152,
+      "tokens_per_param": 2.3423,
+      "wall_minutes": 6.16,
+      "peak_gpu_mem_mb": 6945.5,
+      "gnorm_max": 16.95,
+      "grad_skips": 0,
+      "stability_valid": true,
+      "routing": null
+    }
+  },
+  "arms_not_run": [],
+  "arms_invalid_stability": [],
+  "pairs": {
+    "main-E4-s0": {
+      "n_batches": 20,
+      "delta_bpc": -0.01057,
+      "sd_of_paired_delta": 0.00828,
+      "se_of_mean": 0.00185,
+      "two_se": 0.00363,
+      "t_stat": -5.71,
+      "frac_batches_delta_gt_0": 0.1,
+      "n_req_for_band": 2,
+      "delta_consistency_abs": 0.0,
+      "comparator": "dense-B0-s0",
+      "arm": "moe-top1-E4-s0",
+      "bpc_comparator": 1.52219,
+      "bpc_arm": 1.53276,
+      "band_class": "in_band"
+    },
+    "main-E4-s1": {
+      "n_batches": 20,
+      "delta_bpc": -0.00186,
+      "sd_of_paired_delta": 0.00488,
+      "se_of_mean": 0.00109,
+      "two_se": 0.00214,
+      "t_stat": -1.71,
+      "frac_batches_delta_gt_0": 0.4,
+      "n_req_for_band": 1,
+      "delta_consistency_abs": 0.0,
+      "comparator": "dense-B0-s1",
+      "arm": "moe-top1-E4-s1",
+      "bpc_comparator": 1.52886,
+      "bpc_arm": 1.53072,
+      "band_class": "in_band"
+    },
+    "main-E8-s0": {
+      "n_batches": 20,
+      "delta_bpc": -0.0228,
+      "sd_of_paired_delta": 0.00899,
+      "se_of_mean": 0.00201,
+      "two_se": 0.00394,
+      "t_stat": -11.34,
+      "frac_batches_delta_gt_0": 0.0,
+      "n_req_for_band": 2,
+      "delta_consistency_abs": 1e-05,
+      "comparator": "dense-B0-s0",
+      "arm": "moe-top1-E8-s0",
+      "bpc_comparator": 1.52219,
+      "bpc_arm": 1.545,
+      "band_class": "beyond_negative"
+    },
+    "main-E8-s1": {
+      "n_batches": 20,
+      "delta_bpc": -0.01315,
+      "sd_of_paired_delta": 0.0086,
+      "se_of_mean": 0.00192,
+      "two_se": 0.00377,
+      "t_stat": -6.84,
+      "frac_batches_delta_gt_0": 0.1,
+      "n_req_for_band": 2,
+      "delta_consistency_abs": 1e-05,
+      "comparator": "dense-B0-s1",
+      "arm": "moe-top1-E8-s1",
+      "bpc_comparator": 1.52886,
+      "bpc_arm": 1.542,
+      "band_class": "in_band"
+    },
+    "expert-count-s0": {
+      "n_batches": 20,
+      "delta_bpc": -0.01223,
+      "sd_of_paired_delta": 0.00702,
+      "se_of_mean": 0.00157,
+      "two_se": 0.00308,
+      "t_stat": -7.79,
+      "frac_batches_delta_gt_0": 0.05,
+      "n_req_for_band": 1,
+      "delta_consistency_abs": 1e-05,
+      "comparator": "moe-top1-E4-s0",
+      "arm": "moe-top1-E8-s0",
+      "bpc_comparator": 1.53276,
+      "bpc_arm": 1.545,
+      "band_class": "in_band"
+    },
+    "expert-count-s1": {
+      "n_batches": 20,
+      "delta_bpc": -0.01128,
+      "sd_of_paired_delta": 0.00934,
+      "se_of_mean": 0.00209,
+      "two_se": 0.00409,
+      "t_stat": -5.4,
+      "frac_batches_delta_gt_0": 0.1,
+      "n_req_for_band": 2,
+      "delta_consistency_abs": 0.0,
+      "comparator": "moe-top1-E4-s1",
+      "arm": "moe-top1-E8-s1",
+      "bpc_comparator": 1.53072,
+      "bpc_arm": 1.542,
+      "band_class": "in_band"
+    },
+    "attr-E4-s0": {
+      "n_batches": 20,
+      "delta_bpc": -0.01806,
+      "sd_of_paired_delta": 0.01039,
+      "se_of_mean": 0.00232,
+      "two_se": 0.00455,
+      "t_stat": -7.78,
+      "frac_batches_delta_gt_0": 0.0,
+      "n_req_for_band": 3,
+      "delta_consistency_abs": 0.0,
+      "comparator": "dense-eqparam-E4-s0",
+      "arm": "moe-top1-E4-s0",
+      "bpc_comparator": 1.5147,
+      "bpc_arm": 1.53276,
+      "band_class": "beyond_negative"
+    },
+    "attr-E4-s1": {
+      "n_batches": 20,
+      "delta_bpc": -0.01673,
+      "sd_of_paired_delta": 0.01118,
+      "se_of_mean": 0.0025,
+      "two_se": 0.0049,
+      "t_stat": -6.69,
+      "frac_batches_delta_gt_0": 0.05,
+      "n_req_for_band": 3,
+      "delta_consistency_abs": 0.0,
+      "comparator": "dense-eqparam-E4-s1",
+      "arm": "moe-top1-E4-s1",
+      "bpc_comparator": 1.51399,
+      "bpc_arm": 1.53072,
+      "band_class": "beyond_negative"
+    }
+  },
+  "criteria": {
+    "c1_main_equal_macs": {
+      "note": "Δ = bpc(dense-B0) − bpc(moe-top1-E*)（对照 − 实验，正 = MoE 更好）；0.014 配对带",
+      "E4": {
+        "kind": "main",
+        "band_classes": [
+          "in_band",
+          "in_band"
+        ],
+        "verdict": "两 seed 都落带内 ⇒ 同激活算力下不可排序（买不到质量）",
+        "pairs": {
+          "s0": {
+            "n_batches": 20,
+            "delta_bpc": -0.01057,
+            "sd_of_paired_delta": 0.00828,
+            "se_of_mean": 0.00185,
+            "two_se": 0.00363,
+            "t_stat": -5.71,
+            "frac_batches_delta_gt_0": 0.1,
+            "n_req_for_band": 2,
+            "delta_consistency_abs": 0.0,
+            "comparator": "dense-B0-s0",
+            "arm": "moe-top1-E4-s0",
+            "bpc_comparator": 1.52219,
+            "bpc_arm": 1.53276,
+            "band_class": "in_band"
+          },
+          "s1": {
+            "n_batches": 20,
+            "delta_bpc": -0.00186,
+            "sd_of_paired_delta": 0.00488,
+            "se_of_mean": 0.00109,
+            "two_se": 0.00214,
+            "t_stat": -1.71,
+            "frac_batches_delta_gt_0": 0.4,
+            "n_req_for_band": 1,
+            "delta_consistency_abs": 0.0,
+            "comparator": "dense-B0-s1",
+            "arm": "moe-top1-E4-s1",
+            "bpc_comparator": 1.52886,
+            "bpc_arm": 1.53072,
+            "band_class": "in_band"
+          }
+        }
+      },
+      "E8": {
+        "kind": "main",
+        "band_classes": [
+          "beyond_negative",
+          "in_band"
+        ],
+        "verdict": "两 seed 不同向或未同时越带 ⇒ 本 n 下不可排序（不解释成噪声、不取平均掩盖）",
+        "pairs": {
+          "s0": {
+            "n_batches": 20,
+            "delta_bpc": -0.0228,
+            "sd_of_paired_delta": 0.00899,
+            "se_of_mean": 0.00201,
+            "two_se": 0.00394,
+            "t_stat": -11.34,
+            "frac_batches_delta_gt_0": 0.0,
+            "n_req_for_band": 2,
+            "delta_consistency_abs": 1e-05,
+            "comparator": "dense-B0-s0",
+            "arm": "moe-top1-E8-s0",
+            "bpc_comparator": 1.52219,
+            "bpc_arm": 1.545,
+            "band_class": "beyond_negative"
+          },
+          "s1": {
+            "n_batches": 20,
+            "delta_bpc": -0.01315,
+            "sd_of_paired_delta": 0.0086,
+            "se_of_mean": 0.00192,
+            "two_se": 0.00377,
+            "t_stat": -6.84,
+            "frac_batches_delta_gt_0": 0.1,
+            "n_req_for_band": 2,
+            "delta_consistency_abs": 1e-05,
+            "comparator": "dense-B0-s1",
+            "arm": "moe-top1-E8-s1",
+            "bpc_comparator": 1.52886,
+            "bpc_arm": 1.542,
+            "band_class": "in_band"
+          }
+        }
+      }
+    },
+    "c2_expert_count": {
+      "note": "Δ = bpc(moe-top1-E4) − bpc(moe-top1-E8)（正 = 专家更多更好）；同一条 0.014 带；低端两点，不外推",
+      "kind": "expert_count",
+      "band_classes": [
+        "in_band",
+        "in_band"
+      ],
+      "verdict": "两 seed 都落带内 ⇒ 专家数买不到质量",
+      "pairs": {
+        "s0": {
+          "n_batches": 20,
+          "delta_bpc": -0.01223,
+          "sd_of_paired_delta": 0.00702,
+          "se_of_mean": 0.00157,
+          "two_se": 0.00308,
+          "t_stat": -7.79,
+          "frac_batches_delta_gt_0": 0.05,
+          "n_req_for_band": 1,
+          "delta_consistency_abs": 1e-05,
+          "comparator": "moe-top1-E4-s0",
+          "arm": "moe-top1-E8-s0",
+          "bpc_comparator": 1.53276,
+          "bpc_arm": 1.545,
+          "band_class": "in_band"
+        },
+        "s1": {
+          "n_batches": 20,
+          "delta_bpc": -0.01128,
+          "sd_of_paired_delta": 0.00934,
+          "se_of_mean": 0.00209,
+          "two_se": 0.00409,
+          "t_stat": -5.4,
+          "frac_batches_delta_gt_0": 0.1,
+          "n_req_for_band": 2,
+          "delta_consistency_abs": 0.0,
+          "comparator": "moe-top1-E4-s1",
+          "arm": "moe-top1-E8-s1",
+          "bpc_comparator": 1.53072,
+          "bpc_arm": 1.542,
+          "band_class": "in_band"
+        }
+      }
+    },
+    "c3_attribution_eqparam": {
+      "note": "Δ = bpc(dense-eqparam-E4) − bpc(moe-top1-E4)（正 = MoE 优于等参数 dense）；SCHEMA §15 的归因对照（等参数、4× 激活算力）",
+      "kind": "attr",
+      "band_classes": [
+        "beyond_negative",
+        "beyond_negative"
+      ],
+      "verdict": "MoE 劣于等参数 dense ⇒ 稀疏/路由本身更差（越带，n=2）",
+      "pairs": {
+        "s0": {
+          "n_batches": 20,
+          "delta_bpc": -0.01806,
+          "sd_of_paired_delta": 0.01039,
+          "se_of_mean": 0.00232,
+          "two_se": 0.00455,
+          "t_stat": -7.78,
+          "frac_batches_delta_gt_0": 0.0,
+          "n_req_for_band": 3,
+          "delta_consistency_abs": 0.0,
+          "comparator": "dense-eqparam-E4-s0",
+          "arm": "moe-top1-E4-s0",
+          "bpc_comparator": 1.5147,
+          "bpc_arm": 1.53276,
+          "band_class": "beyond_negative"
+        },
+        "s1": {
+          "n_batches": 20,
+          "delta_bpc": -0.01673,
+          "sd_of_paired_delta": 0.01118,
+          "se_of_mean": 0.0025,
+          "two_se": 0.0049,
+          "t_stat": -6.69,
+          "frac_batches_delta_gt_0": 0.05,
+          "n_req_for_band": 3,
+          "delta_consistency_abs": 0.0,
+          "comparator": "dense-eqparam-E4-s1",
+          "arm": "moe-top1-E4-s1",
+          "bpc_comparator": 1.51399,
+          "bpc_arm": 1.53072,
+          "band_class": "beyond_negative"
+        }
+      }
+    }
+  },
+  "c4_cost": {
+    "expert_macs_equal_all_main_arms": true,
+    "expert_macs_ratio_vs_dense": {
+      "moe-top1-E4-s0": 1.0,
+      "moe-top1-E8-s0": 1.0,
+      "moe-top1-E4-s1": 1.0,
+      "moe-top1-E8-s1": 1.0
+    },
+    "router_tax_e4_pct": 0.13,
+    "router_tax_e8_pct": 0.26,
+    "peak_gpu_mem_mb": {
+      "dense-B0-s0": 2992.3,
+      "moe-top1-E4-s0": 3930.7,
+      "moe-top1-E8-s0": 4645.6,
+      "dense-eqparam-E4-s0": 6945.5,
+      "dense-B0-s1": 2992.3,
+      "moe-top1-E4-s1": 3932.9,
+      "moe-top1-E8-s1": 4643.2,
+      "dense-eqparam-E4-s1": 6945.5
+    },
+    "wall_minutes": {
+      "dense-B0-s0": 4.03,
+      "moe-top1-E4-s0": 8.24,
+      "moe-top1-E8-s0": 12.66,
+      "dense-eqparam-E4-s0": 6.13,
+      "dense-B0-s1": 3.84,
+      "moe-top1-E4-s1": 8.48,
+      "moe-top1-E8-s1": 12.41,
+      "dense-eqparam-E4-s1": 6.16
+    },
+    "wall_in_criterion": false,
+    "note": "每 token MACs / 显存 / 墙钟 / token-per-param 都是申报列，不进判词"
+  },
+  "c6_routing": {
+    "summary": {
+      "moe-top1-E4-s0": {
+        "entropy_norm_min_layer": 0.669638,
+        "max_frac_worst_layer": 0.586896,
+        "global": {
+          "usage": [
+            468771,
+            519667,
+            526019,
+            451623
+          ],
+          "entropy_norm": 0.998469,
+          "max_frac": 0.267547,
+          "n_experts": 4
+        },
+        "collapse_flagged": true
+      },
+      "moe-top1-E8-s0": {
+        "entropy_norm_min_layer": 0.562462,
+        "max_frac_worst_layer": 0.665094,
+        "global": {
+          "usage": [
+            199526,
+            272032,
+            265959,
+            166019,
+            238216,
+            300170,
+            321428,
+            202730
+          ],
+          "entropy_norm": 0.989778,
+          "max_frac": 0.163487,
+          "n_experts": 8
+        },
+        "collapse_flagged": true
+      },
+      "moe-top1-E4-s1": {
+        "entropy_norm_min_layer": 0.409389,
+        "max_frac_worst_layer": 0.833777,
+        "global": {
+          "usage": [
+            388548,
+            462185,
+            649500,
+            465847
+          ],
+          "entropy_norm": 0.986703,
+          "max_frac": 0.330353,
+          "n_experts": 4
+        },
+        "collapse_flagged": true
+      },
+      "moe-top1-E8-s1": {
+        "entropy_norm_min_layer": 0.539701,
+        "max_frac_worst_layer": 0.528192,
+        "global": {
+          "usage": [
+            317701,
+            282698,
+            227770,
+            157531,
+            203729,
+            333629,
+            264584,
+            178438
+          ],
+          "entropy_norm": 0.985334,
+          "max_frac": 0.169692,
+          "n_experts": 8
+        },
+        "collapse_flagged": true
+      }
+    },
+    "collapse_rule": "任一层归一化熵 < 0.5 或最大占比 > 0.5",
+    "note": "路由行为是必须报的对照列；坍缩单独登记，不单独构成否证（均衡属 4.2）"
+  },
+  "c7_stability": {
+    "dense-B0-s0": {
+      "valid": true,
+      "gnorm_max": 9.88,
+      "grad_skips": 0
+    },
+    "moe-top1-E4-s0": {
+      "valid": true,
+      "gnorm_max": 5.04,
+      "grad_skips": 0
+    },
+    "moe-top1-E8-s0": {
+      "valid": true,
+      "gnorm_max": 3.87,
+      "grad_skips": 0
+    },
+    "dense-eqparam-E4-s0": {
+      "valid": true,
+      "gnorm_max": 18.66,
+      "grad_skips": 0
+    },
+    "dense-B0-s1": {
+      "valid": true,
+      "gnorm_max": 9.45,
+      "grad_skips": 0
+    },
+    "moe-top1-E4-s1": {
+      "valid": true,
+      "gnorm_max": 5.93,
+      "grad_skips": 0
+    },
+    "moe-top1-E8-s1": {
+      "valid": true,
+      "gnorm_max": 5.32,
+      "grad_skips": 0
+    },
+    "dense-eqparam-E4-s1": {
+      "valid": true,
+      "gnorm_max": 16.95,
+      "grad_skips": 0
+    }
+  },
+  "main_verdict": {
+    "quality_at_equal_macs": {
+      "E4": "两 seed 都落带内 ⇒ 同激活算力下不可排序（买不到质量）",
+      "E8": "两 seed 不同向或未同时越带 ⇒ 本 n 下不可排序（不解释成噪声、不取平均掩盖）"
+    },
+    "expert_count": "两 seed 都落带内 ⇒ 专家数买不到质量",
+    "attribution_vs_eqparam_dense": "MoE 劣于等参数 dense ⇒ 稀疏/路由本身更差（越带，n=2）",
+    "param_caveat": {
+      "moe-top1-E4-s0": {
+        "params_x_dense": 3.087,
+        "tokens_per_param": 2.3411
+      },
+      "moe-top1-E8-s0": {
+        "params_x_dense": 5.869,
+        "tokens_per_param": 1.2313
+      }
+    },
+    "n_seed": 2
+  },
+  "train_declaration": {
+    "dense-B0-s0": {
+      "wall_minutes": 4.03,
+      "peak_gpu_mem_mb": 2992.3,
+      "gnorm_max": 9.88,
+      "source": "runs/dense-B0-s0/results.json"
+    },
+    "moe-top1-E4-s0": {
+      "wall_minutes": 8.24,
+      "peak_gpu_mem_mb": 3930.7,
+      "gnorm_max": 5.04,
+      "source": "runs/moe-top1-E4-s0/results.json"
+    },
+    "moe-top1-E8-s0": {
+      "wall_minutes": 12.66,
+      "peak_gpu_mem_mb": 4645.6,
+      "gnorm_max": 3.87,
+      "source": "runs/moe-top1-E8-s0/results.json"
+    },
+    "dense-eqparam-E4-s0": {
+      "wall_minutes": 6.13,
+      "peak_gpu_mem_mb": 6945.5,
+      "gnorm_max": 18.66,
+      "source": "runs/dense-eqparam-E4-s0/results.json"
+    },
+    "dense-B0-s1": {
+      "wall_minutes": 3.84,
+      "peak_gpu_mem_mb": 2992.3,
+      "gnorm_max": 9.45,
+      "source": "runs/dense-B0-s1/results.json"
+    },
+    "moe-top1-E4-s1": {
+      "wall_minutes": 8.48,
+      "peak_gpu_mem_mb": 3932.9,
+      "gnorm_max": 5.93,
+      "source": "runs/moe-top1-E4-s1/results.json"
+    },
+    "moe-top1-E8-s1": {
+      "wall_minutes": 12.41,
+      "peak_gpu_mem_mb": 4643.2,
+      "gnorm_max": 5.32,
+      "source": "runs/moe-top1-E8-s1/results.json"
+    },
+    "dense-eqparam-E4-s1": {
+      "wall_minutes": 6.16,
+      "peak_gpu_mem_mb": 6945.5,
+      "gnorm_max": 16.95,
+      "source": "runs/dense-eqparam-E4-s1/results.json"
+    }
+  },
+  "code_hashes": {
+    "axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/run.py": "7cf7c70218cc3d5bc52b6300019e92dded71a4089a2a06b565f60b727f9ddc0c",
+    "axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/config.json": "e998cb19150e0b17e4b167fd23b5d7446bfb3fa3c3528dfbc54489ca1dc9aca1",
+    "axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/train_arms.sh": "74ae703bdaa0e95752878734dec9ec143b899c03d3b2eee84e5ebc6703af4147"
+  },
+  "code_hash_run_py": "7cf7c70218cc3d5bc52b6300019e92dded71a4089a2a06b565f60b727f9ddc0c"
+}

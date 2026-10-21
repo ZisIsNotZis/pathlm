@@ -9,26 +9,108 @@ innovation: "相对普通 decoder-only transformer 的单一大 FFN：每个 FFN
 expected_effect: "（a）在固定每 token 激活 FLOPs 下抬高总参数/容量（保容量减计算）；（b）代价是路由容量与负载不均衡可能吃掉收益，须放进以同 FLOPs dense 为 100% 的质量-代价前沿；（c）必须报活性（专家使用率分布），否则无法区分「真扩容」与「路由把 token 全塞给少数专家」。"
 sota_baseline: "Switch Transformer（top-1 路由 + 负载均衡 aux loss，arXiv 2101.03961）、GShard（top-2 路由 + capacity factor，arXiv 2006.16668）、Expert Choice Routing（专家挑 token，arXiv 2202.09368）、Mixtral（8 专家 top-2，arXiv 2401.04088）、DeepSeekMoE（细粒度 + 共享专家，arXiv 2401.06066）、ST-MoE（router z-loss，arXiv 2202.08906）、DeepSeek-V3（aux-loss-free bias 均衡，arXiv 2412.19437）。出处已于本轮联网核实 arXiv 标题（`.scratch/65-axis4-moe/TICKET.md` §4）；机制系数/超参只作方向引用、不作判据。本地锚 = 同尺寸 stock dense（归一为 100%；本仓 B0 锚 = 1.5074 bpc 快照，13M 基底 = `configs/B0.json`，实测 13,602,304 参数）。"
 gap: "本仓零经验：旧格 W2-expertization 无自有 experiments（MAPPING §1），仅一份「业界已做透」的定性情报。MoE 是业界已大规模验证的成熟路线（「同 FLOPs 更多参数」的唯一规模化路线），**本项最高风险是造轮子**；且 13M 尺度上专家数少、意义存疑（SCHEMA §7 规模纪律），须先证明该尺度仍能改变判断。**相对 Switch/GShard 的具体增量**：① 上游报「大尺度吞吐/质量」，本项给**小尺度、单文件数据、单卡**下「每 token 专家激活 MACs → (clean bpc, 总参数, 专家使用率分布)」三列同框，并把**等 FLOPs 与等参数双对照**都钉到数字（`2610` WP0 已给出：等 FLOPs 臂专家 MACs 逐位相等 + 路由税 +0.26%；等参数 dense 对照 mlp_mult 48/24，相对差 <0.2%）；② 上游几乎不报小尺度 `tokens-per-param` 下的**欠拟合混淆**（等 FLOPs top-1 臂 token/param 仅 1.23，dense 为 7.23），本项把它列为必须报的对照列。**不是**把 Mixtral 在 13M 重跑一遍。若给不出相对 SOTA 的实质增量，本项须降为参照、不立项。"
-method: "单因素：固定数据/训练预算与主干形状，只改 FFN 的专家化配置。臂 = {dense FFN（stock）, top-1 路由, top-2 路由}，各臂给等参数（dense 扩到同参数量）与等 FLOPs（dense 缩到同激活 FLOPs）双对照。基底恒为 stock decoder-only。"
+method: "单因素：固定数据/训练预算与主干形状，只改 FFN 的专家化配置。已执行的一轮 = top-1 路由（E=4 / E=8）+ 等激活算力 dense 主对照 + 等参数 dense 旁证（`2611`）；top-2 路由只在 WP0 记账里钉过参数量与 MACs（`2610` 的 moe-top2-E8），未训练，留给 `4.2` 与后续契约。基底恒为 stock decoder-only。"
 validation: "端到端：对照 = 同尺寸 stock dense（等 FLOPs 与等参数双对照，归一为 100%）；客观判据 = 序列级 clean bpc（该不跌/可排序，须越 0.014 噪声带）+ 每 token 等效 FLOPs（该跌或持平）+ 专家使用率分布（活性，防坍缩，必须报）；口径 = matched-step / 同 token 预算，**墙钟不进判据**；必须不变 = 因果性与总参数记账一致（不把「减参数」记成「减算力」）。 判据带（C1 裁决）：0.014 bpc 带限配对 Δ、≥5 窗口；概率 / 使用率类指标按 prompt 聚类 bootstrap / Wilson CI 主判，不跨量纲借用 0.014。"
 objective_criteria: "该涨：同 FLOPs 下的有效容量/参数量；该不跌/可排序：clean bpc（相对同 FLOPs dense，须越 0.014 噪声带）；该均衡：专家使用率分布（防坍缩）；必须不变：因果性；必须报：路由器额外参数与计算、总参数记账。"
 falsification: "若在等参数对照下，MoE 相对同 FLOPs dense 的 clean bpc 不占优（越噪声带变差或持平）且无法由使用率分布解释 ⇒ 判本尺度稀疏激活专家不产生新知识；若专家使用率坍缩（少数专家吃掉绝大多数 token）且无法用均衡机制修复 ⇒ 判该机制在本尺度失效。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）；使用率 / 路由类指标走配对 CI、不借用 0.014。"
-failure_analysis: ""
-conclusion: "本项命题的本地判决尚未做（无 13M 三臂 matched-step 读数）。当前已有本地工作（WP0，`2610-moe-arm-ledger-13m`）：① 等 FLOPs / 等参数臂的记账已钉死——13M 基底 dense-B0 = 13,602,304 参数、FFN 9,437,184 MACs/token；等 FLOPs 臂 moe-top1-E8（E=8,k=1,h_e=1536）= 79,837,696 参数、专家 MACs/token 与 dense 逐位相等（另加路由器 E·d 的 +0.26% 路由税）、tokens-per-param 1.23（dense 为 7.23）；moe-top2-E8（E=8,k=2,h_e=768）= 42,015,232 参数、同样等专家 MACs、tokens-per-param 2.34；等参数 dense 对照 mlp_mult=48/24，总参数相对差 <0.2%；② MoE 作为 `Block.mlp` 的透明替换已被断言钉住（E=1,top-1 灌入 stock mlp 权重 ⇒ 与 dense 逐位一致，`bitwise_equal=true`）、路由器梯度非零（干预活着）。质量-代价前沿本身（clean bpc 三臂）尚未测。附：同实验目录另跑了一个**坍缩可观测性探针**（4.2 前提，单臂 13M/top-1/1200 步，见 `analysis.md` §4），结论属 4.2，不计入本项。"
-conclusion_review: "本项无本地质量判决（`status: 未开始`，65-F1 降为 Backlog），故无终局结论可复核。当前自评 + 独立复核的对象 = WP0（记账 + pre-flight）；复核由独立 fresh 复核者出具，判词见 `.scratch/65-axis4-moe/REVIEW-1.md`，结论落点在本文件的 `conclusion` 与 `gaps`。把「造轮子」风险写进 `gap`，增量已声明；按 W-13 不再保留「todo 待补做」与「prior_art 检索不可用」的自相矛盾口径；按 W-17 成本口径改为等效理论量。判据按 `harness/research-schema.md` 预登记（等 FLOPs/等参数双对照 + 客观判据 + 口径 + 否证条件），「专家使用率分布」为必须报的活性对照列。"
+failure_analysis: "**本项命题（同每 token 激活算力下，成倍参数能兑现成质量）在 13M / 98.3M token 这一格被本地证据否证**，按 `harness/SCHEMA.md` 的三分法归因：① **实现问题：排除**——`E=1,top-1` 灌入 stock `mlp` 权重与 dense 逐位相等（`preflight.json::bitwise_equal = true` + 反恒真单测）、分组前向与朴素前向 `max_abs_diff == 0`、专家 MACs 比值恰 1.0、8/8 臂过入场门（`gnorm_max` 3.87–18.66、`grad_skips` 0）、同 seed 非 FFN 参数逐位拷贝、路由确实在训练（使用率逐层显著偏离均匀）；本轮修掉的三处缺陷都在 eval 段、不碰训练，判词方向在「补丁版预演」与「修好后重训版」两套读数上一致（`analysis.md` §4.3）。② **设计问题：部分成立，已量化**——本格按单因素纪律只有 top-1 且 `aux_weight = 0`（均衡属 4.2），而实测浅层路由已集中（E4-s1 层 1 有一专家只剩 393 个 token、E8-s1 层 1 有一个只剩 10 个）⇒ 「均衡缺位」与「容量兑现不了」在本格读数上分不开；同时 token/param 只有 2.34 / 1.23（dense 7.23）⇒ E8 臂的欠拟合风险最大。但**旁证把「纯容量」这一半答掉了**：等参数（41.97M）而每 token 4× 算力的稠密臂比 MoE-E4 好 0.018（两 seed 同向、越带）⇒ 「参数多但每 token 走狭窄路径」本身不产生收益，不是单纯「没喂饱」。③ **机制在本尺度：只能说「本设计下无信号」**——`laws: [10]` 的口径：本格满足「等激活算力」「配对窗口」「两 seed」「活性可观测」，但**不满足**业界兑现 MoE 的两个前提（大 token 预算、有负载均衡），所以结论只能是「本设计（无均衡、低 token/param、E∈{4,8} 低端两点）下无信号」，**不得**读成「稀疏激活专家机制无效」。"
+conclusion: "本项在 13M 尺度上的本地判决已做（`experiments/2611-moe-topk-vs-dense-same-active-macs-13m`，条件全部同预登记：13M 基底 `d=256 / L=12 / H=8`、enwik8 字符级、6000 步 × bs32 × T=512 = 98,304,000 token/臂、seed 0 与 1、20 批 × bs16 配对 clean bpc、0.014 bpc 带、top-1 权重归一、`aux_weight = 0`）：**每 token 专家激活 MACs 与 stock dense 逐位相等（9,437,184，比值恰 1.000000；路由器多花 +0.13% / +0.26%）的前提下，把每层 FFN 换成 E=4 或 E=8 个 top-1 专家，在本尺度买不到可测质量。** ① **主判（等激活算力，Δ = bpc(dense-B0) − bpc(MoE)，正 = MoE 更好）**：E4 **−0.01057 / −0.00186**（两 seed 都落 0.014 带内）、E8 **−0.02280 / −0.01315**（s0 越负带 1.63×、s1 落带内 0.94×）⇒ 按 `verdict_rules` 分别判 **同激活算力下不可排序（买不到质量）** 与 **本 n 下不可排序**；两 seed 方向都是负的（E4 t = −5.71 / −1.71、E8 t = −11.34 / −6.84）⇒ 数据既不支持「MoE 更好」，也没有在两 seed 上同时证到「MoE 更差」。② **专家数（E4 − E8，低端两点、参数 1.9×）**：**−0.01223 / −0.01128**，两 seed 同向（负）但都落带内 ⇒ 专家数买不到质量；**两点都在低端，结论不外推到 E16+ 或细粒度专家**。③ **旁证（`dense-eqparam-E4`，等参数 41.97M、每 token 4× 算力，不参与主判）**：**−0.01806 / −0.01673**，两 seed 同向、越负带 1.29× / 1.20× ⇒ **MoE 劣于同参数稠密，稀疏/路由本身没有可测的独立贡献**。④ **参数限定必须与判词同段读**：dense-B0 13.6M（token/param 7.227）/ moe-top1-E4 42.0M（3.087×，2.341）/ moe-top1-E8 79.8M（5.869×，1.231）⇒ E8 臂的欠拟合风险最大，**E8 的负读数不得读成「专家越多越差」**。⑤ **路由行为（必须报）**：跨 12 层池化的全局归一化熵 0.9853–0.9985 看似均衡，但**逐层**口径下四条 MoE 臂**全部命中坍缩登记**（`moe-top1-E4-s0` 4/12 层最大占比 > 0.5、`moe-top1-E8-s0` 层 0 的 0.6651、`moe-top1-E4-s1` 层 1 熵 0.4094 / 占比 0.8338、`moe-top1-E8-s1` 层 1 的 0.5282），坍缩集中在**浅层 0–3**、深层接近均匀 ⇒ **池化熵不能用来否证坍缩**（`2610/analysis.md` §4 已把这条口径限制写在前面，本次逐层读数把它坐实）。⑥ **代价侧（申报，不进判词）**：峰值显存 2992.3 → 3930.7（1.31×）/ 4645.6 MiB（1.55×），墙钟 4.03 → 8.24 / 12.66 min；E8 实测 0.1266 s/step（低于元级门 0.14 s/step）。⑦ **判词落点与边界**：按 `falsification` 第一条，本格判「**13M / 98.3M token / 无均衡 / 低端两点这个预算下，等激活算力的稀疏激活专家不产生可测质量增益**」，**不写「MoE 无效」**、不外推到更大 token 预算或更大规模；`status: 被否证` 指本项**在这一格**的命题被否证，不是这条路线在大尺度上的否证。⑧ **实现层证据**：`E=1,top-1` 灌入 stock `mlp` 权重与 dense **逐位相等**、分组前向与朴素前向 `max_abs_diff == 0`、8/8 臂过入场门（`gnorm_max` 3.87–18.66、`grad_skips` 0）、同 seed 下非 FFN 参数逐位拷贝 ⇒ 臂间唯一差异是 FFN。⑨ **定序披露**：为修 harness 侧的接线缺陷（`ledger`/`eval` 的键名、设备对齐、自洽门容差、收尾 print、Δ 对账口径），本实验**六次重绑、三次训练**；现存读数全部由第六次绑定的代码产出（`code_hash_run_py = 7cf7c702…`，产物时间晚于 `bound_at`），判据线、0.014 带、臂清单、配对规则、评测口径、token 预算、步数、种子**一字未动**；第三次训练与「同 checkpoint 预演」的并列表在 `analysis.md` §4.3。"
+conclusion_review: "本项现在有本地质量判决（`2611`，n=2），终局结论可复核；当前自评的对象是**判词与预登记规则的一致性**：① 所有 Δ 由 `results.json::pairs` 给出、方向 `comparator_minus_arm`、带分类由 `verdict_rules` 机判，未人工挑选；② 「不可排序」的落点与 `config.json::verdict_rules` 的分支逐字对应（E4 两 seed 都带内、E8 未同时越带、专家数两 seed 都带内、旁证两 seed 都越负带）；③ 参数限定（13.6M / 42.0M / 79.8M、7.227 / 2.341 / 1.231）与判词同段出现；④ 坍缩登记逐层给出、并明写「不单独构成否证」；⑤ 三次训练与六次重绑的定序、以及第三次训练与预演读数的并列，都写在 `analysis.md` §3–§4.3，现存读数全部由最终绑定代码产出。**待独立复核（fresh 上下文、排在执行之后，`harness/SCHEMA.md` §14/§14b）**：判词是否越界（尤其 E8 的「本 n 不可排序」是否被读成「更差」）、旁证是否被误当成等算力对照、坍缩与欠拟合两个解释候选的权重是否被夸大、以及「六次重绑 + 三次训练」的定序链是否被完整交代。"
 laws: [10]
-cost_rows: []
+cost_rows:
+  - law: 10
+    change: 每层 FFN 换成 4 个同宽专家、每 token 只走 top-1（路由权重归一，无均衡项，aux_weight = 0）
+    touches_trunk: true
+    metric: clean bpc Δ（对照 − 实验；正 = MoE 更好）
+    delta: '-0.01057'
+    delta_direction: comparator_minus_arm
+    comparator: 同 seed stock dense（13.6M，每 token 专家 MACs 与 MoE 逐位相等）
+    scale: 13M / L=12 / 6000 步 / 98.3M token / seed 0（2611）
+    boundary: 13M 尺度、98.3M token（token/param 2.34）、无负载均衡的 top-1；不得读成「MoE 机制无效」，也不外推到更大 token 预算
+    source: axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/analysis.md
+  - law: 10
+    change: 每层 FFN 换成 4 个同宽专家、每 token 只走 top-1（同上，第二个 seed）
+    touches_trunk: true
+    metric: clean bpc Δ（对照 − 实验；正 = MoE 更好）
+    delta: '-0.00186'
+    delta_direction: comparator_minus_arm
+    comparator: 同 seed stock dense（13.6M，等激活 MACs）
+    scale: 13M / L=12 / 6000 步 / 98.3M token / seed 1（2611）
+    boundary: 与 s0 一起落 0.014 带内；单 seed 不落判词，方向为负但幅度小于带
+    source: axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/analysis.md
+  - law: 10
+    change: 每层 FFN 换成 8 个同宽专家、每 token 只走 top-1（参数 5.87×，token/param 1.23）
+    touches_trunk: true
+    metric: clean bpc Δ（对照 − 实验；正 = MoE 更好）
+    delta: '-0.02280'
+    delta_direction: comparator_minus_arm
+    comparator: 同 seed stock dense（13.6M，等激活 MACs）
+    scale: 13M / L=12 / 6000 步 / 98.3M token / seed 0（2611）
+    boundary: 该 seed 越负带，但同判据的 seed 1 落带内 ⇒ 判词为「本 n 不可排序」；不得单独引成「MoE 更差」
+    source: axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/analysis.md
+  - law: 10
+    change: 每层 FFN 换成 8 个同宽专家、每 token 只走 top-1（同上，第二个 seed）
+    touches_trunk: true
+    metric: clean bpc Δ（对照 − 实验；正 = MoE 更好）
+    delta: '-0.01315'
+    delta_direction: comparator_minus_arm
+    comparator: 同 seed stock dense（13.6M，等激活 MACs）
+    scale: 13M / L=12 / 6000 步 / 98.3M token / seed 1（2611）
+    boundary: 落 0.014 带内（0.94× 带）；E8 的 token/param 只有 1.23，欠拟合风险最大
+    source: axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/analysis.md
+  - law: 10
+    change: 专家数从 4 加到 8（同宽 top-1，参数 1.9×）
+    touches_trunk: true
+    metric: clean bpc Δ（bpc(E4) − bpc(E8)；正 = 专家更多更好）
+    delta: '-0.01223'
+    delta_direction: comparator_minus_arm
+    comparator: 同 seed、同激活 MACs 的 moe-top1-E4
+    scale: 13M / L=12 / 6000 步 / 98.3M token / seed 0（2611）
+    boundary: 只有 E4 / E8 两个低端点（参数 1.9×）；不外推到更多专家或大 E
+    source: axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/analysis.md
+  - law: 10
+    change: 专家数从 4 加到 8（同上，第二个 seed）
+    touches_trunk: true
+    metric: clean bpc Δ（bpc(E4) − bpc(E8)；正 = 专家更多更好）
+    delta: '-0.01128'
+    delta_direction: comparator_minus_arm
+    comparator: 同 seed、同激活 MACs 的 moe-top1-E4
+    scale: 13M / L=12 / 6000 步 / 98.3M token / seed 1（2611）
+    boundary: 落 0.014 带内（0.81× 带）；与 s0 一起判「专家数买不到质量」
+    source: axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/analysis.md
+  - law: 10
+    change: 等参数对照：41.97M 稠密（mlp_mult=24，每 token 4× 激活算力）对 41.99M top-1 专家
+    touches_trunk: true
+    metric: clean bpc Δ（等参数稠密 − MoE；正 = MoE 更好）
+    delta: '-0.01806'
+    delta_direction: comparator_minus_arm
+    comparator: 同 seed 的 moe-top1-E4（参数相对差 0.051%，算力不等）
+    scale: 13M / L=12 / 6000 步 / 98.3M token / seed 0（2611）
+    boundary: 旁证，不是等算力对照、不参与主判；只回答「MoE 的差异是不是纯容量」
+    source: axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/analysis.md
+  - law: 10
+    change: 等参数对照（同上，第二个 seed）
+    touches_trunk: true
+    metric: clean bpc Δ（等参数稠密 − MoE；正 = MoE 更好）
+    delta: '-0.01673'
+    delta_direction: comparator_minus_arm
+    comparator: 同 seed 的 moe-top1-E4
+    scale: 13M / L=12 / 6000 步 / 98.3M token / seed 1（2611）
+    boundary: 旁证；两 seed 同向越负带 ⇒ 「稀疏本身无独立贡献」，但不外推到等算力对照
+    source: axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/analysis.md
 experiments:
   - "axes/4-moe/4.1-sparse-experts/experiments/2610-moe-arm-ledger-13m"
   - "axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m"
 argument: "「稀疏激活专家」是「保容量减计算」的专家粒度版：总参数（容量）按 E 放大、每 token 只激活 top-k 个专家 ⇒ 每 token FLOPs 与 dense 同级而容量更大。判定它值不值必须给等 FLOPs 与等参数双对照（`harness/SCHEMA.md` §15），否则无法把「容量增益」与「参数/算力记账」分开。活性（专家使用率）是必须报的对照列，否则无法区分「真扩容」与「路由坍缩」。与 `3.1.5` 通道极化 / 稀疏激活的边界：`3.1.5` 是通道粒度、本项是专家（FFN 块）粒度。"
 gaps:
-  - "本仓零经验：需先做最小判决（13M、{dense, top-1, top-2} 三臂 + 等 FLOPs/等参数双对照，matched-step，报 clean bpc + 每 token 等效 FLOPs + 专家使用率分布）"
-  - "与 4.2（路由与负载均衡）/ 4.3（专家粒度/异构）的边界未整合（由 integrator 核不重复）"
-  - "造轮子风险最高项：须在最小判决里明确「相对 Switch/Mixtral/DeepSeekMoE 的增量」是什么，否则结论无新知识"
-  - "13M 尺度的 MoE 意义存疑（SCHEMA §7）：专家数少，须先证明该尺度仍能改变「某种算力路径值不值」的判断"
-  - "65-F1 裁决：本项降为 **Backlog**（不在 13M 花算力做 MoE 判决），保留本仓等效代价口径记录（WP0 记账）；业界标准 MoE（Switch / GShard / DeepSeekMoE）的跑分线登记在 `axes/7-references/README.md`，将来做大 token 预算时以它为外部基线"
-  - "65-F2 裁决：GPU 协调事项——取锁期间卡曾被未持锁外部进程占用（12.9GB / 90%），后续训练判决（若重启）须按 `harness/SCHEMA.md` §20 排队协调"
+  - "判词只到「13M / 98.3M token / 无均衡 / E∈{4,8} 低端两点」这一格：要判「容量买到但没喂饱」，得把 token 预算抬到 token/param ≈ 7（E8 臂 ≈ 560M token、单臂 ≈ 75 min GPU）"
+  - "负载均衡缺位：本格按单因素纪律 `aux_weight = 0`，而实测浅层路由已集中（E4-s1 层 1 占比 0.8338、E8-s1 层 1 一专家只剩 10 个 token）⇒ 「均衡能不能把质量救回来」属 `4.2`，需新契约（Switch 式 aux / aux-loss-free bias 各一对臂 ≈ 35 min GPU）"
+  - "专家数只有 E4 / E8 两点（参数 1.9×），且都在低端 ⇒ 结论不外推到 E16+、细粒度专家（`4.3`）或 top-2 / top-k>1"
+  - "E=16 的第三点未测：分组前向实测 E=16 仍需 0.2075 s/step ⇒ 20.7 min/臂，撞 20 min 单臂 timeout（元级条件 1/4 裁决改用 E=8）；要补需先把单臂 timeout 或步数写进新契约"
+  - "与 `4.2`（路由与负载均衡）/ `4.3`（专家粒度/异构）的边界仍未整合：本格只给「无均衡的均匀 top-1」这一族的读数，三个格子的不重复性由 integrator 核"
+  - "拓朴外推未做：更大规模（53.9M / 100M+）与真 BPE 词表下的同一对臂；业界标准 MoE（Switch / GShard / DeepSeekMoE / Mixtral）的跑分线登记在 `axes/7-references/README.md`，做大 token 预算时以它为外部基线"
+  - "实现层：分组前向按专家号排序 + `index_select` + `index_add` 的 CUDA 原子累加在 k>1 时不保证位级一致（本格全部 k=1）；真稀疏/路由核（不做 gather 的全量 GEMM）未测，峰值显存随参数线性涨（E8 1.55× dense）"
+
 cost_model: "等效理论量：dense FFN 每 token 过 1 个 FFN（FLOPs ≈ 2·d·h_ff/层）；top-k 专家（E 个）每 token 只过 k 个 ⇒ 每 token FFN 等效 FLOPs ≈ k·2·d·h_ff（与 dense 同形），但总参数 ≈ E·2·d·h_ff（容量约 ×E/k 当激活算力固定）。layer-passes 每 token 仍为 L（层数不变）；tokens-per-forward 每步 1。路由器是 d×E 的极小头（计入每 token 计算）。考虑 pipelining：专家路由是同一前向内按 token 的稀疏 gather，不引入额外顺序依赖，但负载不均会使某些专家成为并行气泡（按期望负载报，不用时间量）。"
 
 role_map:
@@ -38,8 +120,14 @@ role_map:
   integrator: "tree-integrator（研究树 integrator；本轴合并与跨轴一致性核对由 axis4-lead 代行）"
 
 milestone:
-  output: "一份「稀疏激活专家（top-k 路由）」判决包：13M matched-step（6000 步 / 98.3M token / seed 0 与 1）下 {dense-B0, moe-top1-E4, moe-top1-E8} 的配对 clean bpc + 每 token 专家 MACs + 参数量 + 专家使用率分布（熵 / 最大占比），对照同尺寸 stock dense（专家 MACs 逐位相等的等算力主判 + dense-eqparam-E4 等参数旁证，后者不参与主判）。E=16 因单臂 20.7 min 撞 20 min timeout 未测（登记在 gaps）。"
+  output: "一份「稀疏激活专家（top-k 路由）」判决包（已交付）：13M matched-step（6000 步 / 98.3M token / seed 0 与 1）下 {dense-B0, moe-top1-E4, moe-top1-E8} 的配对 clean bpc + 每 token 专家 MACs + 参数量 + 逐层专家使用率分布（熵 / 最大占比），对照同尺寸 stock dense（专家 MACs 逐位相等的等激活算力主判）与 dense-eqparam-E4（等参数旁证，不参与主判）。E=16 因单臂 20.7 min 撞 20 min timeout 未测（登记在 gaps）。"
   acceptance: "等 FLOPs 与等参数双对照臂齐备且预算对齐；MoE 相对同 FLOPs dense 的质量与容量增益同框可分（越 0.014 噪声带）或明确「不可分」；专家使用率分布齐备且非坍缩；结论停在「该尺度值不值」，不外推。 实质验收（C2 裁决）：不被同算力最强基线支配（相对同算力 dense / 等算力 MoE 前沿超出量 ≤ 0）。"
+  acceptance_evidence:
+    - "双对照齐备且预算对齐：8 臂都是 6000 步 × bs32 × T=512 = 98,304,000 token、seed 0/1（`results.json::arm_table` 的 `tokens_per_param` 7.227 / 2.341 / 1.231 / 2.342 逐臂可核）"
+    - "同框可分或明确不可分：主判 E4 −0.01057 / −0.00186、E8 −0.02280 / −0.01315 ⇒ 明确判「不可排序（买不到质量）」（`results.json::main_verdict.quality_at_equal_macs`）"
+    - "使用率分布齐备：`results.json::c6_routing.summary` 逐层 + 全局熵/占比；四条 MoE 臂命中坍缩登记并逐层点名（`analysis.md` §5）"
+    - "不外推：结论逐条写明只覆盖 13M / 98.3M token / 无均衡 / E∈{4,8}（`analysis.md` §7、本文件 `gaps`）"
+    - "实质验收（不被同算力最强基线支配）：点估计上 MoE 两 seed 都比同算力 dense 差（−0.01057 / −0.00186），但**都落 0.014 带内** ⇒ 「被支配」既不成立也不可判分；等参数稠密那条越带读数（−0.01806 / −0.01673）算力是 MoE 的 4×，**不进这条实质验收**（`analysis.md` §4.1）"
 
 work_packages:
   - id: "WP0"
@@ -55,15 +143,15 @@ work_packages:
     goal: "判定 top-k 稀疏激活能否在固定每 token 激活 MACs 下抬高容量且不掉质量"
     means: "`experiments/2611-moe-topk-vs-dense-same-active-macs-13m`：13M、matched-step 6000 步 / 98.3M token、seed 0 与 1，{dense-B0, moe-top1-E4, moe-top1-E8} + dense-eqparam-E4（等参数旁证）；报配对 clean bpc（20 批配对窗口）+ 每 token 专家 MACs + 参数量 + 逐层专家使用率（熵 / 最大占比）"
     acceptance: "三臂预算对齐；专家 MACs 比值恰 1.0；MoE 相对同算力 dense 有/无越 0.014 带，二选一明确；使用率分布齐备并登记是否坍缩"
-    evidence: "axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/{results.json,analysis.md}"
-    review: "跑完另派 fresh 复核（`harness/SCHEMA.md` §14/§14b，复核排在执行之后）"
-    status: "进行中"
+    evidence: "axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/{results.json,analysis.md}（8 臂各 6000 步；专家 MACs 比值 1.0；主判两 seed 落带内 ⇒ 判「买不到质量」；逐层坍缩已登记）"
+    review: "已可派 fresh 复核（`harness/SCHEMA.md` §14/§14b，复核排在执行之后）；判词的自评见 `conclusion_review`"
+    status: "已完成"
 
 roadmap:
   - "WP0：等 FLOPs/等参数臂记账 + MoE 接线 pre-flight（已完成；`2610` 的 ledger/preflight）"
-  - "WP1：13M {dense-B0, moe-top1-E4, moe-top1-E8} + dense-eqparam-E4 的 matched-step 判决（`2611`；开跑前实测步时定预算：dense 0.042 / eqparam 0.066 / E4 0.084 / E8 0.132 s/step）"
-  - "复核通过与 4.2/4.3 边界整合后写 conclusion，更新 status"
+  - "WP1：13M {dense-B0, moe-top1-E4, moe-top1-E8} + dense-eqparam-E4 的 matched-step 判决（`2611`；已完成——8 臂 6000 步、两 seed、配对 clean bpc + 逐层使用率，判词见 `project.yaml::conclusion`，实测步时 dense 0.040 / eqparam 0.061 / E4 0.082 / E8 0.1266 s/step）"
+  - "里程碑达成，本格退出排序；下一步（不属本行）= `gaps` 里的均衡项（4.2）、更大 token 预算、E16 第三点，都需新契约"
 
-status: "未开始"
+status: "被否证"
 started: "2026-10-13T11:06:24+08:00"
-ended: ""
+ended: "2026-10-21T20:20:00+08:00"
