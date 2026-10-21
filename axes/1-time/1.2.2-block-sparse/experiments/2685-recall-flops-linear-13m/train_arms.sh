@@ -18,7 +18,8 @@ ARMS="${ARMS:-linear_s0 full_s0 linear_s1 full_s1}"
 MODE="${MODE:-full}"
 LOCK=/tmp/pathlm_gpu.lock
 MAX_WAIT_S=$(( 20 * 60 ))
-ARM_TIMEOUT=20m
+# 25 min（本仓惯例 20 min；线性臂 12k 步实测 ≈19 min、余量只剩 ~1 min ⇒ 统一抬到 25 min，见 README §5）
+ARM_TIMEOUT=25m
 
 if ! python3 tools/prereg_bind.py "$EXP" --require; then
   echo "先绑定契约：python3 tools/prereg_bind.py $EXP"; exit 3
@@ -80,7 +81,7 @@ run_linear() {    # $1 = 臂名, $2 = seed
   acquire || return 9
   echo "[$(date -Iseconds)] TRAIN START $name seed=$seed (attn-linear, stable phi) gpu_free=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader)"
   timeout "$ARM_TIMEOUT" python3 "$EXP/train_linear.py" "$name" $(common_args "$seed") \
-    --attn-linear --linear-chunk 64 \
+    --attn-linear --linear-chunk 32 \
     --out-root "$EXP/train" > "$EXP/train_${name}.log" 2>&1
   local rc=$?
   release
@@ -103,7 +104,7 @@ run_smoke() {     # $1 = 档名（engine|stable）, $2 = out-dir 名
     timeout 10m python3 "$EXP/train_linear.py" "$name" \
       --d 256 --layers 12 --heads 8 --mlp-mult 6 --seq-len 256 --dense --topology sequential \
       --steps 300 --batch-size 32 --lr 1e-3 --seed 0 --exit-mode uniform --attn-linear \
-      --linear-chunk 64 --eval-batches 2 --out-root "$EXP/smoke" > "$EXP/smoke_${name}.log" 2>&1
+      --linear-chunk 32 --eval-batches 2 --out-root "$EXP/smoke" > "$EXP/smoke_${name}.log" 2>&1
   fi
   local rc=$?
   release

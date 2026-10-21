@@ -22,8 +22,11 @@
   "recipe": {
     "steps": 12000,
     "batch_size": 32,
-    "lr": 1e-3,
-    "seeds": [0, 1],
+    "lr": 0.001,
+    "seeds": [
+      0,
+      1
+    ],
     "exit_mode": "uniform",
     "note": "与本格 2677 / 2683 的臂逐字段一致；`full_s{0,1}` 与 `linear_s{0,1}` 是本实验新训的四条臂，四个臂同一配方 ⇒ 单因素（只改注意力算子）"
   },
@@ -31,10 +34,11 @@
     "engine_flag": "--attn-linear",
     "phi": "elu(x) + 1",
     "phi_evaluation": "stable: exp(min(x,0)) + relu(x)（与 elu(x)+1 逐值相同，只避开 exp(x)-1 的消去）",
-    "linear_chunk": 64,
+    "linear_chunk": 32,
     "linear_attn_eps_declared": 1e-30,
     "kernel_changed": false,
-    "note": "不改核形式 / 归一化式 / 参数量 / 配方；只改 φ 的求值方式与分母 guard 的生效阈值（`stable_linear.py`）"
+    "note": "不改核形式 / 归一化式 / 参数量 / 配方；只改 φ 的求值方式与分母 guard 的生效阈值（`stable_linear.py`）",
+    "linear_chunk_note": "引擎默认 64 的一半；`linear_chunk` 是实装细节（只改块内显式打分与块间状态的分界，数学等价、不改核），取 32 的理由是单臂墙钟：线性臂在 bs32/T=256 上比全因果慢约 2.3×，12k 步在 chunk=64 时 ≈20.2 min、chunk=32 时 ≈19 min"
   },
   "judgement": {
     "band_bpc": 0.014,
@@ -59,7 +63,11 @@
       "newcombe_ci": 0.95,
       "paired_bootstrap_draws": 2000,
       "rule": "两比例差 CI 下界 > 0 且配对 bootstrap CI 下界 > 0 ⇒ 该臂该桶「高于地板」；否则「不高于地板」+ 所需针数",
-      "buckets": ["beyond", "far_slot", "overall"]
+      "buckets": [
+        "beyond",
+        "far_slot",
+        "overall"
+      ]
     },
     "flops": {
       "unit": "MAC（FLOPs = 2×MAC）",
@@ -83,21 +91,62 @@
     "note": "与 2662/config.json::needle 逐字段相同（同入口的证明）"
   },
   "arms": [
-    {"name": "full_s0", "role": "全因果，主判对照臂", "source": "本实验训练"},
-    {"name": "full_s1", "role": "全因果，第二 seed", "source": "本实验训练"},
-    {"name": "linear_s0", "role": "线性核 φ=elu+1，主判实验臂", "source": "本实验训练"},
-    {"name": "linear_s1", "role": "线性核，第二 seed", "source": "本实验训练"},
-    {"name": "win24a0_s0", "role": "均匀条带 24（同字节参照）", "source": "复用 2677"},
-    {"name": "win24a0_s1", "role": "同上，第二 seed", "source": "复用 2677"},
-    {"name": "block8l4_s0", "role": "块条带（远块专桶的臂）", "source": "复用 2683"},
-    {"name": "block8l4_s1", "role": "同上，第二 seed", "source": "复用 2683"},
-    {"name": "win16a8_s0", "role": "局部+全局（同字节轴第三个模式）", "source": "复用 2662"},
-    {"name": "win16a8_s1", "role": "同上，第二 seed", "source": "复用 2662"}
+    {
+      "name": "full_s0",
+      "role": "全因果，主判对照臂",
+      "source": "本实验训练"
+    },
+    {
+      "name": "full_s1",
+      "role": "全因果，第二 seed",
+      "source": "本实验训练"
+    },
+    {
+      "name": "linear_s0",
+      "role": "线性核 φ=elu+1，主判实验臂",
+      "source": "本实验训练"
+    },
+    {
+      "name": "linear_s1",
+      "role": "线性核，第二 seed",
+      "source": "本实验训练"
+    },
+    {
+      "name": "win24a0_s0",
+      "role": "均匀条带 24（同字节参照）",
+      "source": "复用 2677"
+    },
+    {
+      "name": "win24a0_s1",
+      "role": "同上，第二 seed",
+      "source": "复用 2677"
+    },
+    {
+      "name": "block8l4_s0",
+      "role": "块条带（远块专桶的臂）",
+      "source": "复用 2683"
+    },
+    {
+      "name": "block8l4_s1",
+      "role": "同上，第二 seed",
+      "source": "复用 2683"
+    },
+    {
+      "name": "win16a8_s0",
+      "role": "局部+全局（同字节轴第三个模式）",
+      "source": "复用 2662"
+    },
+    {
+      "name": "win16a8_s1",
+      "role": "同上，第二 seed",
+      "source": "复用 2662"
+    }
   ],
   "budget": {
     "gpu_wall_minutes": 120,
-    "arm_timeout_minutes": 20,
+    "arm_timeout_minutes": 25,
     "estimated": "四条新臂训练 ≈9.5 + 9.5 + 17 + 17 min + 冒烟 ≈1 min + 评测 ≈5 min",
-    "peak_mem_mib_polite_line": 5120
+    "peak_mem_mib_polite_line": 5120,
+    "arm_timeout_note": "本仓惯例是「单臂 ≤20 min」；线性臂实测 12k 步 ≈19 min、离 20 min 只有约 1 min 余量（共享卡上还有别人的推理进程），若被 20 min 掐断会丢掉整条臂 ⇒ 给四条新臂统一 25 min 上限。这是**预算偏差**，不改判据、不改配方、不改步数（记账见 README §5 与 analysis.md）。"
   }
 }

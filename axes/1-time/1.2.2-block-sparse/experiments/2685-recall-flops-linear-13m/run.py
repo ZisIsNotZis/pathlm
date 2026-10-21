@@ -112,7 +112,7 @@ def cfg_for(arm: dict) -> DepthARConfig:
                              mlp_mult=MLP, dense=True)
     if arm["mode"] == "linear":
         return DepthARConfig(d_model=D, n_layers=L, n_heads=H, seq_len=SEQ,
-                             mlp_mult=MLP, dense=True, attn_linear=True, linear_chunk=64)
+                             mlp_mult=MLP, dense=True, attn_linear=True, linear_chunk=32)
     return DepthARConfig(d_model=D, n_layers=L, n_heads=H, seq_len=SEQ, mlp_mult=MLP,
                          dense=True, train_window=arm["window"],
                          train_anchors=arm["anchors"])
