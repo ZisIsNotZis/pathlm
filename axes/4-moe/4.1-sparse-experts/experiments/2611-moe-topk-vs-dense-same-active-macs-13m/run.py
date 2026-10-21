@@ -567,7 +567,10 @@ def evaluate() -> dict:
             continue
         cb, ab = per_arm[cmp_n]["bpc_by_batch"], per_arm[arm_n]["bpc_by_batch"]
         st = paired_stats(cb, ab)
-        raw = statistics.mean(cb) - statistics.mean(ab)
+        # 对账（methodology §3）：报出的 Δ 必须与两端**报出的** bpc 均值之差一致（< 2e-6）。
+        # 比的是两个已舍入的数，不是「舍入值 vs 未舍入值」——后者会因 5 位小数的舍入误差
+        # （最多 5e-6）在正确读数上报假红。
+        raw = round(statistics.mean(cb), 5) - round(statistics.mean(ab), 5)
         st["delta_consistency_abs"] = round(abs(st["delta_bpc"] - raw), 8)
         st["comparator"] = cmp_n
         st["arm"] = arm_n
