@@ -264,7 +264,7 @@
 - **它会新产生哪一条代价事实**：一条新的 `cost_rows`——`head_dim`=64 水平上「每值 / 每位置字节 → clean bpc」的 fp8 对 int8 二选一（今天 `atlas/cost-table.md` 只有 `head_dim`=32 那一档）。
 - **不需要新代码**：`--heads 4` 让 `d//heads`=64，能力面已核 `engine_change_required=false`。
 
-### 3.2 批次一 · 派活 #2 · `3.1.5` 的四臂最小判决（**已交付、判「条件性有害」**，见 `axes/3-width/3.1.5-channel-sparsity/project.yaml` 的 `conclusion`）
+### 3.2 批次一 · 派活 #2 · `3.1.5` 的四臂最小判决（**已交付、当时判「条件性有害」**，见 `axes/3-width/3.1.5-channel-sparsity/project.yaml` 的 `conclusion`；当前判词已由批次七的 `WP2` 推到「机制不成立（本尺度）」，以 §0 / §2b 与 `project.yaml::conclusion` 为准）
 
 - **要闭掉什么**：`gaps` 第一条「四臂一个都没跑」——契约、实验内实现与等值门单测都已落盘，只差 GPU 时间；顺带替 Backlog 中的整条 MoE 线在 13M 上打一个便宜代理前哨。
 - **预登记判据**（取自 `axes/3-width/3.1.5-channel-sparsity/experiments/2644-channel-sparsity-13m/README.md` §1）：**H1 备择** = 按内容条件选一半通道（`K50`）相对固定前缀常开一半（`F50`）可排序更优（|Δbpc| ≥ 0.014）⇒「保参数、条件选通道」是独立的前沿维度；**H0 零假设** = 两者不可排序（|Δbpc| < 0.014）⇒ 本尺度上条件性本身没有独立收益；**必须不变** = 总参数逐臂相同（完整 FFN 权重都在账上）、掩码全 1 时前向与 stock 逐位相同。
