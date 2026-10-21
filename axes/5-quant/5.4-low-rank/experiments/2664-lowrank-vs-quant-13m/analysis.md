@@ -64,7 +64,7 @@
 
 训练健康量（`README.md` §5 的门）：7 支新训臂 `runs/<run>/results.json::train.steps = 12000`、
 `grad_skips = 0`（训练日志每 200 步一条，末行步 11999 是日志采样、不是少跑一步），
-墙钟 8.23–10.07 min/臂（`::wall_minutes`），复用的 5 支来自 `2616` / `2656`
+墙钟 8.23–10.07 min/臂（`::wall_minutes`），复用的 5 个来源组的 8 次复用运行来自 `2616` / `2656`
 （`train_health.healthy = true`）⇒ 全部参与判决，没有「未跑完」的臂。
 
 **噪声地板**（同 seed、同配方、独立跑一次）：
@@ -97,14 +97,19 @@
 
 **判定：转写错字，不是换文件。** 三条证据：
 ① 该文件 `mtime = 2026-10-15 00:08:39`、54,192,907 B，与同批 `gqa2-eq-s0` 同尺寸，自 `2656` 训完起未被触碰；
-② 我把 5.4 与 7-references 下**所有** `model.pt` 的 sha256 都算了一遍，**没有任何文件**哈希成 `…b58012`
-（该字符串全仓只出现在这一份 `config.json` 里）；
-③ 其余 6 个复用 checkpoint 的指纹逐条对得上。
+② 我把 5.4 与 7-references 下**所有** `model.pt` 的 sha256 都算了一遍，**没有任何文件**哈希成 `…b58012`；
+该字符串只以文本形式出现：在 `1b33312` 上 `grep -rn b58012 .`（不含 `.scratch/`）是 20 行 / 8 个文本文件——
+1 行是 `config.json` 的声明值，其余 19 行都是本轮产物对它的引用
+（`results.json`、`gqa2-eq-s1` 的三份臂级读数、`project.yaml`、本文件、`tests/test_2664_ckpt_sha256_gate.py`；本段自己的引用不计入这 20 行，它是 `1b33312` 之后写的）；
+③ 其余 7 支复用运行的指纹逐条对得上：本轮复用运行共 **8 次 / 5 个臂**——
+`mha-12k-s0`、`gqa-12k-s0`、`gqa-12k-s0-rep` 来自 `2616`，`mha-rep-s0`、`mla-c128-s0`、`mla-c128-s1`、`gqa2-eq-s0`、`gqa2-eq-s1` 来自 `2656`——
+除 `gqa2-eq-s1` 外 7 支的声明值与实测值逐位相符（`results.json::points[*].runs[*].checkpoint.sha256_verified`）。
 它的语言建模读数（fp16 1.481265）也与同批 `gqa2-eq-s0`（1.494677）、`gqa2`（1.496324 / 1.495938）同一量级。
 
 **处置：契约冻结不动，只改「校验失败时怎么办」。** 修契约要重绑（`bound_at` 改写为现在），
 那会把本实验存在理由——「契约先于读数」的可机检定序——亲手拆掉（7 份训练读数 + 29 份评测读数全部降级为
-「定序不可判」）。所以 `config.json` / `README.md` 一个字节没动，`run.py::ckpt_sha256_check` 改成两分：
+「定序不可判」）。所以能动的只有「校验失败时的处置」：`config.json` / `README.md` 的现值与 `prereg_binding.json::contract_files`
+记的两个哈希逐位相同（`config.json` 自 `c0a5a0c` 起 `git diff` 为空），`run.py::ckpt_sha256_check` 改成两分：
 
 - **本实验自己训出来的臂**（`source: train:*`）指纹不符 ⇒ 仍然 `SystemExit`（自己产的文件没有转写错字的余地，不符就是拿错了文件）；
 - **复用臂**（`source: reuse:*`）指纹不符 ⇒ 降级为**记录**：该臂读数写 `sha256_verified = false`
@@ -113,16 +118,31 @@
 降级不是把门关掉：区分由 `tests/test_2664_ckpt_sha256_gate.py` 四条钉住（复用降级 / 自训必崩 / 相符不红 / 反向样例），
 `python3 -m pytest tests/test_2664_ckpt_sha256_gate.py -q` ⇒ 4 passed。
 `gqa2-eq-s1` 这一支的身份凭证因此是：**mtime（2026-10-15 00:08:39）+ 尺寸（54,192,907 B）+ 实测 sha256
-`…b58024` + 与 s0 同批 62 位前缀一致**；契约里记的 `…b58012` 是全仓唯一的转写错字。
-判据线（`README.md` §4 的三格、0.014 带、配对规则）与臂表（`config.json::model_arms`）**一个字段都没改**。
+`…b58024` + 契约声明值 `…b58012` 与该实测值前 62 位 hex 相同（只差末两位 `12` / `24`）**；
+同批 `gqa2-eq-s0` 的哈希是 `eebcbfca…661926`，与 s1 的 `b03d13…` 没有公共前缀——
+能对上的是「声明值 vs 实测值」，不是「s1 vs s0」。契约里记的 `…b58012` 是全仓唯一的转写错字。
 
 ### 3.2 预登记定序
 
-契约先于读数：`prereg_binding.json::bound_at = 2026-10-21T20:52:28+08:00`（绑定提交 `c0a5a0c`），
-29 份评测读数与 7 份训练读数的产物时间都在其后（21:00–21:58），
-`python3 tools/prereg_bind.py axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m --require` 通过；
-`run.py` 的改动**只**发生在 §3.1 那一条校验分支与一处聚合阶段的类型修正（`recall_pairs` 把整本 `hits`
-字典传给了要单张量的 `paired_bootstrap`），判据线未被触碰。
+契约先于读数：`prereg_binding.json::bound_at = 2026-10-21T20:52:28+08:00`（初绑 `c0a5a0c`、改跨实验路径后于 `53e69d3` 重绑，现值为后者），
+7 份训练读数（`runs/*/results.json` 的 mtime：`mha-s1` 21:00:28、其余六份 21:55:59）与 29 份评测读数（22:28:52–22:29:49）的产物时间都在其后，
+`python3 tools/prereg_bind.py axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m --require` 通过。
+
+**29 条评测读数是在 `run.py` 最后一次改动之后重跑的。** 29 份 `results_*.json` 的 mtime（22:28:52–22:29:49）
+晚于 `9ccbfa0`（22:25:40，改 `ckpt_sha256_check`），每份读数里记的 `code_hash_run_py = 6cf8d59e…`
+也就是当前盘上 `run.py` 的 sha256（`sha256sum run.py` ⇒ `6cf8d59e5dae0e2bb20e652b0a9a6ab85ff1558726ab0d4e990a0645a336f5e7`）。
+重跑的原因是 §3.1 的校验分支改完之后，要让 29 条读数出自同一次运行；
+两次运行的载荷逐字段相同（复核已比对 payload identical），所以数值不因这次重跑而变，变的只是落盘时间。
+
+`run.py` 的改动跨 3 个提交、12 个 hunk（`git diff c0a5a0c..HEAD -- run.py`）：
+`150b2f6` 的 `pooled_task`（把 `*_by_*` 字典拼成批，`eval_arm` 与 `recall_floors` 同步）、
+`compare_same_byte` / `damage_table` 的 `.get` 守卫（`checkpoint_missing` 的 run 条目没有 `mode`）、
+`delta_direction` → `sign_convention` 单一化、`delta_directions` 初版四个字段；
+`9ccbfa0` 的 `ckpt_sha256_check` 两分 + `load_arm_model` 落 `declared/actual` + `ckpt_identity` 聚合、
+`recall_pairs` 取键改成 `hits_store…get(key)`（原先传的是整本 `hits` 字典，要的是单张量）；
+`874932e` 的 `delta_directions` 补 `max_abs_delta: undeclared` 与 `delta_direction_note`。
+判据线（`README.md` §4 的三格、0.014 带、配对规则）与臂表（`config.json::model_arms`）未动：
+`git diff c0a5a0c..HEAD -- config.json` 为空；`README.md` 只在重绑提交 `53e69d3` 改了三处跨实验路径写法，字段与判据线未改。
 
 ---
 
@@ -264,7 +284,7 @@ clean bpc 不占优（越噪声带变差或持平）⇒ 判低秩压缩在本尺
   `mha@int8` 的 `n_values = 6,291,456`、`n_scales = 196,608 = n_values/32`）⇒ **不使用插值，同字节是解析等式**：
   `12·272·2 = 6528 = 12·2·8·32·1.0625`；`12·144·2 = 3456 = 12·2·8·32·0.5625`；`12·128·2 = 3072 = 12·2·2·32·2`。
 - **训练健康**：15 支（臂, 运行）`train_health.healthy = true` 全为真；`grad_skips = 0` 全为 0；`steps_done = 11999` 是训练日志（每 200 步一条）的最后一条记录步，配置步数是 12000；`gnorm_max` 分族：MHA 9.87–10.72、GQA 9.12–10.30、低秩 16.93–22.41（低秩侧更高是下/上投影那条新增路径的常态，未出现跳步）；
-  5 支复用臂的 `train_health.healthy = true`。
+  8 次复用运行（5 个臂：`mha-12k-s0`、`mha-rep-s0`、`mla-c128-s0`、`mla-c128-s1`、`gqa-12k-s0`、`gqa-12k-s0-rep`、`gqa2-eq-s0`、`gqa2-eq-s1`）的 `train_health.healthy = true`。
 - **实现 vs 部署**：评测期 int8/int4 立刻反量化、潜向量立刻上投影 ⇒ 实测显存峰值不随档下降；
   解析部署字节与实测峰值分列、不混用（本实验不报峰值，属未测项）。
 
@@ -281,7 +301,7 @@ clean bpc 不占优（越噪声带变差或持平）⇒ 判低秩压缩在本尺
 4. **低秩的失效点没测到**：3072 B 仍是带内无损，低秩的失效 rank 在 `d_c < 128`（§10）。
 5. **字节账是解析价签，不是实测峰值**：评测期即时反量化/上投影，真实实现的峰值下降本实验不测。
 6. **`gqa2@int4` 这一族内点不在字节轴上**（解析字节仍是 3072 B），只作现象记录。
-7. **格 C 的身份凭证降级**：`gqa2-eq-s1` 的指纹以 §3.1 的方式支撑（mtime + 尺寸 + 实测哈希 + 62 位前缀），
+7. **格 C 的身份凭证降级**：`gqa2-eq-s1` 的指纹以 §3.1 的方式支撑（mtime + 尺寸 + 实测哈希 + 声明值与实测值 62 位 hex 相同），
    不靠契约里那串转写错字。
 
 ---

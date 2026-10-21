@@ -53,7 +53,7 @@
 
 | WP | 内容 | owner | 验收 | 预算 | 状态 |
 |---|---|---|---|---|---|
-| `WP1` | 同字节判决：7 支新训臂（`mha-s1`、`mla-c272` s0/s1、`mla-c144` s0/s1、`mla-c272-eq` s0/s1）+ 复用 5 条已训 checkpoint 的评测 | `axis5-w5.4`（本项单一写入者）；owner = `axis5-lead` | 实验 `experiments/2664-lowrank-vs-quant-13m/results.json::same_byte` 三格各有裁决；`analysis.md` 六问齐备 | 墙钟 ≤ 120 min GPU（7 臂 × ≈10–14 min + 一轮评测 ≈15 min）；单臂 timeout ≤ 20 min；≥2 seed | 已完成（7 臂各 12k 步 + 29 条读数 + 聚合落盘；契约绑定提交 `c0a5a0c` 早于全部读数）；判词见 `project.yaml::conclusion` |
+| `WP1` | 同字节判决：7 支新训臂（`mha-s1`、`mla-c272` s0/s1、`mla-c144` s0/s1、`mla-c272-eq` s0/s1）+ 复用 5 个臂的 8 支已训 checkpoint 的评测 | `axis5-w5.4`（本项单一写入者）；owner = `axis5-lead` | 实验 `experiments/2664-lowrank-vs-quant-13m/results.json::same_byte` 三格各有裁决；`analysis.md` 六问齐备 | 墙钟 ≤ 120 min GPU（7 臂 × ≈10–14 min + 一轮评测 ≈15 min）；单臂 timeout ≤ 20 min；≥2 seed | 已完成（7 臂各 12k 步 + 29 条读数 + 聚合落盘；契约重绑提交 `53e69d3` 早于全部读数）；判词见 `project.yaml::conclusion` |
 | `WP1-review` | fresh 上下文独立复核（同字节轴、等参数对照、两腿齐备、判据未被事后改、`gqa2-eq-s1` 的身份凭证按 `analysis.md` §3.1 读） | `axis5-reviewer`（**不得**为本项 writer） | 复核报告落 `.scratch/`，判词逐条对到验收 | 墙钟 ≤ 60 min，只读 | 未开始（WP1 已落盘，writer 停止之后即可派） |
 | 缺口（非 WP） | `mla_c64`（1536 B）/ `mla_c256`（6144 B）未训；低秩×量化叠加留白；T>256 与实测显存峰值未测 | `axis5-lead` 决定是否开 | 见 `project.yaml::gaps` | 每档 2 seed ≈ 20–30 min GPU；叠加腿纯评测 ≈ 3 min | 未开始（`gaps` 已逐条给出最小实验与等效成本） |
 
