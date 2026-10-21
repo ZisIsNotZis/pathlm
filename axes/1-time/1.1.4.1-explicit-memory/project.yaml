@@ -36,7 +36,7 @@ cost_rows:
     delta_direction: comparator_minus_arm
     comparator: "同字节纯窗口 win60@int8（391,680 B，1.558523）"
     scale: "13M / T=256 / enwik8 / 12k 步 / seed 0（2681 的 13 臂 / 22 点网格）"
-    boundary: "只在「显式状态走 fp16、纯窗口走它自己最省的 int8 档」这一不对称下成立；carry 族 int8 档未测，若给它同档其字节会降到约 208,896 B ⇒ 本行不外推到那一格"
+    boundary: "只在「显式状态走 fp16、纯窗口走它自己最省的 int8 档」这一不对称下成立；carry 族同档的那一格由 2685 补测（int8 全档 208,896 B / 1.527616，对同字节纯窗 win32@int8 好 +0.068241）⇒ 本行不外推到那一格，但那一格已有自己的读数"
     source: "axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/analysis.md"
   - law: 10
     change: "已是纯窗臂的 checkpoint 在评测期把 KV 换成 int8 + 块标尺（G=32，0 训练 token）"
@@ -46,7 +46,7 @@ cost_rows:
     delta_direction: arm_minus_comparator
     comparator: "同一 checkpoint 的 fp16 评测（win32_s0，393,216 B）"
     scale: "13M / T=256 / enwik8 / 12k 步 / seed 0（2680；win16 两 seed = +0.000019 / +0.000012）"
-    boundary: "量化不是新机制而是同一字节轴上的档位：赢的是字节（208,896 B 复现 393,216 B 的 bpc），不是质量；carry 族（CarryChannelBlock）未测 int8 ⇒ 本行不外推到显式状态"
+    boundary: "量化不是新机制而是同一字节轴上的档位：赢的是字节（208,896 B 复现 393,216 B 的 bpc），不是质量；本行只覆盖纯窗族——显式状态的同档由 2685 补测（carry 的 int8 全档 +0.000021，见本表下一行）"
     source: "axes/1-time/1.1.4.1-explicit-memory/experiments/2680-quant-overlay-frontier-13m/analysis.md"
   - law: 10
     change: "评测期把纯窗臂的 KV 换成 int4 块标尺（G=32，0 训练 token；同一 checkpoint 的两档）"
