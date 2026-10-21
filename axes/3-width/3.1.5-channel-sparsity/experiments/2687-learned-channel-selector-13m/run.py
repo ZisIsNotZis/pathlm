@@ -68,6 +68,7 @@ SELECTING = ("K50", "F50", "L50")        # 三支同 k=512 的臂（可同框比
 SCORER_RANK = 8                          # 低秩打分器的秩 r
 ALPHA_LB = 0.01                          # 负载均衡项权重
 SCORER_EPS = 1e-6                        # |pre| 的下限（防 0 值）
+SCORER_CLAMP = 4.0                       # exp(g) 的指数护栏（数值稳定，见 §2.1）
 
 # 判据常数（契约 §4；`config.json::criterion` 逐字相同）
 BAND = 0.014                             # clean bpc 配对带（harness/methodology.md §2）
@@ -142,7 +143,9 @@ class ScoredFFN(nn.Module):
         a = self.score_a if a is None else a
         b = self.score_b if b is None else b
         g = torch.nn.functional.gelu(x @ a) @ b                      # [B,T,H]
-        return pre.detach().float().abs().clamp_min(SCORER_EPS) * torch.exp(g.float())
+        # 数值护栏：`exp(g)` 限在 [e^-4, e^4]，防 12k 步里打分器漂到溢出（不影响 `B ≡ 0` 的起步）
+        scale = torch.exp(g.float().clamp(-SCORER_CLAMP, SCORER_CLAMP))
+        return pre.detach().float().abs().clamp_min(SCORER_EPS) * scale
 
     # ---------- 掩码
 
@@ -214,7 +217,8 @@ class ScoredFFN(nn.Module):
                 pre_idx = pre.abs().topk(k, dim=-1).indices.sort(dim=-1).values
                 rec["flip_vs_pre"][0] += int((idx != pre_idx).any(dim=-1).sum())
                 rec["flip_vs_pre"][1] += int(idx.shape[0] * idx.shape[1])
-                s0 = self._score(rec["x"], pre, **self._init_ref)
+                s0 = self._score(rec["x"], pre, self._init_ref["score_a"],
+                                 self._init_ref["score_b"])
                 i0 = s0.topk(k, dim=-1).indices.sort(dim=-1).values
                 rec["flip_vs_init"][0] += int((idx != i0).any(dim=-1).sum())
                 rec["flip_vs_init"][1] += int(idx.shape[0] * idx.shape[1])
