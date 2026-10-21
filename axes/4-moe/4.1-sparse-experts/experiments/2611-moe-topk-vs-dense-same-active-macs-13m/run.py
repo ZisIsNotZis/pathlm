@@ -653,7 +653,7 @@ def evaluate() -> dict:
                     led["checks"]["expert_macs_equal_all_main_arms"],
                     "expert_macs_ratio_vs_dense": led["checks"]["expert_macs_ratio_vs_dense"],
                     "router_tax_e4_pct": led["checks"]["router_tax_e4_pct"],
-                    "router_tax_e16_pct": led["checks"]["router_tax_e16_pct"],
+                    "router_tax_e8_pct": led["checks"]["router_tax_e8_pct"],
                     "peak_gpu_mem_mb": {n: arm_table[n]["peak_gpu_mem_mb"] for n in arm_table},
                     "wall_minutes": {n: arm_table[n]["wall_minutes"] for n in arm_table},
                     "wall_in_criterion": False,
