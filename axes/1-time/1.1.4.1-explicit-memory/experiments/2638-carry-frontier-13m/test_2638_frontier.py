@@ -9,6 +9,7 @@
 3. **符号约定**：`carry_minus_interp_window = bpc_interp − bpc_carry`
    ⇒ **< 0 = carry 被同预算纯窗口支配**（与 `harness/SCHEMA.md` §17.3「Δ = 对照 − 实验，正 = 改善」一致）。
 """
+import importlib.util
 import os
 import sys
 
@@ -18,9 +19,24 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", "..", "..", ".."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
+sys.path.insert(0, HERE)
 
-import run as R  # noqa: E402
 
+def _load_run():
+    """按文件路径加载本目录的 `run.py`。
+
+    每个实验目录各有一份 `run.py`，而同一次 pytest 会话里 `import run` 只解析一次并被
+    `sys.modules` 缓存 ⇒ 一次跑多个目录时，后加载的用例会拿到别的实验的 `run`。
+    模块名按实验取唯一值，把这条隐式共享断掉。
+    """
+    spec = importlib.util.spec_from_file_location("run_2638_frontier", os.path.join(HERE, "run.py"))
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+R = _load_run()
 
 def _row(name, total_bytes, bpc, kind="window", seed=0, k_eff=None):
     return {"name": name, "kind": kind, "seed": seed, "bpc": bpc,

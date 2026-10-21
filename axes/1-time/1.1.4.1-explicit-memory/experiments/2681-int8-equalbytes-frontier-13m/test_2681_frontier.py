@@ -13,6 +13,7 @@
 
 运行：`python3 -m pytest test_2681_frontier.py -q`（纯 CPU，不取 GPU 锁、不读 `results.json`）。
 """
+import importlib.util
 import json
 import os
 import sys
@@ -25,7 +26,25 @@ if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 sys.path.insert(0, HERE)
 
-import run as R                                              # noqa: E402
+
+def _load_run():
+    """按文件路径加载本目录的 `run.py`。
+
+    每个实验目录各有一份 `run.py`，而同一次 pytest 会话里 `import run` 只解析一次并被
+    `sys.modules` 缓存 ⇒ 一次跑多个目录时，后加载的用例会拿到别的实验的 `run`。
+    模块名按实验取唯一值，把这条隐式共享断掉。
+    """
+    spec = importlib.util.spec_from_file_location("run_2681_frontier", os.path.join(HERE, "run.py"))
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+R = _load_run()
+
+sys.path.insert(0, HERE)
+
 
 
 def _cfg():
