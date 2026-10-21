@@ -27,10 +27,12 @@
 **当前状态**：唯一之家是 `project.yaml::status`（`被否证`）与 `::conclusion` 的并列读法
 （milestone 字面成立、价值主张被否证）。本文件不复制判词。
 
-**里程碑已闭环**：WP1 的四臂（`dense6` / `dense12` / `repeat2x` / `repeat2x-tail`）已全部训练 + 评测，
-`results.json` 的 P0（引擎等值门）/ P1（活性门）/ P2（三对比较）都有读数，`analysis.md` 六问齐全。
-残余不是里程碑的一部分，登记在 `project.yaml::gaps`（步嵌入臂 / 第二个重复次数点 / 第二 seed /
-推理侧口径）。
+**里程碑已闭环（两 seed，n=2）**：WP1 的四臂（`dense6` / `dense12` / `repeat2x` / `repeat2x-tail`）
+在 seed 0 与 seed 1 上各训练 + 评测一遍（`2691` / `2692`，两套判据线各自先绑定后训练），
+P0（引擎等值门）/ P1（活性门）/ P2（三对比较）/ P3（两 seed 的复本读法）都有读数，
+`2691` 的 `analysis.md` 六问齐全、`2692` 的 `analysis.md` 给复本判读。
+残余不是里程碑的一部分，登记在 `project.yaml::gaps`（步嵌入臂 / 第二个重复次数点 /
+推理侧口径 / 优化器扫描）。
 
 **工作包闭环方式**：唯一里程碑由一个工作包落地（WP1，见 §3），实验目录
 `experiments/2691-repeating-vs-dense-13m/`；判据线 P0–P5 在 `README.md` 里预登记，
@@ -44,7 +46,7 @@
 
 | id | owner | 预算（墙钟 / GPU） | 复核人 | 状态（只放指针） |
 |---|---|---|---|---|
-| WP1 | 轴 2 深度轴 lead（本格单一写入者） | 实耗 35.7 min GPU（四臂 12k 步训练 29.2 min + P0 重评 / 四臂评测 / 汇总 6.5 min）+ 冒烟 ≈1.5 min；臂级重试 0 次（预算 8 次、单臂 timeout 20 min） | fresh 复核者（独立上下文，**未派**；本轮判词为 writer 自评，见 `project.yaml::conclusion_review`） | → `project.yaml::work_packages[0].status`（`已完成`） |
+| WP1 | 轴 2 深度轴 lead（本格单一写入者） | 实耗 70.2 min GPU（`2691` 35.7 min + `2692` seed 1 复本 34.5 min，两套各含 P0 重评 / 四臂评测 / 汇总）+ 冒烟 ≈1.5 min；臂级重试 0 次（预算 8 次、单臂 timeout 20 min） | fresh 复核者（独立上下文，**未派**；本轮判词为 writer 自评，见 `project.yaml::conclusion_review`） | → `project.yaml::work_packages[0].status`（`已完成`） |
 
 ## 4 证据指针（按顺序走就能复核本项的全部结论）
 
@@ -54,6 +56,7 @@
 | **臂设计与单因素声明（含设计条件 4 条）** | 同上 §2；`experiments/2691-repeating-vs-dense-13m/config.json::arms` |
 | **问一：同算力（`repeat2x` vs `dense12`）** | `experiments/2691-repeating-vs-dense-13m/analysis.md` §3 判据 P2-1；键路径 `results.json::comparisons.q1_same_compute` |
 | **问二：同参数（`repeat2x` vs `dense6`）** | 同上 §3 判据 P2-2；键路径 `results.json::comparisons.q2_same_params` |
+| **两 seed 复本判读（n=2）** | `experiments/2692-repeating-vs-dense-seed1-13m/analysis.md` §2 判据 P3；键路径 `results.json::comparisons`（seed 1）与 `2691` 的同名键并排 |
 | **诊断：深度不足 vs 异质缺失（`repeat2x-tail`）** | 同上 §3 判据 P2-3；键路径 `results.json::comparisons.d1_tail_vs_repeat2x` / `::d2_tail_vs_dense12`；逐深度曲线 `results.json::arm_summary.<臂>.depth_bpc` |
 | **代价列：参数 / 每 token MACs / 峰值显存 / 墙钟** | 同上 §5；键路径 `results.json::arm_summary`、`::arms.<臂>.macs_per_token` |
 | **仪器可比（P0 重评历史锚）** | 同上 §2 判据 P0；键路径 `results.json::gates.p0_engine` |

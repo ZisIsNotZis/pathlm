@@ -21,10 +21,10 @@
 
 ## 汇总（生成时统计）
 
-- 规模：实验 **141** 个（`axes/**/experiments/*`），run 条目 **527** 个（419 个是 run 子目录或前缀组，108 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 113 个）。
+- 规模：实验 **142** 个（`axes/**/experiments/*`），run 条目 **532** 个（423 个是 run 子目录或前缀组，109 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 114 个）。
 
-- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**108** 个、`not_reproducible`（不可重建）**33** 个。
-- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 109 个。
+- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**109** 个、`not_reproducible`（不可重建）**33** 个。
+- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 110 个。
 
 ## 这个克隆重建不了什么
 
@@ -118,6 +118,7 @@
 | [2509-m3-composition-law](../axes/2-depth/2.1.2-skipping/experiments/2509-m3-composition-law/) | [2.1.2-skipping](../axes/2-depth/2.1.2-skipping/project.yaml) | ✓ | — | — | 0 | — | `命令未在仓内声明` | — | `not_reproducible` | 仓内无入口脚本（只有 README.md） |
 | [2654-skipping-seqlevel-13m](../axes/2-depth/2.1.2-skipping/experiments/2654-skipping-seqlevel-13m/) | [2.1.2-skipping](../axes/2-depth/2.1.2-skipping/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.stock.shared_train.wall_minutes` = 6.55 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2691-repeating-vs-dense-13m](../axes/2-depth/2.1.3-repeating/experiments/2691-repeating-vs-dense-13m/) | [2.1.3-repeating](../axes/2-depth/2.1.3-repeating/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.dense6.shared_train.wall_minutes` = 5.47 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
+| [2692-repeating-vs-dense-seed1-13m](../axes/2-depth/2.1.3-repeating/experiments/2692-repeating-vs-dense-seed1-13m/) | [2.1.3-repeating](../axes/2-depth/2.1.3-repeating/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.dense6.shared_train.wall_minutes` = 5.78 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2652-residual-form-13m](../axes/2-depth/2.2.1-residual-form/experiments/2652-residual-form-13m/) | [2.2.1-residual-form](../axes/2-depth/2.2.1-residual-form/project.yaml) | ✓ | ✓ | ✓ | 9 | 否（`*.pt` 不入库） | `python3 mutation_check.py`（README.md 的复现小节） | `shared_train_results.wall_minutes` = 6.36 | `rebuildable_only` | `common.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2653-interlayer-attn-13m](../axes/2-depth/2.2.2-attention-residual/experiments/2653-interlayer-attn-13m/) | [2.2.2-attention-residual](../axes/2-depth/2.2.2-attention-residual/project.yaml) | ✓ | ✓ | ✓ | 3 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `shared_train_results.wall_minutes` = 10.78 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2613-inter-layer-topology-13m](../axes/2-depth/2.2.3-learned-layer-sum/experiments/2613-inter-layer-topology-13m/) | [2.2.3-learned-layer-sum](../axes/2-depth/2.2.3-learned-layer-sum/project.yaml) | ✓ | ✓ | ✓ | 8 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.sequential.wall_min` = 6.51 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
@@ -566,6 +567,11 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2691-repeating-vs-dense-13m | runs/dense6-12k-s0 | ✓ | ✓ | 11999 | — | — |
 | 2691-repeating-vs-dense-13m | runs/repeat2x-12k-s0 | ✓ | ✓ | 11999 | — | — |
 | 2691-repeating-vs-dense-13m | runs/repeat2x-tail-12k-s0 | ✓ | ✓ | 11999 | — | — |
+| 2692-repeating-vs-dense-seed1-13m | . | ✓ | — | — | — | — |
+| 2692-repeating-vs-dense-seed1-13m | runs/dense12-12k-s1 | ✓ | ✓ | 11999 | — | — |
+| 2692-repeating-vs-dense-seed1-13m | runs/dense6-12k-s1 | ✓ | ✓ | 11999 | — | — |
+| 2692-repeating-vs-dense-seed1-13m | runs/repeat2x-12k-s1 | ✓ | ✓ | 11999 | — | — |
+| 2692-repeating-vs-dense-seed1-13m | runs/repeat2x-tail-12k-s1 | ✓ | ✓ | 11999 | — | — |
 | 2652-residual-form-13m | . | ✓ | — | — | — | — |
 | 2652-residual-form-13m | base_s0 | ✓ | — | — | — | — |
 | 2652-residual-form-13m | gated_s0 | ✓ | — | — | — | — |
