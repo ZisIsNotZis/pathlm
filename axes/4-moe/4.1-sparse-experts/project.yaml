@@ -20,6 +20,7 @@ laws: [10]
 cost_rows: []
 experiments:
   - "axes/4-moe/4.1-sparse-experts/experiments/2610-moe-arm-ledger-13m"
+  - "axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m"
 argument: "「稀疏激活专家」是「保容量减计算」的专家粒度版：总参数（容量）按 E 放大、每 token 只激活 top-k 个专家 ⇒ 每 token FLOPs 与 dense 同级而容量更大。判定它值不值必须给等 FLOPs 与等参数双对照（`harness/SCHEMA.md` §15），否则无法把「容量增益」与「参数/算力记账」分开。活性（专家使用率）是必须报的对照列，否则无法区分「真扩容」与「路由坍缩」。与 `3.1.5` 通道极化 / 稀疏激活的边界：`3.1.5` 是通道粒度、本项是专家（FFN 块）粒度。"
 gaps:
   - "本仓零经验：需先做最小判决（13M、{dense, top-1, top-2} 三臂 + 等 FLOPs/等参数双对照，matched-step，报 clean bpc + 每 token 等效 FLOPs + 专家使用率分布）"
@@ -37,7 +38,7 @@ role_map:
   integrator: "tree-integrator（研究树 integrator；本轴合并与跨轴一致性核对由 axis4-lead 代行）"
 
 milestone:
-  output: "一份「稀疏激活专家（top-k 路由）」判决包：13M matched-step 下 {dense, top-1, top-2} 的 clean bpc + 每 token 等效 FLOPs + 参数量 + 专家使用率分布，对照同尺寸 stock dense（等 FLOPs 与等参数双对照），含 n≥2。"
+  output: "一份「稀疏激活专家（top-k 路由）」判决包：13M matched-step（6000 步 / 98.3M token / seed 0 与 1）下 {dense-B0, moe-top1-E4, moe-top1-E8} 的配对 clean bpc + 每 token 专家 MACs + 参数量 + 专家使用率分布（熵 / 最大占比），对照同尺寸 stock dense（专家 MACs 逐位相等的等算力主判 + dense-eqparam-E4 等参数旁证，后者不参与主判）。E=16 因单臂 20.7 min 撞 20 min timeout 未测（登记在 gaps）。"
   acceptance: "等 FLOPs 与等参数双对照臂齐备且预算对齐；MoE 相对同 FLOPs dense 的质量与容量增益同框可分（越 0.014 噪声带）或明确「不可分」；专家使用率分布齐备且非坍缩；结论停在「该尺度值不值」，不外推。 实质验收（C2 裁决）：不被同算力最强基线支配（相对同算力 dense / 等算力 MoE 前沿超出量 ≤ 0）。"
 
 work_packages:
@@ -50,17 +51,17 @@ work_packages:
     review: "已另派 fresh 复核（`harness/SCHEMA.md` §14/§14b，复核排在执行之后）"
     status: "已完成"
   - id: "WP1"
-    what: "稀疏激活专家最小判决（含等 FLOPs/等参数双对照）"
-    goal: "判定 top-k 稀疏激活能否在固定每 token 激活 FLOPs 下抬高容量且不掉质量"
-    means: "13M、matched-step，{dense-B0, moe-top1-E8, moe-top2-E8} 三臂 + {dense-eqparam-top1, dense-eqparam-top2} 等参数对照，报 clean bpc + 每 token 等效 FLOPs + 参数量 + 专家使用率分布，n≥2 seed"
-    acceptance: "三臂预算对齐；MoE 相对同 FLOPs dense 有/无越噪声带差异，二选一明确；使用率分布齐备且非坍缩"
-    evidence: "axes/4-moe/4.1-sparse-experts/experiments/2610-moe-arm-ledger-13m/"
+    what: "稀疏激活专家最小判决（等激活算力主判 + 等参数旁证）"
+    goal: "判定 top-k 稀疏激活能否在固定每 token 激活 MACs 下抬高容量且不掉质量"
+    means: "`experiments/2611-moe-topk-vs-dense-same-active-macs-13m`：13M、matched-step 6000 步 / 98.3M token、seed 0 与 1，{dense-B0, moe-top1-E4, moe-top1-E8} + dense-eqparam-E4（等参数旁证）；报配对 clean bpc（20 批配对窗口）+ 每 token 专家 MACs + 参数量 + 逐层专家使用率（熵 / 最大占比）"
+    acceptance: "三臂预算对齐；专家 MACs 比值恰 1.0；MoE 相对同算力 dense 有/无越 0.014 带，二选一明确；使用率分布齐备并登记是否坍缩"
+    evidence: "axes/4-moe/4.1-sparse-experts/experiments/2611-moe-topk-vs-dense-same-active-macs-13m/{results.json,analysis.md}"
     review: "跑完另派 fresh 复核（`harness/SCHEMA.md` §14/§14b，复核排在执行之后）"
-    status: "未开始"
+    status: "进行中"
 
 roadmap:
   - "WP0：等 FLOPs/等参数臂记账 + MoE 接线 pre-flight（已完成；`2610` 的 ledger/preflight）"
-  - "WP1：13M {dense-B0, moe-top1-E8, moe-top2-E8} 三臂 + 等参数对照 matched-step 判决（下一阶段；开跑前先测 20 步定预算，`harness/SCHEMA.md` §17.8）"
+  - "WP1：13M {dense-B0, moe-top1-E4, moe-top1-E8} + dense-eqparam-E4 的 matched-step 判决（`2611`；开跑前实测步时定预算：dense 0.042 / eqparam 0.066 / E4 0.084 / E8 0.132 s/step）"
   - "复核通过与 4.2/4.3 边界整合后写 conclusion，更新 status"
 
 status: "未开始"
