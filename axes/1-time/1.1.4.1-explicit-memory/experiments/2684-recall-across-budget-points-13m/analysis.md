@@ -29,7 +29,7 @@
   所以对每个臂都落在注意力看不见的地方。
 - **不是「随便有个状态就行」**：退化实现与纯窗臂同量级（0.83% / 0.91% vs 0.33%–0.91%），
   只有完备实现跳到 6.47%。
-- **不是记忆太短造成的假象**：γ=0.99 的完备臂（T=256 下只剩 7.6%）拿 **1.5757%**，
+- **不是记忆太短造成的假象**：γ=0.99 的完备臂（T=256 下只剩 7.6%）拿 **1.5755%**（19/1206），
   介于两者之间——方向与「记忆越短搬回的越少」一致，是旁证不是判据。
 
 **没解决的**：仍是 enwik8 / T=256 / 13M / 12k 步 / seed 0 这一格；完备臂只有 seed 0（`carrypl16_s0`）；
@@ -74,9 +74,9 @@
 
 ## 4 过程与代价
 
-- 纯推理：13 臂 × 64 批 × 2（植入 / 控制）针批，`wall_minutes_total` = **0.71 min**，峰值显存 1010.9 MB，
-  0 训练 token。整程持 `/tmp/pathlm_gpu.lock`（`harness/SCHEMA.md` §20.1 允许 <10 min 整程持锁）：
-  取锁 **07:53:02**、放锁 **07:53:47**（本机时间，逐条见 `run_log.jsonl` 的首末条与本节）。
+- 纯推理：13 臂 × 64 批 × 2（植入 / 控制）针批，`wall_minutes_total` = **0.73 min**（46 s 量级），
+  峰值显存 1010.9 MB，0 训练 token。整程持 `/tmp/pathlm_gpu.lock`（`harness/SCHEMA.md` §20.1 允许 <10 min 整程持锁）：
+  三次运行的取/放锁时间戳见 `run_log.jsonl` 与本节时间线；最后一次取锁 **07:56 档**、放锁同分钟内（本机时间）。
 - 十三臂全部复用已落盘 checkpoint（逐臂 sha256 断言通过，见 `results.json::checkpoints`）。
 - 起点（预登记时间线，逐条可核）：
   1. **首绑 2026-10-21T07:38:55**（`readings_existing_at_bind` = 空）——契约三件 `README.md` / `config.json` /
@@ -84,8 +84,14 @@
   2. **重绑 2026-10-21T07:44:16**：唯一改动是 `README.md` 判据① 里 `axes/1-time/1.1.4.5-implicit-vs-explicit/experiments/2661-implicit-vs-explicit-recall-13m/results.json::needle_leg`
      这个**不可解析**的短引用改成全路径（`check_docs` 判它悬空）；**判定线、阈值、索引集口径一字未动**
      （`git diff` 可核），且仍在任何读数之前 ⇒ `readings_existing_at_bind` 仍为空。
-  3. **读数 07:53**（本文件同目录 `results.json` / `run_log.jsonl`）——晚于最终绑定，且不在
-     `readings_existing_at_bind` 里 ⇒ 判据先于读数成立。
+  3. **第一次读数 07:53**（同目录 `results.json` / `run_log.jsonl`）。
+  4. **其后补一个声明字段**：`check_tree` 要求 `results.json` 对每个 Δ 读数在 `delta_directions` 里声明方向，
+     第一版 `run.py` 没写 ⇒ 在 `run.py` 里追加 `delta_directions` / `delta_direction_note` 两块
+     （**判据线、阈值、臂集、索引集口径一字未动**，只多两条声明），重跑一遍：**读数逐位相同**
+     （对比脚本：除 `code_hashes`、`cost.wall_minutes_total`、`cost.eval_peak_gpu_mem_mb` 三个非判据字段外，`results.json` 完全相同）。
+  5. **重绑 07:55:54**：`readings_existing_at_bind` 记下第 3 步那份读数（⇒ 它的定序不可判，如实登记）。
+  6. **第二次读数 07:56 档**（重绑之后落盘，值再与第 4 步逐位相同）⇒ **最终绑定之后的那份读数定序成立**，
+     `check_tree` 把它归入「读数晚于绑定」。
 
 ## 5 否证面
 
@@ -97,8 +103,9 @@
 
 | 要证的事 | 命令 | 结果 |
 |---|---|---|
-| 契约三件自首绑起只被重绑改过一次（指针写法） | `git log --follow --format='%h %ad %s' -- .../2684-.../README.md` | `945d15f` 首建 + `41d2bd8` 修一处不可解析引用；**其后无提交** |
+| 契约三件自首绑起只被动过两次（一处指针写法、一处 Δ 声明字段） | `git log --follow --format='%h %ad %s' -- .../2684-.../README.md` | `945d15f` 首建 + `41d2bd8` 修一处不可解析引用；**其后无提交** |
 | 当前契约字节 = 绑定时字节 | 对 `prereg_binding.json::contract_files` 逐个 `sha256sum` | 3/3 相同 |
-| 预登记先于读数（工具口径） | `python3 tools/prereg_bind.py .../2684-recall-across-budget-points-13m` | 「已绑定，契约未变（bound_at 2026-10-21T07:44:16)」；`readings_existing_at_bind` 为空 ⇒ 读数晚于绑定 |
+| 预登记先于读数（工具口径） | `python3 tools/prereg_bind.py .../2684-recall-across-budget-points-13m` | 「已绑定，契约未变（bound_at 2026-10-21T07:55:54)」；`readings_existing_at_bind` 只有第 3 步那份旧读数，当前盘上这份读数晚于绑定 ⇒ `check_tree` 归入「读数晚于绑定」 |
+| 补声明字段没有动读数 | 比第 4 步前后两份 `results.json` | 除 `code_hashes` / `cost.wall_minutes_total` / `cost.eval_peak_gpu_mem_mb` 外完全相同 ⇒ 判据线未动、读数未变 |
 | 仪器未动 | `results.json::code_hashes` vs `config.json::instrument.sha256` | `needle_stats.py` = `cd11bb7c…`、`run.py` = `58a1bb57…`，两处相同 |
 | 判据① 可失败 | 本实验按 2 批彩排时 `equality_gate.all_equal` = **false**（n=39 ≠ 2699，命中数不等） | 该门在读数前被真实触发过一次 ⇒ 不是恒真门 |

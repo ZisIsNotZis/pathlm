@@ -72,7 +72,7 @@ owner 一律是轴 1 lead 派发的 worker，另配 fresh 复核者（`harness/S
 | `python3 tools/check_docs.py --check` | 全树 0 处违规（472 个文档 / 8899 处引用） | 本单元目录 0 处；文档地图缺项 0 个 |
 | `python3 tools/build_cost_table.py --check` | 绿 | 生成物与 `project.yaml::cost_rows` 逐字节一致（59 条代价事实） |
 | `python3 tools/inventory_runs.py --check` | 绿 | 重新生成后 131 个实验 / 449 个 run 与磁盘一致；本项 `2684` 的实验级汇总行已收进（0 run 子目录、`rebuildable_only`），`2681` 的「声明墙钟」列取到 `budget.gpu_wall_budget_min` = 39 |
-| `python3 -m pytest tests/ -q` | 见本节末的实测一行 | 全树测试；既往只有一条已登记的预存失败（`test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`），同树内其它研究级 owner 在跑的改动会让 `test_docs_refs` / `test_repro_inventory` 的注入式用例间歇变红（它们断言「注入后必须变红」，而并发写入者的临时文件正好也会让它变红） |
+| `python3 -m pytest tests/ -q` | **969 passed / 1 failed**（215 s） | 唯一失败是已登记的预存失败 `test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`（4 个 `mutate.py` 未接入统一框架，全在 6-predict 轴，与本项无关）。此前几轮在同一棵树上出现过 `test_docs_refs` / `test_repro_inventory` 的间歇变红，那是**同树内其它研究级 owner 在跑的训练**持续新增 run 目录、以及它们注入式用例（断言「注入后必须变红」）的竞态；本轮实测已全绿，故按实测写 |
 | `python3 -m pytest axes/1-time/1.1.4.1-explicit-memory/experiments/2681-int8-equalbytes-frontier-13m/test_2681_frontier.py -q` | 6 passed | 本目录单测（纯 CPU）：字节账、k=60 那一格的选取、支配定义与阈值算术 |
 
 ## 7 边界（non-goals）
