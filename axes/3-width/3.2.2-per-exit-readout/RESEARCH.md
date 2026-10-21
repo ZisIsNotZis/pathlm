@@ -54,7 +54,7 @@ integrator = `tree-integrator`（本轴合并与跨轴一致性核对由 `axis3-
 | WP | 交付物 | 验收（可观测） | 预算 | 状态 |
 |---|---|---|---|---|
 | **WP1** 四臂最小判决（`T` / `PE` / `IND` / `LR`，13M matched-step） | `experiments/2645-per-exit-readout-13m/`（`T`/`PE` 各 2 seed；`IND`/`LR` 只到冒烟） | 四支单因素臂预算对齐、主干逐位相同；各出口 `tf@k` 与末层 clean bpc 齐备；n≥2 出判词 | 2 臂 × 2 seed ≈10 min/臂 + 评测 | 被否证（判词见 `project.yaml::conclusion`，读数见该实验 `analysis.md` §1/§2） |
-| **WP2** 等参数对照臂 `WIDE`（把 `PE` 的 589,824 读出参数给主干 FFN 隐藏宽） | 同实验目录第二批：`run.py` 第五臂 + `README.md` §4/§11 预登记 P5 + `config.json::p5_rule` + `test_2645_per_exit_readout.py` 的 `T9` | 契约先绑后跑（`prereg_binding.json`）；`WIDE` 参数增量 590,976（比 `PE` 多 1,152 = +0.2% 增量、+0.015% 总参数）、每 token 训练 MACs 与 `PE` 逐位相等（单测 `T9`）；四分支判词只由 0.014 带与符号定；两 seed 同分支才出 n=2 判词 | 2 臂 × ≈11 min GPU + 评测（单臂 timeout 20 min，逐臂取/放 GPU 锁） | **已完成**（判词见 `project.yaml::conclusion`，读数见 `analysis.md` §6） |
+| **WP2** 等参数对照臂 `WIDE`（把 `PE` 的 589,824 读出参数给主干 FFN 隐藏宽） | 同实验目录第二批：`run.py` 第五臂 + `README.md` §4/§11 预登记 P5 + `config.json::p5_rule` + `test_2645_per_exit_readout.py` 的 `T9` | 判据先于读数（`prereg_binding.json`：P5 四分支规则与实现由 `c199446` 落盘、早于 `WIDE` 全部读数；最终重绑之后用最终代码重跑，见 §4）；`WIDE` 参数增量 590,976（比 `PE` 多 1,152 = +0.2% 增量、+0.015% 总参数）、每 token 训练 MACs 与 `PE` 逐位相等（单测 `T9`）；四分支判词只由 0.014 带与符号定；两 seed 同分支才出 n=2 判词 | 2 臂 × ≈11 min GPU + 评测（单臂 timeout 20 min，逐臂取/放 GPU 锁） | **已完成**（判词见 `project.yaml::conclusion`，读数见 `analysis.md` §6） |
 
 **WP2 为什么就是分诊表那一条动作**：`atlas/triage.md` 给本格的后续行写的是「等参数对照臂（把读出参数额
 给主干），回答『这笔参数给主干还剩多少』」，打分 2.0、档位「补一条最小实验」。本实验与之一致：**不加新
@@ -67,8 +67,16 @@ integrator = `tree-integrator`（本轴合并与跨轴一致性核对由 `axis3-
   （`milestone` / `work_packages` / `conclusion` / `failure_analysis` / `cost_rows` / `gaps`）。
 - `WP1` + `WP2`：`experiments/2645-per-exit-readout-13m/{README.md,config.json,run.py,analysis.md,results.json}`
   ——契约与判据线在 `README.md` §4（P1–P4）与 §4/§11（P5）、判据常数在 `config.json::{band_bpc,p5_rule,n2_rule}`、
-  门在 `test_2645_per_exit_readout.py`（20 项，含 `T9`）；定序证据 `prereg_binding.json`
-  （第二批绑定早于 `WIDE` 读数；第一轮的读数早于第一轮绑定，已在 `readings_existing_at_bind` 里披露）。
+  门在 `test_2645_per_exit_readout.py`（20 项，含 `T9`）；定序证据 `prereg_binding.json`：
+  **第二批成立的是「判据先于读数」**——`config.json::p5_rule`（含「对 `Δ_W` 取绝对值」的四分支）与
+  `run.py::equal_param_branch` 同由提交 `c199446`（`2026-10-21T12:28:38`）落盘（`git log -S equal_param_branch`
+  只命中它），早于 `WIDE` 冒烟 `12:28:40`、12k 训练 `12:30:07–12:51:55` 与臂级评测 `12:57–13:04`；
+  `bound_at` 是**最终**重绑（`1058485`，`13:09:51`），`WIDE` 读数早于它约 18 分钟
+  （`readings_existing_at_bind` 里确实含 `WIDE` 的读数），两次重绑只动 `run.py` 的两处非数值改动
+  （Δ 方向声明 / 代码哈希，`equal_param_branch` 三版逐字节相同），最终绑定后用最终 `run.py` 重跑全部
+  臂级读数 ⇒ 判据未被事后调整（四条训练产物 `runs/{T,PE}-s{0,1}-12k/results.json` 自绑定以来字节未变 ⇒
+  按工具语义属 `predate`、定序不可判，已逐条登记在 `harness/prereg_debt.tsv`）。第一轮的读数早于第一轮绑定，
+  已在 `readings_existing_at_bind` 里披露。
 - 跨格排序与该格动作：`atlas/triage.md`（§2 该行 + 后续行）；结论索引行：`atlas/FINDINGS.md`。
 - 代价事实（生成物，不手改）：`atlas/cost-table.md`；复现清单：`atlas/repro.md`。
 
@@ -78,7 +86,8 @@ integrator = `tree-integrator`（本轴合并与跨轴一致性核对由 `axis3-
   `project.yaml::failure_analysis` ①）。
 - `WP2`：**已交付**——判词与读数在 `project.yaml::conclusion` 的归因段与
   `experiments/2645-per-exit-readout-13m/analysis.md` §6。
-- 本格**里程碑达成**：唯一里程碑的三条（归因隔离 / 判据先绑后用 / 结论明确回答参数是不是全部解释）
-  都已落盘；`atlas/triage.md` 该行与后续行标为已闭、退出排序。
+- 本格**里程碑达成**：唯一里程碑的验收条款（归因隔离：等参数对照臂把「参数总量」这个解释分开 /
+  结论明确回答参数是不是全部解释 / 结论不越尺度外推）都已落盘；`WP2` 的「判据先于读数」按 §4 的
+  证据成立（判据先于 `WIDE` 读数；最终绑定在读数之后，之后重跑复现）；`atlas/triage.md` 该行与后续行标为已闭、退出排序。
 - **复核状态：待复核。** 本格产出属执行侧；`axis3-reviewer`（fresh 上下文、不得为 writer）**尚未派**，
   所以本文与 `project.yaml` 都**不写「已复核通过」**（`project.yaml::conclusion_review` 同写「独立复核：未做」）。
