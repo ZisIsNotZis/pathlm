@@ -1,7 +1,7 @@
 {
   "experiment": "2611-moe-topk-vs-dense-same-active-macs-13m",
   "cell": "axes/4-moe/4.1-sparse-experts",
-  "question": "同每 token 激活 MACs 下，把每层 FFN 换成 E 个同宽专家、每 token 只走 top-1，相对同算力的 stock dense 能不能买到 ≥0.014 bpc 的质量；E 取 4 / 16 两档",
+  "question": "同每 token 激活 MACs 下，把每层 FFN 换成 E 个同宽专家、每 token 只走 top-1，相对同算力的 stock dense 能不能买到 ≥0.014 bpc 的质量；E 取 4 / 8 两档（低端两点）",
   "band_bpc": 0.014,
   "band_note": "0.014 bpc 带只用于配对的 clean bpc 读数（20 批配对窗口）；它是 13M 跨 run 的 bpc 漂移界，不跨量纲借用（harness/methodology.md §2）",
   "delta_direction": "comparator_minus_arm",
@@ -32,135 +32,40 @@
   },
   "implementation": {
     "forward": "分组前向：argsort(专家号) + 整层一次 index_select + 逐专家 narrow 连续切片 + 一次 index_add 写回",
-    "naive_reference": "TopKMoEFFN.forward_naive（重绑前那一版：逐专家布尔索引 + 掩码拷贝），只作等价性参照，不参与训练",
+    "naive_reference": "TopKMoEFFN.forward_naive（换实现前那一版：逐专家布尔索引 + 掩码拷贝），只作等价性参照，不参与训练",
     "equivalence_test": "test_moe_forward_equivalence.py：同权重同输入下 max_abs_diff == 0（k=1，bf16 与 fp32）、E=1/top-1 灌 stock 权重 == dense 逐位、以及一条反恒真断言",
     "k_gt_1_note": "k>1 时同一 token 的 k 份贡献由 index_add 累加，CUDA 原子顺序不保证位级一致；本实验全部臂 k=1",
-    "rebind_note": "首个绑定（2026-10-21T17:24:56+08:00）绑的是旧实现；实测 E=16 臂 0.40 s/step ⇒ 40 min/臂，撞 20 min 单臂 timeout，经元级裁决只换实现、科学设定（臂/步数/token 预算/判据/带/种子/评测口径）一字未动后重绑一次"
+    "rebind_1_note": "第一次绑定（2026-10-21T17:24:56+08:00）绑的是旧实现；实测 E=16 臂 0.403-0.414 s/step ⇒ 40 min/臂，撞 20 min 单臂 timeout，经元级裁决只换实现、科学设定未动后重绑",
+    "rebind_2_note": "第二次绑定（本次）只把专家数第二点从 E=16 换成 E=8：分组前向实测 E=16 仍需 0.2075 s/step ⇒ 20.7 min/臂，仍撞 20 min 单臂 timeout。臂清单、判据线、0.014 带、种子、评测口径、token 预算、步数全部未动；E4/E8 是**低端两点**（参数 1.9×），结论不得外推到更多专家或大 E"
   },
   "arms": [
-    {
-      "name": "dense-B0-s0",
-      "kind": "dense",
-      "seed": 0,
-      "mlp_mult": 6,
-      "role": "主对照：同尺寸 stock dense（等激活算力）",
-      "trained": true,
-      "ckpt": "runs/dense-B0-s0/model.pt"
-    },
-    {
-      "name": "moe-top1-E4-s0",
-      "kind": "moe",
-      "seed": 0,
-      "n_experts": 4,
-      "top_k": 1,
-      "expert_hidden": 1536,
-      "role": "实验臂 E=4：等激活算力、4× FFN 参数",
-      "trained": true,
-      "ckpt": "runs/moe-top1-E4-s0/model.pt"
-    },
-    {
-      "name": "moe-top1-E16-s0",
-      "kind": "moe",
-      "seed": 0,
-      "n_experts": 16,
-      "top_k": 1,
-      "expert_hidden": 1536,
-      "role": "实验臂 E=16（专家数第二点）：等激活算力、16× FFN 参数",
-      "trained": true,
-      "ckpt": "runs/moe-top1-E16-s0/model.pt"
-    },
-    {
-      "name": "dense-eqparam-E4-s0",
-      "kind": "dense",
-      "seed": 0,
-      "mlp_mult": 24,
-      "role": "等参数对照（SCHEMA §15）：与 moe-top1-E4 同参数、4× 激活算力",
-      "trained": true,
-      "ckpt": "runs/dense-eqparam-E4-s0/model.pt"
-    },
-    {
-      "name": "dense-B0-s1",
-      "kind": "dense",
-      "seed": 1,
-      "mlp_mult": 6,
-      "role": "主对照 seed 1",
-      "trained": true,
-      "ckpt": "runs/dense-B0-s1/model.pt"
-    },
-    {
-      "name": "moe-top1-E4-s1",
-      "kind": "moe",
-      "seed": 1,
-      "n_experts": 4,
-      "top_k": 1,
-      "expert_hidden": 1536,
-      "role": "实验臂 E=4 seed 1",
-      "trained": true,
-      "ckpt": "runs/moe-top1-E4-s1/model.pt"
-    },
-    {
-      "name": "moe-top1-E16-s1",
-      "kind": "moe",
-      "seed": 1,
-      "n_experts": 16,
-      "top_k": 1,
-      "expert_hidden": 1536,
-      "role": "实验臂 E=16 seed 1",
-      "trained": true,
-      "ckpt": "runs/moe-top1-E16-s1/model.pt"
-    },
-    {
-      "name": "dense-eqparam-E4-s1",
-      "kind": "dense",
-      "seed": 1,
-      "mlp_mult": 24,
-      "role": "等参数对照 seed 1",
-      "trained": true,
-      "ckpt": "runs/dense-eqparam-E4-s1/model.pt"
-    }
+    {"name": "dense-B0-s0", "kind": "dense", "seed": 0, "mlp_mult": 6, "role": "主对照：同尺寸 stock dense（等激活算力）", "trained": true, "ckpt": "runs/dense-B0-s0/model.pt"},
+    {"name": "moe-top1-E4-s0", "kind": "moe", "seed": 0, "n_experts": 4, "top_k": 1, "expert_hidden": 1536, "role": "实验臂 E=4：等激活算力、4× FFN 参数", "trained": true, "ckpt": "runs/moe-top1-E4-s0/model.pt"},
+    {"name": "moe-top1-E8-s0", "kind": "moe", "seed": 0, "n_experts": 8, "top_k": 1, "expert_hidden": 1536, "role": "实验臂 E=8（专家数第二点）：等激活算力、8× FFN 参数", "trained": true, "ckpt": "runs/moe-top1-E8-s0/model.pt"},
+    {"name": "dense-eqparam-E4-s0", "kind": "dense", "seed": 0, "mlp_mult": 24, "role": "等参数对照（旁证，不参与主判；SCHEMA §15）：与 moe-top1-E4 同参数、4× 激活算力", "trained": true, "ckpt": "runs/dense-eqparam-E4-s0/model.pt"},
+    {"name": "dense-B0-s1", "kind": "dense", "seed": 1, "mlp_mult": 6, "role": "主对照 seed 1", "trained": true, "ckpt": "runs/dense-B0-s1/model.pt"},
+    {"name": "moe-top1-E4-s1", "kind": "moe", "seed": 1, "n_experts": 4, "top_k": 1, "expert_hidden": 1536, "role": "实验臂 E=4 seed 1", "trained": true, "ckpt": "runs/moe-top1-E4-s1/model.pt"},
+    {"name": "moe-top1-E8-s1", "kind": "moe", "seed": 1, "n_experts": 8, "top_k": 1, "expert_hidden": 1536, "role": "实验臂 E=8 seed 1", "trained": true, "ckpt": "runs/moe-top1-E8-s1/model.pt"},
+    {"name": "dense-eqparam-E4-s1", "kind": "dense", "seed": 1, "mlp_mult": 24, "role": "等参数对照 seed 1（旁证，不参与主判）", "trained": true, "ckpt": "runs/dense-eqparam-E4-s1/model.pt"}
   ],
   "pairs": {
-    "main-E4-s0": {
-      "comparator": "dense-B0-s0",
-      "arm": "moe-top1-E4-s0"
-    },
-    "main-E4-s1": {
-      "comparator": "dense-B0-s1",
-      "arm": "moe-top1-E4-s1"
-    },
-    "main-E16-s0": {
-      "comparator": "dense-B0-s0",
-      "arm": "moe-top1-E16-s0"
-    },
-    "main-E16-s1": {
-      "comparator": "dense-B0-s1",
-      "arm": "moe-top1-E16-s1"
-    },
-    "expert-count-s0": {
-      "comparator": "moe-top1-E4-s0",
-      "arm": "moe-top1-E16-s0"
-    },
-    "expert-count-s1": {
-      "comparator": "moe-top1-E4-s1",
-      "arm": "moe-top1-E16-s1"
-    },
-    "attr-E4-s0": {
-      "comparator": "dense-eqparam-E4-s0",
-      "arm": "moe-top1-E4-s0"
-    },
-    "attr-E4-s1": {
-      "comparator": "dense-eqparam-E4-s1",
-      "arm": "moe-top1-E4-s1"
-    }
+    "main-E4-s0": {"comparator": "dense-B0-s0", "arm": "moe-top1-E4-s0"},
+    "main-E4-s1": {"comparator": "dense-B0-s1", "arm": "moe-top1-E4-s1"},
+    "main-E8-s0": {"comparator": "dense-B0-s0", "arm": "moe-top1-E8-s0"},
+    "main-E8-s1": {"comparator": "dense-B0-s1", "arm": "moe-top1-E8-s1"},
+    "expert-count-s0": {"comparator": "moe-top1-E4-s0", "arm": "moe-top1-E8-s0"},
+    "expert-count-s1": {"comparator": "moe-top1-E4-s1", "arm": "moe-top1-E8-s1"},
+    "attr-E4-s0": {"comparator": "dense-eqparam-E4-s0", "arm": "moe-top1-E4-s0"},
+    "attr-E4-s1": {"comparator": "dense-eqparam-E4-s1", "arm": "moe-top1-E4-s1"}
   },
   "verdict_rules": {
-    "main": "① 主判（等激活算力）：Δ = bpc(dense-B0) − bpc(moe-top1-E{4,16})。两 seed 同向且各自 >= band ⇒『同激活算力下 MoE 买得到质量』（Δ>0）/『同激活算力下 MoE 更差』（Δ<0）；两 seed 都落带内 ⇒『不可排序（买不到质量）』；其余（不同向、或同向但未同时越带）⇒『本 n 下不可排序』",
-    "expert_count": "② Δ = bpc(moe-top1-E4) − bpc(moe-top1-E16)（正 = 专家更多更好），同一条 0.014 带、同一条 seed 规则",
-    "attribution": "③ Δ = bpc(dense-eqparam-E4) − bpc(moe-top1-E4)（正 = MoE 优于等参数 dense）：|Δ| < band ⇒ 质量差异可由参数容量解释（路由/稀疏无独立贡献，SCHEMA §15）；Δ >= band ⇒ 稀疏本身有贡献；Δ <= -band ⇒ 稀疏本身更差",
+    "main": "① 主判（等激活算力）：Δ = bpc(dense-B0) − bpc(moe-top1-E{4,8})。两 seed 同向且各自 >= band ⇒『同激活算力下 MoE 买得到质量』（Δ>0）/『同激活算力下 MoE 更差』（Δ<0）；两 seed 都落带内 ⇒『不可排序（买不到质量）』；其余（不同向、或同向但未同时越带）⇒『本 n 下不可排序』",
+    "expert_count": "② Δ = bpc(moe-top1-E4) − bpc(moe-top1-E8)（正 = 专家更多更好），同一条 0.014 带、同一条 seed 规则；E4/E8 是低端两点，结果不得外推",
+    "attribution": "③ Δ = bpc(dense-eqparam-E4) − bpc(moe-top1-E4)（正 = MoE 优于等参数 dense）：|Δ| < band ⇒ 质量差异可由参数容量解释（路由/稀疏无独立贡献，SCHEMA §15）；Δ >= band ⇒ 稀疏本身有贡献；Δ <= -band ⇒ 稀疏本身更差。此臂只作旁证，不参与主判",
     "n_rule": "两个 seed 都跑；同向且都越带才按 n=2 入词，否则按该条规则如实报不可排序；n=1 不落判词",
     "stability": "gnorm_max < 100 且 grad_skips == 0 才入场，破门该臂作废（不硬判）",
     "collapse": "坍缩登记条件：任一层的专家使用率归一化熵在终评 < 0.5，或最大专家占比在终评 > 0.5；登记为路由行为读数，不单独构成否证（均衡机制属 4.2）",
-    "param_caveat": "总参数倍数与 tokens_per_param 必须与判词同框：E=16 臂 0.63 token/param 是欠拟合风险，不得把『容量买不到』读成『MoE 机制无效』"
+    "param_caveat": "总参数倍数与 tokens_per_param 必须与判词同段出现：dense-B0 13.6M（7.23 token/param）、moe-top1-E4 42.0M（2.34）、moe-top1-E8 79.8M（1.23）⇒ E8 臂的欠拟合风险更大，不得把『容量买不到』读成『MoE 机制无效』"
   },
   "eval": {
     "n_batches": 20,
@@ -171,15 +76,14 @@
   },
   "checks": {
     "expert_macs_ratio": 1.0,
-    "expert_macs_ratio_note": "moe-top1-E{4,16} 的每 token 专家 MACs / dense-B0 必须恰为 1.0（ledger 机检）",
+    "expert_macs_ratio_note": "moe-top1-E{4,8} 的每 token 专家 MACs / dense-B0 必须恰为 1.0（ledger 机检）",
     "eqparam_rel_gap_max": 0.002,
     "delta_consistency_abs_max": 2e-06,
     "stability_gnorm_max": 100,
     "collapse_entropy_norm": 0.5,
-    "collapse_max_frac": 0.5
+    "collapse_max_frac": 0.5,
+    "e8_step_time_gate_s": 0.14,
+    "e8_step_time_gate_note": "元级条件 1：E8 实测 s/step 超过 0.14（≈14 min/臂）即停下上报，不自行缩步数或再改实现"
   },
-  "seeds": [
-    0,
-    1
-  ]
+  "seeds": [0, 1]
 }

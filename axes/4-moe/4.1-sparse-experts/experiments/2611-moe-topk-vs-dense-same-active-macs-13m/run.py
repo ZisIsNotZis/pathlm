@@ -249,8 +249,8 @@ def ledger() -> dict:
     moe_expert = specs["moe-top1-E4-s0"]["expert_macs_per_token"]
     eq_gap = abs(specs["dense-eqparam-E4-s0"]["total_params"]
                  - specs["moe-top1-E4-s0"]["total_params"]) / specs["moe-top1-E4-s0"]["total_params"]
-    macs_check = {a: specs[a]["expert_macs_ratio_vs_dense"]
-                  for a in ("moe-top1-E4-s0", "moe-top1-E16-s0")}
+    moe_arms = [a for a in specs if specs[a]["kind"] == "moe"]
+    macs_check = {a: specs[a]["expert_macs_ratio_vs_dense"] for a in moe_arms}
     return {
         "base_config": {**RECIPE, "vocab_size": 206},
         "arms": specs,
@@ -262,8 +262,8 @@ def ledger() -> dict:
             "eqparam_e4_within_0p2pct": eq_gap < float(CHECKS["eqparam_rel_gap_max"]),
             "router_tax_e4_pct": round(100 * (specs["moe-top1-E4-s0"]["ffn_macs_per_token"]
                                              / base_ffn - 1), 3),
-            "router_tax_e16_pct": round(100 * (specs["moe-top1-E16-s0"]["ffn_macs_per_token"]
-                                              / base_ffn - 1), 3),
+            "router_tax_e8_pct": round(100 * (specs["moe-top1-E8-s0"]["ffn_macs_per_token"]
+                                             / base_ffn - 1), 3),
         },
         "notes": [
             "MACs = 乘加，FLOPs = 2×MACs；注意力 / LN / embedding / 读出各臂逐位相同，未重复计。",
@@ -587,9 +587,9 @@ def evaluate() -> dict:
     crit = {
         "c1_main_equal_macs": {
             "note": "Δ = bpc(dense-B0) − bpc(moe-top1-E*)（对照 − 实验，正 = MoE 更好）；0.014 配对带",
-            "E4": group("main-E4", "main"), "E16": group("main-E16", "main")},
+            "E4": group("main-E4", "main"), "E8": group("main-E8", "main")},
         "c2_expert_count": {
-            "note": "Δ = bpc(moe-top1-E4) − bpc(moe-top1-E16)（正 = 专家更多更好）；同一条 0.014 带",
+            "note": "Δ = bpc(moe-top1-E4) − bpc(moe-top1-E8)（正 = 专家更多更好）；同一条 0.014 带；低端两点，不外推",
             **{k: v for k, v in group("expert-count", "expert_count").items()}},
         "c3_attribution_eqparam": {
             "note": "Δ = bpc(dense-eqparam-E4) − bpc(moe-top1-E4)（正 = MoE 优于等参数 dense）；"
@@ -661,12 +661,12 @@ def evaluate() -> dict:
         "c7_stability": stability,
         "main_verdict": {
             "quality_at_equal_macs": {"E4": crit["c1_main_equal_macs"]["E4"]["verdict"],
-                                      "E16": crit["c1_main_equal_macs"]["E16"]["verdict"]},
+                                      "E8": crit["c1_main_equal_macs"]["E8"]["verdict"]},
             "expert_count": crit["c2_expert_count"]["verdict"],
             "attribution_vs_eqparam_dense": crit["c3_attribution_eqparam"]["verdict"],
             "param_caveat": {n: {"params_x_dense": led["arms"][n]["params_x_dense"],
                                  "tokens_per_param": led["arms"][n]["tokens_per_param"]}
-                             for n in ("moe-top1-E4-s0", "moe-top1-E16-s0")},
+                             for n in ("moe-top1-E4-s0", "moe-top1-E8-s0")},
             "n_seed": 2,
         },
         "train_declaration": {n: {"wall_minutes": arm_table[n]["wall_minutes"],
