@@ -24,7 +24,13 @@
 稠密（6 层）的序列级 bpc 与代价列（参数 / 每 token MACs / 峰值显存），含 `n≥2` 的重复次数与
 一次「只重复后半段」的归因臂；两问各自有明确答案。
 
-**当前状态**：唯一之家是 `project.yaml::status`。本文件不复制判词。
+**当前状态**：唯一之家是 `project.yaml::status`（`被否证`）与 `::conclusion` 的并列读法
+（milestone 字面成立、价值主张被否证）。本文件不复制判词。
+
+**里程碑已闭环**：WP1 的四臂（`dense6` / `dense12` / `repeat2x` / `repeat2x-tail`）已全部训练 + 评测，
+`results.json` 的 P0（引擎等值门）/ P1（活性门）/ P2（三对比较）都有读数，`analysis.md` 六问齐全。
+残余不是里程碑的一部分，登记在 `project.yaml::gaps`（步嵌入臂 / 第二个重复次数点 / 第二 seed /
+推理侧口径）。
 
 **工作包闭环方式**：唯一里程碑由一个工作包落地（WP1，见 §3），实验目录
 `experiments/2691-repeating-vs-dense-13m/`；判据线 P0–P5 在 `README.md` 里预登记，
@@ -38,7 +44,7 @@
 
 | id | owner | 预算（墙钟 / GPU） | 复核人 | 状态（只放指针） |
 |---|---|---|---|---|
-| WP1 | 轴 2 深度轴 lead（本格单一写入者） | 4.5 h 墙钟 / ≈70 min GPU（四臂 × 12k 步 + 评测 + P0 重评），臂级最多 8 次重试、单臂 timeout 20 min | fresh 复核者（独立上下文，**未派**；本轮判词为 writer 自评，见 `project.yaml::conclusion_review`） | → `project.yaml::work_packages[0].status` |
+| WP1 | 轴 2 深度轴 lead（本格单一写入者） | 实耗 35.7 min GPU（四臂 12k 步训练 29.2 min + P0 重评 / 四臂评测 / 汇总 6.5 min）+ 冒烟 ≈1.5 min；臂级重试 0 次（预算 8 次、单臂 timeout 20 min） | fresh 复核者（独立上下文，**未派**；本轮判词为 writer 自评，见 `project.yaml::conclusion_review`） | → `project.yaml::work_packages[0].status`（`已完成`） |
 
 ## 4 证据指针（按顺序走就能复核本项的全部结论）
 
