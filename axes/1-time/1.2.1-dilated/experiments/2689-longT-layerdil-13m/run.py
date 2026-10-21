@@ -520,13 +520,18 @@ def main() -> None:
                                  if d_growth is not None else "（判据③ 未跑）"))
     elif by_T["2048"].get("deltas"):
         deltas = by_T["2048"]["deltas"]
+        all_negative = all(c == "beyond_negative"
+                           for c in by_T["2048"]["band_classes"].values())
         onset = next((T for T in ("256", "1024", "2048")
                       if by_T[T].get("band_classes")
                       and all(c == "beyond_positive" for c in by_T[T]["band_classes"].values())), None)
-        quality_answer = (f"长 T 上出现质量增量：T=2048 的 Δ = "
-                          f"{', '.join(f'{k} {v:+.5f}' for k, v in deltas.items())}"
-                          f"；起点 T = {onset}（第一个两 seed 都越带的 T 点）；"
-                          "增长率只按观测点描述、不外推")
+        quality_answer = ((f"长 T 上空洞臂越负带（按位置最近在长 T 上占优）：T=2048 的 Δ = "
+                           if all_negative else f"长 T 上出现质量增量：T=2048 的 Δ = ")
+                          + f"{', '.join(f'{k} {v:+.5f}' for k, v in deltas.items())}"
+                          + ("；没有任何 T 点越正带（起点 T = 无）；跨 T 的走向只按观测点描述、不外推"
+                             if all_negative else
+                             f"；起点 T = {onset}（第一个两 seed 都越带的 T 点）；"
+                             "增长率只按观测点描述、不外推"))
     else:
         quality_answer = "未跑（掉臂规则）：长 T 腿的 checkpoint 缺失，本项不作质量判词"
 
