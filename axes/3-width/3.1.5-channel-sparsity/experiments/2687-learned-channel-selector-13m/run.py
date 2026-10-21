@@ -369,7 +369,8 @@ def adapt_state(state: dict) -> dict:
     for k, v in state.items():
         if k.startswith("blocks.") and ".mlp." in k and ".mlp.mlp." not in k:
             head, _, tail = k.partition(".mlp.")
-            k = f"{head}.mlp.mlp.{tail}"
+            if tail[:1].isdigit():          # 只改 `blocks.i.mlp.<j>.*`（Sequential 下标），
+                k = f"{head}.mlp.mlp.{tail}"  # 打分器键 `blocks.i.mlp.score_*` 原地不动
         out[k] = v
     return out
 

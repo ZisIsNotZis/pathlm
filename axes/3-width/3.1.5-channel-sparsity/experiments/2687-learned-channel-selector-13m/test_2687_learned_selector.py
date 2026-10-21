@@ -240,3 +240,20 @@ def test_T9_load_balance_term_range():
     p_skew = torch.zeros(H)
     p_skew[:k] = 1.0 / k
     assert float((f_collapse * p_skew).sum()) == 2.0
+
+
+# ---------------------------------------------------------------- T10 键名适配
+
+def test_T10_adapt_state_renames_only_stock_ffn_keys():
+    """`adapt_state` 只把 stock 的 `blocks.i.mlp.<j>.*` 改名，**不许**碰打分器键
+    `blocks.i.mlp.score_*`（改名就把打分器当成「缺键」丢掉、换回初值 ⇒ 读数变成
+    「用初始打分器配已训主干」，这正是本实验最贵的一类读数错误）。"""
+    stock_like = {"blocks.0.mlp.0.weight": 1, "blocks.0.mlp.2.bias": 2,
+                  "blocks.0.ln1.weight": 3, "readout.0.weight": 4}
+    wrapped = _run.adapt_state(stock_like)
+    assert wrapped["blocks.0.mlp.mlp.0.weight"] == 1
+    assert wrapped["blocks.0.mlp.mlp.2.bias"] == 2
+    assert "blocks.0.ln1.weight" in wrapped and "readout.0.weight" in wrapped
+    own = {"blocks.0.mlp.score_a": 5, "blocks.0.mlp.score_b": 6,
+           "blocks.0.mlp.mlp.0.weight": 7}
+    assert _run.adapt_state(own) == own
