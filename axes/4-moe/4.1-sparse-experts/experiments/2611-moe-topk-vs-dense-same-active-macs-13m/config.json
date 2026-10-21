@@ -1,0 +1,79 @@
+{
+  "experiment": "2611-moe-topk-vs-dense-same-active-macs-13m",
+  "cell": "axes/4-moe/4.1-sparse-experts",
+  "question": "同每 token 激活 MACs 下，把每层 FFN 换成 E 个同宽专家、每 token 只走 top-1，相对同算力的 stock dense 能不能买到 ≥0.014 bpc 的质量；E 取 4 / 16 两档",
+  "band_bpc": 0.014,
+  "band_note": "0.014 bpc 带只用于配对的 clean bpc 读数（20 批配对窗口）；它是 13M 跨 run 的 bpc 漂移界，不跨量纲借用（harness/methodology.md §2）",
+  "delta_direction": "comparator_minus_arm",
+  "delta_direction_note": "所有配对 Δ = bpc(对照) − bpc(实验) ⇒ 正 = 实验臂更好",
+  "recipe": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "base_mlp_mult": 6,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "dense": true,
+    "topology": "sequential",
+    "lr": 0.001,
+    "weight_decay": 0.01,
+    "data": "data/enwik8_full.npz",
+    "seq_len": 512,
+    "batch_size": 32,
+    "steps": 6000,
+    "tokens_per_arm": 98304000,
+    "tokens_note": "32×512×6000 = 98,304,000 token/臂（= configs/B0.json 的同一预算；全臂逐位相同）"
+  },
+  "gating": {
+    "renorm": true,
+    "renorm_note": "top-k 权重归一到和为 1（top-1 ⇒ 权重恒 1.0）。不归一时 top-1 的权重是 p_max<1，等于把 FFN 输出整体缩小，那是第二个混杂；归一后 E=1/top-1 逐位等于 dense（preflight 机检）",
+    "aux_weight": 0.0,
+    "aux_weight_note": "路由器无负载均衡辅助损失：均衡属 4.2，本格只判 top-k 本体（单因素）"
+  },
+  "arms": [
+    {"name": "dense-B0-s0", "kind": "dense", "seed": 0, "mlp_mult": 6, "role": "主对照：同尺寸 stock dense（等激活算力）", "trained": true, "ckpt": "runs/dense-B0-s0/model.pt"},
+    {"name": "moe-top1-E4-s0", "kind": "moe", "seed": 0, "n_experts": 4, "top_k": 1, "expert_hidden": 1536, "role": "实验臂 E=4：等激活算力、4× FFN 参数", "trained": true, "ckpt": "runs/moe-top1-E4-s0/model.pt"},
+    {"name": "moe-top1-E16-s0", "kind": "moe", "seed": 0, "n_experts": 16, "top_k": 1, "expert_hidden": 1536, "role": "实验臂 E=16（专家数第二点）：等激活算力、16× FFN 参数", "trained": true, "ckpt": "runs/moe-top1-E16-s0/model.pt"},
+    {"name": "dense-eqparam-E4-s0", "kind": "dense", "seed": 0, "mlp_mult": 24, "role": "等参数对照（SCHEMA §15）：与 moe-top1-E4 同参数、4× 激活算力", "trained": true, "ckpt": "runs/dense-eqparam-E4-s0/model.pt"},
+    {"name": "dense-B0-s1", "kind": "dense", "seed": 1, "mlp_mult": 6, "role": "主对照 seed 1", "trained": true, "ckpt": "runs/dense-B0-s1/model.pt"},
+    {"name": "moe-top1-E4-s1", "kind": "moe", "seed": 1, "n_experts": 4, "top_k": 1, "expert_hidden": 1536, "role": "实验臂 E=4 seed 1", "trained": true, "ckpt": "runs/moe-top1-E4-s1/model.pt"},
+    {"name": "moe-top1-E16-s1", "kind": "moe", "seed": 1, "n_experts": 16, "top_k": 1, "expert_hidden": 1536, "role": "实验臂 E=16 seed 1", "trained": true, "ckpt": "runs/moe-top1-E16-s1/model.pt"},
+    {"name": "dense-eqparam-E4-s1", "kind": "dense", "seed": 1, "mlp_mult": 24, "role": "等参数对照 seed 1", "trained": true, "ckpt": "runs/dense-eqparam-E4-s1/model.pt"}
+  ],
+  "pairs": {
+    "main-E4-s0": {"comparator": "dense-B0-s0", "arm": "moe-top1-E4-s0"},
+    "main-E4-s1": {"comparator": "dense-B0-s1", "arm": "moe-top1-E4-s1"},
+    "main-E16-s0": {"comparator": "dense-B0-s0", "arm": "moe-top1-E16-s0"},
+    "main-E16-s1": {"comparator": "dense-B0-s1", "arm": "moe-top1-E16-s1"},
+    "expert-count-s0": {"comparator": "moe-top1-E4-s0", "arm": "moe-top1-E16-s0"},
+    "expert-count-s1": {"comparator": "moe-top1-E4-s1", "arm": "moe-top1-E16-s1"},
+    "attr-E4-s0": {"comparator": "dense-eqparam-E4-s0", "arm": "moe-top1-E4-s0"},
+    "attr-E4-s1": {"comparator": "dense-eqparam-E4-s1", "arm": "moe-top1-E4-s1"}
+  },
+  "verdict_rules": {
+    "main": "① 主判（等激活算力）：Δ = bpc(dense-B0) − bpc(moe-top1-E{4,16})。两 seed 同向且各自 >= band ⇒『同激活算力下 MoE 买得到质量』（Δ>0）/『同激活算力下 MoE 更差』（Δ<0）；两 seed 都落带内 ⇒『不可排序（买不到质量）』；其余（不同向、或同向但未同时越带）⇒『本 n 下不可排序』",
+    "expert_count": "② Δ = bpc(moe-top1-E4) − bpc(moe-top1-E16)（正 = 专家更多更好），同一条 0.014 带、同一条 seed 规则",
+    "attribution": "③ Δ = bpc(dense-eqparam-E4) − bpc(moe-top1-E4)（正 = MoE 优于等参数 dense）：|Δ| < band ⇒ 质量差异可由参数容量解释（路由/稀疏无独立贡献，SCHEMA §15）；Δ >= band ⇒ 稀疏本身有贡献；Δ <= -band ⇒ 稀疏本身更差",
+    "n_rule": "两个 seed 都跑；同向且都越带才按 n=2 入词，否则按该条规则如实报不可排序；n=1 不落判词",
+    "stability": "gnorm_max < 100 且 grad_skips == 0 才入场，破门该臂作废（不硬判）",
+    "collapse": "坍缩登记条件：任一层的专家使用率归一化熵在终评 < 0.5，或最大专家占比在终评 > 0.5；登记为路由行为读数，不单独构成否证（均衡机制属 4.2）",
+    "param_caveat": "总参数倍数与 tokens_per_param 必须与判词同框：E=16 臂 0.63 token/param 是欠拟合风险，不得把『容量买不到』读成『MoE 机制无效』"
+  },
+  "eval": {
+    "n_batches": 20,
+    "batch_size": 16,
+    "window_seed": 2,
+    "paired": true,
+    "note": "配对单位 = 同一批评测窗口（同 window_seed ⇒ 全臂逐批同窗）；clean bpc 在末 10M 留出上、fp32、无 autocast"
+  },
+  "checks": {
+    "expert_macs_ratio": 1.0,
+    "expert_macs_ratio_note": "moe-top1-E{4,16} 的每 token 专家 MACs / dense-B0 必须恰为 1.0（ledger 机检）",
+    "eqparam_rel_gap_max": 0.002,
+    "delta_consistency_abs_max": 2e-06,
+    "stability_gnorm_max": 100,
+    "collapse_entropy_norm": 0.5,
+    "collapse_max_frac": 0.5
+  },
+  "seeds": [0, 1]
+}
