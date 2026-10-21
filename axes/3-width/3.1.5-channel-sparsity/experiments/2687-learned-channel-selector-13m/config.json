@@ -1,0 +1,84 @@
+{
+  "experiment": "2687-learned-channel-selector-13m",
+  "base": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "hidden": 1024,
+    "dense": true,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "topology": "sequential",
+    "exit_mode": "uniform",
+    "fill_kv": true
+  },
+  "training": {
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "train_tokens": 98304000,
+    "data": "data/enwik8_full.npz（前 90M train / 末 10M eval，词表 206）"
+  },
+  "criterion": {
+    "band": 0.014,
+    "band_scope": "clean bpc 配对 Δ（harness/methodology.md §2）；率类指标（flip/mode_set_share/熵）走 Wilson 95% CI 或 batch 聚类 bootstrap，不跨量纲借用 0.014",
+    "G1_liveness": {
+      "scorer_move_relative_min": 0.01,
+      "flip_vs_init_min": 0.05,
+      "flip_ci_rule": "Wilson 95% CI 下界 > 0",
+      "applies_to_seeds": [0, 1]
+    },
+    "G2_main": "Δbpc(L50 − K50)，两 seed 同向且 |Δ| ≥ band 才可排序",
+    "G3_frontier": "Δbpc(L50 − D) 与 Δbpc(L50 − F50)，同一带",
+    "verdict_mapping": {
+      "G1_fail": "本尺度不可判（报告 scorer_move_relative / flip_vs_init / n_seeds_needed）",
+      "G1_pass_and_G2_worse": "机制不成立",
+      "G1_pass_and_G2_better_and_G3_gain": "本实现不成立",
+      "G1_pass_and_G2_better_no_G3_gain": "机制部分成立但不占前沿",
+      "otherwise": "本尺度不可判"
+    },
+    "n_seeds_needed_formula": "n = ceil((2·σ/band)²)，σ = Δ(L50−K50) 的跨 seed SD"
+  },
+  "intervention": {
+    "what": "每 token 参与前向的 FFN 隐藏通道子集（实验目录内把 blk.mlp 包成 ScoredFFN，前向 = lin2(gelu(lin1(x))*mask)）",
+    "arms": {
+      "D": {"selector": "不选（全通道）", "k_active": 1024, "scorer_trainable": false},
+      "K50": {"selector": "逐 token |pre-activation| top-k，k=512（无参数）", "k_active": 512, "scorer_trainable": false},
+      "F50": {"selector": "固定前缀 512 通道常开（无条件性）", "k_active": 512, "scorer_trainable": false},
+      "L50": {"selector": "逐 token s = |pre|·exp(g(x)) 的 top-k，g = GELU(xA)B 可学习", "k_active": 512, "scorer_trainable": true}
+    },
+    "scorer": {
+      "form": "g(x) = GELU(x A) B；A[d,r]、B[r,H]，r=8，无偏置；B 零初始化",
+      "params_per_layer": 10240,
+      "macs_per_layer_per_token": 10240,
+      "present_in_all_arms": true,
+      "note": "四臂都带同一模块 ⇒ 总参数逐臂逐位相同；D/K50/F50 冻结且前向不用（等预算、不花）"
+    },
+    "straight_through": "前向硬 0/1 掩码（不缩放激活）+ 反向往 softmax(s) 的被选集归一概率直通；t − t.detach() 前向恒 0",
+    "load_balance": {"form": "aux = Σ_j f̂_j·P_j（f̂ 按 H/k 归一、P = softmax(s) 的均值）", "alpha": 0.01},
+    "single_variable_rule": "所有臂保留完整 FFN 权重（mlp_mult=4），总参数逐臂逐位相同；只改选择信号（以及这份选择器预算是否被训练）",
+    "equality_gate": "D 臂掩码恒 1 时前向与 stock 逐位相同（T1；变异 T2 必须变红）；L50 初始选择集与 K50 逐位相同（T5）",
+    "analytic_cost": {
+      "D": {"ffn_macs_impl": 4194304, "selector_macs": 81920, "macs_total": 7474688, "macs_total_rel_to_D": 1.0, "params_total": 7044608, "params_trainable": 6962688},
+      "K50": {"ffn_macs_impl": 3145728, "selector_macs": 81920, "macs_total": 6426112, "macs_total_rel_to_D": 0.859716, "params_total": 7044608, "params_trainable": 6962688},
+      "F50": {"ffn_macs_impl": 2097152, "selector_macs": 81920, "macs_total": 5377536, "macs_total_rel_to_D": 0.719433, "params_total": 7044608, "params_trainable": 6962688},
+      "L50": {"ffn_macs_impl": 3145728, "selector_macs": 81920, "macs_total": 6426112, "macs_total_rel_to_D": 0.859716, "params_total": 7044608, "params_trainable": 7044608}
+    },
+    "cost_note": "实现口径（primary）：按内容选通道须先算全部 pre-activation ⇒ lin1 省不掉，K50/L50 真实省 FFN 25%；F50 固定前缀可同时切两个矩阵 ⇒ 省 50%；选择器预算四臂同额"
+  },
+  "eval": {
+    "metric": "clean bpc（depth_curve 最终深度，n_batches=20, bs=16, eval generator seed=2）",
+    "variance_bound": 0.014,
+    "rate_metrics": "flip_vs_init / flip_vs_pre / mode_set_share / 使用熵走 Wilson 95% CI 或 batch 聚类 bootstrap，不跨量纲借用 0.014"
+  },
+  "reuse_anchors": {
+    "D": {"arm": "2641 U4-s0", "clean_bpc": 1.5314, "ckpt": "axes/3-width/3.1.4-ffn-ratio/experiments/2641-ffn-ratio-frontier-13m/runs/U4-s0-12k/model.pt"},
+    "K50_s0": {"arm": "2644 K50-s0", "clean_bpc": 1.6295, "ckpt": "axes/3-width/3.1.5-channel-sparsity/experiments/2644-channel-sparsity-13m/runs/K50-s0-12k/model.pt"},
+    "K50_s1": {"arm": "2644 K50-s1", "clean_bpc": 1.6263, "ckpt": "axes/3-width/3.1.5-channel-sparsity/experiments/2644-channel-sparsity-13m/runs/K50-s1-12k/model.pt"},
+    "F50_s0": {"arm": "2644 F50-s0", "clean_bpc": 1.5678, "ckpt": "axes/3-width/3.1.5-channel-sparsity/experiments/2644-channel-sparsity-13m/runs/F50-s0-12k/model.pt"},
+    "F50_s1": {"arm": "2644 F50-s1", "clean_bpc": 1.5625, "ckpt": "axes/3-width/3.1.5-channel-sparsity/experiments/2644-channel-sparsity-13m/runs/F50-s1-12k/model.pt"}
+  },
+  "gpu_lock": "harness/SCHEMA.md §20：按臂取/放 /tmp/pathlm_gpu.lock，臂间 ≥61 s"
+}
