@@ -142,6 +142,10 @@ class ScoredFFN(nn.Module):
                a: torch.Tensor | None = None, b: torch.Tensor | None = None) -> torch.Tensor:
         a = self.score_a if a is None else a
         b = self.score_b if b is None else b
+        if a.device != x.device:            # 初始打分器快照是构造时刻的 CPU 张量（不入 state_dict）
+            a = a.to(x.device)
+        if b.device != x.device:
+            b = b.to(x.device)
         g = torch.nn.functional.gelu(x @ a) @ b                      # [B,T,H]
         # 数值护栏：`exp(g)` 限在 [e^-4, e^4]，防 12k 步里打分器漂到溢出（不影响 `B ≡ 0` 的起步）
         scale = torch.exp(g.float().clamp(-SCORER_CLAMP, SCORER_CLAMP))
