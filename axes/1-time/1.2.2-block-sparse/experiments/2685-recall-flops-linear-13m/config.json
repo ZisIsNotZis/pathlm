@@ -144,9 +144,12 @@
   ],
   "budget": {
     "gpu_wall_minutes": 120,
-    "arm_timeout_minutes": 25,
+    "arm_timeout_minutes": {
+      "full": 25,
+      "linear": 45
+    },
     "estimated": "四条新臂训练 ≈9.5 + 9.5 + 17 + 17 min + 冒烟 ≈1 min + 评测 ≈5 min",
     "peak_mem_mib_polite_line": 5120,
-    "arm_timeout_note": "本仓惯例是「单臂 ≤20 min」；线性臂实测 12k 步 ≈19 min、离 20 min 只有约 1 min 余量（共享卡上还有别人的推理进程），若被 20 min 掐断会丢掉整条臂 ⇒ 给四条新臂统一 25 min 上限。这是**预算偏差**，不改判据、不改配方、不改步数（记账见 README §5 与 analysis.md）。"
+    "arm_timeout_note": "本仓惯例是「单臂 ≤20 min」。全因果臂 12k 步 ≈8.5 min 实测，取 25 min；线性臂在本实装下比全因果慢约 2.3×，空闲卡上 ≈19 min、而在共享卡被别的 agent 的 GPU 测试占用时实测 150–220 ms/step（12k 步 30–44 min），20/25 min 会把它整条掐断 ⇒ 取 45 min。这是**预算偏差**，不改判据、不改配方、不改步数、不缩 token 预算（记账见 README §5 与 analysis.md）。"
   }
 }

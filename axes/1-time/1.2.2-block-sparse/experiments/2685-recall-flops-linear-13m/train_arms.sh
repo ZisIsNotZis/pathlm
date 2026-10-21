@@ -19,7 +19,9 @@ MODE="${MODE:-full}"
 LOCK=/tmp/pathlm_gpu.lock
 MAX_WAIT_S=$(( 20 * 60 ))
 # 25 min（本仓惯例 20 min；线性臂 12k 步实测 ≈19 min、余量只剩 ~1 min ⇒ 统一抬到 25 min，见 README §5）
+# 25 min（全因果臂）/ 45 min（线性臂：共享卡被别的 agent 的 GPU 测试占用时实测 150–220 ms/step）
 ARM_TIMEOUT=25m
+ARM_TIMEOUT_LINEAR=45m
 
 if ! python3 tools/prereg_bind.py "$EXP" --require; then
   echo "先绑定契约：python3 tools/prereg_bind.py $EXP"; exit 3
@@ -80,7 +82,7 @@ run_linear() {    # $1 = 臂名, $2 = seed
   local name="$1" seed="$2"
   acquire || return 9
   echo "[$(date -Iseconds)] TRAIN START $name seed=$seed (attn-linear, stable phi) gpu_free=$(nvidia-smi --query-gpu=memory.free --format=csv,noheader)"
-  timeout "$ARM_TIMEOUT" python3 "$EXP/train_linear.py" "$name" $(common_args "$seed") \
+  timeout "$ARM_TIMEOUT_LINEAR" python3 "$EXP/train_linear.py" "$name" $(common_args "$seed") \
     --attn-linear --linear-chunk 32 \
     --out-root "$EXP/train" > "$EXP/train_${name}.log" 2>&1
   local rc=$?
