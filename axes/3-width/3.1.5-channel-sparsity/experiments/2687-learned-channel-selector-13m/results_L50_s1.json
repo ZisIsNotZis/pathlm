@@ -1,0 +1,245 @@
+{
+  "arm": "L50",
+  "seed": 1,
+  "steps": 12000,
+  "keep_frac": 0.5,
+  "eval": {
+    "metric": "clean bpc（最终深度、无退出、序列级、越低越好）",
+    "n_batches": 20,
+    "batch_size": 16,
+    "eval_generator_seed": 2,
+    "bpc_by_depth": [
+      {
+        "depth": 0,
+        "bpc": 7.4496,
+        "acc": 0.0536
+      },
+      {
+        "depth": 1,
+        "bpc": 4.6677,
+        "acc": 0.1917
+      },
+      {
+        "depth": 2,
+        "bpc": 4.182,
+        "acc": 0.2347
+      },
+      {
+        "depth": 3,
+        "bpc": 3.6178,
+        "acc": 0.3185
+      },
+      {
+        "depth": 4,
+        "bpc": 2.9742,
+        "acc": 0.4261
+      },
+      {
+        "depth": 5,
+        "bpc": 2.5565,
+        "acc": 0.5071
+      },
+      {
+        "depth": 6,
+        "bpc": 2.0462,
+        "acc": 0.5993
+      },
+      {
+        "depth": 7,
+        "bpc": 1.7948,
+        "acc": 0.6424
+      },
+      {
+        "depth": 8,
+        "bpc": 1.6291,
+        "acc": 0.6695
+      }
+    ],
+    "clean_bpc": 1.6291
+  },
+  "params": {
+    "params_total": 7044608,
+    "params_ffn": 4204544,
+    "params_selector": 81920,
+    "params_attn_and_rest": 2758144,
+    "params_trainable": 7044608
+  },
+  "cost": {
+    "d_model": 256,
+    "hidden": 1024,
+    "seq_len": 256,
+    "n_layers": 8,
+    "vocab": 206,
+    "k_active_channels": 512,
+    "ffn_macs_impl": 3145728,
+    "ffn_macs_contract": 2097152.0,
+    "selector_macs_per_token": 81920,
+    "params_total": 7044608,
+    "macs_per_token": {
+      "attention": 3145728,
+      "ffn": 3145728,
+      "selector": 81920,
+      "readout_tied": 52736,
+      "total": 6426112
+    },
+    "macs_total_rel_to_D": 0.859716,
+    "ffn_macs_rel_to_D": 0.75,
+    "note": "等效理论量：MACs/token（乘加），不含时间量。实现口径（primary）= lin1 全算 + lin2 按 k（K50/L50）/ 前缀切片（F50）；四臂同额选择器预算（D/K50/F50 不花但记账）；契约口径 = 按激活比例缩放 FFN 项。"
+  },
+  "selector_profile": {
+    "k_active_channels": 512,
+    "hidden": 1024,
+    "n_batches": 20,
+    "batch_size": 16,
+    "n_tokens_per_layer": [
+      81920,
+      81920,
+      81920,
+      81920,
+      81920,
+      81920,
+      81920,
+      81920
+    ],
+    "by_layer": [
+      {
+        "entropy_nats": 6.882229,
+        "entropy_over_logH": 0.992896,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1024
+      },
+      {
+        "entropy_nats": 6.924795,
+        "entropy_over_logH": 0.999037,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1024
+      },
+      {
+        "entropy_nats": 6.917433,
+        "entropy_over_logH": 0.997975,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1024
+      },
+      {
+        "entropy_nats": 6.918972,
+        "entropy_over_logH": 0.998197,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1024
+      },
+      {
+        "entropy_nats": 6.926181,
+        "entropy_over_logH": 0.999237,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1024
+      },
+      {
+        "entropy_nats": 6.923748,
+        "entropy_over_logH": 0.998886,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1024
+      },
+      {
+        "entropy_nats": 6.928638,
+        "entropy_over_logH": 0.999591,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1024
+      },
+      {
+        "entropy_nats": 6.930259,
+        "entropy_over_logH": 0.999825,
+        "uniform_value": 1.0,
+        "collapse_value_k": 0.9,
+        "channels_ever_used": 1024
+      }
+    ],
+    "mode_set_share": 0.0,
+    "mode_set_share_wilson_95ci": [
+      0.0,
+      6e-06
+    ],
+    "mode_set_share_cluster_bootstrap_95ci": [
+      0.0,
+      0.0
+    ],
+    "flip_vs_pre": {
+      "rate": 0.999979,
+      "n_positions_x_layers": 655360,
+      "wilson_95ci": [
+        0.999964,
+        0.999987
+      ],
+      "note": "每个 (层,位置) 的选择集与对 |pre| 规则的选择集不完全相同的比例"
+    },
+    "flip_vs_init": {
+      "rate": 0.999979,
+      "n_positions_x_layers": 655360,
+      "wilson_95ci": [
+        0.999964,
+        0.999987
+      ],
+      "note": "每个 (层,位置) 的选择集与对初始打分器的选择集不完全相同的比例"
+    },
+    "note": "entropy_over_logH 两端：完全坍缩 = log(k)/log(H)（k=512 时 0.9）、均匀随机 = 1.0；F50 构造性地落在坍缩端且 mode_set_share = 1.0。"
+  },
+  "load_balance": {
+    "aux_lb": 1.026547,
+    "alpha": 0.01,
+    "weighted_term_on_loss": 0.010265,
+    "n_batches": 4,
+    "note": "均衡项 = Σ_j f̂_j·P_j；完美均匀 = 1.0，越大 = 选择频率与路由概率越不一致"
+  },
+  "causal": {
+    "max_abs_diff_before_j": 0.0,
+    "bitwise_equal_before_j": true
+  },
+  "reeval_bitwise_identical": true,
+  "checkpoint": {
+    "path": "axes/3-width/3.1.5-channel-sparsity/experiments/2687-learned-channel-selector-13m/runs/L50-s1-12k/model.pt",
+    "sha256": "560e41143e4f0d47b7326ec08d8a332be825a57e8efcd5d8defd92268de0e3e4",
+    "missing_keys": [],
+    "unexpected_keys": []
+  },
+  "code_hash_run_py": "2e87bc50ac199f46e252078cc4d471b4f2b7067b7418d0e62396d4ca66d41bf0",
+  "scorer_move": {
+    "scorer_move_l2": 32.16354062,
+    "init_l2": 8.12236303,
+    "scorer_move_relative": 3.95987479,
+    "per_layer_l2": [
+      12.23823574,
+      11.73524352,
+      11.32119678,
+      13.26534225,
+      11.79272889,
+      10.3365804,
+      9.87482288,
+      9.97189616
+    ]
+  },
+  "loss_slope": {
+    "n_points": 16,
+    "slope_per_1k_steps": 0.00401,
+    "window": "末 25%"
+  },
+  "lb_trace": {
+    "available": true,
+    "n_points": 61,
+    "aux_first": 1.02,
+    "aux_last": 1.03,
+    "aux_mean": 1.069,
+    "note": "aux 由 train_log.jsonl 的 (loss − depth_ce[0]) / ALPHA_LB 反推；非 L50 臂该差恒 ~0（无均衡项）"
+  },
+  "shared_train_results": {
+    "params": 7044608,
+    "train_tokens": 98304000,
+    "wall_minutes": 9.37,
+    "peak_gpu_mem_mb": 2851.6
+  },
+  "run_dir": "axes/3-width/3.1.5-channel-sparsity/experiments/2687-learned-channel-selector-13m/runs/L50-s1-12k"
+}
