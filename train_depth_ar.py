@@ -21,6 +21,8 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 from pathlm.data import load_enwik8_full, batch
 # 预登记门：out-root 归属 axes/** 的实验时，那格的契约必须先绑定（tools/prereg_bind.py）。
 from tools.prereg_bind import owner_for_output, require as require_prereg
+# 读数落盘时记代码哈希（`harness/methodology.md` §8）：`code_hash_run_py` + `code_hashes`。
+from tools.run_provenance import write_results
 from tools.evalkit.longrange_tasks import assoc_recall_multi_batch
 from pathlm.depth_ar import (DepthARConfig, DepthARModel, sample_exit_depths,
                              depth_curve, tf_acceptance, workspace_probe,
@@ -963,8 +965,11 @@ def main():
         # R7 早退对照臂：干预不是重建项 ⇒ 活性块必须换成该臂真正的干预
         # （SCHEMA §10 不允许交一个「看起来活着、其实没接线」的活性量）。
         results["intervention"] = _r7_intervention(args, cfg, results)
-    with open(os.path.join(run_dir, "results.json"), "w") as f:
-        json.dump(results, f, indent=2, ensure_ascii=False)
+    # 读数必须记代码哈希（`harness/methodology.md` §8）：`code_hash_run_py` = 真正产出这份读数
+    # 的实验 `run.py`（解析不出就不写），`code_hashes` 里记本训练器自身与实验目录的兄弟脚本——
+    # 本脚本自己就是产物写入点，直跑它时没有别的地方能记下这两个事实。
+    write_results(os.path.join(run_dir, "results.json"), results,
+                  source=os.path.abspath(__file__))
     print(json.dumps({k: v for k, v in results.items()
                       if k not in ("config", "train")}, indent=2,
                      ensure_ascii=False))

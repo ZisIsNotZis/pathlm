@@ -135,6 +135,15 @@
   `code_hashes_by_arm.<臂>`（逐臂的代码版本）。新入口照这张表写字段。
   一份读数**没记任何代码哈希**、或记的哈希**无一被绑定覆盖**，都判红：产出它的代码无从核对——
   这本身就是要修的问题，不是可以沉默跳过的情形。
+- **读数落盘必须自带代码哈希（写入点自己记，事后补不了）**：跑完之后再去盘上算哈希，算的是**现在**的
+  文件，不是产出它的那份。所以写读数的入口在落盘那一刻记两个字段：`code_hash_run_py`（真正产出这份读数的
+  实验 `run.py` 的 sha256；产物目录上方没有同时带 `README.md` 与 `run.py` 的实验目录时**不写**这个字段，
+  宁缺勿假）与 `code_hashes`（{仓库根相对路径 → sha256}：写读数的脚本自身，如共享训练器
+  `train_depth_ar.py`，加实验目录里的 `run.py` / `config.json` / `train_arms.sh`，存在即记）。落盘一律过
+  `tools/run_provenance.write_results(path, payload, source=__file__)`，不在各入口自己拼字段；训练器自身的
+  哈希只进 `code_hashes`——`reading_code_hashes()` 把 `code_hash_run_py` 当作实验 `run.py` 去比对，写反了会让
+  绑了 `run.py` 的实验在每一份臂级读数上报假红。存量 57 份单跑产物（`train/`、`runs/`、`smoke/` 下的
+  `results.json`）没有这两个字段，已在 `harness/prereg_debt.tsv` 里声明、不追溯重跑；**新产物必须带**。
 - **存量靠 `harness/prereg_debt.tsv` 声明，不靠永久红**：新口径一开就在存量上亮 81 条，而一条对存量
   永远失败的闸门等于永远开不了（`@migrate_on_touch`）。基线与 `tools/check_docs.py` 的
   `UNRESOLVED_KEY_ANCHORS` 同一个做法：一行一条，五列制表符分隔——
