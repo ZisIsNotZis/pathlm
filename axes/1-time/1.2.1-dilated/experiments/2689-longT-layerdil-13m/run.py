@@ -550,6 +550,10 @@ def main() -> None:
         "delta_directions": {
             "delta_bpc": "comparator_minus_arm",
             "deltas": "comparator_minus_arm",
+            "sd_of_paired_delta": "comparator_minus_arm",
+            "min_delta": "comparator_minus_arm",
+            "max_delta": "comparator_minus_arm",
+            "frac_batches_delta_gt_0": "comparator_minus_arm",
         },
         "delta_direction_note": ("全部 Δ 都是「对照 − 实验」：判据① 对照 = 窗口臂、实验 = 空洞臂；"
                                  "判据② 对照 = 平铺空洞臂、实验 = 逐层递增臂；判据③ 对照 = 去掉 far 点"
