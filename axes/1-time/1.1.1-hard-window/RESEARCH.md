@@ -23,11 +23,17 @@
 
 **当前状态**：唯一之家是 `project.yaml::status` 与 `::milestone.acceptance` 的逐条证据——本文件不复制。
 里程碑四条验收现在各有落盘证据：k 全曲线两列（`2682`）、锚点召回腿 n=4（`2681`）、长 T 同 step（`2636`）、
-判词不越界（`project.yaml::conclusion`）。**独立复核未派**：本项现在只有执行方自评，复核前不得当「已复核通过」。
+判词不越界（`project.yaml::conclusion`）。**独立复核已派一次（fresh 上下文）**：四条验收里 ①②③ 成立、
+④ 不成立（两处 P1 都在 `project.yaml::conclusion`：把 `undecidable` 的 k≥128 写成「≈0」，以及「值不值」缺代价侧），
+两处已按盘上读数改正；同时把判据② 的 k=128 与判据⑥ 的 k=64 各补到 n=3（`2686`）——**两条补完仍不可判**，
+原因不是样本量而是带的量纲（配对差 `sd` 0.005073 / 0.003047 是冻结单臂噪声带 0.000983 的 3–5 倍）。
+**重核尚未派**：本次改正后需要 fresh 复核只看 `project.yaml::conclusion` 一字段才算过。
 
-**本轮交付（`2682`）的派发口径**：8 条纯窗臂 + 2 条可选锚点臂在本目录自训（逐臂 rc=0，实耗 88.7 min GPU，其中 8 条纯窗臂 71.1 min），
-连同 9 条复用臂一次评测算出四条判据；判据① 复现门 9/9 逐位相同 ⇒ 跨项复本的四个 k=16 种子与本目录新臂同仪器。
-读数与判读只看 `experiments/2682-window-kcurve-13m/analysis.md`，本文件不复述数字。
+**本轮交付（`2682` + `2686`）的派发口径**：`2682` 训 8 条纯窗臂 + 2 条可选锚点臂（逐臂 rc=0，实耗 88.7 min GPU，
+其中 8 条纯窗臂 71.1 min），连同 9 条复用臂一次评测算出四条判据；判据① 复现门 9/9 逐位相同 ⇒ 跨项复本的四个
+k=16 种子与本目录新臂同仪器。`2686` 另训 3 条 seed-2 臂（`win128_s2` / `win64_s2` / `win64a_s2`）把两条
+「不可判」补到 n=3：判据① 复现门重评 `2682` 的 7 条 checkpoint 要求逐位相同。
+读数与判读只看 `experiments/{2682-window-kcurve-13m,2686-window-kcurve-seed2-13m}/analysis.md`，本文件不复述数字。
 
 ## 3 工作包（owner / 验收 / 预算 / 状态）
 
@@ -36,8 +42,8 @@
 
 | id | owner | 预算 | 复核人 | 状态（只放指针） |
 |---|---|---|---|---|
-| WP1 | `axis1-w1.1.1` | 已花：≈30 min GPU（2 臂 × 12k 步）+ 评测；`2682` 另 8 臂 71.1 min | `axis1-reviewer` | → `project.yaml::work_packages[0].status` |
-| WP2 | `axis1-w1.1.1` | 实耗：8 臂 × 12k 步 = 71.1 min GPU（+ 可选 2 臂 17.6 min）+ 评测 79.1 s（`2682` §7 的预算是 ≤110 + ≤12 min） | `axis1-reviewer` | → `project.yaml::work_packages[1].status` |
+| WP1 | `axis1-w1.1.1` | 已花：≈30 min GPU（2 臂 × 12k 步）+ 评测；`2682` 另 8 臂 71.1 min；`2686` 另 3 臂（seed 2） | `axis1-reviewer` | → `project.yaml::work_packages[0].status` |
+| WP2 | `axis1-w1.1.1` | 实耗：8 臂 × 12k 步 = 71.1 min GPU（+ 可选 2 臂 17.6 min）+ 评测 79.1 s（`2682` §7 的预算是 ≤110 + ≤12 min）；`2686` 的 3 臂另计 | `axis1-reviewer` | → `project.yaml::work_packages[1].status` |
 | WP3 | `axis1-w1.1.1` | 已花：4 臂 × 12k 步 ≈ 36 min GPU（8.2–10.5 min/臂）+ 评测 2.84 min | `axis1-reviewer` | → `project.yaml::work_packages[2].status` |
 | WP4 | `axis1-w1.1.1` | 已花：0 GPU（迁移读数统一口径） | `axis1-reviewer` | → `project.yaml::work_packages[3].status` |
 
@@ -62,9 +68,9 @@
 
 | 结论 | 指针 |
 |---|---|
-| **窗口的价格（k 全曲线，本目录自包含）** | `experiments/2682-window-kcurve-13m/analysis.md` §3 判据②；键路径 `results.json::criteria.c2_train_budget_column` |
+| **窗口的价格（k 全曲线，本目录自包含）** | `experiments/2682-window-kcurve-13m/analysis.md` §3 判据②；键路径 `results.json::criteria.c2_train_budget_column`；**k=128 补到 n=3 的判读**看 `experiments/2686-window-kcurve-seed2-13m/analysis.md` |
 | **累计预算列与单距离列分开 + 两列不可互换** | `experiments/2682-window-kcurve-13m/analysis.md` §3 判据③④⑤；键路径 `results.json::criteria.c3_eval_budget_column` / `::c4_single_distance_column` / `::c5_columns_not_interchangeable` |
-| **锚点杠杆在第二个 k（k=64，n=2 不可判）** | `experiments/2682-window-kcurve-13m/analysis.md` §3 判据⑥；键路径 `results.json::criteria.c6_anchor_lever_at_k64` |
+| **锚点杠杆在第二个 k（k=64）** | `experiments/2682-window-kcurve-13m/analysis.md` §3 判据⑥（n=2）；**n=3 判读**看 `experiments/2686-window-kcurve-seed2-13m/analysis.md` |
 | 锚点的质量价格（n=2） | `experiments/2662-hard-window-anchor-13m/analysis.md` §3 |
 | 锚点通道在推理期被用起来（0 训练 token 消融） | `experiments/2679-anchor-eval-ablation-13m/analysis.md` |
 | **锚点召回腿 n=4 判词（本轮）** | `experiments/2681-anchor-recall-seeds23-13m/{analysis.md,results.json}` |
@@ -90,6 +96,7 @@ python3 -m pytest tests/ -q
   24 键对照臂**（窗口 24、无锚点，同为 24 个最近键；1 臂 ≈10 min GPU + 复用 `experiments/2679-anchor-eval-ablation-13m/run.py` 评测）。
   这是分诊表 4.0 档的动作，**不在本轮**（本轮动作是召回腿的 n=4）。
 - 分布内消融需要训练期 anchor dropout（改共享训练入口那一档，另立项）。
-- **k 曲线自包含与两列拆分已闭**（`2682`）；残余两条都是「补 1 个 seed 就能判」的：k=128（n=2→3）
-  与 `win64a`（判据⑥，n=2→3），各 ≈9 min GPU；k=192 要 n≈17（≈135 min GPU）⇒ 不建议补，改谈「换带」那一层。
+- **k 曲线自包含与两列拆分已闭**（`2682`）；两条「补 1 个 seed 就能判」的已补（`2686`：k=128 与判据⑥ 的 k=64，各 n=2→3）
+  但**补完仍不可判**，且证据指向「带错」而非「样本少」⇒ 真正的收口是**换带**（配对差散布，新契约，需用户裁决）。
+- k=192 要 n≈17（≈135 min GPU）⇒ **本格不取得**；在错量纲的带上补到 n≈17 也判不了，性价比更低。
 - T=1024/2048 无 seed 复本；per-head 平均注意距离分布未报。
