@@ -1,0 +1,70 @@
+{
+  "structure": {
+    "params": {
+      "dense6": 5251584,
+      "repeat2x": 5251584,
+      "repeat2x-tail": 5251584,
+      "dense12": 10384896
+    },
+    "params_equal_dense6_vs_repeat2x": true,
+    "params_equal_dense6_vs_tail": true,
+    "init_hash_equal_dense6_vs_repeat2x": true,
+    "init_hash_equal_dense6_vs_tail": true,
+    "identity_equals_stock_max_abs_diff": 0.0,
+    "identity_equals_stock": true,
+    "schedules_match_config": true,
+    "arm_roles": {
+      "dense6": "问二对照：6 组参数跑 6 次（同参数稠密）",
+      "dense12": "问一对照：12 组参数各跑一次（同算力稠密）",
+      "repeat2x": "主臂：6 组参数各跑两次（同参数、同算力）",
+      "repeat2x-tail": "诊断臂：只重复后半段（前 3 层各一次、后 3 层各三次；同参数、同算力）"
+    }
+  },
+  "arms": {
+    "dense6": {
+      "train_wall_s": 2.9,
+      "clean_bpc_smoke": 5.083162,
+      "block_calls": 6.0,
+      "liveness": {
+        "schedule_differs_from_prefix": false,
+        "final_logits_rel_dev_vs_prefix": 0.0,
+        "alive": null
+      }
+    },
+    "dense12": {
+      "train_wall_s": 1.3,
+      "clean_bpc_smoke": 4.692027,
+      "block_calls": 12.0,
+      "liveness": {
+        "schedule_differs_from_prefix": false,
+        "final_logits_rel_dev_vs_prefix": 0.0,
+        "alive": null
+      }
+    },
+    "repeat2x": {
+      "train_wall_s": 1.1,
+      "clean_bpc_smoke": 4.79591,
+      "block_calls": 12.0,
+      "liveness": {
+        "schedule_differs_from_prefix": true,
+        "final_logits_rel_dev_vs_prefix": 0.49016941,
+        "alive": true
+      }
+    },
+    "repeat2x-tail": {
+      "train_wall_s": 1.0,
+      "clean_bpc_smoke": 4.720138,
+      "block_calls": 12.0,
+      "liveness": {
+        "schedule_differs_from_prefix": true,
+        "final_logits_rel_dev_vs_prefix": 0.59744287,
+        "alive": true
+      }
+    }
+  },
+  "code_hashes": {
+    "axes/2-depth/2.1.3-repeating/experiments/2691-repeating-vs-dense-13m/run.py": "3803d0d11c78f026c25a8c266abf667b50e69fda92478eaa26e1eb88f3ce3ba8",
+    "axes/2-depth/2.1.3-repeating/experiments/2691-repeating-vs-dense-13m/config.json": "00d32c7e5af0d8ad62e0140d26ec6eedc254a0858e052e757db608c242885e41"
+  },
+  "code_hash_run_py": "3803d0d11c78f026c25a8c266abf667b50e69fda92478eaa26e1eb88f3ce3ba8"
+}
