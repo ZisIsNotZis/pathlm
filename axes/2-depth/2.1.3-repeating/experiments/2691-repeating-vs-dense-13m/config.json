@@ -1,0 +1,85 @@
+{
+  "experiment": "2691-repeating-vs-dense-13m",
+  "grid": "axes/2-depth/2.1.3-repeating",
+  "engine": "pathlm/depth_ar.py (depth-ar/dense) + train_depth_ar.py (shared main)",
+  "intervention": "same block parameters applied several times per token (layer schedule = list of block indices); factory replacement of train_depth_ar.DepthARModel",
+  "shared_code_unchanged": ["pathlm/**", "train_depth_ar.py", "tools/**", "docs/**"],
+  "base": {
+    "d_model": 256,
+    "n_heads": 8,
+    "seq_len": 256,
+    "mlp_mult": 4,
+    "dense": true,
+    "topology": "sequential",
+    "exit_mode": "uniform",
+    "dropout": 0.0,
+    "loss": "final-depth CE only (stock AR)",
+    "step_embedding": "none (see README §2 design condition 4)"
+  },
+  "train": {
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "seed": 0,
+    "optimizer": "AdamW(wd=0.01) + warmup 200 steps + cosine to 0.1x (shared train())",
+    "train_tokens": 98304000
+  },
+  "data": {
+    "path": "data/enwik8_full.npz",
+    "loader": "pathlm.data.load_enwik8_full",
+    "split": "first 90M train / last 10M eval, vocab from full file",
+    "vocab_size": 206,
+    "cache": ".tmp/enwik8"
+  },
+  "arms": [
+    {"arm": "dense6", "blocks": 6, "schedule": [0, 1, 2, 3, 4, 5], "passes": 6,
+     "role": "same-parameter dense control (6 distinct layers, 6 passes)"},
+    {"arm": "dense12", "blocks": 12, "schedule": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], "passes": 12,
+     "role": "same-compute dense control (12 distinct layers, 12 passes)"},
+    {"arm": "repeat2x", "blocks": 6, "schedule": [0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5], "passes": 12,
+     "role": "main arm: the whole 6-layer stack applied twice (same params as dense6, same passes as dense12)"},
+    {"arm": "repeat2x-tail", "blocks": 6, "schedule": [0, 1, 2, 3, 4, 5, 3, 4, 5, 3, 4, 5], "passes": 12,
+     "role": "diagnostic arm: only the back half (layers 4-6) is repeated, front half used once; same params and same passes as repeat2x"}
+  ],
+  "macs_model": {
+    "per_pass_per_token": "12*d^2 + T*d",
+    "per_readout_per_token": "d*V",
+    "readouts_per_token": "passes + 1",
+    "note": "analytic, per token; attention term is the causal average T*d (T/2 keys x 2 passes over d)"
+  },
+  "eval": {
+    "metric": "clean bpc = final-depth readout, sequence-level, lower better",
+    "n_windows": 20,
+    "batch_size": 16,
+    "eval_generator_seed": 2,
+    "positions_per_window": 4080,
+    "autocast": "off (fp32, same instrument as the 2654 anchor)"
+  },
+  "criteria": {
+    "variance_bound": 0.014,
+    "band_condition": "paired window deltas only, 20 windows",
+    "P0_engine_equivalence": {
+      "anchor_experiment": "axes/2-depth/2.1.2-skipping/experiments/2654-skipping-seqlevel-13m",
+      "anchor_run": "runs/stock-12k-s0",
+      "tolerance": 0.002,
+      "rule": "re-evaluate the anchor checkpoint with this experiment's eval code; |diff| < 0.002"
+    },
+    "P1_liveness": "block calls per forward == passes; identity schedule == stock logits bitwise; repeat arms' full schedule deviates from prefix schedule (> 0)",
+    "P2_answer_1_same_compute": "paired delta clean bpc (dense12 - repeat2x), 0.014 band",
+    "P2_answer_2_same_params": "paired delta clean bpc (dense6 - repeat2x), 0.014 band",
+    "P2_diagnostic": "paired delta clean bpc (repeat2x - repeat2x-tail) and (dense12 - repeat2x-tail), 0.014 band",
+    "delta_sign_convention": "delta(candidate vs control) = bpc_control - bpc_candidate; positive = candidate better"
+  },
+  "gpu_wall_budget_min": 70,
+  "single_arm_timeout_min": 20,
+  "peak_gpu_mem_budget_mb": 5000,
+  "gpu_lock": "/tmp/pathlm_gpu.lock (harness/SCHEMA.md §20, released per arm §20.1)",
+  "entrypoints": {
+    "run": "python3 run.py --arms <arm,...>",
+    "continue": "python3 run.py --arms <remaining,...>",
+    "smoke": "python3 run.py --smoke --out-root .tmp/2691-smoke",
+    "p0": "python3 run.py --p0-only",
+    "aggregate": "python3 run.py --aggregate",
+    "launcher": "bash run_arms.sh"
+  }
+}
