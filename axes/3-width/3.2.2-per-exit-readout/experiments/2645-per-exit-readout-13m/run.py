@@ -1070,20 +1070,17 @@ def aggregate_all(args) -> dict:
             "delta_clean_bpc": "arm_minus_comparator",
             "delta_bpc_wide_vs_ref": "arm_minus_comparator",
             "delta_bpc_pe_vs_ref": "arm_minus_comparator",
-            "residual_pe_minus_wide": "arm_minus_comparator",
             "delta_bpc_wide_vs_ref_by_seed": "arm_minus_comparator",
-            "delta_wide_beyond_band": "undeclared",
-            "residual_beyond_band": "undeclared",
             "params_delta_wide_minus_pe": "arm_minus_comparator",
-            "n_req": "undeclared",
         },
         "delta_direction_note": (
             "Δ = 读数_实验 − 读数_对照，对照 = 同批共享 tied 臂 T（`residual_pe_minus_wide` "
             "与 `params_delta_wide_minus_pe` 两项的对照是 `WIDE` 臂，键名自带对照）；"
             "tf@k 的 Δ > 0 = 该深度接受率更高，clean bpc 的 Δ > 0 = 实验更差"
-            "（两处语义由各 metric 写明，算式次序一致）。`delta_wide_beyond_band` / "
-            "`residual_beyond_band` 是布尔越带标记、`n_req` 是样本量整数（都不带方向）；"
-            "这些键名含 delta 但无方向可言，故标 undeclared。"),
+            "（两处语义由各 metric 写明，算式次序一致）。P5 里键名不含 delta 的几项"
+            "（`residual_pe_minus_wide_by_seed`、布尔越带标记 `delta_wide_beyond_band` / "
+            "`residual_beyond_band`、样本量 `n_req`）不是本机检口径下的 Δ 字段，故不列入映射；"
+            "残余的方向与 `delta_bpc_pe_vs_ref` 同序（R = bpc(PE) − bpc(WIDE)，负 = PE 更好）。"),
         "band": shared[0],
         "base": shared[1],
         "seeds": seeds,
