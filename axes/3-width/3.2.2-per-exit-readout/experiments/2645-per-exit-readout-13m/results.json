@@ -6,9 +6,13 @@
     "delta": "arm_minus_comparator",
     "delta_ece_vs_ref": "arm_minus_comparator",
     "delta_clean_bpc_vs_ref_by_seed": "arm_minus_comparator",
-    "delta_clean_bpc": "arm_minus_comparator"
+    "delta_clean_bpc": "arm_minus_comparator",
+    "delta_bpc_wide_vs_ref": "arm_minus_comparator",
+    "delta_bpc_pe_vs_ref": "arm_minus_comparator",
+    "delta_bpc_wide_vs_ref_by_seed": "arm_minus_comparator",
+    "params_delta_wide_minus_pe": "arm_minus_comparator"
   },
-  "delta_direction_note": "Δ = 读数_实验 − 读数_对照，对照 = 同批共享 tied 臂 T；tf@k 的 Δ > 0 = 该深度接受率更高，clean bpc 的 Δ > 0 = 实验更差（两处语义由各自 metric 写明，算式次序一致）。",
+  "delta_direction_note": "Δ = 读数_实验 − 读数_对照，对照 = 同批共享 tied 臂 T（`residual_pe_minus_wide` 与 `params_delta_wide_minus_pe` 两项的对照是 `WIDE` 臂，键名自带对照）；tf@k 的 Δ > 0 = 该深度接受率更高，clean bpc 的 Δ > 0 = 实验更差（两处语义由各 metric 写明，算式次序一致）。P5 里键名不含 delta 的几项（`residual_pe_minus_wide_by_seed`、布尔越带标记 `delta_wide_beyond_band` / `residual_beyond_band`、样本量 `n_req`）不是本机检口径下的 Δ 字段，故不列入映射；残余的方向与 `delta_bpc_pe_vs_ref` 同序（R = bpc(PE) − bpc(WIDE)，负 = PE 更好）。",
   "band": {
     "clean_bpc": 0.014,
     "ece_tolerance": 0.003,
@@ -357,9 +361,308 @@
         "LR": {
           "clean_bpc": null,
           "status": "未跑"
+        },
+        "WIDE": {
+          "clean_bpc": 1.8331,
+          "params_readout": 0,
+          "params_total": 7553664,
+          "tf_acceptance": [
+            {
+              "depth": 0,
+              "accept": 0.05723,
+              "n": 81600,
+              "wilson_95ci": [
+                0.055657,
+                0.058845
+              ],
+              "cluster_bootstrap_95ci": [
+                0.053297,
+                0.061091
+              ]
+            },
+            {
+              "depth": 1,
+              "accept": 0.727218,
+              "n": 81600,
+              "wilson_95ci": [
+                0.724152,
+                0.730263
+              ],
+              "cluster_bootstrap_95ci": [
+                0.720306,
+                0.733713
+              ]
+            },
+            {
+              "depth": 2,
+              "accept": 0.848039,
+              "n": 81600,
+              "wilson_95ci": [
+                0.84556,
+                0.850486
+              ],
+              "cluster_bootstrap_95ci": [
+                0.841569,
+                0.853885
+              ]
+            },
+            {
+              "depth": 3,
+              "accept": 0.935025,
+              "n": 81600,
+              "wilson_95ci": [
+                0.933313,
+                0.936695
+              ],
+              "cluster_bootstrap_95ci": [
+                0.931716,
+                0.93848
+              ]
+            },
+            {
+              "depth": 4,
+              "accept": 0.968566,
+              "n": 81600,
+              "wilson_95ci": [
+                0.967347,
+                0.969741
+              ],
+              "cluster_bootstrap_95ci": [
+                0.966532,
+                0.970576
+              ]
+            },
+            {
+              "depth": 5,
+              "accept": 0.986936,
+              "n": 81600,
+              "wilson_95ci": [
+                0.986134,
+                0.987693
+              ],
+              "cluster_bootstrap_95ci": [
+                0.98598,
+                0.987819
+              ]
+            },
+            {
+              "depth": 6,
+              "accept": 0.994951,
+              "n": 81600,
+              "wilson_95ci": [
+                0.994441,
+                0.995415
+              ],
+              "cluster_bootstrap_95ci": [
+                0.994449,
+                0.995466
+              ]
+            },
+            {
+              "depth": 7,
+              "accept": 0.997708,
+              "n": 81600,
+              "wilson_95ci": [
+                0.997356,
+                0.998014
+              ],
+              "cluster_bootstrap_95ci": [
+                0.997292,
+                0.998076
+              ]
+            }
+          ],
+          "prob0_ece": 0.0069,
+          "tied_argmax_agreement": 1.0,
+          "reeval_bitwise_identical": true,
+          "status": "已跑",
+          "delta_clean_bpc_vs_ref": -0.0039,
+          "bpc_beyond_band": false,
+          "delta_tf_by_depth": [
+            {
+              "depth": 0,
+              "delta": 0.000625,
+              "paired_bootstrap_95ci": [
+                -0.00011,
+                0.001458
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            },
+            {
+              "depth": 1,
+              "delta": 0.012451,
+              "paired_bootstrap_95ci": [
+                0.009902,
+                0.015086
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 2,
+              "delta": -0.024988,
+              "paired_bootstrap_95ci": [
+                -0.028995,
+                -0.020846
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 3,
+              "delta": -0.003774,
+              "paired_bootstrap_95ci": [
+                -0.006581,
+                -0.001091
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 4,
+              "delta": -0.00511,
+              "paired_bootstrap_95ci": [
+                -0.0069,
+                -0.003211
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 5,
+              "delta": -0.000601,
+              "paired_bootstrap_95ci": [
+                -0.001679,
+                0.000306
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            },
+            {
+              "depth": 6,
+              "delta": 0.001654,
+              "paired_bootstrap_95ci": [
+                0.001029,
+                0.002365
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 7,
+              "delta": -0.000233,
+              "paired_bootstrap_95ci": [
+                -0.00065,
+                0.000196
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            }
+          ]
         }
       },
       "verdict": {
+        "P5": {
+          "question": "`PE` 的末层 clean bpc 增益里，有多少能被「把同样那笔参数花在主干（FFN 隐藏宽）上」复现？即参数是不是全部解释",
+          "band": 0.014,
+          "params_total": {
+            "T": 6962688,
+            "PE": 7552512,
+            "WIDE": 7553664
+          },
+          "params_delta_wide_minus_pe": 1152,
+          "status": "已跑",
+          "delta_bpc_wide_vs_ref": -0.0039,
+          "delta_bpc_pe_vs_ref": -0.0857,
+          "residual_pe_minus_wide": -0.0818,
+          "delta_wide_beyond_band": false,
+          "residual_beyond_band": true,
+          "branch": "params_not_the_explanation",
+          "wide_tf_acceptance_by_depth": [
+            {
+              "depth": 0,
+              "delta": 0.000625,
+              "paired_bootstrap_95ci": [
+                -0.00011,
+                0.001458
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            },
+            {
+              "depth": 1,
+              "delta": 0.012451,
+              "paired_bootstrap_95ci": [
+                0.009902,
+                0.015086
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 2,
+              "delta": -0.024988,
+              "paired_bootstrap_95ci": [
+                -0.028995,
+                -0.020846
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 3,
+              "delta": -0.003774,
+              "paired_bootstrap_95ci": [
+                -0.006581,
+                -0.001091
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 4,
+              "delta": -0.00511,
+              "paired_bootstrap_95ci": [
+                -0.0069,
+                -0.003211
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 5,
+              "delta": -0.000601,
+              "paired_bootstrap_95ci": [
+                -0.001679,
+                0.000306
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            },
+            {
+              "depth": 6,
+              "delta": 0.001654,
+              "paired_bootstrap_95ci": [
+                0.001029,
+                0.002365
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 7,
+              "delta": -0.000233,
+              "paired_bootstrap_95ci": [
+                -0.00065,
+                0.000196
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            }
+          ],
+          "wide_prob0_ece": 0.0069
+        },
         "P1": {
           "question": "PE 相对共享 tied 能否让浅出口 tf@k（深度 1..4）可排序提升",
           "shallow_separable_positive_depths": [
@@ -789,9 +1092,308 @@
         "LR": {
           "clean_bpc": null,
           "status": "未跑"
+        },
+        "WIDE": {
+          "clean_bpc": 1.8576,
+          "params_readout": 0,
+          "params_total": 7553664,
+          "tf_acceptance": [
+            {
+              "depth": 0,
+              "accept": 0.057414,
+              "n": 81600,
+              "wilson_95ci": [
+                0.055839,
+                0.059031
+              ],
+              "cluster_bootstrap_95ci": [
+                0.05337,
+                0.061324
+              ]
+            },
+            {
+              "depth": 1,
+              "accept": 0.731262,
+              "n": 81600,
+              "wilson_95ci": [
+                0.72821,
+                0.734293
+              ],
+              "cluster_bootstrap_95ci": [
+                0.723652,
+                0.7381
+              ]
+            },
+            {
+              "depth": 2,
+              "accept": 0.866275,
+              "n": 81600,
+              "wilson_95ci": [
+                0.863922,
+                0.868593
+              ],
+              "cluster_bootstrap_95ci": [
+                0.861569,
+                0.8706
+              ]
+            },
+            {
+              "depth": 3,
+              "accept": 0.937623,
+              "n": 81600,
+              "wilson_95ci": [
+                0.935943,
+                0.939261
+              ],
+              "cluster_bootstrap_95ci": [
+                0.935012,
+                0.940025
+              ]
+            },
+            {
+              "depth": 4,
+              "accept": 0.971029,
+              "n": 81600,
+              "wilson_95ci": [
+                0.969856,
+                0.972158
+              ],
+              "cluster_bootstrap_95ci": [
+                0.969081,
+                0.972696
+              ]
+            },
+            {
+              "depth": 5,
+              "accept": 0.986078,
+              "n": 81600,
+              "wilson_95ci": [
+                0.985251,
+                0.98686
+              ],
+              "cluster_bootstrap_95ci": [
+                0.985061,
+                0.987071
+              ]
+            },
+            {
+              "depth": 6,
+              "accept": 0.993836,
+              "n": 81600,
+              "wilson_95ci": [
+                0.993275,
+                0.99435
+              ],
+              "cluster_bootstrap_95ci": [
+                0.993358,
+                0.994338
+              ]
+            },
+            {
+              "depth": 7,
+              "accept": 0.997475,
+              "n": 81600,
+              "wilson_95ci": [
+                0.997107,
+                0.997797
+              ],
+              "cluster_bootstrap_95ci": [
+                0.997034,
+                0.997917
+              ]
+            }
+          ],
+          "prob0_ece": 0.0064,
+          "tied_argmax_agreement": 1.0,
+          "reeval_bitwise_identical": true,
+          "status": "已跑",
+          "delta_clean_bpc_vs_ref": 0.0248,
+          "bpc_beyond_band": true,
+          "delta_tf_by_depth": [
+            {
+              "depth": 0,
+              "delta": -0.000539,
+              "paired_bootstrap_95ci": [
+                -0.001189,
+                0.000147
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            },
+            {
+              "depth": 1,
+              "delta": 0.019203,
+              "paired_bootstrap_95ci": [
+                0.016115,
+                0.022475
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 2,
+              "delta": 0.031312,
+              "paired_bootstrap_95ci": [
+                0.027402,
+                0.035355
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 3,
+              "delta": 0.002182,
+              "paired_bootstrap_95ci": [
+                -8.6e-05,
+                0.004534
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            },
+            {
+              "depth": 4,
+              "delta": -7.4e-05,
+              "paired_bootstrap_95ci": [
+                -0.002059,
+                0.001875
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            },
+            {
+              "depth": 5,
+              "delta": 0.00033,
+              "paired_bootstrap_95ci": [
+                -0.001029,
+                0.001581
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            },
+            {
+              "depth": 6,
+              "delta": 0.000736,
+              "paired_bootstrap_95ci": [
+                4.9e-05,
+                0.001446
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 7,
+              "delta": -0.00027,
+              "paired_bootstrap_95ci": [
+                -0.000882,
+                0.000294
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            }
+          ]
         }
       },
       "verdict": {
+        "P5": {
+          "question": "`PE` 的末层 clean bpc 增益里，有多少能被「把同样那笔参数花在主干（FFN 隐藏宽）上」复现？即参数是不是全部解释",
+          "band": 0.014,
+          "params_total": {
+            "T": 6962688,
+            "PE": 7552512,
+            "WIDE": 7553664
+          },
+          "params_delta_wide_minus_pe": 1152,
+          "status": "已跑",
+          "delta_bpc_wide_vs_ref": 0.0248,
+          "delta_bpc_pe_vs_ref": -0.0811,
+          "residual_pe_minus_wide": -0.1059,
+          "delta_wide_beyond_band": true,
+          "residual_beyond_band": true,
+          "branch": "params_explain_part",
+          "wide_tf_acceptance_by_depth": [
+            {
+              "depth": 0,
+              "delta": -0.000539,
+              "paired_bootstrap_95ci": [
+                -0.001189,
+                0.000147
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            },
+            {
+              "depth": 1,
+              "delta": 0.019203,
+              "paired_bootstrap_95ci": [
+                0.016115,
+                0.022475
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 2,
+              "delta": 0.031312,
+              "paired_bootstrap_95ci": [
+                0.027402,
+                0.035355
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 3,
+              "delta": 0.002182,
+              "paired_bootstrap_95ci": [
+                -8.6e-05,
+                0.004534
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            },
+            {
+              "depth": 4,
+              "delta": -7.4e-05,
+              "paired_bootstrap_95ci": [
+                -0.002059,
+                0.001875
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            },
+            {
+              "depth": 5,
+              "delta": 0.00033,
+              "paired_bootstrap_95ci": [
+                -0.001029,
+                0.001581
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            },
+            {
+              "depth": 6,
+              "delta": 0.000736,
+              "paired_bootstrap_95ci": [
+                4.9e-05,
+                0.001446
+              ],
+              "separable_from_zero": true,
+              "n_batches": 20
+            },
+            {
+              "depth": 7,
+              "delta": -0.00027,
+              "paired_bootstrap_95ci": [
+                -0.000882,
+                0.000294
+              ],
+              "separable_from_zero": false,
+              "n_batches": 20
+            }
+          ],
+          "wide_prob0_ece": 0.0064
+        },
         "P1": {
           "question": "PE 相对共享 tied 能否让浅出口 tf@k（深度 1..4）可排序提升",
           "shallow_separable_positive_depths": [],
@@ -938,6 +1540,60 @@
       "cross_seed_reading": "同一臂跨 seed 的 clean bpc 之差 = 两个独立训练 run 之差，只作参考线，不与 0.014 配对带混用"
     },
     "P1_main_judgment": "PE 让浅出口 tf@k 可分但为负（两 seed 同深度同向 ⇒ n=2）⇒ 逐出口读出对早退可用性有害",
-    "P2_last_layer_judgment": "末层 clean bpc 两 seed 同向且各自越 0.014 带 ⇒ n=2：PE 末层更好（这是读出容量带来的增益，不是早退可用性的增益）"
+    "P2_last_layer_judgment": "末层 clean bpc 两 seed 同向且各自越 0.014 带 ⇒ n=2：PE 末层更好（这是读出容量带来的增益，不是早退可用性的增益）",
+    "P5_equal_param": {
+      "question": "`PE` 的末层 clean bpc 增益里，有多少能被「把同样那笔参数花在主干（FFN 隐藏宽）上」复现？即参数是不是全部解释",
+      "branch_by_seed": {
+        "s0": "params_not_the_explanation",
+        "s1": "params_explain_part"
+      },
+      "same_branch": false,
+      "delta_bpc_wide_vs_ref_by_seed": {
+        "s0": -0.0039,
+        "s1": 0.0248
+      },
+      "residual_pe_minus_wide_by_seed": {
+        "s0": -0.0818,
+        "s1": -0.1059
+      },
+      "n_req": {
+        "delta_bpc_wide_vs_ref": {
+          "n_req": null,
+          "mean": 0.0104,
+          "sd": 0.0203,
+          "note": "|mean| ≤ band ⇒ 任何 n 都无法把它判为越带"
+        },
+        "residual_pe_minus_wide": {
+          "n_req": 1,
+          "mean": -0.0938,
+          "sd": 0.017,
+          "rule": "n_req = ceil((2.9·sd/|mean − band|)²)"
+        },
+        "note": "仅在「两 seed 分支不一致」时需要；sd 由 n=2 的种子散布估，是近似式（同 2682 的 n_req_rule）"
+      },
+      "rule": {
+        "main_criteria": [
+          "P5（等参数对照：Δ_W vs 残余 R）"
+        ],
+        "quantities": {
+          "delta_bpc_wide_vs_ref": "bpc(WIDE) − bpc(T)（arm − comparator，负 = 更好）",
+          "delta_bpc_pe_vs_ref": "bpc(PE) − bpc(T)",
+          "residual_pe_minus_wide": "bpc(PE) − bpc(WIDE)（扣掉参数因素后的残余）"
+        },
+        "branches": {
+          "|Δ_W| ≤ band": "params_not_the_explanation（主干花这笔钱买不到可排序的质量 ⇒ 参数不是全部解释）",
+          "|Δ_W| > band 且 |R| ≤ band": "params_explain_all（等参数对照追平 ⇒ 参数是全部解释）",
+          "|Δ_W| > band 且 R < −band": "params_explain_part（参数解释一部分，残余 |R| 仍越带）",
+          "|Δ_W| > band 且 R > +band": "trunk_better（这笔钱花在主干上更好 ⇒ PE 作为买容量的手段也不成立）"
+        },
+        "n2_rule": "两 seed 落在同一分支 ⇒ 按 n=2 出判词；两 seed 分支不一致 ⇒ 判『本 n 下不可判』并给所需样本量 n_req（ceil((2.9·sd/|mean − band|)²)，sd 由 n=2 种子散布估），不取平均掩盖",
+        "band_note": "P5 只用 0.014 bpc 带（配对 Δ、≥5 窗口）；tf@k 仍走配对 cluster bootstrap 95% CI，不跨量纲借用 0.014"
+      },
+      "judgment": "两 seed 分支不一致 ⇒ 本 n 下不可判（不取平均掩盖）；所需样本量见 `P5_equal_param.n_req`"
+    }
+  },
+  "code_hash_run_py": "c1f3c0213cd6f55dd4db377751836da39d1777a6e2119b525a08e0ce912bfbf2",
+  "code": {
+    "run.py": "c1f3c0213cd6f55dd4db377751836da39d1777a6e2119b525a08e0ce912bfbf2"
   }
 }
