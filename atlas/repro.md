@@ -21,10 +21,10 @@
 
 ## 汇总（生成时统计）
 
-- 规模：实验 **139** 个（`axes/**/experiments/*`），run 条目 **492** 个（386 个是 run 子目录或前缀组，106 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 111 个）。
+- 规模：实验 **140** 个（`axes/**/experiments/*`），run 条目 **522** 个（415 个是 run 子目录或前缀组，107 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 112 个）。
 
-- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**106** 个、`not_reproducible`（不可重建）**33** 个。
-- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 107 个。
+- 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**107** 个、`not_reproducible`（不可重建）**33** 个。
+- 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 108 个。
 
 ## 这个克隆重建不了什么
 
@@ -148,6 +148,7 @@
 | [2651-weight-quant-13m](../axes/5-quant/5.2-weight-quant/experiments/2651-weight-quant-13m/) | [5.2-weight-quant](../axes/5-quant/5.2-weight-quant/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `config.cost.gpu_wall_budget_min` = 30 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2652-act-quant-13m](../axes/5-quant/5.3-activation-quant/experiments/2652-act-quant-13m/) | [5.3-activation-quant](../axes/5-quant/5.3-activation-quant/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `config.cost.gpu_wall_budget_min` = 30 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2656-lowrank-vs-headshare-13m](../axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/) | [5.4-low-rank](../axes/5-quant/5.4-low-rank/project.yaml) | ✓ | — | — | 5 | — | `python3 .../run_arms.py --include-optional`（README.md 的复现小节） | — | `not_reproducible` | 有入口脚本 `gpu_lock.py`，但仓内无 `results*.json` |
+| [2664-lowrank-vs-quant-13m](../axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/) | [5.4-low-rank](../axes/5-quant/5.4-low-rank/project.yaml) | ✓ | ✓ | ✓ | 30 | 否（`*.pt` 不入库） | `python3 axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/run.py`（README.md 的复现小节） | `analysis.md`「…墙钟 8.23–10.07 min…」 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2653-fp8-vs-int8-13m](../axes/5-quant/5.5-fp8-head-dim/experiments/2653-fp8-vs-int8-13m/) | [5.5-fp8-head-dim](../axes/5-quant/5.5-fp8-head-dim/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_seconds` = 341.72 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2655-fp8-hd64-head-dim](../axes/5-quant/5.5-fp8-head-dim/experiments/2655-fp8-hd64-head-dim/) | [5.5-fp8-head-dim](../axes/5-quant/5.5-fp8-head-dim/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 f5_anchor_2653_precision.py`（入口脚本 `f5_anchor_2653_precision.py`，README 未给复现小节） | `cost.wall_seconds` = 663.23 | `rebuildable_only` | `f5_anchor_2653_precision.py` 触训练 / 语料 / CUDA（命中 `load_enwik8`） |
 | [2657-fp8-hd128-head-dim](../axes/5-quant/5.5-fp8-head-dim/experiments/2657-fp8-hd128-head-dim/) | [5.5-fp8-head-dim](../axes/5-quant/5.5-fp8-head-dim/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 hd128_arms.py`（入口脚本 `hd128_arms.py`，README 未给复现小节） | `cost.wall_seconds` = 242.02 | `rebuildable_only` | `hd128_arms.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
@@ -695,6 +696,36 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2656-lowrank-vs-headshare-13m | smoke/latent0_201/mha-201step | ✓ | ✓ | 200 | — | — |
 | 2656-lowrank-vs-headshare-13m | smoke/latent0_50/mha-50step | ✓ | ✓ | 49 | — | — |
 | 2656-lowrank-vs-headshare-13m | smoke/mla128/mla-c128-50step | ✓ | ✓ | 49 | — | — |
+| 2664-lowrank-vs-quant-13m | . | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | gqa2_eq_fp16_gqa2-eq-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | gqa2_eq_fp16_gqa2-eq-s1 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | gqa2_eq_int4_gqa2-eq-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | gqa2_eq_int4_gqa2-eq-s1 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | gqa2_eq_int8_gqa2-eq-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | gqa2_eq_int8_gqa2-eq-s1 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | gqa2_fp16_gqa-12k-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | gqa2_fp16_gqa-12k-s0-rep | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | gqa2_int4_gqa-12k-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | gqa2_int4_gqa-12k-s0-rep | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | gqa2_int8_gqa-12k-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | gqa2_int8_gqa-12k-s0-rep | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mha_fp16_mha-12k-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mha_fp16_mha-s1 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mha_int4_mha-12k-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mha_int4_mha-s1 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mha_int8_mha-12k-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mha_int8_mha-s1 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mha_rep_fp16_mha-rep-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mha_rep_int4_mha-rep-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mha_rep_int8_mha-rep-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mla_c128_latent_fp16_mla-c128-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mla_c128_latent_fp16_mla-c128-s1 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mla_c144_latent_fp16_mla-c144-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mla_c144_latent_fp16_mla-c144-s1 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mla_c272_eq_latent_fp16_mla-c272-eq-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mla_c272_eq_latent_fp16_mla-c272-eq-s1 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mla_c272_latent_fp16_mla-c272-s0 | ✓ | — | — | — | — |
+| 2664-lowrank-vs-quant-13m | mla_c272_latent_fp16_mla-c272-s1 | ✓ | — | — | — | — |
 | 2653-fp8-vs-int8-13m | . | ✓ | — | — | — | — |
 | 2655-fp8-hd64-head-dim | . | ✓ | — | — | — | — |
 | 2655-fp8-hd64-head-dim | f5-anchor-2653-rerun | ✓ | — | — | — | — |
