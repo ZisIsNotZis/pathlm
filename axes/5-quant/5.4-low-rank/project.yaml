@@ -13,18 +13,71 @@ method: "单因素：固定主干形状与训练预算，只改 KV 的压缩方�
 validation: "端到端：对照 = 同尺寸 stock fp16 MHA 全因果基线（归一为 100%）+ 等参数对照臂 + 头共享（GQA/MQA）同字节对照；客观判据 = 每位置 KV 部署字节（该跌）+ clean bpc（该不跌/可排序，须越 0.014 噪声带）+ 合成长程召回（第二腿，该不塌）+ 解码期额外计算（必须报，上投影的每 token 等效 FLOPs）；口径 = 解析每位置 KV 字节 + clean bpc，**墙钟不进判据**；必须不变 = 因果性与可见性对数（低秩不改变可见位置集合）。 判据带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）为主判；长程召回等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014。"
 objective_criteria: "该跌：每位置 KV 部署字节（潜维 + RoPE 分量）；该不跌/可排序：clean bpc（相对同字节头共享臂与 stock 基线，须越 0.014 噪声带）；该保持：合成长程召回（第二腿不塌）；必须不变：因果性与可见性对数；必须报：上投影的每 token 等效解码计算、等参数对照。"
 falsification: "若 MLA 式低秩压缩在等参数对照下相对同字节头共享臂的 clean bpc 不占优（越噪声带变差或持平）⇒ 判低秩压缩在本尺度不产生新知识；若「从零训练」的收敛代价吃掉全部 KV 收益（等字节下不占优）⇒ 判该路线在本尺度不划算；若上投影额外计算使每 token 等效 FLOPs 显著上升且未被 KV 收益补偿 ⇒ 判代价记账不利。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）为主判；长程召回等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014。"
-failure_analysis: ""
-conclusion: ""
-conclusion_review: "本项无旧格、本仓零经验，无本地判决，故 `status: 未开始`。判据按 `harness/research-schema.md` 预登记（对照 + 客观判据 + 口径 + 否证条件），横轴统一为「每位置 KV 字节」、纵轴两腿（clean bpc + 长程召回），并给等参数对照与头共享同字节对照（`harness/SCHEMA.md` §15/§17.12）。与 `5.1`（量化）、`7-references`（GQA/MQA 参照）的边界写进 `gap`。独立复核未做。"
-laws: []
-cost_rows: []
-experiments: []
+failure_analysis: "机制层被否证的那一支 = 「低秩相对同字节头共享（GQA2）产生新知识」。等字节 3072 B 上低秩对按预算训练的 GQA2 是 −0.015594 / −0.018157（两 seed 同向越带），但把 GQA2 的参数补齐（`gqa2_eq`，13,536,516 对 MHA 少 252）之后差距缩到 −0.013947 / −0.003484，两条都落 0.014 带内 ⇒ 表观优势来自「头共享少 8.75% 参数 + FFN 加宽的那一笔」，不是「低秩机制本身」。这不是实现问题：同一批读数里低秩的活性、前缀不变性、仪器自检全过（`results.json::instrument.gate_passed = true`），且等参数这一步确实有效（`gqa2_eq − gqa2` = −0.001647 / −0.014673）⇒ 归因到设计：在 13M / T=256 这副骨架上，KV 的**维度冗余**已经被「少几个 KV 头」这条更便宜的路吃掉，低秩再压一遍买不到额外的质量；它真正买到的是「不需要按头数共享」的部署自由度，本实验不测后者。另一条代价侧的不利：6528 B 档低秩与 int8 量化不可分（+0.002876 / −0.001582），而低秩要多付 17.7083% 单层 FFN 的上投影 MACs 并须从零训练 ⇒ 该档按代价记账不利（`README.md` §8 的第三行判据）。"
+conclusion: "低秩压缩（MLA 式）本地结论（实验 `2664-lowrank-vs-quant-13m`：13M / L=12 / d=256 / H=8 / T=256，7 支新训臂各 12k 步 98.3M token + 5 支复用 checkpoint，逐 seed 配对 n=2，判据带 0.014 只用于 clean bpc 的配对 Δ）。（a）**三个同字节格各有裁决，无「不可判」**：6528 B 上 `mla_c272` − `mha@int8` = +0.002876 / −0.001582（均值 +0.000647，两条落带内 ⇒ 不可分）；3456 B 上 `mla_c144` − `mha@int4` = −0.016676 / −0.026159（越带 ⇒ 低秩更好，且低秩一侧还少 1.86% 参数）；3072 B 上 `mla_c128` − `gqa2` = −0.015594 / −0.018157（越带 ⇒ 低秩更好，对照一侧是两次 seed 0 运行、`seed_aligned = false`）。（b）**等参数夹逼把方向和归属定住**：格 A 的 `mla_c272_eq` − `mha@int8` = +0.002395 / +0.006275（符号一致偏向 int8、仍落带内）；格 C 的 `mla_c128` − `gqa2_eq` = −0.013947 / −0.003484（**两条都落带内**）⇒ 按 `falsification` 第一条，「低秩相对同字节头共享产生新知识」在本尺度**被否证**（归因见 `failure_analysis`）。（c）**两族的失效模式不同，而且低秩的失效点没被摸到**：量化 int8 相对 fp16 +0.000017（无损），int4 +0.021180（越带 1.5 倍）⇒ 量化在 8 位与 4 位之间开始伤质量；低秩 c272 +0.000664、c272_eq +0.004352、c144 −0.000237、c128 −0.003167，**全在带内** ⇒ 4 倍压缩（3072 B）仍不付质量，低秩的失效 rank 在 `d_c < 128`（`mla_c64` 未测）。（d）**代价已入账**：上投影每 token 1,671,168 / 884,736 / 786,432 MACs（潜维 272 / 144 / 128）= 单层 FFN 的 17.7083% / 9.375% / 8.333%，且低秩改的是 K/V 投影矩阵本身、没有轻量 uptrain 路径，全部臂同预算从零训练；量化侧 `params_added = 0`、解码算力不变。（e）**第二腿给了 bpc 看不见的信号**：6528 B 档低秩在 copy / induction 上高于 int8（+0.037760 / +0.066406，配对 bootstrap 95% CI 均不含 0）⇒ 8 位量化在 bpc 无损的那一档、召回腿上有可测损伤；3456 B 档低秩 bpc 更好但 var_recall 略低（−0.010417，CI [−0.018229, −0.002604]）⇒ 「bpc 好 ⇒ 召回好」不成立，两腿必须分开报；3072 B 档低秩 copy 低 −0.031576、induction 高 +0.039062，而对照 `gqa-12k-s0` 的 induction = 0.027344 已在局部先验地板 0.030999 之下 ⇒ 这一列不构成「低秩 induction 更强」的证据；var_recall 整条腿所有臂都在地板（`at_floor = true`）⇒ 距离分量在本尺度不区分臂。（f）**护栏全绿**：`results.json::instrument.gate_passed = true`（`bpc_of` 与 `masked_bpc` 逐位相等 1.482026、`MLABlock` 前向与 `masked_logits` 差 0、在 `5.1` 的 trunk 上逐位复现 `2632` 三点 1.483571 / 1.483672 / 1.506093）、29 条读数前缀不变性两条全 True、每位置字节解析式与实测张量形状逐条相等（`12·272·2 = 6528 = 12·2·8·32·1.0625` 一类等式不使用插值）。（g）**该字节值不值的判词**：3456 B 这一档低秩值得（比 4 位量化好 0.017–0.026 bpc，代价是 9.375% 单层 FFN 当量算力）；6528 B 这一档不值得（与 int8 不可分，却要付 17.7083% 与从零训练）；对头共享（本格原问题）在等参数下无净增量。结论停在该尺度该字节，不外推到 T > 256、>13M 或 `d_c < 128`。"
+conclusion_review: "自评。①**契约先于读数**：`prereg_binding.json::bound_at = 2026-10-21T20:52:28+08:00`（绑定提交 `c0a5a0c`）早于 7 份训练读数（21:00–21:54）与 29 份评测读数（21:56–21:58），`prereg_bind.py --require` 通过、`--check` 全树无新增红项；`README.md` / `config.json` 在绑定后**一个字节未改**。②**改过一次 `run.py`，已披露**：`config.json::model_arms[gqa2_eq].runs[1].sha256` 是转写错字（记 `…b58012`、盘上 `…b58024`，全仓无任何文件哈希成前者，文件 mtime `2026-10-15 00:08:39`、54,192,907 B 自 `2656` 训完未被触碰），契约冻结不动、只把「校验失败时的处置」改成「自训臂硬拦 / 复用臂降级为记录」（`sha256_verified = false` + 两个哈希值，聚合点名 `results.json::ckpt_identity.mismatches`），区分由 `tests/test_2664_ckpt_sha256_gate.py` 四条钉住；判据线与臂表未动。③**派生量只有三处**（格 A / 格 C 的等参数 Δ 与 `gqa2_eq − gqa2` 的参数效应），都是同一份读数里两个数相减、算式写在 `analysis.md` §4 与本节指针处，其余数字逐条带键路径。④局限：n=2 只给方向一致性（格 C 等参数的一条 Δ = −0.013947 距带边仅 0.000053，是本实验最脆的一处，但不改变「落带内 ⇒ 不占优」）；单尺度 13M / T=256；字节账是解析价签不是实测峰值；`var_recall` 整条腿在地板上；低秩失效点未测到；`gqa2-eq-s1` 的身份凭证按上条降级支撑。⑤**独立复核未做**——本项 `status: 已完成` 按「writer 自评 + 读数落盘」读，fresh 复核排在 writer 停止之后（`RESEARCH.md` §4 的 `WP1-review`）。"
+laws: [11]
+cost_rows:
+  - law: 11
+    change: "4 位 KV 块标尺量化（int4，沿 head_dim 每 32 值一把标尺）"
+    touches_trunk: false
+    metric: "clean bpc Δ（量化臂 − 同 checkpoint fp16；正 = 更差）"
+    delta: "0.021180"
+    delta_direction: arm_minus_comparator
+    comparator: "同 checkpoint fp16 KV（12288 B/位置）"
+    scale: "13M / L=12 / d=256 / H=8 / T=256 / 12k 步 / 98.3M token / 24×16@seed2（2664，seed 0 = 0.023336、seed 1 = 0.019024）"
+    boundary: "越 0.014 带 1.5 倍 ⇒ 4 位量化在此骨架上开始伤质量（8 位只有 +0.000017）；只描述 3456 B 这一档，不外推到更大规模或别的组大小 G"
+    source: "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/analysis.md"
+  - law: 11
+    change: "低秩潜向量 KV（潜维 144，fp16 存潜向量、无标尺）对同字节 4 位量化"
+    touches_trunk: true
+    metric: "clean bpc Δ 均值（低秩臂 − int4 量化臂；正 = 更差）"
+    delta: "-0.021417"
+    delta_direction: arm_minus_comparator
+    comparator: "MHA + int4 块标尺 G=32（同为 3456 B/位置）"
+    scale: "13M / L=12 / d=256 / H=8 / T=256 / 12k 步 / 98.3M token / 24×16@seed2（2664；配对 +0.016676 / −0.026159 的均值）"
+    boundary: "越 0.014 带 ⇒ 同一「每位置字节」上低秩胜 4 位量化；但差距来自 int4 的损伤而不是低秩变强（低秩自身相对 fp16 只有 −0.000237）；不外推到 T>256 或更大规模"
+    source: "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/analysis.md"
+  - law: 11
+    change: "低秩潜向量 KV（潜维 272，+6.86% 参数）对同字节 8 位块标尺量化"
+    touches_trunk: true
+    metric: "clean bpc Δ 均值（低秩臂 − int8 量化臂；正 = 更差）"
+    delta: "0.000647"
+    delta_direction: arm_minus_comparator
+    comparator: "MHA + int8 块标尺 G=32（同为 6528 B/位置）"
+    scale: "13M / L=12 / d=256 / H=8 / T=256 / 12k 步 / 98.3M token / 24×16@seed2（2664；配对 +0.002876 / −0.001582 的均值）"
+    boundary: "两 seed 都落 0.014 带内 ⇒ 这一档不可排序；而低秩多付 17.7083% 单层 FFN 的上投影算力并须从零训练 ⇒ 按代价取量化，不得读成「低秩更省」"
+    source: "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/analysis.md"
+  - law: 11
+    change: "低秩潜向量 KV（潜维 128）对同字节、等参数的头共享 GQA2"
+    touches_trunk: true
+    metric: "clean bpc Δ（低秩臂 − 等参数 GQA2 臂；正 = 更差）"
+    delta: "-0.013947"
+    delta_direction: arm_minus_comparator
+    comparator: "GQA2 + FFN 加宽（13,536,516 参数、同为 3072 B/位置）"
+    scale: "13M / L=12 / d=256 / H=8 / T=256 / 12k 步 / 98.3M token / 24×16@seed2（2664，seed 0 = -0.013947、seed 1 = -0.003484）"
+    boundary: "两 seed 都落 0.014 带内 ⇒ 等参数下低秩对头共享无可分优势（对未补参数的 GQA2 才是 -0.015594 / -0.018157）⇒ 本条不得被读成「低秩打败头共享」"
+    source: "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/analysis.md"
+  - law: 11
+    change: "上投影代价：潜向量还原每头 K/V 的每 token 等效解码计算（潜维 272）"
+    touches_trunk: true
+    metric: "每 token 上投影 MACs（臂相对 0 起算；本行报计数，不用墙钟）"
+    delta: "1671168"
+    delta_direction: arm_minus_comparator
+    comparator: "MHA / GQA2 的上投影（无此项，0 MACs）"
+    scale: "13M / L=12 / d=256 / H=8 / T=256（解析式 12×139,264，逐臂 `decode_cost` 落盘）"
+    boundary: "= 单层 FFN（786,432 MACs）的 17.7083%；潜维 144 为 884,736（9.375%）、128 为 786,432（8.333%）⇒ 省 KV 字节要按这笔算力加从零训练的代价记账，不得只报省幅"
+    source: "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/analysis.md"
+experiments:
+  - "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m"
 argument: "低秩压缩与头共享（GQA/MQA）是两种不同的省 KV 机制，必须放在**同一「每位置字节」横轴**上比较才公平（`harness/SCHEMA.md` §17.12；`2617` §3 记业界缺统一字节轴）。MLA 的独有代价是「须从零训练 + 上投影计算」，必须以每 token 等效解码 FLOPs 入账（不用时间量），否则会把「省内存」记成「免费」。低秩不改变可见位置集合，故可见性对数必须不变（与窗口/驱逐类不同，二者是两条账）。"
 gaps:
-  - "本仓零经验：需先做最小判决（13M、从零训练，{MHA, GQA/MQA, MLA 式潜维扫描} 三臂 + 等参数/同字节对照，报 clean bpc + 每位置字节 + 长程召回 + 上投影等效 FLOPs）"
-  - "与 5.1（KV 量化）是否可叠加（低秩 + 量化）未测（组合默认留白，`harness/SCHEMA.md` §4）"
-  - "造轮子风险最高项：须明确「相对 DeepSeek-V2 MLA 的增量」是什么（本仓只做 13M 受控同字节前沿）"
-  - "MLA 的确切质量/KV 公开数字 `记忆·未核`（`2617` §2），不作判据"
+  - "低秩的失效 rank 未测到：潜维 128（3072 B）仍是带内无损（相对同 seed fp16 −0.003167），低秩从哪一档开始伤质量落在 `d_c < 128`；下一步最小实验 = `mla_c64`（1536 B、8× 压缩）2 seed，其余字段与 `mla_c144` 逐字段相同，等效成本约 20 min GPU（2 臂训练）+ 3 min 评测"
+  - "3072–6528 B 之间的点位没有实测：`mla_c256`（6144 B）未训，故「低秩的 bpc 在 6144–6528 之间是否单调」不可判；2 seed 约 20 min GPU"
+  - "低秩 × 量化的叠加（潜向量再走 int8 块标尺）未测（组合默认留白，`harness/SCHEMA.md` §4）；纯评测可做，约 3 min GPU（复用已训 checkpoint）"
+  - "长上下文未测：T > 256。低秩压的是位置轴，省幅随 T 不变但质量代价可能随 T 变化 ⇒ T=512/1024 同配方两臂（每点 25–40 min GPU）"
+  - "第二腿的距离开支在地板上：`var_recall` 全臂 `at_floor = true`（地板 0.025831，各臂 0.0072–0.0267）⇒ 距离分量在本尺度不区分臂；要判「远距离召回是否被压缩吃掉」，须换更难的合成任务（多跳 / 干扰项）或加入 `recon` 重建目标，先做 1 臂冒烟"
+  - "字节账是解析价签，不是实测显存峰值：评测期 int8/int4 立刻反量化、潜向量立刻上投影 ⇒ 真实实现的峰值下降本实验不测；要测须改成分块 cache 的延迟反量化（工程改动，非本格判据）"
   - "等参数臂归属（66-F4 裁决）：与 `5.1` 共用同一 WP（`5.1` 的 `WP3`，同一臂服务两格，不重复建格）——本项 WP1 的「低秩 vs 头共享同字节判决」用之"
 cost_model: "等效理论量：每位置 KV 值数由 MHA 的 L·2·n_heads·d_head 降到 L·(d_latent + d_rope)（低秩潜向量 + decoupled RoPE 分量），每值字节 fp16；每位置部署字节 = 值数 × 每值字节（可与 `5.1` 的 KV 量化叠加，另计）。解码期每 token 额外计算 = 上投影（d_latent → n_heads·d_head）；layer-passes 每 token 仍为 L；tokens-per-forward 每步 1。考虑 pipelining：上投影只依赖当前已生成位置的潜向量，严格前缀不变、不引入额外顺序依赖（按解析字节与等效 FLOPs 报，不用时间量）。"
 
@@ -44,14 +97,15 @@ work_packages:
     goal: "判定 MLA 式低秩压缩能否在 13M 从零训练下、同一每位置字节轴上优于头共享"
     means: "13M、从零训练，{MHA, GQA/MQA, MLA 式低秩潜维扫描} 三臂，报 clean bpc + 每位置字节 + 长程召回 + 上投影等效 FLOPs，含等参数对照"
     acceptance: "三臂在同一字节轴上可比；低秩 vs 头共享有/无越噪声带差异，二选一明确；等参数对照齐备"
-    evidence: "axes/5-quant/5.4-low-rank/experiments/"
+    evidence: "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/results.json"
     review: "跑完另派 fresh 复核（`harness/SCHEMA.md` §14/§14b，核对同字节轴与等参数对照）"
-    status: "未开始"
+    status: "已完成"
 
 roadmap:
-  - "WP1：低秩压缩 vs 头共享的同字节判决（等参数臂与 `5.1` 共用，见 `5.1` `WP3`；66-F4 裁决）"
-  - "复核通过后写 conclusion，更新 status"
+  - "WP1：低秩压缩 vs 头共享的同字节判决（等参数臂与 `5.1` 共用，见 `5.1` `WP3`；66-F4 裁决）——读数与判词已交付（`experiments/2664-lowrank-vs-quant-13m/analysis.md`）"
+  - "WP1-review：fresh 上下文独立复核（排在 writer 停止之后；口径见 `RESEARCH.md` §4）——未开始"
+  - "复核若有遗漏 ⇒ 按契约修读数或补臂（`mla_c64` / `mla_c256` 是 `gaps` 里已登记的最小补臂）后再收尾"
 
-status: "未开始"
+status: "已完成"
 started: "2026-10-13T11:06:24+08:00"
-ended: ""
+ended: "2026-10-21T22:27:43+08:00"

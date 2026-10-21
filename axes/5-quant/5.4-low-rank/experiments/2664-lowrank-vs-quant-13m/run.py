@@ -634,7 +634,12 @@ def main() -> int:
             "delta_bpc": "arm_minus_comparator",
             "delta_bpc_mean": "arm_minus_comparator",
             "delta_bpc_pairs": "arm_minus_comparator",
-            "delta": "arm_minus_comparator"}
+            "delta": "arm_minus_comparator",
+            # 仪器自检的位差（|Δ| 本身非负，方向没有意义）
+            "max_abs_delta": "undeclared"}
+        rec["delta_direction_note"] = (
+            "`instrument.mla_forward_equals_block.max_abs_delta` 是绝对值 |Δ|（仪器门要求它为 0，"
+            "非负），方向无意义 ⇒ 记 undeclared；其余 Δ 字段一律 arm_minus_comparator（正 = 该臂更差）")
         rec["gpu_lock"] = lock.ev if lock else {"lock_path": None, "note": "--no-lock（调试）"}
         rec["cost"] = {"gpu_wall_min_budget": CFG["cost"]["gpu_wall_budget_min"],
                        "wall_minutes_this_run": round((time.time() - t0) / 60.0, 2)}
