@@ -17,12 +17,17 @@
 | `far_block_off` | 只留最近 16（远块关掉） | 远处那 8 个键**对这个模型值多少 bpc** |
 | `band24_on_block_ckpt` | 均匀条带最近 24（＝把远块换成中间那 8 个洞） | 只换推理掩码、不重训，能补回多少 |
 
-Δ 方向按 `harness/SCHEMA.md` §17.3：**Δ = bpc_对照 − bpc_实验**，两个反事实的对照都是 `own`：
+Δ 方向按 `harness/SCHEMA.md` §17.3：**Δ = bpc_对照 − bpc_实验**，两个反事实的对照都是 `own`
+（`comparator_minus_arm` ⇒ **正 = 反事实更好**）。逐条读数的解释**不在本 docstring 里手写**，
+由 `interpretation()` 按 Δ 的实测符号从 `EFFECT_TEXT` 生成并校验（`declared_effect` 与实测不符
+即拒绝落盘）——注文与数值相反这件事因此写不出来：
 
-- `far_block_off`：Δ = bpc_own − bpc_far_block_off。**负且越带 ⇒ 远块被这个模型用上了**（关掉更差）；
-  落带内 ⇒ 远块在这个尺度上没有可用信息（机制疑）；正且越带 ⇒ 远块是有害的。
-- `band24_on_block_ckpt`：Δ = bpc_own − bpc_band24。**负且越带 ⇒ 只换推理掩码就能补回**，
-  差的不是训练收敛形态；落带内 ⇒ 换推理掩码补不回，差的正是「按块条带收敛出来的解」。
+- `far_block_off`：Δ = bpc_own − bpc_far_block_off。负且越带 ⇒ 关掉远块更差（可观察事实：拆掉它
+  会损伤该 checkpoint；分布外操作，判不了「远键承载信息」还是「换掩码的罚项」）；落带内 ⇒ 该反事实
+  无区分力；正且越带 ⇒ 关掉反而更好。
+- `band24_on_block_ckpt`：Δ = bpc_own − bpc_band24。正且越带 ⇒ 只换推理掩码就能补回（差的不是
+  训练收敛形态）；**负且越带 ⇒ 换成最近 24 反而崩**，本读数即「评测期换掩码是分布外操作」的
+  破坏力度证据，不构成块条带的缺陷；落带内 ⇒ 换推理掩码既不补回也不崩。
 
 用法（GPU，≈3 min；§20 互斥锁由调用方持有）：
     python3 attribution.py            # 写 attribution.json
@@ -51,6 +56,27 @@ from tools.prereg_bind import require as require_prereg  # noqa: E402
 
 OUT = os.path.join(HERE, "attribution.json")
 BAND = R.BAND  # 0.014，只用于配对 Δ（harness/methodology.md §2）
+DELTA_DIRECTION = "comparator_minus_arm"
+
+#: 每个反事实的**方向声明**（跑之前写死）：Δ = bpc_own − bpc_反事实 ⇒ 正 = 反事实更好。
+#: 实测符号与声明不符时 `interpretation()` 拒绝落盘 ⇒ 「注文说反事实更好、数值却是更差」写不出来。
+DECLARED_EFFECT = {"far_block_off": "worse", "band24_on_block_ckpt": "worse"}
+
+#: 每条读数的人话解释，按实测方向查表。方向错了查到的就是错的句子，所以不手写、只查表。
+EFFECT_TEXT = {
+    "far_block_off": {
+        "better": "关掉远块反而更好 ⇒ 远块在这个已收敛 checkpoint 上有害（分布外操作，只判方向）",
+        "worse": ("拆掉远块会可测地损伤这个已收敛 checkpoint（分布外操作：只判方向、不判量级；"
+                  "它区分不了「远键承载信息」与「换掩码的分布外罚项」）"),
+        "in_band": "关掉远块落带内 ⇒ 该反事实在这个尺度上没有区分力",
+    },
+    "band24_on_block_ckpt": {
+        "better": "换成最近 24 更好 ⇒ 只换推理掩码就补回，差的不是训练收敛形态",
+        "worse": ("换成最近 24 反而崩 ⇒ 本读数即「评测期换掩码是分布外操作」的破坏力度证据，"
+                  "不构成块条带的缺陷"),
+        "in_band": "换成最近 24 落带内 ⇒ 换推理掩码既不补回也不崩，该反事实无区分力",
+    },
+}
 
 
 def keep_mask(kind: str) -> torch.Tensor:
@@ -90,6 +116,33 @@ def in_band(delta: float) -> str:
     return "落带内"
 
 
+def observed_effect(delta: float) -> str:
+    """Δ 的实测方向（0.014 带三态）：`comparator_minus_arm` ⇒ 正 = 反事实更好。"""
+    if delta >= BAND:
+        return "better"
+    if delta <= -BAND:
+        return "worse"
+    return "in_band"
+
+
+def effect_text(name: str, delta: float) -> str:
+    """按 **Δ 的实测符号**查表得到人话（不经过声明门：方向错了查到的就是错的句子）。"""
+    return EFFECT_TEXT[name][observed_effect(delta)]
+
+
+def interpretation(name: str, delta: float) -> dict:
+    """一条反事实读数的方向、声明与人话：实测与声明的方向不符即**拒绝落盘**。"""
+    got = observed_effect(delta)
+    declared = DECLARED_EFFECT[name]
+    if got != declared:
+        raise SystemExit(
+            f"方向声明与实测不符：{name} Δ={delta:+.6f} 实测 {got}、声明 {declared}"
+            "（Δ = bpc_own − bpc_反事实，正 = 反事实更好）⇒ 先改声明/判读，再落盘")
+    return {"delta_direction": DELTA_DIRECTION, "declared_effect": declared,
+            "observed_effect": got, "in_band": in_band(delta),
+            "text": EFFECT_TEXT[name][got]}
+
+
 def main() -> None:
     os.chdir(ROOT)
     if require_prereg(Path(HERE)) != 0:
@@ -105,13 +158,14 @@ def main() -> None:
                          "README.md §3 判据① 与 results.json::main_verdict 决定；本文件只把"
                          "「块条带不如均匀条带」拆成「远块有没有用」与「换推理掩码能不能补回」。"),
         "delta_directions": {
-            "delta_bpc": "comparator_minus_arm",
+            "delta_bpc": DELTA_DIRECTION,
             "comparator": "own（该 checkpoint 训练时的那张块条带掩码）",
         },
         "delta_direction_note": (
-            "两个反事实都记 Δ = bpc_own − bpc_反事实（正 = 反事实更好）。"
-            "far_block_off 负且越带 ⇒ 关掉远块更差 ⇒ 远块被模型用上；"
-            "band24_on_block_ckpt 负且越带 ⇒ 只换推理掩码就能补回。"),
+            "两个反事实都记 Δ = bpc_own − bpc_反事实（comparator_minus_arm ⇒ 正 = 反事实更好）。"
+            "每条读数的解释写在该读数的 `interpretation` 字段（`declared_effect` / "
+            "`observed_effect` / `text`），由 attribution.py::interpretation() 按 Δ 的符号生成"
+            "并在落盘前校验：声明与实测不符即拒绝落盘。本注不写任何单条读数的结论。"),
         "band_bpc": BAND,
         "eval": {"n_batches": R.N_BATCHES, "batch_size": R.BATCH_SIZE,
                  "window_seed": R.DATA_SEED},
@@ -132,6 +186,9 @@ def main() -> None:
         band = R.paired_stats(own_bits, band_bits, n_tok)
         far["in_band"] = in_band(far["delta_bpc"])
         band["in_band"] = in_band(band["delta_bpc"])
+        # 落盘前的方向断言：声明（跑之前写死）与实测符号必须一致 ⇒ 注文与数值相反这件事不可能落盘。
+        far["interpretation"] = interpretation("far_block_off", far["delta_bpc"])
+        band["interpretation"] = interpretation("band24_on_block_ckpt", band["delta_bpc"])
         out["per_seed"][name] = {
             "bpc_own": own_bpc,
             "bpc_far_block_off": far_bpc,

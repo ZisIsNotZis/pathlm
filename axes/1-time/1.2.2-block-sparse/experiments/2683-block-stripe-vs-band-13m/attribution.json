@@ -5,7 +5,7 @@
     "delta_bpc": "comparator_minus_arm",
     "comparator": "own（该 checkpoint 训练时的那张块条带掩码）"
   },
-  "delta_direction_note": "两个反事实都记 Δ = bpc_own − bpc_反事实（正 = 反事实更好）。far_block_off 负且越带 ⇒ 关掉远块更差 ⇒ 远块被模型用上；band24_on_block_ckpt 负且越带 ⇒ 只换推理掩码就能补回。",
+  "delta_direction_note": "两个反事实都记 Δ = bpc_own − bpc_反事实（comparator_minus_arm ⇒ 正 = 反事实更好）。每条读数的解释写在该读数的 `interpretation` 字段（`declared_effect` / `observed_effect` / `text`），由 attribution.py::interpretation() 按 Δ 的符号生成并在落盘前校验：声明与实测不符即拒绝落盘。本注不写任何单条读数的结论。",
   "band_bpc": 0.014,
   "eval": {
     "n_batches": 96,
@@ -27,7 +27,14 @@
         "frac_windows_delta_gt_0": 0.155,
         "min_delta": -0.257835,
         "max_delta": 0.044284,
-        "in_band": "越带（负：反事实臂更差）"
+        "in_band": "越带（负：反事实臂更差）",
+        "interpretation": {
+          "delta_direction": "comparator_minus_arm",
+          "declared_effect": "worse",
+          "observed_effect": "worse",
+          "in_band": "越带（负：反事实臂更差）",
+          "text": "拆掉远块会可测地损伤这个已收敛 checkpoint（分布外操作：只判方向、不判量级；它区分不了「远键承载信息」与「换掩码的分布外罚项」）"
+        }
       },
       "band24_on_block_ckpt": {
         "n_windows": 1536,
@@ -38,7 +45,14 @@
         "frac_windows_delta_gt_0": 0.003,
         "min_delta": -1.162122,
         "max_delta": 0.618185,
-        "in_band": "越带（负：反事实臂更差）"
+        "in_band": "越带（负：反事实臂更差）",
+        "interpretation": {
+          "delta_direction": "comparator_minus_arm",
+          "declared_effect": "worse",
+          "observed_effect": "worse",
+          "in_band": "越带（负：反事实臂更差）",
+          "text": "换成最近 24 反而崩 ⇒ 本读数即「评测期换掩码是分布外操作」的破坏力度证据，不构成块条带的缺陷"
+        }
       },
       "judged_comparator_bpc": 1.59927
     },
@@ -56,7 +70,14 @@
         "frac_windows_delta_gt_0": 0.157,
         "min_delta": -0.313373,
         "max_delta": 0.115623,
-        "in_band": "越带（负：反事实臂更差）"
+        "in_band": "越带（负：反事实臂更差）",
+        "interpretation": {
+          "delta_direction": "comparator_minus_arm",
+          "declared_effect": "worse",
+          "observed_effect": "worse",
+          "in_band": "越带（负：反事实臂更差）",
+          "text": "拆掉远块会可测地损伤这个已收敛 checkpoint（分布外操作：只判方向、不判量级；它区分不了「远键承载信息」与「换掩码的分布外罚项」）"
+        }
       },
       "band24_on_block_ckpt": {
         "n_windows": 1536,
@@ -67,7 +88,14 @@
         "frac_windows_delta_gt_0": 0.001,
         "min_delta": -1.923805,
         "max_delta": 0.259595,
-        "in_band": "越带（负：反事实臂更差）"
+        "in_band": "越带（负：反事实臂更差）",
+        "interpretation": {
+          "delta_direction": "comparator_minus_arm",
+          "declared_effect": "worse",
+          "observed_effect": "worse",
+          "in_band": "越带（负：反事实臂更差）",
+          "text": "换成最近 24 反而崩 ⇒ 本读数即「评测期换掩码是分布外操作」的破坏力度证据，不构成块条带的缺陷"
+        }
       },
       "judged_comparator_bpc": 1.598631
     }
