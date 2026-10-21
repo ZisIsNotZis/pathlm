@@ -342,7 +342,8 @@ def main() -> None:
         "cell": CFG["cell"],
         "question": CFG["question"],
         "band_bpc": BAND,
-        "delta_directions": {"delta_bpc": "comparator_minus_arm"},
+        "delta_directions": {"delta_bpc": "comparator_minus_arm",
+                             "deltas": "comparator_minus_arm"},
         "delta_direction_note": ("Δ = bpc(16 个远处点) − bpc(128 个远处点)（对照 − 实验）⇒ "
                                  "正 = 远处点多的那臂更好"),
         "recipe": RECIPE,
