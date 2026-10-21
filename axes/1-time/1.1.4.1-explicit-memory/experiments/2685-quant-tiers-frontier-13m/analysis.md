@@ -104,11 +104,23 @@
 
 ## 6 检查状态（本轮实测，命令与结果一并写出）
 
+**口径**：下面标「干净工作树」的行是在 `git worktree add --detach /tmp/pathlm-verify <本提交>` 出的
+干净副本里跑的——那棵树里只有已入库事实，因此它量的是**本提交**的状态；标「主工作树」的行是在
+本仓当前工作树里跑的，那棵树同时含 1.1.1 / 1.2.2 两个研究级 owner 的未提交改动。
+
 | 检查 | 结果 | 说明 |
 |---|---|---|
-| `python3 -m pytest axes/1-time/1.1.4.1-explicit-memory/experiments/2685-quant-tiers-frontier-13m/test_2685_tiers.py -q` | 6 passed | 纯 CPU，不取 GPU 锁 |
-| `python3 tools/prereg_bind.py <本目录> --require` | rc=0 | 四件契约 sha256 与绑定记录逐项相同 |
-| `python3 tools/check_tree.py` | 本项 0 违规；全树 rc=1 | 全树红是**同树内其它研究级 owner 的未提交改动**：`1.1.1` 的 `2686-window-kcurve-seed2-13m/analysis.md`（两条）与 `1.2.2` 的 `RESEARCH.md` / `2685-recall-flops-linear-13m/README.md` 悬空引用，各归其 owner；本目录与其父层 `1.1.4.1` 的 `project.yaml` / `RESEARCH.md` 无违规 |
-| `python3 tools/check_docs.py --check` | 本目录 0 违规；全树 4 处 | 同上一行同一批 owner（三条属 `1.2.2`、两条属 `1.1.1`，其中一条重复计）；本目录与 `1.1.4.1` 的文档全部可解析 |
-| `python3 tools/build_cost_table.py --check` | 本项新增三行已生成一致 | 全树 rc=1 的原因是 `1.2.2` / `1.1.1` owner 的 `project.yaml::cost_rows` 未提交改动与其生成物不同步 |
-| `python3 tools/inventory_runs.py --check` | 本项行已收进（0 run 子目录 ⇒ 实验级汇总行） | 全树 rc=1 同上（其它 owner 新增的实验目录 / `train/` 未入库） |
+| `python3 tools/prereg_bind.py --check`（干净工作树） | rc=0（已绑定 12，其中本项属「读数晚于绑定」） | 本目录四件契约 sha256 与绑定记录逐项相同 |
+| `python3 tools/prereg_bind.py <本目录>` | 「已绑定，契约未变（bound_at 2026-10-21T08:11:30）」 | 判据线绑定后一字未改 |
+| `python3 -m pytest test_2685_tiers.py -q` | **6 passed** | 纯 CPU、不取 GPU 锁 |
+| `python3 tools/check_tree.py`（干净工作树） | **本项 0 违规**；全树 rc=1，1 处 | 唯一一处是 1.2.2 owner 的 2685-recall-flops 实验 README 里一个解析不到的键锚点（该文件已入库）；与本项无关 |
+| `python3 tools/check_docs.py --check`（干净工作树） | **本目录 0 违规**；全树 1 处，同上 | 本目录与父层 `1.1.4.1` 的 `project.yaml` / `RESEARCH.md` / 本目录 `README.md` 与 `analysis.md` 全部可解析（476 个文档 / 9,030 处引用） |
+| `python3 tools/build_cost_table.py --check`（干净工作树） | rc=0 | 新增三条代价事实已生成一致（59 → 62 条） |
+| `python3 tools/inventory_runs.py --check`（干净工作树） | rc=0 | 本项收进实验级汇总行（0 run 子目录 ⇒ 无独立 run 行） |
+| `python3 tools/build_catalog.py --check` / `check_meta_layer.py --check` / `check_ledger.py --check`（干净工作树） | 三条全 rc=0 | 本项没动元级文档 |
+| `python3 -m pytest tests/ -q`（干净工作树） | 977 passed / 10 failed / 2 xfailed | 失败逐条归因：**已登记的预存失败 1 条**（`test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`，6-predict 轴的 4 个 `mutate.py`）；**1.2.2 owner 的已入库未完成状态 9 条**（`test_attribution_direction.py` 3 条——HEAD 的 `attribution.py` 还缺该 owner 正在写的符号；`test_docs_refs.py` 5 条——同一处悬空键锚点让「全树零违规」那一条变红，另有 4 条注入式用例跟着级联）。**没有一条属本项** |
+| `python3 -m pytest tests/ -q`（主工作树） | 980 passed / 9 failed | 与上一行同一批 owner 的差异：主工作树上他们的未提交 `attribution.py` 修好了那 3 条，未提交的 `1.2.2/project.yaml` 又让 `test_cost_table.py` 2 条变红；本项自有单测 6 passed |
+
+**判据线「绑定后未改」的机检证据**：`prereg_binding.json::contract_files` 四件 sha256 与当前文件
+逐个相同（`README.md` `a04d2cdd…`、`config.json` `42a86cc0…`、`run.py` `ad2b0d80…`、
+`carry_quant.py` `29c33f89…`）；`readings_existing_at_bind` 为空 ⇒ 本轮全部读数都在绑定之后产生。
