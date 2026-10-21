@@ -27,11 +27,14 @@
  13. 文档引用可解析：转调 `tools/check_docs.py`（文档里的裸路径必须存在，`::键` / `#标题` 锚点
      必须唯一命中，指向 `.yaml` / `.json` 的行号引用是禁止项；该文件的扫描范围与「不判」清单写在
      它自己的文件头）。一条命令覆盖树校验 + 引用校验。
- 14. 预登记定序：转调 `tools/prereg_bind.py` 的 `check()`——有 `results.json` 的实验必须有
-     `prereg_binding.json`；契约文件当前 sha256 必须与绑定时的相同；`bound_at` 必须严格早于读数
-     的产物时间；两文件都已入库时，绑定的提交必须早于读数的提交；`bound_at` 必须落在绑定文件那次
-     提交的 ±`BIND_WINDOW_MINUTES` 分钟窗内。`bound_at = "unbound"`（历史产物，无定序证据）只计数、
-     不判失败，但实验名打进汇总行（见 `harness/methodology.md` §8）。
+ 14. 预登记定序：转调 `tools/prereg_bind.py` 的 `check()`——有读数的实验必须有
+     `prereg_binding.json`；契约文件当前 sha256 必须与绑定时的相同；**每一份** `results*.json`
+     （聚合 `results.json` + 臂级 `results_<臂>_<种子>.json`）的产物时间必须晚于 `bound_at`、
+     其记录的代码哈希必须等于绑定值；两文件都已入库时，绑定的提交必须早于读数的提交；`bound_at`
+     必须落在绑定文件那次提交的 ±`BIND_WINDOW_MINUTES` 分钟窗内。`bound_at = "unbound"`
+     （历史产物，无定序证据）只计数、不判失败，但实验名打进汇总行；新口径下已存在的违规逐条声明在
+     `harness/prereg_debt.tsv`（只减不增），基线外的或文件变了而问题仍在的才判红（见
+     `harness/methodology.md` §8）。
 
 用法：python3 tools/check_tree.py   （退出码 0 = 全过；1 = 有错）
 """

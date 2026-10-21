@@ -1,6 +1,7 @@
 """预登记绑定（`tools/prereg_bind.py`）的红线，每条都构造出会失败的反例。
 
-1. **缺绑定必须抓红**：有 `results.json` 的实验没有 `prereg_binding.json` ⇒ `check()` 报错。
+1. **缺绑定必须抓红**：有读数（`results.json` 或臂级 `results_*.json`）的实验没有
+   `prereg_binding.json` ⇒ `check()` 报错。
 2. **契约在绑定后被改过必须抓红**：改契约一个字符 ⇒ 报出差异文件（不是沉默通过）。
 3. **定序必须真的早**：`bound_at` 晚于读数产物时间 ⇒ 抓红；早于 ⇒ 通过（反向对照，
    否则上一条的红可能只是「任何绑定都红」）。
@@ -15,11 +16,15 @@
    因而无从定序 ⇒ 拒绝回填并非零退出（否则本轮新实验能被洗成「历史产物」躲过定序）。
 9. **训练器的门**：`owner_for_output()` 把 `axes/**` 下的 out-root 归到含 `README.md` 的那一层实验，
    `.scratch/` / `/tmp/` 下不归属任何实验（共享训练器 `train_depth_ar.py` 靠它定门）。
+10. **臂级读数也在检查范围内（`results*.json`，不只 `results.json`）**：①一份臂级读数的代码哈希
+    与绑定值不同 ⇒ 红并点名该文件；②一份臂级读数的产物时间早于 `bound_at` ⇒ 红并点名该文件；
+    ③一份读数没记任何代码哈希 ⇒ 红（它无法核对产出它的代码）；④全部一致 ⇒ 绿（反向对照）。
 
 临时目录里造一棵假 `axes/` 树并 monkeypatch 模块的 `ROOT` / `AXES`，真仓库一个文件都不动。
 前五条用例里那两个文件未入库 ⇒ 仓内定序记为「未提交」，不参与判定。
 """
 
+import hashlib
 import json
 import os
 import shutil
@@ -34,15 +39,18 @@ sys.path.insert(0, os.path.join(ROOT, "tools"))
 import prereg_bind  # noqa: E402
 
 requires_git = pytest.mark.skipif(shutil.which("git") is None, reason="仓内定序需要 git")
+#: 假实验入口：读数里记的就是它的 sha256（绑定值与之相同才算「同一份代码」）。
+RUN_PY = "print('arm')\n"
 
 
 @pytest.fixture()
 def tree(tmp_path, monkeypatch):
-    """一棵假的研究树：一个实验目录（README.md 契约）+ 可选的结果与绑定。"""
+    """一棵假的研究树：一个实验目录（README.md + run.py 契约）+ 可选的结果与绑定。"""
     root = tmp_path / "repo"
     exp = root / "axes" / "1-time" / "1.1-x" / "experiments" / "9001-arm"
     exp.mkdir(parents=True)
     (exp / "README.md").write_text("# 契约\n判据线写死在这里。\n", encoding="utf-8")
+    (exp / "run.py").write_text(RUN_PY, encoding="utf-8")
     monkeypatch.setattr(prereg_bind, "ROOT", root)
     monkeypatch.setattr(prereg_bind, "AXES", root / "axes")
     return exp
@@ -53,7 +61,8 @@ def _bind(exp, bound_at, contract=None, prior=None):
         "experiment": "axes/1-time/1.1-x/experiments/9001-arm",
         "bound_at": bound_at,
         "contract_files": contract if contract is not None else
-        {"README.md": prereg_bind.sha256(exp / "README.md")},
+        {"README.md": prereg_bind.sha256(exp / "README.md"),
+         "run.py": prereg_bind.sha256(exp / "run.py")},
         "tool": "tools/prereg_bind.py",
     }
     if prior is not None:
@@ -63,9 +72,19 @@ def _bind(exp, bound_at, contract=None, prior=None):
     return record
 
 
-def _write_results(exp, body='{"bpc": 1.5}'):
-    (exp / "results.json").write_text(body, encoding="utf-8")
-    return exp / "results.json"
+def _reading(exp, bpc=1.5, code_hash=None):
+    """一份形态正常的读数：记着产出它的 `run.py` 哈希（= 契约绑的那份）。"""
+    if code_hash is None:
+        run_py = exp / "run.py"
+        code_hash = (prereg_bind.sha256(run_py) if run_py.exists()
+                     else hashlib.sha256(RUN_PY.encode()).hexdigest())
+    return json.dumps({"bpc": bpc, "code_hash_run_py": code_hash})
+
+
+def _write_results(exp, name="results.json", body=None):
+    path = exp / name
+    path.write_text(body if body is not None else _reading(exp), encoding="utf-8")
+    return path
 
 
 def test_missing_binding_fails(tree):
@@ -92,7 +111,7 @@ def test_binding_must_actually_predate_the_reading(tree):
     os.utime(tree / "results.json", (1_600_000_000, 1_600_000_000))     # 2020-09-13
     _bind(tree, "2021-06-01T00:00:00+00:00")                              # 晚于读数
     errors, _ = prereg_bind.check()
-    assert any("不早于判序锚" in e for e in errors), errors
+    assert any("不早于该读数的产物时间" in e for e in errors), errors
 
     _bind(tree, "2020-01-01T00:00:00+00:00")                              # 早于读数
     assert prereg_bind.check()[0] == []
@@ -108,7 +127,7 @@ def test_reading_that_existed_at_bind_is_counted_not_ordered(tree):
     errors, stats = prereg_bind.check()
     assert errors == [] and stats["predate"] == 1 and stats["ordered"] == 0
 
-    _write_results(tree, '{"bpc": 1.4}')          # 重跑过：这份读数不再是绑定时那份
+    _write_results(tree, body=_reading(tree, bpc=1.4))          # 重跑过：这份读数不再是绑定时那份
     os.utime(results, (1_700_000_100, 1_700_000_100))
     errors, stats = prereg_bind.check()
     assert errors == [] and stats["ordered"] == 1 and stats["predate"] == 0
@@ -168,7 +187,7 @@ def test_same_commit_gives_no_in_repo_ordering(tree):
     assert stats["git_same_commit"] == 1, stats
     assert any("没有先后" in e for e in errors), errors
 
-    _write_results(tree, '{"bpc": 1.4}')            # 读数重跑，另起一个提交
+    _write_results(tree, body=_reading(tree, bpc=1.4))            # 读数重跑，另起一个提交
     _commit(repo, "读数后到", "2021-02-01T00:00:00+00:00")
 
     errors, stats = prereg_bind.check()
@@ -187,7 +206,7 @@ def test_bound_at_must_fall_in_the_window_of_its_own_commit(tree):
     _bind(tree, "2021-01-01T00:00:00+00:00")                  # 回填的旧时间
     _git(repo, "init", "-q")
     _commit(repo, "补一条带旧 bound_at 的绑定", "2021-06-01T00:00:00+00:00")
-    _write_results(tree, '{"bpc": 1.4}')                  # 读数重跑，另起一个更晚的提交
+    _write_results(tree, body=_reading(tree, bpc=1.4))                  # 读数重跑，另起一个更晚的提交
     os.utime(results, (1_638_316_800, 1_638_316_800))         # 2021-12-01：读数晚于 bound_at
     _commit(repo, "读数后到", "2021-12-01T00:00:00+00:00")
 
@@ -239,3 +258,160 @@ def test_owner_for_output_only_claims_axes_experiments(tree):
     assert prereg_bind.owner_for_output(tree / "runs" / "arm") == tree
     assert prereg_bind.owner_for_output(tree.parents[3] / ".scratch" / "x") is None
     assert prereg_bind.owner_for_output("/tmp/pathlm-not-an-experiment") is None
+
+
+def test_arm_reading_with_foreign_code_hash_fails(tree):
+    """臂级读数（`results_<臂>_<种子>.json`）的代码哈希与绑定值不同 ⇒ 红，并点名该文件。
+
+    这就是「只看 `results.json`」漏掉的那一类：聚合文件由绑定的 `run.py` 产出，而臂级读数由
+    另一个版本的 `run.py` 产出；不检查臂级文件时 `--check` 全绿。
+    """
+    aggregate = _write_results(tree)
+    arm = _write_results(tree, name="results_X_s0.json",
+                         body=_reading(tree, code_hash="f" * 64))
+    _bind(tree, "2020-01-01T00:00:00+00:00")
+    for path in (aggregate, arm):
+        os.utime(path, (1_700_000_000, 1_700_000_000))
+
+    errors, stats = prereg_bind.check()
+    assert stats["mismatch"] == 1, (errors, stats)
+    hits = [e for e in errors if "不符" in e]
+    assert len(hits) == 1 and prereg_bind.rel(arm) in hits[0], errors
+    assert prereg_bind.rel(aggregate) not in hits[0], errors
+
+
+def test_arm_reading_predating_the_binding_fails(tree):
+    """臂级读数的产物时间早于 `bound_at` ⇒ 红，并点名该文件（聚合文件本身是合规的对照）。"""
+    aggregate = _write_results(tree)
+    arm = _write_results(tree, name="results_L50_s1.json")
+    _bind(tree, "2021-01-01T00:00:00+00:00")
+    os.utime(aggregate, (1_700_000_000, 1_700_000_000))       # 2023-11-14：晚于绑定
+    os.utime(arm, (1_600_000_000, 1_600_000_000))             # 2020-09-13：早于绑定
+
+    errors, stats = prereg_bind.check()
+    hits = [e for e in errors if "不早于该读数的产物时间" in e]
+    assert len(hits) == 1 and prereg_bind.rel(arm) in hits[0], errors
+    assert stats["ordered"] == 1, stats
+
+
+def test_reading_without_code_hash_fails(tree):
+    """读数一份代码哈希都没记 ⇒ 红（产出它的代码无从核对，这本身就是要修的问题）。"""
+    bare = _write_results(tree, name="results_K25_s0.json", body='{"bpc": 1.5}')
+    _bind(tree, "2020-01-01T00:00:00+00:00")
+    os.utime(bare, (1_700_000_000, 1_700_000_000))
+
+    errors, stats = prereg_bind.check()
+    assert stats["unhashed"] == 1, (errors, stats)
+    assert any("未记录代码哈希" in e and prereg_bind.rel(bare) in e for e in errors), errors
+
+
+def test_all_readings_agreeing_is_green(tree):
+    """正向对照：聚合文件与臂级读数的哈希都等于绑定值、产物时间都晚于 `bound_at` ⇒ 绿。"""
+    aggregate = _write_results(tree)
+    arms = [_write_results(tree, name=f"results_{arm}_s0.json") for arm in ("K50", "L50")]
+    _bind(tree, "2020-01-01T00:00:00+00:00")
+    for path in (aggregate, *arms):
+        os.utime(path, (1_700_000_000, 1_700_000_000))
+
+    errors, stats = prereg_bind.check()
+    assert errors == [], errors
+    assert stats["readings"] == 3 and stats["ordered"] == 3, stats
+
+
+def test_code_hash_field_names_are_adapted(tree):
+    """`code_hashes` / `code.<文件>` / `code_hashes_by_arm` 记的哈希都读得出来（字段名各不相同）。"""
+    _write_results(tree, name="results_A_s0.json", body=json.dumps(
+        {"code_hashes": {"run.py": "a" * 64}}))
+    _write_results(tree, name="results_B_s0.json", body=json.dumps(
+        {"code": {"run_py_sha256": "b" * 64}}))
+    _write_results(tree, name="results_C_s0.json", body=json.dumps(
+        {"code_hashes_by_arm": {"K50": "c" * 64}}))
+    _bind(tree, "2020-01-01T00:00:00+00:00")
+    for path in tree.glob("results_*.json"):
+        os.utime(path, (1_700_000_000, 1_700_000_000))
+
+    errors, stats = prereg_bind.check()
+    # 三份都读出了哈希（各自与绑定值不符），没有一份落进「未记录代码哈希」。
+    assert stats["unhashed"] == 0, (errors, stats)
+    assert stats["mismatch"] == 3, (errors, stats)
+
+    # 记了哈希但指不到本仓的文件：那是「无从核对」，不该报成「没记代码哈希」。
+    _write_results(tree, name="results_D_s0.json",
+                   body=json.dumps({"code_hashes": {"no-such-file.py": "d" * 64}}))
+    os.utime(tree / "results_D_s0.json", (1_700_000_000, 1_700_000_000))
+    errors, stats = prereg_bind.check()
+    hits = [e for e in errors if prereg_bind.rel(tree / "results_D_s0.json") in e]
+    assert hits and "指不到本仓的任何一个文件" in hits[0], errors
+    assert stats["unhashed"] == 0, (errors, stats)
+
+
+def _declare_debt(rows):
+    """在假仓库里写已声明存量基线（`ROOT` 已被 fixture 指到临时树）。"""
+    path = prereg_bind.ROOT / prereg_bind.BASELINE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    body = ["# 已声明存量（测试用）"]
+    body += ["\t".join(row) for row in rows]
+    path.write_text("\n".join(body) + "\n", encoding="utf-8")
+    return path
+
+
+def test_declared_debt_forgives_only_the_signature_it_declared(tree):
+    """基线内且签名未变 ⇒ 只计「已声明存量」；文件变了而问题仍在 ⇒ 红（不许签一次长期免检）。"""
+    arm = _write_results(tree, name="results_X_s0.json", body='{"bpc": 1.5}')
+    _bind(tree, "2020-01-01T00:00:00+00:00")
+    os.utime(arm, (1_700_000_000, 1_700_000_000))
+    _declare_debt([(prereg_bind.rel(arm), "no-hash", prereg_bind.file_signature(arm),
+                    "1.1.1", "冒烟读数不记代码哈希")])
+
+    errors, stats = prereg_bind.check()
+    assert errors == [] and stats["declared"] == 1, (errors, stats)
+    assert stats["declared_stale"] == [], stats["declared_stale"]
+
+    (arm).write_text(json.dumps({"bpc": 1.6}), encoding="utf-8")     # 读数变了，问题（无哈希）仍在
+    os.utime(arm, (1_700_000_100, 1_700_000_100))
+    errors, stats = prereg_bind.check()
+    assert any("基线条目" in e and "文件已变而问题仍在" in e for e in errors), errors
+
+    (arm).write_text(_reading(tree, bpc=1.6), encoding="utf-8")      # 修好：记上绑定的哈希
+    errors, stats = prereg_bind.check()
+    assert errors == [] and stats["declared"] == 0, (errors, stats)
+    assert (prereg_bind.rel(arm), "no-hash") in stats["declared_stale"], stats["declared_stale"]
+
+
+def test_violation_outside_the_declared_debt_is_red(tree):
+    """基线只盖住它点名的那一条：同实验里新冒出来的违规照样红。"""
+    declared = _write_results(tree, name="results_X_s0.json", body='{"bpc": 1.5}')
+    fresh = _write_results(tree, name="results_Y_s0.json", body='{"bpc": 1.5}')
+    _bind(tree, "2020-01-01T00:00:00+00:00")
+    for path in (declared, fresh):
+        os.utime(path, (1_700_000_000, 1_700_000_000))
+    _declare_debt([(prereg_bind.rel(declared), "no-hash",
+                    prereg_bind.file_signature(declared), "1.1.1", "冒烟读数不记代码哈希")])
+
+    errors, stats = prereg_bind.check()
+    assert stats["declared"] == 1, (errors, stats)
+    hits = [e for e in errors if "未记录代码哈希" in e]
+    assert len(hits) == 1 and prereg_bind.rel(fresh) in hits[0], errors
+
+
+#: 已声明存量的条数上限。基线**只减不增**：新增一条必须由用户或元级批准，
+#: 所以这个数字只能跟着「删掉了几条」往下走，不跟着新违规往上走。
+PREREG_DEBT_LIMIT = 81
+
+
+def test_declared_debt_only_shrinks():
+    """真仓库的基线：条数不超上限，且每一条都有 owner 与理由（没有理由的免检就是漏洞）。"""
+    rows = prereg_bind.load_baseline()
+    assert len(rows) <= PREREG_DEBT_LIMIT, (
+        f"{prereg_bind.BASELINE} 有 {len(rows)} 条，超过上限 {PREREG_DEBT_LIMIT}："
+        "基线只减不增，新增条目要先请用户或元级批准")
+    for (path, kind), row in rows.items():
+        assert row["owner"] and row["reason"], (path, kind, row)
+
+
+def test_debt_row_without_reason_is_refused(tree):
+    """基线条目缺 owner / 原因 ⇒ 直接报错（一条没有理由的免检就是没人认领的漏洞）。"""
+    arm = _write_results(tree, name="results_X_s0.json", body='{"bpc": 1.5}')
+    _declare_debt([(prereg_bind.rel(arm), "no-hash", prereg_bind.file_signature(arm), "", "")])
+    with pytest.raises(SystemExit):
+        prereg_bind.load_baseline()
