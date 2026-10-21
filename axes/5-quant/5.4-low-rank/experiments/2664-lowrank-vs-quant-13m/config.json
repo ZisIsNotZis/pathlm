@@ -1,0 +1,281 @@
+{
+  "experiment": "2664-lowrank-vs-quant-13m",
+  "item": "5.4 低秩压缩（MLA 式）",
+  "work_package": "WP1",
+  "line": "低秩压缩（MLA 式）vs 直接块标尺量化：同每位置部署字节判决",
+  "contract": "README.md（同目录，判据线运行前写入）",
+  "scope": "单轴单格、只改一个因素：固定主干形状 / 数据 / 步数 / batch / lr / 评测流，只改 KV 的**存储形式**（fp16 / 块标尺 int8、int4 / 低秩潜向量）。量化臂不训练（复用 MHA checkpoint），低秩臂从零训练（不能像 GQA 那样轻量 uptrain）。",
+  "axis_definition": {
+    "quantity": "deployment_bytes_per_position",
+    "formula_quant": "2(K,V) * n_layers * n_heads * head_dim * (value_bytes + scale_bytes_per_value) * (positions_kept/T)；G=32 块标尺 ⇒ scale_bytes_per_value = 2/32 = 0.0625",
+    "formula_lowrank": "n_layers * d_latent * 2(fp16 潜向量) * (positions_kept/T)；无 RoPE 分量（本仓基底无 RoPE，见 README §2）",
+    "formula_headshare": "2(K,V) * n_layers * n_kv_heads * head_dim * 2(fp16) * (positions_kept/T)",
+    "unit": "字节 / 上下文位置（全序列可见；本实验无窗口/锚点臂 ⇒ positions_kept = T）",
+    "seq_len_T": 256,
+    "fp16_mha_anchor_bytes": 12288,
+    "to_fp16_multiple": "deployment_bytes_per_position / 12288",
+    "caveats": [
+      "每位置字节与 T 无关（量化臂与低秩臂都不改可见位置集合）⇒ 本轴不外推到别的 T。",
+      "量化臂的标尺是**部署成本**，不是免费元数据：G=32 下每值 +0.0625 B（int8 ⇒ 1.0625 B/值、int4 ⇒ 0.5625 B/值）。",
+      "低秩臂的潜向量按 fp16 存（与量化臂同一条存储精度口径）；评测前向对潜向量做 fp16 往返，见 README §4。",
+      "本列是解析（部署口径）KV 占用；评测实现立即反量化 / 上投影 ⇒ 实测显存峰值不随档下降，两者分列。"
+    ]
+  },
+  "model": {
+    "d_model": 256,
+    "n_layers": 12,
+    "n_heads": 8,
+    "head_dim": 32,
+    "seq_len": 256,
+    "mlp_mult": 6,
+    "dense": true,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "vocab_size": 206
+  },
+  "train": {
+    "trainer": "axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/train_mla.py",
+    "trainer_note": "= 引擎 train_depth_ar.py 的逐字副本 + 3 处最小 patch（sys.path/ROOT、新增 --mla-latent、建块后换 MLA 块）；--mla-latent 0（缺省）时三处 patch 全不生效 ⇒ 基线臂走引擎原路径。本实验不复制第二份。",
+    "steps": 12000,
+    "batch_size": 32,
+    "lr": 0.001,
+    "eval_batches": 24,
+    "train_tokens": 98304000,
+    "recipe_note": "与 2616 的 mha-12k-s0 / 2656 的 mla-c128 逐字段同配方（d256/L12/H8/mlp6/seq256/12k 步/bs32/lr1e-3）",
+    "why_from_scratch": "低秩改变的是 K/V 的投影矩阵本身，不存在「保留已训权重只包一层」的轻量路径（与 GQA 的 uptrain 不同）⇒ 全部臂同预算从零训练，不外推「大模型上 uptrain」的结论"
+  },
+  "data": {
+    "name": "enwik8_full",
+    "path": "data/enwik8_full.npz",
+    "split": "前 90M 训练 / 末 10M 评测（本实验只用评测尾段跑 bpc）",
+    "vocab_size": 206,
+    "n_real_tokens": 205,
+    "mask_token": 205,
+    "bpc_only": true,
+    "note": "合成召回任务不使用 enwik8 文本，只用词表大小（206）。"
+  },
+  "eval": {
+    "n_batches": 24,
+    "batch_size": 16,
+    "window_seed": 2,
+    "device": "cuda",
+    "bpc_method": "b19.bpc_of（= 2619 的同一条统一路径：因果移位 CE 的 token 平均，Generator(window_seed) + pathlm.data.batch 同窗口序）",
+    "bpc_second_path": "retention.masked_bpc（独立路径；低秩/头共享臂与纯 fp16 前向逐位对照，见 instrument）",
+    "kv_storage_quant": "K/V 走 tools/evalkit/kv_quant.quantize_kv(scheme='block', group=32) 的往返（fp16 臂也走这条路径 ⇒ 三个量化档之间唯一的差别是 mode）",
+    "kv_storage_lowrank": "潜向量 c 走 fp16 往返后再上投影（部署侧缓存的就是 fp16 的 c）",
+    "recall_legs": "copy（3 起点）/ induction（2 起点）/ var_recall（距离 16/32/64/128/192/255），Wilson 95% CI + 配对 bootstrap（1000 次、按任务项重采样）",
+    "note": "与 2610/2614/2619/2631/2632 同一窗口序 ⇒ clean bpc 与 5.1 的读数同口径可比"
+  },
+  "tokens": {
+    "sym_vocab": 64,
+    "filler_token": 64,
+    "cue_token": 205,
+    "local_k": 8
+  },
+  "seed": 7,
+  "tasks": {
+    "copy": {
+      "copy_len": 32,
+      "src_positions": [0, 96, 191],
+      "batch_size": 16,
+      "n_batches": 2,
+      "role": "合成长程召回主腿：远处随机片段原样复制"
+    },
+    "induction": {
+      "prefix_len": 192,
+      "copy_len": 32,
+      "src_starts": [0, 159],
+      "batch_size": 16,
+      "n_batches": 16,
+      "role": "副腿：末尾重复段之后的那一项（induction）"
+    },
+    "var_recall": {
+      "distances": [16, 32, 64, 128, 192, 255],
+      "batch_size": 16,
+      "n_batches": 16,
+      "role": "副腿：单 (key,value) 变距离回忆（长距离档预期落在地板，用于如实记录不可分辨）"
+    }
+  },
+  "kv_modes": [
+    {"label": "fp16", "mode": "fp16", "value_bytes": 2.0, "scale_bytes_per_value": 0.0},
+    {"label": "int8", "mode": "int8", "value_bytes": 1.0, "scale_bytes_per_value": 0.0625},
+    {"label": "int4", "mode": "int4", "value_bytes": 0.5, "scale_bytes_per_value": 0.0625}
+  ],
+  "model_arms": [
+    {
+      "label": "mha",
+      "family": "direct",
+      "mechanism": "stock MHA（8 KV 头）：直接量化的载体 + fp16 参照",
+      "structure": "mha",
+      "latent": 0,
+      "n_kv_heads": null,
+      "mlp_hidden_sched": null,
+      "params_analytic": 13536768,
+      "runs": [
+        {"seed": 0, "run": "mha-12k-s0", "source": "reuse:2616",
+         "ckpt": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/mha-12k-s0/model.pt",
+         "sha256": "557453eb12b56a453b29ea279cdbbc0969cfa6bf0dbe1cdbd9965cd6cec62528"},
+        {"seed": 1, "run": "mha-s1", "source": "train:engine",
+         "ckpt": "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/runs/mha-s1/model.pt",
+         "sha256": null}
+      ]
+    },
+    {
+      "label": "mha_rep",
+      "family": "direct",
+      "mechanism": "MHA 同 seed 同配方的第二次独立运行 ⇒ 引擎 run-to-run 噪声地板（不参与同字节判决）",
+      "structure": "mha",
+      "latent": 0,
+      "n_kv_heads": null,
+      "mlp_hidden_sched": null,
+      "params_analytic": 13536768,
+      "runs": [
+        {"seed": 0, "run": "mha-rep-s0", "source": "reuse:2656",
+         "ckpt": "axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/runs/mha-rep-s0/model.pt",
+         "sha256": "c5e3b228dda65063cc7aa88ea56260310c1e8246ca353badd8d27bb049e0e392"}
+      ]
+    },
+    {
+      "label": "mla_c272",
+      "family": "lowrank",
+      "mechanism": "低秩潜向量 d_c=272（每位置 3264 值 = 6528 B，与 MHA int8 块标尺**恰好同字节**）",
+      "structure": "mla",
+      "latent": 272,
+      "n_kv_heads": null,
+      "mlp_hidden_sched": null,
+      "params_analytic": 14464512,
+      "runs": [
+        {"seed": 0, "run": "mla-c272-s0", "source": "train:mla",
+         "ckpt": "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/runs/mla-c272-s0/model.pt",
+         "sha256": null},
+        {"seed": 1, "run": "mla-c272-s1", "source": "train:mla",
+         "ckpt": "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/runs/mla-c272-s1/model.pt",
+         "sha256": null}
+      ]
+    },
+    {
+      "label": "mla_c272_eq",
+      "family": "lowrank",
+      "mechanism": "d_c=272 + 逐层 FFN 隐藏宽 1385×9 / 1386×3（ΣΔh = −1809 ⇒ 返还 927,817 参数）⇒ 参数量 = 13,536,495（比 MHA 少 273 = 2.0e-5）的等参数对照",
+      "structure": "mla",
+      "latent": 272,
+      "n_kv_heads": null,
+      "mlp_hidden_sched": [1385, 1385, 1385, 1385, 1385, 1385, 1385, 1385, 1385, 1386, 1386, 1386],
+      "params_analytic": 13536495,
+      "runs": [
+        {"seed": 0, "run": "mla-c272-eq-s0", "source": "train:mla",
+         "ckpt": "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/runs/mla-c272-eq-s0/model.pt",
+         "sha256": null},
+        {"seed": 1, "run": "mla-c272-eq-s1", "source": "train:mla",
+         "ckpt": "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/runs/mla-c272-eq-s1/model.pt",
+         "sha256": null}
+      ]
+    },
+    {
+      "label": "mla_c144",
+      "family": "lowrank",
+      "mechanism": "低秩潜向量 d_c=144（每位置 1728 值 = 3456 B，与 MHA int4 块标尺**恰好同字节**）",
+      "structure": "mla",
+      "latent": 144,
+      "n_kv_heads": null,
+      "mlp_hidden_sched": null,
+      "params_analytic": 13284864,
+      "runs": [
+        {"seed": 0, "run": "mla-c144-s0", "source": "train:mla",
+         "ckpt": "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/runs/mla-c144-s0/model.pt",
+         "sha256": null},
+        {"seed": 1, "run": "mla-c144-s1", "source": "train:mla",
+         "ckpt": "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m/runs/mla-c144-s1/model.pt",
+         "sha256": null}
+      ]
+    },
+    {
+      "label": "mla_c128",
+      "family": "lowrank",
+      "mechanism": "低秩潜向量 d_c=128（每位置 1536 值 = 3072 B，与 GQA2 的 fp16 KV **恰好同字节**）",
+      "structure": "mla",
+      "latent": 128,
+      "n_kv_heads": null,
+      "mlp_hidden_sched": null,
+      "params_analytic": 13137408,
+      "runs": [
+        {"seed": 0, "run": "mla-c128-s0", "source": "reuse:2656",
+         "ckpt": "axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/runs/mla-c128-s0/model.pt",
+         "sha256": "b261adef4685d50bf141172f5226356456de5ee28d2c0cc7fb634b1f60a3540a"},
+        {"seed": 1, "run": "mla-c128-s1", "source": "reuse:2656",
+         "ckpt": "axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/runs/mla-c128-s1/model.pt",
+         "sha256": "b790b8ac9224d1734c5be0d1e9cd450dd5acf4b5b79adf04ca57ac796682b479"}
+      ]
+    },
+    {
+      "label": "gqa2",
+      "family": "headshare",
+      "mechanism": "2 个 KV 头（头共享对照，3072 B/位置，比 MHA 少 8.75% 参数）",
+      "structure": "gqa",
+      "latent": 0,
+      "n_kv_heads": 2,
+      "mlp_hidden_sched": null,
+      "params_analytic": 12352512,
+      "runs": [
+        {"seed": 0, "run": "gqa-12k-s0", "source": "reuse:2616",
+         "ckpt": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/gqa-12k-s0/model.pt",
+         "sha256": "bd682447c90bc118253a1496b4241bdc711a4103ab8df06f8296a840e7b3bc00"},
+        {"seed": 0, "run": "gqa-12k-s0-rep", "source": "reuse:2616",
+         "ckpt": "axes/7-references/experiments/W3-kv-head-sharing/2616-gqa-mqa-13m/runs/gqa-12k-s0-rep/model.pt",
+         "sha256": "7fa95a7b5419af5b8f9159acb70cd814588337aa784b9a5e1bd4d0ea9ba6cb47"}
+      ]
+    },
+    {
+      "label": "gqa2_eq",
+      "family": "headshare",
+      "mechanism": "2 个 KV 头 + 把 Δparams 还给 FFN（每层 FFN 隐藏宽 1729×4 / 1728×8）⇒ 参数 = 13,536,516（比 MHA 少 252）的等参数头共享对照",
+      "structure": "gqa",
+      "latent": 0,
+      "n_kv_heads": 2,
+      "mlp_hidden_sched": [1729, 1729, 1729, 1729, 1728, 1728, 1728, 1728, 1728, 1728, 1728, 1728],
+      "params_analytic": 13536516,
+      "runs": [
+        {"seed": 0, "run": "gqa2-eq-s0", "source": "reuse:2656",
+         "ckpt": "axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/runs/gqa2-eq-s0/model.pt",
+         "sha256": "eebcbfca0532c9cb332f622dd376a8e42bd1e11b186dbc63fe911084c1661926"},
+        {"seed": 1, "run": "gqa2-eq-s1", "source": "reuse:2656",
+         "ckpt": "axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/runs/gqa2-eq-s1/model.pt",
+         "sha256": "b03d13091dcb6f96cbadbe27c43da5f4d7a682a2f0bc757f7d48095b01b58012"}
+      ]
+    }
+  ],
+  "same_byte_groups": [
+    {"bytes_per_position": 6528, "low_rank": "mla_c272", "comparator": "mha@int8",
+     "role": "主判 A：8 位直接量化 vs 低秩（1.88× 压缩档，与 MHA fp16 比 ×0.53125）",
+     "param_note": "低秩臂多 +6.86% 参数 ⇒ 由 mla_c272_eq 夹住（同字节、等参数）"},
+    {"bytes_per_position": 3456, "low_rank": "mla_c144", "comparator": "mha@int4",
+     "role": "主判 B：4 位直接量化 vs 低秩（3.56× 压缩档，×0.28125）",
+     "param_note": "低秩臂少 −1.86% 参数（不利于低秩）"},
+    {"bytes_per_position": 3072, "low_rank": "mla_c128", "comparator": "gqa2@fp16",
+     "role": "对照腿：低秩 vs 头共享（同字节 4× 档；本格的原始 WP 问题）",
+     "param_note": "gqa2 少 8.75% 参数 ⇒ 由 gqa2_eq 夹住（同字节、等参数）"}
+  ],
+  "criterion": {
+    "verbatim_objective_criteria": "该跌：每位置 KV 部署字节（潜维 + RoPE 分量）；该不跌/可排序：clean bpc（相对同字节头共享臂与 stock 基线，须越 0.014 噪声带）；该保持：合成长程召回（第二腿不塌）；必须不变：因果性与可见性对数；必须报：上投影的每 token 等效解码计算、等参数对照。",
+    "verbatim_falsification": "若 MLA 式低秩压缩在等参数对照下相对同字节头共享臂的 clean bpc 不占优（越噪声带变差或持平）⇒ 判低秩压缩在本尺度不产生新知识；若「从零训练」的收敛代价吃掉全部 KV 收益（等字节下不占优）⇒ 判该路线在本尺度不划算；若上投影额外计算使每 token 等效 FLOPs 显著上升且未被 KV 收益补偿 ⇒ 判代价记账不利。 用哪个带（C1 裁决）：0.014 bpc 带（限配对 Δ、≥5 窗口）为主判；长程召回等率类指标走配对 bootstrap / Wilson 95% CI、不跨量纲借用 0.014。",
+    "planar_rules": {
+      "band": 0.014,
+      "band_scope": "只用于 clean bpc 的**配对 Δ**（同评测窗口序 window_seed=2、同 seed 对齐、24 个评测窗口 ≥ 5 ⇒ 前提满足）；率类指标（召回/准确率）不借用",
+      "delta_direction": "arm_minus_comparator（Δ = 低秩臂 bpc − 同字节对照臂 bpc；正 = 低秩更差）",
+      "sortable_rule": "|Δ| <= 0.014 ⇒ 本 n 下不可排序（判「不可分」，不外推）；Δ < -0.014 ⇒ 低秩占优；Δ > +0.014 ⇒ 对照占优",
+      "n_requirement": "每个同字节组两侧各 n ≥ 2（seed 0 / 1 配对；gqa2 一侧为两次独立 seed 0 运行，如实标注）",
+      "unjudgeable_rule": "若某组 n=2 的配对 Δ 跨过带边界（一条越带、一条落带），判「本 n 不可判」并按观测散布给出所需样本量 n_req = (2σ/带)^2（σ = 配对 Δ 的样本标准差），不得只报符号",
+      "damage_rule": "族内失效模式：quant_damage = 同 checkpoint 的量化臂 bpc − fp16 臂 bpc（正 = 量化更差）；lowrank_damage = 低秩臂 bpc − MHA fp16 臂 bpc（同 seed；正 = 低秩更差）",
+      "recall_floor_rule": "pooled accuracy <= chance + 2σ_wilson(chance) ⇒ at_floor（不可分辨，不得写成机制无效）",
+      "gate": "① 任一非量化臂的 fp16 前向与 retention.masked_bpc 路径不逐位相等 ⇒ 仪器作废（先修再接）；② 任一量化臂的块标尺前缀不变性为 False ⇒ 该臂作废"
+    },
+    "prediction_not_criterion": "预判（不作为判据、不参与裁决）：5.1 已测 int8 块标尺在 MHA 上近无损（+0.000101）、int4 有损（+0.022522）⇒ 6528 B 组若低秩不越带即判「低秩在用低精度也能做到的地方多付了维度」；3456 B 组方向未知（低秩的维度损失 vs 4 位的精度损失，本仓首次实测）。"
+  },
+  "cost": {
+    "gpu_wall_budget_min": 120,
+    "gpu_wall_budget_source": "契约：7 支 13M 臂 ≈10–14 min/臂 + 一轮评测 ≈15 min，上限 120 min（含等锁重排）",
+    "peak_mem_budget_gib": 5,
+    "budget_cut_rule": "预算不够时先砍 mla_c272_eq 两臂（等参数对照，只影响归因不影响主判），再砍 mha_rep（噪声地板）；不砍两个主判组与 n≥2",
+    "smoke": "python3 run.py --smoke（1 批 bpc + 1 距离召回 + 2 臂，实测步时与显存，不外推时间）"
+  }
+}
