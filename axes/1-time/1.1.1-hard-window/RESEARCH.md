@@ -25,7 +25,7 @@
 里程碑四条验收现在各有落盘证据：k 全曲线两列（`2682`）、锚点召回腿 n=4（`2681`）、长 T 同 step（`2636`）、
 判词不越界（`project.yaml::conclusion`）。**独立复核未派**：本项现在只有执行方自评，复核前不得当「已复核通过」。
 
-**本轮交付（`2682`）的派发口径**：8 条纯窗臂 + 2 条可选锚点臂在本目录自训（逐臂 rc=0，实耗 89.1 min GPU），
+**本轮交付（`2682`）的派发口径**：8 条纯窗臂 + 2 条可选锚点臂在本目录自训（逐臂 rc=0，实耗 88.7 min GPU，其中 8 条纯窗臂 71.1 min），
 连同 9 条复用臂一次评测算出四条判据；判据① 复现门 9/9 逐位相同 ⇒ 跨项复本的四个 k=16 种子与本目录新臂同仪器。
 读数与判读只看 `experiments/2682-window-kcurve-13m/analysis.md`，本文件不复述数字。
 
@@ -36,8 +36,8 @@
 
 | id | owner | 预算 | 复核人 | 状态（只放指针） |
 |---|---|---|---|---|
-| WP1 | `axis1-w1.1.1` | 已花：≈30 min GPU（2 臂 × 12k 步）+ 评测；`2682` 另 8 臂 71.5 min | `axis1-reviewer` | → `project.yaml::work_packages[0].status` |
-| WP2 | `axis1-w1.1.1` | 实耗：8 臂 × 12k 步 = 71.5 min GPU + 评测 79.1 s（`2682` §7 的预算是 ≤110 + ≤12 min） | `axis1-reviewer` | → `project.yaml::work_packages[1].status` |
+| WP1 | `axis1-w1.1.1` | 已花：≈30 min GPU（2 臂 × 12k 步）+ 评测；`2682` 另 8 臂 71.1 min | `axis1-reviewer` | → `project.yaml::work_packages[0].status` |
+| WP2 | `axis1-w1.1.1` | 实耗：8 臂 × 12k 步 = 71.1 min GPU（+ 可选 2 臂 17.6 min）+ 评测 79.1 s（`2682` §7 的预算是 ≤110 + ≤12 min） | `axis1-reviewer` | → `project.yaml::work_packages[1].status` |
 | WP3 | `axis1-w1.1.1` | 已花：4 臂 × 12k 步 ≈ 36 min GPU（8.2–10.5 min/臂）+ 评测 2.84 min | `axis1-reviewer` | → `project.yaml::work_packages[2].status` |
 | WP4 | `axis1-w1.1.1` | 已花：0 GPU（迁移读数统一口径） | `axis1-reviewer` | → `project.yaml::work_packages[3].status` |
 
