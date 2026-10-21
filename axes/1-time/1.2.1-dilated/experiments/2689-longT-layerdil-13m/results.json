@@ -1,0 +1,776 @@
+{
+  "experiment": "2689-longT-layerdil-13m",
+  "cell": "axes/1-time/1.2.1-dilated",
+  "question": "「真实文本上把同 k 个可见位置摊开（空洞）不换质量」这条判决在长 T 上还成立吗（长 T 腿）；若摊开的位置**逐层**推到更远（逐层递增 dilation），长 T 上会不会开始换到质量（机制腿）",
+  "band_bpc": 0.014,
+  "delta_directions": {
+    "delta_bpc": "comparator_minus_arm",
+    "deltas": "comparator_minus_arm"
+  },
+  "delta_direction_note": "全部 Δ 都是「对照 − 实验」：判据① 对照 = 窗口臂、实验 = 空洞臂；判据② 对照 = 平铺空洞臂、实验 = 逐层递增臂；判据③ 对照 = 去掉 far 点（只留近端 16）的重评测、实验 = 原掩码 ⇒ 正 = 后者更好",
+  "recipe": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "mlp_mult": 4,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "dense": true,
+    "topology": "sequential",
+    "lr": 0.001,
+    "data": "data/enwik8_full.npz",
+    "tokens_per_arm": 98304000,
+    "tokens_note": "每个 T 点都跑 98,304,000 token/臂（T=256 是 32×256×12000、T=1024 是 16×1024×6000、T=2048 是 8×2048×6000）⇒ 跨 T 的 token 预算相等，T 与步数是同一个旋钮的两面"
+  },
+  "mask": {
+    "local": 16,
+    "n_dilated": 16,
+    "rule_flat": "keep[i,j] = (j <= i) ∧ ((i-j) < local ∨ j ∈ {round(t·(P-1)/(n_dil-1)) : t = 0..n_dil-1})，P = i-local+1；i+1 <= k 的行退化为全因果（与 2678 的 dil32 同一条规则，逐行计数 = min(k, i+1)）",
+    "rule_layered": "layer ℓ：span_ℓ = min(P-1, s_ℓ·(n_dil-1))，far 位置 = {i-local-round(t·span_ℓ/(n_dil-1)) : t = 0..n_dil-1}，s_ℓ = 2^ℓ；i+1 <= k 的行退化为全因果 ⇒ far 点与本地窗口合起来仍是 min(k, i+1) 个键",
+    "rule_layered_note": "s_ℓ = 1 的那一层（第 0 层）其 far 点 = 紧邻本地窗口外的 15 个连续位置 ⇒ 该层掩码与 win32 **逐位相同**；s_ℓ 越大，far 点摊得越远 ⇒ 每层的可达距离沿深度单调不减（结构性判据 c5b）",
+    "layer_strides": [
+      1,
+      2,
+      4,
+      8,
+      16,
+      32,
+      64,
+      128
+    ],
+    "per_row_count": "min(32, i+1)（三族掩码逐行相等，且 ⊆ 因果）"
+  },
+  "structure_checks": {
+    "256": {
+      "seq": 256,
+      "per_row_count_equal_across_families": true,
+      "mismatch_rows": 0,
+      "per_row_count_equals_min_k": true,
+      "mask_offending_future_pairs": 0,
+      "lad_layer0_equals_win32": true,
+      "reach_max_distance": {
+        "win32": [
+          31
+        ],
+        "dil32": [
+          255
+        ],
+        "lad32": [
+          31,
+          46,
+          76,
+          136,
+          255,
+          255,
+          255,
+          255
+        ]
+      },
+      "lad_reach_monotone": true,
+      "note": "逐行可见键数三族相等且都 = min(32, i+1)；本字段即判据④ 的落盘列"
+    },
+    "1024": {
+      "seq": 1024,
+      "per_row_count_equal_across_families": true,
+      "mismatch_rows": 0,
+      "per_row_count_equals_min_k": true,
+      "mask_offending_future_pairs": 0,
+      "lad_layer0_equals_win32": true,
+      "reach_max_distance": {
+        "win32": [
+          31
+        ],
+        "dil32": [
+          1023
+        ],
+        "lad32": [
+          31,
+          46,
+          76,
+          136,
+          256,
+          496,
+          976,
+          1023
+        ]
+      },
+      "lad_reach_monotone": true,
+      "note": "逐行可见键数三族相等且都 = min(32, i+1)；本字段即判据④ 的落盘列"
+    },
+    "2048": {
+      "seq": 2048,
+      "per_row_count_equal_across_families": true,
+      "mismatch_rows": 0,
+      "per_row_count_equals_min_k": true,
+      "mask_offending_future_pairs": 0,
+      "lad_layer0_equals_win32": true,
+      "reach_max_distance": {
+        "win32": [
+          31
+        ],
+        "dil32": [
+          2047
+        ],
+        "lad32": [
+          31,
+          46,
+          76,
+          136,
+          256,
+          496,
+          976,
+          1936
+        ]
+      },
+      "lad_reach_monotone": true,
+      "note": "逐行可见键数三族相等且都 = min(32, i+1)；本字段即判据④ 的落盘列"
+    }
+  },
+  "per_batch_bpc": {
+    "win32": [
+      1.55002,
+      1.61462,
+      1.6233,
+      1.58196,
+      1.7341,
+      1.6414,
+      1.64612,
+      1.78168,
+      1.5872,
+      1.50156,
+      1.7461,
+      1.64526,
+      1.54177,
+      1.56617,
+      1.70569,
+      1.66459,
+      1.56403,
+      1.66466,
+      1.49262,
+      1.64769
+    ],
+    "win32_s1": [
+      1.55876,
+      1.61165,
+      1.63069,
+      1.58062,
+      1.73753,
+      1.63878,
+      1.61223,
+      1.77461,
+      1.56808,
+      1.50344,
+      1.74085,
+      1.64526,
+      1.5354,
+      1.52036,
+      1.70499,
+      1.68664,
+      1.54524,
+      1.64873,
+      1.47561,
+      1.63278
+    ],
+    "dil32": [
+      1.54966,
+      1.58738,
+      1.60914,
+      1.55864,
+      1.78168,
+      1.62922,
+      1.60397,
+      1.78099,
+      1.58935,
+      1.50616,
+      1.76448,
+      1.61293,
+      1.51291,
+      1.53558,
+      1.69718,
+      1.66697,
+      1.54051,
+      1.64498,
+      1.48385,
+      1.606
+    ],
+    "dil32_s1": [
+      1.56769,
+      1.60113,
+      1.62641,
+      1.55368,
+      1.767,
+      1.64327,
+      1.61254,
+      1.73331,
+      1.57226,
+      1.5017,
+      1.7655,
+      1.64079,
+      1.50511,
+      1.52643,
+      1.70222,
+      1.65801,
+      1.53639,
+      1.61702,
+      1.45991,
+      1.62278
+    ],
+    "win32-t1024-s0": [
+      1.69417,
+      1.61749,
+      1.66543,
+      1.4814,
+      1.74925,
+      1.80207,
+      1.49856,
+      1.7198,
+      1.80601,
+      1.63267,
+      1.52367,
+      1.55378,
+      1.73227,
+      1.63851,
+      1.80755,
+      1.68449,
+      1.55687,
+      1.67133,
+      1.51967,
+      1.54666
+    ],
+    "dil32-t1024-s0": [
+      1.70733,
+      1.61706,
+      1.68243,
+      1.51278,
+      1.73868,
+      1.80808,
+      1.5176,
+      1.73523,
+      1.81091,
+      1.62824,
+      1.53291,
+      1.56264,
+      1.75014,
+      1.65467,
+      1.82369,
+      1.6878,
+      1.56292,
+      1.70862,
+      1.53026,
+      1.55808
+    ],
+    "win32-t2048-s0": [
+      1.69792,
+      1.70151,
+      1.71566,
+      1.72203,
+      1.78603,
+      1.68204,
+      1.60789,
+      1.6613,
+      1.75136,
+      1.65653,
+      1.70056,
+      1.606,
+      1.68439,
+      1.73758,
+      1.7655,
+      1.63661,
+      1.7317,
+      1.72193,
+      1.61305,
+      1.75734
+    ],
+    "dil32-t2048-s0": [
+      1.73272,
+      1.70718,
+      1.73696,
+      1.73301,
+      1.81192,
+      1.71646,
+      1.63675,
+      1.69242,
+      1.7961,
+      1.69,
+      1.72975,
+      1.64755,
+      1.73286,
+      1.77415,
+      1.78366,
+      1.67543,
+      1.76428,
+      1.74295,
+      1.64741,
+      1.77307
+    ],
+    "win32-t2048-s1": [
+      1.70557,
+      1.70197,
+      1.71553,
+      1.71787,
+      1.79685,
+      1.68832,
+      1.61591,
+      1.65718,
+      1.76245,
+      1.65239,
+      1.70794,
+      1.63612,
+      1.69246,
+      1.74883,
+      1.75322,
+      1.63644,
+      1.74067,
+      1.72675,
+      1.60999,
+      1.75058
+    ],
+    "dil32-t2048-s1": [
+      1.74338,
+      1.70716,
+      1.75314,
+      1.72832,
+      1.83656,
+      1.72209,
+      1.64745,
+      1.70706,
+      1.80459,
+      1.69558,
+      1.7398,
+      1.66082,
+      1.74067,
+      1.79313,
+      1.78637,
+      1.67222,
+      1.77433,
+      1.74979,
+      1.65636,
+      1.76964
+    ],
+    "lad32-t2048-s0": [
+      1.70659,
+      1.68977,
+      1.71555,
+      1.72092,
+      1.79769,
+      1.7019,
+      1.61785,
+      1.68536,
+      1.76918,
+      1.67282,
+      1.71078,
+      1.60281,
+      1.70653,
+      1.75345,
+      1.76602,
+      1.64057,
+      1.75134,
+      1.72856,
+      1.6248,
+      1.74665
+    ]
+  },
+  "mean_bpc": {
+    "win32": 1.62503,
+    "win32_s1": 1.61761,
+    "dil32": 1.61308,
+    "dil32_s1": 1.61066,
+    "win32-t1024-s0": 1.64508,
+    "dil32-t1024-s0": 1.6565,
+    "win32-t2048-s0": 1.69685,
+    "dil32-t2048-s0": 1.72623,
+    "win32-t2048-s1": 1.70085,
+    "dil32-t2048-s1": 1.73442,
+    "lad32-t2048-s0": 1.70546
+  },
+  "n_params": {
+    "win32": 6962688,
+    "win32_s1": 6962688,
+    "dil32": 6962688,
+    "dil32_s1": 6962688,
+    "win32-t1024-s0": 7159296,
+    "dil32-t1024-s0": 7159296,
+    "win32-t2048-s0": 7421440,
+    "dil32-t2048-s0": 7421440,
+    "win32-t2048-s1": 7421440,
+    "dil32-t2048-s1": 7421440,
+    "lad32-t2048-s0": 7421440
+  },
+  "arms_not_run": [],
+  "criteria": {
+    "c1_quality_by_T": {
+      "note": "Δ = bpc_对照 − bpc_实验（对照 = 窗口臂、实验 = 空洞臂），正 = 空洞更好；0.014 配对带",
+      "by_T": {
+        "256": {
+          "verdict": "两 seed 同向但至少一 seed 未越带 ⇒ 本 n 下不可排序",
+          "n_seed": 2,
+          "deltas": {
+            "c1_t256_s0": 0.01195,
+            "c1_t256_s1": 0.00696
+          },
+          "band_classes": {
+            "c1_t256_s0": "in_band",
+            "c1_t256_s1": "in_band"
+          },
+          "max_two_se": 0.00945,
+          "max_n_req_for_band": 10
+        },
+        "1024": {
+          "verdict": "单 seed（c1_t1024_s0）：Δ = -0.01142 ⇒ in_band（只见一次，不作 n=2 结论）",
+          "n_seed": 1,
+          "deltas": {
+            "c1_t1024_s0": -0.01142
+          },
+          "band_classes": {
+            "c1_t1024_s0": "in_band"
+          },
+          "max_two_se": 0.00484,
+          "max_n_req_for_band": 3
+        },
+        "2048": {
+          "verdict": "空洞采样更差（两 seed 同向且各自越带 ⇒ n=2）：按位置最近仍占优",
+          "n_seed": 2,
+          "deltas": {
+            "c1_t2048_s0": -0.02938,
+            "c1_t2048_s1": -0.03357
+          },
+          "band_classes": {
+            "c1_t2048_s0": "beyond_negative",
+            "c1_t2048_s1": "beyond_negative"
+          },
+          "max_two_se": 0.00527,
+          "max_n_req_for_band": 3
+        }
+      },
+      "instrument_limited": {
+        "256": false,
+        "1024": false,
+        "2048": false
+      },
+      "answer": "长 T 上空洞臂越负带（按位置最近在长 T 上占优）：T=2048 的 Δ = c1_t2048_s0 -0.02938, c1_t2048_s1 -0.03357；没有任何 T 点越正带（起点 T = 无）；跨 T 的走向只按观测点描述、不外推"
+    },
+    "c2_layered_arm": {
+      "note": "Δ = bpc_平铺 − bpc_逐层递增（对照 = 平铺空洞臂、实验 = 逐层臂），正 = 逐层更好",
+      "pair": {
+        "seq": 2048,
+        "comparator": "dil32-t2048-s0",
+        "arm": "lad32-t2048-s0",
+        "n_batches": 20,
+        "delta_bpc": 0.02077,
+        "sd_of_paired_delta": 0.00856,
+        "se_of_mean": 0.00192,
+        "two_se": 0.00375,
+        "t_stat": 10.85,
+        "frac_batches_delta_gt_0": 1.0,
+        "min_delta": 0.00706,
+        "max_delta": 0.04474,
+        "n_req_for_band": 2,
+        "band_class": "beyond_positive",
+        "params_equal": true
+      },
+      "verdict": "beyond_positive"
+    },
+    "c3_far_key_dependence": {
+      "note": "D(T) = bpc(只留近端 16) − bpc(原掩码)（对照 = 去掉 far 点、实验 = 原掩码），正 = far 点有价值；跨 T 的差是描述量、带只作参照线",
+      "by_T": {
+        "256": {
+          "dil32": {
+            "delta_bpc": 0.10204,
+            "two_se": 0.00824,
+            "band_class": "beyond_positive",
+            "note": "D = bpc(只留近端 16) − bpc(原掩码)，正 = far 点对该 checkpoint 有价值"
+          },
+          "dil32_s1": {
+            "delta_bpc": 0.10048,
+            "two_se": 0.0077,
+            "band_class": "beyond_positive",
+            "note": "D = bpc(只留近端 16) − bpc(原掩码)，正 = far 点对该 checkpoint 有价值"
+          }
+        },
+        "1024": {
+          "dil32-t1024-s0": {
+            "delta_bpc": 0.22348,
+            "two_se": 0.00883,
+            "band_class": "beyond_positive",
+            "note": "D = bpc(只留近端 16) − bpc(原掩码)，正 = far 点对该 checkpoint 有价值"
+          }
+        },
+        "2048": {
+          "dil32-t2048-s0": {
+            "delta_bpc": 0.26261,
+            "two_se": 0.00501,
+            "band_class": "beyond_positive",
+            "note": "D = bpc(只留近端 16) − bpc(原掩码)，正 = far 点对该 checkpoint 有价值"
+          },
+          "dil32-t2048-s1": {
+            "delta_bpc": 0.25994,
+            "two_se": 0.00517,
+            "band_class": "beyond_positive",
+            "note": "D = bpc(只留近端 16) − bpc(原掩码)，正 = far 点对该 checkpoint 有价值"
+          },
+          "lad32-t2048-s0": {
+            "delta_bpc": 0.19505,
+            "two_se": 0.00919,
+            "band_class": "beyond_positive",
+            "note": "D = bpc(只留近端 16) − bpc(原掩码)，正 = far 点对该 checkpoint 有价值"
+          }
+        }
+      },
+      "growth": {
+        "D_t256_seed0": 0.10204,
+        "D_t2048_seed0": 0.26261,
+        "delta_bpc": 0.16057,
+        "band_class": "beyond_positive",
+        "note": "D(2048) − D(256)：跨 run 描述量，带只作参照线（不是配对判据）"
+      }
+    },
+    "c4_must_not_change": {
+      "structure": {
+        "256": {
+          "seq": 256,
+          "per_row_count_equal_across_families": true,
+          "mismatch_rows": 0,
+          "per_row_count_equals_min_k": true,
+          "mask_offending_future_pairs": 0,
+          "lad_layer0_equals_win32": true,
+          "lad_reach_monotone": true,
+          "note": "逐行可见键数三族相等且都 = min(32, i+1)；本字段即判据④ 的落盘列"
+        },
+        "1024": {
+          "seq": 1024,
+          "per_row_count_equal_across_families": true,
+          "mismatch_rows": 0,
+          "per_row_count_equals_min_k": true,
+          "mask_offending_future_pairs": 0,
+          "lad_layer0_equals_win32": true,
+          "lad_reach_monotone": true,
+          "note": "逐行可见键数三族相等且都 = min(32, i+1)；本字段即判据④ 的落盘列"
+        },
+        "2048": {
+          "seq": 2048,
+          "per_row_count_equal_across_families": true,
+          "mismatch_rows": 0,
+          "per_row_count_equals_min_k": true,
+          "mask_offending_future_pairs": 0,
+          "lad_layer0_equals_win32": true,
+          "lad_reach_monotone": true,
+          "note": "逐行可见键数三族相等且都 = min(32, i+1)；本字段即判据④ 的落盘列"
+        }
+      },
+      "params_equal_within_T": true,
+      "conversion_checks": {
+        "win32": null,
+        "win32_s1": null,
+        "dil32": {
+          "params_identical_to_stock": true,
+          "diff_params": [],
+          "state_dict_key_symmetric_diff": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "masked_blocks": 8
+        },
+        "dil32_s1": {
+          "params_identical_to_stock": true,
+          "diff_params": [],
+          "state_dict_key_symmetric_diff": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "masked_blocks": 8
+        },
+        "win32-t1024-s0": null,
+        "dil32-t1024-s0": {
+          "params_identical_to_stock": true,
+          "diff_params": [],
+          "state_dict_key_symmetric_diff": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "masked_blocks": 8,
+          "per_layer_mask": false
+        },
+        "win32-t2048-s0": null,
+        "dil32-t2048-s0": {
+          "params_identical_to_stock": true,
+          "diff_params": [],
+          "state_dict_key_symmetric_diff": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "masked_blocks": 8,
+          "per_layer_mask": false
+        },
+        "win32-t2048-s1": null,
+        "dil32-t2048-s1": {
+          "params_identical_to_stock": true,
+          "diff_params": [],
+          "state_dict_key_symmetric_diff": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "masked_blocks": 8,
+          "per_layer_mask": false
+        },
+        "lad32-t2048-s0": {
+          "params_identical_to_stock": true,
+          "diff_params": [],
+          "state_dict_key_symmetric_diff": [
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+          ],
+          "masked_blocks": 8,
+          "per_layer_mask": true
+        }
+      }
+    },
+    "c5_reuse_equivalence": {
+      "win32": {
+        "reproduced": true,
+        "ref": "2678-dilated-vs-window-13m/results.json::per_batch_bpc"
+      },
+      "win32_s1": {
+        "reproduced": true,
+        "ref": "2678-dilated-vs-window-13m/results.json::per_batch_bpc"
+      },
+      "dil32": {
+        "reproduced": true,
+        "ref": "2678-dilated-vs-window-13m/results.json::per_batch_bpc"
+      },
+      "dil32_s1": {
+        "reproduced": true,
+        "ref": "2678-dilated-vs-window-13m/results.json::per_batch_bpc"
+      }
+    },
+    "c6_stability_gate": {
+      "threshold": 100,
+      "arms_over_threshold": [],
+      "note": "gnorm_max < 100 且 skips == 0 才入场（判据⑦）"
+    }
+  },
+  "main_verdict": {
+    "criterion": "① Δ = 对照 − 实验（越 ±0.014 带才算可分）；② 逐层递增相对平铺；③ 远处键的边际价值随 T 的走向",
+    "t2048_quality": "空洞采样更差（两 seed 同向且各自越带 ⇒ n=2）：按位置最近仍占优",
+    "answer": "长 T 上空洞臂越负带（按位置最近在长 T 上占优）：T=2048 的 Δ = c1_t2048_s0 -0.02938, c1_t2048_s1 -0.03357；没有任何 T 点越正带（起点 T = 无）；跨 T 的走向只按观测点描述、不外推",
+    "n_seed_by_T": {
+      "256": 2,
+      "1024": 1,
+      "2048": 2
+    },
+    "falsified_prior": false
+  },
+  "train_declaration": {
+    "win32": {
+      "wall_minutes": 7.14,
+      "peak_gpu_mem_mb": 1191.4,
+      "gnorm_max": null,
+      "source": "axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/win32/results.json"
+    },
+    "win32_s1": {
+      "wall_minutes": 6.89,
+      "peak_gpu_mem_mb": 1191.4,
+      "gnorm_max": null,
+      "source": "axes/1-time/1.2.3-content-topk/experiments/2676-content-vs-window-13m/runs/win32_s1/results.json"
+    },
+    "dil32": {
+      "wall_minutes": 6.85,
+      "peak_gpu_mem_mb": 1191.8,
+      "gnorm_max": 7.84,
+      "source": "axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m/runs/dil32-s0/results.json"
+    },
+    "dil32_s1": {
+      "wall_minutes": 6.85,
+      "peak_gpu_mem_mb": 1191.8,
+      "gnorm_max": 6.52,
+      "source": "axes/1-time/1.2.1-dilated/experiments/2678-dilated-vs-window-13m/runs/dil32-s1/results.json"
+    },
+    "win32-t1024-s0": {
+      "wall_minutes": 4.16,
+      "peak_gpu_mem_mb": 3788.7,
+      "gnorm_max": 6.94,
+      "source": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/win32-t1024-s0/results.json"
+    },
+    "dil32-t1024-s0": {
+      "wall_minutes": 3.86,
+      "peak_gpu_mem_mb": 3795.7,
+      "gnorm_max": 6.88,
+      "source": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/dil32-t1024-s0/results.json"
+    },
+    "win32-t2048-s0": {
+      "wall_minutes": 5.92,
+      "peak_gpu_mem_mb": 5844.7,
+      "gnorm_max": 7.22,
+      "source": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/win32-t2048-s0/results.json"
+    },
+    "dil32-t2048-s0": {
+      "wall_minutes": 5.86,
+      "peak_gpu_mem_mb": 5871.7,
+      "gnorm_max": 7.18,
+      "source": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/dil32-t2048-s0/results.json"
+    },
+    "win32-t2048-s1": {
+      "wall_minutes": 5.96,
+      "peak_gpu_mem_mb": 5844.7,
+      "gnorm_max": 6.89,
+      "source": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/win32-t2048-s1/results.json"
+    },
+    "dil32-t2048-s1": {
+      "wall_minutes": 5.85,
+      "peak_gpu_mem_mb": 5871.7,
+      "gnorm_max": 6.85,
+      "source": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/dil32-t2048-s1/results.json"
+    },
+    "lad32-t2048-s0": {
+      "wall_minutes": 5.11,
+      "peak_gpu_mem_mb": 5871.7,
+      "gnorm_max": 7.23,
+      "source": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/lad32-t2048-s0/results.json"
+    }
+  },
+  "wall_reference": {
+    "wall_in_criterion": false,
+    "note": "训练墙钟与峰值显存逐臂申报，不进判据（harness/methodology.md §3）"
+  },
+  "code_hashes": {
+    "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/run.py": "2f1613482abac22eef5852c24027764e0abd9b92b11aa5b48be7e6614684b9b4",
+    "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/config.json": "8c93975435edf14e8bce4ea0a7d4818451429e162dc8e92239f50040b8a28b8f",
+    "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/train_arms.sh": "f990d8e2f5c29f21409be599d76fb03e25a4f6c1685674cb516606d043d86b7f"
+  },
+  "code_hash_run_py": "2f1613482abac22eef5852c24027764e0abd9b92b11aa5b48be7e6614684b9b4"
+}

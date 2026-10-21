@@ -1,0 +1,268 @@
+{
+  "experiment": "2690-dilated-density-k144-13m",
+  "cell": "axes/1-time/1.2.1-dilated",
+  "question": "T=2048 上把远处点的**数目**从 16 提到 128（近端窗口 16 不变，每行可见键数 32 → 144）能不能买到 0.014 bpc：远处信息在长 T 上「不值钱」还是「32 键太稀抓不住」",
+  "band_bpc": 0.014,
+  "delta_directions": {
+    "delta_bpc": "comparator_minus_arm",
+    "deltas": "comparator_minus_arm"
+  },
+  "delta_direction_note": "Δ = bpc(16 个远处点) − bpc(128 个远处点)（对照 − 实验）⇒ 正 = 远处点多的那臂更好",
+  "recipe": {
+    "d_model": 256,
+    "n_layers": 8,
+    "n_heads": 8,
+    "mlp_mult": 4,
+    "dropout": 0.0,
+    "norm_cap": 1.0,
+    "dense": true,
+    "topology": "sequential",
+    "lr": 0.001,
+    "data": "data/enwik8_full.npz",
+    "seq_len": 2048,
+    "batch_size": 8,
+    "steps": 6000,
+    "tokens_per_arm": 98304000,
+    "tokens_note": "8×2048×6000 = 98,304,000 token/臂，与 2689 的 T=2048 点逐位相同 ⇒ 只差可见集与远处点数"
+  },
+  "mask": {
+    "local": 16,
+    "n_dilated": 128,
+    "rule": "keep[i,j] = (j <= i) ∧ ((i-j) < local ∨ j ∈ {round(t·(P-1)/(n_dil-1)) : t = 0..n_dil-1})，P = i-local+1；i+1 <= 144 的行退化为全因果 ⇒ 逐行可见键数 = min(144, i+1)（与 2689 的 dil32 是同一条规则，只是 n_dil 从 16 换成 128）",
+    "per_row_count": "min(144, i+1)",
+    "coverage_note": "T=2048 上远处点摊在前缀上 ⇒ 间距 ≈ 16；整行可见 144/2048 = 7.0%（对照臂 dil32 是 32/2048 = 1.6%）"
+  },
+  "structure_checks": {
+    "seq": 2048,
+    "kept_per_row_arm": 144,
+    "kept_per_row_comparator": 32,
+    "kept_rows_equal_to_min_k_arm": true,
+    "kept_rows_equal_to_min_k_comparator": true,
+    "mask_offending_future_pairs": 0,
+    "same_local_window": true,
+    "far_spacing_mean_arm": 7.94,
+    "far_spacing_mean_comparator": 67.24,
+    "note": "两臂的近端 16 窗口逐位相同（同一 local），差别只在远处点的数目与间距；逐行计数 = min(local + n_dil, i+1)"
+  },
+  "per_batch_bpc": {
+    "dil144-t2048-s0": [
+      1.77541,
+      1.74741,
+      1.75857,
+      1.78096,
+      1.84208,
+      1.76648,
+      1.67632,
+      1.7566,
+      1.84352,
+      1.74848,
+      1.79415,
+      1.7386,
+      1.77812,
+      1.8434,
+      1.82236,
+      1.71365,
+      1.79307,
+      1.78763,
+      1.66885,
+      1.75699
+    ],
+    "dil144-t2048-s1": [
+      4.10924,
+      4.07244,
+      4.23578,
+      4.15786,
+      4.1252,
+      4.10222,
+      4.18184,
+      4.09599,
+      4.11961,
+      4.04768,
+      4.10765,
+      4.28826,
+      4.03924,
+      4.08768,
+      4.10899,
+      4.08658,
+      4.15356,
+      4.13557,
+      4.18007,
+      4.12997
+    ],
+    "dil32-t2048-s0": [
+      1.73272,
+      1.70718,
+      1.73696,
+      1.73301,
+      1.81192,
+      1.71646,
+      1.63675,
+      1.69242,
+      1.7961,
+      1.69,
+      1.72975,
+      1.64755,
+      1.73286,
+      1.77415,
+      1.78366,
+      1.67543,
+      1.76428,
+      1.74295,
+      1.64741,
+      1.77307
+    ],
+    "dil32-t2048-s1": [
+      1.74338,
+      1.70716,
+      1.75314,
+      1.72832,
+      1.83656,
+      1.72209,
+      1.64745,
+      1.70706,
+      1.80459,
+      1.69558,
+      1.7398,
+      1.66082,
+      1.74067,
+      1.79313,
+      1.78637,
+      1.67222,
+      1.77433,
+      1.74979,
+      1.65636,
+      1.76964
+    ]
+  },
+  "mean_bpc": {
+    "dil144-t2048-s0": 1.76963,
+    "dil144-t2048-s1": 4.12827,
+    "dil32-t2048-s0": 1.72623,
+    "dil32-t2048-s1": 1.73442
+  },
+  "n_params": {
+    "dil144-t2048-s0": 7421440,
+    "dil144-t2048-s1": 7421440,
+    "dil32-t2048-s0": 7421440,
+    "dil32-t2048-s1": 7421440
+  },
+  "arms_not_run": [],
+  "criteria": {
+    "c1_density": {
+      "note": "Δ = bpc(16 个远处点的臂) − bpc(128 个远处点的臂)，正 = 远处点多更好；0.014 配对带；每行可见键数 32 → 144 是成本列、不进判词",
+      "verdict": "加远处点反而更差（两 seed 同向且各自越负带）",
+      "pairs": {
+        "s0": {
+          "comparator": "dil32-t2048-s0",
+          "arm": "dil144-t2048-s0",
+          "n_batches": 20,
+          "delta_bpc": -0.0434,
+          "sd_of_paired_delta": 0.02186,
+          "se_of_mean": 0.00489,
+          "two_se": 0.00958,
+          "t_stat": -8.88,
+          "frac_batches_delta_gt_0": 0.05,
+          "n_req_for_band": 10,
+          "band_class": "beyond_negative",
+          "params_equal": true
+        },
+        "s1": {
+          "comparator": "dil32-t2048-s1",
+          "arm": "dil144-t2048-s1",
+          "n_batches": 20,
+          "delta_bpc": -2.39385,
+          "sd_of_paired_delta": 0.08816,
+          "se_of_mean": 0.01971,
+          "two_se": 0.03864,
+          "t_stat": -121.43,
+          "frac_batches_delta_gt_0": 0.0,
+          "n_req_for_band": 153,
+          "band_class": "beyond_negative",
+          "params_equal": true
+        }
+      },
+      "n_seed": 2
+    },
+    "c2_must_not_change": {
+      "structure": {
+        "seq": 2048,
+        "kept_per_row_arm": 144,
+        "kept_per_row_comparator": 32,
+        "kept_rows_equal_to_min_k_arm": true,
+        "kept_rows_equal_to_min_k_comparator": true,
+        "mask_offending_future_pairs": 0,
+        "same_local_window": true,
+        "far_spacing_mean_arm": 7.94,
+        "far_spacing_mean_comparator": 67.24,
+        "note": "两臂的近端 16 窗口逐位相同（同一 local），差别只在远处点的数目与间距；逐行计数 = min(local + n_dil, i+1)"
+      },
+      "params_equal_between_arms": true
+    },
+    "c3_reuse_equivalence": {
+      "dil32-t2048-s0": {
+        "reproduced": true,
+        "ref": "2689-longT-layerdil-13m/results.json::per_batch_bpc"
+      },
+      "dil32-t2048-s1": {
+        "reproduced": true,
+        "ref": "2689-longT-layerdil-13m/results.json::per_batch_bpc"
+      }
+    },
+    "c4_stability_gate": {
+      "threshold": 100,
+      "arms_over_threshold": [
+        "dil144-t2048-s0",
+        "dil144-t2048-s1"
+      ],
+      "note": "gnorm_max < 100 且 grad_skips == 0 才入场"
+    }
+  },
+  "main_verdict": {
+    "density": "加远处点反而更差（两 seed 同向且各自越负带）",
+    "n_seed": 2,
+    "band_classes": [
+      "beyond_negative",
+      "beyond_negative"
+    ],
+    "deltas": [
+      -0.0434,
+      -2.39385
+    ]
+  },
+  "train_declaration": {
+    "dil144-t2048-s0": {
+      "wall_minutes": 5.87,
+      "peak_gpu_mem_mb": 5871.7,
+      "gnorm_max": 119.49,
+      "source": "axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/runs/dil144-t2048-s0/results.json"
+    },
+    "dil144-t2048-s1": {
+      "wall_minutes": 5.85,
+      "peak_gpu_mem_mb": 5871.7,
+      "gnorm_max": 44332.79,
+      "source": "axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/runs/dil144-t2048-s1/results.json"
+    },
+    "dil32-t2048-s0": {
+      "wall_minutes": 5.86,
+      "peak_gpu_mem_mb": 5871.7,
+      "gnorm_max": 7.18,
+      "source": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/dil32-t2048-s0/results.json"
+    },
+    "dil32-t2048-s1": {
+      "wall_minutes": 5.85,
+      "peak_gpu_mem_mb": 5871.7,
+      "gnorm_max": 6.85,
+      "source": "axes/1-time/1.2.1-dilated/experiments/2689-longT-layerdil-13m/runs/dil32-t2048-s1/results.json"
+    }
+  },
+  "wall_reference": {
+    "wall_in_criterion": false,
+    "note": "训练墙钟与峰值显存逐臂申报，不进判据（harness/methodology.md §3）"
+  },
+  "code_hashes": {
+    "axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/run.py": "2b9c89f758fb5e7862b65dac18c362191fcd4f52c7a0180788d23c98a88130bd",
+    "axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/config.json": "119e4bf8a8badf2b31b0bf43e29bc1673025bf065de43a0ea22bebdc6085dbe6",
+    "axes/1-time/1.2.1-dilated/experiments/2690-dilated-density-k144-13m/train_arms.sh": "531012c6670ddd4b0571070318320fccb8f6a8f3dbaa512d2cc764578f03e6b6"
+  },
+  "code_hash_run_py": "2b9c89f758fb5e7862b65dac18c362191fcd4f52c7a0180788d23c98a88130bd"
+}
