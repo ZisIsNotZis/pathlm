@@ -21,7 +21,7 @@
 
 ## 汇总（生成时统计）
 
-- 规模：实验 **136** 个（`axes/**/experiments/*`），run 条目 **475** 个（372 个是 run 子目录或前缀组，103 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 108 个）。
+- 规模：实验 **136** 个（`axes/**/experiments/*`），run 条目 **480** 个（377 个是 run 子目录或前缀组，103 个是**实验级汇总（不是 run 目录）**，即实验自己那一行「.」；有 run 产物的实验 108 个）。
 
 - 三态分布（按**实验**计数，与上一段的 run 条目是两种计数）：`reproducible`（克隆内可重算）**0** 个、`rebuildable_only`（只能重训得到同类结果）**103** 个、`not_reproducible`（不可重建）**33** 个。
 - 入库权重：**0** 个 `.pt`（`*.pt` 被 `.gitignore` 排除）；有落盘 `results*.json` 的实验 104 个。
@@ -132,7 +132,7 @@
 | [2612-gated-readout-24k-13m](../axes/3-width/3.2.1-readout-reparam/experiments/2612-gated-readout-24k-13m/) | [3.2.1-readout-reparam](../axes/3-width/3.2.1-readout-reparam/project.yaml) | ✓ | ✓ | ✓ | 3 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `A_arm.wall_min` = 21.03 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2613-readout-reparam-dense-13m](../axes/3-width/3.2.1-readout-reparam/experiments/2613-readout-reparam-dense-13m/) | [3.2.1-readout-reparam](../axes/3-width/3.2.1-readout-reparam/project.yaml) | ✓ | ✓ | ✓ | 5 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `train.baseline.wall_min` = 6.42 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2621-per-depth-readout-13m](../axes/3-width/3.2.1-readout-reparam/experiments/2621-per-depth-readout-13m/) | [3.2.1-readout-reparam](../axes/3-width/3.2.1-readout-reparam/project.yaml) | ✓ | ✓ | ✓ | 3 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `arms.perdepth.wall_min` = 29.08 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
-| [2645-per-exit-readout-13m](../axes/3-width/3.2.2-per-exit-readout/experiments/2645-per-exit-readout-13m/) | [3.2.2-per-exit-readout](../axes/3-width/3.2.2-per-exit-readout/project.yaml) | ✓ | ✓ | ✓ | 14 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | — | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
+| [2645-per-exit-readout-13m](../axes/3-width/3.2.2-per-exit-readout/experiments/2645-per-exit-readout-13m/) | [3.2.2-per-exit-readout](../axes/3-width/3.2.2-per-exit-readout/project.yaml) | ✓ | ✓ | ✓ | 19 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | — | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2643-tied-untied-13m](../axes/3-width/3.2.3-tied-untied/experiments/2643-tied-untied-13m/) | [3.2.3-tied-untied](../axes/3-width/3.2.3-tied-untied/project.yaml) | ✓ | ✓ | ✓ | 4 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | — | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `train_depth_ar`） |
 | [2610-moe-arm-ledger-13m](../axes/4-moe/4.1-sparse-experts/experiments/2610-moe-arm-ledger-13m/) | [4.1-sparse-experts](../axes/4-moe/4.1-sparse-experts/project.yaml) | ✓ | ✓ | ✓ | 1 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `analysis.md`「…墙钟，仅记录、不入判据）：探针 19:29:03 启动、19:52:23 完成（…」 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
 | [2614-kv-quant-eval-13m](../axes/5-quant/5.1-kv-quant/experiments/2614-kv-quant-eval-13m/) | [5.1-kv-quant](../axes/5-quant/5.1-kv-quant/project.yaml) | ✓ | ✓ | ✓ | 2 | 否（`*.pt` 不入库） | `python3 run.py`（入口脚本 `run.py`，README 未给复现小节） | `cost.wall_minutes` = 0.885 | `rebuildable_only` | `run.py` 触训练 / 语料 / CUDA（命中 `pathlm.data`） |
@@ -638,18 +638,23 @@ probe          探针 jsonl 已入库（活性 / 生成质量类判据）
 | 2621-per-depth-readout-13m | smoke/smoke-wide_shared | ✓ | ✓ | 19 | — | — |
 | 2645-per-exit-readout-13m | . | ✓ | — | — | — | — |
 | 2645-per-exit-readout-13m | IND_s0_0k | ✓ | — | — | — | — |
+| 2645-per-exit-readout-13m | LR_s0_0k | ✓ | — | — | — | — |
 | 2645-per-exit-readout-13m | PE_s0_0k | ✓ | — | — | — | — |
 | 2645-per-exit-readout-13m | PE_s0_12k | ✓ | — | — | — | — |
 | 2645-per-exit-readout-13m | PE_s1_12k | ✓ | — | — | — | — |
 | 2645-per-exit-readout-13m | T_s0_0k | ✓ | — | — | — | — |
 | 2645-per-exit-readout-13m | T_s0_12k | ✓ | — | — | — | — |
 | 2645-per-exit-readout-13m | T_s1_12k | ✓ | — | — | — | — |
+| 2645-per-exit-readout-13m | WIDE_s0_0k | ✓ | — | — | — | — |
+| 2645-per-exit-readout-13m | WIDE_s0_12k | ✓ | — | — | — | — |
+| 2645-per-exit-readout-13m | WIDE_s1_12k | ✓ | — | — | — | — |
 | 2645-per-exit-readout-13m | runs/PE-s1-12k | ✓ | ✓ | 11999 | — | — |
 | 2645-per-exit-readout-13m | runs/T-s1-12k | ✓ | ✓ | 11999 | — | — |
 | 2645-per-exit-readout-13m | smoke/IND-s0-0k | ✓ | ✓ | 59 | — | — |
 | 2645-per-exit-readout-13m | smoke/LR-s0-0k | ✓ | ✓ | 59 | — | — |
 | 2645-per-exit-readout-13m | smoke/PE-s0-0k | ✓ | ✓ | 59 | — | — |
 | 2645-per-exit-readout-13m | smoke/T-s0-0k | ✓ | ✓ | 59 | — | — |
+| 2645-per-exit-readout-13m | smoke/WIDE-s0-0k | ✓ | ✓ | 59 | — | — |
 | 2643-tied-untied-13m | . | ✓ | — | — | — | — |
 | 2643-tied-untied-13m | PR_s0 | ✓ | — | — | — | — |
 | 2643-tied-untied-13m | T_s0 | ✓ | — | — | — | — |
