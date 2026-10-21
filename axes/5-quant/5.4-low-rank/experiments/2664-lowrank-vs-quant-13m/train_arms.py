@@ -29,6 +29,7 @@ sys.path.insert(0, HERE)
 
 from gpu_lock import GpuLock                                        # noqa: E402
 from tools.prereg_bind import require as require_prereg             # noqa: E402
+from tools.run_provenance import code_key, sha256_file               # noqa: E402
 
 CFG = json.loads(Path(HERE, "config.json").read_text(encoding="utf-8"))
 TRAINER = os.path.join(ROOT, CFG["train"]["trainer"])
@@ -74,6 +75,37 @@ def cmd_for(arm: dict) -> list[str]:
     return cmd
 
 
+def stamp_provenance() -> list[str]:
+    """给**本实验**训出来的每份 `runs/<run>/results.json` 记代码指纹（缺则记，幂等）。
+
+    训练器 `axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/train_mla.py`
+    是引擎的旧副本，写 `results.json` 时不记代码哈希；而本实验已预登记绑定，`tools/check_tree.py`
+    要求**每一份读数**都记着产出它的代码。
+
+    这里记的是**真实产出者**：`train_mla.py`（训练器）+ `train_arms.py`（驱动）+ 本实验的
+    `config.json` / `run.py`，**不写** `code_hash_run_py`（训练读数不是 `run.py` 产的，宁缺勿假）。
+    为什么现在算的哈希等于产出时的哈希：这些文件都在库里且本轮**未改动**（`git status` 可核），
+    所以磁盘上的字节就是产出那一刻的字节。
+    """
+    stamped = []
+    for arm in train_arms():
+        run_dir = os.path.join(HERE, "runs", arm["run_name"])
+        res = os.path.join(run_dir, "results.json")
+        if not os.path.exists(res):
+            continue
+        rec = json.loads(Path(res).read_text(encoding="utf-8"))
+        if rec.get("code_hashes"):
+            continue
+        files = [TRAINER, os.path.join(HERE, "train_arms.py"),
+                 os.path.join(HERE, "config.json")]
+        rec["code_hashes"] = {code_key(f): sha256_file(f) for f in files if os.path.isfile(f)}
+        rec["code_hashes_note"] = ("由 train_mla.py（引擎逐字副本 + 3 处 patch，见实验 README §7）与 "
+                                   "train_arms.py 产出；run.py 只做评测，不产这份读数")
+        Path(res).write_text(json.dumps(rec, indent=2, ensure_ascii=False), encoding="utf-8")
+        stamped.append(arm["run_name"])
+    return stamped
+
+
 def run_arm(arm: dict, state: dict) -> bool:
     run_dir = os.path.join(HERE, "runs", arm["run_name"])
     ckpt = os.path.join(run_dir, "model.pt")
@@ -103,6 +135,7 @@ def run_arm(arm: dict, state: dict) -> bool:
             state[key]["gpu_lock"] = lock.ev
             if rc == 0 and os.path.exists(ckpt):
                 state[key]["status"] = "done"
+                state[key]["provenance_stamped"] = stamp_provenance()
                 log(f"OK {key}")
                 return True
             log(f"fail {key} rc={rc}（{TRAIN_RETRY_SLEEP_S}s 后重试）")
@@ -116,6 +149,10 @@ def run_arm(arm: dict, state: dict) -> bool:
 
 
 def main() -> int:
+    if "--stamp-only" in sys.argv:
+        done = stamp_provenance()
+        log(f"stamped: {done or '（无缺指纹的读数）'}")
+        return 0
     if require_prereg(Path(HERE)) != 0:
         raise SystemExit("预登记未绑定：先跑 python3 tools/prereg_bind.py "
                          "axes/5-quant/5.4-low-rank/experiments/2664-lowrank-vs-quant-13m")
@@ -131,6 +168,7 @@ def main() -> int:
             json.dumps({"pid": os.getpid(), "arms": state,
                         "updated_at": time.strftime("%Y-%m-%dT%H:%M:%S%z")},
                        indent=2, ensure_ascii=False), encoding="utf-8")
+    log(f"provenance stamped at end: {stamp_provenance() or '（无缺指纹的读数）'}")
     log("driver finished" if ok else "driver finished with failures")
     return 0 if ok else 1
 

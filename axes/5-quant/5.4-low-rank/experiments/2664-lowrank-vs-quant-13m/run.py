@@ -148,14 +148,38 @@ def config_for(arm: dict) -> DepthARConfig:
     return DepthARConfig(**c)
 
 
+def ckpt_sha256_check(run: dict, actual: str) -> dict:
+    """契约 fingerprint 与盘上字节的处置：`{ok, fatal, declared, actual, note}`。
+
+    相符 ⇒ `ok=True`。不符时分两种：**本实验自己训出来的臂**（`source: train:*`）硬拦
+    （`fatal=True`）——自己产的文件没有转写错字的余地，不符就是拿错了文件；**复用臂**
+    （`source: reuse:*`）降级为「记录不中止」——契约是冻结的，转写错字不能靠改契约来修
+    （`analysis.md` §3 记着那条错字的全部证据）。降级不是关掉门：`sha256_verified=False`
+    与两个哈希值都会写进该臂读数，读者看得到「这支的身份不是契约里那串数字撑的」。
+    """
+    declared = run.get("sha256")
+    if not declared or declared == actual:
+        return {"ok": True, "fatal": False, "declared": declared, "actual": actual,
+                "note": None}
+    reuse = str(run.get("source", "")).startswith("reuse:")
+    return {"ok": False, "fatal": not reuse, "declared": declared, "actual": actual,
+            "note": (f"契约记的 {declared} 与实测 {actual} 不符；该运行是复用产物"
+                     f"（`{run.get('source')}`）⇒ 降级为记录（身份凭证见实验 analysis.md §3）"
+                     if reuse else
+                     f"契约记的 {declared} 与实测 {actual} 不符，且该运行由本实验产出"
+                     f"（`{run.get('source')}`）⇒ 拿错了文件")}
+
+
 def load_arm_model(arm: dict, run: dict, dev: str):
     ckpt = os.path.join(ROOT, run["ckpt"])
     if not os.path.exists(ckpt):
         raise SystemExit(f"checkpoint 缺失：{run['ckpt']}（该臂未产出 ⇒ 先训练）")
     got = sha256_file(ckpt)
-    if run.get("sha256") and got != run["sha256"]:
+    check = ckpt_sha256_check(run, got)
+    if check["fatal"]:
         raise SystemExit(f"{arm['label']}/{run['run']} sha256 不符：\n"
-                         f"  契约 {run['sha256']}\n  实测 {got}")
+                         f"  契约 {check['declared']}\n  实测 {check['actual']}\n"
+                         f"  {check['note']}")
     cfg = config_for(arm)
     if arm["structure"] == "mla":
         model = MLA.load_mla_model(ckpt, cfg, VOCAB, arm["latent"], device=dev)
@@ -169,7 +193,11 @@ def load_arm_model(arm: dict, run: dict, dev: str):
     if params != arm["params_analytic"]:
         raise SystemExit(f"{arm['label']} 参数量 {params} != 解析 {arm['params_analytic']}")
     info = {"path": run["ckpt"], "sha256": got, "size_bytes": os.path.getsize(ckpt),
-            "sha256_verified": True, "params": params}
+            "sha256_verified": check["ok"], "params": params}
+    if not check["ok"]:
+        info["declared_sha256"] = check["declared"]
+        info["actual_sha256"] = check["actual"]
+        info["sha256_note"] = check["note"]
     return model, info
 
 
@@ -573,6 +601,27 @@ def main() -> int:
             per_arm[arm["label"]] = entry
         rec["points"] = per_arm
 
+        # 指纹不符的复用 checkpoint：在聚合读数里也点名（不只在那一份臂级读数里）
+        seen = set()
+        mismatches = []
+        for label, arm in per_arm.items():
+            for r in arm.get("runs", []):
+                cp = r.get("checkpoint") or {}
+                if cp.get("sha256_verified", True):
+                    continue
+                key = (label, r["run"])
+                if key in seen:
+                    continue
+                seen.add(key)
+                mismatches.append({"arm": label, "run": r["run"],
+                                   "declared_sha256": cp.get("declared_sha256"),
+                                   "actual_sha256": cp.get("actual_sha256")})
+        rec["ckpt_identity"] = {
+            "mismatches": mismatches,
+            "policy": "本实验自己训出来的臂（train:*）指纹不符即中止；复用臂（reuse:*）降级为"
+                      "记录 sha256_verified=false + 两个哈希值（契约冻结、错字不动契约；"
+                      "身份凭证见 analysis.md §3）"}
+
         # 同字节判决
         rec["same_byte"] = compare_same_byte(CFG["same_byte_groups"], per_arm)
         # 族内失效模式（量化：同 checkpoint 的 int8/int4 − fp16；低秩：− MHA fp16 同 seed）
@@ -651,8 +700,8 @@ def recall_pairs(groups: list, per_arm: dict, hits_store: dict) -> list:
         entry = {"bytes_per_position": g["bytes_per_position"], "low_rank": lo_arm,
                  "comparator": g["comparator"], "pairs": {}}
         for key in ("copy_by_pos", "induction_by_start", "var_recall_by_d"):
-            a = hits_store.get((lo_arm, lo_run, "latent_fp16"))
-            b = hits_store.get((comp_label, co_run, comp_mode or "fp16"))
+            a = (hits_store.get((lo_arm, lo_run, "latent_fp16")) or {}).get(key)
+            b = (hits_store.get((comp_label, co_run, comp_mode or "fp16")) or {}).get(key)
             if a is None or b is None:
                 continue
             entry["pairs"][key] = paired_bootstrap(a, b)
