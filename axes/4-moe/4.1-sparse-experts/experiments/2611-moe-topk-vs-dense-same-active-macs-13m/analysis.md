@@ -80,7 +80,7 @@ clean bpc（末 10M 留出、fp32、无 autocast、同 `window_seed` ⇒ 全臂�
 | `dense-eqparam-E4`（旁证） | stock `mlp_mult=24` | 41,969,152 | 3.085 | 37,748,736（4×） | — | 2.342 |
 
 - **等激活算力**：两个 MoE 臂的每 token 专家 MACs 与 `dense-B0` **逐位相等**（比值恰 1.000000，
-  `ledger.json::checks.expert_macs_ratio_vs_dense`）；多的只是路由器 `E·d` logits。
+  `results.json::ledger.checks.expert_macs_ratio_vs_dense`）；多的只是路由器 `E·d` logits。（该结论的出处是实验根 `results.json` 的 `ledger` 块；`ledger.json` / `preflight.json` 与它同源，两个纯 CPU 阶段也在同一份绑定代码上重跑过，见 §4。）
 - **等参数旁证**：`dense-eqparam-E4` 与 `moe-top1-E4` 参数相对差 0.051%（`SCHEMA.md` §15 的归因对照），
   但它的每 token 激活算力是 4×——所以它只回答「MoE 的增益是不是纯容量」，**不参与主判**。
 - **参数记账作为限定**：MoE 臂参数是稠密的 3.09× / 5.87×，而 token 预算固定 ⇒ MoE 臂的
@@ -129,6 +129,8 @@ clean bpc（末 10M 留出、fp32、无 autocast、同 `window_seed` ⇒ 全臂�
 （`2026-10-21T18:59:24+08:00`）；8 个臂各自的 `runs/<臂>/results.json` 记着同一份 `code_hash_run_py`，
 实验根 `results.json` 汇总它们。逐臂训练读数：8/8 exit 0、8/8 过入场门（`gnorm_max` < 100、`grad_skips` = 0）。
 
+**两个纯 CPU 产物与它们同源（第六次绑定之后重跑）**：`ledger.json`（臂记账）与 `preflight.json`（实现恒等 / 活性）由同一份绑定代码的 `--stage ledger` / `--stage preflight` 重跑，两文件现记 `code_hash_run_py = 7cf7c702…`，与 `prereg_binding.json::contract_files` 相同；重跑只刷新 `code_hashes` 里的三个哈希，MACs / 参数量 / `bitwise_equal` 读数逐位不变。它们此前记的是绑定前的哈希（`c4e8fd0c…` / `dea26873…`），而 `tools/prereg_bind.py` 的 `READINGS_GLOB = results*.json` 不覆盖这两个文件名 ⇒ 机检不会报红，陈旧只能靠人读出来。另记：`2610` 整个目录 `bound_at = unbound`（历史产物、无定序证据 ⇒ **定序不可判**）；本格判词不引用它的定序，只引用它 §4 的「池化口径看不见坍缩」这一条限制。
+
 ### 表 A · 逐臂 clean bpc 与参数记账（`results.json::mean_bpc` / `::arm_table`）
 
 | 臂 | clean bpc | 总参数 | ×dense | token/param | 墙钟 min（申报） | 峰值显存 MiB（申报） | gnorm_max | grad_skips | 入场门 |
@@ -168,7 +170,7 @@ clean bpc（末 10M 留出、fp32、无 autocast、同 `window_seed` ⇒ 全臂�
 - **③ 归因（`dense-eqparam-E4` 旁证，不参与主判）**：**−0.01806 / −0.01673**，两 seed 同向、各自越负带
   1.29× / 1.20× ⇒ **MoE 劣于同参数稠密**，「稀疏/路由本身有贡献」这条被否掉。读法限定：该臂参数量相等
   （41,969,152 vs 41,990,656，相对差 0.051%）而**每 token 激活算力是 MoE 臂的 4 倍**（37,748,736 vs 9,449,472 MACs），
-  所以它只回答「MoE 的差异是不是纯容量」，**不是**等算力对照、**不进主判**。
+  所以它只回答「MoE 的差异是不是纯容量」，**不是**等算力对照、**不进主判**。**这条旁证自己还有一个并列解释，必须登记**：等参数稠密相对 `dense-B0` 只换来 **+0.00749**（s0，`results.json::arm_table.dense-eqparam-E4-s0.delta_vs_dense_bpc`：两臂 `mean_bpc` 之差、不是配对 Δ；量级 < 0.014 带。s1 同一算法得 +0.01487，与跨 run 种子散布界 0.0138 同量级）⇒ **在 3.09× 参数、4× 每步 FFN 算力、同 token 预算（2.34 token/param）下，稠密侧自己也只换来 ≤ 0.015 bpc** ⇒ 「本预算下参数/算力缩放本身买不到越带质量」是活着的解释，那 0.018 的旁证差也可以读成 matched-step 下「每步优化进度不同」的产物。这条同时限制本格的区分力：旁证只能读成「**光加参数不够**」，不能单独读成「**稀疏本身更差**」；它另一个方向的作用是**对「坍缩全解释」的反证**——等参数稠密对照根本没有路由、也就没有坍缩，它同样没越带 ⇒ 坍缩不可能是「本预算下买不到质量」的全部成因（但这不等于「无法由使用率分布解释」，否证连词 (c) 仍不成立，见 §7 首段）。
 - **④ 代价（申报，不进判词）**：专家 MACs 比值恰 `1.0`（`c4_cost::expert_macs_equal_all_main_arms = true`），
   路由税 +0.13% / +0.26%，峰值显存与墙钟见 §6。
 - **⑤ 必须不变（实现恒等点）**：`E=1, top-1` 灌入 stock `mlp` 权重后与 dense 逐位相等（`preflight.json`
@@ -277,7 +279,7 @@ clean bpc（末 10M 留出、fp32、无 autocast、同 `window_seed` ⇒ 全臂�
    ① **无负载均衡辅助损失**（`aux_weight = 0`，单因素：均衡属 `4.2`）⇒ 浅层路由集中（§5），没有被任何机制纠正；
    ② **token/param 只有 2.34 / 1.23**（dense 7.23）⇒ E8 臂的欠拟合风险最大。这两条都不能用本格的读数分开：
    它们在 E4 与 E8 上是同时变化的。**能分开的那一半由旁证给了**：等参数稠密（42.0M，4× 算力）比 MoE-E4 好 0.018
-   ⇒ 「多给了参数但每 token 走狭窄路径」这件事本身不产生收益，不是纯粹「欠拟合」。
+   ⇒ 「多给了参数但每 token 走狭窄路径」这件事本身不产生收益，不是纯粹「欠拟合」。**但欠拟合 / 缩放不足这一侧没有被完全排除**：同一旁证相对 `dense-B0` 只换得 **+0.00749**（s0，`results.json::arm_table.dense-eqparam-E4-s0.delta_vs_dense_bpc`）/ **+0.01487**（s1，同一算法、未配对均值之差）⇒ 本预算下「3.09× 参数 + 4× 每步 FFN 算力」自己也拿不到越带质量，所以它是一个**并列解释候选**，并限制了本格的区分力（旁证只支持「光加参数不够」，不支持「稀疏本身更差」）。
 3. **物理上不可能：不成立，也不该这么说。** 本格只测了 13M 基底、98.3M token、E∈{4,8}、k=1、无均衡、单卡、enwik8
    字符级。**在这个尺度上，业界结论（MoE 在大 token 预算下赢）无法被检验**，所以本格的结论只能写成
    「**13M / 98.3M token / 无均衡 / 低端两点**这个预算下，等激活算力的 MoE 买不到可测质量」，**不得**外推成

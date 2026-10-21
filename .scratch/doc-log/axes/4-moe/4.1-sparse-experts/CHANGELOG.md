@@ -22,3 +22,8 @@
 
 - actor：代价表生成 worker（工作包「代价表生成」）
 - change：按 docs/research-schema.md §2.1 / §2.2 增补 `laws`（本项证据支持哪几条 playbook 定律）与 `cost_rows`（可引用的代价事实，数字逐位照抄既有落盘），供 tools/build_cost_table.py 生成 docs/cost-table.md；未改任何测量数字、判据线与既有结论。
+
+## 2026-10-21T20:35:06+08:00
+
+- actor：研究级主 Agent（4.1 的 writer，按上一轮独立复核的五条 P1 修判词与验收）
+- change：① `status` 被否证 → 已完成——`falsification` 第一条的第三个连词「且无法由使用率分布解释」不成立（坍缩在四条 MoE 臂上都登记在案、且与「容量兑现不了」在本格读数上分不开），按预登记决策树只走到「本尺度不可分、不外推」，判词落点改成「本尺度下不可排序；只有等参数旁证越带」；② milestone 验收第三条「专家使用率分布齐备且非坍缩」字面不成立（4/4 臂 `collapse_flagged = true`），在 `conclusion` ⑩ 做一次显式 C2 裁决（实质验收换成「坍缩已逐层量化并登记、且列为未排除的替代解释」），并同步 `acceptance_evidence` 第三条、`roadmap` 末条与 `atlas/triage.md` 的「里程碑达成」措辞；③ `ledger.json` / `preflight.json` 由第六次绑定代码重跑（纯 CPU、秒级、不碰契约文件，只刷新 `code_hashes` 三个字段），`analysis.md` 的等激活 MACs 引用改指 `results.json::ledger.checks`，并写明 `2610` 全目录 `bound_at = unbound`（定序不可判）；④ `2610/analysis.md` §4 的「朴素 top-k 路由不会自发坍缩」标为已被 `2611` §5 取代，只保留「池化口径看不见坍缩」；⑤ 登记等参数稠密相对 `dense-B0` 只换来 +0.00749（s0 记账值）/ +0.01487（s1 未配对均值之差）这条读数，把它写成「本预算下参数/算力缩放本身买不到越带质量」的并列解释候选，并写明它对本格区分力的限制与它对「坍缩全解释」的反证。判据线、0.014 带、臂清单、配对规则、评测口径、token 预算、步数、种子与全部训练读数一字未动。
