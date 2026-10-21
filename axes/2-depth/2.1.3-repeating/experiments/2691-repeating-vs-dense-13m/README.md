@@ -97,7 +97,7 @@ logits 必须与 stock `DepthARModel` **逐位相同**（单测 `test_repeat_sch
 
 - **P0 引擎等值门**：用本实验的评测代码重评 `2654` 的 `stock` checkpoint
   （`axes/2-depth/2.1.2-skipping/experiments/2654-skipping-seqlevel-13m/runs/stock-12k-s0/`，
-  8 层、12k 步、seed 0），其 clean bpc 与 `2654` 落盘值（`results.json::arms.stock.eval.clean_bpc`）
+  8 层、12k 步、seed 0），其 clean bpc 与 `2654` 落盘值（`axes/2-depth/2.1.2-skipping/experiments/2654-skipping-seqlevel-13m/results.json::arms.stock.eval.clean_bpc`）
   之差 `< 0.002`。不过门 ⇒ 本实验的评测仪器与历史不可比，先按 §8 查实现，
   **不得**用其余读数下判。权重不在仓库里（`.gitignore`）；若本机没有该 checkpoint，
   P0 记为 `not_run`（显式缺失，不算过门），其余判据照判但在 `analysis.md` 里标明仪器未复核。
