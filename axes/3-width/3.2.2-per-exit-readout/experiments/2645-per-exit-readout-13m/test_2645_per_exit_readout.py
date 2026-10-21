@@ -34,8 +34,10 @@ _run = _ilu.module_from_spec(_spec)
 sys.modules["run_2645"] = _run
 _spec.loader.exec_module(_run)
 from run_2645 import (ANCHOR_DIR, ARMS, D_MODEL, EXITS, LR_RANK, N_HEADS,  # noqa: E402
-                      N_LAYERS, SEQ_LEN, VOCAB, anchor_equivalence_table,
-                      analytic_cost, base_cfg, build_model, param_audit,
+                      N_LAYERS, PE_READOUT_PARAMS, READOUT_ARMS, SEQ_LEN, VOCAB,
+                      WIDE_MACS_DELTA, WIDE_MLP_HIDDEN, WIDE_PARAM_DELTA,
+                      anchor_equivalence_table, analytic_cost, base_cfg,
+                      build_model, cfg_for, equal_param_branch, param_audit,
                       tf_acceptance_paired, MLP_MULT)
 
 ANCHOR_RESULTS = os.path.join(ANCHOR_DIR, "results.json")
@@ -107,7 +109,8 @@ def test_T1_IND_with_tied_tables_bitwise_equal_T():
 def test_T3_param_counts_match_analytic():
     want = {"T": 0, "PE": EXITS * D_MODEL * D_MODEL,
             "IND": EXITS * VOCAB * D_MODEL,
-            "LR": EXITS * (D_MODEL * LR_RANK + LR_RANK * VOCAB)}
+            "LR": EXITS * (D_MODEL * LR_RANK + LR_RANK * VOCAB),
+            "WIDE": 0}
     for arm in ARMS:
         audit = param_audit(build_model(arm, VOCAB, seed=0))
         assert audit["params_per_exit_readout"] == want[arm], arm
@@ -118,9 +121,12 @@ def test_T3_param_counts_match_analytic():
 
 
 def test_T3_trunk_params_bitwise_equal_across_arms():
-    """四臂同 seed 的主干 + tied 表逐位相同（唯一差别 = 每出口读出）。"""
+    """四支单因素臂同 seed 的主干 + tied 表逐位相同（唯一差别 = 每出口读出）。
+
+    `WIDE` **不在**此列：它的主干被有意改变（§11），不能逐位对齐。
+    """
     base = None
-    for arm in ARMS:
+    for arm in READOUT_ARMS:
         sd = build_model(arm, VOCAB, seed=0).state_dict()
         trunk = {k: v for k, v in sd.items() if not k.startswith("per_exit.")}
         if base is None:
@@ -133,12 +139,79 @@ def test_T3_trunk_params_bitwise_equal_across_arms():
 
 def test_T3_analytic_cost_readout_terms():
     for arm in ARMS:
-        c = analytic_cost(arm, vocab=VOCAB)
+        c = analytic_cost(arm, vocab=VOCAB,
+                          mlp_hidden=(WIDE_MLP_HIDDEN if arm == "WIDE" else None))
         assert c["readout_params"] == param_audit(
             build_model(arm, VOCAB, seed=0))["params_per_exit_readout"]
         assert c["macs_per_token"]["total_train_all_exits"] - \
             c["macs_per_token"]["readout_all_exits_train"] == \
             c["macs_per_token"]["trunk"]
+
+
+# ---------------------------------------------------------------- T9 等参数对照臂
+
+def test_T9_WIDE_pays_the_PE_budget_on_the_trunk():
+    """等参数对照的记账：`WIDE` 的参数增量 ≈ `PE` 的读出增量，训练 MACs 严格相等。"""
+    t = param_audit(build_model("T", VOCAB, seed=0))
+    pe = param_audit(build_model("PE", VOCAB, seed=0))
+    wide = param_audit(build_model("WIDE", VOCAB, seed=0))
+    assert pe["params_per_exit_readout"] == PE_READOUT_PARAMS == 589824
+    assert wide["params_per_exit_readout"] == 0
+    assert wide["params_total"] - t["params_total"] == WIDE_PARAM_DELTA == 590976
+    # 偏差只允许是「对照臂多拿」这一侧，且 ≤ 0.2% 增量
+    over = WIDE_PARAM_DELTA - PE_READOUT_PARAMS
+    assert 0 <= over <= 0.002 * PE_READOUT_PARAMS, over
+    # 每层 FFN 隐藏宽真的换了（不是只传了 config 没接线）
+    assert wide["mlp_hidden"] == [WIDE_MLP_HIDDEN] * N_LAYERS == [1168] * 8
+    assert t["mlp_hidden"] == [MLP_MULT * D_MODEL] * N_LAYERS == [1024] * 8
+    # 训练期每 token MACs 与 PE 严格对齐，推理期对照臂更多
+    ct = analytic_cost("T", vocab=VOCAB)["macs_per_token"]
+    cp = analytic_cost("PE", vocab=VOCAB)["macs_per_token"]
+    cw = analytic_cost("WIDE", vocab=VOCAB, mlp_hidden=WIDE_MLP_HIDDEN)[
+        "macs_per_token"]
+    assert cw["total_train_all_exits"] == cp["total_train_all_exits"]
+    assert cw["trunk"] - ct["trunk"] == WIDE_MACS_DELTA == PE_READOUT_PARAMS
+    assert cw["total_infer_one_exit"] > cp["total_infer_one_exit"]
+
+
+def test_T9_WIDE_readout_is_bitwise_the_stock_tied_readout():
+    """`WIDE` 的唯一干预在主干：同权重下它的读出与 stock `readout` 逐位相同。
+
+    反过来：把 `WIDE` 的 FFN 宽度改回 stock（`cfg_for("T")`）后，它的参数形状与 `T`
+    逐键相同 ⇒ 证明参数差确实全部在 FFN 上，不在读出上。
+    """
+    wide = build_model("WIDE", VOCAB, seed=0)
+    x = _tokens(9)
+    h = torch.randn(2, 5, D_MODEL, generator=torch.Generator().manual_seed(3))
+    for k in (0, 3, N_LAYERS, None):
+        # 覆写层对 `WIDE` 是恒等的：直接调父类方法结果逐位相同
+        assert torch.equal(DepthARModel.readout(wide, h, depth=k),
+                           wide.readout(h, depth=k)), k
+    assert _logits_by_depth(wide, x) is not None      # 逐深度读出路径不报错
+    # 键集逐键相同，形状只在 FFN 两处不同（up 权重 / up 偏置）
+    wt = build_model("T", VOCAB, seed=0).state_dict()
+    ws = wide.state_dict()
+    assert set(wt) == set(ws)
+    diff = sorted(k for k in wt if wt[k].shape != ws[k].shape)
+    assert all(k.endswith(("mlp.0.weight", "mlp.0.bias", "mlp.2.weight"))
+               for k in diff), diff
+    assert len(diff) == 3 * N_LAYERS, diff
+
+
+def test_T9_equal_param_branch_rule():
+    """P5 的四分支阈值规则（README §4）：边界值两侧各钉一次，防事后改判。"""
+    B = 0.014
+    assert equal_param_branch(-0.010, -0.080, B) == "params_not_the_explanation"
+    # |Δ_W| 刚过带、残余在带内 ⇒ 参数是全部解释
+    assert equal_param_branch(-0.016, -0.004, B) == "params_explain_all"
+    # 残余仍越带且 PE 更好 ⇒ 部分解释
+    assert equal_param_branch(-0.016, -0.070, B) == "params_explain_part"
+    # 对照臂反而更好 ⇒ 这笔钱花在主干上更好
+    assert equal_param_branch(-0.016, +0.070, B) == "trunk_better"
+    # 边界：恰好落在带上是「带内」（≤ band），不是越带
+    assert equal_param_branch(-B, -0.080, B) == "params_not_the_explanation"
+    assert equal_param_branch(-0.050, -B, B) == "params_explain_all"
+    assert equal_param_branch(-0.050, B + 1e-9, B) == "trunk_better"
 
 
 # ---------------------------------------------------------------- T4 变异（能变红）

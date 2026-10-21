@@ -8,7 +8,35 @@
   "ece_tolerance_note": "承 2610 判据线的 prob0 ECE 容差，本实验声明为容差而不是已测方差",
   "shallow_depths": [1, 2, 3, 4],
   "seeds": [0, 1],
-  "arms": ["T", "PE", "IND", "LR"],
+  "arms": ["T", "PE", "IND", "LR", "WIDE"],
+  "equal_param_arm": {
+    "arm": "WIDE",
+    "definition": "把 PE 多出的读出参数（9·d² = 589,824）改为给主干：每层 FFN 隐藏宽 1024 → 1168（mlp_hidden_sched = [1168]×8）；读出仍 = stock 共享 tied 表（同 T）",
+    "mlp_hidden": 1168,
+    "mlp_hidden_delta_per_layer": 144,
+    "params_delta_vs_T": 590976,
+    "params_delta_vs_PE": 1152,
+    "macs_per_token_train_delta_vs_T": 589824,
+    "macs_per_token_train_delta_vs_PE": 0,
+    "macs_per_token_infer_delta_vs_PE": 524288,
+    "choice_note": "择「把参数给主干」而不是「把逐出口读出压到等参数」：理由见 README §11（后者在 d=256/V=206 上与 T 之间落不到整数参数点上，且「名义等参数」的共享宽变换会重新引入有效自由度混清）"
+  },
+  "p5_rule": {
+    "main_criteria": ["P5（等参数对照：Δ_W vs 残余 R）"],
+    "quantities": {
+      "delta_bpc_wide_vs_ref": "bpc(WIDE) − bpc(T)（arm − comparator，负 = 更好）",
+      "delta_bpc_pe_vs_ref": "bpc(PE) − bpc(T)",
+      "residual_pe_minus_wide": "bpc(PE) − bpc(WIDE)（扣掉参数因素后的残余）"
+    },
+    "branches": {
+      "|Δ_W| ≤ band": "params_not_the_explanation（主干花这笔钱买不到可排序的质量 ⇒ 参数不是全部解释）",
+      "|Δ_W| > band 且 |R| ≤ band": "params_explain_all（等参数对照追平 ⇒ 参数是全部解释）",
+      "|Δ_W| > band 且 R < −band": "params_explain_part（参数解释一部分，残余 |R| 仍越带）",
+      "|Δ_W| > band 且 R > +band": "trunk_better（这笔钱花在主干上更好 ⇒ PE 作为买容量的手段也不成立）"
+    },
+    "n2_rule": "两 seed 落在同一分支 ⇒ 按 n=2 出判词；两 seed 分支不一致 ⇒ 判『本 n 下不可判』并给所需样本量 n_req（ceil((2.9·sd/|mean − band|)²)，sd 由 n=2 种子散布估），不取平均掩盖",
+    "band_note": "P5 只用 0.014 bpc 带（配对 Δ、≥5 窗口）；tf@k 仍走配对 cluster bootstrap 95% CI，不跨量纲借用 0.014"
+  },
   "delta_direction": "arm_minus_comparator",
   "delta_direction_note": "Δ = 读数_实验 − 读数_对照，对照 = 同批共享 tied 臂 T ⇒ clean bpc 的 Δ > 0 = 实验更差；tf@k 的 Δ > 0 = 实验该深度的接受率更高（两处符号语义由 metric 各自写明，本文件只声明算式次序）",
   "n2_rule": {
@@ -41,6 +69,7 @@
     "T": 0,
     "PE": 589824,
     "IND": 474624,
-    "LR": 66528
+    "LR": 66528,
+    "WIDE": 0
   }
 }

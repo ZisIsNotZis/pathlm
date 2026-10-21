@@ -69,7 +69,24 @@ D_MODEL, N_LAYERS, N_HEADS, SEQ_LEN, MLP_MULT = 256, 8, 8, 256, 4
 VOCAB = 206
 EXITS = N_LAYERS + 1                     # 出口数 = 9（深度 0..L）
 LR_RANK = 16                             # LR 臂的低秩 r
-ARMS = ("T", "PE", "IND", "LR")
+ARMS = ("T", "PE", "IND", "LR", "WIDE")
+#: 无自有读出参数的臂：`T`（stock）与 `WIDE`（这笔参数花在主干上，读出仍是 tied 表）
+NO_READOUT_ARMS = ("T", "WIDE")
+#: 单因素臂（唯一变量 = 「出口 → 词表」，主干逐位相同）。`WIDE` **不在其中**：它的
+#: 唯一变量是「这笔参数花在哪」，主干因此不同（FFN 加宽改变 RNG 流 ⇒ 不能逐位对齐）。
+READOUT_ARMS = ("T", "PE", "IND", "LR")
+
+# ---- 等参数对照臂 `WIDE`（README §11）：把 `PE` 多出的读出参数改为给主干 ----------
+#: 每层 FFN 隐藏宽增量（h = mlp_mult·d + Δ = 1168）。取 144 的理由：参数增量
+#: (2·d+1)·Δ·L = 590,976 只比 `PE` 的读出增量 9·d² = 589,824 多 **1,152**
+#: （+0.015% 总参数、+0.2% 增量），偏差方向对对照臂有利；同时每 token 训练 MACs
+#: 增量 2·d·Δ·L = **589,824** 与 `PE` **逐位相等**，故两臂在训练算力上是对齐的。
+WIDE_MLP_DELTA = 144
+WIDE_MLP_HIDDEN = MLP_MULT * D_MODEL + WIDE_MLP_DELTA      # 1168
+WIDE_MLP_SCHED = [WIDE_MLP_HIDDEN] * N_LAYERS
+WIDE_PARAM_DELTA = (2 * D_MODEL + 1) * WIDE_MLP_DELTA * N_LAYERS   # 590,976
+WIDE_MACS_DELTA = 2 * D_MODEL * WIDE_MLP_DELTA * N_LAYERS          # 589,824
+PE_READOUT_PARAMS = EXITS * D_MODEL * D_MODEL                       # 589,824
 VARIANCE_BOUND = float(CFG["band_bpc"])     # clean bpc 带（限配对 Δ、≥5 窗口）：常数住在 config.json
 ECE_TOLERANCE = float(CFG["ece_tolerance"])  # prob0 ECE 容差（承自 2610 判据线，§README P3）
 
@@ -93,6 +110,14 @@ def base_cfg(**kw) -> DepthARConfig:
                          fill_kv=True, **kw)
 
 
+def cfg_for(arm: str) -> DepthARConfig:
+    """按臂给基底配置。`WIDE` 是唯一改主干的臂（FFN 隐藏宽 1024 → 1168），其余四臂
+    逐字段同基底（`mlp_hidden_sched=None`）。"""
+    if arm == "WIDE":
+        return base_cfg(mlp_hidden_sched=list(WIDE_MLP_SCHED))
+    return base_cfg()
+
+
 # ---------------------------------------------------------------- 干预：每出口读出
 
 class PerExitReadout(nn.Module):
@@ -108,6 +133,8 @@ class PerExitReadout(nn.Module):
       `readout_perdepth` 的 P/Q 同款）⇒ 起步 `F_k = E`，逐位恒等于 `T`（单测
       钉住），而 ∂L/∂A_k = (∂L/∂F_k)·B_kᵀ ≠ 0、∂L/∂B_k = A_kᵀ(∂L/∂F_k) ≠ 0 ⇒
       非鞍点（单测钉住）。
+    * `WIDE`（等参数对照，README §11）：**无自有读出参数** —— 读出与 `T` 逐位相同，
+      参数花在主干上（每层 FFN 隐藏宽 +144）。本类对它不建任何子模块。
     """
 
     def __init__(self, arm: str, d: int, vocab: int, rank: int = LR_RANK):
@@ -143,7 +170,7 @@ class PerExitReadout(nn.Module):
     def head(self, depth: int, e: torch.Tensor) -> torch.Tensor:
         """该出口的**有效读出矩阵** `F_k`（[V,d]，`logits_k = h_k·F_kᵀ`）。
 
-        四臂统一到同一形状 ⇒ 「相对 tied 表偏离多少」可同列比较。
+        臂统一到同一形状 ⇒ 「相对 tied 表偏离多少」可同列比较。
         """
         if self.arm == "PE":
             return e @ self.m[depth].weight                 # E·M_k
@@ -151,7 +178,7 @@ class PerExitReadout(nn.Module):
             return self.tab[depth].weight                   # 独立表
         if self.arm == "LR":
             return e + self.a[depth].weight @ self.b[depth].weight
-        return e
+        return e                                           # T / WIDE
 
     def logits(self, e: torch.Tensor, hf: torch.Tensor,
                depth: int) -> torch.Tensor:
@@ -162,11 +189,11 @@ class PerExitReadout(nn.Module):
             return self.tab[depth](hf)
         if self.arm == "LR":
             return hf @ (e + self.a[depth].weight @ self.b[depth].weight).T
-        raise ValueError("T 臂无自有读出参数")
+        raise ValueError(f"{self.arm} 臂无自有读出参数（读出 = stock tied 表）")
 
 
 class PerExitModel(DepthARModel):
-    """stock `DepthARModel` + 每出口读出子模块（主干逐位不变）。"""
+    """stock `DepthARModel` + 每出口读出子模块（除 `WIDE` 外主干逐位不变）。"""
 
     def __init__(self, cfg: DepthARConfig, vocab_size: int, arm: str = "T"):
         super().__init__(cfg, vocab_size)          # 主干 + tied 表（同一 RNG 流）
@@ -180,7 +207,7 @@ class PerExitModel(DepthARModel):
         但 `readout_dims` 相关的旧路径可能不传；此处把 None 定义为全深度出口并
         在 results 里标注，避免静默用错出口。
         """
-        if self.arm == "T":
+        if self.arm in NO_READOUT_ARMS:
             return super().readout(h, depth=depth)
         with torch.autocast("cuda", enabled=False):
             hf = h.float()
@@ -192,9 +219,10 @@ class PerExitModel(DepthARModel):
 
 def build_model(arm: str, vocab_size: int = VOCAB, seed: int = 0,
                 cfg: DepthARConfig | None = None) -> PerExitModel:
-    """所有臂共用同一构造路径（同 seed ⇒ 同一份主干抽样）。"""
+    """所有臂共用同一构造路径（同 seed ⇒ 同一份主干抽样；`WIDE` 的主干按 `cfg_for`
+    换 FFN 隐藏宽，因此它与 `T` 的主干**不能**逐位相同——那正是该臂的干预）。"""
     torch.manual_seed(seed)
-    return PerExitModel(cfg if cfg is not None else base_cfg(), vocab_size, arm)
+    return PerExitModel(cfg if cfg is not None else cfg_for(arm), vocab_size, arm)
 
 
 def _factory_for(arm: str):
@@ -213,6 +241,7 @@ def param_audit(model: PerExitModel) -> dict:
         "PE": D_MODEL * D_MODEL,
         "IND": VOCAB * D_MODEL,
         "LR": D_MODEL * LR_RANK + LR_RANK * VOCAB,
+        "WIDE": 0,
     }[model.arm]
     return {"arm": model.arm, "params_total": total,
             "params_trunk_and_tied": total - extra,
@@ -220,28 +249,34 @@ def param_audit(model: PerExitModel) -> dict:
             "params_per_exit_readout_per_exit": per_exit,
             "n_exits": EXITS,
             "params_per_exit_readout_analytic": per_exit * EXITS,
+            "mlp_hidden": [b.mlp[0].out_features for b in model.blocks],
             "readout_share_of_total": round(extra / total, 6) if total else 0.0}
 
 
 def analytic_cost(arm: str, d: int = D_MODEL, L: int = N_LAYERS,
                   T: int = SEQ_LEN, vocab: int = VOCAB, rank: int = LR_RANK,
-                  n_exits: int = EXITS) -> dict:
+                  n_exits: int = EXITS,
+                  mlp_hidden: int | None = None) -> dict:
     """每 token 等效理论量（MACs，**不含任何时间量**）。
 
-    全部臂的主干相同（L 层 attention + FFN + 最终 LN）；差别只在出口读出：
+    四支单因素臂的主干相同（L 层 attention + FFN + 最终 LN）；差别只在出口读出：
     * `T` 每出口 `d·V`（tied 表）；
     * `PE` 每出口 `d²`（变换）+ `d·V`（tied 表）；
     * `IND` 每出口 `d·V`（独立表，与 tied 同 MACs，但**参数**是 vocab×d）；
     * `LR` 每出口 `d·r + r·V`（校正项）+ `d·V`（tied 表基）。
-    训练期每个 token 在全部 (L+1) 个出口算 logits（逐层读出监督）；推理期每次
-    前向只用 1 个出口 —— 两列分开报。
+    等参数对照臂 `WIDE` 的读出同 `T`，**FFN 隐藏宽改为 `mlp_hidden`**（传 None =
+    `mlp_mult·d`）。训练期每个 token 在全部 (L+1) 个出口算 logits（逐层读出监督）；
+    推理期每次前向只用 1 个出口 —— 两列分开报。
     """
+    h = MLP_MULT * d if mlp_hidden is None else int(mlp_hidden)
     attn = L * (4 * d * d + 2 * T * d)
-    ffn = L * 2 * MLP_MULT * d * d
-    extra = {"T": 0, "PE": d * d, "IND": 0, "LR": d * rank + rank * vocab}[arm]
+    ffn = L * 2 * h * d
+    extra = {"T": 0, "PE": d * d, "IND": 0, "LR": d * rank + rank * vocab,
+             "WIDE": 0}[arm]
     readout_one = d * vocab + extra
     return {
         "d_model": d, "n_layers": L, "seq_len": T, "vocab": vocab,
+        "mlp_hidden": h,
         "n_exits": n_exits, "per_exit_readout_rank": rank,
         "macs_per_token": {
             "trunk": attn + ffn,
@@ -252,7 +287,7 @@ def analytic_cost(arm: str, d: int = D_MODEL, L: int = N_LAYERS,
         },
         "readout_params": {
             "T": 0, "PE": n_exits * d * d, "IND": n_exits * vocab * d,
-            "LR": n_exits * (d * rank + rank * vocab)}[arm],
+            "LR": n_exits * (d * rank + rank * vocab), "WIDE": 0}[arm],
         "note": ("等效理论量：MACs/token（乘加），不含时间量；tokens-per-forward = 1"
                  "（出口读出不重跑主干，layer-passes 每 token 不增加）。"),
     }
@@ -445,7 +480,9 @@ def evaluate(arm: str, seed: int, steps: int, out_root: str,
         "tf_per_batch_agree": tf["per_batch_agree"],
         "tf_n_per_batch": tf["n_per_batch"],
         "params": param_audit(model),
-        "cost": analytic_cost(arm, vocab=vocab),
+        "cost": analytic_cost(arm, vocab=vocab,
+                               mlp_hidden=(WIDE_MLP_HIDDEN if arm == "WIDE"
+                                           else None)),
         "calibration": prob0_ece(model, eval_arr),
         "soft_submission": soft_submission_probe(model, eval_arr),
         "causal": causal_check(model),
@@ -505,15 +542,18 @@ def run_dir(arm: str, seed: int, steps: int, out_root: str) -> str:
 
 # ---------------------------------------------------------------- 训练（走共享 main）
 
-def shared_argv(run_name: str, seed: int, steps: int, batch_size: int,
-                lr: float, out_root: str) -> list:
-    return [os.path.join(ROOT, "train_depth_ar.py"), run_name,
+def shared_argv(arm: str, run_name: str, seed: int, steps: int,
+                batch_size: int, lr: float, out_root: str) -> list:
+    argv = [os.path.join(ROOT, "train_depth_ar.py"), run_name,
             "--d", str(D_MODEL), "--layers", str(N_LAYERS),
             "--heads", str(N_HEADS), "--seq-len", str(SEQ_LEN),
             "--mlp-mult", str(MLP_MULT), "--exit-mode", "uniform",
             "--aux-weight", "1.0", "--steps", str(steps),
             "--batch-size", str(batch_size), "--lr", str(lr),
             "--seed", str(seed), "--eval-batches", "20", "--out-root", out_root]
+    if arm == "WIDE":                    # 等参数对照：FFN 隐藏宽 1024 → 1168（逐层）
+        argv += ["--mlp-hidden-sched", ",".join(str(h) for h in WIDE_MLP_SCHED)]
+    return argv
 
 
 def train_arm(arm: str, seed: int, steps: int, batch_size: int, lr: float,
@@ -522,7 +562,7 @@ def train_arm(arm: str, seed: int, steps: int, batch_size: int, lr: float,
     TDA.DepthARModel = _factory_for(arm)
     argv_backup = list(sys.argv)
     try:
-        sys.argv = shared_argv(run_name(arm, seed, steps), seed, steps,
+        sys.argv = shared_argv(arm, run_name(arm, seed, steps), seed, steps,
                                batch_size, lr, out_root)
         t0 = time.time()
         TDA.main()
@@ -627,6 +667,74 @@ def _ci_text(ci: list) -> str:
     return f"[{ci[0]}, {ci[1]}]" if ci and ci[0] is not None else "n/a"
 
 
+# ---------------------------------------------------------------- P5（等参数对照）
+
+#: `P5` 的分支名（README §11 预登记）：判词只由 band 与符号定，不靠叙述。
+P5_BRANCHES = ("params_not_the_explanation", "params_explain_all",
+               "params_explain_part", "trunk_better")
+
+
+def equal_param_branch(delta_wide: float, residual: float,
+                       band: float) -> str:
+    """由 (Δ_W, R) 定 `P5` 分支（README §11 的四分支，`band` = `config.json::band_bpc`）。
+
+    `delta_wide` = bpc(WIDE) − bpc(T)；`residual` = bpc(PE) − bpc(WIDE)。两者都是
+    arm − comparator，负 = 更好。
+    """
+    if abs(delta_wide) <= band:
+        return "params_not_the_explanation"
+    if abs(residual) <= band:
+        return "params_explain_all"
+    return "params_explain_part" if residual < 0 else "trunk_better"
+
+
+def equal_param_attribution(rows: dict) -> dict:
+    """`P5`：`PE` 的末层增益里有多少能被「同样那笔参数花在主干上」复现。
+
+    三个数（全部 arm − comparator，负 = 更好）：
+
+    * `Δ_W = bpc(WIDE) − bpc(T)` —— 主干多拿 `WIDE_PARAM_DELTA` 参数买到多少；
+    * `Δ_P = bpc(PE) − bpc(T)` —— 逐出口读出买到多少（已登记读数，本函数只转引）；
+    * `R = bpc(PE) − bpc(WIDE)` —— 扣掉参数因素后**残余**（负 = PE 仍占优）。
+
+    分支见 `equal_param_branch`。`WIDE` 未跑 ⇒ `status = 未跑`，不做任何推断。
+    """
+    ref = rows.get("T") or {}
+    wide = rows.get("WIDE") or {}
+    pe = rows.get("PE") or {}
+    ref_bpc = ref.get("clean_bpc")
+    out = {
+        "question": ("`PE` 的末层 clean bpc 增益里，有多少能被「把同样那笔参数"
+                     "花在主干（FFN 隐藏宽）上」复现？即参数是不是全部解释"),
+        "band": VARIANCE_BOUND,
+        "params_total": {a: (rows.get(a) or {}).get("params_total")
+                         for a in ("T", "PE", "WIDE")},
+        "params_delta_wide_minus_pe": (
+            wide.get("params_total") - pe.get("params_total")
+            if wide.get("params_total") is not None
+            and pe.get("params_total") is not None else None),
+    }
+    if wide.get("status") != "已跑" or ref_bpc is None or pe.get("clean_bpc") is None:
+        out.update({"status": "未跑", "branch": None,
+                    "note": "WIDE 臂或对照臂未跑 ⇒ 无读数，不做任何推断"})
+        return out
+    delta_wide = round(wide["clean_bpc"] - ref_bpc, 4)
+    delta_pe = round(pe["clean_bpc"] - ref_bpc, 4)
+    residual = round(pe["clean_bpc"] - wide["clean_bpc"], 4)
+    out.update({
+        "status": "已跑",
+        "delta_bpc_wide_vs_ref": delta_wide,
+        "delta_bpc_pe_vs_ref": delta_pe,
+        "residual_pe_minus_wide": residual,
+        "delta_wide_beyond_band": bool(abs(delta_wide) > VARIANCE_BOUND),
+        "residual_beyond_band": bool(abs(residual) > VARIANCE_BOUND),
+        "branch": equal_param_branch(delta_wide, residual, VARIANCE_BOUND),
+        "wide_tf_acceptance_by_depth": wide.get("delta_tf_by_depth"),
+        "wide_prob0_ece": wide.get("prob0_ece"),
+    })
+    return out
+
+
 def aggregate(args, write: bool = True) -> dict:
     """单 seed 汇总（P1–P4）。`write=False` 供两 seed 汇总复用，不落盘中间结果。"""
     recs = {}
@@ -689,6 +797,7 @@ def aggregate(args, write: bool = True) -> dict:
     pe = rows.get("PE", {})
     ind = rows.get("IND", {})
     lr = rows.get("LR", {})
+    verdict["P5"] = equal_param_attribution(rows)
     if pe.get("status") == "已跑":
         seps = [d for d in pe.get("delta_tf_by_depth", [])
                 if d["depth"] in shallow and d["separable_from_zero"]
@@ -837,6 +946,53 @@ def aggregate_all(args) -> dict:
         row = block["arm_rows"].get("PE") or {}
         return row.get("delta_clean_bpc_vs_ref")
 
+    def n_req(deltas: list, band: float) -> dict:
+        """可分辨所需样本量（同 1.1.1 / 2682 的近似式）：
+        `n_req = ceil((2.9·sd / |mean − band|)²)`（双侧 α=0.05、功效 0.8）。
+        `sd` 由 n=2 的种子散布估（sd = |x₁−x₂|/√2）⇒ 本式是**近似**，不当精确功效计算。
+        """
+        if len(deltas) < 2:
+            return {"n_req": None, "note": "可用 seed < 2，无法估散布"}
+        mean = sum(deltas) / len(deltas)
+        var = sum((x - mean) ** 2 for x in deltas) / (len(deltas) - 1)
+        sd = math.sqrt(var)
+        den = abs(mean) - band          # 离带边界多远（|mean| 已越带才有有限 n）
+        if den <= 0:
+            return {"n_req": None, "mean": round(mean, 4), "sd": round(sd, 4),
+                    "note": "|mean| ≤ band ⇒ 任何 n 都无法把它判为越带"}
+        return {"n_req": int(math.ceil((2.9 * sd / den) ** 2)),
+                "mean": round(mean, 4), "sd": round(sd, 4),
+                "rule": "n_req = ceil((2.9·sd/|mean − band|)²)"}
+
+    # P5（等参数对照）：两 seed 同分支 ⇒ 按 n=2 出判词；否则判「本 n 下不可判」并给样本量
+    p5 = {s: b["verdict"]["P5"] for s, b in per_seed.items()}
+    p5_branches = {s: p5[s].get("branch") for s in p5}
+    p5_ran = all(p5[s].get("status") == "已跑" for s in p5)
+    p5_same = bool(p5_ran and len(set(p5_branches.values())) == 1
+                   and next(iter(p5_branches.values())) is not None)
+    p5_wide = [p5[s]["delta_bpc_wide_vs_ref"] for s in p5 if p5_ran]
+    p5_res = [p5[s]["residual_pe_minus_wide"] for s in p5 if p5_ran]
+    p5_wide_text = {
+        "params_not_the_explanation":
+            ("参数不是全部解释：主干多拿同一笔参数买不到可排序的质量 ⇒ `PE` 的增益"
+             "不归「多了参数」这件一般事实，而归读出结构本身（它的参数化）"),
+        "params_explain_all":
+            "参数是全部解释：等参数对照臂追平 `PE` ⇒ 逐出口读出没有额外收益",
+        "params_explain_part":
+            ("部分解释：等参数对照臂追回一部分，残余 R 仍越带 ⇒ `PE` 仍占优，"
+             "报告残余幅度"),
+        "trunk_better":
+            "这笔钱花在主干上更好 ⇒ `PE` 作为「买容量」的手段也不成立",
+    }
+    if not p5_ran:
+        p5_judgment = "`WIDE` 臂未跑 ⇒ `P5` 无读数，不做任何推断"
+    elif p5_same:
+        p5_judgment = (f"两 seed 同分支（{p5_branches[next(iter(p5_branches))]}）⇒ n=2："
+                       + p5_wide_text[p5_branches[next(iter(p5_branches))]])
+    else:
+        p5_judgment = ("两 seed 分支不一致 ⇒ 本 n 下不可判（不取平均掩盖）；"
+                       "所需样本量见 `P5_equal_param.n_req`")
+
     pos = {s: shallow_positive(b) for s, b in per_seed.items()}
     neg = {s: shallow_negative(b) for s, b in per_seed.items()}
     bpc = {s: bpc_delta(b) for s, b in per_seed.items()}
@@ -885,6 +1041,23 @@ def aggregate_all(args) -> dict:
         "rule": CFG["n2_rule"],
         "P1_main_judgment": p1,
         "P2_last_layer_judgment": p2,
+        "P5_equal_param": {
+            "question": p5[next(iter(p5))].get("question"),
+            "branch_by_seed": p5_branches,
+            "same_branch": p5_same,
+            "delta_bpc_wide_vs_ref_by_seed": {
+                s: p5[s].get("delta_bpc_wide_vs_ref") for s in p5},
+            "residual_pe_minus_wide_by_seed": {
+                s: p5[s].get("residual_pe_minus_wide") for s in p5},
+            "n_req": {
+                "delta_bpc_wide_vs_ref": n_req(p5_wide, CFG["band_bpc"]),
+                "residual_pe_minus_wide": n_req(p5_res, CFG["band_bpc"]),
+                "note": ("仅在「两 seed 分支不一致」时需要；sd 由 n=2 的种子散布估，"
+                         "是近似式（同 2682 的 n_req_rule）"),
+            },
+            "rule": CFG["p5_rule"],
+            "judgment": p5_judgment,
+        },
     }
     out = {
         "experiment": "2645-per-exit-readout-13m",
@@ -895,10 +1068,22 @@ def aggregate_all(args) -> dict:
             "delta_ece_vs_ref": "arm_minus_comparator",
             "delta_clean_bpc_vs_ref_by_seed": "arm_minus_comparator",
             "delta_clean_bpc": "arm_minus_comparator",
+            "delta_bpc_wide_vs_ref": "arm_minus_comparator",
+            "delta_bpc_pe_vs_ref": "arm_minus_comparator",
+            "residual_pe_minus_wide": "arm_minus_comparator",
+            "delta_bpc_wide_vs_ref_by_seed": "arm_minus_comparator",
+            "delta_wide_beyond_band": "undeclared",
+            "residual_beyond_band": "undeclared",
+            "params_delta_wide_minus_pe": "arm_minus_comparator",
+            "n_req": "undeclared",
         },
         "delta_direction_note": (
-            "Δ = 读数_实验 − 读数_对照，对照 = 同批共享 tied 臂 T；tf@k 的 Δ > 0 = 该深度接受率更高，"
-            "clean bpc 的 Δ > 0 = 实验更差（两处语义由各自 metric 写明，算式次序一致）。"),
+            "Δ = 读数_实验 − 读数_对照，对照 = 同批共享 tied 臂 T（`residual_pe_minus_wide` "
+            "与 `params_delta_wide_minus_pe` 两项的对照是 `WIDE` 臂，键名自带对照）；"
+            "tf@k 的 Δ > 0 = 该深度接受率更高，clean bpc 的 Δ > 0 = 实验更差"
+            "（两处语义由各 metric 写明，算式次序一致）。`delta_wide_beyond_band` / "
+            "`residual_beyond_band` 是布尔越带标记、`n_req` 是样本量整数（都不带方向）；"
+            "这些键名含 delta 但无方向可言，故标 undeclared。"),
         "band": shared[0],
         "base": shared[1],
         "seeds": seeds,
