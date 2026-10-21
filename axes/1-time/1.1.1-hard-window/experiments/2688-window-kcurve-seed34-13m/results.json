@@ -1,0 +1,594 @@
+{
+ "experiment": "axes/1-time/1.1.1-hard-window/experiments/2688-window-kcurve-seed34-13m",
+ "contract": "axes/1-time/1.1.1-hard-window/experiments/2688-window-kcurve-seed34-13m/README.md（§6 判据线预登记）",
+ "sign_convention": "`delta_bpc` 一律 = 被测配置 − 对照，两者都写在同一行：判据② 的行是 `bpc(win128_s) − bpc(full)`（数值越大说明窗口税越大），判据③ 的行是 `bpc(win64a_s) − bpc(win64_s)`（数值越小说明锚点带来的质量越好）。",
+ "config": {
+  "contract": "axes/1-time/1.1.1-hard-window/experiments/2688-window-kcurve-seed34-13m/README.md",
+  "model": {
+   "d_model": 256,
+   "n_layers": 12,
+   "n_heads": 8,
+   "seq_len": 256,
+   "mlp_mult": 6,
+   "dense": true,
+   "topology": "sequential"
+  },
+  "data": {
+   "name": "enwik8_full",
+   "path": "data/enwik8_full.npz",
+   "split": "前 90M 字符训练 / 末 10M 字符评测（本实验只用尾段做评测）",
+   "vocab_size": 206,
+   "n_real_tokens": 205,
+   "mask_token": 205
+  },
+  "eval": {
+   "bpc": {
+    "n_batches": 96,
+    "batch_size": 16,
+    "window_seed": 2,
+    "note": "与 2662 / 2681 / 2682 / 2686 同一函数、同一批数、同一窗口序；bpc token 数 = 96×16×255 = 391,680"
+   }
+  }
+ },
+ "seeds_k128": [
+  0,
+  1,
+  2,
+  3,
+  4
+ ],
+ "seeds_lever": [
+  0,
+  1,
+  2,
+  3
+ ],
+ "checkpoints": {
+  "full": {
+   "path": "axes/6-predict/6.2-speculative-decoding/experiments/2610-frozen-trunk-jumphead-13m/trunk.pt",
+   "sha256": "86953dcb7c9089204184dabff6b3f8629a9d8436ad01f9d1d0000d96eec159d2",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "full",
+   "window": 256,
+   "anchors": 0,
+   "seed": 0,
+   "reused_from": "2610",
+   "train_rc": null,
+   "n_params": 13536768
+  },
+  "win64_s0": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64_s0/model.pt",
+   "sha256": "5333d57a5d48ec7c09b380d5827b5138c1a5b121f5845c3bff71ddcbe34911d6",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 64,
+   "anchors": 0,
+   "seed": 0,
+   "reused_from": "2682",
+   "train_rc": null,
+   "n_params": 13536768
+  },
+  "win64_s1": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64_s1/model.pt",
+   "sha256": "3eb43db676a642a4309d081e34e3f4c8be2ea1178573a492176326fb20509425",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 64,
+   "anchors": 0,
+   "seed": 1,
+   "reused_from": "2682",
+   "train_rc": null,
+   "n_params": 13536768
+  },
+  "win64_s2": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2686-window-kcurve-seed2-13m/train/win64_s2/model.pt",
+   "sha256": "47e9fba1fd6aeb24e70ecc9ef0b4abb43b89bdde5d1a378828c0683985535d9f",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 64,
+   "anchors": 0,
+   "seed": 2,
+   "reused_from": "2686",
+   "train_rc": null,
+   "n_params": 13536768
+  },
+  "win64_s3": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2688-window-kcurve-seed34-13m/train/win64_s3/model.pt",
+   "sha256": "1fad25949708e84c1dd6d349474764753d8494a57301d26ef8fe235492fd2f7c",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 64,
+   "anchors": 0,
+   "seed": 3,
+   "reused_from": null,
+   "train_rc": 0,
+   "n_params": 13536768
+  },
+  "win64a_s0": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64a_s0/model.pt",
+   "sha256": "bc51298b787d749fbf32985aa1dbc371a97725119ac7b3ce4f9724615e3c9b00",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 64,
+   "anchors": 8,
+   "seed": 0,
+   "reused_from": "2682",
+   "train_rc": null,
+   "n_params": 13536768
+  },
+  "win64a_s1": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win64a_s1/model.pt",
+   "sha256": "65788e2b04d7716a569ebc76df355f318171bfb76d2bca213cce6995b34242f1",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 64,
+   "anchors": 8,
+   "seed": 1,
+   "reused_from": "2682",
+   "train_rc": null,
+   "n_params": 13536768
+  },
+  "win64a_s2": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2686-window-kcurve-seed2-13m/train/win64a_s2/model.pt",
+   "sha256": "02cda7a11411700771ab5a6951c697916e06533d1d407985f4f681250f00497a",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 64,
+   "anchors": 8,
+   "seed": 2,
+   "reused_from": "2686",
+   "train_rc": null,
+   "n_params": 13536768
+  },
+  "win64a_s3": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2688-window-kcurve-seed34-13m/train/win64a_s3/model.pt",
+   "sha256": "efcb32b29581f6a7e9e96e4c13912ad5613015682d76f3c6f63f4505012ef01d",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 64,
+   "anchors": 8,
+   "seed": 3,
+   "reused_from": null,
+   "train_rc": 0,
+   "n_params": 13536768
+  },
+  "win128_s0": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win128_s0/model.pt",
+   "sha256": "73a4530aa4e0f1b006110ca8c30f018298a1f3437bd821baf595a27f253cde80",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 128,
+   "anchors": 0,
+   "seed": 0,
+   "reused_from": "2682",
+   "train_rc": null,
+   "n_params": 13536768
+  },
+  "win128_s1": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2682-window-kcurve-13m/train/win128_s1/model.pt",
+   "sha256": "e9d727998699ccf10ef11677be3a75c91a4d4ec75117628fa97a7a95bd43018e",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 128,
+   "anchors": 0,
+   "seed": 1,
+   "reused_from": "2682",
+   "train_rc": null,
+   "n_params": 13536768
+  },
+  "win128_s2": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2686-window-kcurve-seed2-13m/train/win128_s2/model.pt",
+   "sha256": "58976921cbdc13c48f94ac753bafd31b3b8076c647683612492e82533f75c907",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 128,
+   "anchors": 0,
+   "seed": 2,
+   "reused_from": "2686",
+   "train_rc": null,
+   "n_params": 13536768
+  },
+  "win128_s3": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2688-window-kcurve-seed34-13m/train/win128_s3/model.pt",
+   "sha256": "b3f72f43b0e15d9054cf66bae44e5ae1106821e574ca2ccd48354b685cd637e6",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 128,
+   "anchors": 0,
+   "seed": 3,
+   "reused_from": null,
+   "train_rc": 0,
+   "n_params": 13536768
+  },
+  "win128_s4": {
+   "path": "axes/1-time/1.1.1-hard-window/experiments/2688-window-kcurve-seed34-13m/train/win128_s4/model.pt",
+   "sha256": "15ba7b3625de6f7c8e83433c5e7e1a2418be35d7177af36113a3718cea034295",
+   "size_bytes": 54193675,
+   "sha256_verified": true,
+   "kind": "window",
+   "window": 128,
+   "anchors": 0,
+   "seed": 4,
+   "reused_from": null,
+   "train_rc": 0,
+   "n_params": 13536768
+  }
+ },
+ "selfchecks": {
+  "win64_s3": {
+   "causality": {
+    "max_abs_logit_diff_prefix": 0.0,
+    "max_abs_logit_diff_suffix": 29.00876617,
+    "note": "前半段必须逐位为 0；后半段必然 >0（否则探针无效）"
+   },
+   "n_params": 13536768
+  },
+  "win64a_s3": {
+   "causality": {
+    "max_abs_logit_diff_prefix": 0.0,
+    "max_abs_logit_diff_suffix": 32.271492,
+    "note": "前半段必须逐位为 0；后半段必然 >0（否则探针无效）"
+   },
+   "n_params": 13536768
+  },
+  "win128_s3": {
+   "causality": {
+    "max_abs_logit_diff_prefix": 0.0,
+    "max_abs_logit_diff_suffix": 34.31215668,
+    "note": "前半段必须逐位为 0；后半段必然 >0（否则探针无效）"
+   },
+   "n_params": 13536768
+  },
+  "win128_s4": {
+   "causality": {
+    "max_abs_logit_diff_prefix": 0.0,
+    "max_abs_logit_diff_suffix": 32.97421265,
+    "note": "前半段必须逐位为 0；后半段必然 >0（否则探针无效）"
+   },
+   "n_params": 13536768
+  },
+  "mask_identity": {
+   "win64_matches_recent_keep_mask": true,
+   "win128_matches_recent_keep_mask": true,
+   "recent_keep_mask_T_equals_causal": true,
+   "note": "窗口掩码必须与共享底座的 recent_keep_mask 逐位相同（否则两列口径的参照错）"
+  }
+ },
+ "visible_pairs": {
+  "(64,0)": {
+   "visible_pairs": 14368,
+   "expected": 14368,
+   "expected_hardcoded": 14368,
+   "equal": true
+  },
+  "(64,8)": {
+   "visible_pairs": 15876,
+   "expected": 15876,
+   "expected_hardcoded": 15876,
+   "equal": true
+  },
+  "(128,0)": {
+   "visible_pairs": 24640,
+   "expected": 24640,
+   "expected_hardcoded": 24640,
+   "equal": true
+  }
+ },
+ "criteria": {
+  "c1_reproduction_gate": {
+   "repro": {
+    "full": {
+     "got": 1.502689,
+     "want": 1.502689,
+     "equal": true
+    },
+    "win64_s0": {
+     "got": 1.555204,
+     "want": 1.555204,
+     "equal": true
+    },
+    "win64_s1": {
+     "got": 1.555988,
+     "want": 1.555988,
+     "equal": true
+    },
+    "win64_s2": {
+     "got": 1.548166,
+     "want": 1.548166,
+     "equal": true
+    },
+    "win64a_s0": {
+     "got": 1.547552,
+     "want": 1.547552,
+     "equal": true
+    },
+    "win64a_s1": {
+     "got": 1.547006,
+     "want": 1.547006,
+     "equal": true
+    },
+    "win64a_s2": {
+     "got": 1.545,
+     "want": 1.545,
+     "equal": true
+    },
+    "win128_s0": {
+     "got": 1.515296,
+     "want": 1.515296,
+     "equal": true
+    },
+    "win128_s1": {
+     "got": 1.512497,
+     "want": 1.512497,
+     "equal": true
+    },
+    "win128_s2": {
+     "got": 1.505451,
+     "want": 1.505451,
+     "equal": true
+    }
+   },
+   "all_equal": true,
+   "note": "`2686` 目录内已有的 10 条 checkpoint 用本入口的仪器重评，必须与 2686 落盘值逐位相同；不等即本实验作废"
+  },
+  "c2_k128_tax_n5": {
+   "k": 128,
+   "n_seeds": 5,
+   "per_seed": {
+    "0": {
+     "arm": "win128_s0",
+     "bpc": 1.515296,
+     "delta_bpc": 0.012607
+    },
+    "1": {
+     "arm": "win128_s1",
+     "bpc": 1.512497,
+     "delta_bpc": 0.009808
+    },
+    "2": {
+     "arm": "win128_s2",
+     "bpc": 1.505451,
+     "delta_bpc": 0.002762
+    },
+    "3": {
+     "arm": "win128_s3",
+     "bpc": 1.508538,
+     "delta_bpc": 0.005849
+    },
+    "4": {
+     "arm": "win128_s4",
+     "bpc": 1.513065,
+     "delta_bpc": 0.010376
+    }
+   },
+   "cross_seed": {
+    "n_seeds": 5,
+    "mean": 0.00828,
+    "values": [
+     0.012607,
+     0.009808,
+     0.002762,
+     0.005849,
+     0.010376
+    ],
+    "same_sign": true,
+    "unit_note": "每 seed 一个窗口税（同 seed 配对：bpc(win128) − bpc(full)）",
+    "sd": 0.003931,
+    "t_crit": 2.776,
+    "t_interval_95": [
+     0.0034,
+     0.013161
+    ]
+   },
+   "classification": {
+    "verdict": "above_band",
+    "n": 5,
+    "mean_minus_band": 0.007297,
+    "interval_95": [
+     0.0034,
+     0.01316
+    ],
+    "band": 0.000983,
+    "n_req": 3,
+    "n_req_note": "",
+    "n_req_rule": "n_req = ceil((2.9·sd/|mean − band|)²)（双侧 α=0.05、功效 0.8 的近似式）",
+    "note": "above_band = 区间下界越带（税确定存在）；below_band = 区间上界低于带（税确定不越带）；undecidable = 区间跨带（不许写成任何一方）"
+   },
+   "seed_range_observed": 0.009845,
+   "seed_range_note": "本 n 的种子极差只是描述量，不得回填成新带（带冻结在 0.000983）",
+   "n3_reference": {
+    "values": [
+     0.012607,
+     0.009808,
+     0.002762
+    ],
+    "mean": 0.008392,
+    "sd": 0.005073,
+    "interval_95": [
+     -0.004211,
+     0.020995
+    ],
+    "n_req": 4,
+    "source": "2686-window-kcurve-seed2-13m/results.json::criteria.c2_k128_tax_n3"
+   }
+  },
+  "c3_anchor_lever_k64_n4": {
+   "k": 64,
+   "anchors": 8,
+   "n_seeds": 4,
+   "per_seed": {
+    "0": {
+     "bpc_win64a": 1.547552,
+     "bpc_win64": 1.555204,
+     "delta_bpc": -0.007652
+    },
+    "1": {
+     "bpc_win64a": 1.547006,
+     "bpc_win64": 1.555988,
+     "delta_bpc": -0.008982
+    },
+    "2": {
+     "bpc_win64a": 1.545,
+     "bpc_win64": 1.548166,
+     "delta_bpc": -0.003166
+    },
+    "3": {
+     "bpc_win64a": 1.548919,
+     "bpc_win64": 1.548441,
+     "delta_bpc": 0.000478
+    }
+   },
+   "cross_seed": {
+    "n_seeds": 4,
+    "mean": -0.00483,
+    "values": [
+     -0.007652,
+     -0.008982,
+     -0.003166,
+     0.000478
+    ],
+    "same_sign": false,
+    "unit_note": "每 seed 一个价（同 seed 配对：bpc(win64a) − bpc(win64)）",
+    "sd": 0.004326,
+    "t_crit": 3.182,
+    "t_interval_95": [
+     -0.011713,
+     0.002052
+    ]
+   },
+   "verdict": {
+    "n": 4,
+    "interval_95": [
+     -0.011713,
+     0.002052
+    ],
+    "rule": "t 区间不含 0 ⇒ 可判（报方向）；含 0 ⇒ 不可判并给所需 n",
+    "verdict": "undecidable",
+    "direction": null,
+    "n_req": 7,
+    "n_req_rule": "n_req = ceil((2.9·sd/|mean|)²)（双侧 α=0.05、功效 0.8 的近似式）",
+    "note": "区间含 0 ⇒ 只能写「本 n 下不可判」；不得读成「锚点无效」"
+   },
+   "reference_k16": -0.00706,
+   "reference_note": "k=16 的 n=4 跨 seed 均值见 2681 判据⑦（−0.00706 bpc），只作并列参照",
+   "n3_reference": {
+    "values": [
+     -0.007652,
+     -0.008982,
+     -0.003166
+    ],
+    "mean": -0.0066,
+    "sd": 0.003047,
+    "interval_95": [
+     -0.014171,
+     0.000971
+    ],
+    "source": "2686-window-kcurve-seed2-13m/results.json::criteria.c3_anchor_lever_k64_n3"
+   }
+  },
+  "c4_selfchecks": {
+   "all_ok": true,
+   "note": "因果性前缀逐位 0、掩码可见对数与闭式及硬编码点三处一致、参数量逐位相同、窗口掩码与 recent_keep_mask 逐位相同"
+  },
+  "c5_contract_inherited": {
+   "new_criteria": false,
+   "note": "本实验不新增判据线：② ③ 是 2682 §5a / 2686 §6 的同一条规则在更大的 n 上重算，冻结带 0.000983、t 表、功效式、三分类、同 seed 配对规则一格不动（补 seed 不改判据）"
+  },
+  "c6_contract_predictions": {
+   "c2": {
+    "assume_mean": 0.008392,
+    "assume_sd": 0.005073,
+    "n": 5,
+    "t_crit": 2.776,
+    "half_width_if_sd_holds": 0.006298,
+    "predicted_verdict": "above_band",
+    "sd_upper_bound_for_prediction": 0.005968,
+    "basis": "2686-window-kcurve-seed2-13m/results.json::criteria.c2_k128_tax_n3",
+    "observed_verdict": "above_band",
+    "observed_sd": 0.003931,
+    "held": true,
+    "note": "契约 §1 写下时本轮读数尚未产生；预测不成立也照实报（README §7）"
+   },
+   "c3": {
+    "assume_mean": -0.0066,
+    "assume_sd": 0.003047,
+    "n": 4,
+    "t_crit": 3.182,
+    "half_width_if_sd_holds": 0.004848,
+    "predicted_verdict": "decidable",
+    "predicted_direction": "price_negative",
+    "sd_upper_bound_for_prediction": 0.004148,
+    "basis": "2686-window-kcurve-seed2-13m/results.json::criteria.c3_anchor_lever_k64_n3",
+    "observed_verdict": "undecidable",
+    "observed_direction": null,
+    "observed_sd": 0.004326,
+    "held": false,
+    "note": "同上"
+   }
+  }
+ },
+ "cost": {
+  "wall_seconds": 25.6,
+  "gpu_seconds": 25.6,
+  "n_new_arms": 4,
+  "train_seconds": {
+   "win64_s3": true,
+   "win64a_s3": true,
+   "win128_s3": true,
+   "win128_s4": true
+  },
+  "note": "本轮只做评测；训练墙钟与 rc 在 config.json（*.log 是被忽略的派生物）"
+ },
+ "code_hashes": {
+  "run.py": "c548808540bde3fb050b54105c4936182533032caf114243f99085fdea0ee0a3",
+  "make_config.py": "76263e4b6d7b758825c6d7389bcc45583f12d6346ffb98de568a42be45fbd045",
+  "realtext_probe.py": "dbddeb5f8dc3a7bebe6eda6e2d977ce6581fade2b5db7231bc3f0116addd6402",
+  "train_arms.sh": "f2927c709eb36c424a3ba91f428c6d827b18ec8f89ff4006feb7bb3592eed5aa",
+  "config.json": "34bef625ec250691ef0643eee2b044d515b70f797460ed3361b06a8f61d7925e",
+  "pathlm/depth_ar.py": "42844306990aebc5a4a4d0df2f115b872e52bb4b36d8b8a1831c3490d1af8de5",
+  "train_depth_ar.py": "0f6536fae2369d962434293b37ec8b26287fc180a9c657669f150531601f4764",
+  "tools/evalkit/retention.py": "9ef983b70d666460de5d63d5d81c23c685ce708a55dfe1af66fc23187fd12f9a",
+  "pathlm/data.py": "48e23520122a0b4591e71d0e3780dd1f34dc4a82744e14ca3414da8f43ba448a"
+ },
+ "delta_directions": {
+  "delta_bpc": "arm_minus_comparator"
+ },
+ "readings_units": {
+  "bpc": "bits/byte（越低越好），96×16 窗口序、window_seed=2",
+  "delta_bpc": "bpc 差（被测配置 − 对照）；判据② 越大越差，判据③ 越小越好"
+ },
+ "run_log": [
+  "[    7.2s] 装载 14 臂（sha256 全部核对）；数据 enwik8_full vocab=206",
+  "[    7.6s] 自检④：prefix diff = {'win64_s3': 0.0, 'win64a_s3': 0.0, 'win128_s3': 0.0, 'win128_s4': 0.0}，掩码可见对数全等 = True",
+  "[    8.9s]   full: bpc=1.502689",
+  "[   10.2s]   win64_s0: bpc=1.555204",
+  "[   11.4s]   win64_s1: bpc=1.555988",
+  "[   12.7s]   win64_s2: bpc=1.548166",
+  "[   14.0s]   win64_s3: bpc=1.548441",
+  "[   15.3s]   win64a_s0: bpc=1.547552",
+  "[   16.6s]   win64a_s1: bpc=1.547006",
+  "[   17.9s]   win64a_s2: bpc=1.545000",
+  "[   19.1s]   win64a_s3: bpc=1.548919",
+  "[   20.4s]   win128_s0: bpc=1.515296",
+  "[   21.7s]   win128_s1: bpc=1.512497",
+  "[   23.0s]   win128_s2: bpc=1.505451",
+  "[   24.3s]   win128_s3: bpc=1.508538",
+  "[   25.6s]   win128_s4: bpc=1.513065",
+  "[   25.6s] 复现门①：10/10 逐位相同 ⇒ passes=True",
+  "[   25.6s] 判据② k=128：n=5 mean_tax=0.00828 interval=[0.0034, 0.01316] ⇒ above_band",
+  "[   25.6s] 判据③ k=64 锚点杠杆：n=4 mean=-0.00483 interval=[-0.011713, 0.002052] ⇒ undecidable（direction=None）"
+ ]
+}
