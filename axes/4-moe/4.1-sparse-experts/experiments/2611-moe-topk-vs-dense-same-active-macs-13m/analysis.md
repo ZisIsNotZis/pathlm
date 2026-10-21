@@ -129,7 +129,7 @@ clean bpc（末 10M 留出、fp32、无 autocast、同 `window_seed` ⇒ 全臂�
 （`2026-10-21T18:59:24+08:00`）；8 个臂各自的 `runs/<臂>/results.json` 记着同一份 `code_hash_run_py`，
 实验根 `results.json` 汇总它们。逐臂训练读数：8/8 exit 0、8/8 过入场门（`gnorm_max` < 100、`grad_skips` = 0）。
 
-**两个纯 CPU 产物与它们同源（第六次绑定之后重跑）**：`ledger.json`（臂记账）与 `preflight.json`（实现恒等 / 活性）由同一份绑定代码的 `--stage ledger` / `--stage preflight` 重跑，两文件现记 `code_hash_run_py = 7cf7c702…`，与 `prereg_binding.json::contract_files` 相同；重跑只刷新 `code_hashes` 里的三个哈希，MACs / 参数量 / `bitwise_equal` 读数逐位不变。它们此前记的是绑定前的哈希（`c4e8fd0c…` / `dea26873…`），而 `tools/prereg_bind.py` 的 `READINGS_GLOB = results*.json` 不覆盖这两个文件名 ⇒ 机检不会报红，陈旧只能靠人读出来。另记：`2610` 整个目录 `bound_at = unbound`（历史产物、无定序证据 ⇒ **定序不可判**）；本格判词不引用它的定序，只引用它 §4 的「池化口径看不见坍缩」这一条限制。
+**两个纯 CPU 产物与它们同源（第六次绑定之后重跑）**：`ledger.json`（臂记账）与 `preflight.json`（实现恒等 / 活性）由同一份绑定代码的 `--stage ledger` / `--stage preflight` 重跑，两文件现记 `code_hash_run_py = 7cf7c702…`，与 `prereg_binding.json::contract_files` 相同；重跑只刷新 `code_hashes` 里的两项（`run.py` 与 `config.json`；`train_arms.sh` 那一项本来就相同）与 `code_hash_run_py`，MACs / 参数量 / `bitwise_equal` 读数逐位不变。它们此前记的是绑定前的哈希（`c4e8fd0c…` / `dea26873…`），而 `tools/prereg_bind.py` 的 `READINGS_GLOB = results*.json` 不覆盖这两个文件名 ⇒ 机检不会报红，陈旧只能靠人读出来。另记：`2610` 整个目录 `bound_at = unbound`（历史产物、无定序证据 ⇒ **定序不可判**）；本格判词不引用它的定序，只引用它 §4 的「池化口径看不见坍缩」这一条限制。
 
 ### 表 A · 逐臂 clean bpc 与参数记账（`results.json::mean_bpc` / `::arm_table`）
 
