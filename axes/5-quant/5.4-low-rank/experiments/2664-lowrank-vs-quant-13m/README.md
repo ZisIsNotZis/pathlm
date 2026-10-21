@@ -45,7 +45,7 @@ KV 字节预算下最优分配的公开前例）。本实验只做这一件小�
 | 命题 | 在同一「每位置部署字节」下，低秩潜向量（MLA 式）与直接块标尺量化谁的语言建模质量更好；各自在哪一档开始伤质量（失效模式） |
 | 单因素 | 只改 **KV 的存储形式**（fp16 / 块标尺 int8·int4 / 低秩潜向量）；主干形状、数据、步数、batch、lr、评测窗口序逐字段不变 |
 | 已被固定的 | 主干（d256 / L12 / H8 / mlp6 / seq256 / dense / tied 读出）、训练配方（12k 步 / bs32 / lr1e-3 / 98.3M token）、评测流（24 批 × 16 × 256，`window_seed=2`）、合成任务批 |
-| 干预实现 | 量化：`tools/evalkit/kv_quant.py::quantize_kv(scheme='block', group=32)`（5.1 的块标尺口径，**未改一行**）；低秩：`2656/mla_arms.py::MLABlock`（低秩 KV 块，本实验不复制第二份） |
+| 干预实现 | 量化：`tools/evalkit/kv_quant.py::quantize_kv(scheme='block', group=32)`（5.1 的块标尺口径，**未改一行**）；低秩：`axes/5-quant/5.4-low-rank/experiments/2656-lowrank-vs-headshare-13m/mla_arms.py::MLABlock`（低秩 KV 块，本实验不复制第二份） |
 | 训练 | 低秩臂与 MHA 的第二 seed 从零训练（低秩改的是 K/V 投影矩阵本身，没有「保留已训权重只包一层」的轻量路径）；量化臂**不训练**（纯推理数值改动，`params_added = 0`） |
 
 ---
@@ -130,10 +130,10 @@ G=32 ⇒ int8 = 1.0625 B/值、int4 = 0.5625 B/值；低秩臂 = `L·d_c·2`（f
 | 指标 | 该涨/该跌 | 口径 | 判据 |
 |---|---|---|---|
 | 每位置部署字节 | **该跌** | `config.json::axis_definition` 的解析式；由实测 K/V 张量形状与 `n_values/n_scales` 反算核对（逐位相等） | 报「臂 / fp16 MHA」倍率与省幅 |
-| clean bpc | **该不跌 / 可排序** | `2619/run.py::bpc_of`（24 批 × 16 × 256、`window_seed=2`），逐臂同一 `logits_fn` 接口 | 同字节配对 Δ vs 0.014 带 |
+| clean bpc | **该不跌 / 可排序** | `axes/5-quant/5.1-kv-quant/experiments/2619-kv-budget-chart/run.py::bpc_of`（24 批 × 16 × 256、`window_seed=2`），逐臂同一 `logits_fn` 接口 | 同字节配对 Δ vs 0.014 带 |
 | 第二路径 bpc | 一致性 | `retention.masked_bpc` 独立路径 | 非量化臂逐位相等；量化臂只作参照（fp16 存储效应） |
 | 合成长程召回 | **该保持** | copy（3 起点）/ induction（2 起点）/ var_recall（距离 16/32/64/128/192/255），附 `1/64` chance、局部先验地板与 Wilson 95% CI | 配对 bootstrap 95% CI；不借用 0.014 |
-| 前缀不变性 | **必须不变** | 改未来 token / 改同批邻居 ⇒ 过去位置 logits 逐位不变（复用 `2631/causal_check.py`） | 量化臂必须 True；低秩臂结构性 True（实测逐位） |
+| 前缀不变性 | **必须不变** | 改未来 token / 改同批邻居 ⇒ 过去位置 logits 逐位不变（复用 `axes/5-quant/5.1-kv-quant/experiments/2631-kv-budget-causal/causal_check.py`） | 量化臂必须 True；低秩臂结构性 True（实测逐位） |
 | 因果性/可见性对数 | **必须不变** | 低秩块不改变可见位置集合（`mla_arms.check_causality_invariance`） | `max|Δ| = 0.0` |
 | 上投影每 token 等效解码计算 | **必须报** | `mla_arms.decode_macs`（MACs 与 FLOPs，逐层与每 token） | 与单层 FFN 的比值同框 |
 | 等参数对照 | **必须报** | `mla_c272_eq`（同字节、等参数）、`gqa2_eq`（同字节、等参数） | 并列进同字节格，不单报 |
