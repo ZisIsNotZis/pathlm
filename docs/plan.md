@@ -92,8 +92,10 @@ owner 一律是元级主 Agent 派发的 worker；每个包另配一名 fresh re
 
 ## 5 需要元级裁决（未裁决前按默认走）
 
-- 许可（`LICENSE.md` = AGPL-3.0，而研究级 `atlas/paper-plan.md` 目标是公开可引用）仍待用户裁决，
-  与本次分层无关，不挡里程碑。
+- 许可：用户已确认 `LICENSE.md` 维持 AGPL-3.0（CONFIRMED，2026-10 收口时）。研究级
+  `atlas/paper-plan.md` 的目标「公开可引用」不受影响——AGPL 只覆盖代码仓库，论文文档可另行授权；
+  若将来要给论文单独换许可，那是另一件事，另行裁决。
+- 许可已闭环，本节只剩下面这条待裁决。
 - `CONTRIBUTING.md` 已纳入元级扫描面（`tools/check_meta_layer.py` 的 `META_GLOBS` 是根级 `*.md`）
   并拿掉了它唯一那条研究级读数（改成指向 `harness/methodology.md` §2）；整份文档要不要按同一口径继续收瘦，
   等下一轮元级裁决。
