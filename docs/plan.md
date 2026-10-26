@@ -21,14 +21,15 @@
 | # | 验收（可观测） |
 |---|---|
 | 1 | `docs/catalog.md` 是**生成物**，一行一个研究，只有七列：id / 标题 / 目的 / 验收 / 期望产出 / 状态 / 指针；行数 = 现有研究项数；状态与各研究自己的 SSOT 一致；指针可解析；`tools/build_catalog.py --check` 手改即红 |
-| 2 | **`project.yaml` 是每个研究的 SSOT**（目的 / 创新 / 基线 / 判据 / 结论 / 状态 / 工作包 / 证据列表）——`docs/catalog.md` 的七列就是由它逐字生成的；`axes/**/RESEARCH.md` **只在该研究已有研究级 Agent 接手时创建**（现在 3 个：1.1.1 / 1.1.4.1 / 5.5），写的是 `project.yaml` 做不到的派发口径，不复制读数、不占事实之家。理由：再要求每个研究都补一份 `RESEARCH.md` 就是给同一个事实造第二个家（`@ssot`）；`project.yaml` 与 `experiments/**` 原样留在研究级 |
+| 2 | **`project.yaml` 是每个研究的 SSOT**（目的 / 创新 / 基线 / 判据 / 结论 / 状态 / 工作包 / 证据列表）——`docs/catalog.md` 的七列就是由它逐字生成的；`axes/**/RESEARCH.md` **只在该研究已有研究级 Agent 接手时创建**（当前 9 个，随研究级 Agent 接手而增，以 `find axes -name RESEARCH.md` 为准），写的是 `project.yaml` 做不到的派发口径，不复制读数、不占事实之家。理由：再要求每个研究都补一份 `RESEARCH.md` 就是给同一个事实造第二个家（`@ssot`）；`project.yaml` 与 `experiments/**` 原样留在研究级 |
 | 3 | 元级零研究级读数：`docs/**` 与根级事实文档里不出现实验读数（bpc / Δ / 显存 / 墙钟 / 逐格判词）、不出现逐实验目录路径、不出现逐条代价事实与复现三态计数；`tools/check_meta_layer.py --check` 把这类模式判红，白名单只留定义性说明 |
 | 4 | `AGENTS.md` 写成**三层契约**（元级 / 研究级 / 工级：各层拥有什么事实、谁可以改、派发契约给什么、什么不许下沉 / 上浮）+ 一份可复制的派发模板；`README.md` 按元级重写（这是什么元仓、目录怎么读、一个研究怎么被派发与验收） |
 | 5 | 迁移无损：现有元级文档按归属迁到研究级或工级，留下**迁移台账**（一源文件一行：原文 → 新家 → 或「删除并说明理由」），`tools/check_ledger.py --check` 证明无遗漏、新家存在、删除有理由 |
 | 6 | 机检按层分工：元级只查元级事实（目录与研究的对应、目录 / 指针可解析、元级文档不含研究级读数）；研究级检查留在研究级且仍由研究级 Agent 自己跑；原六条机检一条不弱、迁走的检查在新层仍生效 |
 | 7 | 全绿：元级检查与测试通过（唯一允许的失败是已登记的预存失败），工作区干净并推送；**例外须逐条点名**：研究级未产出导致的级联红（`check_docs` 与 `test_docs_refs` 的同源红）在 §6 逐条写明 owner；工作区里由具名研究级 owner 在跑的改动不算脏，但每一条都必须能追到那个 owner |
 
-状态：**元级四条机检与测试已落地**（工作包见 §3）。
+状态：**里程碑达成**——七条验收全部满足，WP5 fresh 复核七条全 PASS（报告 `.scratch/doc-log/WP5-final-review.md`），
+元级四条机检与 `pytest` 全绿（唯一预存失败属研究级轴 6，见 §6）。
 
 ## 2 分层决定（元级自定，执行方不自选）
 
@@ -73,7 +74,7 @@ owner 一律是元级主 Agent 派发的 worker；每个包另配一名 fresh re
 | **WP2 研究级 SSOT 与生成目录** | `tools/build_catalog.py`（生成 + `--check`）；`docs/catalog.md`；`tests/test_catalog.py`；`harness/research-schema.md` 的 `RESEARCH.md` 契约节；研究级 Agent 接手的研究项的 `axes/**/RESEARCH.md` | `docs/catalog.md` 行数 = `axes/**/project.yaml` 的个数且恰七列；每条状态与 `project.yaml::status` 一致；指针逐条可解析；手改目录副本（含改一行状态、加一行、删一行）`--check` 必红；测试里至少一条可失败对照 | 60 min | **已完成**：元级一半（生成器 / 目录 / 测试，10 条用例含手改·删行·加行三条反向对照）；研究级一半是 `RESEARCH.md`，它**不是**每个研究的必备件（`project.yaml` 才是 SSOT，见 §1 验收 2），已有研究级 Agent 接手的 3 项各一份，其余不由元级代造（`@absent`：缺失是一种状态） |
 | **WP3 元级隔离机检与层契约文档** | `tools/check_meta_layer.py` + `tests/test_meta_layer_isolation.py`（元级文档禁实验读数 / 逐实验目录路径 / 逐条代价事实 / 复现三态计数 / 裸读数小数，白名单只留定义性说明）；`AGENTS.md` 三层契约 + 可复制派发模板；`README.md` 元级重写；`docs/structure.md` 收瘦到「约定」 | 注入一条 `bpc` / 一条实验 run 目录路径 / 一行复现三态计数 / 一个裸读数小数 ⇒ 机检变红，移除后恢复绿；`grep` 元级文档零命中（白名单外）；`AGENTS.md` 有三层表与派发模板；`pytest` 全绿（除预存失败） | 55 min | 已完成（`check_meta_layer.py --check` 零命中；注入探针四条在 `tests/test_meta_layer_isolation.py` 里；扫描面是根级 `*.md`（只排除许可证正文）+ `docs/**`，白名单为空——仓库里没有一条必须留在元级的读数） |
 | **WP4 迁移台账与无损证明** | `docs/ledger.md`（一源文件一行：原文 → 新家 → 或「删除并说明理由」，含与旧规则冲突的处置）；`tools/check_ledger.py` + `tests/test_ledger.py` | 台账覆盖迁移前时点全部元级文档（`docs/**` + 根级事实文档）与本次全部新增文档；每行新家存在（或删除理由非空且新家为空）；删掉一行 / 指向不存在的新家 ⇒ `--check` 必红 | 35 min | 已完成（18 个原文：17 迁到新家 + 1 删除带理由；本次新增 10 个各有登记；`tests/test_ledger.py` 覆盖漏行·悬空新家·无理由删除·未登记新增四条反向对照） |
-| **WP5 最终 fresh 复核** | 逐条复核 §1 七条验收的可观测证据 | 每条给 PASS / FAIL + 复现命令；FAIL 项必须点名文件与行 | 30 min | todo |
+| **WP5 最终 fresh 复核** | 逐条复核 §1 七条验收的可观测证据 | 每条给 PASS / FAIL + 复现命令；FAIL 项必须点名文件与行 | 30 min | 已完成（七条全 PASS，报告 `.scratch/doc-log/WP5-final-review.md`） |
 
 ## 4 证据指针
 
@@ -103,9 +104,8 @@ owner 一律是元级主 Agent 派发的 worker；每个包另配一名 fresh re
 ## 6 本轮未闭环项（逐条点名，归属写清）
 
 **研究级的逐项 `RESEARCH.md`**：它**不是**每个研究的必备件——每个研究的 SSOT 是 `project.yaml`（§1 验收 2），
-`RESEARCH.md` 只在该研究已有研究级 Agent 接手时创建。现在 3 份：
-`axes/1-time/1.1.1-hard-window/RESEARCH.md`、`axes/1-time/1.1.4.1-explicit-memory/RESEARCH.md`、
-`axes/5-quant/5.5-fp8-head-dim/RESEARCH.md`。元级目录不依赖它（七列取自 `project.yaml`），它不挡里程碑。
+`RESEARCH.md` 只在该研究已有研究级 Agent 接手时创建，当前 9 份（`find axes -name RESEARCH.md | wc -l` = 9），
+不在元级逐一列名——列名会随研究级 Agent 接手而漂移，数量以磁盘为准。元级目录不依赖它（七列取自 `project.yaml`），它不挡里程碑。
 
 **`tools/check_docs.py --check` 当前 0 处违规**：此前唯一的一条悬空引用（研究级 `1.1.4.1` 的实验分析未产出）已随该分析落盘而自动转绿，`tests/test_docs_refs.py` 的级联红同期消失。
 
@@ -121,17 +121,14 @@ owner 一律是元级主 Agent 派发的 worker；每个包另配一名 fresh re
 SFT 训练作业（不在本仓），不是本仓「未产出的证据」，因此它永远不会转绿；修法是改写句子而**不是**
 给 `check_docs.SKIP_PREFIXES` 加白名单——加一条永久白名单等于让这条禁令对那类路径永久失效。
 
-**`pytest` 剩下的逐条归属**（`python3 -m pytest tests/ -q` → 964 passed / 6 failed）：
+**`pytest` 剩下的逐条归属**（`python3 -m pytest tests/ -q` → 1 failed, 1005 passed，约 4~5 分钟纯 CPU）：
 
 - `tests/test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`：**已登记的预存失败**
   （本仓部分 mutate 脚本还没接 harness，不属元级收身范围）；原始登记在日志工单
   `.scratch/63-axis6-predict/NEXT-WP-mutation-harness.md`（日志，不是结论依据，只是找到那一条的地方）。
-- 剩下 5 条全是同一条研究级未产出的级联，非元级引入：
-  `test_all_doc_references_resolve` 就是上面那条悬空引用；
-  `test_dangling_reference_turns_red` 与 3 条 `test_unmapped_doc_turns_red[...]` 的探针本身都判红了，
-  死在收尾的「删掉探针后必须全绿」——而全树现在有一条真违规，所以它们只能红。
-  那一份分析一落盘，这 5 条同时转绿。
-- `tests/test_repro_inventory.py` 的 2 条**已转绿**：当时是 `atlas/repro.md` 落后于磁盘（2681 的新臂落盘后
-  没重跑 `tools/inventory_runs.py`），提交 `6a657cc` 按磁盘重生成后一致；现在连两条「临时副本」对照都通过
-  （`python3 -m pytest tests/test_repro_inventory.py -q` → 6 passed），所以不是「副本的入库集合与真树不一致」——
-  那一种重跑仍会红。
+  点名的脚本清单与工单 `.scratch/63-axis6-predict/NEXT-WP-mutation-harness.md` 第 6–9 行逐字一致，
+  owner 是研究级轴 6，与元级无关。
+- 其余已全部转绿：本段早期登记的「964 passed / 6 failed」里那 5 条研究级未产出的级联
+  （`test_all_doc_references_resolve` 等）已随那份分析落盘、`check_docs` 归零而同期消失；
+  `tests/test_repro_inventory.py` 的 2 条也早已转绿（提交 `6a657cc` 按磁盘重生成 `atlas/repro.md`），
+  不是「副本入库集合与真树不一致」那种会重红的情况。
