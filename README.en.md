@@ -111,13 +111,14 @@ Change facts only at their source, then re-run the generator: the catalog and th
 - A generated catalog over 46 research items plus per-item `project.yaml` sources of truth; measured laws and the cost table.
 - The reproducibility inventory (per-experiment three-state verdict) and research prioritisation.
 - Verdicts landing across the six axes: hard windows, sparse experts, low-rank compression, repeating depth, inter-layer aggregation, speculative decoding and more (per item in `docs/catalog.md`).
+- A paper draft: `atlas/paper.md` follows the claim, structure and ten acceptance items in `atlas/paper-plan.md`; it only moves already-landed facts and recomputes nothing. It ships after the licence decision and a fresh review.
 
 **Planned**
 
 - Turn `pathlm/` into an installable package (`pyproject.toml` + `pip install -e .`), with tests and probes importing from inside the package.
 - Extract the eval kit into a shared `tools/evalkit/` base so each research item's experiment directory carries a `run.py` that pulls the balance from it (plan in `atlas/design.md`).
-- Write the laws up as a citable paper: claim, structure and acceptance live in `atlas/paper-plan.md`; results are still missing.
-- Fill in the items marked not-started / backlog in the catalog (e.g. external retrieval, weight sharing), each ordered first by the criteria in `atlas/triage.md`.
+- The paper's release pieces: licence decision (`docs/plan.md` §5) and DOI / tag alignment.
+- Fill in the items marked not-started / backlog in the catalog (e.g. external retrieval, weight sharing), each ordered first by the criteria in `atlas/triage.md`. **These need a GPU**: this machine has none and will not get one soon; the route and the registration are in `docs/plan.md` §1.3.
 
 **Where this leads**: turning "where should compute go" from judgement into a cost table with applicability boundaries — so that, before anything touches a GPU, a new idea can be read against the family it belongs to, the cost already measured for that family, and the conditions that must hold for the effect to become measurable at all.
 

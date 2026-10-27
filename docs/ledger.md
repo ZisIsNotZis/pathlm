@@ -41,6 +41,7 @@
 | （本次新增） | `tests/test_catalog.py` | 工级：研究目录的生成 / 过期 / 手改 / 可失败对照 |
 | （本次新增） | `tests/test_ledger.py` | 工级：台账的覆盖 / 新家存在 / 删除理由 / 可失败对照 |
 | （本次新增） | `tests/test_meta_layer_isolation.py` | 工级：元级隔离的注入探针与白名单口径 |
+| （本次新增） | `atlas/paper.md` | 研究级：论文初稿（按 `atlas/paper-plan.md` 的结构与验收写；只搬已落盘事实、不新造读数） |
 
 ## 2 与旧规则冲突的处置（规则优先于现状）
 

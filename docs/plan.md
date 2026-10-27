@@ -1,68 +1,75 @@
-# 计划（元级 · 唯一里程碑与工作包）
+# 计划（元级 · 里程碑与工作包）
 
-> 本文件是**元级计划的唯一权威**：唯一里程碑、工作包（owner / 交付物 / 验收 / 预算 / 状态）与
+> 本文件是**元级计划的唯一权威**：里程碑、工作包（owner / 交付物 / 验收 / 预算 / 状态）与
 > 元级证据指针写在这里。元级只持有**研究目录与契约**，不持有任何研究级事实——实验读数、判据推导、
 > 逐格分析、代价事实、复现三态计数都在研究级（`axes/**`、`atlas/**`）与工级（`harness/**`）。
 > 分层归属见 `AGENTS.md`；研究目录见 `docs/catalog.md`；迁移台账见 `docs/ledger.md`。
 
 ## 0 这一版计划在治什么
 
-**类：层混淆**——元级文档里写着研究级细节（实验读数、判据推导、逐格 analysis、逐条代价事实、复现清单、
-分诊打分），元级主 Agent 读状态要穿过几百行读数，才能判断「哪条研究该被派发、它现在到哪一步」。
-治法是**把层切开**，不是把细节写短：细节整体下沉到它本来就属于的那一层，元级只留一张生成的目录。
+**类：路线与硬件约束。** 元级收身（里程碑 1）已达成并经 fresh 复核，它的账留在 §1.1，不再重开。
+当前要治的是另一件事：**机器换了，路线也得换。**
 
-判据从「能不能机检」出发：能生成的就生成（目录），能机检的就机检（元级零读数、引用可解析、
-台账无遗漏），只有机检不了的才写成规矩。
+- 事实（用户本轮明示，CONFIRMED）：本机已无 GPU，是轻量笔记本；短期内不会获得任何 GPU。
+- 后果：任何需要训练或评测的格子（`axes/**` 里尚未收尾的项与未开始的项）**现在跑不了**；
+  `atlas/triage.md` 的批次草案、各格 `project.yaml` 的 `gaps` 里写明的下一步实验，全部变成
+  「等一张卡」的登记，而不是本轮的活。
+- 路线：把已经花掉的算力变成**能读、能核、能引用**的产品。具体就是论文初稿——它的 claim、结构、
+  验收早已写在 `atlas/paper-plan.md`，缺的只是稿子本身；写稿不碰 GPU，也不产生任何新读数。
+- 同时把**没有 GPU 也做不了的事**点名登记（§1.3），避免把它读成「计划已经完成」。
 
 ## 1 里程碑
 
-**唯一里程碑 = 七条验收全部满足**（「完成」不是别的意思）：
+### 1.1 里程碑 1（已完成）：元级收身
+
+七条验收全部满足，fresh 复核七条全 PASS（报告 `.scratch/doc-log/WP5-final-review.md`）：
+目录是生成物、`project.yaml` 是每项 SSOT、元级零研究级读数、三层契约与派发模板写成、迁移台账无损、
+机检按层分工、元级检查全绿。逐条验收原文与工作包（WP1–WP5）留在 git 历史里（提交 `361cb7aa`
+之前的 `docs/plan.md`），本文件不再复制。
+
+### 1.2 里程碑 2（当前）：论文初稿
+
+**验收 = `atlas/paper-plan.md` §6 的第 1–10 条全部满足**（第 11 条是发布件，属里程碑 3 之后的发布闸门，
+本轮不做）。可观测形态：
 
 | # | 验收（可观测） |
 |---|---|
-| 1 | `docs/catalog.md` 是**生成物**，一行一个研究，只有七列：id / 标题 / 目的 / 验收 / 期望产出 / 状态 / 指针；行数 = 现有研究项数；状态与各研究自己的 SSOT 一致；指针可解析；`tools/build_catalog.py --check` 手改即红 |
-| 2 | **`project.yaml` 是每个研究的 SSOT**（目的 / 创新 / 基线 / 判据 / 结论 / 状态 / 工作包 / 证据列表）——`docs/catalog.md` 的七列就是由它逐字生成的；`axes/**/RESEARCH.md` **只在该研究已有研究级 Agent 接手时创建**（当前 9 个，随研究级 Agent 接手而增，以 `find axes -name RESEARCH.md` 为准），写的是 `project.yaml` 做不到的派发口径，不复制读数、不占事实之家。理由：再要求每个研究都补一份 `RESEARCH.md` 就是给同一个事实造第二个家（`@ssot`）；`project.yaml` 与 `experiments/**` 原样留在研究级 |
-| 3 | 元级零研究级读数：`docs/**` 与根级事实文档里不出现实验读数（bpc / Δ / 显存 / 墙钟 / 逐格判词）、不出现逐实验目录路径、不出现逐条代价事实与复现三态计数；`tools/check_meta_layer.py --check` 把这类模式判红，白名单只留定义性说明 |
-| 4 | `AGENTS.md` 写成**三层契约**（元级 / 研究级 / 工级：各层拥有什么事实、谁可以改、派发契约给什么、什么不许下沉 / 上浮）+ 一份可复制的派发模板；`README.md` 按元级重写（这是什么元仓、目录怎么读、一个研究怎么被派发与验收） |
-| 5 | 迁移无损：现有元级文档按归属迁到研究级或工级，留下**迁移台账**（一源文件一行：原文 → 新家 → 或「删除并说明理由」），`tools/check_ledger.py --check` 证明无遗漏、新家存在、删除有理由 |
-| 6 | 机检按层分工：元级只查元级事实（目录与研究的对应、目录 / 指针可解析、元级文档不含研究级读数）；研究级检查留在研究级且仍由研究级 Agent 自己跑；原六条机检一条不弱、迁走的检查在新层仍生效 |
-| 7 | 全绿：元级检查与测试通过（唯一允许的失败是已登记的预存失败），工作区干净并推送；**例外须逐条点名**：研究级未产出导致的级联红（`check_docs` 与 `test_docs_refs` 的同源红）在 §6 逐条写明 owner；工作区里由具名研究级 owner 在跑的改动不算脏，但每一条都必须能追到那个 owner |
+| 1 | `atlas/paper.md` 存在，按 `atlas/paper-plan.md` §5 的十节结构成篇，11 条定律逐条落位（正文可 `grep` 到每条的指针） |
+| 2 | 随机抽 5 个正文数字，按旁边的指针都能落到一个存在的文件与字段 / 标题；`python3 tools/check_docs.py --check` 零违规 |
+| 3 | 三条限制（char 级 enwik8 / 快照口径 / 两个规模点）出现在第一节正文，不在脚注 |
+| 4 | claim 段明写「不声称跨规模外推」，正文没有「更大模型上也会如此」这类句式 |
+| 5 | 每张表标注复现等级（`reproducible` / `rebuildable_only` / `not_reproducible` 之一），读者能用 `atlas/repro.md` 核对 |
+| 6 | 凡出现方向随规模变化处，同段写明已排除的口径与刻度差 |
+| 7 | 两处撤回（retry 矩阵的格间排序、KV 逐值标尺口径）在正文或附录可见 |
+| 8 | 仓内没有落盘证据的行业结论，正文标「未核实」或删除 |
+| 9 | 许可段落与 `LICENSE.md` 及本文件 §5 的待裁决项一致 |
+| 10 | 篇幅 8–10 页（Markdown 单栏可打印），表格不被截断 |
 
-状态：**里程碑达成**——七条验收全部满足，WP5 fresh 复核七条全 PASS（报告 `.scratch/doc-log/WP5-final-review.md`），
-元级四条机检与 `pytest` 全绿（唯一预存失败属研究级轴 6，见 §6）。
+状态：**进行中**（稿子已落盘，等待 fresh 复核；见 §3）。
 
-## 2 分层决定（元级自定，执行方不自选）
+### 1.3 里程碑 3（被硬件门住，登记不是停止）
 
-### 2.1 三层各拥有什么
+**把 `atlas/triage.md` 排序靠前的未收尾格在 GPU 上判完。**
 
-| 层 | 拥有的事实 | 谁可以改 | 不拥有 |
-|---|---|---|---|
-| **元级**（仓库根 + `docs/`） | 这是什么元仓、研究目录、层契约与派发模板、元级里程碑与工作包、迁移台账 | 元级主 Agent 派发的 worker；元级主 Agent 自写本文件 | 任何实验读数、判据、逐格分析、代价事实、复现状态、引擎能力 |
-| **研究级**（`axes/**`、`atlas/**`） | 每项研究的事实（`project.yaml`：目的 / 基线 / 判据 / 结论 / 状态 / 工作包 / 证据列表）；已有研究级 Agent 接手的项额外带 `RESEARCH.md`（派发口径，不占事实之家）；跨格汇总（定律正文、代价表、复现清单、排序打分、论文口径、结论索引） | 研究级主 Agent 与它派发的 worker / reviewer；元级只读 | 元级目录与层契约 |
-| **工级**（`harness/**`、`tools/**`、`tests/**`） | 格式契约与分析纪律、测量纪律、引擎能力面、机检实现与共享底座 | 底座维护者；研究级与元级只调用 | 任何一项研究的结论 |
+- 入口条件：一台与历史实验同级的单卡机器（历史口径是单卡 24GB 级；见 `harness/methodology.md`
+  §20 的互斥锁协议），以及 enwik8 语料。
+- 进入方式：按 `atlas/triage.md` 的批次草案取前若干件；每件的最小实验与成本已经写在各格
+  `project.yaml` 的 `gaps` 里，不需要重新设计。
+- 现在能做的准备（无 GPU）：只做**不产生读数**的部分——契约复核、配置与入口的静态检查、成本估算。
+  任何「预演」若会写出一份可被误读成实验结果的产物，就不做。
+- 状态：**阻塞**（条件写明在上，不假装完成）。
 
-### 2.2 目录落位（迁移目标）
+## 2 路线决定（元级自定，执行方不自选）
 
-```
-元级：README.md  AGENTS.md  CONTRIBUTING.md  LICENSE.md
-      docs/catalog.md（生成物）  docs/plan.md（本文件）  docs/structure.md（目录 / 命名 / 粒度约定）
-      docs/ledger.md（迁移台账）
-研究级：axes/<轴>/<格子>/{project.yaml（该项 SSOT）, RESEARCH.md（已有研究级 Agent 接手时才有）, experiments/**}
-        atlas/{README.md, playbook.md, cost-table.md*, repro.md*, triage.md, paper-plan.md,
-               design.md, atlas/FINDINGS.md}       （* = 生成物）
-工级：  harness/{README.md, harness/SCHEMA.md, research-schema.md, methodology.md, engine_capability.md}
-        tools/**  tests/**
-```
-
-### 2.3 机检按层分工
-
-- **元级**：`tools/build_catalog.py --check`（目录与研究的对应）、`tools/check_meta_layer.py --check`
-  （元级文档不含研究级读数）、`tools/check_ledger.py --check`（迁移台账）、`tools/check_docs.py --check`
-  （引用可解析 + 每层索引完整性）。
-- **研究级**（由研究级 Agent 自己跑，元级不代跑）：`tools/summary.py --check` /
-  `tools/check_tree.py`、`tools/build_cost_table.py --check`、`tools/inventory_runs.py --check`、
-  `python3 -m pytest tests/ -q`。
-- 元级闸门只跑元级那几条（本仓不挂 CI：命令由改动方在本地自己跑，再交给复核）；研究级检查在迁到新家之后仍以同样口径生效，不降级。
+1. **先写论文，不先补格子。** 理由：证据是沉没成本，论文是它的出口；写稿不依赖 GPU；claim 与验收已
+   预先定义（`atlas/paper-plan.md`），不需要新的框架性取舍。反过来，先补格子需要 GPU，现在不可能。
+2. **论文只搬不重算。** 数字的家是 `atlas/cost-table.md`（生成物）与 `axes/**/project.yaml`；稿子引用
+   它们，不改它们。稿子与事实不一致时，改事实源并重跑生成器，不改稿子里的数字。
+3. **无 GPU 期间的产出不得冒充判决。** 文档、机检、生成物、对已落盘证据的重分析可以做；这些工作
+   不产生新读数、不改任何格的状态。凡是需要实验才能回答的问题，一律回到 §1.3。
+4. **未收尾的格保持原状。** 不改它们的 `status`、不改判据线、不为「让目录好看」而合并或删除。
+   它们的状态列就是当前事实。
+5. **发布仍被许可门住。** 论文稿落盘不等于对外发布；`atlas/paper-plan.md` §8 的许可裁决未完成前不发布。
 
 ## 3 工作包
 
@@ -70,11 +77,10 @@ owner 一律是元级主 Agent 派发的 worker；每个包另配一名 fresh re
 
 | 工作包 | 交付物 | 验收（可观测） | 预算 | 状态 |
 |---|---|---|---|---|
-| **WP1 分层搬迁与指针重写** | 新建 `harness/`（`harness/SCHEMA.md` / `research-schema.md` / `methodology.md` / `engine_capability.md` / `README.md`）与 `atlas/`（`playbook.md` / `cost-table.md` / `repro.md` / `triage.md` / `paper-plan.md` / `design.md` / `atlas/FINDINGS.md` / `README.md`）；`STATUS.md` 删除；`docs/` 只留 `catalog.md` / `plan.md` / `structure.md` / `ledger.md`；全仓指针（`*.md` / `tools/**` / `tests/**` / CI）改到新家 | 原六条机检命令在新路径下 0 违规；`pytest` 只剩已登记的预存失败；`grep` 全仓无旧路径残留（`atlas/playbook.md` 这类）且旧文件确实不在原位；生成物生成器写出新家路径 | 60 min | 已完成（搬迁提交 `2d68eb4` 里 11 个文件是 `R100` 纯移动，逐对 blob 哈希相同 = 字节等价，见 `docs/ledger.md` §3；`tools/check_docs.py --check` 的文档地图三份齐全）。**未闭环**：研究级 Agent 仍在产出的实验目录会让 `check_docs` 报悬空引用，逐条归属见 §6 |
-| **WP2 研究级 SSOT 与生成目录** | `tools/build_catalog.py`（生成 + `--check`）；`docs/catalog.md`；`tests/test_catalog.py`；`harness/research-schema.md` 的 `RESEARCH.md` 契约节；研究级 Agent 接手的研究项的 `axes/**/RESEARCH.md` | `docs/catalog.md` 行数 = `axes/**/project.yaml` 的个数且恰七列；每条状态与 `project.yaml::status` 一致；指针逐条可解析；手改目录副本（含改一行状态、加一行、删一行）`--check` 必红；测试里至少一条可失败对照 | 60 min | **已完成**：元级一半（生成器 / 目录 / 测试，10 条用例含手改·删行·加行三条反向对照）；研究级一半是 `RESEARCH.md`，它**不是**每个研究的必备件（`project.yaml` 才是 SSOT，见 §1 验收 2），已有研究级 Agent 接手的 3 项各一份，其余不由元级代造（`@absent`：缺失是一种状态） |
-| **WP3 元级隔离机检与层契约文档** | `tools/check_meta_layer.py` + `tests/test_meta_layer_isolation.py`（元级文档禁实验读数 / 逐实验目录路径 / 逐条代价事实 / 复现三态计数 / 裸读数小数，白名单只留定义性说明）；`AGENTS.md` 三层契约 + 可复制派发模板；`README.md` 元级重写；`docs/structure.md` 收瘦到「约定」 | 注入一条 `bpc` / 一条实验 run 目录路径 / 一行复现三态计数 / 一个裸读数小数 ⇒ 机检变红，移除后恢复绿；`grep` 元级文档零命中（白名单外）；`AGENTS.md` 有三层表与派发模板；`pytest` 全绿（除预存失败） | 55 min | 已完成（`check_meta_layer.py --check` 零命中；注入探针四条在 `tests/test_meta_layer_isolation.py` 里；扫描面是根级 `*.md`（只排除许可证正文）+ `docs/**`，白名单为空——仓库里没有一条必须留在元级的读数） |
-| **WP4 迁移台账与无损证明** | `docs/ledger.md`（一源文件一行：原文 → 新家 → 或「删除并说明理由」，含与旧规则冲突的处置）；`tools/check_ledger.py` + `tests/test_ledger.py` | 台账覆盖迁移前时点全部元级文档（`docs/**` + 根级事实文档）与本次全部新增文档；每行新家存在（或删除理由非空且新家为空）；删掉一行 / 指向不存在的新家 ⇒ `--check` 必红 | 35 min | 已完成（18 个原文：17 迁到新家 + 1 删除带理由；本次新增 10 个各有登记；`tests/test_ledger.py` 覆盖漏行·悬空新家·无理由删除·未登记新增四条反向对照） |
-| **WP5 最终 fresh 复核** | 逐条复核 §1 七条验收的可观测证据 | 每条给 PASS / FAIL + 复现命令；FAIL 项必须点名文件与行 | 30 min | 已完成（七条全 PASS，报告 `.scratch/doc-log/WP5-final-review.md`） |
+| **WP6 论文初稿** | `atlas/paper.md`（十节 + 两张主表 + 附录）；`atlas/README.md` 索引加一行 | §1.2 的第 1–10 条；`tools/check_docs.py --check` 零违规；论文里每个数字都能在代价表或它指到的实验里找到同一个值 | 120 min | 已完成（稿子落盘；复核见 WP7） |
+| **WP7 fresh 复核** | 逐条复核 §1.2 的十条可观测验收 | 每条给 PASS / FAIL + 复现命令；FAIL 必须点名文件与行；额外做一次「随机抽 5 个数字回源」 | 40 min | 已完成（报告 `.scratch/doc-log/WP7-paper-review.md`；发现项已逐条修入稿子） |
+| **WP8 门面与台账** | `README.md` 的「计划中」一节改为当前事实；`atlas/README.md` 收录 `paper.md`；`docs/ledger.md` 登记新增文档 | 四条元级机检（`build_catalog` / `check_meta_layer` / `check_ledger` / `check_docs`）全绿；README 不出现研究级读数 | 20 min | 已完成 |
+| **WP9 GPU 队列（门住）** | 未收尾格的最小实验清单：格子 → 一条命令 → 预算（从 `gaps` 与 `triage` 取，不新设计） | 每格一条可复制命令；成本口径与历史实验一致；本轮**不验收**（要 GPU） | — | 阻塞（§1.3） |
 
 ## 4 证据指针
 
@@ -85,50 +91,33 @@ owner 一律是元级主 Agent 派发的 worker；每个包另配一名 fresh re
   python3 tools/check_ledger.py --check
   python3 tools/check_docs.py --check
   ```
-- 研究级机检（迁走后仍生效，由研究级 Agent 跑）：`tools/summary.py --check` / `tools/check_tree.py` /
-  `tools/build_cost_table.py --check` / `tools/inventory_runs.py --check` / `python3 -m pytest tests/ -q`。
-- 目录与台账：`docs/catalog.md`、`docs/ledger.md`。
-- 每条工作包的原始证据（命令输出、注入探针、复核结论）落在提交信息与该提交的 diff 里，
-  本文件只留指针，不转述读数。
+- 研究级机检（由研究级 Agent 跑）：`tools/summary.py --check` / `tools/build_cost_table.py --check` /
+  `tools/inventory_runs.py --check` / `python3 -m pytest tests/ -q`（后者需要 torch；本机没有）。
+- 论文：`atlas/paper.md`（产物）与 `atlas/paper-plan.md`（claim / 结构 / 验收）。
+- 未收尾格的清单位于生成物 `docs/catalog.md` 的状态列；逐格的「下一步最小实验」在各自 `project.yaml`
+  的 `gaps` 字段。
 
-## 5 需要元级裁决（未裁决前按默认走）
+## 5 需要用户裁决
 
-- 许可：用户已确认 `LICENSE.md` 维持 AGPL-3.0（CONFIRMED，2026-10 收口时）。研究级
-  `atlas/paper-plan.md` 的目标「公开可引用」不受影响——AGPL 只覆盖代码仓库，论文文档可另行授权；
-  若将来要给论文单独换许可，那是另一件事，另行裁决。
-- 许可已闭环，本节只剩下面这条待裁决。
-- `CONTRIBUTING.md` 已纳入元级扫描面（`tools/check_meta_layer.py` 的 `META_GLOBS` 是根级 `*.md`）
-  并拿掉了它唯一那条研究级读数（改成指向 `harness/methodology.md` §2）；整份文档要不要按同一口径继续收瘦，
-  等下一轮元级裁决。
+1. **论文与文档的许可**（阻塞对外发布，不阻塞写稿）。代码维持 AGPL-3.0 不变；文档与论文需要单独定。
+   **建议：CC BY 4.0**——允许引用与再分发，保留署名，与「公开可引用」的目标一致。
+   备选：CC BY-SA 4.0（同款传染性）、CC0（放弃署名）。
+2. **发布件**（许可定了之后）：论文与仓库 tag 指向同一个 commit，DOI 与 tag 对齐；
+   由用户在「有 DOI 服务」与「只用 git tag + 仓库页面」之间选。
+3. **无 GPU 期间的投入方向**：**建议继续写作与审计**（把已有证据的出口做完），
+   而不是停下来等卡。若用户另有安排（例如换项目、或已找到可租的卡），按用户的选择改路线。
 
-## 6 本轮未闭环项（逐条点名，归属写清）
+## 6 本轮未闭环项（逐条点名）
 
-**研究级的逐项 `RESEARCH.md`**：它**不是**每个研究的必备件——每个研究的 SSOT 是 `project.yaml`（§1 验收 2），
-`RESEARCH.md` 只在该研究已有研究级 Agent 接手时创建，当前 9 份（`find axes -name RESEARCH.md | wc -l` = 9），
-不在元级逐一列名——列名会随研究级 Agent 接手而漂移，数量以磁盘为准。元级目录不依赖它（七列取自 `project.yaml`），它不挡里程碑。
+**未收尾的研究格**：19 格尚未有判决（状态列见 `docs/catalog.md`），分属时间轴、深度轴、宽度轴、
+专家轴、量化轴与预测轴。它们不是缺陷，是**被硬件门住的剩余工作**：每格的下一步最小实验与成本已经
+写在各自 `project.yaml` 的 `gaps` 里，`atlas/triage.md` 已给排序。owner 是研究级（对应轴的 lead），
+不是元级；元级不代跑、也不改它们的 `status`。
 
-**`tools/check_docs.py --check` 当前 0 处违规**：此前唯一的一条悬空引用（研究级 `1.1.4.1` 的实验分析未产出）已随该分析落盘而自动转绿，`tests/test_docs_refs.py` 的级联红同期消失。
+**`pytest` 全量**：本机没有 torch，`python3 -m pytest tests/ -q` 跑不起来（环境中没有这个包，
+也没有网络可装）。这不是新缺陷，是 §0 的硬件事实的推论；元级四条机检不依赖 torch，仍全绿。
+历史登记的预存失败（`tests/test_mutation_framework.py` 那条，owner 是研究级轴 6）在能跑全量测试的机器上
+仍然适用，处置不变。
 
-**这四处上过红名单，但它们不是缺陷**（下一轮复核不要再当红报）：
-
-- `1.1.1` 与 `5.5` 两条：对应实验的分析与 run 产物已落盘，不存在「未出」这个缺口
-  （`2679-anchor-eval-ablation-13m/analysis.md`、`2657-fp8-hd128-head-dim/` 的 `analysis.md` 与 `results.json`）。
-- `atlas/triage.md` 的 `2657` 键锚点与 `2680` 的 `2681` 键锚点两条：前者在 `config.json` 顶层键上真实存在，
-  后者是点号键路径 `rows.win32_s0.bpc_fp16`，按结构解析通过（上游实验落盘的 `results.json` 里 `win32_s0` 与其内 `bpc_fp16` 真实存在），
-  不是通配锚点，两条从未是违规。
-
-**`1.1.4.1` 的让位说明曾带一个仓外路径，已改成不带路径的写法**：那句话说的是**别的项目**在卡上跑的
-SFT 训练作业（不在本仓），不是本仓「未产出的证据」，因此它永远不会转绿；修法是改写句子而**不是**
-给 `check_docs.SKIP_PREFIXES` 加白名单——加一条永久白名单等于让这条禁令对那类路径永久失效。
-
-**`pytest` 剩下的逐条归属**（`python3 -m pytest tests/ -q` → 1 failed, 1005 passed，约 4~5 分钟纯 CPU）：
-
-- `tests/test_mutation_framework.py::test_all_repo_mutate_scripts_use_the_harness`：**已登记的预存失败**
-  （本仓部分 mutate 脚本还没接 harness，不属元级收身范围）；原始登记在日志工单
-  `.scratch/63-axis6-predict/NEXT-WP-mutation-harness.md`（日志，不是结论依据，只是找到那一条的地方）。
-  点名的脚本清单与工单 `.scratch/63-axis6-predict/NEXT-WP-mutation-harness.md` 第 6–9 行逐字一致，
-  owner 是研究级轴 6，与元级无关。
-- 其余已全部转绿：本段早期登记的「964 passed / 6 failed」里那 5 条研究级未产出的级联
-  （`test_all_doc_references_resolve` 等）已随那份分析落盘、`check_docs` 归零而同期消失；
-  `tests/test_repro_inventory.py` 的 2 条也早已转绿（提交 `6a657cc` 按磁盘重生成 `atlas/repro.md`），
-  不是「副本入库集合与真树不一致」那种会重红的情况。
+**`RESEARCH.md`**：它不是每个研究的必备件（`project.yaml` 才是 SSOT），数量随研究级 Agent 接手而变，
+以磁盘为准；元级目录不依赖它，它不挡里程碑。
