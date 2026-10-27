@@ -62,7 +62,7 @@
 - **研究级**（由研究级 Agent 自己跑，元级不代跑）：`tools/summary.py --check` /
   `tools/check_tree.py`、`tools/build_cost_table.py --check`、`tools/inventory_runs.py --check`、
   `python3 -m pytest tests/ -q`。
-- 元级 CI 只跑元级那几条；研究级检查在迁到新家之后仍以同样口径生效，不降级。
+- 元级闸门只跑元级那几条（本仓不挂 CI：命令由改动方在本地自己跑，再交给复核）；研究级检查在迁到新家之后仍以同样口径生效，不降级。
 
 ## 3 工作包
 

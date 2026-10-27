@@ -13,7 +13,7 @@
 | **修正一个结论** | 改对应 `project.yaml` 的 `conclusion` 与实验，并给出反证数据 | 只改结论不改证据 = 不合并 |
 | **加一条参照线** | `axes/7-references/README.md` 下新增 | 参照线必须附判据线（我们要打败它什么） |
 
-## 硬性规则（CI 会拦）
+## 硬性规则（提交前自己跑，违反不合并；本仓不挂 CI）
 
 1. `python3 tools/summary.py --check`（= `tools/check_tree.py`）必须退出 0
    （缺字段 / milestone 非单数 / role_map 缺角色 / 已完成无证据 / 证据路径悬空 / cost_model 含墙钟都 fail）。
