@@ -35,7 +35,7 @@
 
 | 定律 | 改动类型 | 触主干 | 观测代价 | Δ 方向 | 规模与配方 | 适用边界 | 出处 | 研究项 |
 |---|---|---|---|---|---|---|---|---|
-| 3 | `[mask]` 损坏与上下文内修复组合（IX1） | 否 | `+0.087` clean bpc 税（相对 B0 1.5074；正 = 更差）；对照 = 两者单独使用之和（I1 +0.127 + C3 +0.150） | 正 = 更差 | 13M / m1 引擎 / 12k 步 | 共享同一台机器 ⇒ 次可加；破坏对方所需结构的组合则拮抗（IX3 shuffle×retry = 2.2293、INT 全开 = 2.2691） | `.scratch/09-m3-interactions/evidence/SUMMARY.md` | [2.1.2](../axes/2-depth/2.1.2-skipping/project.yaml) skipping（跳层） |
+| 3 | `[mask]` 损坏与上下文内修复组合（IX1） | 否 | `+0.087` clean bpc 税（相对 B0 1.5074；正 = 更差）；对照 = 两者单独使用之和（I1 错误 token +0.127 + C3 上下文内修复 +0.150；IX1 的损坏臂是 `[mask]` +0.059） | 正 = 更差 | 13M / m1 引擎 / 12k 步 | 共享同一台机器 ⇒ 次可加；破坏对方所需结构的组合则拮抗（IX3 shuffle×retry = 2.2293、INT 全开 = 2.2691） | `.scratch/09-m3-interactions/evidence/SUMMARY.md` | [2.1.2](../axes/2-depth/2.1.2-skipping/project.yaml) skipping（跳层） |
 
 ### 定律 4 · 辅助输出是 fallback，不是 voter
 
