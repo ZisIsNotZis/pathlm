@@ -45,7 +45,9 @@
 | 9 | 许可段落与 `LICENSE.md` 及本文件 §5 的待裁决项一致 |
 | 10 | 篇幅 8–10 页（Markdown 单栏可打印），表格不被截断 |
 
-状态：**进行中**（稿子已落盘，等待 fresh 复核；见 §3）。
+状态：**初稿完成，等待用户复核**（需要人的眼睛判断的只有可读性、篇幅与「值不值得发布」；
+两轮 fresh 复核已把全部发现项修入稿子，十条验收重判全部通过，报告在
+`.scratch/doc-log/WP7-paper-review.md` 与 `.scratch/doc-log/WP7b-paper-review.md`）。
 
 ### 1.3 里程碑 3（被硬件门住，登记不是停止）
 
@@ -78,7 +80,7 @@ owner 一律是元级主 Agent 派发的 worker；每个包另配一名 fresh re
 | 工作包 | 交付物 | 验收（可观测） | 预算 | 状态 |
 |---|---|---|---|---|
 | **WP6 论文初稿** | `atlas/paper.md`（十节 + 两张主表 + 附录）；`atlas/README.md` 索引加一行 | §1.2 的第 1–10 条；`tools/check_docs.py --check` 零违规；论文里每个数字都能在代价表或它指到的实验里找到同一个值 | 120 min | 已完成（稿子落盘；复核见 WP7） |
-| **WP7 fresh 复核** | 逐条复核 §1.2 的十条可观测验收 | 每条给 PASS / FAIL + 复现命令；FAIL 必须点名文件与行；额外做一次「随机抽 5 个数字回源」 | 40 min | 已完成（报告 `.scratch/doc-log/WP7-paper-review.md`；发现项已逐条修入稿子） |
+| **WP7 fresh 复核** | 逐条复核 §1.2 的十条可观测验收 | 每条给 PASS / FAIL + 复现命令；FAIL 必须点名文件与行；额外做一次「随机抽 5 个数字回源」 | 40 min | 已完成（两轮：`.scratch/doc-log/WP7-paper-review.md` 找出的三条 blocker 与五条 normal 已全部修入；`WP7b-paper-review.md` 复判十条全部通过、新发现也已修入） |
 | **WP8 门面与台账** | `README.md` 的「计划中」一节改为当前事实；`atlas/README.md` 收录 `paper.md`；`docs/ledger.md` 登记新增文档 | 四条元级机检（`build_catalog` / `check_meta_layer` / `check_ledger` / `check_docs`）全绿；README 不出现研究级读数 | 20 min | 已完成 |
 | **WP9 GPU 队列（门住）** | 未收尾格的最小实验清单：格子 → 一条命令 → 预算（从 `gaps` 与 `triage` 取，不新设计） | 每格一条可复制命令；成本口径与历史实验一致；本轮**不验收**（要 GPU） | — | 阻塞（§1.3） |
 
